@@ -12,7 +12,8 @@
     { "required": [ "clearFromInflectionClass" ] },
     { "required": [ "fromExceptionFeatures" ] },
     { "required": [ "toInflectionClass" ] },
-    { "required": [ "clearToInflectionClass" ] }
+    { "required": [ "clearToInflectionClass" ] },
+    { "required": [ "toExceptionFeatures" ] }
   ],
   "not": {
     "anyOf": [
@@ -44,6 +45,20 @@
       "items": {
         "$ref": "#/$defs/CanonicalId"
       }
+    },
+    "toExceptionFeatures": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/CanonicalId"
+      }
+    },
+    "alsoMsas": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/CanonicalId"
+      }
     }
   },
   "$defs": {
@@ -53,5 +68,5 @@
       "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
     }
   },
-  "$comment": "Omitting an optional field leaves it unchanged; clearFromInflectionClass true clears the class link, and an empty fromExceptionFeatures array clears that link set. toInflectionClass and clearToInflectionClass do the same for the To Inflection Class, which must belong to the To category or an ancestor. Runtime validation also requires msa to be the derivational grammatical info of an existing affix entry with a From category, the class to belong to that category or an ancestor, and each exception feature to be one of the project's. Duplicate JSON properties are refused by the parser."
+  "$comment": "Omitting an optional field leaves it unchanged; clearFromInflectionClass true clears the class link, and an empty fromExceptionFeatures array clears that link set. toInflectionClass and clearToInflectionClass do the same for the To Inflection Class, which must belong to the To category or an ancestor. toExceptionFeatures sets the exact To Exception Features the derived stem receives, and alsoMsas names further derivational grammatical info that receives the identical change. Runtime validation also requires msa to be the derivational grammatical info of an existing affix entry with a From category, the class to belong to that category or an ancestor, and each exception feature to be one of the project's. Duplicate JSON properties are refused by the parser."
 }

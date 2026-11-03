@@ -50,9 +50,9 @@ public sealed class ToolSurfaceTests
     {
         var tool = AgentTools.All.Single(item => item.Name == "motif_set_entry_do_not_parse");
         Assert.Equal(AgentClass.Draft, tool.Class);
-        Assert.Contains("PanGloss honors it", tool.Description, StringComparison.Ordinal);
-        Assert.Contains("FieldWorks HermitCrab currently ignores it", tool.Description, StringComparison.Ordinal);
-        Assert.Contains("not just compounds", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks HermitCrab does not read the flag", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("the next PanGloss release will too", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("retype or delete it", tool.Description, StringComparison.Ordinal);
         Assert.Equal(new[] { "draft", "target", "expectedDoNotParse", "doNotParse", "project" }.Order(StringComparer.Ordinal),
             tool.ArgumentNames.Order(StringComparer.Ordinal));
     }

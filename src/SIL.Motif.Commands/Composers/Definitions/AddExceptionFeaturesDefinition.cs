@@ -5,7 +5,7 @@ using SIL.Motif.Runner.Composers;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>Adds exception features to many stems or inflectional affixes at once, keeping the ones they already have.</summary>
+/// <summary>Adds exception features to many stems, inflectional affixes or derivational affixes at once, keeping the ones they already have.</summary>
 internal sealed class AddExceptionFeaturesDefinition : ComposerDefinition<AddExceptionFeaturesIntent>
 {
     /// <inheritdoc />
@@ -20,7 +20,8 @@ internal sealed class AddExceptionFeaturesDefinition : ComposerDefinition<AddExc
     /// <inheritdoc />
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Ids("msas", IdRole.Target, required: true),
-        Field.Ids("exceptionFeatures", IdRole.Reference, required: true));
+        Field.Ids("exceptionFeatures", IdRole.Reference, required: true),
+        Field.Choice("side", ["from", "to"]));
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =

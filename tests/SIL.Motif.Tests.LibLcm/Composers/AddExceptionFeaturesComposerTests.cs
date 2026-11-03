@@ -41,7 +41,7 @@ public sealed class AddExceptionFeaturesComposerTests(PristineProjectFixture pri
     }
 
     [Fact]
-    public void AnInflectionalAffixGainsRequiredFeaturesAndADerivationalOneIsRefusedByName()
+    public void AnInflectionalAffixGainsRequiredFeaturesAndAnUnclassifiedAffixHasNone()
     {
         using var cache = pristine.NewScratch();
         var verb = AddCategory(cache, "Verb");
@@ -54,12 +54,54 @@ public sealed class AddExceptionFeaturesComposerTests(PristineProjectFixture pri
         Assert.Equal(new[] { loan.ToGuid(), kin.ToGuid() }.Order(),
             Get<IMoInflAffMsa>(cache, prefix.Msa).FromProdRestrictRC.Select(item => item.Guid).Order());
 
-        var derivational = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("pag",
-            Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "pag", Anal(cache),
-            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, AddCategory(cache, "Noun")))));
-        var refused = Assert.Throws<InvalidOperationException>(() => AddExceptionFeaturesComposer.Build(cache,
-            new([Created(derivational, LexEntryMorphoSyntaxAnalysesOperationKinds.Create)], [loan])));
-        Assert.Contains("compose-edit-derivational-affix-restriction", refused.Message);
+        var toSide = Assert.Throws<InvalidOperationException>(() =>
+            AddExceptionFeaturesComposer.Build(cache, new([prefix.Msa], [loan], "to")));
+        Assert.Contains("only a derivational affix", toSide.Message);
+    }
+
+    [Fact]
+    public void ManyDerivationalAffixesGainFromFeaturesByDefaultAndToFeaturesOnRequest()
+    {
+        using var cache = pristine.NewScratch();
+        var verb = AddCategory(cache, "Verb");
+        var noun = AddCategory(cache, "Noun");
+        var msas = new List<CanonicalId>();
+        foreach (var form in new[] { "pag", "mag", "tag" })
+        {
+            var entry = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent(form,
+                Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), form, Anal(cache),
+                new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, noun))));
+            msas.Add(Created(entry, LexEntryMorphoSyntaxAnalysesOperationKinds.Create));
+        }
+        var loan = NewFeature(cache, "Loan stem");
+        var kin = NewFeature(cache, "Kin");
+
+        var from = AddExceptionFeaturesComposer.Build(cache, new(msas, [loan, kin]));
+        Assert.Equal(6, from.Count);
+        Assert.All(from, item => Assert.Equal(MoDerivAffMsaFromProdRestrictOperationKinds.AddRefFromProdRestrict, item.Kind));
+        ApplyOps(cache, from);
+        Assert.Empty(AddExceptionFeaturesComposer.Build(cache, new(msas, [loan, kin], "from")));
+
+        var to = AddExceptionFeaturesComposer.Build(cache, new(msas, [kin], "to"));
+        Assert.Equal(3, to.Count);
+        Assert.All(to, item => Assert.Equal(MoDerivAffMsaToProdRestrictOperationKinds.AddRefToProdRestrict, item.Kind));
+        ApplyOps(cache, to);
+        foreach (var msa in msas)
+        {
+            var derivational = Get<IMoDerivAffMsa>(cache, msa);
+            Assert.Equal(new[] { loan.ToGuid(), kin.ToGuid() }.Order(), derivational.FromProdRestrictRC.Select(item => item.Guid).Order());
+            Assert.Equal(kin.ToGuid(), Assert.Single(derivational.ToProdRestrictRC).Guid);
+        }
+        Assert.Empty(AddExceptionFeaturesComposer.Build(cache, new(msas, [kin], "to")));
+    }
+
+    [Fact]
+    public void TheSideMustBeFromOrTo()
+    {
+        using var json = JsonDocument.Parse($$"""{"msas":["{{CanonicalId.Mint().Value}}"],"exceptionFeatures":["{{CanonicalId.Mint().Value}}"],"side":"both"}""");
+        Assert.Throws<SIL.Motif.Contract.Parsing.ContractParseException>(() => AddExceptionFeaturesIntentParser.Parse(json.RootElement));
+        using var ok = JsonDocument.Parse($$"""{"msas":["{{CanonicalId.Mint().Value}}"],"exceptionFeatures":["{{CanonicalId.Mint().Value}}"],"side":"to"}""");
+        Assert.Equal("to", AddExceptionFeaturesIntentParser.Parse(ok.RootElement).Side);
     }
 
     [Fact]

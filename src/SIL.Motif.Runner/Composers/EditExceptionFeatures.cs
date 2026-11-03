@@ -72,11 +72,22 @@ public static class EditExceptionFeaturesComposer
 /// <summary>What the exception-feature composers share: which grammatical info carries the set, and which features exist.</summary>
 internal static class ExceptionFeatureTargets
 {
-    /// <summary>Finds the add and remove operation kinds and the current set for a stem or inflectional-affix analysis.</summary>
+    /// <summary>Finds the add and remove operation kinds and the current set for a stem or an affix analysis.</summary>
+    /// <param name="cache">The project to look the analysis up in.</param>
+    /// <param name="msaId">The grammatical info.</param>
+    /// <param name="constructName">The composer name for error text.</param>
+    /// <param name="derivationalSide">
+    /// "from" or "to" to accept a derivational affix and say which of its two sets is meant; null does not accept a
+    /// derivational affix.
+    /// </param>
     internal static (string AddKind, string RemoveKind, IEnumerable<ICmPossibility> Current) Resolve(
-        LcmCache cache, CanonicalId msaId, string constructName)
+        LcmCache cache, CanonicalId msaId, string constructName, string? derivationalSide = null)
     {
         var msa = LexicalFormAuthoring.Resolve<IMoMorphSynAnalysis>(cache, msaId, constructName);
+        if (derivationalSide == "to" && msa is not IMoDerivAffMsa)
+            throw new InvalidOperationException(
+                $"'{constructName}': '{msaId.Value}' is not a derivational affix, so it has no To Exception Features; " +
+                "only a derivational affix gives the stem it derives exception features.");
         switch (msa)
         {
             case IMoStemMsa stem:
@@ -85,6 +96,12 @@ internal static class ExceptionFeatureTargets
             case IMoInflAffMsa inflectional:
                 return (MoInflAffMsaFromProdRestrictOperationKinds.AddRefFromProdRestrict,
                     MoInflAffMsaFromProdRestrictOperationKinds.RemoveRefFromProdRestrict, inflectional.FromProdRestrictRC);
+            case IMoDerivAffMsa derivational when derivationalSide == "to":
+                return (MoDerivAffMsaToProdRestrictOperationKinds.AddRefToProdRestrict,
+                    MoDerivAffMsaToProdRestrictOperationKinds.RemoveRefToProdRestrict, derivational.ToProdRestrictRC);
+            case IMoDerivAffMsa derivational when derivationalSide == "from":
+                return (MoDerivAffMsaFromProdRestrictOperationKinds.AddRefFromProdRestrict,
+                    MoDerivAffMsaFromProdRestrictOperationKinds.RemoveRefFromProdRestrict, derivational.FromProdRestrictRC);
             case IMoDerivAffMsa:
                 throw new InvalidOperationException(
                     $"'{constructName}': '{msaId.Value}' is a derivational affix; set its From Exception Features with " +

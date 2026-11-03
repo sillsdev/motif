@@ -34,9 +34,9 @@ public static class SetEntryDoNotParseIntentParser
 /// <summary>Builds a write to the entry's FieldWorks do-not-parse flag without changing the cache.</summary>
 public static class SetEntryDoNotParseComposer
 {
-    private const string SetNote = "Set the lexical entry's do-not-parse flag. A Trial leaves this entry out, but " +
-        "FieldWorks' parsers do not read the flag, so after Apply they still parse it.";
-    private const string ClearNote = "Cleared the lexical entry's do-not-parse flag. A Trial parses the entry again.";
+    private const string SetNote = "Set the lexical entry's do-not-parse flag. FieldWorks' parsers do not read the flag, " +
+        "so they parse this entry; the pinned PanGloss leaves it out until its next release.";
+    private const string ClearNote = "Cleared the lexical entry's do-not-parse flag. Every parser parses the entry.";
 
     /// <summary>Checks the current flag and returns one semantic operation for the requested value.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, SetEntryDoNotParseIntent intent)

@@ -32,7 +32,9 @@ Motif findings also include `grammar.phoneme-spelling-ambiguous` for a phoneme w
 
 Motif findings also include `grammar.allomorph-repeats-environment-material` for a form that already spells the material its environment asks of its neighbour (`batan-ung` before `ng`); it is a second look, not a refusal.
 
-Motif findings also include `fieldworks.do-not-parse-ignored` (information) for each entry marked do-not-parse: Motif's parser leaves it out and FieldWorks still parses it after Apply.
+Motif findings also include `fieldworks.do-not-parse-ignored` (information) for each entry marked do-not-parse: FieldWorks does not read the flag and parses the entry; the pinned PanGloss leaves it out until the next PanGloss release parses it too.
+
+Motif findings also include three lexicon hygiene warnings: `lexicon.stem-typed-as-content-word` for a Noun, Verb or Adjective stem that is a single letter, a cross-reference stub or a function word by its gloss, `lexicon.duplicate-entry` for entries with the same form and first gloss, and `lexicon.affix-hyphen-on-wrong-side` for a prefix written `-i` or a suffix written `i-`. They report only; see [`grammar-check`](cmd:grammar%20check) for what each looks for and how to fix many at once.
 
 When a stored Assessment matches the Baseline and Selection, all recorded allomorph segmentation refusals are included under `parse.allomorph.unsegmentable`, labelled **Parse all words**. Their descriptions preserve the parser's reason, without truncating the allomorph list or inventing guidance. These findings can differ from the whole-grammar check's findings.
 

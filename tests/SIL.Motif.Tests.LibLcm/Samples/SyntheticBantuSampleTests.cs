@@ -415,7 +415,10 @@ public sealed class SyntheticBantuSampleTests(ITestOutputHelper output)
         WriteIndented = true,
     };
 
-    private static readonly Dictionary<string, string> GrammarWarningReasons = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, string> GrammarWarningReasons = new(StringComparer.Ordinal)
+    {
+        ["lexicon.duplicate-entry"] = "The sample deliberately carries entries that repeat a form and first gloss; the check only reports them.",
+    };
 }
 
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]

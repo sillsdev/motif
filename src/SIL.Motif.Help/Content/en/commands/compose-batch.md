@@ -36,3 +36,7 @@ Labels must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters). They 
 Intents run in file order, and each one sees the changes of the intents before it, so the Draft ends as it would after the same commands run one at a time. A refusal names the failing intent's position and command.
 
 There is no limit by intent or operation count.
+
+## Changing many stems at once
+
+The per-stem composers take one target each, and a batch is how a whole clean-up becomes one Proposal. Put one intent per stem in the file, for example `compose-set-stem-part-of-speech` to retype hundreds of stems (each with its own `expectedPartOfSpeech`) and, to stop stems parsing, retype or delete them (the do-not-parse flag does not stop FieldWorks parsing an entry). Mix verbs freely; `compose-edit-derivational-affix-restriction` takes `alsoMsas` and `compose-add-exception-features` takes `msas`, so those two need only one intent for a list. Give the Draft its own Rationale before Finalize.

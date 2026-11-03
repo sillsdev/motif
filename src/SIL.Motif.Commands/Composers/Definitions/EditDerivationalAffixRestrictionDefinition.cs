@@ -24,7 +24,9 @@ internal sealed class EditDerivationalAffixRestrictionDefinition : ComposerDefin
         Field.Flag("clearFromInflectionClass", trueOnly: true),
         Field.Ids("fromExceptionFeatures", IdRole.Reference),
         Field.Id("toInflectionClass", IdRole.Reference),
-        Field.Flag("clearToInflectionClass", trueOnly: true))
+        Field.Flag("clearToInflectionClass", trueOnly: true),
+        Field.Ids("toExceptionFeatures", IdRole.Reference),
+        Field.Ids("alsoMsas", IdRole.Target))
         .AtMostOne("fromInflectionClass", "clearFromInflectionClass")
         .AtMostOne("toInflectionClass", "clearToInflectionClass");
 

@@ -450,7 +450,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
-    public void AnEnvironmentOnAnEntryNotUsedForParsingIsNotWarnedAbout()
+    public void AnEnvironmentOnAnEntryMarkedDoNotParseIsStillWarnedAbout()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         var loader = new FwDataProjectLoader();
@@ -464,11 +464,11 @@ public sealed class GrammarCheckQueryTests : IDisposable
 
         Capture(fwDataPath);
 
-        Assert.DoesNotContain(Check(fwDataPath).Findings, item => item.Code == GrammarFindingCodes.AllomorphEnvironmentIgnoredByParser);
+        Assert.Single(Check(fwDataPath).Findings, item => item.Code == GrammarFindingCodes.AllomorphEnvironmentIgnoredByParser);
     }
 
     [Fact]
-    public void AnEntryMarkedDoNotParseIsAnInformationFindingSayingFieldWorksStillParsesIt()
+    public void AnEntryMarkedDoNotParseIsAnInformationFindingSayingFieldWorksParsesIt()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         var loader = new FwDataProjectLoader();
@@ -488,7 +488,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var finding = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.DoNotParseIgnoredByFieldWorks);
         Assert.Equal(GrammarDiagnosticLevel.Information, finding.Severity);
         Assert.Equal(CanonicalId.FromGuid(flagged).Value, Assert.Single(finding.Subject).ObjectId);
-        Assert.Contains("FieldWorks still parses it after Apply", finding.Description, StringComparison.Ordinal);
+        Assert.Contains("FieldWorks parses it after Apply", finding.Description, StringComparison.Ordinal);
         Assert.Equal(1, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.DoNotParseIgnoredByFieldWorks).Count);
     }
 
@@ -523,6 +523,110 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Capture(fwDataPath);
 
         Assert.DoesNotContain(Check(fwDataPath).Findings, item => item.Code == GrammarFindingCodes.DoNotParseIgnoredByFieldWorks);
+    }
+
+    [Fact]
+    public void EntryHygieneFlagsContentWordLettersStubsFunctionWordsDuplicatesAndAMisplacedHyphen()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var services = cache.ServiceLocator;
+                var noun = services.GetInstance<IPartOfSpeechFactory>().Create();
+                cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Add(noun);
+                noun.Name.set_String(cache.DefaultAnalWs, "Noun");
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "a", "Pause word", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "bb", "letter B", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "ang", "subject marker", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "xyz", "=abc", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "x", "thing", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "kaon", "eat", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "balay", "house", null);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "balay", "house", null);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "balay", "house", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphSuffix, "balay", "house", null);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "sa", "see it", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "ma", "the bird", noun);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphStem, "y", "thing", noun, doNotParse: true);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphPrefix, "-i", "irrealis", null);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphSuffix, "an-", "locative", null);
+                LexEntry(cache, MoMorphTypeTags.kguidMorphPrefix, "ka-", "stative", null);
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var typed = check.Findings.Where(item => item.Code == GrammarFindingCodes.StemTypedAsContentWord).ToArray();
+        Assert.Equal(6, typed.Length);
+        Assert.Contains(typed, item => item.Description.Contains("'y'", StringComparison.Ordinal));
+        Assert.DoesNotContain(typed, item => item.Description.Contains("'sa'", StringComparison.Ordinal));
+        Assert.DoesNotContain(typed, item => item.Description.Contains("kaon", StringComparison.Ordinal));
+        Assert.Contains(typed, item => item.Description.Contains("single letter", StringComparison.Ordinal));
+        Assert.Contains(typed, item => item.Description.Contains("cross-reference stub", StringComparison.Ordinal));
+        Assert.Contains(typed, item => item.Description.Contains("function word", StringComparison.Ordinal));
+        Assert.Equal(6, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.StemTypedAsContentWord).Count);
+        var duplicate = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.DuplicateEntry);
+        Assert.Contains("'balay'", duplicate.Description, StringComparison.Ordinal);
+        Assert.Equal(2, duplicate.Subject.Count);
+        var hyphens = check.Findings.Where(item => item.Code == GrammarFindingCodes.AffixHyphenOnWrongSide).ToArray();
+        Assert.Equal(2, hyphens.Length);
+        Assert.Contains(hyphens, item => item.Description.Contains("'-i'", StringComparison.Ordinal) &&
+            item.Description.Contains("'i-'", StringComparison.Ordinal));
+        Assert.All(new[] { typed[0], duplicate, hyphens[0] }, item => Assert.Equal(GrammarDiagnosticLevel.Warning, item.Severity));
+    }
+
+    [Fact]
+    public void ManyHygieneFindingsCollapseIntoOneFindingWithTheTotalCount()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                for (var i = 0; i < 25; i++)
+                    LexEntry(cache, MoMorphTypeTags.kguidMorphPrefix, "-p" + i, "prefix " + i, null);
+            });
+            loader.Save(cache);
+        }
+
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+
+        var finding = Assert.Single(check.Findings, item => item.Code == GrammarFindingCodes.AffixHyphenOnWrongSide);
+        Assert.Contains("25 findings", finding.Description, StringComparison.Ordinal);
+        Assert.InRange(finding.Subject.Count, 1, 5);
+        Assert.Equal(25, Assert.Single(check.Summary, item => item.Code == GrammarFindingCodes.AffixHyphenOnWrongSide).Count);
+    }
+
+    [Fact]
+    public void ACleanLexiconHasNoHygieneFindings()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Capture(fwDataPath);
+
+        var codes = new[] { GrammarFindingCodes.StemTypedAsContentWord, GrammarFindingCodes.DuplicateEntry,
+            GrammarFindingCodes.AffixHyphenOnWrongSide };
+        Assert.DoesNotContain(Check(fwDataPath).Findings, item => codes.Contains(item.Code));
+    }
+
+    private static void LexEntry(LcmCache cache, Guid morphType, string form, string gloss, IPartOfSpeech? category,
+        bool doNotParse = false)
+    {
+        var services = cache.ServiceLocator;
+        var entry = services.GetInstance<ILexEntryFactory>().Create(
+            services.GetInstance<IMoMorphTypeRepository>().GetObject(morphType),
+            SIL.LCModel.Core.Text.TsStringUtils.MakeString("placeholder", cache.DefaultVernWs), gloss,
+            category is null
+                ? new SandboxGenericMSA { MsaType = MsaType.kUnclassified }
+                : new SandboxGenericMSA { MsaType = MsaType.kStem, MainPOS = category });
+        entry.LexemeFormOA.Form.set_String(cache.DefaultVernWs, form);
+        entry.DoNotUseForParsing = doNotParse;
     }
 
     [Fact]

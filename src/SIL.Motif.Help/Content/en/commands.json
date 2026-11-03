@@ -558,7 +558,7 @@
   },
   "compose-set-entry-do-not-parse": {
     "title": "Set entry parsing flag",
-    "description": "Stages the FieldWorks do-not-parse flag on a lexical entry. PanGloss excludes the entire entry from parsing, not just compounds. The FieldWorks HermitCrab loader currently ignores this flag.",
+    "description": "Stages the FieldWorks do-not-parse flag on a lexical entry. FieldWorks HermitCrab does not read the flag, so it parses a flagged entry, and the next PanGloss release will too (the pinned 0.14.0 still leaves it out); to stop a stem parsing, retype it with compose-set-stem-part-of-speech or delete it.",
     "source": "Hand-written from the FieldWorks model and parser importer.",
     "fields": {
       "draft": "Draft name.",
@@ -574,7 +574,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "Whole-entry exclusion, not compound-only. PanGloss honors it; FieldWorks HermitCrab currently ignores it. Ask the linguist before staging."
+    "redirect": "FieldWorks parses a flagged entry and the next PanGloss release will too. To stop a stem parsing, retype or delete it."
   },
   "compose-set-no-default-compounding": {
     "title": "Set default compounding",
@@ -927,7 +927,7 @@
   },
   "compose-edit-derivational-affix-restriction": {
     "title": "Restrict a derivational affix",
-    "description": "Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features on an existing affix entry's derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.",
+    "description": "Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features and To Exception Features on an existing affix entry's derivational grammatical info; alsoMsas applies the same change to many affixes. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
@@ -936,7 +936,9 @@
       "clearFromInflectionClass": "Set true to remove the current From Inflection Class; do not combine with fromInflectionClass.",
       "fromExceptionFeatures": "Optional exact set of valid From Exception Features; an empty list removes them all, and omission leaves the current set unchanged.",
       "toInflectionClass": "Optional id of an inflection class owned by the To category or an ancestor; derived stems get this class. Omission leaves the current link unchanged.",
-      "clearToInflectionClass": "Set true to remove the current To Inflection Class; do not combine with toInflectionClass."
+      "clearToInflectionClass": "Set true to remove the current To Inflection Class; do not combine with toInflectionClass.",
+      "toExceptionFeatures": "Optional exact set of To Exception Features, which the derived stem receives; an empty list removes them all, and omission leaves the current set unchanged.",
+      "alsoMsas": "Optional ids of further derivational grammatical info that receive the identical change, so one intent edits many affixes."
     },
     "goals": [
       "Restrict a derivational affix to stems of one inflection class",
@@ -989,12 +991,13 @@
   },
   "compose-add-exception-features": {
     "title": "Add exception features to many entries",
-    "description": "Adds the same exception features to many entries in one Draft, keeping what each already has and removing nothing. Use it to restrict an affix to a list of entries. Derivational affixes use their own command. Motif stages a Draft for a person to review and Apply.",
+    "description": "Adds the same exception features to many entries in one Draft, keeping what each already has and removing nothing. Use it to restrict an affix to a list of entries. A derivational affix takes From Exception Features, or To Exception Features with side to. Motif stages a Draft for a person to review and Apply.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
-      "msas": "Ids of the grammatical info of the stem, clitic or inflectional affix entries to tag.",
-      "exceptionFeatures": "Exception feature ids to add to every one of them; a feature an entry already has is left alone."
+      "msas": "Ids of the grammatical info of the stem, clitic, inflectional affix or derivational affix entries to tag.",
+      "exceptionFeatures": "Exception feature ids to add to every one of them; a feature an entry already has is left alone.",
+      "side": "For derivational affixes only: from (the default) adds From Exception Features that stems must carry; to adds To Exception Features that the derived stem receives."
     },
     "goals": [
       "Tag many entries with one feature in a single call",
@@ -1004,7 +1007,7 @@
     "guides": [
       "suffix-prefix-slots"
     ],
-    "redirect": "Adds only; compose-edit-exception-features replaces one entry's whole set. A derivational affix uses compose-edit-derivational-affix-restriction (guides suffix-prefix-slots)."
+    "redirect": "Adds only; compose-edit-exception-features replaces one entry's whole set, and compose-edit-derivational-affix-restriction replaces a derivational affix's sets (guides suffix-prefix-slots)."
   },
   "compose-edit-phonological-rule-features": {
     "title": "Set rule features",

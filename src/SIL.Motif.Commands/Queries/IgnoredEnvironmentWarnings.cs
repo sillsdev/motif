@@ -30,8 +30,7 @@ internal static class IgnoredEnvironmentWarnings
             phonology.AllNaturalClassAbbrs().ToArray());
         var verdicts = new Dictionary<Guid, bool>();
         var warnings = new List<GrammarWarning>();
-        foreach (var entry in cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
-                     .Where(entry => !entry.DoNotUseForParsing))
+        foreach (var entry in cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances())
         foreach (var form in Forms(entry))
         foreach (var environment in Environments(form).Distinct())
         {

@@ -10,9 +10,9 @@ using SIL.Motif.Projection;
 namespace SIL.Motif.Commands.Queries;
 
 /// <summary>
-/// Reports each entry marked do-not-parse. PanGloss leaves such an entry out of every parse, but neither FieldWorks'
-/// HermitCrab loader nor its XAmple transform reads the flag, so FieldWorks still parses the entry after Apply and a
-/// Trial reads the grammar differently from FieldWorks.
+/// Reports each entry marked do-not-parse. Neither FieldWorks' HermitCrab loader nor its XAmple transform reads the
+/// flag, so FieldWorks parses the entry after Apply. The PanGloss Motif pins today (0.14.0) leaves it out, so a Trial
+/// reads the grammar differently from FieldWorks until the next PanGloss release parses it too.
 /// </summary>
 internal static class DoNotParseWarnings
 {
@@ -45,7 +45,7 @@ internal static class DoNotParseWarnings
         var subjects = sample.Select(item => Subject(item.entry, item.name)).ToArray();
         var names = string.Join(", ", sample.Select(item => $"'{item.name}'"));
         var description = $"{entries.Length} entries are marked do-not-parse, for example {names}. " +
-            "Motif's parser leaves them out, but FieldWorks still parses them after Apply.";
+            "FieldWorks parses them after Apply; the pinned PanGloss leaves them out until its next release.";
         return Build(subjects, description);
     }
 
@@ -53,7 +53,7 @@ internal static class DoNotParseWarnings
     {
         var name = Name(cache, entry.LexemeFormOA?.Form, "unnamed entry");
         var homograph = entry.HomographNumber > 1 ? $" (homograph {entry.HomographNumber})" : "";
-        var description = $"Entry '{name}'{homograph} is marked do-not-parse. Motif's parser leaves it out, but FieldWorks still parses it after Apply.";
+        var description = $"Entry '{name}'{homograph} is marked do-not-parse. FieldWorks parses it after Apply; the pinned PanGloss leaves it out until its next release.";
         return Build([Subject(entry, name)], description);
     }
 
@@ -73,12 +73,11 @@ internal static class DoNotParseWarnings
             Group = "Lexicon",
             Title = Label,
             Description = description,
-            Explanation = "Motif's parser leaves a do-not-parse entry out, so a Trial never uses its forms or meanings. " +
-                "FieldWorks' parsers do not read the flag, so after Apply they parse words with this entry, " +
-                "and the Trial result differs from the parse in FieldWorks.",
-            Guidance = "To exclude the entry in FieldWorks too, delete it or retire it, or disable the rule or template " +
-                "that lets it parse. If the flag is only a note for people, leave it, and read a Trial knowing that " +
-                "FieldWorks still parses the entry.",
+            Explanation = "FieldWorks' parsers do not read the flag, so after Apply they parse words with this entry. " +
+                "The PanGloss Motif pins today leaves the entry out, so a Trial differs from FieldWorks until the next " +
+                "PanGloss release parses it too.",
+            Guidance = "To stop the entry parsing, retype it with compose-set-stem-part-of-speech or delete it. " +
+                "Flagging it does not stop FieldWorks parsing it.",
             Origin = GrammarFindingOrigin.Check,
             Scope = GrammarSubjectStatus.Object,
         };

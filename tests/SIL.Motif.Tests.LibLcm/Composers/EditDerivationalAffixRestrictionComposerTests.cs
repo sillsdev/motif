@@ -316,6 +316,58 @@ public sealed class EditDerivationalAffixRestrictionComposerTests : IDisposable
         Assert.Throws<ContractParseException>(() => EditDerivationalAffixRestrictionIntentParser.Parse(both.RootElement));
     }
 
+    [Fact]
+    public void ToExceptionFeaturesAreReplacedOnSeveralAffixesInOneIntent()
+    {
+        var first = DerivationalPrefix("mi").Msa;
+        var second = DerivationalPrefix("ma").Msa;
+        var third = DerivationalPrefix("mu").Msa;
+        var features = ExceptionFeatures("Irregular", "Loan");
+        ApplyOps(_cache, EditDerivationalAffixRestrictionComposer.Build(_cache,
+            new(third, ToExceptionFeatures: [features[1]])));
+
+        var operations = EditDerivationalAffixRestrictionComposer.Build(_cache,
+            new(first, ToExceptionFeatures: [features[0]], AlsoMsas: [second, third]));
+
+        Assert.Equal(4, operations.Count);
+        Assert.Single(operations, op => op.Kind == MoDerivAffMsaToProdRestrictOperationKinds.RemoveRefToProdRestrict);
+        Assert.Equal(3, operations.Count(op => op.Kind == MoDerivAffMsaToProdRestrictOperationKinds.AddRefToProdRestrict));
+        ApplyOps(_cache, operations);
+        foreach (var msa in new[] { first, second, third })
+        {
+            var reloaded = Get<IMoDerivAffMsa>(_cache, msa);
+            Assert.Equal(features[0].ToGuid(), Assert.Single(reloaded.ToProdRestrictRC).Guid);
+            Assert.Empty(reloaded.FromProdRestrictRC);
+        }
+        Assert.Empty(EditDerivationalAffixRestrictionComposer.Build(_cache,
+            new(first, ToExceptionFeatures: [features[0]], AlsoMsas: [second, third])));
+    }
+
+    [Fact]
+    public void FromFeaturesApplyToEveryNamedAffixAndARepeatedOrWrongKindOfAffixRefusesTheWholeIntent()
+    {
+        var first = DerivationalPrefix("mi").Msa;
+        var second = DerivationalPrefix("ma").Msa;
+        var features = ExceptionFeatures("Irregular");
+        var stem = AddStem(_cache, "kaun", _category);
+
+        ApplyOps(_cache, EditDerivationalAffixRestrictionComposer.Build(_cache,
+            new(first, FromExceptionFeatures: [features[0]], AlsoMsas: [second])));
+        Assert.Equal(features[0].ToGuid(), Assert.Single(Get<IMoDerivAffMsa>(_cache, second).FromProdRestrictRC).Guid);
+
+        Assert.Contains("must not repeat", Assert.Throws<InvalidOperationException>(() =>
+            EditDerivationalAffixRestrictionComposer.Build(_cache,
+                new(first, FromExceptionFeatures: [], AlsoMsas: [first]))).Message);
+        Assert.Contains("not the derivational grammatical info", Assert.Throws<InvalidOperationException>(() =>
+            EditDerivationalAffixRestrictionComposer.Build(_cache,
+                new(first, FromExceptionFeatures: [], AlsoMsas: [stem.Msa]))).Message);
+        using var json = JsonDocument.Parse(
+            $$"""{"msa":"{{first.Value}}","alsoMsas":["{{second.Value}}"],"toExceptionFeatures":[]}""");
+        var parsed = EditDerivationalAffixRestrictionIntentParser.Parse(json.RootElement);
+        Assert.Equal([second], parsed.AlsoMsas);
+        Assert.Empty(parsed.ToExceptionFeatures!);
+    }
+
     private CanonicalId _derivedCategory;
 
     private (CanonicalId Entry, CanonicalId Msa) DerivationalPrefix(string form)

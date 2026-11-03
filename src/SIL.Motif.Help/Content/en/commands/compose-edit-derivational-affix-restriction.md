@@ -7,7 +7,9 @@ motif compose-edit-derivational-affix-restriction --project language.fwdata --dr
   --intent '{"msa":"<derivational-msa-id>","fromInflectionClass":"<class-id>","fromExceptionFeatures":["<feature-id>"]}'
 ```
 
-`msa` is the id of the derivational grammatical info on an existing affix entry. `fromInflectionClass`, when present, sets the From Inflection Class; the class must belong to the MSA's From category or one of its ancestors. `fromExceptionFeatures`, when present, replaces the exact set of valid From Exception Features; pass an empty list to remove them all. Omit either class field to leave its current value unchanged. Give at least one of the fields.
+`msa` is the id of the derivational grammatical info on an existing affix entry. `fromInflectionClass`, when present, sets the From Inflection Class; the class must belong to the MSA's From category or one of its ancestors. `toExceptionFeatures` replaces the whole To set, as `fromExceptionFeatures` does the From set; to add to a set instead, use `compose-add-exception-features`. `fromExceptionFeatures`, when present, replaces the exact set of valid From Exception Features; pass an empty list to remove them all. `toExceptionFeatures`, when present, replaces the exact set of To Exception Features, the features the derived stem receives; an empty list removes them all. Omit a field to leave its current value unchanged. Give at least one of the fields.
+
+`alsoMsas` lists further derivational grammatical info ids that receive the identical change, so one intent restricts hundreds of affixes; `msa` and `alsoMsas` must not repeat an id. The change is the same for each, so an affix that needs a different set takes its own intent in a `compose-batch` file. An affix process (a reduplication, say) takes the same fields, since the restriction sits on its grammatical info.
 
 To remove the current From Inflection Class, pass `"clearFromInflectionClass":true` instead of `fromInflectionClass`. Do not supply both fields. You can combine the clear field with `fromExceptionFeatures`; omitting both class fields leaves the current class unchanged.
 

@@ -17,9 +17,12 @@ namespace SIL.Motif.Runner.Composers;
 /// <param name="ClearFromInflectionClass">When true, clears the existing From Inflection Class; false leaves it unchanged.</param>
 /// <param name="ToInflectionClass">The inflection class, of the output category or an ancestor, that derived stems receive.</param>
 /// <param name="ClearToInflectionClass">When true, clears the existing To Inflection Class; false leaves it unchanged.</param>
+/// <param name="ToExceptionFeatures">The exact To Exception Features set the derived stem receives; an empty list clears the links when supplied.</param>
+/// <param name="AlsoMsas">Further derivational grammatical info that receives the identical change, so one intent edits many affixes.</param>
 public sealed record EditDerivationalAffixRestrictionIntent(CanonicalId Msa, CanonicalId? FromInflectionClass = null,
     IReadOnlyList<CanonicalId>? FromExceptionFeatures = null, bool ClearFromInflectionClass = false,
-    CanonicalId? ToInflectionClass = null, bool ClearToInflectionClass = false);
+    CanonicalId? ToInflectionClass = null, bool ClearToInflectionClass = false,
+    IReadOnlyList<CanonicalId>? ToExceptionFeatures = null, IReadOnlyList<CanonicalId>? AlsoMsas = null);
 
 /// <summary>Parses the closed JSON intent for restricting a derivational affix's input.</summary>
 public static class EditDerivationalAffixRestrictionIntentParser
@@ -30,7 +33,7 @@ public static class EditDerivationalAffixRestrictionIntentParser
     public static EditDerivationalAffixRestrictionIntent Parse(JsonElement authored)
     {
         SoundSystemIntentParsing.Object(authored, ConstructName, "msa", "fromInflectionClass", "clearFromInflectionClass",
-            "fromExceptionFeatures", "toInflectionClass", "clearToInflectionClass");
+            "fromExceptionFeatures", "toInflectionClass", "clearToInflectionClass", "toExceptionFeatures", "alsoMsas");
         var clearClass = ClearFlag(authored, "clearFromInflectionClass");
         var clearToClass = ClearFlag(authored, "clearToInflectionClass");
         var result = new EditDerivationalAffixRestrictionIntent(SoundSystemIntentParsing.Id(authored, "msa"),
@@ -41,7 +44,11 @@ public static class EditDerivationalAffixRestrictionIntentParser
             clearClass,
             authored.TryGetProperty("toInflectionClass", out _)
                 ? SoundSystemIntentParsing.Id(authored, "toInflectionClass") : null,
-            clearToClass);
+            clearToClass,
+            authored.TryGetProperty("toExceptionFeatures", out _)
+                ? SoundSystemIntentParsing.Ids(authored, "toExceptionFeatures", ordered: false) : null,
+            authored.TryGetProperty("alsoMsas", out _)
+                ? SoundSystemIntentParsing.Ids(authored, "alsoMsas", ordered: true) : null);
         if (result.FromInflectionClass is not null && result.ClearFromInflectionClass)
             throw new ContractParseException($"'{ConstructName}': give 'fromInflectionClass' or 'clearFromInflectionClass', not both.");
         if (result.ToInflectionClass is not null && result.ClearToInflectionClass)
@@ -52,11 +59,11 @@ public static class EditDerivationalAffixRestrictionIntentParser
     }
 
     internal const string NothingToChange = "give 'fromInflectionClass', 'clearFromInflectionClass', " +
-        "'fromExceptionFeatures', 'toInflectionClass' or 'clearToInflectionClass'.";
+        "'fromExceptionFeatures', 'toInflectionClass', 'clearToInflectionClass' or 'toExceptionFeatures'.";
 
     internal static bool HasChange(EditDerivationalAffixRestrictionIntent intent) =>
         intent.FromInflectionClass is not null || intent.ClearFromInflectionClass || intent.FromExceptionFeatures is not null
-        || intent.ToInflectionClass is not null || intent.ClearToInflectionClass;
+        || intent.ToInflectionClass is not null || intent.ClearToInflectionClass || intent.ToExceptionFeatures is not null;
 
     private static bool ClearFlag(JsonElement authored, string name)
     {
@@ -68,8 +75,8 @@ public static class EditDerivationalAffixRestrictionIntentParser
 }
 
 /// <summary>
-/// Lowers one <see cref="EditDerivationalAffixRestrictionIntent"/> into operations on a MoDerivAffMsa's
-/// FromInflectionClass and FromProdRestrict; class behavior is pinned by
+/// Lowers one <see cref="EditDerivationalAffixRestrictionIntent"/> into operations on each named MoDerivAffMsa's
+/// FromInflectionClass, ToInflectionClass, FromProdRestrict and ToProdRestrict; class behavior is pinned by
 /// <c>ADerivationalPrefixRestrictedToAClassStopsApplyingToUnmarkedStems</c>.
 /// </summary>
 public static class EditDerivationalAffixRestrictionComposer
@@ -92,7 +99,15 @@ public static class EditDerivationalAffixRestrictionComposer
                 $"'{ConstructName}': give 'toInflectionClass' or 'clearToInflectionClass', not both.");
         if (!EditDerivationalAffixRestrictionIntentParser.HasChange(intent))
             throw new InvalidOperationException($"'{ConstructName}': {EditDerivationalAffixRestrictionIntentParser.NothingToChange}");
-        var msaId = LexicalFormAuthoring.Normalize(intent.Msa);
+        var targets = new[] { intent.Msa }.Concat(intent.AlsoMsas ?? []).Select(LexicalFormAuthoring.Normalize).ToArray();
+        if (targets.Select(id => id.ToGuid()).Distinct().Count() != targets.Length)
+            throw new InvalidOperationException($"'{ConstructName}': 'msa' and 'alsoMsas' must not repeat an identity.");
+        return targets.SelectMany(target => BuildOne(cache, intent, target)).ToArray();
+    }
+
+    private static IReadOnlyList<OperationEnvelope> BuildOne(
+        LcmCache cache, EditDerivationalAffixRestrictionIntent intent, CanonicalId msaId)
+    {
         var msa = LexicalFormAuthoring.Resolve<IMoMorphSynAnalysis>(cache, msaId, ConstructName);
         if (msa is not IMoDerivAffMsa derivational || msa.Owner is not ILexEntry entry)
             throw new InvalidOperationException(
@@ -103,6 +118,10 @@ public static class EditDerivationalAffixRestrictionComposer
             throw new InvalidOperationException(
                 $"'{ConstructName}': '{msaId.Value}' belongs to an entry whose lexeme form is not an affix form.");
         var wantsFrom = intent.FromInflectionClass is not null || intent.FromExceptionFeatures is not null;
+        if (intent.ToExceptionFeatures is not null && derivational.ToPartOfSpeechRA is null)
+            throw new InvalidOperationException(
+                $"'{ConstructName}': the derivational grammatical info has no To category, so there is no category " +
+                "to take To Exception Features from.");
         if (wantsFrom && derivational.FromPartOfSpeechRA is null)
             throw new InvalidOperationException(
                 $"'{ConstructName}': the derivational grammatical info has no From category, so there is no category " +
@@ -138,29 +157,33 @@ public static class EditDerivationalAffixRestrictionComposer
                 MoDerivAffMsaToInflectionClassOperationKinds.ClearToInflectionClass,
                 target: msaId, after: JsonSerializer.SerializeToElement(new { }), rationale: Rationale));
         }
-        if (intent.FromExceptionFeatures is { } featureIds)
-        {
-            var wantedFeatures = featureIds.Select(LexicalFormAuthoring.Normalize).OrderBy(id => id.Value, StringComparer.Ordinal).ToArray();
-            if (wantedFeatures.Select(id => id.ToGuid()).Distinct().Count() != wantedFeatures.Length)
-                throw new InvalidOperationException($"'{ConstructName}': 'fromExceptionFeatures' must not repeat an identity.");
-            var allowed = cache.LangProject.MorphologicalDataOA?.ProdRestrictOA?.ReallyReallyAllPossibilities
-                .Select(item => item.Guid).ToHashSet() ?? [];
-            foreach (var featureId in wantedFeatures)
-            {
-                if (!allowed.Contains(featureId.ToGuid()))
-                    throw new InvalidOperationException(
-                        $"'{ConstructName}': '{featureId.Value}' is not one of the project's exception features.");
-            }
-            var currentFeatures = derivational.FromProdRestrictRC.Select(item => CanonicalId.FromGuid(item.Guid))
-                .OrderBy(id => id.Value, StringComparer.Ordinal).ToArray();
-            var currentIds = currentFeatures.Select(id => id.ToGuid()).ToHashSet();
-            var wantedIds = wantedFeatures.Select(id => id.ToGuid()).ToHashSet();
-            foreach (var featureId in currentFeatures.Where(id => !wantedIds.Contains(id.ToGuid())))
-                operations.Add(FeatureOperation(MoDerivAffMsaFromProdRestrictOperationKinds.RemoveRefFromProdRestrict, featureId));
-            foreach (var featureId in wantedFeatures.Where(id => !currentIds.Contains(id.ToGuid())))
-                operations.Add(FeatureOperation(MoDerivAffMsaFromProdRestrictOperationKinds.AddRefFromProdRestrict, featureId));
-        }
+        if (intent.FromExceptionFeatures is { } fromIds)
+            operations.AddRange(ExceptionSet(cache, msaId, fromIds, derivational.FromProdRestrictRC, "fromExceptionFeatures",
+                MoDerivAffMsaFromProdRestrictOperationKinds.RemoveRefFromProdRestrict,
+                MoDerivAffMsaFromProdRestrictOperationKinds.AddRefFromProdRestrict));
+        if (intent.ToExceptionFeatures is { } toIds)
+            operations.AddRange(ExceptionSet(cache, msaId, toIds, derivational.ToProdRestrictRC, "toExceptionFeatures",
+                MoDerivAffMsaToProdRestrictOperationKinds.RemoveRefToProdRestrict,
+                MoDerivAffMsaToProdRestrictOperationKinds.AddRefToProdRestrict));
         return operations;
+
+    }
+
+    private static IEnumerable<OperationEnvelope> ExceptionSet(LcmCache cache, CanonicalId msaId,
+        IReadOnlyList<CanonicalId> featureIds, IEnumerable<ICmPossibility> current, string field, string removeKind, string addKind)
+    {
+        var wantedFeatures = featureIds.Select(LexicalFormAuthoring.Normalize).OrderBy(id => id.Value, StringComparer.Ordinal).ToArray();
+        if (wantedFeatures.Select(id => id.ToGuid()).Distinct().Count() != wantedFeatures.Length)
+            throw new InvalidOperationException($"'{ConstructName}': '{field}' must not repeat an identity.");
+        ExceptionFeatureTargets.RequireProjectFeatures(cache, wantedFeatures, ConstructName);
+        var currentFeatures = current.Select(item => CanonicalId.FromGuid(item.Guid))
+            .OrderBy(id => id.Value, StringComparer.Ordinal).ToArray();
+        var currentIds = currentFeatures.Select(id => id.ToGuid()).ToHashSet();
+        var wantedIds = wantedFeatures.Select(id => id.ToGuid()).ToHashSet();
+        foreach (var featureId in currentFeatures.Where(id => !wantedIds.Contains(id.ToGuid())))
+            yield return FeatureOperation(removeKind, featureId);
+        foreach (var featureId in wantedFeatures.Where(id => !currentIds.Contains(id.ToGuid())))
+            yield return FeatureOperation(addKind, featureId);
 
         OperationEnvelope FeatureOperation(string kind, CanonicalId featureId) => new(CanonicalId.Mint(), kind,
             target: msaId, after: JsonSerializer.SerializeToElement(new { member = featureId.Value }), rationale: Rationale);

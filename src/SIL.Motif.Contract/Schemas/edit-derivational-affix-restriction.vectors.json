@@ -154,6 +154,27 @@
         "clearToInflectionClass": false
       },
       "schemaAccept": false
+    },
+    {
+      "name": "to-features-on-many-affixes",
+      "accept": true,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "alsoMsas": [ "AAAAAAAAAAAAAAAAAAAAAQ", "AAAAAAAAAAAAAAAAAAAAAg" ],
+        "toExceptionFeatures": [ "AAAAAAAAAAAAAAAAAAAAAw" ]
+      },
+      "schemaAccept": true
+    },
+    {
+      "name": "repeated-also-msa",
+      "accept": false,
+      "intent": {
+        "msa": "AAAAAAAAAAAAAAAAAAAAAA",
+        "alsoMsas": [ "AAAAAAAAAAAAAAAAAAAAAQ", "AAAAAAAAAAAAAAAAAAAAAQ" ],
+        "toExceptionFeatures": []
+      },
+      "schemaAccept": false
     }
+
   ]
 }

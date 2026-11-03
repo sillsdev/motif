@@ -30,6 +30,15 @@ public static class GrammarFindingCodes
     /// <summary>A form that already spells the material its environment asks of its neighbour, which may be a mistake.</summary>
     public const string AllomorphRepeatsEnvironmentMaterial = "grammar.allomorph-repeats-environment-material";
 
-    /// <summary>An entry marked do-not-parse, which PanGloss leaves out and FieldWorks' parsers still use.</summary>
+    /// <summary>An entry marked do-not-parse, which FieldWorks' parsers use; the pinned PanGloss leaves it out until its next release.</summary>
     public const string DoNotParseIgnoredByFieldWorks = "fieldworks.do-not-parse-ignored";
+
+    /// <summary>A Noun, Verb or Adjective stem whose form is one letter or whose gloss marks it as a stub, letter or function word.</summary>
+    public const string StemTypedAsContentWord = "lexicon.stem-typed-as-content-word";
+
+    /// <summary>Two or more entries with the same lexeme form and the same first gloss.</summary>
+    public const string DuplicateEntry = "lexicon.duplicate-entry";
+
+    /// <summary>A prefix form written with its hyphen after it on the wrong side, or a suffix form with its hyphen before the wrong side.</summary>
+    public const string AffixHyphenOnWrongSide = "lexicon.affix-hyphen-on-wrong-side";
 }

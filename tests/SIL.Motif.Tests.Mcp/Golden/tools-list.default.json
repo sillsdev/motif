@@ -4745,6 +4745,20 @@
                         "type": "boolean",
                         "const": true,
                         "description": "Set true to remove the current To Inflection Class; do not combine with toInflectionClass."
+                      },
+                      "toExceptionFeatures": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional exact set of To Exception Features, which the derived stem receives; an empty list removes them all, and omission leaves the current set unchanged."
+                      },
+                      "alsoMsas": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Optional ids of further derivational grammatical info that receive the identical change, so one intent edits many affixes."
                       }
                     },
                     "additionalProperties": false,
@@ -7453,7 +7467,7 @@
   },
   {
     "name": "motif_edit_derivational_affix_restriction",
-    "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes). Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features on an existing affix entry\u0027s derivational grammatical info. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
+    "description": "Restrict a derivational affix. Research first: motif_guide topic suffix-prefix-slots; check best practice. For a derivational affix only. An inflectional affix is restricted by the inflection classes on its form (compose-edit-affix-inflection-classes). Sets, replaces or explicitly clears the From Inflection Class and the To Inflection Class, and can set the exact From Exception Features and To Exception Features on an existing affix entry\u0027s derivational grammatical info; alsoMsas applies the same change to many affixes. Omitted fields stay unchanged. Motif stages a Draft for a person to review and Apply.\nCommand: compose-edit-derivational-affix-restriction. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -7489,6 +7503,20 @@
           "type": "boolean",
           "const": true,
           "description": "Set true to remove the current To Inflection Class; do not combine with toInflectionClass."
+        },
+        "toExceptionFeatures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional exact set of To Exception Features, which the derived stem receives; an empty list removes them all, and omission leaves the current set unchanged."
+        },
+        "alsoMsas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional ids of further derivational grammatical info that receive the identical change, so one intent edits many affixes."
         },
         "project": {
           "type": "string",
@@ -7959,7 +7987,7 @@
   },
   {
     "name": "motif_set_entry_do_not_parse",
-    "description": "Set entry parsing flag. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Whole-entry exclusion, not compound-only. PanGloss honors it; FieldWorks HermitCrab currently ignores it. Ask the linguist before staging. Stages the FieldWorks do-not-parse flag on a lexical entry. PanGloss excludes the entire entry from parsing, not just compounds. The FieldWorks HermitCrab loader currently ignores this flag.\nCommand: compose-set-entry-do-not-parse. Agent class: Draft.",
+    "description": "Set entry parsing flag. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. FieldWorks parses a flagged entry and the next PanGloss release will too. To stop a stem parsing, retype or delete it. Stages the FieldWorks do-not-parse flag on a lexical entry. FieldWorks HermitCrab does not read the flag, so it parses a flagged entry, and the next PanGloss release will too (the pinned 0.14.0 still leaves it out); to stop a stem parsing, retype it with compose-set-stem-part-of-speech or delete it.\nCommand: compose-set-entry-do-not-parse. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
