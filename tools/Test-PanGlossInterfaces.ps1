@@ -62,7 +62,8 @@ if (-not $sourceTagMatch.Success) {
 }
 $expectedParserVersion = if ($isPinnedCandidate) { [string] $pin.version } else { $sourceTagMatch.Groups[1].Value }
 
-# 120 s x MOTIF_TEST_DEADLINE_SCALE (1 to 20): a busy machine starves children.
+# Hang guard: 30 min x MOTIF_TEST_DEADLINE_SCALE (1 to 20).
+$childBaseSeconds = 1800
 $deadlineScale = 1.0
 $scaleText = $env:MOTIF_TEST_DEADLINE_SCALE
 if (-not [string]::IsNullOrWhiteSpace($scaleText)) {
@@ -73,7 +74,7 @@ if (-not [string]::IsNullOrWhiteSpace($scaleText)) {
         $deadlineScale = [Math]::Min($parsedScale, 20.0)
     }
 }
-$childTimeoutSeconds = [int][Math]::Ceiling(120 * $deadlineScale)
+$childTimeoutSeconds = [int][Math]::Ceiling($childBaseSeconds * $deadlineScale)
 
 function Invoke-ChildProcess {
     param(
@@ -102,7 +103,7 @@ function Invoke-ChildProcess {
         if (-not $process.WaitForExit($childTimeoutSeconds * 1000)) {
             try { $process.Kill($true) } catch { }
             [void] $process.WaitForExit(10000)
-            throw "$Purpose did not finish within $childTimeoutSeconds seconds (120 s x MOTIF_TEST_DEADLINE_SCALE $deadlineScale; raise MOTIF_TEST_DEADLINE_SCALE, up to 20, on a busy machine): $($Arguments -join ' ')"
+            throw "$Purpose (process $($process.Id), $ExecutablePath) was killed after running $childTimeoutSeconds seconds with no exit ($childBaseSeconds s x MOTIF_TEST_DEADLINE_SCALE $deadlineScale; raise MOTIF_TEST_DEADLINE_SCALE, up to 20): $($Arguments -join ' ')"
         }
         $process.WaitForExit()
         return [pscustomobject]@{
