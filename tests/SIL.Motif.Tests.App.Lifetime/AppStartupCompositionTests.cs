@@ -317,60 +317,71 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             new NoOpDragSource());
 
         var stage = "project open and Baseline";
-        host.Run("open, assess, write a Handoff, and check the pending change", JourneyLimit, async () =>
+        // The runner may still be using the parser copy, so it is deleted only after the runner exits.
+        try
         {
-            var culture = CultureInfo.CurrentCulture;
-            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-            try
+            host.Run("open, assess, write a Handoff, and check the pending change", JourneyLimit, async () =>
             {
-                var session = host.Start(options);
-                var workspace = session.Workspace;
-                await session.KnownProjectsLoaded;
-                await SelectNewProjectAsync(session, () => picker.Calls == 1);
-                await Wait.UntilAsync(() => workspace.Baseline.HasBaseline,
-                    detail: () => "the chosen project did not open with its Baseline: project " +
-                        workspace.Context.ProjectPath + ", Baseline " + workspace.Baseline.HasBaseline + " (" +
-                        workspace.Baseline.ShownRefusal?.Sentence + ")");
-                Assert.NotEqual(true, workspace.Context.Setup?.IsOpen);
+                var culture = CultureInfo.CurrentCulture;
+                CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+                try
+                {
+                    var session = host.Start(options);
+                    var workspace = session.Workspace;
+                    await session.KnownProjectsLoaded;
+                    await SelectNewProjectAsync(session, () => picker.Calls == 1);
+                    await Wait.UntilAsync(() => workspace.Baseline.HasBaseline,
+                        detail: () => "the chosen project did not open with its Baseline: project " +
+                            workspace.Context.ProjectPath + ", Baseline " + workspace.Baseline.HasBaseline + " (" +
+                            workspace.Baseline.ShownRefusal?.Sentence + ")");
+                    Assert.NotEqual(true, workspace.Context.Setup?.IsOpen);
 
-                stage = "Assessment";
-                workspace.Selection.PastedWords = word;
-                await workspace.Assess.RunCommand.ExecuteAsync(null);
-                Assert.True(workspace.Assess.State == RunState.Completed, "The Assessment did not complete: " +
-                    workspace.Assess.Refusal?.Code + " " + workspace.Assess.Refusal?.Message);
-                stage = "Handoff";
-                await ShowPageAsync(session, WorkspacePage.AiHandoff);
-                var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
-                await handoff.RunCommand.ExecuteAsync(null);
-                Assert.True(handoff.State == RunState.Completed, "The Handoff was not written: " +
-                    handoff.Refusal?.Code + " " + handoff.Refusal?.Message);
-                Assert.Equal("Last written 10:30", await UntilFound(session.Window,
-                    () => "written is '" + handoff.WrittenAtText + "'",
-                    text => text.StartsWith("Last written", StringComparison.Ordinal)));
-                Assert.StartsWith("Covers the words parsed on Wed 4 Mar, 10:30 AM: ", await UntilFound(session.Window,
-                    () => "coverage is '" + handoff.CoverageText + "'",
-                    text => text.StartsWith("Covers the words parsed on", StringComparison.Ordinal)));
+                    stage = "Assessment";
+                    workspace.Selection.PastedWords = word;
+                    await workspace.Assess.RunCommand.ExecuteAsync(null);
+                    Assert.True(workspace.Assess.State == RunState.Completed, "The Assessment did not complete: " +
+                        workspace.Assess.Refusal?.Code + " " + workspace.Assess.Refusal?.Message);
+                    stage = "Handoff";
+                    await ShowPageAsync(session, WorkspacePage.AiHandoff);
+                    var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
+                    await handoff.RunCommand.ExecuteAsync(null);
+                    Assert.True(handoff.State == RunState.Completed, "The Handoff was not written: " +
+                        handoff.Refusal?.Code + " " + handoff.Refusal?.Message);
+                    Assert.Equal("Last written 10:30", await UntilFound(session.Window,
+                        () => "written is '" + handoff.WrittenAtText + "'",
+                        text => text.StartsWith("Last written", StringComparison.Ordinal)));
+                    Assert.StartsWith("Covers the words parsed on Wed 4 Mar, 10:30 AM: ", await UntilFound(session.Window,
+                        () => "coverage is '" + handoff.CoverageText + "'",
+                        text => text.StartsWith("Covers the words parsed on", StringComparison.Ordinal)));
 
-                var windowRuns = FakeParser.Invocations(parser).Count(command => command == "batch");
-                Assert.True(windowRuns > 0, "The window's runs did not reach the substituted parser.");
+                    var windowRuns = FakeParser.Invocations(parser).Count(command => command == "batch");
+                    Assert.True(windowRuns > 0, "The window's runs did not reach the substituted parser.");
 
-                stage = "Review with Measure/Trial";
-                await ShowPageAsync(session, WorkspacePage.Review);
-                var review = workspace.PageModel<ReviewPageModel>();
-                await Wait.UntilAsync(() => review.MeasureCommand.CanExecute(null), "the pending change did not reach Review");
-                Assert.Equal(draft, workspace.Context.Changes.Snapshot.DraftId);
-                await review.MeasureCommand.ExecuteAsync(null);
-                Assert.Null(review.MeasurementRefusal);
-                Assert.True(review.CanApply, "The Trial did not run through the substituted runner and parser: " +
-                    review.ApplyBlockReason);
-                Assert.True(FakeParser.Invocations(parser).Count(command => command == "batch") > windowRuns,
-                    "The Trial did not reach the substituted parser through the runner.");
-            }
-            finally
-            {
-                CultureInfo.CurrentCulture = culture;
-            }
-        }, () => "current stage: " + stage);
+                    stage = "Review with Measure/Trial";
+                    await ShowPageAsync(session, WorkspacePage.Review);
+                    var review = workspace.PageModel<ReviewPageModel>();
+                    await Wait.UntilAsync(() => review.MeasureCommand.CanExecute(null), "the pending change did not reach Review");
+                    Assert.Equal(draft, workspace.Context.Changes.Snapshot.DraftId);
+                    await review.MeasureCommand.ExecuteAsync(null);
+                    Assert.Null(review.MeasurementRefusal);
+                    Assert.True(review.CanApply, "The Trial did not run through the substituted runner and parser: " +
+                        review.ApplyBlockReason);
+                    Assert.True(FakeParser.Invocations(parser).Count(command => command == "batch") > windowRuns,
+                        "The Trial did not reach the substituted parser through the runner.");
+                }
+                finally
+                {
+                    CultureInfo.CurrentCulture = culture;
+                }
+            }, () => "current stage: " + stage);
+        }
+        catch
+        {
+            IsolatedRunner.TryWaitUntilExited(project.ManagedRoot);
+            throw;
+        }
+
+        IsolatedRunner.WaitUntilExited(project.ManagedRoot);
     }
 
     [Fact]
