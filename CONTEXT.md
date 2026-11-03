@@ -179,7 +179,7 @@ _Avoid_: type, category, measure, metric
 
 **Parser work**:
 The measure of how much the parser did for a word, a rule or a whole run: every unit of work PanGloss reserved while
-parsing, shown as "1,234 parser work". "This grammar takes less work to parse the words" means fewer parser work. The
+parsing, shown as a percent change against the Baseline, for example "about 12% more parser work". "This grammar takes less work to parse the words" means fewer parser work. The
 **parser work limit** is the per-word bound on it, 20,000,000 by default. It counts the same quantity, not analysis attempts.
 PanGloss's own names (`work_steps`, `--step-cap`) stay where Motif reads or passes them.
 _Avoid_: work steps, steps, step cap, step limit, attempts
