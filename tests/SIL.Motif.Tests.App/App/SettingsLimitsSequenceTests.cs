@@ -409,6 +409,46 @@ public sealed class SettingsLimitsSequenceTests
     }
 
     [Fact]
+    public void CorrectingTheValueBesideAHeldUntickInEstimateModeShowsTheEstimateForTheCorrectedValue()
+    {
+        WithProject(UnboundedLimits, (workspace, settings, _) =>
+        {
+            settings.IsNoParserWorkLimit = false;
+            settings.ParserWorkLimitValue = 0.5m;
+            Assert.True(settings.IsUsingEstimate);
+            settings.ParserWorkLimitValue = 150000m;
+            Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+            Assert.True(settings.IsUsingEstimate);
+            var estimate = workspace.Context.Setup!.EstimatedPerWordLimitMs / 1000m;
+            Assert.True(estimate > 0, "Setup estimates the corrected step");
+            Assert.Equal(estimate, settings.TimeLimitSeconds);
+            Assert.Equal(estimate, workspace.Selection.PerWordTimeLimitSeconds);
+            return Task.CompletedTask;
+        });
+    }
+
+    [Fact]
+    public void WritingTheShownNumberBackIntoADisabledFieldDuringAHoldKeepsTheTypedNumber()
+    {
+        WithProject(null, (workspace, settings, _) =>
+        {
+            settings.ParserWorkLimitValue = 0.5m;
+            settings.TimeLimitSeconds = 0m;
+            settings.IsNoParserWorkLimit = true;
+            settings.ParserWorkLimitValue = settings.ParserWorkLimitValue;
+            settings.TimeLimitSeconds = settings.TimeLimitSeconds;
+            Assert.True(settings.IsNoParserWorkLimit);
+            settings.IsNoParserWorkLimit = false;
+            Assert.Equal(0.5m, settings.ParserWorkLimitValue);
+            Assert.Equal(0m, settings.TimeLimitSeconds);
+            Assert.True(settings.HasParserWorkLimitRefusal);
+            Assert.True(settings.HasTimeLimitRefusal);
+            Assert.Null(workspace.Selection.ParserWorkLimitValidationMessage);
+            return Task.CompletedTask;
+        });
+    }
+
+    [Fact]
     public void ACommittedTickNeverLeavesARefusedNumberInTheDisabledLimitFields()
     {
         WithProject(null, async (workspace, settings, fake) =>

@@ -418,6 +418,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             : _workspace.Selection.PerWordParserWorkLimit;
         set
         {
+            if (WritesBackShownValueUnderHeldTick(value, ParserWorkLimitValue)) return;
             var hadKeptValue = _keepsParserWorkLimit;
             var wasRefused = hadKeptValue && !ParserWorkLimitIsAcceptable(_keptParserWorkLimit);
             _keepsParserWorkLimit = false;
@@ -460,6 +461,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             : _workspace.Selection.PerWordTimeLimitSeconds;
         set
         {
+            if (WritesBackShownValueUnderHeldTick(value, TimeLimitSeconds)) return;
             var hadKeptValue = _keepsTimeLimit;
             var wasRefused = hadKeptValue && !TimeLimitIsAcceptable(_keptTimeLimit);
             _keepsTimeLimit = false;
@@ -535,16 +537,21 @@ internal sealed partial class SettingsViewModel : ObservableObject
         NotifyKeptLimitsChanged();
     }
 
+    // A control echoing the shown number into a disabled field must not drop the typed number held behind it.
+    private bool WritesBackShownValueUnderHeldTick(decimal? value, decimal? shown) =>
+        _keepsNoParserWorkLimit && _keptNoParserWorkLimit && value == shown;
+
     // A held untick waits only on a refused value, so correcting the last one releases it.
     private void ReleaseHeldUntick()
     {
-        if (!_keepsNoParserWorkLimit || _keptNoParserWorkLimit || ShowsRefusedLimit) return;
+        if (_updatingEstimate || !_keepsNoParserWorkLimit || _keptNoParserWorkLimit || ShowsRefusedLimit) return;
         _keepsNoParserWorkLimit = false;
         _workspace.Selection.PerWordParserWorkLimitUnbounded = false;
         if (_keepsParserWorkLimit) _workspace.Selection.PerWordParserWorkLimit = _keptParserWorkLimit;
         if (_keepsTimeLimit) _workspace.Selection.PerWordTimeLimitSeconds = _keptTimeLimit;
         _keepsParserWorkLimit = false;
         _keepsTimeLimit = false;
+        if (IsUsingEstimate) ApplyEstimate();
         NotifyKeptLimitsChanged();
     }
 
