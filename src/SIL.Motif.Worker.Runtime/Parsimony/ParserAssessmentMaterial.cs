@@ -13,7 +13,7 @@ namespace SIL.Motif.Worker.Parsimony;
 internal static class ParserAssessmentMaterial
 {
     public static ParserAssessmentSourceArtifact? ReadSourceArtifact(MotifDatabase database,
-        IReadOnlyList<string> assessmentIds)
+        IReadOnlyList<string> assessmentIds, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(assessmentIds);
@@ -36,7 +36,7 @@ internal static class ParserAssessmentMaterial
             if (invocation is null || string.IsNullOrWhiteSpace(invocation.SourcePath))
                 throw new InvalidDataException(
                     $"Parser Assessment '{assessmentId}' has no retained candidate source; rerun its Trial.");
-            using (StatsCacheLock.AcquireForFile(invocation.SourcePath))
+            using (StatsCacheLock.AcquireForFile(invocation.SourcePath, cancellationToken))
                 AssessmentSourceArtifactStore.Verify(invocation.SourcePath, invocation.SourceBytesSha256);
             var next = new ParserAssessmentSourceArtifact(invocation.SourcePath, invocation.SourceBytesSha256);
             if (artifact is not null && artifact != next)

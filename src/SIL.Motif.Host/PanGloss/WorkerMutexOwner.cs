@@ -23,10 +23,14 @@ public sealed class WorkerMutexOwner : IDisposable
     /// <summary>Creates a root owner that uses a lock file shared across temporary-directory overrides.</summary>
     public static WorkerMutexOwner ForRoot(string name) => new(name, machineWide: true);
 
-    internal WorkerMutexOwner(string name, bool machineWide)
+    /// <summary>Creates a root owner whose lock file, on Unix, is removed when the lease is released.</summary>
+    /// <remarks>For names that are unique per resource, so lock files do not pile up in the temporary folder.</remarks>
+    public static WorkerMutexOwner ForTransientRoot(string name) => new(name, machineWide: true, deleteLockFile: true);
+
+    internal WorkerMutexOwner(string name, bool machineWide, bool deleteLockFile = false)
     {
         if (OperatingSystem.IsWindows()) _mutex = new Mutex(false, name);
-        else _unixLock = new UnixFileLock(name, machineWide);
+        else _unixLock = new UnixFileLock(name, machineWide, deleteLockFile);
         _thread = new Thread(Run) { IsBackground = true, Name = "Motif worker mutex owner" };
         _thread.Start();
     }

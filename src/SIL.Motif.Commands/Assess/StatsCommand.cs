@@ -157,7 +157,8 @@ public static class StatsCommand
 
             try
             {
-                using var replay = StatsEvidenceReplay.Create(assessment.Invocation, assessment.CachePath, assessment.CacheDigest);
+                using var replay = StatsEvidenceReplay.Create(assessment.Invocation, assessment.CachePath, assessment.CacheDigest,
+                    cancellationToken);
                 var outcome = invoker.RunAsync(
                         new PanGlossRequest.Stats(replay.GrammarPath, replay.CachePath, forwarded),
                         "stats:" + workspaceKey, cancellationToken)

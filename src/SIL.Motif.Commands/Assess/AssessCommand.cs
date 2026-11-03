@@ -469,7 +469,7 @@ public static class AssessCommand
                     try
                     {
                         replay = StatsEvidenceReplay.Create(
-                            statisticsRecord.Invocation, statsCachePath, statisticsRecord.CacheDigest);
+                            statisticsRecord.Invocation, statsCachePath, statisticsRecord.CacheDigest, cancellationToken);
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
                     {

@@ -237,7 +237,7 @@ public static class HandoffCommand
                             $"Retained invocation '{request.InvocationId}' has no available source evidence.",
                             Fact(("invocationId", request.InvocationId))));
 
-                    var sourceRefusal = ValidateRetainedSources(retained, request.InvocationId);
+                    var sourceRefusal = ValidateRetainedSources(retained, request.InvocationId, cancellationToken);
                     if (sourceRefusal is not null)
                         return CommandOutcome<HandoffCommandResponse>.Refused(sourceRefusal);
 
@@ -253,7 +253,7 @@ public static class HandoffCommand
                     {
                         replay = StatsEvidenceReplay.Create(
                             statisticsAssessment.Invocation, statisticsAssessment.CachePath,
-                            statisticsAssessment.CacheDigest);
+                            statisticsAssessment.CacheDigest, cancellationToken);
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
                         UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
@@ -387,7 +387,8 @@ public static class HandoffCommand
                         if (!recorded.Kind.IsStoredKind(AssessmentKind.ObjectTiming) || recorded.Invocation is null ||
                             recorded.CachePath is null || recorded.CacheDigest is null)
                             throw new InvalidDataException("The Handoff's ObjectTiming Assessment has no complete retained evidence.");
-                        replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest);
+                        replay = StatsEvidenceReplay.Create(recorded.Invocation, recorded.CachePath, recorded.CacheDigest,
+                            cancellationToken);
                     }
                     catch (Exception exception) when (exception is IOException or InvalidDataException or
                         UnauthorizedAccessException or ArgumentException or KeyNotFoundException)
@@ -534,7 +535,7 @@ public static class HandoffCommand
         Fact(("projectPath", projectPath)));
 
     private static Refusal? ValidateRetainedSources(
-        RetainedInvocationRecord retained, string invocationId)
+        RetainedInvocationRecord retained, string invocationId, CancellationToken cancellationToken)
     {
         foreach (var assessment in retained.Assessments)
         {
@@ -548,7 +549,7 @@ public static class HandoffCommand
 
             try
             {
-                using var sourceLock = StatsCacheLock.AcquireForFile(evidence.SourcePath);
+                using var sourceLock = StatsCacheLock.AcquireForFile(evidence.SourcePath, cancellationToken);
                 if (!File.Exists(evidence.SourcePath) ||
                     BatchInvocationEvidence.DigestFile(evidence.SourcePath) != evidence.SourceBytesSha256)
                     return new Refusal(

@@ -3,11 +3,18 @@ using System.Text;
 
 namespace SIL.Motif.Host.PanGloss;
 
-/// <summary>Coordinates statistics-cache readers, writers and cleanup with a bounded set of lock files.</summary>
+/// <summary>Coordinates statistics-cache readers, writers and cleanup with one lease per invocation directory.</summary>
+/// <remarks>
+/// Two unrelated invocation directories never share a lease. The lease name is the full SHA-256 of the directory path,
+/// 24 characters of prefix plus 64 of hex, well inside the 259-character limit of a Windows mutex name and of a Unix
+/// file name. On Unix the lock file lives in the temporary folder and is deleted when the lease is released.
+/// </remarks>
 public static class StatsCacheLock
 {
-    /// <summary>Waits up to five seconds for a retained file's invocation lock.</summary>
-    public static WorkerMutexOwner AcquireForFile(string path)
+    /// <summary>Waits for a retained file's invocation lock until it is free or the token is cancelled.</summary>
+    /// <remarks>The holder is another Assessment, a reader, or cleanup of the same directory; none holds it for long
+    /// except a running parser, whose directory no reader names until it is published.</remarks>
+    public static WorkerMutexOwner AcquireForFile(string path, CancellationToken cancellationToken = default)
     {
         var directory = new DirectoryInfo(Path.GetDirectoryName(Path.GetFullPath(path))!);
         for (var current = directory; current.Parent is not null; current = current.Parent)
@@ -17,17 +24,31 @@ public static class StatsCacheLock
                 break;
             }
         var owner = Create(directory.FullName);
-        if (SpinWait.SpinUntil(owner.TryAcquire, TimeSpan.FromSeconds(5))) return owner;
-        owner.Dispose();
-        throw new InvalidDataException("The retained Assessment files are busy; try again.");
+        try
+        {
+            while (!owner.TryAcquire())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                cancellationToken.WaitHandle.WaitOne(RetryInterval);
+            }
+            return owner;
+        }
+        catch
+        {
+            owner.Dispose();
+            throw;
+        }
     }
+
+    /// <summary>How long a waiting reader sleeps between attempts; also the cancellation latency.</summary>
+    public static readonly TimeSpan RetryInterval = TimeSpan.FromMilliseconds(50);
 
     /// <summary>Creates a lease for the invocation directory.</summary>
     public static WorkerMutexOwner Create(string directory)
     {
         var path = Path.GetFullPath(directory);
         if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) path = path.ToUpperInvariant();
-        var stripe = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path)))[..2];
-        return WorkerMutexOwner.ForRoot("Global\\Motif.StatsCache." + stripe);
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path)));
+        return WorkerMutexOwner.ForTransientRoot("Global\\Motif.StatsCache." + digest);
     }
 }

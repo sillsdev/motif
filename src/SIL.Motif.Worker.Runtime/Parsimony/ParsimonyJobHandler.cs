@@ -174,7 +174,8 @@ public sealed class ParsimonyJobHandler
                 var assessmentSources = ParserAssessmentMaterial.Read(_database, assessmentIds, baseline.Token,
                     sourceDigest, parserDigest, out reportableAssessments);
                 parserOverlay = AssessmentEvidenceProjector.Build(assessmentSources, projection.Wordforms,
-                    sourceDigest, parserDigest, reviewedNegatives: projection.ReviewedNegatives);
+                    sourceDigest, parserDigest, reviewedNegatives: projection.ReviewedNegatives,
+                    cancellationToken: cancellationToken);
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException or ArgumentException)
             {

@@ -18,7 +18,8 @@ public static class AssessmentEvidenceProjector
     public static ParserOverlayProjection Build(IReadOnlyList<ParserAssessmentSource> assessments,
         IReadOnlyList<EvidenceWordform> wordforms, string sourceSha256, string parserSha256,
         string? proposalId = null, string? proposalIntentDigest = null,
-        IReadOnlyList<ReviewedNegativeExpectation>? reviewedNegatives = null)
+        IReadOnlyList<ReviewedNegativeExpectation>? reviewedNegatives = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(assessments);
         ArgumentNullException.ThrowIfNull(wordforms);
@@ -43,9 +44,9 @@ public static class AssessmentEvidenceProjector
 
         foreach (var assessment in assessments.OrderBy(item => item.AssessmentId, StringComparer.Ordinal))
         {
-            ValidateBinding(assessment, sourceSha256, parserSha256, proposalId, proposalIntentDigest);
+            ValidateBinding(assessment, sourceSha256, parserSha256, proposalId, proposalIntentDigest, cancellationToken);
             var runStart = cases.Count;
-            if (!TryReadCases(assessment, out var parserCases, out var unavailableReason))
+            if (!TryReadCases(assessment, cancellationToken, out var parserCases, out var unavailableReason))
             {
                 reviewedNegativeCases.AddRange(reviewedNegatives.Select(item =>
                     new ParserReviewedNegativeCaseProjection(assessment.AssessmentId, item.CaseId,
@@ -210,7 +211,7 @@ public static class AssessmentEvidenceProjector
     }
 
     private static void ValidateBinding(ParserAssessmentSource assessment, string sourceSha256,
-        string parserSha256, string? proposalId, string? proposalIntentDigest)
+        string parserSha256, string? proposalId, string? proposalIntentDigest, CancellationToken cancellationToken)
     {
         if (assessment.Assessor != "pangloss" || assessment.Kind != AssessmentKinds.ParseTime ||
             assessment.SourceSha256 != sourceSha256 || assessment.ParserSha256 != "sha256:" + parserSha256 ||
@@ -220,14 +221,14 @@ public static class AssessmentEvidenceProjector
                 $"Assessment '{assessment.AssessmentId}' does not match the exact source and parser for this Report.");
         if (assessment.SourcePath is null)
             throw new InvalidDataException($"Assessment '{assessment.AssessmentId}' has no retained source matching this Report.");
-        using var sourceLock = StatsCacheLock.AcquireForFile(assessment.SourcePath);
+        using var sourceLock = StatsCacheLock.AcquireForFile(assessment.SourcePath, cancellationToken);
         if (!File.Exists(assessment.SourcePath) ||
             BatchInvocationEvidence.DigestFile(assessment.SourcePath) != sourceSha256)
             throw new InvalidDataException(
                 $"Assessment '{assessment.AssessmentId}' has no retained source matching this Report.");
     }
 
-    private static bool TryReadCases(ParserAssessmentSource assessment,
+    private static bool TryReadCases(ParserAssessmentSource assessment, CancellationToken cancellationToken,
         out IReadOnlyList<ParseWordEvidence> cases, out string? reason)
     {
         cases = [];
@@ -238,7 +239,7 @@ public static class AssessmentEvidenceProjector
         }
         try
         {
-            using var sidecarLock = StatsCacheLock.AcquireForFile(assessment.SidecarPath);
+            using var sidecarLock = StatsCacheLock.AcquireForFile(assessment.SidecarPath, cancellationToken);
             if (!File.Exists(assessment.SidecarPath))
             {
                 reason = "The retained morphology sidecar is unavailable.";

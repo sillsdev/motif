@@ -129,7 +129,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         try
         {
             var assessmentIds = input.AssessmentIds ?? [];
-            var assessmentSource = ParserAssessmentMaterial.ReadSourceArtifact(_database, assessmentIds);
+            var assessmentSource = ParserAssessmentMaterial.ReadSourceArtifact(_database, assessmentIds, cancellationToken);
             var parserBefore = _pipeline.ParserIdentity();
             if (parserBefore is null)
                 return Failure(JobFailureCategory.Infrastructure,
@@ -183,7 +183,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 parserOverlay = AssessmentEvidenceProjector.Build(assessmentSources,
                     prepared.CandidateEvidence.Wordforms, prepared.CandidateSourceSha256, parserIdentity,
                     dryRunInput.Proposal.ProposalId, dryRunInput.Proposal.IntentDigest,
-                    prepared.CandidateEvidence.ReviewedNegatives);
+                    prepared.CandidateEvidence.ReviewedNegatives, cancellationToken);
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException or ArgumentException)
             {
@@ -414,7 +414,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 {
                     var copiedSource = Path.Combine(copyRoot, "assessed-source.fwdata");
                     Directory.CreateDirectory(copyRoot);
-                    using (StatsCacheLock.AcquireForFile(assessmentSource.SourcePath))
+                    using (StatsCacheLock.AcquireForFile(assessmentSource.SourcePath, laneToken))
                     {
                         AssessmentSourceArtifactStore.Verify(assessmentSource.SourcePath,
                             assessmentSource.SourceBytesSha256);

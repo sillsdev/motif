@@ -114,6 +114,7 @@ internal sealed class UnixFileLock : IDisposable
     private readonly string _registryPath;
     private readonly bool _machineWide;
     private readonly WorkerLockAccess _access;
+    private readonly bool _deleteOnRelease;
     private int _fileDescriptor = -1;
     private bool _held;
     private bool _disposed;
@@ -122,6 +123,12 @@ internal sealed class UnixFileLock : IDisposable
 
     internal UnixFileLock(string name, bool machineWide) : this(name, machineWide, WorkerLockAccess.Exclusive)
     {
+    }
+
+    internal UnixFileLock(string name, bool machineWide, bool deleteOnRelease)
+        : this(name, machineWide, WorkerLockAccess.Exclusive)
+    {
+        _deleteOnRelease = deleteOnRelease;
     }
 
     internal UnixFileLock(string name, bool machineWide, WorkerLockAccess access)
@@ -169,8 +176,18 @@ internal sealed class UnixFileLock : IDisposable
         if (!_held) return;
 
         Exception? failure = null;
+        var registryDescriptor = -1;
         try
         {
+            // Held under the registry, so no waiter locks a deleted file.
+            if (_deleteOnRelease)
+            {
+                registryDescriptor = OpenFile(_registryPath, _machineWide, "worker lock registry");
+                AcquireRegistry(registryDescriptor);
+                try { File.Delete(_lockPath); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
             if (UnixNative.Flock(_fileDescriptor, UnixNative.LockUnlock) != 0)
                 failure = new IOException("Could not release the worker lock.", UnixNative.LastError);
         }
@@ -179,6 +196,7 @@ internal sealed class UnixFileLock : IDisposable
             _held = false;
             _ = UnixNative.Close(_fileDescriptor);
             _fileDescriptor = -1;
+            if (registryDescriptor >= 0) _ = UnixNative.Close(registryDescriptor);
         }
 
         if (failure is not null) throw failure;

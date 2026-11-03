@@ -21,7 +21,8 @@ public sealed class StatsEvidenceReplay : IDisposable
     /// Copies the artifacts while hashing the bytes streamed through the copy, then verifies those digests, so
     /// a large statistics cache is read once rather than copied and read again.
     /// </summary>
-    public static StatsEvidenceReplay Create(BatchInvocationEvidence evidence, string cachePath, string cacheDigest)
+    public static StatsEvidenceReplay Create(BatchInvocationEvidence evidence, string cachePath, string cacheDigest,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(evidence);
         if (string.IsNullOrWhiteSpace(evidence.SourcePath) || string.IsNullOrWhiteSpace(evidence.SourceBytesSha256) ||
@@ -31,10 +32,10 @@ public sealed class StatsEvidenceReplay : IDisposable
         try
         {
             string sourceDigest;
-            using (StatsCacheLock.AcquireForFile(evidence.SourcePath))
+            using (StatsCacheLock.AcquireForFile(evidence.SourcePath, cancellationToken))
                 sourceDigest = CopyAndDigest(evidence.SourcePath, replay.GrammarPath);
             string statsDigest;
-            using var cacheLock = StatsCacheLock.AcquireForFile(cachePath);
+            using var cacheLock = StatsCacheLock.AcquireForFile(cachePath, cancellationToken);
             try { statsDigest = CopyAndDigest(cachePath, replay.CachePath); }
             catch (FileNotFoundException exception)
             {
