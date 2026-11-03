@@ -22,8 +22,10 @@ public sealed class WindowRefusalDetailsTests
     private const string DryRunMissingMessage =
         "Proposal proposal/1 has no bound DryRun recorded. Run 'dry-run proposal/1 --project <fwdata>' first, then 'apply'.";
 
-    private static readonly string[] CliTerms = ["proposal", "draft", "preflight", "dry run", "dryrun", "dry-run"];
-    private static readonly string ParserPath = Path.Combine(Path.GetTempPath(), "Motif",
+    private static readonly string[] CliTerms = ["draft", "preflight", "dry run", "dryrun", "dry-run"];
+    // A fixed root, so no folder name on the machine running the tests can change which facts show.
+    private static readonly string Root = OperatingSystem.IsWindows() ? @"C:\Work" : "/work";
+    private static readonly string ParserPath = Path.Combine(Root, "Motif",
         OperatingSystem.IsWindows() ? "pangloss.exe" : "pangloss");
 
     private readonly AvaloniaHeadlessFixture _avalonia;
@@ -49,7 +51,7 @@ public sealed class WindowRefusalDetailsTests
                 ["proposalId"] = "proposal/1",
                 ["draftId"] = "d-1",
                 ["jobId"] = "draft/7",
-                ["projectPath"] = Path.Combine(Path.GetTempPath(), "projects", "one.fwdata"),
+                ["projectPath"] = Path.Combine(Root, "projects", "one.fwdata"),
             });
 
         var details = WindowRefusal.From(refusal).Details ?? string.Empty;
@@ -57,6 +59,47 @@ public sealed class WindowRefusalDetailsTests
         AssertWindowWords(details);
         Assert.Contains("The project file is read-only.", details);
         Assert.Contains("projectPath: one.fwdata", details);
+    }
+
+    [Theory]
+    [InlineData("projectPath", "Proposals/one.fwdata", "one.fwdata")]
+    [InlineData("outputFolder", "Draft", "Draft")]
+    [InlineData("projectPath", "Preflight.fwdata", "Preflight.fwdata")]
+    [InlineData("projectPath", "Dry Run/Drafting.fwdata", "Drafting.fwdata")]
+    public void APathFactIsNeverDroppedForACliWordInTheNameOfItsFileOrFolder(string key, string relative, string shown)
+    {
+        var path = Path.Combine(Root, Path.Combine(relative.Split('/')));
+        var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused, "The project file is read-only.",
+            new Dictionary<string, string> { [key] = path });
+
+        var window = WindowRefusal.From(refusal);
+
+        Assert.Contains($"{key}: {shown}", window.Details);
+        Assert.Contains(path, ProblemReport.FromRefusal(window).ToText(includeLocalDetails: true));
+    }
+
+    [Fact]
+    public void AFactThatIsNotAPathStaysHiddenForACliWordInItsValue()
+    {
+        var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused, "The project file is read-only.",
+            new Dictionary<string, string> { ["jobId"] = "draft/7", ["note"] = "Drafting notes" });
+
+        var details = WindowRefusal.From(refusal).Details;
+
+        Assert.DoesNotContain("jobId", details);
+        Assert.Contains("note: Drafting notes", details);
+    }
+
+    [Fact]
+    public void ASentenceNamingAFileWithAProposalInItsNameIsKept()
+    {
+        var refusal = new Refusal(RefusalCodes.AssessParserUnavailable, FailureReason.Refused,
+            "Cannot open Proposals.fwdata. Run the Draft again.", new Dictionary<string, string>());
+
+        var details = WindowRefusal.From(refusal).Details;
+
+        Assert.Contains("Cannot open Proposals.fwdata.", details);
+        Assert.DoesNotContain("Draft", details);
     }
 
     [Fact]
@@ -290,7 +333,7 @@ public sealed class WindowRefusalDetailsTests
             new NoFolderPicker(), new NoDragSource(), fake);
 
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(
-            Path.Combine(Path.GetTempPath(), "projects", "one.fwdata")));
+            Path.Combine(Root, "projects", "one.fwdata")));
 
         var refusal = Assert.IsType<WindowRefusal>(workspace.OpenRefusal);
         Assert.True(workspace.HasOpenRefusal);

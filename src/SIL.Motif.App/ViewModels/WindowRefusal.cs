@@ -21,8 +21,8 @@ namespace SIL.Motif.App.ViewModels;
 /// </para>
 /// <para>
 /// <see cref="Details"/> holds the command's message and facts, folded away but still on screen once
-/// expanded, so it keeps to the window's words too: it leaves out a sentence or fact that names a Proposal,
-/// a Draft, a Preflight or a Dry Run, a sentence that names an Assessment or the Assessor (its facts stay, since
+/// expanded, so it keeps to the window's words too: it leaves out a sentence or fact that names a
+/// Draft, a Preflight or a Dry Run, a sentence that names an Assessment or the Assessor (its facts stay, since
 /// a problem report needs an id such as <c>assessmentId</c>), and a sentence that tells the reader to run a
 /// command line, which a person using the window cannot act on. An unmapped code gets <see cref="GenericSentence"/> and keeps the
 /// rest of its message in Details. Compile diagnostics show the parser's issue text, source identity and
@@ -427,7 +427,8 @@ public sealed partial record WindowRefusal
             .Where(fact => fact.Key != RefusalFactNames.ParserNotFound)
             .Where(fact => forReport || fact.Key != "exceptionDetail")
             .Where(fact => forReport || !WindowPathText.HasPathSeparator(fact.Value) || WindowPathText.IsPathFact(fact) || IsAssessmentId(fact))
-            .Where(fact => forReport || (!CliTerm().IsMatch(fact.Key) && !CliTerm().IsMatch(fact.Value)))
+            .Where(fact => forReport || (!CliName().IsMatch(fact.Key) &&
+                (WindowPathText.IsPathFact(fact) || !CliTerm().IsMatch(fact.Value))))
             .OrderBy(fact => fact.Key, StringComparer.Ordinal)
             .Select(fact => FactLine(fact, forReport)));
         return lines.Count == 0 ? null : string.Join(Environment.NewLine, lines);
@@ -467,8 +468,12 @@ public sealed partial record WindowRefusal
     [GeneratedRegex(@"[`'](?:motif\s|[^`']*\s--[a-z])")]
     private static partial Regex CommandLine();
 
-    // The CLI's names for pending changes and their checks, which ADR 0046 decision 3 keeps off the screen.
-    [GeneratedRegex(@"proposal|draft|preflight|dry[\s-]?run", RegexOptions.IgnoreCase)]
+    // A fact name is an identifier such as draftId, so it matches anywhere; Proposal is a window word.
+    [GeneratedRegex(@"draft|preflight|dry[\s-]?run", RegexOptions.IgnoreCase)]
+    private static partial Regex CliName();
+
+    // Whole words only in prose and values, so Drafting.fwdata is not cut.
+    [GeneratedRegex(@"\b(?:draft|preflight|dry[\s-]?run)s?\b", RegexOptions.IgnoreCase)]
     private static partial Regex CliTerm();
 
     // The CLI's words for a parse run, kept out of prose only: a fact such as assessmentId is what a report needs.
