@@ -464,7 +464,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
             : previousLimits is { TimeMode: SelectionTimeLimitMode.Explicit, ExplicitPerWordLimitMs: > 0 } explicitLimits
                 ? SelectionLimitPolicy.Explicit(parserWorkLimit, explicitLimits.ExplicitPerWordLimitMs!.Value)
                 : SelectionLimitPolicy.Estimated(parserWorkLimit);
-        limits = limits with { AssessBudgetSeconds = previousLimits?.AssessBudgetSeconds ?? 3600 };
+        limits = limits with { AssessBudgetSeconds = previousLimits?.AssessBudgetSeconds ?? SelectionParsingLimits.DefaultAssessBudgetSeconds };
         var timeLimitMs = SelectionLimitPolicy.Resolve(limits, _parserStepRate).PerWordTimeLimitMs;
         Selection.PerWordParserWorkLimit = parserWorkLimit.Work;
         Selection.PerWordParserWorkLimitUnbounded = parserWorkLimit.IsUnbounded;

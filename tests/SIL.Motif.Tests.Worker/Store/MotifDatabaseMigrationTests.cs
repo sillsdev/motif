@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.Worker;
 using SIL.Motif.Worker.Projects;
@@ -313,7 +314,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
             ["NamedSelections"] = ["SelectionName|TEXT|0|1|", "TextIdsJson|TEXT|1|0|", "AddedWordsJson|TEXT|1|0|",
                 "CreatedUtc|TEXT|1|0|", "UpdatedUtc|TEXT|1|0|", "TimeLimitMode|TEXT|1|0|",
                 "ExplicitPerWordLimitMs|INTEGER|0|0|", "PerWordParserWorkLimit|INTEGER|0|0|", "Revision|INTEGER|1|0|",
-                "AssessBudgetSeconds|INTEGER|1|0|3600", "WordListJson|TEXT|0|0|"],
+                $"AssessBudgetSeconds|INTEGER|1|0|{SelectionParsingLimits.DefaultAssessBudgetSeconds}", "WordListJson|TEXT|0|0|"],
             ["DefaultSelection"] = ["Id|INTEGER|0|1|", "SelectionName|TEXT|1|0|"],
             ["ParsimonySelection"] = ["Id|INTEGER|0|1|", "SelectionName|TEXT|1|0|"],
             ["GrammarChecks"] = ["BaselineToken|TEXT|1|0|", "ProposalId|TEXT|0|0|", "IntentDigest|TEXT|0|0|",

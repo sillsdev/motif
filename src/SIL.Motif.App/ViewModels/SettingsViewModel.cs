@@ -159,8 +159,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private string? _writingSystemTargetId;
     private SetupViewModel? _observedSetup;
     private bool _updatingEstimate;
-    private decimal? _lastGoodAssessBudgetSeconds = 3600;
-    private decimal? _assessBudgetSeconds = 3600;
+    private decimal? _lastGoodAssessBudgetSeconds = SelectionParsingLimits.DefaultAssessBudgetSeconds;
+    private decimal? _assessBudgetSeconds = SelectionParsingLimits.DefaultAssessBudgetSeconds;
     private decimal? _lastGoodParserWorkLimit;
     private decimal? _lastGoodTimeLimitSeconds;
     private decimal? _parserWorkLimitBeforeNoStep;
@@ -411,9 +411,10 @@ internal sealed partial class SettingsViewModel : ObservableObject
     }
     public decimal? ParserWorkLimitValue
     {
-        get => _keepsParserWorkLimit ? _keptParserWorkLimit
+        get => _keepsParserWorkLimit && !HidesRefusedWhileTicked(_keptParserWorkLimit, ParserWorkLimitIsAcceptable) ? _keptParserWorkLimit
             : IsNoParserWorkLimit
-            ? _parserWorkLimitBeforeNoStep ?? _lastGoodParserWorkLimit ?? _workspace.Context.Setup?.ParserWorkLimitValue
+            ? (ParserWorkLimitIsAcceptable(_parserWorkLimitBeforeNoStep) ? _parserWorkLimitBeforeNoStep : null) ??
+              _lastGoodParserWorkLimit ?? _workspace.Context.Setup?.ParserWorkLimitValue
             : _workspace.Selection.PerWordParserWorkLimit;
         set
         {
@@ -450,11 +451,13 @@ internal sealed partial class SettingsViewModel : ObservableObject
                 _keepsTimeLimit = false;
                 TimeLimitSeconds = held;
             }
+            ReleaseHeldUntick();
         }
     }
     public decimal? TimeLimitSeconds
     {
-        get => _keepsTimeLimit ? _keptTimeLimit : _workspace.Selection.PerWordTimeLimitSeconds;
+        get => _keepsTimeLimit && !HidesRefusedWhileTicked(_keptTimeLimit, TimeLimitIsAcceptable) ? _keptTimeLimit
+            : _workspace.Selection.PerWordTimeLimitSeconds;
         set
         {
             var hadKeptValue = _keepsTimeLimit;
@@ -498,12 +501,16 @@ internal sealed partial class SettingsViewModel : ObservableObject
                 _keepsParserWorkLimit = false;
                 ParserWorkLimitValue = held;
             }
+            ReleaseHeldUntick();
         }
     }
     public bool IsUsingMotifEstimate => IsUsingEstimate;
 
     // Estimate mode has no typed time to bring back; restoring the estimate as typed would save it as Explicit.
     private decimal? ExplicitTimeLimitToRestore() => IsUsingEstimate ? null : _workspace.Selection.PerWordTimeLimitSeconds;
+
+    // A ticked field is disabled, so a refused number stays out of it until the tick goes.
+    private bool HidesRefusedWhileTicked(decimal? held, Func<decimal?, bool> isAcceptable) => IsNoParserWorkLimit && !isAcceptable(held);
 
     private static bool ParserWorkLimitIsAcceptable(decimal? steps) =>
         steps is > 0 && steps <= long.MaxValue && decimal.Truncate(steps.Value) == steps;
@@ -525,6 +532,19 @@ internal sealed partial class SettingsViewModel : ObservableObject
         KeepLimits(IsNoParserWorkLimit, ParserWorkLimitValue, TimeLimitSeconds);
         if (!_keepsParserWorkLimit) _parserWorkLimitRefusal = string.Empty;
         if (!_keepsTimeLimit) TimeLimitRefusal = string.Empty;
+        NotifyKeptLimitsChanged();
+    }
+
+    // A held untick waits only on a refused value, so correcting the last one releases it.
+    private void ReleaseHeldUntick()
+    {
+        if (!_keepsNoParserWorkLimit || _keptNoParserWorkLimit || ShowsRefusedLimit) return;
+        _keepsNoParserWorkLimit = false;
+        _workspace.Selection.PerWordParserWorkLimitUnbounded = false;
+        if (_keepsParserWorkLimit) _workspace.Selection.PerWordParserWorkLimit = _keptParserWorkLimit;
+        if (_keepsTimeLimit) _workspace.Selection.PerWordTimeLimitSeconds = _keptTimeLimit;
+        _keepsParserWorkLimit = false;
+        _keepsTimeLimit = false;
         NotifyKeptLimitsChanged();
     }
 
@@ -883,7 +903,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void RememberGoodValues()
     {
-        _lastGoodAssessBudgetSeconds = _workspace.Context.Setup?.CurrentSelectionLimits.AssessBudgetSeconds ?? 3600;
+        _lastGoodAssessBudgetSeconds = _workspace.Context.Setup?.CurrentSelectionLimits.AssessBudgetSeconds ?? SelectionParsingLimits.DefaultAssessBudgetSeconds;
         AssessBudgetSeconds = _lastGoodAssessBudgetSeconds;
         _lastGoodNoParserWorkLimit = _workspace.Selection.PerWordParserWorkLimitUnbounded;
         if (_workspace.Selection.ParserWorkLimitValidationMessage is null && _workspace.Selection.PerWordParserWorkLimit is > 0)
@@ -902,8 +922,8 @@ internal sealed partial class SettingsViewModel : ObservableObject
         _lastGoodTimeLimitSeconds = null;
         _parserWorkLimitBeforeNoStep = null;
         _timeLimitBeforeNoStep = null;
-        _lastGoodAssessBudgetSeconds = 3600;
-        AssessBudgetSeconds = 3600;
+        _lastGoodAssessBudgetSeconds = SelectionParsingLimits.DefaultAssessBudgetSeconds;
+        AssessBudgetSeconds = SelectionParsingLimits.DefaultAssessBudgetSeconds;
         ClearHeldLimits();
     }
 

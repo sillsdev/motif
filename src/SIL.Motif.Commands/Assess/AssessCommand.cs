@@ -178,7 +178,7 @@ public static class AssessCommand
             var retainedInvocations = new RetainedInvocationRepository(database);
             var namedSelections = new NamedSelectionRepository(database);
             var defaultLimits = namedSelections.GetDefault()?.Limits;
-            var seconds = request.BudgetSeconds ?? defaultLimits?.AssessBudgetSeconds ?? 3600;
+            var seconds = request.BudgetSeconds ?? defaultLimits?.AssessBudgetSeconds ?? SelectionParsingLimits.DefaultAssessBudgetSeconds;
             if (seconds is < 60 or > 4294967)
                 return CommandOutcome<AssessCommandResponse>.Refused(new Refusal(
                     RefusalCodes.AssessInvalidLimit, FailureReason.InvalidArgument,

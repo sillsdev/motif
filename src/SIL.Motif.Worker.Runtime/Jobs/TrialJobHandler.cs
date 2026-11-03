@@ -152,7 +152,7 @@ internal sealed class TrialJobHandler
     /// <summary>Runs one claimed Trial job through to a terminal outcome, or parks it waiting for a Baseline.</summary>
     internal async Task<JobOutcome?> RunAsync(ClaimedJob claim, ProjectLocator project, CancellationToken cancellationToken)
     {
-        var seconds = new NamedSelectionRepository(claim.Database).GetDefault()?.Limits.AssessBudgetSeconds ?? 3600;
+        var seconds = new NamedSelectionRepository(claim.Database).GetDefault()?.Limits.AssessBudgetSeconds ?? SIL.Motif.Contract.Requests.SelectionParsingLimits.DefaultAssessBudgetSeconds;
         var remaining = (BudgetDurationForTests.Value ?? TimeSpan.FromSeconds(seconds)) - claim.ClaimElapsed;
         using var budget = new CancellationTokenSource();
         using var forcedBudget = BudgetStopForTests.Value?.Register(budget.Cancel);

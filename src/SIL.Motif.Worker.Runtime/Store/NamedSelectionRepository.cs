@@ -199,7 +199,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
 
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction(deferred: false);
-        limits = limits with { AssessBudgetSeconds = limits.AssessBudgetSeconds ?? GetDefault(connection, transaction)?.Limits.AssessBudgetSeconds ?? 3600 };
+        limits = limits with { AssessBudgetSeconds = limits.AssessBudgetSeconds ?? GetDefault(connection, transaction)?.Limits.AssessBudgetSeconds ?? SelectionParsingLimits.DefaultAssessBudgetSeconds };
         var existing = ReadRevision(connection, transaction, name);
         if (existing is null && expectedRevision is not null || existing is not null &&
             (!TryParseRevision(expectedRevision, out var expected) || expected != existing.Value.Revision))
@@ -264,7 +264,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
         if (current is null || !StringComparer.Ordinal.Equals(current.Name, name.Trim()) || current.Revision != expected)
             throw new SelectionRevisionConflictException("The Selection changed before its limits could be saved.");
 
-        limits = limits with { AssessBudgetSeconds = limits.AssessBudgetSeconds ?? current.Limits.AssessBudgetSeconds ?? 3600 };
+        limits = limits with { AssessBudgetSeconds = limits.AssessBudgetSeconds ?? current.Limits.AssessBudgetSeconds ?? SelectionParsingLimits.DefaultAssessBudgetSeconds };
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = """
@@ -353,7 +353,7 @@ public sealed class NamedSelectionRepository(MotifDatabase database)
 
     private static void AddLimitParameters(SqliteCommand command, SelectionParsingLimits limits)
     {
-        command.Parameters.AddWithValue("$budget", limits.AssessBudgetSeconds ?? 3600);
+        command.Parameters.AddWithValue("$budget", limits.AssessBudgetSeconds ?? SelectionParsingLimits.DefaultAssessBudgetSeconds);
         command.Parameters.AddWithValue("$timeMode", limits.TimeMode.ToString());
         command.Parameters.AddWithValue("$timeLimit",
             limits.ExplicitPerWordLimitMs is { } timeLimit ? timeLimit : DBNull.Value);

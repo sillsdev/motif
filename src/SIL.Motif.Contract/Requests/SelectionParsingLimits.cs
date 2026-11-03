@@ -17,6 +17,9 @@ public sealed record SelectionParsingLimits(
     int? ExplicitPerWordLimitMs,
     int? AssessBudgetSeconds = null)
 {
+    /// <summary>The Assessment time limit a Selection gets when none was saved.</summary>
+    public const int DefaultAssessBudgetSeconds = 3600;
+
     /// <summary>Explains why this limit policy cannot be saved, or returns <see langword="null"/>.</summary>
     public string? ValidationError()
     {

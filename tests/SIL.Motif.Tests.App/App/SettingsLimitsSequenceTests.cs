@@ -268,10 +268,10 @@ public sealed class SettingsLimitsSequenceTests
             fake.OnShowConfig((_, _) => Task.FromResult(CommandOutcome<ProjectConfigurationProjection>.Refused(
                 new Refusal("config.unreadable", FailureReason.Refused, "The configuration could not be read."))));
             await SwitchProjectAsync(workspace, settings, fake, EstimatedLimits);
-            Assert.Equal(3600m, settings.AssessBudgetSeconds);
+            Assert.Equal((decimal)SelectionParsingLimits.DefaultAssessBudgetSeconds, settings.AssessBudgetSeconds);
             settings.ParserWorkLimitValue = 150000m;
             await SaveAsync(settings);
-            Assert.Equal(3600, fake.SetSelectionLimitsRequests[^1].Limits.AssessBudgetSeconds);
+            Assert.Equal(SelectionParsingLimits.DefaultAssessBudgetSeconds, fake.SetSelectionLimitsRequests[^1].Limits.AssessBudgetSeconds);
         });
     }
 
@@ -361,6 +361,79 @@ public sealed class SettingsLimitsSequenceTests
                 await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(2));
+    }
+
+    [Fact]
+    public void CorrectingTheValueBesideAHeldUntickFromASavedNoLimitProjectReleasesTheUntick()
+    {
+        WithProject(UnboundedLimits, async (workspace, settings, fake) =>
+        {
+            settings.IsNoParserWorkLimit = false;
+            settings.ParserWorkLimitValue = 0.5m;
+            Assert.True(settings.HasParserWorkLimitRefusal);
+            Assert.True(workspace.Selection.PerWordParserWorkLimitUnbounded);
+            settings.ParserWorkLimitValue = 150000m;
+            Assert.False(settings.HasParserWorkLimitRefusal);
+            Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+            Assert.Equal(150000m, workspace.Selection.PerWordParserWorkLimit);
+            workspace.CurrentPage = WorkspacePage.Overview;
+            workspace.CurrentPage = WorkspacePage.Settings;
+            settings.OpenGroup(Group.Parsing);
+            Assert.False(settings.IsNoParserWorkLimit);
+            Assert.Equal(150000m, settings.ParserWorkLimitValue);
+            await SaveAsync(settings);
+            Assert.Equal(150000, fake.SetSelectionLimitsRequests[^1].Limits.PerWordParserWorkLimit.Work);
+        });
+    }
+
+    [Fact]
+    public void CorrectingTheTimeBesideAHeldUntickFromASavedNoLimitProjectReleasesTheUntick()
+    {
+        WithProject(UnboundedLimits, async (workspace, settings, fake) =>
+        {
+            settings.IsNoParserWorkLimit = false;
+            settings.TimeLimitSeconds = 0m;
+            Assert.True(settings.HasTimeLimitRefusal);
+            Assert.True(workspace.Selection.PerWordParserWorkLimitUnbounded);
+            settings.TimeLimitSeconds = 9m;
+            Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
+            Assert.Equal(9m, workspace.Selection.PerWordTimeLimitSeconds);
+            workspace.CurrentPage = WorkspacePage.Overview;
+            workspace.CurrentPage = WorkspacePage.Settings;
+            settings.OpenGroup(Group.Parsing);
+            Assert.False(settings.IsNoParserWorkLimit);
+            Assert.Equal(9m, settings.TimeLimitSeconds);
+            await SaveAsync(settings);
+            Assert.Equal(9000, fake.SetSelectionLimitsRequests[^1].Limits.ExplicitPerWordLimitMs);
+        });
+    }
+
+    [Fact]
+    public void ACommittedTickNeverLeavesARefusedNumberInTheDisabledLimitFields()
+    {
+        WithProject(null, async (workspace, settings, fake) =>
+        {
+            settings.ParserWorkLimitValue = 0.5m;
+            settings.TimeLimitSeconds = 0m;
+            settings.IsNoParserWorkLimit = true;
+            AssertDisabledFieldsShowNoRefusedNumber(settings, "while the tick is held");
+            await SaveAsync(settings);
+            Assert.True(settings.IsNoParserWorkLimit);
+            Assert.True(fake.SetSelectionLimitsRequests[^1].Limits.PerWordParserWorkLimit.IsUnbounded);
+            Assert.False(settings.HasParserWorkLimitRefusal);
+            Assert.False(settings.HasTimeLimitRefusal);
+            AssertDisabledFieldsShowNoRefusedNumber(settings, "after the commit");
+            settings.IsNoParserWorkLimit = false;
+            Assert.Equal(0.5m, settings.ParserWorkLimitValue);
+            Assert.True(settings.HasParserWorkLimitRefusal);
+        });
+    }
+
+    private static void AssertDisabledFieldsShowNoRefusedNumber(SettingsViewModel settings, string when)
+    {
+        Assert.True(settings.ParserWorkLimitValue is > 0 && decimal.Truncate(settings.ParserWorkLimitValue.Value) == settings.ParserWorkLimitValue,
+            $"the disabled parser work limit field shows {settings.ParserWorkLimitValue} {when}");
+        Assert.True(settings.TimeLimitSeconds is null or > 0, $"the disabled time field shows {settings.TimeLimitSeconds} {when}");
     }
 
     private static readonly SelectionParsingLimits ExplicitLimits =
@@ -546,7 +619,7 @@ public sealed class SettingsLimitsSequenceTests
                     else Resync("leave");
                     break;
             }
-            if (_savedNoStep && !_ticked && RefusedShown) _heldUntick = true;
+            if (_savedNoStep && !_ticked) _heldUntick = RefusedShown;
             Adopt();
             Check(log[^1], exact);
         }
@@ -693,7 +766,9 @@ public sealed class SettingsLimitsSequenceTests
             {
                 Assert.True(settings.IsNoParserWorkLimit, Why("the tick is not showing"));
                 if (!_tickHeld) Assert.Null(settings.TimeLimitSeconds);
+                else Assert.True(settings.TimeLimitSeconds is null or > 0, Why($"the disabled time field shows the refused {settings.TimeLimitSeconds}"));
                 var shown = settings.ParserWorkLimitValue;
+                Assert.True(GoodStep(shown), Why($"the disabled limit field shows the refused {shown}"));
                 Assert.True(shown == _step || shown == _savedStep || shown == ParserWorkLimit.DefaultWork,
                     Why($"the ticked limit field shows {shown}, not this project's {_savedStep}, the typed {_step} or the default"));
                 return;
