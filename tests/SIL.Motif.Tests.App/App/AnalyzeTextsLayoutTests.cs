@@ -1474,7 +1474,8 @@ public sealed class AnalyzeTextsLayoutTests
                 runs.Max(run => run.Bounds.Bottom) - runs.Min(run => run.Bounds.Top);
             var visibleNativeHeight = row is null ? 0 : MaxNativeTextHeight(row);
             Assert.True(metric >= Math.Max(drawnHeight, visibleNativeHeight),
-                $"{strip.Data?.Form} {rowName}: metric={metric}, drawn={drawnHeight}, native={visibleNativeHeight}.");
+                $"{strip.Data?.Form} {rowName}: metric={metric}, drawn={drawnHeight}, native={visibleNativeHeight}. " +
+                WordLineDiagnostics(strip, drawn));
             if (row is null && runs.Length == 0) Assert.Equal(0, metric);
             return;
         }
@@ -1487,6 +1488,12 @@ public sealed class AnalyzeTextsLayoutTests
         Assert.True(metric >= nativeHeight,
             $"{strip.Data?.Form} {rowName}: metric={metric}, native={nativeHeight}, row={row.DesiredSize.Height}.");
     }
+
+    private static string WordLineDiagnostics(WordStripToken strip, InterlinearWord drawn) =>
+        $"VerdictGlyph={strip.FindControl<Control>("VerdictGlyph")?.DesiredSize}, " +
+        $"MarkFace={strip.FindControl<Control>("MarkFace")?.DesiredSize}, " +
+        $"drawn.LineMetrics.Word={drawn.LineMetrics.Word}, " +
+        $"WordBand={strip.FindControl<WordLinePanel>("WordLine")?.WordBand}.";
 
     private static double MaxNativeTextHeight(Control row) => row.GetVisualDescendants().OfType<TextBlock>()
         .Where(block => block.IsEffectivelyVisible)

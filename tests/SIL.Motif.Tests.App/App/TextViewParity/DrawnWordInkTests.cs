@@ -65,12 +65,12 @@ public sealed class DrawnWordInkTests
                     Assert.True(Window(drawn, Ink(run).Bottom) <= rule + Epsilon,
                         $"A rule at {rule:0.00} crosses the ink of '{run.Text}' ending at {Window(drawn, Ink(run).Bottom):0.00}.");
 
-            var inkBottom = PaintedBottom(scene, drawn);
+            var (inkBottom, lastRow) = PaintedBottom(scene, drawn);
             var lowest = Window(drawn, drawn.Runs.Max(run => Ink(run).Bottom));
             Assert.True(inkBottom >= lowest - 1, $"The frame shows ink to {inkBottom}, not to the glyphs' {lowest:0.00}.");
             var limit = Window(strip, strip.Bounds.Height - strip.BorderThickness.Bottom - strip.Padding.Bottom);
             Assert.True(inkBottom <= Math.Ceiling(limit) + Epsilon,
-                $"The word paints to {inkBottom} but the strip's content ends at {limit:0.00}.");
+                $"The word paints to {inkBottom} but the strip's content ends at {limit:0.00}; {lastRow}");
         });
 
     private static TextViewSample Sample(string name)
@@ -93,8 +93,8 @@ public sealed class DrawnWordInkTests
         return (origin + boxes.Min(box => box.Top), origin + boxes.Max(box => box.Bottom));
     }
 
-    /// <summary>The lowest window row, in device-independent pixels, that hiding the word changes.</summary>
-    private static double PaintedBottom(TextViewScene scene, InterlinearWord drawn)
+    /// <summary>The lowest row hiding the word changes, in dips, and the alpha found there.</summary>
+    private static (double Bottom, string LastRow) PaintedBottom(TextViewScene scene, InterlinearWord drawn)
     {
         var shown = Frame(scene);
         drawn.Opacity = 0;
@@ -103,10 +103,17 @@ public sealed class DrawnWordInkTests
         drawn.Opacity = 1;
         scene.Settle();
         for (var y = shown.Height - 1; y >= 0; y--)
-            for (var x = 0; x < shown.Width; x++)
-                if (shown.GetPixel(x, y) != hidden.GetPixel(x, y))
-                    return (y + 1) / ((double)shown.Width / scene.Window.ClientSize.Width);
-        return 0;
+        {
+            var differing = Enumerable.Range(0, shown.Width)
+                .Where(x => shown.GetPixel(x, y) != hidden.GetPixel(x, y)).ToArray();
+            if (differing.Length == 0) continue;
+            var shownAlpha = differing.Max(x => (int)shown.GetPixel(x, y).Alpha);
+            var hiddenAlpha = differing.Max(x => (int)hidden.GetPixel(x, y).Alpha);
+            var detail = $"last differing pixel row {y} of {shown.Height} ({differing.Length} pixels from x={differing.Min()} " +
+                $"to x={differing.Max()}), highest alpha {shownAlpha} shown and {hiddenAlpha} hidden.";
+            return ((y + 1) / ((double)shown.Width / scene.Window.ClientSize.Width), detail);
+        }
+        return (0, "no pixel row differs.");
     }
 
     private static SKBitmap Frame(TextViewScene scene)

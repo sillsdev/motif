@@ -7,6 +7,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Avalonia.Layout;
 using Avalonia.Logging;
 using Avalonia.Threading;
@@ -344,7 +345,7 @@ internal sealed class TextViewScene : IDisposable
             return CopyRangeByKeyboard(new Constituent(constituent.Part, constituent.Morph, (TextBlock)constituent.Owner), start, end);
         Window.Clipboard!.ClearAsync().GetAwaiter().GetResult();
         drawn.SelectRange(constituent.RunIndex, start, end);
-        Press(Key.C, Primary);
+        Press(Key.C, DrawnPrimary);
         return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
     }
 
@@ -365,7 +366,7 @@ internal sealed class TextViewScene : IDisposable
         Window.MouseMove(to, RawInputModifiers.LeftMouseButton);
         Window.MouseUp(to, Avalonia.Input.MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
-        Press(Key.C, Primary);
+        Press(Key.C, CopyFor(constituent.Owner));
         return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
     }
 
@@ -375,8 +376,8 @@ internal sealed class TextViewScene : IDisposable
         if (constituent.Owner is InterlinearWord drawn)
             PeerOf(drawn).GetChildren()[constituent.RunIndex].SetFocus();
         else FocusCleared(new Constituent(constituent.Part, constituent.Morph, (TextBlock)constituent.Owner));
-        Press(Key.A, Primary);
-        Press(Key.C, Primary);
+        Press(Key.A, SelectAllFor(constituent.Owner));
+        Press(Key.C, CopyFor(constituent.Owner));
         return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
     }
 
@@ -387,7 +388,7 @@ internal sealed class TextViewScene : IDisposable
             PeerOf(drawn).GetChildren()[constituent.RunIndex].SetFocus();
         else Assert.True(constituent.Owner.Focus());
         Press(constituent.Direction == FlowDirection.RightToLeft ? Key.Left : Key.Right, RawInputModifiers.Shift);
-        Press(Key.C, Primary);
+        Press(Key.C, CopyFor(constituent.Owner));
         return Window.Clipboard.TryGetTextAsync().GetAwaiter().GetResult();
     }
 
@@ -476,7 +477,24 @@ internal sealed class TextViewScene : IDisposable
         Dispatcher.UIThread.RunJobs();
     }
 
-    public static RawInputModifiers Primary => OperatingSystem.IsMacOS() ? RawInputModifiers.Meta : RawInputModifiers.Control;
+    /// <summary>The modifier the drawn word copies and selects with: it picks Command or Control itself.</summary>
+    public static RawInputModifiers DrawnPrimary => OperatingSystem.IsMacOS() ? RawInputModifiers.Meta : RawInputModifiers.Control;
+
+    /// <summary>The modifier Avalonia's own text blocks copy with: the hotkey configuration of the platform in use.</summary>
+    public static RawInputModifiers TextBlockPrimary => Modifiers(HotkeyConfiguration.Copy);
+
+    /// <summary>The modifier Avalonia's own text blocks select all with, from the same configuration.</summary>
+    public static RawInputModifiers TextBlockSelectAll => Modifiers(HotkeyConfiguration.SelectAll);
+
+    private static PlatformHotkeyConfiguration HotkeyConfiguration => Application.Current!.PlatformSettings!.HotkeyConfiguration;
+
+    private static RawInputModifiers Modifiers(List<KeyGesture> gestures) => (RawInputModifiers)gestures[0].KeyModifiers;
+
+    /// <summary>The modifier that copies in <paramref name="owner"/>, whichever kind of text it is.</summary>
+    public static RawInputModifiers CopyFor(Control owner) => owner is InterlinearWord ? DrawnPrimary : TextBlockPrimary;
+
+    /// <summary>The modifier that selects all in <paramref name="owner"/>, whichever kind of text it is.</summary>
+    public static RawInputModifiers SelectAllFor(Control owner) => owner is InterlinearWord ? DrawnPrimary : TextBlockSelectAll;
 
     public void Click(Point point)
     {
@@ -491,8 +509,8 @@ internal sealed class TextViewScene : IDisposable
     public string? CopyAllByKeyboard(Constituent constituent)
     {
         FocusCleared(constituent);
-        Press(Key.A, Primary);
-        Press(Key.C, Primary);
+        Press(Key.A, TextBlockSelectAll);
+        Press(Key.C, TextBlockPrimary);
         return Window.Clipboard!.TryGetTextAsync().GetAwaiter().GetResult();
     }
 
@@ -503,7 +521,7 @@ internal sealed class TextViewScene : IDisposable
         var block = (SelectableTextBlock)constituent.Visual;
         block.SelectionStart = start;
         block.SelectionEnd = end;
-        Press(Key.C, Primary);
+        Press(Key.C, TextBlockPrimary);
         return Window.Clipboard!.TryGetTextAsync().GetAwaiter().GetResult();
     }
 
@@ -520,7 +538,7 @@ internal sealed class TextViewScene : IDisposable
         Window.MouseMove(to, RawInputModifiers.LeftMouseButton);
         Window.MouseUp(to, Avalonia.Input.MouseButton.Left);
         Dispatcher.UIThread.RunJobs();
-        Press(Key.C, Primary);
+        Press(Key.C, TextBlockPrimary);
         return Window.Clipboard!.TryGetTextAsync().GetAwaiter().GetResult();
     }
 

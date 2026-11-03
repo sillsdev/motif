@@ -60,6 +60,7 @@ public sealed class WorkspaceShellViewModelTests
             new AssessViewModel(fake, selection),
             folderPicker, dragSource,
             fake, clock);
+        workspace.Context.ViewIdentityReader = _ => Task.FromResult<string?>(null);
         return (fake, projectPicker, folderPicker, dragSource, workspace);
     }
 
@@ -71,6 +72,14 @@ public sealed class WorkspaceShellViewModelTests
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
         projectPicker.PathToReturn = projectPath;
         await workspace.Project.BrowseCommand.ExecuteAsync(null);
+    }
+
+    private static async Task ChooseSettledProjectAsync(
+        FakeCommandClient fake, FakeProjectPicker projectPicker, WorkspaceShellViewModel workspace,
+        string projectPath, BaselineToken? token = null)
+    {
+        await ChooseProjectAsync(fake, projectPicker, workspace, projectPath, token);
+        await Wait.UntilAsync(() => !workspace.IsProjectOpening, "The project never finished opening.");
     }
 
     [Theory]
@@ -206,14 +215,14 @@ public sealed class WorkspaceShellViewModelTests
     public async Task SortingAfterASwitchOfProjectsCannotResurrectTheOldProjectsStatistics()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
-        await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\one.fwdata", NewToken());
+        await ChooseSettledProjectAsync(fake, projectPicker, workspace, @"C:\projects\one.fwdata", NewToken());
         fake.StatsCompletesWith(new StatsCommandResponse(
             "assessment/one", "grammar.json", "cache.sqlite", null,
             [JsonDocument.Parse("""{"kind":"word","form":"from-project-one"}""").RootElement.Clone()]));
         await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
         Assert.Single(workspace.PageModel<TimingPageModel>().Statistics.Rows);
 
-        await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata", NewToken());
+        await ChooseSettledProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata", NewToken());
         workspace.PageModel<TimingPageModel>().Statistics.SortBy("word");
 
         Assert.Empty(workspace.PageModel<TimingPageModel>().Statistics.Rows);
