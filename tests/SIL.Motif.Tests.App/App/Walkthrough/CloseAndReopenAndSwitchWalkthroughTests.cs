@@ -13,7 +13,7 @@ public sealed class CloseAndReopenAndSwitchWalkthroughTests(PristineProjectFixtu
     public void ClosingAndReopeningAndSwitchingProjectsKeepsOnlyTheSelectedProjectState()
     {
         using var firstProject = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(120);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

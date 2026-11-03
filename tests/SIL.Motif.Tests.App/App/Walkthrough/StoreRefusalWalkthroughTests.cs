@@ -24,7 +24,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
         using var project = new WalkthroughProject(pristine);
         var storePath = StorePath(project.FwDataPath);
         var projectBytes = File.ReadAllBytes(project.FwDataPath);
-        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(90);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -116,7 +116,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
         var storePath = StorePath(project.FwDataPath);
         var corruptBytes = Enumerable.Repeat((byte)'x', 4096).ToArray();
         File.WriteAllBytes(storePath, corruptBytes);
-        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(60);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

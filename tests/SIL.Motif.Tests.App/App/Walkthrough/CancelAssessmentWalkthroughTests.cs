@@ -20,7 +20,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
     {
         using var project = new WalkthroughProject(pristine);
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -82,7 +82,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
         using var firstProject = SubstantialTextWalkthroughProject.Create(pristine);
         using var secondProject = new WalkthroughProject(pristine);
         var parserPath = FakeParser.CopyRecordingInvocations(firstProject.ManagedRoot);
-        var deadline = Stopwatch.GetTimestamp() + 360 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(360);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -178,7 +178,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var batchStarted = Path.Combine(project.ManagedRoot, "cancelled-assessment-batch-started");
         var releaseBatch = Path.Combine(project.ManagedRoot, "release-cancelled-assessment-batch");
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(120);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {

@@ -35,7 +35,7 @@ public sealed class WorkerParseProgressWalkthroughTests(PristineProjectFixture p
             OwnerNamespace = "motif-worker-progress-" + Guid.NewGuid().ToString("N"),
             IdleTimeout = TimeSpan.FromSeconds(1),
         };
-        var deadline = Stopwatch.GetTimestamp() + 240 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(240);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,

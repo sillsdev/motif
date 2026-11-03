@@ -19,7 +19,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
     public void FinishingSetupSavesTheSelectionAndLimitsAndANewWindowReadsThemBack()
     {
         using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -60,7 +60,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
         using var projectA = new WalkthroughProject(pristine);
         using var projectB = new WalkthroughProject(pristine);
         var managedRoot = projectB.ManagedRoot;
-        var deadline = Stopwatch.GetTimestamp() + 240 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(240);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -104,7 +104,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
     public void ConfigureShowsTheStoredChoicesAndTheNextRunUsesTheNewOnes()
     {
         using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 240 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(240);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {

@@ -46,7 +46,7 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
                     new SkipSetupRequest(project.FwDataPath), CancellationToken.None);
                 Assert.True(skipped.Succeeded, skipped.Refusal?.Message);
 
-                var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+                var deadline = WalkthroughSteps.DeadlineIn(90);
                 using var walkthrough = new WalkthroughWindow(
                     project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
                 walkthrough.Show();

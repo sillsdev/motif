@@ -20,7 +20,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
         using var project = new WalkthroughProject(pristine);
         var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var release = Path.Combine(project.ManagedRoot, "word-release");
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser);
@@ -87,7 +87,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
         var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var release = Path.Combine(project.ManagedRoot, "held-release");
         var clock = new FixedClock(DateTimeOffset.UtcNow);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
@@ -124,7 +124,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
         var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var heartbeat = Path.Combine(project.ManagedRoot, "no-rows-heartbeat");
         var clock = new FixedClock(DateTimeOffset.UtcNow);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,
@@ -161,7 +161,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
         var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var heartbeat = Path.Combine(project.ManagedRoot, "trace-heartbeat");
         var clock = new FixedClock(DateTimeOffset.UtcNow);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath,

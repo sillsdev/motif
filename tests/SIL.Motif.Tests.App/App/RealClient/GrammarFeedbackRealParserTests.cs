@@ -30,7 +30,7 @@ public sealed class GrammarFeedbackRealParserTests(PristineProjectFixture pristi
     {
         using var project = ProjectWithAnEmptyRequiredSlot(pristine);
         var parserPath = PanGlossExecutable.TryLocate()!;
-        var deadline = Stopwatch.GetTimestamp() + 3 * 60 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(3 * 60);
         output.WriteLine($"Parser: {parserPath}");
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {

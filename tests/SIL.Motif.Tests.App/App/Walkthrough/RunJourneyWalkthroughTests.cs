@@ -30,7 +30,7 @@ public sealed class RunJourneyWalkthroughTests(PristineProjectFixture pristine)
             "fenêtres", "parler", "parlons", "courir", "trois", "maintenant", "chaton", "chatons",
             "arc-en-ciel", "froid", "froide", "très", "souris",
         };
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

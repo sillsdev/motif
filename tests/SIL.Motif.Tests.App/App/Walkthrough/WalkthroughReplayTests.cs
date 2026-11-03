@@ -173,7 +173,7 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
         ]);
         var help = new WalkthroughHelpContent("en", "Try a word", "",
             new Dictionary<string, string>(), new Dictionary<string, IReadOnlyDictionary<string, string>>());
-        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(90);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -387,7 +387,7 @@ internal static class WalkthroughReplayTestRunner
             IReadOnlyList<string>? invocationsAtOpen = null;
             var captures = new List<WalkthroughCapture>();
             var clipSegments = new List<WalkthroughClipSegment>();
-            var deadline = Stopwatch.GetTimestamp() + (long)(WalkthroughReplay.DeadlineBudget(script).TotalSeconds * Stopwatch.Frequency);
+            var deadline = WalkthroughSteps.DeadlineIn(WalkthroughReplay.DeadlineBudget(script).TotalSeconds);
 
             AvaloniaHeadlessFixture.RunUntilComplete(async () =>
             {

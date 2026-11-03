@@ -25,7 +25,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
     public void SelectingAndClearingTextsUsesTheFinalSelectionForTheFirstParse()
     {
         using var project = new ManyTextWalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 240 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(240);
         var parser = FakeParser.Copy(project.ManagedRoot);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -130,7 +130,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
     public void FirstRunSetupAdvancesAndSavesTheSelection()
     {
         using var project = new TwoTextWalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
         var parser = FakeParser.Copy(project.ManagedRoot);
         var heartbeat = Path.Combine(project.ManagedRoot, "first-run-heartbeat");
         var grammarStarted = Path.Combine(project.ManagedRoot, "grammar-health-started");
@@ -289,7 +289,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
     public void SkippingSetupWithoutASavedSelectionOffersConfigureInsteadOfParse()
     {
         using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

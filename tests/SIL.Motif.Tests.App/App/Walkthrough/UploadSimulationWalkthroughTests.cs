@@ -21,12 +21,12 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
 
         try
         {
-            var deadline = Stopwatch.GetTimestamp() + 360 * Stopwatch.Frequency;
+            var deadline = WalkthroughSteps.DeadlineIn(360);
             AvaloniaHeadlessFixture.RunUntilComplete(async () =>
             {
                 using var walkthrough = new WalkthroughWindow(
                     project.ManagedRoot, project.FwDataPath, outputDirectory);
-                var baselineDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+                var baselineDeadline = WalkthroughSteps.DeadlineIn(60);
                 WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, baselineDeadline);
                 walkthrough.Check(SeededProject.TextTitle);
                 var baselineToken = walkthrough.Workspace.Baseline.Token;
@@ -35,7 +35,7 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
                 walkthrough.Click("Write the AI Handoff folder");
-                var handoffDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+                var handoffDeadline = WalkthroughSteps.DeadlineIn(180);
                 walkthrough.WaitUntil(
                     () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(handoffDeadline), "the Handoff did not complete");

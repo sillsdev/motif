@@ -17,7 +17,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
         using var firstProject = await SlowParserWalkthroughProject.CreateAsync();
         using var secondProject = new WalkthroughProject(pristine);
         var parserPath = PanglossProcesses.CopyExecutable(firstProject.ManagedRoot);
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(120);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

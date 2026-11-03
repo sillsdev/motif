@@ -24,7 +24,7 @@ public sealed class ConcurrentWalkthroughTests
         var secondStarted = Path.Combine(managedRoot, "second-assessment-started");
         var firstRelease = Path.Combine(managedRoot, "first-assessment-release");
         var secondRelease = Path.Combine(managedRoot, "second-assessment-release");
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(120);
 
         try
         {

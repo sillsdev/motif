@@ -69,10 +69,22 @@ internal static class WalkthroughSteps
         Assert.Equal(SeededProject.TextTitle, Assert.Single(walkthrough.Workspace.Selection.Texts).Title);
     }
 
+    /// <summary>A step is never left with less than this, whatever the steps before it used.</summary>
+    private static readonly TimeSpan StepFloor = TimeSpan.FromSeconds(30);
+
+    /// <summary>The clock reading a test's whole budget ends at: <paramref name="seconds"/> times the deadline scale.</summary>
+    internal static long DeadlineIn(double seconds) =>
+        Stopwatch.GetTimestamp() + (long)(Wait.Scaled(TimeSpan.FromSeconds(seconds)).TotalSeconds * Stopwatch.Frequency);
+
+    /// <summary>
+    /// What a wait may still take. The waits scale what they are given, so the scaled budget is divided back down
+    /// here, and a step the earlier ones left no time for still gets <see cref="StepFloor"/>.
+    /// </summary>
     internal static TimeSpan Remaining(long deadline)
     {
         var ticks = deadline - Stopwatch.GetTimestamp();
-        return ticks > 0 ? TimeSpan.FromSeconds((double)ticks / Stopwatch.Frequency) : TimeSpan.Zero;
+        var left = ticks > 0 ? TimeSpan.FromSeconds((double)ticks / Stopwatch.Frequency / Wait.Scale) : TimeSpan.Zero;
+        return left > StepFloor ? left : StepFloor;
     }
 
     internal static void RunAssessmentOverPastedWords(WalkthroughWindow walkthrough, long deadline)

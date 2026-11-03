@@ -51,7 +51,7 @@ public sealed class RefusedWordsWalkthroughTests(PristineProjectFixture pristine
             new FwDataProjectLoader().Save(cache);
             projectPath = cache.ProjectId.Path;
         }
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
         try
         {
             AvaloniaHeadlessFixture.RunUntilComplete(async () =>

@@ -15,7 +15,7 @@ public sealed class ConfigureWalkthroughTests(PristineProjectFixture pristine)
     public void ConfigureOpensOnceFromKeyboardAndDoubleClick()
     {
         using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(120);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

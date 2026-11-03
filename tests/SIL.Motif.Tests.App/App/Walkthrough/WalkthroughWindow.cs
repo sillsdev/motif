@@ -827,7 +827,7 @@ public sealed class WalkthroughWindow : IDisposable
     public void WaitUntil(
         Func<bool> predicate, TimeSpan timeout, string why, Func<string>? failureDetail = null, int minimumPasses = 1) =>
         Wait.Until(predicate, why, timeout, () =>
-            $"{failureDetail?.Invoke()} baseline='{Workspace.Baseline.CapturedTimeText}', " +
+            $"waited {Wait.Scaled(timeout).TotalSeconds:0.#} s; {failureDetail?.Invoke()} baseline='{Workspace.Baseline.CapturedTimeText}', " +
             $"baseline refusal='{Workspace.Baseline.ShownRefusal?.Sentence}', " +
             $"selection empty='{Workspace.Selection.TextsEmptyMessage}', " +
             $"selection refusal='{Workspace.Selection.ShownRefusal?.Sentence}', " +

@@ -31,7 +31,7 @@ public sealed class ExplainedWordCardCaptureTests
             project.ManagedRoot, project.FwDataPath, project.TextId, project.ParserPath);
         var preparation = await WalkthroughFixtureSeeder.SeedAsync(script.Fixture, context, clock, project.ParserPath);
         var budget = WalkthroughReplay.DeadlineBudget(script);
-        var deadline = Stopwatch.GetTimestamp() + (long)(budget.TotalSeconds * Stopwatch.Frequency);
+        var deadline = WalkthroughSteps.DeadlineIn(budget.TotalSeconds);
         var gate = new HoldingStartGate();
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>

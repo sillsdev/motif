@@ -19,7 +19,7 @@ public sealed class WindowDisposalCancellationTests(PristineProjectFixture prist
         var startedPath = Path.Combine(project.ManagedRoot, "disposed-assessment-started");
         var releasePath = Path.Combine(project.ManagedRoot, "disposed-assessment-release");
         var runner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parserPath));
-        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(60);
         Exception? failure = null;
 
         try

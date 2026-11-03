@@ -25,7 +25,7 @@ public sealed class KnownProjectsRefreshWalkthroughTests(PristineProjectFixture 
         Assert.NotEqual(Guid.Parse(firstIdentity), Guid.Parse(secondIdentity));
         KnownProjectTestSetup.AssignUniqueTag(firstProject.ManagedRoot, firstProject.FwDataPath,
             Path.GetFileNameWithoutExtension(firstProject.FwDataPath));
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(120);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

@@ -63,16 +63,18 @@ internal static partial class WalkthroughCaptureSettle
     internal static void WaitUntilFrameIsStable(this WalkthroughWindow walkthrough, TimeSpan timeout, string why)
     {
         byte[]? previous = null;
-        var passes = 0;
+        var frameMilliseconds = new List<long>();
         walkthrough.WaitUntil(() =>
         {
-            passes++;
+            var drawing = System.Diagnostics.Stopwatch.StartNew();
             walkthrough.Window.UpdateLayout();
             var frame = WalkthroughArtifacts.CaptureFrame(walkthrough.Window);
+            frameMilliseconds.Add(drawing.ElapsedMilliseconds);
             var same = previous is not null && previous.AsSpan().SequenceEqual(frame);
             previous = frame;
             return same;
-        }, timeout, why, () => $"{passes} frames were drawn and none matched the one before it.", FramePassesBeforeGivingUp);
+        }, timeout, why, () => $"{frameMilliseconds.Count} frames were drawn, taking {string.Join(", ", frameMilliseconds)} ms, " +
+            "and none matched the one before it.", FramePassesBeforeGivingUp);
     }
 
     /// <summary>

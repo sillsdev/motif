@@ -26,7 +26,7 @@ public sealed class PendingChangeReplacementWalkthroughTests(PristineProjectFixt
         Assert.False(File.Exists(Path.ChangeExtension(project.FwDataPath, ".motif.db")),
             "the prepared project copy already contains a Motif store");
         var storedId = AddStoredAnalysis(project.FwDataPath, pristine.Seed);
-        var deadline = Stopwatch.GetTimestamp() + 90 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(90);
 
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {

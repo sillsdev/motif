@@ -25,7 +25,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var change = PendingChangeFixture.AddIncorrectSpelling(
             project.FwDataPath, project.ManagedRoot, "apply-read-back-word");
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

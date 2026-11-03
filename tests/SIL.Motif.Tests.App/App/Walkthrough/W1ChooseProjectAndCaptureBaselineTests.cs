@@ -14,7 +14,7 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
     public void ChoosingProjectCapturingBaselineMakesAssessmentRunnable()
     {
         using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(60);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {

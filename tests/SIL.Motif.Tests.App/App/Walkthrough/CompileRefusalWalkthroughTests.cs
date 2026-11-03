@@ -45,7 +45,7 @@ public sealed class CompileRefusalWalkthroughTests(PristineProjectFixture pristi
         using var project = new WalkthroughProject(pristine);
         var parser = FakeParser.CopyRecordingInvocations(Path.Combine(project.ManagedRoot, "parser"));
         File.WriteAllText(Path.Combine(Path.GetDirectoryName(parser)!, "_fake-pangloss-legacy-console"), string.Empty);
-        var deadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(180);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using (var window = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser))

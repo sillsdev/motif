@@ -19,7 +19,7 @@ public sealed class CancelHandoffWalkthroughTests(PristineProjectFixture pristin
         var outputDirectory = Path.Combine(handoffParent, "handoff");
         var heartbeatPath = Path.Combine(project.ManagedRoot, "handoff-heartbeat");
         var processIdPath = Path.Combine(project.ManagedRoot, "handoff-process-id");
-        var deadline = Stopwatch.GetTimestamp() + 120 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(120);
 
         try
         {

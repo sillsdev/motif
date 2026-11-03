@@ -25,7 +25,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
     public void OverviewAccuracyOpensTextsAndTimingSourcesExplainEmptyInputs()
     {
         using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 360 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(360);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -151,18 +151,18 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
     public void RunningAssessmentRendersReadingsAndPublishesStatistics()
     {
         using var project = new WalkthroughProject(pristine);
-        var deadline = Stopwatch.GetTimestamp() + 360 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(360);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
-            var baselineDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+            var baselineDeadline = WalkthroughSteps.DeadlineIn(60);
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, baselineDeadline);
             WalkthroughSteps.EnsureAssessmentForAnalyze(walkthrough, TimeSpan.FromMinutes(3));
             walkthrough.Workspace.Selection.AllWordforms = false;
             foreach (var text in walkthrough.Workspace.Selection.Texts) text.IsChecked = false;
 
-            var assessmentDeadline = Stopwatch.GetTimestamp() + 180 * Stopwatch.Frequency;
+            var assessmentDeadline = WalkthroughSteps.DeadlineIn(180);
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, assessmentDeadline);
             Assert.True(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
 
@@ -204,7 +204,7 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             details.IsExpanded = true;
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
-            var statisticsDeadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+            var statisticsDeadline = WalkthroughSteps.DeadlineIn(60);
             var statistics = walkthrough.Workspace.PageModel<TimingPageModel>().Statistics;
             try
             {

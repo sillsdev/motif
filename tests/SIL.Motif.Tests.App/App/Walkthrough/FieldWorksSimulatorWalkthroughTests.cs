@@ -31,7 +31,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var parserStartedPath = Path.Combine(project.ManagedRoot, "analysis-parser-started");
         var releaseParserPath = Path.Combine(project.ManagedRoot, "analysis-parser-release");
-        var deadline = Stopwatch.GetTimestamp() + 360 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(360);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -205,7 +205,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         PendingChangeFixture.AddIncorrectSpelling(
             project.FwDataPath, project.ManagedRoot, "held-change-word");
         using var held = new FieldWorksSimulator(project.FwDataPath).Hold();
-        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(60);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -238,7 +238,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         PendingChangeFixture.AddIncorrectSpelling(
             project.FwDataPath, project.ManagedRoot, "held-retry-word");
         using var held = new FieldWorksSimulator(project.FwDataPath).Hold();
-        var deadline = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        var deadline = WalkthroughSteps.DeadlineIn(60);
         var parser = FakeParser.Copy(project.ManagedRoot);
         var prompt = "Check these changes to see how many of the words you changed keep their approved analyses.";
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -312,9 +312,10 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.Null(review.ApplyRefusal);
             Assert.Empty(review.Changes.Items);
             Assert.True(review.HasReceipt);
-            var receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
-                .Single(text => text.Text == review.ReceiptText);
-            Assert.True(receipt.IsEffectivelyVisible);
+            CopyableTextBlock? receipt = null;
+            walkthrough.WaitUntil(() => (receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
+                .SingleOrDefault(text => text.Text == review.ReceiptText)) is not null && receipt.IsEffectivelyVisible,
+                StepFor(deadline), "the Receipt text was not shown");
         }, TimeSpan.FromSeconds(60));
     }
 
