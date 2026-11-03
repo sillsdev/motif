@@ -19,6 +19,8 @@ jobs:
       ICU_RID: linux-x64
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-dotnet@v4
         with:

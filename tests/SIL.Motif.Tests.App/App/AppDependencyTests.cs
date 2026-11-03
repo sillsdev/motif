@@ -4,14 +4,18 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>Pins the App's direct project references to Commands, Contract and Help.</summary>
+/// <summary>Pins the App's direct project references to Commands, Contract, Help and the text editing library.</summary>
 public sealed class AppDependencyTests
 {
     [Fact]
-    public void AppReferencesCommandsContractAndHelp()
+    public void AppReferencesCommandsContractHelpAndTextEditing()
     {
         Assert.Equal(
-            new[] { "SIL.Motif.Commands", "SIL.Motif.Contract", "SIL.Motif.Help" },
+            new[]
+            {
+                "SIL.Motif.Commands", "SIL.Motif.Contract", "SIL.Motif.Help",
+                "SIL.TextEditing", "SIL.TextEditing.Avalonia",
+            },
             ReferencedProjectNames("SIL.Motif.App").Order(StringComparer.Ordinal));
     }
 

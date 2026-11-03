@@ -93,6 +93,7 @@ Initialize-MotifToolEnvironment -RepoRoot $repoRoot
 Import-Module (Join-Path $repoRoot 'tools/MotifProcessHygiene.psm1') -Force
 Set-MotifBuildProcessPolicy
 $processLock = Enter-MotifWorktreeLock -RepoRoot $repoRoot -Context 'Motif build'
+& (Join-Path $repoRoot 'tools/Initialize-Submodules.ps1') -RepoRoot $repoRoot
 
 try {
     New-Item -ItemType Directory -Force -Path $env:NUGET_PACKAGES | Out-Null

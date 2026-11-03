@@ -13,6 +13,7 @@ The installed payload contains this file and the `licenses/` directory. `release
 | SIL ICU and Unicode normalization data | `SIL-ICU-copyright.txt`, plus ICU package notices in `nuget/` | https://github.com/sillsdev/icu |
 | Avalonia | `Avalonia-MIT.txt`; native ANGLE, Skia and HarfBuzz notices are also in `nuget/` | https://github.com/AvaloniaUI/Avalonia |
 | Semi.Avalonia | `Semi-MIT.txt` | https://github.com/irihitech/Semi.Avalonia |
+| SIL.TextEditing | `SIL.TextEditing-MIT.txt` | https://github.com/sillsdev/SIL.TextEditing |
 | LibLCM | `LibLCM-LICENSE.txt` from the package's source commit; original NuGet declarations in `nuget/` | https://github.com/sillsdev/liblcm |
 | LibPalaso | `LibPalaso-LICENSE.txt` from the package's source commit; original NuGet declarations in `nuget/` | https://github.com/sillsdev/libpalaso |
 | Velopack | `Velopack-MIT.txt` | https://github.com/velopack/velopack |

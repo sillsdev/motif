@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using System.Text.Json;
 using SIL.Motif.App.Composition;
+using SIL.Motif.App.Preview;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 
@@ -96,6 +97,7 @@ public sealed partial class App : Application
             stopReporting();
         });
         Session = session;
+        TextEditorPreviewWindow.ShowIfRequested(desktop.Args ?? []);
         return session;
     }
 

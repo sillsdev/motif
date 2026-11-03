@@ -71,7 +71,7 @@ Then [open your project](src/SIL.Motif.Help/Content/en/guide/open-a-project.md),
 
 ## Build from source
 
-Install the .NET 10 SDK, then from the repository root:
+Install the .NET 10 SDK. The text editor library SIL.TextEditing is a git submodule in `external/SIL.TextEditing`, so clone with `--recurse-submodules`, or run `git submodule update --init` in an existing clone. Then, from the repository root:
 
 ```powershell
 ./build.ps1    # comment and design-token checks, then compile
@@ -100,6 +100,8 @@ The optional `MOTIF_TRACE=1` JSONL trace rotates at 10 MiB, keeping the current 
 with a `.1` suffix. `MOTIF_TRACE_MAX_BYTES` selects another positive limit for each file; an individual line larger
 than the limit is dropped. `MOTIF_TRACE_FILE` selects the path; otherwise the trace uses a per-user file in the
 temporary folder. Multiple processes coordinate writes to the same path.
+
+With `MOTIF_DEVELOPER_COMMANDS=1` set, start the app with `--text-editor-preview` to open a developer-only window that shows the SIL.TextEditing field with sample text.
 
 After building, run the command or the window from `bin/<Configuration>`:
 

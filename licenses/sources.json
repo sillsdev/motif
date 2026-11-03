@@ -7,5 +7,6 @@
   "LibLCM-LICENSE.txt": "https://raw.githubusercontent.com/sillsdev/liblcm/dc6e9ad45acb038fe6bffac7527a9a84a836e373/LICENSE",
   "LibPalaso-LICENSE.txt": "https://raw.githubusercontent.com/sillsdev/libpalaso/6b01291d1b5a87a40a2d72c3abe63337fa2195b4/LICENSE",
   "SIL-ICU-copyright.txt": "http://linux.lsdev.sil.org/ubuntu/pool/main/i/icu-fw/libicu70-fw_70.1.0.nightly20220714T065237Z.107d90bbc5-1+jammy1_amd64.deb (usr/share/doc/libicu70-fw/copyright)",
-  "Semi-MIT.txt": "NuGet Semi.Avalonia 12.1.0: LICENSE"
+  "Semi-MIT.txt": "NuGet Semi.Avalonia 12.1.0: LICENSE",
+  "SIL.TextEditing-MIT.txt": "https://raw.githubusercontent.com/sillsdev/SIL.TextEditing/7c51080f9fa0ec10d93137de488134e34c13f5af/LICENSE"
 }

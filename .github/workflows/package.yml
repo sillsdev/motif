@@ -100,6 +100,8 @@ jobs:
           [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
 
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Provision approved synthetic sample inputs
         shell: pwsh
@@ -277,6 +279,8 @@ jobs:
           [System.IO.File]::AppendAllLines($env:GITHUB_ENV, $paths, [System.Text.UTF8Encoding]::new($false))
 
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Provision approved synthetic sample inputs
         shell: pwsh
@@ -457,6 +461,8 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Provision approved synthetic sample inputs
         shell: pwsh
@@ -627,6 +633,8 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Provision approved synthetic sample inputs
         shell: pwsh

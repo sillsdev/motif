@@ -150,6 +150,7 @@ if ($testTemporaryDirectory) { Write-Host "Test temporary folder: $testTemporary
 Import-Module (Join-Path $repoRoot 'tools/MotifProcessHygiene.psm1') -Force
 Set-MotifBuildProcessPolicy
 $processLock = Enter-MotifWorktreeLock -RepoRoot $repoRoot -Context 'Motif tests'
+& (Join-Path $repoRoot 'tools/Initialize-Submodules.ps1') -RepoRoot $repoRoot
 $testSlot = $null
 
 try {

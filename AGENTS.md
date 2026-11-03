@@ -39,6 +39,8 @@ It runs every test project plus the tooling regressions and process hygiene, so 
 projects a change reaches; a hand-picked list of projects let breaks through to `main`. A lander's report lists the
 passed, failed and skipped counts for each project.
 
+**The text editor library is a submodule.** `build.ps1` and `test.ps1` run `git submodule update --init external/SIL.TextEditing` when it is empty; a bare `dotnet build` fails with that command in its message.
+
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
 `N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
 `test.ps1` gives each xUnit host `MaxParallelThreads = MOTIF_TEST_THREADS` or its share of the processors (minimum
