@@ -1,4 +1,4 @@
-<!-- The shared row and its evidence card own their stable geometry and interactive surface. -->
+<!-- The shared row and its evidence card own their stable geometry and interactive surface; the tick is drawn, so no font sets its height. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
@@ -7,6 +7,7 @@
     <StaticResource x:Key="Component.WordPresentation.CardPadding" ResourceKey="Primitive.Inset.36_4_8_8" />
     <StaticResource x:Key="Component.WordPresentation.Radius" ResourceKey="Primitive.Radius.3" />
     <StaticResource x:Key="Component.WordPresentation.TickSize" ResourceKey="Primitive.Size.18" />
+    <StaticResource x:Key="Component.WordPresentation.TickGlyphSize" ResourceKey="Primitive.Size.10" />
     <StaticResource x:Key="Component.WordPresentation.VisibleOpacity" ResourceKey="Primitive.Opacity.100" />
   </Styles.Resources>
   <Style Selector="Border.wordPresentationFrame">
@@ -37,12 +38,13 @@
                 Background="{TemplateBinding Background}"
                 BorderBrush="{TemplateBinding BorderBrush}"
                 BorderThickness="{TemplateBinding BorderThickness}">
-          <TextBlock Text="✓"
-                     IsVisible="{TemplateBinding IsChecked}"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center"
-                     Foreground="{TemplateBinding Foreground}"
-                     FontWeight="Bold" />
+          <PathIcon Data="M0 5.2 L1.4 3.8 L3.8 6.2 L8.6 1.4 L10 2.8 L3.8 9 Z"
+                    Width="{StaticResource Component.WordPresentation.TickGlyphSize}"
+                    Height="{StaticResource Component.WordPresentation.TickGlyphSize}"
+                    IsVisible="{TemplateBinding IsChecked}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Foreground="{TemplateBinding Foreground}" />
         </Border>
       </ControlTemplate>
     </Setter>
