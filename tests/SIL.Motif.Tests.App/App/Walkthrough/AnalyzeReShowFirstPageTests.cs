@@ -99,21 +99,15 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
                 Assert.True(created <= CreatedVisualBound,
                     $"{created} visuals were created in the showing frame; the bound is {CreatedVisualBound}.");
 
-                ProgressiveItemsControl[] lines = [];
+                // A line scrolled out of the viewport is detached and drops its source, so only lines in view are read.
                 window.WaitUntil(() =>
                 {
                     PageScreenshots.Settle(window.Window, passes: 9);
-                    lines = [.. window.Window.GetVisualDescendants().OfType<ProgressiveItemsControl>()
-                        .Where(control => control.Name == "ResultsInTextPanelTokensItems")];
-                    return lines.Length > 0 && lines.All(line => line.FullItemsSource is not null);
-                }, TimeSpan.FromSeconds(60), "the Analyze lines did not bind their word sources");
-                foreach (var line in lines)
-                {
-                    await line.PageRefresh;
-                    PageScreenshots.Settle(window.Window, passes: 9);
-                    var expected = Math.Min(20, ((SIL.Motif.App.Services.IProgressivePageSource)line.FullItemsSource!).Count);
-                    Assert.Equal(expected, line.GetVisualDescendants().OfType<WordStripToken>().Count());
-                }
+                    var lines = RealizedLines(window);
+                    return lines.Length > 0 && lines.All(line => line.FullItemsSource is not null && StripsIn(line) == FirstPageSize(line));
+                }, TimeSpan.FromSeconds(60), "the Analyze lines in view did not fill their first page of words");
+                foreach (var line in RealizedLines(window))
+                    Assert.Equal(FirstPageSize(line), StripsIn(line));
             }
             // Created visuals vary with one-time template work; the bounds above are the contract.
             Assert.Equal(rounds[0].Tokens, rounds[1].Tokens);
@@ -121,6 +115,15 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
                 $"A second warm return created {rounds[1].Created} visuals after {rounds[0].Created} on the first.");
         }, TimeSpan.FromMinutes(10));
     }
+
+    private static ProgressiveItemsControl[] RealizedLines(WalkthroughWindow window) =>
+        [.. window.Window.GetVisualDescendants().OfType<ProgressiveItemsControl>()
+            .Where(control => control.Name == "ResultsInTextPanelTokensItems")];
+
+    private static int StripsIn(ProgressiveItemsControl line) => line.GetVisualDescendants().OfType<WordStripToken>().Count();
+
+    private static int FirstPageSize(ProgressiveItemsControl line) =>
+        line.FullItemsSource is SIL.Motif.App.Services.IProgressivePageSource source ? Math.Min(20, source.Count) : -1;
 
     private static List<WordStripToken> Strips(WalkthroughWindow window) =>
         window.Window.GetVisualDescendants().OfType<WordStripToken>().ToList();
