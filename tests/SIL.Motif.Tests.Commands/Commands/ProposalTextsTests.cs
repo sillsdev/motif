@@ -2,10 +2,12 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Commands.Review;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -89,7 +91,7 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void TheNoteChangedFlagIsTrueAfterTheNoteAndFalseAfterTheNextRationale()
+    public void TheNoteChangedFlagIsTrueAfterThePersonsCommentAndFalseAfterTheNextRationale()
     {
         var (path, id) = Finalized("noted");
         Assert.False(Show(path, id).NoteChanged);
@@ -99,7 +101,8 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
         Assert.True(noted.Value!.NoteChanged);
         var shown = Show(path, id);
         Assert.True(shown.NoteChanged);
-        Assert.Equal("Please reconsider the second gloss.", shown.Note!.Markdown);
+        Assert.Equal("Please reconsider the second gloss.", Assert.Single(shown.Comments!).Markdown);
+        Assert.Equal(Assert.Single(shown.Comments!).CreatedUtc, noted.Value.UpdatedUtc);
         Assert.True(Standing(path, id).HasNote);
 
         var answered = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Reconsidered."));
@@ -107,7 +110,115 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
         Assert.False(Show(path, id).NoteChanged);
 
         Assert.True(ProposalTexts.SetNote(new SetNoteRequest(path, Version, id, null)).Succeeded);
-        Assert.Null(Show(path, id).Note);
+        Assert.Empty(Show(path, id).Comments!);
+    }
+
+    [Fact]
+    public void AnAgentsCommentIsAttributedAndDoesNotRaiseTheNoteFlag()
+    {
+        var (path, id) = Finalized("agent");
+
+        var added = ProposalComments.Add(new AddCommentRequest(path, Version, id, "Checked the gloss.", "John",
+            "Claude (Opus 5.5)"));
+
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        Assert.False(added.Value!.NoteChanged);
+        var comment = Assert.Single(Show(path, id).Comments!);
+        Assert.Equal("Claude (Opus 5.5)", comment.AuthorLabel);
+        Assert.Equal("John", comment.PersonName);
+        Assert.Equal(added.Value.CommentId, comment.CommentId);
+        Assert.False(Show(path, id).NoteChanged);
+        Assert.Contains("Claude (Opus 5.5) for John", SIL.Motif.Projection.Rendering.CommandTextRenderer.Render(Show(path, id)));
+    }
+
+    [Fact]
+    public void APersonEditsAndDeletesAnyCommentAndAnEditShowsTheTimeWithoutHistory()
+    {
+        var (path, id) = Finalized("editing");
+        var agent = ProposalComments.Add(new AddCommentRequest(path, Version, id, "Agent says.", "John", "Claude")).Value!;
+
+        var edited = ProposalComments.Edit(new EditCommentRequest(path, Version, id, agent.CommentId, "Person fixed it."));
+
+        Assert.True(edited.Succeeded, edited.Refusal?.Message);
+        var comment = Assert.Single(Show(path, id).Comments!);
+        Assert.Equal("Person fixed it.", comment.Markdown);
+        Assert.NotNull(comment.EditedUtc);
+        Assert.Equal("Claude", comment.AuthorLabel);
+
+        Assert.True(ProposalComments.Delete(new DeleteCommentRequest(path, Version, id, agent.CommentId)).Succeeded);
+        Assert.Empty(Show(path, id).Comments!);
+        Assert.Equal("proposal.not-found",
+            ProposalComments.Delete(new DeleteCommentRequest(path, Version, id, agent.CommentId)).Refusal?.Code);
+    }
+
+    [Fact]
+    public void ACommentWithNoTextOrAnOverlongLabelIsRefused()
+    {
+        var (path, id) = Finalized("limits-comment");
+        var tooLong = new string('x', ProposalTexts.MaxAuthorLength + 1);
+
+        Assert.Equal("proposal.comment-invalid",
+            ProposalComments.Add(new AddCommentRequest(path, Version, id, " ", "John")).Refusal?.Code);
+        Assert.Equal("proposal.comment-invalid",
+            ProposalComments.Add(new AddCommentRequest(path, Version, id, "Text", "John", tooLong)).Refusal?.Code);
+        Assert.Equal("proposal.comment-invalid",
+            ProposalComments.Add(new AddCommentRequest(path, Version, id, "Text", tooLong)).Refusal?.Code);
+        Assert.Equal("proposal.comment-invalid",
+            ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Text", tooLong)).Refusal?.Code);
+        Assert.True(ProposalComments.Add(new AddCommentRequest(path, Version, id, "Text", "John",
+            new string('x', ProposalTexts.MaxAuthorLength))).Succeeded);
+    }
+
+    [Fact]
+    public void RationaleHistoryGrowsWhileOpenAndIsDroppedAtEveryKindOfDecision()
+    {
+        foreach (var decision in new[] { "withdraw", "decline", "supersede" })
+        {
+            var (path, id) = Finalized("history-" + decision);
+            Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Second.", "Claude", "John")).Succeeded);
+            Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Third.")).Succeeded);
+            Assert.Equal(new[] { "Second.", "Third." }, Revisions(path, id).Select(r => r.Text).Skip(1));
+            Assert.Equal(3, Revisions(path, id).Count);
+            Assert.Equal("Claude", Revisions(path, id)[1].Author.Label);
+
+            Assert.True(Decide(path, id, decision), decision);
+
+            Assert.Empty(Revisions(path, id));
+            Assert.Equal("Third.", Show(path, id).Rationale!.Markdown);
+        }
+    }
+
+    [Fact]
+    public void CommentsFreezeAtTheDecisionAndThawWhenTheProposalIsReopened()
+    {
+        var (path, id) = Finalized("freeze");
+        var comment = ProposalComments.Add(new AddCommentRequest(path, Version, id, "Open.", "John")).Value!.CommentId;
+        Assert.True(ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(path, id)).Succeeded);
+
+        Assert.Equal("proposal.closed", ProposalComments.Add(new AddCommentRequest(path, Version, id, "Late.", "John")).Refusal?.Code);
+        Assert.Equal("proposal.closed", ProposalComments.Edit(new EditCommentRequest(path, Version, id, comment, "Late.")).Refusal?.Code);
+        Assert.Equal("proposal.closed", ProposalComments.Delete(new DeleteCommentRequest(path, Version, id, comment)).Refusal?.Code);
+        Assert.Equal("Open.", Assert.Single(Show(path, id).Comments!).Markdown);
+
+        Assert.True(ProposalCommands.Reopen(new ReopenRequest(path, Version, "thaw", id)).Succeeded);
+        Assert.True(ProposalComments.Edit(new EditCommentRequest(path, Version, id, comment, "Thawed.")).Succeeded);
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "New history.")).Succeeded);
+        Assert.Equal(["New history."], Revisions(path, id).Select(r => r.Text));
+    }
+
+    [Fact]
+    public void DeletingAnUnappliedProposalRemovesItsRevisionsAndComments()
+    {
+        var (path, id) = Finalized("deleting");
+        Assert.True(ProposalComments.Add(new AddCommentRequest(path, Version, id, "Gone soon.", "John")).Succeeded);
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Revised.")).Succeeded);
+        Assert.True(ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(path, id)).Succeeded);
+
+        var deleted = ProposalLifecycleCommand.Delete(new DeleteProposalRequest(path, id));
+
+        Assert.True(deleted.Succeeded, deleted.Refusal?.Message);
+        foreach (var table in new[] { "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures" })
+            Assert.Equal(0L, Count(path, table));
     }
 
     [Fact]
@@ -135,15 +246,41 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
         Assert.DoesNotContain(CommandCatalog.All, command => command.Name == "comment");
     }
 
+    private bool Decide(string path, string id, string decision) => decision switch
+    {
+        "withdraw" => ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(path, id)).Succeeded,
+        "decline" => ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, id)).Succeeded,
+        _ => Supersede(path, id),
+    };
+
+    private bool Supersede(string path, string id)
+    {
+        var other = Finalized("replacement", path).Id;
+        return ProposalCommands.Supersede(new SupersedeRequest(path, Version, id, other)).Succeeded;
+    }
+
+    private static IReadOnlyList<RationaleRevisionRecord> Revisions(string path, string id) =>
+        ProjectStoreCommand.Run(path, Version, (database, _) => CommandOutcome<IReadOnlyList<RationaleRevisionRecord>>.Success(
+            new ProposalDiscussionRepository(database).ListRationaleRevisions(CanonicalId.Parse(id)))).Value!;
+
+    private static long Count(string path, string table) =>
+        ProjectStoreCommand.Run(path, Version, (database, _) =>
+        {
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"SELECT COUNT(*) FROM {table};";
+            return CommandOutcome<string>.Success(Convert.ToString(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture)!);
+        }).Value is { } count ? long.Parse(count, System.Globalization.CultureInfo.InvariantCulture) : -1;
+
     private string NewProject()
     {
         using var scratch = pristine.NewScratch();
         return scratch.ProjectId.Path;
     }
 
-    private (string Path, string Id) Finalized(string name)
+    private (string Path, string Id) Finalized(string name, string? existing = null)
     {
-        var path = NewProject();
+        var path = existing ?? NewProject();
         var created = ProposalCommands.New(new NewDraftRequest(path, Version, name, name));
         Assert.True(created.Succeeded, created.Refusal?.Message);
         Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, Version, name,

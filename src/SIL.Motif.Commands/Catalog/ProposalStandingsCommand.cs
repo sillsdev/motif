@@ -65,6 +65,7 @@ public static class ProposalStandingsCommand
 
         var changedWords = candidates.ToDictionary(candidate => candidate.Record.ProposalId.Value,
             candidate => ChangedWordsOf(candidate), StringComparer.Ordinal);
+        var commentCounts = new ProposalDiscussionRepository(database).CommentCounts();
         var cards = new List<ProposalCard>();
         foreach (var candidate in candidates)
         {
@@ -89,7 +90,7 @@ public static class ProposalStandingsCommand
                     HasRationale = candidate.Record.Rationale is not null,
                     RationaleNew = candidate.Record.Rationale is not null && !ProposalCommands.RationaleLookedAt(
                         database, ProposalRecordMapping.ToManifest(candidate.Record)),
-                    HasNote = candidate.Record.Note is not null,
+                    HasNote = commentCounts.ContainsKey(id),
                 });
         }
 

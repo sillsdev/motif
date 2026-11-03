@@ -340,13 +340,41 @@ public sealed record LabelRequest(string FwDataPath, string ProductVersion, stri
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The full id of the Proposal, Draft or finalized, whose Rationale is written.</param>
 /// <param name="Text">The Rationale in Markdown: what the Proposal changes and why.</param>
-public sealed record SetRationaleRequest(string FwDataPath, string ProductVersion, string ProposalId, string Text);
+/// <param name="AuthorLabel">What an agent calls itself, kept as typed with the revision; null when a person writes.</param>
+/// <param name="PersonName">The person the revision is by or for; null when unknown.</param>
+public sealed record SetRationaleRequest(
+    string FwDataPath, string ProductVersion, string ProposalId, string Text, string? AuthorLabel = null,
+    string? PersonName = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The full id of the Proposal the person is answering.</param>
-/// <param name="Text">The note in Markdown, or null to clear it.</param>
+/// <param name="Text">The person's Comment in Markdown, or null to remove the Comments the person wrote.</param>
 public sealed record SetNoteRequest(string FwDataPath, string ProductVersion, string ProposalId, string? Text);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The full id of the Proposal the Comment is on.</param>
+/// <param name="Text">The Comment in Markdown.</param>
+/// <param name="PersonName">The person the Comment is by or for; empty when unknown.</param>
+/// <param name="AuthorLabel">What an agent calls itself, kept as typed; null when the person writes.</param>
+public sealed record AddCommentRequest(
+    string FwDataPath, string ProductVersion, string ProposalId, string Text, string PersonName,
+    string? AuthorLabel = null);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The full id of the Proposal the Comment is on.</param>
+/// <param name="CommentId">The number of the Comment, whoever wrote it.</param>
+/// <param name="Text">The new Markdown text; the Comment then shows that it was edited.</param>
+public sealed record EditCommentRequest(
+    string FwDataPath, string ProductVersion, string ProposalId, long CommentId, string Text);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The full id of the Proposal the Comment is on.</param>
+/// <param name="CommentId">The number of the Comment, whoever wrote it.</param>
+public sealed record DeleteCommentRequest(string FwDataPath, string ProductVersion, string ProposalId, long CommentId);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

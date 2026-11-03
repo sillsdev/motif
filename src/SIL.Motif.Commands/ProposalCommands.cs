@@ -1478,7 +1478,7 @@ public static partial class ProposalCommands
         {
             var repository = new ProposalRepository(database);
             var manifests = repository.List(new ProposalListFilter(status, IncludeArchived: all || status is not null))
-                .Select(ProposalRecordMapping.ToManifest)
+                .Select(record => ProposalRecordMapping.ToManifest(record))
                 .ToList();
             return CommandOutcome<ProposalListProjection>.Success(ProposalListProjectionBuilder.Build(manifests));
         }
@@ -1513,7 +1513,7 @@ public static partial class ProposalCommands
                 return BuildDraftDetail(repository, current, marksDatabase);
 
             var (record, envelope) = repository.GetFinalized(canonicalId);
-            var manifest = ProposalRecordMapping.ToManifest(record);
+            var manifest = ProposalRecordMapping.ToManifest(record, CommentsOf(marksDatabase, canonicalId));
             return CommandOutcome<ProposalDetailProjection>.Success(ProposalDetailProjectionBuilder.Build(
                 canonicalId.Value, manifest, envelope, RationaleLookedAt(marksDatabase, manifest),
                 RevisionLookup(repository, canonicalId)));
@@ -1523,6 +1523,9 @@ public static partial class ProposalCommands
             return CommandOutcome<ProposalDetailProjection>.Refused(ProposalLoadRefusal(ex));
         }
     }
+
+    private static IReadOnlyList<ProposalCommentRecord> CommentsOf(MotifDatabase? database, CanonicalId proposalId) =>
+        database is null ? [] : new ProposalDiscussionRepository(database).ListComments(proposalId);
 
     internal static bool RationaleLookedAt(MotifDatabase? database, ManifestDocument manifest) =>
         database is not null && manifest.Rationale is not null &&
@@ -1543,7 +1546,8 @@ public static partial class ProposalCommands
             throw new InvalidDataException("Stored Draft name must not be empty.");
         var draft = DeserializeDraft(draftJson);
         var proposal = ProposalJsonParser.Parse(BuildProposalJson(draft));
-        var manifest = ProposalRecordMapping.ToManifest(record with { Label = draft.Label });
+        var manifest = ProposalRecordMapping.ToManifest(record with { Label = draft.Label },
+            CommentsOf(marksDatabase, record.ProposalId));
         var detail = ProposalDetailProjectionBuilder.Build(record.ProposalId.Value, manifest, proposal,
             RationaleLookedAt(marksDatabase, manifest), RevisionLookup(repository, record.ProposalId));
         return CommandOutcome<ProposalDetailProjection>.Success(detail with

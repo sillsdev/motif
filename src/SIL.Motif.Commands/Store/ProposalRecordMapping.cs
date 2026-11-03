@@ -14,8 +14,11 @@ public static class ProposalRecordMapping
 {
     private static readonly JsonSerializerOptions AnchorJsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    /// <summary>Projects one repository row — committed or Draft — into its manifest rendering shape.</summary>
-    public static ManifestDocument ToManifest(ProposalRecord record) => new()
+    /// <summary>
+    /// Projects one repository row — committed or Draft — into its manifest rendering shape; the Comments are only
+    /// those the caller passes, since most callers have no use for them.
+    /// </summary>
+    public static ManifestDocument ToManifest(ProposalRecord record, IReadOnlyList<ProposalCommentRecord>? comments = null) => new()
     {
         ProposalId = record.ProposalId.Value,
         Status = record.Status,
@@ -23,9 +26,9 @@ public static class ProposalRecordMapping
         Rationale = record.Rationale,
         RationaleIntentDigest = record.RationaleIntentDigest,
         RationaleUpdatedUtc = record.RationaleUpdatedUtc,
-        Note = record.Note,
-        NoteIntentDigest = record.NoteIntentDigest,
-        NoteUpdatedUtc = record.NoteUpdatedUtc,
+        Comments = comments?.Select(comment => new ManifestComment(comment.CommentId, comment.Kind,
+            comment.Author.Label, comment.Author.PersonName, comment.Text, comment.IntentDigest, comment.CreatedUtc,
+            comment.EditedUtc)).ToList() ?? [],
         CurrentIntentDigest = record.IntentDigest,
         SupersededBy = record.SupersededBy,
         Anchor = record.AnchorJson is null

@@ -151,6 +151,7 @@ public static class RefusalCodes
     public const string PhonologyExamplesRevisionNotFound = "phonology-examples.revision-not-found";
 
     public const string ProposalClosed = "proposal.closed";
+    public const string ProposalCommentInvalid = "proposal.comment-invalid";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";

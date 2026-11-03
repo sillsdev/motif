@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 61;
+    public const int CurrentSchema = 62;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -60,6 +60,7 @@ public static class MotifSchema
         {
             "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentWordPayloads", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
+            "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
             "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "ParsimonySelection", "AssessmentObjectTimings",
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
@@ -75,7 +76,8 @@ public static class MotifSchema
             "IX_AssessedWords_MorphologyJson", "IX_AssessedWords_CorrectnessJson", "IX_AssessedWords_ReadingGradesJson",
             "IX_AssessedWords_AnalysisComparisonJson", "IX_AssessedWords_MissedApprovedJson",
             "IX_Jobs_Lineage_Attempt", "IX_Jobs_Status_Updated", "IX_Jobs_Lease", "IX_Jobs_QueueOrder",
-            "IX_Proposals_DraftName", "IX_Proposals_OpenRole", "IX_Assessments_Proposal", "IX_Assessments_Kind",
+            "IX_Proposals_DraftName", "IX_Proposals_OpenRole", "IX_ProposalRationaleRevisions_Proposal",
+            "IX_ProposalComments_Proposal", "IX_ProposalPictures_Proposal", "IX_Assessments_Proposal", "IX_Assessments_Kind",
             "IX_RetainedInvocations_Project", "IX_RetainedInvocationMembers_Assessment",
             "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
             "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal",
@@ -223,6 +225,7 @@ public static class MotifSchema
             "AssessedWords" => "AUTOINCREMENT",
             "RetainedInvocationMembers" => "UNIQUE (AssessmentId)",
             "ReadOccurrences" => "CHECK (WordIndex >= 0)",
+            "ProposalRationaleRevisions" or "ProposalComments" or "ProposalPictures" => "AUTOINCREMENT",
             _ => null
         };
         using var command = connection.CreateCommand();
@@ -346,6 +349,9 @@ public static class MotifSchema
         "IX_ParsedAnalyses_Word" => "ParsedAnalyses",
         "IX_Jobs_Lineage_Attempt" or "IX_Jobs_Status_Updated" or "IX_Jobs_Lease" or "IX_Jobs_QueueOrder" => "Jobs",
         "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" => "Proposals",
+        "IX_ProposalRationaleRevisions_Proposal" => "ProposalRationaleRevisions",
+        "IX_ProposalComments_Proposal" => "ProposalComments",
+        "IX_ProposalPictures_Proposal" => "ProposalPictures",
         "IX_Assessments_Proposal" or "IX_Assessments_Kind" => "Assessments",
         "IX_RetainedInvocations_Project" => "RetainedInvocations",
         "IX_RetainedInvocationMembers_Assessment" => "RetainedInvocationMembers",
@@ -387,6 +393,9 @@ public static class MotifSchema
         "IX_Jobs_QueueOrder" => ["QueueOrder"],
         "IX_Proposals_DraftName" => ["DraftName"],
         "IX_Proposals_OpenRole" => ["Role"],
+        "IX_ProposalRationaleRevisions_Proposal" => ["ProposalId", "RevisionId"],
+        "IX_ProposalComments_Proposal" => ["ProposalId", "CommentId"],
+        "IX_ProposalPictures_Proposal" => ["ProposalId", "PictureId"],
         "IX_Assessments_Proposal" => ["ProposalId"],
         "IX_Assessments_Kind" => ["Kind"],
         "IX_RetainedInvocations_Project" => ["ProjectKey"],
@@ -442,6 +451,10 @@ public static class MotifSchema
         "ParsimonyReaderLeases" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "CurrentParsimonyBundles" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalRevisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "ProposalRationaleRevisions" or "ProposalComments" =>
+            [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
+        "ProposalPictures" => [new("ProposalComments", "CommentId", "CommentId", "NO ACTION", "NO ACTION", "NONE"),
+            new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "ProposalDifferences" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
         "ProposalDifferenceCases" => [new("ProposalDifferences", "DifferenceId", "DifferenceId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalDifferenceOccurrences" => [new("ProposalDifferences", "DifferenceId", "DifferenceId", "NO ACTION", "CASCADE", "NONE")],
@@ -574,12 +587,23 @@ public static class MotifSchema
         "Proposals" =>
         [C("ProposalId", "TEXT", false, 1), C("CurrentIntentDigest", "TEXT"), C("Status", "TEXT", true),
             C("Label", "TEXT"), C("Rationale", "TEXT"), C("RationaleIntentDigest", "TEXT"),
-            C("RationaleUpdatedUtc", "TEXT"), C("Note", "TEXT"), C("NoteIntentDigest", "TEXT"), C("NoteUpdatedUtc", "TEXT"),
+            C("RationaleUpdatedUtc", "TEXT"),
             C("SupersededBy", "TEXT"), C("AnchorJson", "TEXT"),
             C("ArchivedUtc", "TEXT"), C("DraftName", "TEXT"), C("DraftJson", "TEXT"), C("Role", "TEXT")],
         "ProposalRevisions" =>
         [C("ProposalId", "TEXT", true, 1), C("IntentDigest", "TEXT", true, 2),
             C("ProposalJson", "BLOB", true), C("CreatedUtc", "TEXT", true)],
+        "ProposalRationaleRevisions" =>
+        [C("RevisionId", "INTEGER", false, 1), C("ProposalId", "TEXT", true), C("Text", "TEXT", true),
+            C("IntentDigest", "TEXT"), C("AuthorLabel", "TEXT"), C("PersonName", "TEXT", true), C("CreatedUtc", "TEXT", true)],
+        "ProposalComments" =>
+        [C("CommentId", "INTEGER", false, 1), C("ProposalId", "TEXT", true), C("Kind", "TEXT", true, defaultValue: "'standard'"),
+            C("AuthorLabel", "TEXT"), C("PersonName", "TEXT", true), C("Text", "TEXT", true), C("IntentDigest", "TEXT"),
+            C("CreatedUtc", "TEXT", true), C("EditedUtc", "TEXT")],
+        "ProposalPictures" =>
+        [C("PictureId", "INTEGER", false, 1), C("ProposalId", "TEXT", true), C("CommentId", "INTEGER"),
+            C("MediaType", "TEXT", true), C("Width", "INTEGER", true), C("Height", "INTEGER", true),
+            C("Bytes", "BLOB", true), C("CreatedUtc", "TEXT", true)],
         "Receipts" =>
         [C("ReceiptId", "TEXT", false, 1), C("ProposalId", "TEXT", true),
             C("IntentDigest", "TEXT", true), C("ReceiptJson", "TEXT", true), C("RecordedUtc", "TEXT", true)],
@@ -719,9 +743,6 @@ public static class MotifSchema
             Rationale TEXT NULL,
             RationaleIntentDigest TEXT NULL,
             RationaleUpdatedUtc TEXT NULL,
-            Note TEXT NULL,
-            NoteIntentDigest TEXT NULL,
-            NoteUpdatedUtc TEXT NULL,
             SupersededBy TEXT NULL,
             AnchorJson TEXT NULL,
             ArchivedUtc TEXT NULL,
@@ -739,6 +760,42 @@ public static class MotifSchema
             CreatedUtc TEXT NOT NULL,
             PRIMARY KEY (ProposalId, IntentDigest)
         );
+
+        CREATE TABLE ProposalRationaleRevisions (
+            RevisionId INTEGER PRIMARY KEY AUTOINCREMENT,
+            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
+            Text TEXT NOT NULL,
+            IntentDigest TEXT NULL,
+            AuthorLabel TEXT NULL,
+            PersonName TEXT NOT NULL,
+            CreatedUtc TEXT NOT NULL
+        );
+        CREATE INDEX IX_ProposalRationaleRevisions_Proposal ON ProposalRationaleRevisions(ProposalId, RevisionId);
+
+        CREATE TABLE ProposalComments (
+            CommentId INTEGER PRIMARY KEY AUTOINCREMENT,
+            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
+            Kind TEXT NOT NULL DEFAULT 'standard' CHECK (Kind IN ('standard', 'system')),
+            AuthorLabel TEXT NULL,
+            PersonName TEXT NOT NULL,
+            Text TEXT NOT NULL,
+            IntentDigest TEXT NULL,
+            CreatedUtc TEXT NOT NULL,
+            EditedUtc TEXT NULL
+        );
+        CREATE INDEX IX_ProposalComments_Proposal ON ProposalComments(ProposalId, CommentId);
+
+        CREATE TABLE ProposalPictures (
+            PictureId INTEGER PRIMARY KEY AUTOINCREMENT,
+            ProposalId TEXT NOT NULL REFERENCES Proposals(ProposalId),
+            CommentId INTEGER NULL REFERENCES ProposalComments(CommentId),
+            MediaType TEXT NOT NULL,
+            Width INTEGER NOT NULL CHECK (Width > 0),
+            Height INTEGER NOT NULL CHECK (Height > 0),
+            Bytes BLOB NOT NULL,
+            CreatedUtc TEXT NOT NULL
+        );
+        CREATE INDEX IX_ProposalPictures_Proposal ON ProposalPictures(ProposalId, PictureId);
 
         CREATE TABLE Receipts (
             ReceiptId TEXT PRIMARY KEY,

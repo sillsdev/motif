@@ -102,6 +102,105 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void Schema61FoldsEachNoteIntoAFirstCommentByThePersonAndKeepsEveryProposal()
+    {
+        CreateCurrentSchemaAsOld();
+        const string multiLine = "Please reconsider.\n\n- the second gloss\n- café 'quoted'";
+        using (var old = Connect(Source))
+        {
+            Execute(old, """
+                DROP TABLE ProposalPictures; DROP TABLE ProposalComments; DROP TABLE ProposalRationaleRevisions;
+                ALTER TABLE Proposals ADD COLUMN Note TEXT;
+                ALTER TABLE Proposals ADD COLUMN NoteIntentDigest TEXT;
+                ALTER TABLE Proposals ADD COLUMN NoteUpdatedUtc TEXT;
+                INSERT INTO Proposals (ProposalId, Status) VALUES ('plain', 'proposed');
+                INSERT INTO Proposals (ProposalId, Status, Note) VALUES ('closed', 'rejected', 'Kept though decided.');
+                PRAGMA user_version = 61;
+                """);
+            using var insert = old.CreateCommand();
+            insert.CommandText = "INSERT INTO Proposals (ProposalId, Status, Rationale, Note, NoteIntentDigest, NoteUpdatedUtc) " +
+                "VALUES ('open', 'proposed', 'Why.', $note, 'sha256:d', '2020-05-01T00:00:00.0000000+00:00');";
+            insert.Parameters.AddWithValue("$note", multiLine);
+            insert.ExecuteNonQuery();
+        }
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(61, report.SourceSchema);
+        Assert.Equal(3, report.Carried["Proposals"]);
+        Assert.Equal(2, report.Carried["ProposalComments"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal(3, Count(upgraded, "Proposals"));
+        Assert.Equal(2, Count(upgraded, "ProposalComments"));
+        Assert.Equal(multiLine, Text(upgraded, "SELECT Text FROM ProposalComments WHERE ProposalId = 'open';"));
+        Assert.Equal("sha256:d", Text(upgraded, "SELECT IntentDigest FROM ProposalComments WHERE ProposalId = 'open';"));
+        Assert.Equal("2020-05-01T00:00:00.0000000+00:00", Text(upgraded, "SELECT CreatedUtc FROM ProposalComments WHERE ProposalId = 'open';"));
+        Assert.Equal("Kept though decided.", Text(upgraded, "SELECT Text FROM ProposalComments WHERE ProposalId = 'closed';"));
+        Assert.Equal(1, Scalar(upgraded, "SELECT COUNT(*) FROM ProposalComments WHERE AuthorLabel IS NULL AND PersonName = '' AND " +
+            "Kind = 'standard' AND EditedUtc IS NULL AND ProposalId = 'open';"));
+        Assert.Equal(0, Scalar(upgraded, "SELECT COUNT(*) FROM pragma_table_info('Proposals') WHERE name LIKE 'Note%';"));
+        Assert.Equal(0, Count(upgraded, "ProposalRationaleRevisions"));
+        Assert.Equal(0, Count(upgraded, "ProposalPictures"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Schema61WithNoNoteWorthKeepingMakesNoComments(bool withProposals)
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+        {
+            Execute(old, """
+                DROP TABLE ProposalPictures; DROP TABLE ProposalComments; DROP TABLE ProposalRationaleRevisions;
+                ALTER TABLE Proposals ADD COLUMN Note TEXT;
+                ALTER TABLE Proposals ADD COLUMN NoteIntentDigest TEXT;
+                ALTER TABLE Proposals ADD COLUMN NoteUpdatedUtc TEXT;
+                PRAGMA user_version = 61;
+                """);
+            if (withProposals)
+                Execute(old, "INSERT INTO Proposals (ProposalId, Status, Note) VALUES ('none', 'proposed', NULL), " +
+                    "('empty', 'proposed', ''), ('blank', 'rejected', '   ');");
+        }
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(0, report.Carried["ProposalComments"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal(withProposals ? 3 : 0, Count(upgraded, "Proposals"));
+        Assert.Equal(0, Count(upgraded, "ProposalComments"));
+    }
+
+    [Fact]
+    public void UpgradeCarriesRationaleRevisionsCommentsAndPicturesWithTheirNumbers()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+        {
+            Execute(old, """
+                INSERT INTO Proposals (ProposalId, Status, Rationale) VALUES ('p', 'proposed', 'Two.');
+                INSERT INTO ProposalRationaleRevisions (ProposalId, Text, AuthorLabel, PersonName, CreatedUtc)
+                    VALUES ('p', 'One.', 'Claude (Opus 5.5)', 'John', '2020-01-01'), ('p', 'Two.', NULL, 'John', '2020-01-02');
+                INSERT INTO ProposalComments (CommentId, ProposalId, AuthorLabel, PersonName, Text, CreatedUtc, EditedUtc)
+                    VALUES (7, 'p', 'Claude', 'John', 'Agent.', '2020-01-03', NULL), (9, 'p', NULL, 'John', 'Person.', '2020-01-04', '2020-01-05');
+                INSERT INTO ProposalPictures (ProposalId, CommentId, MediaType, Width, Height, Bytes, CreatedUtc)
+                    VALUES ('p', 9, 'image/png', 2, 3, X'0102', '2020-01-06'), ('p', NULL, 'image/png', 1, 1, X'03', '2020-01-07');
+                """);
+        }
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(2, report.Carried["ProposalRationaleRevisions"]);
+        Assert.Equal(2, report.Carried["ProposalComments"]);
+        Assert.Equal(2, report.Carried["ProposalPictures"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal("Person.", Text(upgraded, "SELECT Text FROM ProposalComments WHERE CommentId = 9;"));
+        Assert.Equal("2020-01-05", Text(upgraded, "SELECT EditedUtc FROM ProposalComments WHERE CommentId = 9;"));
+        Assert.Equal("Claude (Opus 5.5)", Text(upgraded, "SELECT AuthorLabel FROM ProposalRationaleRevisions WHERE Text = 'One.';"));
+        Assert.Equal(1, Scalar(upgraded, "SELECT COUNT(*) FROM ProposalPictures WHERE CommentId = 9 AND Width = 2 AND length(Bytes) = 2;"));
+    }
+
+    [Fact]
     public void Schema49CarriesRevisionsAndReportsUnreadableAndDroppedData()
     {
         CreateSchema49();

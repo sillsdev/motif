@@ -62,11 +62,12 @@ public interface IProposalRepository
     /// Writes a Proposal's Rationale (a Draft's or a finalized one's) and stamps it with the Proposal's current intent
     /// digest and the time; a Draft that was never finalized has no digest yet, so the stamp is empty until finalize.
     /// </summary>
+    /// <remarks>
+    /// While the Proposal is open the text is also kept as a revision carrying <paramref name="author"/>, a person with
+    /// no name when omitted; a decided Proposal's revisions are dropped at the decision.
+    /// </remarks>
     /// <returns>Whether a Proposal with this id exists.</returns>
-    bool SetRationale(CanonicalId proposalId, string? rationale);
-    /// <summary>Writes, or with <see langword="null"/> clears, the person's note, stamped like the Rationale.</summary>
-    /// <returns>Whether a Proposal with this id exists.</returns>
-    bool SetNote(CanonicalId proposalId, string? note);
+    bool SetRationale(CanonicalId proposalId, string? rationale, DiscussionAuthor? author = null);
     /// <summary>The content of one stored revision of a Proposal, or null when that revision is not stored.</summary>
     Proposal? GetRevisionContent(CanonicalId proposalId, string intentDigest);
     /// <summary>Lists every Draft, ordered by name.</summary>
@@ -177,15 +178,6 @@ public sealed record ProposalRecord(
     /// <summary>When the Rationale was last written, as a round-trip UTC timestamp.</summary>
     public string? RationaleUpdatedUtc { get; init; }
 
-    /// <summary>The person's note in Markdown; only a person writes it.</summary>
-    public string? Note { get; init; }
-
-    /// <summary>The intent digest the note was last written for.</summary>
-    public string? NoteIntentDigest { get; init; }
-
-    /// <summary>When the note was last written, as a round-trip UTC timestamp.</summary>
-    public string? NoteUpdatedUtc { get; init; }
-
     /// <summary>Whether this Proposal holds the pending changes, the window's default staging target.</summary>
     public bool IsPendingChanges => Role == ProposalRoles.PendingChanges;
 }
@@ -254,7 +246,7 @@ public sealed class ProposalRepository : IProposalRepository
             SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
                    p.Status, p.Label, p.Rationale, p.SupersededBy,
                    p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson, p.Role,
-                   p.RationaleIntentDigest, p.RationaleUpdatedUtc, p.Note, p.NoteIntentDigest, p.NoteUpdatedUtc
+                   p.RationaleIntentDigest, p.RationaleUpdatedUtc
             FROM Proposals p LEFT JOIN ProposalRevisions r ON r.ProposalId = p.ProposalId
                 AND r.IntentDigest = p.CurrentIntentDigest
             WHERE ($status IS NULL OR p.Status = $status)
@@ -666,7 +658,6 @@ public sealed class ProposalRepository : IProposalRepository
             commit.CommandText = """
                 UPDATE Proposals SET CurrentIntentDigest = $digest, Status = $status, Label = $label,
                     RationaleIntentDigest = COALESCE(RationaleIntentDigest, $digest),
-                    NoteIntentDigest = CASE WHEN Note IS NULL THEN NULL ELSE COALESCE(NoteIntentDigest, $digest) END,
                     DraftName = NULL, DraftJson = NULL, ArchivedUtc = NULL,
                     AnchorJson = CASE WHEN json_extract(AnchorJson, '$.IntentDigest') = $digest
                         OR json_extract(AnchorJson, '$.intentDigest') = $digest THEN AnchorJson ELSE NULL END
@@ -678,6 +669,7 @@ public sealed class ProposalRepository : IProposalRepository
             commit.Parameters.AddWithValue("$name", draftName);
             commit.ExecuteNonQuery();
         }
+        ProposalDiscussionRepository.StampDigest(connection, transaction, proposalId, intentDigest);
         transaction.Commit();
         return wasAmend ? DraftFinalizationResult.Amended : DraftFinalizationResult.Finalized;
     }
@@ -689,7 +681,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT p.CurrentIntentDigest, r.ProposalJson, p.Status, p.Label, p.Rationale, p.SupersededBy, p.AnchorJson,
-                   p.RationaleIntentDigest, p.RationaleUpdatedUtc, p.Note, p.NoteIntentDigest, p.NoteUpdatedUtc
+                   p.RationaleIntentDigest, p.RationaleUpdatedUtc
             FROM Proposals p LEFT JOIN ProposalRevisions r
                 ON r.ProposalId = p.ProposalId AND r.IntentDigest = p.CurrentIntentDigest
             WHERE p.ProposalId = $id AND p.DraftName IS NULL;
@@ -747,7 +739,6 @@ public sealed class ProposalRepository : IProposalRepository
         var record = new ProposalRecord(proposalId, digest, json, status, label, comment, supersededBy, bytes, anchorJson)
         {
             RationaleIntentDigest = Text(reader, 7), RationaleUpdatedUtc = Text(reader, 8),
-            Note = Text(reader, 9), NoteIntentDigest = Text(reader, 10), NoteUpdatedUtc = Text(reader, 11),
         };
         return (record, envelope);
     }
@@ -810,7 +801,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT Status, Label, Rationale, SupersededBy, CurrentIntentDigest,
-                   RationaleIntentDigest, RationaleUpdatedUtc, Note, NoteIntentDigest, NoteUpdatedUtc
+                   RationaleIntentDigest, RationaleUpdatedUtc
             FROM Proposals WHERE ProposalId = $id AND DraftName IS NULL;
             """;
         command.Parameters.AddWithValue("$id", proposalId.Value);
@@ -832,7 +823,6 @@ public sealed class ProposalRepository : IProposalRepository
             reader.IsDBNull(3) ? null : reader.GetString(3))
         {
             RationaleIntentDigest = Text(reader, 5), RationaleUpdatedUtc = Text(reader, 6),
-            Note = Text(reader, 7), NoteIntentDigest = Text(reader, 8), NoteUpdatedUtc = Text(reader, 9),
         };
     }
 
@@ -840,33 +830,26 @@ public sealed class ProposalRepository : IProposalRepository
         reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
 
     /// <inheritdoc />
-    public bool SetRationale(CanonicalId proposalId, string? rationale)
+    public bool SetRationale(CanonicalId proposalId, string? rationale, DiscussionAuthor? author = null)
     {
         using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
         using var update = connection.CreateCommand();
+        update.Transaction = transaction;
         update.CommandText = """
             UPDATE Proposals SET Rationale = $text, RationaleIntentDigest = CurrentIntentDigest,
                 RationaleUpdatedUtc = $now WHERE ProposalId = $id;
             """;
+        var now = Now();
         update.Parameters.AddWithValue("$text", (object?)rationale ?? DBNull.Value);
-        update.Parameters.AddWithValue("$now", Now());
+        update.Parameters.AddWithValue("$now", now);
         update.Parameters.AddWithValue("$id", proposalId.Value);
-        return update.ExecuteNonQuery() == 1;
-    }
-
-    /// <inheritdoc />
-    public bool SetNote(CanonicalId proposalId, string? note)
-    {
-        using var connection = _database.OpenConnection();
-        using var update = connection.CreateCommand();
-        update.CommandText = """
-            UPDATE Proposals SET Note = $text, NoteIntentDigest = CASE WHEN $text IS NULL THEN NULL ELSE CurrentIntentDigest END,
-                NoteUpdatedUtc = CASE WHEN $text IS NULL THEN NULL ELSE $now END WHERE ProposalId = $id;
-            """;
-        update.Parameters.AddWithValue("$text", (object?)note ?? DBNull.Value);
-        update.Parameters.AddWithValue("$now", Now());
-        update.Parameters.AddWithValue("$id", proposalId.Value);
-        return update.ExecuteNonQuery() == 1;
+        if (update.ExecuteNonQuery() != 1) return false;
+        if (rationale is not null)
+            ProposalDiscussionRepository.RecordRationaleRevision(connection, transaction, proposalId.Value, rationale,
+                author ?? new DiscussionAuthor(null, ""), now);
+        transaction.Commit();
+        return true;
     }
 
     /// <inheritdoc />
@@ -940,6 +923,7 @@ public sealed class ProposalRepository : IProposalRepository
     {
         if (!ProposalDifferenceRetention.KeepsWordDetail(status))
             ProposalDifferenceRetention.DropWordDetail(connection, transaction, proposalId, Now());
+        ProposalDiscussionRepository.ClearRationaleHistoryIfDecided(connection, transaction, proposalId);
         if (ProposalLifecycle.IsTerminal(status))
             EvidenceArtifactRepository.ReleaseClosedProposalPins(connection, transaction, proposalId);
     }
@@ -1100,6 +1084,8 @@ public sealed class ProposalRepository : IProposalRepository
             : "DELETE FROM Proposals WHERE DraftName = $name;";
         command.Parameters.AddWithValue("$name", draftName);
         command.ExecuteNonQuery();
+        // The reopened Proposal is decided again, so what was revised while it was open is history to drop.
+        if (wasReopened) ProposalDiscussionRepository.ClearRationaleHistoryIfDecided(connection, transaction, proposalId.Value);
         transaction.Commit();
         TrialScratchRetention.DeleteProposal(_database, proposalId);
         return wasReopened;
@@ -1109,14 +1095,14 @@ public sealed class ProposalRepository : IProposalRepository
         SELECT p.ProposalId, p.CurrentIntentDigest, r.ProposalJson,
                p.Status, p.Label, p.Rationale, p.SupersededBy,
                p.AnchorJson, p.ArchivedUtc, p.DraftName, p.DraftJson, p.Role,
-               p.RationaleIntentDigest, p.RationaleUpdatedUtc, p.Note, p.NoteIntentDigest, p.NoteUpdatedUtc
+               p.RationaleIntentDigest, p.RationaleUpdatedUtc
         FROM Proposals p LEFT JOIN ProposalRevisions r ON r.ProposalId = p.ProposalId
             AND r.IntentDigest = p.CurrentIntentDigest
         """;
 
     private const string DraftSelectSql =
         "SELECT ProposalId, Status, Label, Rationale, SupersededBy, AnchorJson, ArchivedUtc, DraftName, DraftJson, Role, " +
-        "RationaleIntentDigest, RationaleUpdatedUtc, Note, NoteIntentDigest, NoteUpdatedUtc " +
+        "RationaleIntentDigest, RationaleUpdatedUtc " +
         "FROM Proposals";
 
     private static ProposalRecord ReadDraftRecord(SqliteDataReader reader)
@@ -1129,7 +1115,6 @@ public sealed class ProposalRepository : IProposalRepository
             reader.IsDBNull(7) ? null : reader.GetString(7), reader.IsDBNull(9) ? null : reader.GetString(9))
         {
             RationaleIntentDigest = Text(reader, 10), RationaleUpdatedUtc = Text(reader, 11),
-            Note = Text(reader, 12), NoteIntentDigest = Text(reader, 13), NoteUpdatedUtc = Text(reader, 14),
         };
     }
 
@@ -1166,7 +1151,6 @@ public sealed class ProposalRepository : IProposalRepository
             draftName, reader.IsDBNull(11) ? null : reader.GetString(11))
         {
             RationaleIntentDigest = Text(reader, 12), RationaleUpdatedUtc = Text(reader, 13),
-            Note = Text(reader, 14), NoteIntentDigest = Text(reader, 15), NoteUpdatedUtc = Text(reader, 16),
         };
     }
 

@@ -88,6 +88,7 @@ public sealed partial record WindowRefusal
         [C.ApplyDroppedGrammar] = () => MotifAppStrings.RefusalApplyDroppedGrammar,
         [C.ApplyDryRunMissing] = () => MotifAppStrings.RefusalApplyDryRunMissing,
         [C.ProposalClosed] = () => MotifAppStrings.RefusalProposalClosed,
+        [C.ProposalCommentInvalid] = () => MotifAppStrings.RefusalProposalCommentInvalid,
         [C.ProposalNotFound] = () => MotifAppStrings.RefusalProposalNotFound,
         [C.ProposalRationaleEmpty] = () => MotifAppStrings.RefusalProposalRationaleEmpty,
         [C.ProposalUnreadable] = () => MotifAppStrings.RefusalProposalUnreadable,

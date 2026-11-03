@@ -56,15 +56,20 @@ public sealed record RationaleView(
     string Markdown, string? WrittenForIntentDigest, string UpdatedUtc, bool OutOfDate,
     ProposalChangesSince? ChangesSince, bool New);
 
-/// <summary>The person's reply to a Proposal, in Markdown. Only a person writes it; an agent reads it.</summary>
+/// <summary>One Comment on a Proposal, in Markdown.</summary>
+/// <param name="CommentId">The Comment's number, which an edit or a delete names.</param>
+/// <param name="Kind"><c>standard</c>, or <c>system</c> for a Comment Motif wrote.</param>
+/// <param name="AuthorLabel">What an agent said of itself, as typed; null when the person wrote it. A label for readers only.</param>
+/// <param name="PersonName">The person the Comment was written by or for; empty when unknown.</param>
 /// <param name="Markdown">The text.</param>
-/// <param name="WrittenForIntentDigest">The Proposal content the note was written for.</param>
-/// <param name="UpdatedUtc">When the note was last written.</param>
-/// <param name="OutOfDate">Whether the Proposal's content changed after the note was written.</param>
-/// <param name="ChangesSince">How the Proposal changed since the note was written; null when it did not.</param>
-public sealed record NoteView(
-    string Markdown, string? WrittenForIntentDigest, string UpdatedUtc, bool OutOfDate,
-    ProposalChangesSince? ChangesSince);
+/// <param name="WrittenForIntentDigest">The Proposal content the Comment was last written for.</param>
+/// <param name="CreatedUtc">When it was added.</param>
+/// <param name="EditedUtc">When a person last edited it; null when it was never edited.</param>
+/// <param name="OutOfDate">Whether the Proposal's content changed after the Comment was written.</param>
+/// <param name="ChangesSince">How the Proposal changed since the Comment was written; null when it did not.</param>
+public sealed record CommentView(
+    long CommentId, string Kind, string? AuthorLabel, string PersonName, string Markdown, string? WrittenForIntentDigest,
+    string CreatedUtc, string? EditedUtc, bool OutOfDate, ProposalChangesSince? ChangesSince);
 
 /// <summary>The <c>show</c> report: a Proposal's review state and its full operation list.</summary>
 /// <param name="ProposalId">The Proposal's portable identity.</param>
@@ -79,8 +84,8 @@ public sealed record NoteView(
 /// <param name="ExtensionsJson">Optional JSON containing non-semantic extension data.</param>
 /// <param name="DraftName">The name of the Draft whose operations are shown, or <c>null</c> for a committed revision.</param>
 /// <param name="DraftRevision">The SHA-256 revision of the exact stored Draft JSON bytes, or <c>null</c> for a committed revision.</param>
-/// <param name="Note">The person's note, or <c>null</c> when there is none.</param>
-/// <param name="NoteChanged">Whether the person wrote the note after the Rationale was last written.</param>
+/// <param name="Comments">The Proposal's Comments, oldest first.</param>
+/// <param name="NoteChanged">Whether the person wrote a Comment after the builder last wrote the Rationale or a Comment.</param>
 public sealed record ProposalDetailProjection(
     string ProposalId,
     string Status,
@@ -94,5 +99,5 @@ public sealed record ProposalDetailProjection(
     string? DraftName = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? DraftRevision = null,
-    NoteView? Note = null,
+    IReadOnlyList<CommentView>? Comments = null,
     bool NoteChanged = false);

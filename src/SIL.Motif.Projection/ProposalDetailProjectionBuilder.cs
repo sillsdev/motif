@@ -43,28 +43,37 @@ public static class ProposalDetailProjectionBuilder
             manifest.Rationale, manifest.RationaleIntentDigest, manifest.RationaleUpdatedUtc ?? "",
             IsOutOfDate(manifest.RationaleIntentDigest, current),
             ChangesSince(manifest.RationaleIntentDigest, current, envelope, revisionOf), !rationaleLookedAt);
-        NoteView? note = manifest.Note is null ? null : new NoteView(
-            manifest.Note, manifest.NoteIntentDigest, manifest.NoteUpdatedUtc ?? "",
-            IsOutOfDate(manifest.NoteIntentDigest, current),
-            ChangesSince(manifest.NoteIntentDigest, current, envelope, revisionOf));
+        var comments = manifest.Comments.Select(comment => new CommentView(
+            comment.CommentId, comment.Kind, comment.AuthorLabel, comment.PersonName, comment.Text,
+            comment.IntentDigest, comment.CreatedUtc, comment.EditedUtc,
+            IsOutOfDate(comment.IntentDigest, current),
+            ChangesSince(comment.IntentDigest, current, envelope, revisionOf))).ToList();
 
         return new ProposalDetailProjection(
             proposalId, manifest.Status, manifest.Label, rationale, manifest.CurrentIntentDigest, operations,
-            manifest.SupersededBy, envelope.Extensions?.GetRawText(), Note: note,
-            NoteChanged: NoteIsNewer(manifest));
+            manifest.SupersededBy, envelope.Extensions?.GetRawText(), Comments: comments,
+            NoteChanged: PersonCommentIsNewer(manifest));
     }
 
     /// <summary>
-    /// Whether the person wrote the note after the Rationale was last written. It needs no reader identity: a
-    /// later builder write clears it, and a note over no Rationale at all counts as newer.
+    /// Whether a person wrote a Comment after the builder last wrote, that is after the Rationale or after an agent's
+    /// Comment. It needs no reader identity: the builder's next write clears it, and a person's Comment over no
+    /// Rationale at all counts as newer.
     /// </summary>
-    public static bool NoteIsNewer(ManifestDocument manifest) =>
-        manifest.Note is not null && (manifest.Rationale is null || Later(manifest.NoteUpdatedUtc, manifest.RationaleUpdatedUtc));
+    public static bool PersonCommentIsNewer(ManifestDocument manifest)
+    {
+        var person = manifest.Comments.Where(comment => comment.AuthorLabel is null)
+            .Select(comment => Parse(comment.EditedUtc ?? comment.CreatedUtc)).Where(time => time is not null).ToList();
+        if (person.Count == 0) return false;
+        if (manifest.Rationale is null) return true;
+        var builder = manifest.Comments.Where(comment => comment.AuthorLabel is not null)
+            .Select(comment => Parse(comment.CreatedUtc)).Append(Parse(manifest.RationaleUpdatedUtc))
+            .Where(time => time is not null).ToList();
+        return builder.Count == 0 || person.Max() > builder.Max();
+    }
 
-    private static bool Later(string? note, string? rationale) =>
-        DateTimeOffset.TryParse(note, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var written) &&
-        (!DateTimeOffset.TryParse(rationale, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var built) ||
-            written > built);
+    private static DateTimeOffset? Parse(string? utc) =>
+        DateTimeOffset.TryParse(utc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var time) ? time : null;
 
     private static bool IsOutOfDate(string? writtenFor, string current) =>
         writtenFor is not null && !string.Equals(writtenFor, current, StringComparison.Ordinal);

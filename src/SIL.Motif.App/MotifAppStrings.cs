@@ -2976,6 +2976,7 @@ public static class MotifAppStrings
 
     public static string RefusalProposalNotFound => Text("MotifApp.RefusalProposalNotFound");
 
+    public static string RefusalProposalCommentInvalid => Text("MotifApp.RefusalProposalCommentInvalid");
     public static string RefusalProposalRationaleEmpty => Text("MotifApp.RefusalProposalRationaleEmpty");
 
     public static string RefusalProposalUnreadable => Text("MotifApp.RefusalProposalUnreadable");

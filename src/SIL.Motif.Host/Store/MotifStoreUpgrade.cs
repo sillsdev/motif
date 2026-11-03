@@ -11,6 +11,7 @@ namespace SIL.Motif.Host.Store;
 public static class MotifStoreUpgrade
 {
     private static readonly string[] Kept = ["Corpora", "CorpusDocuments", "Proposals", "ProposalRevisions",
+        "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
         "Receipts", "AppliedIndex", "NamedSelections", "DefaultSelection", "ParsimonySelection", "ReviewMarks", "ReadOccurrences",
         "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples"];
     private static readonly HashSet<string> Derived = new(StringComparer.Ordinal)
@@ -130,6 +131,7 @@ public static class MotifStoreUpgrade
                 if (carried[table] != Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)}{where};", transaction))
                     throw new InvalidDataException(StoreUpgradeMessages.Format("CountChanged", table));
             }
+            FoldNotesIntoComments(destination, transaction, tables, carried);
             // The word rows are not carried, so every carried summary says its word detail is gone.
             if (carriesSummaries) Execute(destination, "UPDATE main.ProposalDifferences SET WordDetailDroppedUtc = " +
                 "strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE WordDetailDroppedUtc IS NULL;", transaction);
@@ -169,6 +171,20 @@ public static class MotifStoreUpgrade
         {
             if (File.Exists(temporaryReport)) File.Delete(temporaryReport);
         }
+    }
+
+    // A schema 61 Note becomes a Comment by a person with no recorded name; blank Notes are dropped.
+    private static void FoldNotesIntoComments(SqliteConnection destination, SqliteTransaction transaction,
+        HashSet<string> tables, Dictionary<string, long> carried)
+    {
+        if (!tables.Contains("Proposals") || tables.Contains("ProposalComments") ||
+            !Columns(destination, "old", "Proposals", transaction).Contains("Note")) return;
+        var notes = Scalar(destination, "SELECT COUNT(*) FROM old.Proposals WHERE Note IS NOT NULL AND trim(Note) <> '';", transaction);
+        Execute(destination, "INSERT INTO main.ProposalComments (ProposalId, Kind, AuthorLabel, PersonName, Text, IntentDigest, CreatedUtc, EditedUtc) " +
+            "SELECT ProposalId, 'standard', NULL, '', Note, NoteIntentDigest, COALESCE(NoteUpdatedUtc, strftime('%Y-%m-%dT%H:%M:%fZ','now')), NULL " +
+            "FROM old.Proposals WHERE Note IS NOT NULL AND trim(Note) <> '' ORDER BY rowid;", transaction);
+        carried["ProposalComments"] = Scalar(destination, "SELECT COUNT(*) FROM main.ProposalComments;", transaction);
+        if (carried["ProposalComments"] != notes) throw new InvalidDataException(StoreUpgradeMessages.Format("CountChanged", "ProposalComments"));
     }
 
     private static void AddRequiredDefaults(SqliteConnection db, SqliteTransaction transaction, string table,

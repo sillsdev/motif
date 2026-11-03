@@ -303,7 +303,7 @@ public sealed class ProposalRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void TheRationaleAndTheNoteRoundTripEachWithItsOwnDigestAndTime()
+    public void TheRationaleRoundTripsWithItsDigestAndTimeAndTheOldNoteColumnsAreGone()
     {
         var project = new ProjectLocator(Path.Combine(_root, "texts.fwdata"), "texts");
         using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "texts.motif.db"), project,
@@ -314,38 +314,20 @@ public sealed class ProposalRepositoryTests : IDisposable
         repository.Finalize("working", "sha256:one", "{\"proposalId\":\"" + id.Value + "\"}", "a label");
 
         Assert.True(repository.SetRationale(id, "built because"));
-        Assert.True(repository.SetNote(id, "please reconsider"));
 
         var record = repository.Get(id);
         Assert.Equal("built because", record.Rationale);
         Assert.Equal("sha256:one", record.RationaleIntentDigest);
-        Assert.Equal("please reconsider", record.Note);
-        Assert.Equal("sha256:one", record.NoteIntentDigest);
-        Assert.True(DateTimeOffset.Parse(record.NoteUpdatedUtc!) >= DateTimeOffset.Parse(record.RationaleUpdatedUtc!));
-        Assert.True(repository.SetNote(id, null));
-        var cleared = repository.Get(id);
-        Assert.Null(cleared.Note);
-        Assert.Null(cleared.NoteIntentDigest);
-        Assert.Null(cleared.NoteUpdatedUtc);
-    }
-
-    [Fact]
-    public void NeitherTextRecordsWhoWroteIt()
-    {
-        var project = new ProjectLocator(Path.Combine(_root, "columns.fwdata"), "columns");
-        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "columns.motif.db"), project,
-            MotifSchema.CurrentSchema, new Version(1, 0));
+        Assert.NotNull(record.RationaleUpdatedUtc);
         using var connection = database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT name FROM pragma_table_info('Proposals');";
         var columns = new List<string>();
         using (var reader = command.ExecuteReader())
             while (reader.Read()) columns.Add(reader.GetString(0));
-
         Assert.Contains("Rationale", columns);
-        Assert.Contains("Note", columns);
-        Assert.DoesNotContain(columns, column => column.Contains("Author", StringComparison.OrdinalIgnoreCase) ||
-            column.Contains("WrittenBy", StringComparison.OrdinalIgnoreCase) || column == "Comment");
+        Assert.DoesNotContain(columns, column => column.StartsWith("Note", StringComparison.Ordinal) ||
+            column.Contains("Author", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

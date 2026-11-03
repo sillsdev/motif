@@ -52,14 +52,18 @@ public static class CommandTextRenderer
                 sb.AppendLine($"  rationaleOutOfDate:  {ChangesText(rationale.ChangesSince)}");
         }
         else sb.AppendLine("  rationale:           (none)");
-        if (projection.Note is { } note)
+        foreach (var comment in projection.Comments ?? [])
         {
-            sb.AppendLine($"  note:                {note.Markdown}");
-            if (note.OutOfDate)
-                sb.AppendLine($"  noteOutOfDate:       {ChangesText(note.ChangesSince)}");
-            if (projection.NoteChanged)
-                sb.AppendLine("  noteChanged:         the person wrote after the Rationale");
+            var author = comment.AuthorLabel is null
+                ? (comment.PersonName.Length == 0 ? "person" : comment.PersonName)
+                : comment.PersonName.Length == 0 ? comment.AuthorLabel : $"{comment.AuthorLabel} for {comment.PersonName}";
+            var edited = comment.EditedUtc is null ? "" : $", edited {comment.EditedUtc}";
+            sb.AppendLine($"  comment {comment.CommentId}:".PadRight(23) + $"{comment.Markdown} ({author}, {comment.CreatedUtc}{edited})");
+            if (comment.OutOfDate)
+                sb.AppendLine($"  commentOutOfDate:    {ChangesText(comment.ChangesSince)}");
         }
+        if (projection.NoteChanged)
+            sb.AppendLine("  noteChanged:         the person wrote after the Rationale");
         if (projection.DraftName is not null)
             sb.AppendLine($"  draftName:           {projection.DraftName}");
         if (projection.DraftRevision is not null)

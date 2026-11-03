@@ -6270,7 +6270,7 @@
   },
   {
     "name": "motif_set_rationale",
-    "description": "Write a Proposal\u0027s Rationale. Writes or replaces what a Proposal changes and why, in Markdown. The Rationale stays outside the Proposal\u0027s content, so rewriting it never changes what the Proposal does, and it can be rewritten until the Proposal is applied or closed.\nCommand: proposal rationale. Agent class: Draft.\nProposalId: The full id of the Proposal, Draft or finalized, whose Rationale is written.\nText: The Rationale in Markdown: what the Proposal changes and why.",
+    "description": "Write a Proposal\u0027s Rationale. Writes or replaces what a Proposal changes and why, in Markdown. The Rationale stays outside the Proposal\u0027s content, so rewriting it never changes what the Proposal does, and it can be rewritten until the Proposal is applied or closed.\nCommand: proposal rationale. Agent class: Draft.\nProposalId: The full id of the Proposal, Draft or finalized, whose Rationale is written.\nText: The Rationale in Markdown: what the Proposal changes and why.\nAuthorLabel: What an agent calls itself, kept as typed with the revision; null when a person writes.\nPersonName: The person the revision is by or for; null when unknown.",
     "inputSchema": {
       "type": "object",
       "properties": {

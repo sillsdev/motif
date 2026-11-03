@@ -758,7 +758,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var shown = await session.CallAsync("motif_proposals", ("proposal", proposalId));
         var result = shown.GetProperty("result");
         Assert.True(result.GetProperty("noteChanged").GetBoolean());
-        Assert.Equal("Please explain the gloss.", result.GetProperty("note").GetProperty("markdown").GetString());
+        Assert.Equal("Please explain the gloss.", result.GetProperty("comments")[0].GetProperty("markdown").GetString());
         Assert.Contains("left a note", shown.GetProperty("next").GetString(), StringComparison.Ordinal);
 
         var batched = await session.CallAsync("motif_compose_batch", ("draft", "noted-draft"), ("intents", new object[]

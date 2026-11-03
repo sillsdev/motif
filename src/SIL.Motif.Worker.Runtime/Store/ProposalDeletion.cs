@@ -42,7 +42,7 @@ internal static class ProposalDeletion
     }
 
     /// <summary>
-    /// Removes the Reports, Differences, removable Assessments, grammar checks and revisions of a Proposal, or a Draft that
+    /// Removes the Reports, Differences, removable Assessments, grammar checks, revisions, Comments and pictures of a Proposal, or a Draft that
     /// was never finalized, on the caller's transaction, and throws when a result is still kept for another reason.
     /// </summary>
     /// <exception cref="ProposalRetainedByExampleSetException">A phonology Example Set cites the Proposal.</exception>
@@ -66,6 +66,7 @@ internal static class ProposalDeletion
                     "pinned, retained, current, cited by another Proposal's Report, or replaced by a kept result, so it is kept.");
         }
         RefuseIfRetainedByExampleSet(connection, transaction, proposalId);
+        ProposalDiscussionRepository.RemoveAll(connection, transaction, proposalId);
         foreach (var sql in new[] { "DELETE FROM GrammarChecks WHERE ProposalId = $id;",
             "DELETE FROM ProposalRevisions WHERE ProposalId = $id;" })
             Execute(connection, transaction, sql, proposalId);

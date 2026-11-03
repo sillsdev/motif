@@ -84,7 +84,7 @@ public sealed class ProposalRecordMappingTests : IDisposable
         repository.CreateDraft("working", draftId, "{\"proposalId\":\"" + draftId.Value + "\"}");
 
         var manifests = repository.List(new ProposalListFilter())
-            .Select(ProposalRecordMapping.ToManifest)
+            .Select(record => ProposalRecordMapping.ToManifest(record))
             .ToList();
         var projection = ProposalListProjectionBuilder.Build(manifests);
 

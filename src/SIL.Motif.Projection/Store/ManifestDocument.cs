@@ -32,9 +32,9 @@ public sealed class ManifestDocument
     public string? Rationale { get; set; }
     public string? RationaleIntentDigest { get; set; }
     public string? RationaleUpdatedUtc { get; set; }
-    public string? Note { get; set; }
-    public string? NoteIntentDigest { get; set; }
-    public string? NoteUpdatedUtc { get; set; }
+
+    /// <summary>The Comments on the Proposal, oldest first; empty unless the caller loaded them.</summary>
+    public List<ManifestComment> Comments { get; set; } = [];
 
     /// <summary>
     /// The full <c>sha256:</c>-prefixed intent digest this manifest currently points at — a movable
@@ -60,6 +60,11 @@ public sealed class ManifestDocument
     /// </summary>
     public string? SupersededBy { get; set; }
 }
+
+/// <summary>One Comment as the projection reads it; <see cref="AuthorLabel"/> is null when the person wrote it.</summary>
+public sealed record ManifestComment(
+    long CommentId, string Kind, string? AuthorLabel, string PersonName, string Text, string? IntentDigest,
+    string CreatedUtc, string? EditedUtc);
 
 /// <summary>
 /// The five statuses a Proposal can hold. Dependency ("requires another Proposal") is structure, not a
