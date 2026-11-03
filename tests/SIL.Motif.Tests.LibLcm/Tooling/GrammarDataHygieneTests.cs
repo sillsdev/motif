@@ -12,7 +12,12 @@ namespace SIL.Motif.Tests.LibLcm.Tooling;
 
 public sealed class GrammarDataHygieneTests
 {
-    private static readonly TimeSpan ChildProcessCleanupTimeout = TimeSpan.FromSeconds(10);
+    // Hang guards, paid only when something hangs: 30 minutes x MOTIF_TEST_DEADLINE_SCALE, as on a loaded machine.
+    private static readonly TimeSpan ChildProcessTimeout = Wait.Scaled(TimeSpan.FromMinutes(30));
+    private static readonly TimeSpan ChildProcessCleanupTimeout = Wait.Scaled(TimeSpan.FromMinutes(30));
+    private static readonly TimeSpan IoDrainTimeout = Wait.Scaled(TimeSpan.FromMinutes(1));
+    // Elapses in full on a passing run, because the test expects this timeout to kill a child that never exits.
+    private static readonly TimeSpan NonExitingChildTimeout = Wait.Scaled(TimeSpan.FromSeconds(15));
     private const int MaximumChildInputCharacters = 1024 * 1024;
     private const int MaximumCapturedChildOutputCharacters = 64 * 1024;
 
@@ -324,7 +329,7 @@ public sealed class GrammarDataHygieneTests
 
             var adapterHook = Path.Combine(configured, "pre-commit");
             Assert.True((File.GetUnixFileMode(adapterHook) & UnixFileMode.UserExecute) != 0, $"installed adapter mode: {File.GetUnixFileMode(adapterHook)}");
-            var result = await RunProcessAsync("sh", [adapterHook, "first", "second"], temp, "private stdin marker\n", new Dictionary<string, string?> { ["HOOK_TRACE"] = trace }, TimeSpan.FromSeconds(30));
+            var result = await RunProcessAsync("sh", [adapterHook, "first", "second"], temp, "private stdin marker\n", new Dictionary<string, string?> { ["HOOK_TRACE"] = trace }, ChildProcessTimeout);
             Assert.True(!result.TimedOut && result.ChildExited && result.ExitCode == 0, $"timed out: {result.TimedOut}; exited: {result.ChildExited}; exit: {result.ExitCode}\nstdout: {result.Output}\nstderr: {result.Error}");
             Assert.Equal("first\nsecond\n", File.ReadAllText(trace + ".args"));
             Assert.Equal("private stdin marker\n", File.ReadAllText(trace + ".stdin"));
@@ -343,13 +348,13 @@ public sealed class GrammarDataHygieneTests
         try
         {
             var script = "$stdinText = [Console]::In.ReadToEnd(); [Console]::Out.WriteLine('child-ready:' + $stdinText.Trim()); [Console]::Error.WriteLine('child-error-ready'); [System.Threading.ManualResetEventSlim]::new($false).Wait()";
-            run = RunProcessAsync("pwsh", ["-NoProfile", "-Command", script], temp, "private input marker\n", new Dictionary<string, string?>(), TimeSpan.FromSeconds(3), process =>
+            run = RunProcessAsync("pwsh", ["-NoProfile", "-Command", script], temp, "private input marker\n", new Dictionary<string, string?>(), NonExitingChildTimeout, process =>
             {
                 child = process;
                 childId = process.Id;
                 childStartedAtUtcTicks = process.StartTime.ToUniversalTime().Ticks;
             });
-            var result = await run.WaitAsync(TimeSpan.FromSeconds(30));
+            var result = await run.WaitAsync(ChildProcessTimeout + NonExitingChildTimeout);
             Assert.True(result.TimedOut, $"non-exiting child was not timed out; exit: {result.ExitCode}\nstdout: {result.Output}\nstderr: {result.Error}");
             Assert.True(result.ChildExited, $"timed-out child was not reaped; stdout: {result.Output}\nstderr: {result.Error}");
             Assert.Contains("child-ready:private input marker", result.Output);
@@ -482,7 +487,7 @@ public sealed class GrammarDataHygieneTests
     private static async Task<bool> NativeExecutableAccessAsync(string path, string cwd)
     {
         var result = await RunProcessAsync("sh", ["-c", "test -x \"$1\"", "motif-hook-access", path], cwd, "",
-            new Dictionary<string, string?>(), TimeSpan.FromSeconds(10));
+            new Dictionary<string, string?>(), ChildProcessTimeout);
         Assert.True(!result.TimedOut && result.ChildExited && result.ExitCode is 0 or 1,
             $"native executable check failed; timed out: {result.TimedOut}; exited: {result.ChildExited}; exit: {result.ExitCode}\nstdout: {result.Output}\nstderr: {result.Error}");
         return result.ExitCode == 0;
@@ -546,7 +551,7 @@ public sealed class GrammarDataHygieneTests
                 process.StandardOutput.Dispose();
                 process.StandardError.Dispose();
                 process.StandardInput.Dispose();
-                try { await Task.WhenAll(inputTask, outputTask, errorTask).WaitAsync(TimeSpan.FromSeconds(1)); }
+                try { await Task.WhenAll(inputTask, outputTask, errorTask).WaitAsync(IoDrainTimeout); }
                 catch (Exception) { }
                 var output = CompletedOutputOrDiagnostic(outputTask, "stdout");
                 var error = CompletedOutputOrDiagnostic(errorTask, "stderr");
@@ -561,7 +566,7 @@ public sealed class GrammarDataHygieneTests
                 process.StandardOutput.Dispose();
                 process.StandardError.Dispose();
                 process.StandardInput.Dispose();
-                try { await Task.WhenAll(inputTask, outputTask, errorTask).WaitAsync(TimeSpan.FromSeconds(1)); }
+                try { await Task.WhenAll(inputTask, outputTask, errorTask).WaitAsync(IoDrainTimeout); }
                 catch (Exception) { }
             }
             catch (Exception exception) { processIoError ??= exception.GetBaseException(); }
