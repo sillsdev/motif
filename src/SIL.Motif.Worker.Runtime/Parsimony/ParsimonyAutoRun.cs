@@ -57,7 +57,7 @@ public sealed record ParsimonyAutoInputs(string ProposalId, string Baseline, str
         catch (JsonException) { return null; }
     }
 
-    private static string Digest(string text) =>
+    internal static string Digest(string text) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16];
 }
 
@@ -99,6 +99,46 @@ public static class ParsimonyAutoRun
             ParsimonyCandidateEvidenceBuilder.JobKind, JobParserPin.Copy(trial.InputJson, input),
             DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture));
         return created.JobId;
+    }
+
+    internal const string BaselineBundleNotePrefix = "baseline-bundle:";
+
+    /// <summary>
+    /// How long the prebuild waits, so a Trial queued while the owner reads the Dry Run is never behind it in the
+    /// one-job PanGloss queue.
+    /// </summary>
+    internal static readonly TimeSpan BaselineBundleDelay = TimeSpan.FromSeconds(30);
+
+    /// <summary>The note that marks, and dedupes, the Baseline-side prebuild of one Baseline token.</summary>
+    internal static string BaselineBundleNote(BaselineToken baseline) =>
+        BaselineBundleNotePrefix + ParsimonyAutoInputs.Digest(EvidenceBundlePipeline.TokenJson(baseline));
+
+    /// <summary>
+    /// Queues, once per Baseline token, the Baseline-side bundle in the automatic job's own scope (project-approved)
+    /// and measure set (the Grammar group), so the first Proposal's automatic job finds a reusable before side
+    /// (the same reuse a later Proposal already gets). Called when a Dry Run starts, ahead of the Trial.
+    /// </summary>
+    /// <param name="database">The project's store.</param>
+    /// <param name="projectKey">The project's workspace key.</param>
+    /// <param name="baseline">The current published Baseline.</param>
+    /// <param name="parserPath">The PanGloss executable the job is pinned to.</param>
+    /// <returns>The new job's id, or null when one for this token already exists or is not needed.</returns>
+    public static string? EnqueueBaselineBundle(MotifDatabase database, string projectKey, BaselineToken baseline,
+        string? parserPath)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        ArgumentNullException.ThrowIfNull(baseline);
+        if (parserPath is null) return null;
+        var note = BaselineBundleNote(baseline);
+        var jobs = new JobRepository(database);
+        var ids = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
+        var input = JsonSerializer.Serialize(new ParsimonyJobInput(ids[0],
+            new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null), null, ids, note),
+            SIL.Motif.Contract.MotifJson.CreateOptions());
+        var created = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        return jobs.CreateOncePerNote(new JobRecord(CanonicalId.Mint("job/").Value, projectKey,
+            ParsimonyJobHandler.JobKind, JobStatus.Queued, 1, JobParserPin.Stamp(input, parserPath), null, created,
+            created, null, null), note, BaselineBundleDelay)?.JobId;
     }
 
     /// <summary>

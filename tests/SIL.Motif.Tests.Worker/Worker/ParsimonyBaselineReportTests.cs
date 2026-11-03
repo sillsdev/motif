@@ -114,6 +114,47 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
+    public async Task AWholeTableReadIsKeptForOneSessionAndNotSharedWithTheNext()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var job = CreateJob("P-allo-duplicate-form", new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "session-cache-worker"), ParserPath = parserPath }, invoker);
+        var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        using var result = JsonDocument.Parse(outcome.ResultJson!);
+        var bundle = new ParsimonyBundleRepository(_database).Get(result.RootElement.GetProperty("bundleId").GetString()!)!;
+        const string entry = "50000000-0000-0000-0000-000000000001";
+        ExecuteFactsSql(bundle.GrammarFactsPath,
+            "INSERT INTO writing_system(tag) VALUES ('qaa');",
+            $"INSERT INTO lex_entry(guid, source_ordinal, lexeme_morph_type) VALUES ('{entry}', 0, 'stem');",
+            $"INSERT INTO allomorph(guid, entry_guid, ordinal, morph_type, form_class, is_abstract) VALUES ('50000000-0000-0000-0000-000000000002', '{entry}', 0, 'stem', 'stem', 0);",
+            "INSERT INTO allomorph_form(allomorph_guid, ordinal, writing_system, form) VALUES ('50000000-0000-0000-0000-000000000002', 0, 'qaa', 'alpha');",
+            "UPDATE artifact_section SET status='complete', reason_code=NULL WHERE section IN ('allomorphs', 'environments');");
+        var inputs = new ParsimonyReportInputs(bundle.BundleId, _token, "baseline", null, bundle.ModelFingerprint,
+            new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion, Sha256Of(bundle.GrammarFactsPath)),
+            new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion, bundle.EvidenceSha256),
+            null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
+
+        IReadOnlyList<AllomorphMeasureFact> first;
+        using (var session = new ParsimonyQuerySession(bundle.GrammarFactsPath, bundle.EvidencePath, inputs))
+        {
+            first = session.ReadAllomorphsForMeasure();
+            var one = Assert.Single(first);
+            Assert.Same(first, session.ReadAllomorphsForMeasure());
+            Assert.Same(session.ReadAdhocProhibitions(), session.ReadAdhocProhibitions());
+            Assert.Equal(one.Guid, session.ReadAllomorphContext(one.Guid)!.AllomorphGuid);
+            Assert.Same(first, session.ReadAllomorphsForMeasure());
+        }
+        using var next = new ParsimonyQuerySession(bundle.GrammarFactsPath, bundle.EvidencePath, inputs);
+        var again = next.ReadAllomorphsForMeasure();
+        Assert.NotSame(first, again);
+        Assert.Equal(first.Select(item => item.Guid), again.Select(item => item.Guid));
+    }
+
+    [Fact]
     public void AlternationBoundaryNormalizationUsesIdentityInsteadOfMarkerName()
     {
         var word = ParsimonyQuerySession.NormalizeBoundaryReference("boundary",

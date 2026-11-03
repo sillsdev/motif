@@ -86,6 +86,11 @@ public sealed class ParsimonyJobHandler
             return Failure(JobFailureCategory.Semantic,
                 "No Baseline is recorded. Capture a Baseline before requesting a Parsimony report.");
         var baseline = current.Baseline;
+        // A prebuild for a Baseline that has since been replaced would only serve a token nothing will ask for.
+        if (input.Note is { } note && note.StartsWith(ParsimonyAutoRun.BaselineBundleNotePrefix, StringComparison.Ordinal) &&
+            note != ParsimonyAutoRun.BaselineBundleNote(baseline.Token))
+            return new JobOutcome(JobStatus.Completed,
+                ResultJson: JsonSerializer.Serialize(new { skipped = "stale-baseline" }));
         var root = Path.GetFullPath(baseline.RootDirectory);
         if (!Directory.Exists(root) || !File.Exists(baseline.FwDataPath))
             return Failure(JobFailureCategory.Infrastructure,

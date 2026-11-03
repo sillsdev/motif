@@ -166,6 +166,13 @@ public sealed partial class ParsimonyQuerySession : IDisposable
     public IReadOnlyList<AdhocProhibitionFact> ReadAdhocProhibitions()
     {
         RequireSections("adhoc_prohibitions");
+        return _adhocProhibitions ??= ReadAdhocProhibitionsUncached();
+    }
+
+    private IReadOnlyList<AdhocProhibitionFact>? _adhocProhibitions;
+
+    private IReadOnlyList<AdhocProhibitionFact> ReadAdhocProhibitionsUncached()
+    {
         var rows = new Dictionary<string, ProhibitionBuilder>(StringComparer.Ordinal);
         using (var command = NewCommand())
         {

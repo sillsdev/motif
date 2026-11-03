@@ -55,8 +55,16 @@ public sealed class JobClaims : IJobClaimProtocol
         _parserKey = parserKey;
     }
 
-    /// <summary>Candidate Parsimony waits behind every other kind, so a parse never queues behind it.</summary>
-    internal const string ClaimOrder = "(Kind = 'parsimony-candidate'), QueueOrder, JobId";
+    /// <summary>
+    /// Candidate Parsimony waits behind every other kind, so a parse never queues behind it. The Baseline-side
+    /// prebuild comes just before it, behind every Trial, so a Trial queued later never waits for a prebuild.
+    /// </summary>
+    internal const string ClaimOrder =
+        "(CASE WHEN Kind = 'parsimony-candidate' THEN 2 " +
+        "WHEN Kind = '" + SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind + "' AND " +
+        "json_extract(InputJson, '$.note') LIKE '" + SIL.Motif.Worker.Parsimony.ParsimonyAutoRun.BaselineBundleNotePrefix +
+        "%' THEN 1 ELSE 0 END), " +
+        "QueueOrder, JobId";
 
     /// <summary>Reads the identity and position of one project's next claimable row, without claiming it.</summary>
     /// <remarks>
@@ -109,7 +117,7 @@ public sealed class JobClaims : IJobClaimProtocol
             claim.Transaction = transaction;
             claim.CommandText =
                 "UPDATE Jobs SET Status = 'running', OwnerId = $owner, ClaimToken = $token, " +
-                "LeaseUntilUtc = $until, HeartbeatUtc = $now, " +
+                "LeaseUntilUtc = $until, HeartbeatUtc = $now, NotBeforeUtc = NULL, " +
                 "UpdatedUtc = MAX(CreatedUtc, UpdatedUtc, $now), Version = Version + 1, " +
                 "Attempt = Attempt + CASE WHEN Status = 'running' THEN 1 ELSE 0 END " +
                 "WHERE JobId = (SELECT JobId FROM Jobs WHERE ProjectKey = $project AND ArchivedUtc IS NULL " +

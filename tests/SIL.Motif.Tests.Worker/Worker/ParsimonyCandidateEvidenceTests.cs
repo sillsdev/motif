@@ -310,7 +310,8 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         Func<PanGlossInvoker, string, IPanGlossInvoker> wrapInvoker, string? proposalText = null,
         Func<JobRecord, string, JobRecord>? sourceOf = null, bool baselineReportFirst = false,
         IReadOnlyList<string>? groupMeasureIds = null, string? existingParserPath = null,
-        ParsimonyScopeBinding? candidateScope = null, SIL.Motif.Contract.Retirement.RetirementExpectationTranslation? translation = null)
+        ParsimonyScopeBinding? candidateScope = null, SIL.Motif.Contract.Retirement.RetirementExpectationTranslation? translation = null,
+        bool serialSides = false, bool baselineFromAutomaticRun = false)
     {
         var proposalJson = proposalText ?? DisableProhibitionProposal(_prohibitionGuid);
         var source = new DryRunSourceBinding(_token, _publishedRoot, _publishedFwDataPath,
@@ -347,7 +348,8 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         }
         using var invoker = new PanGlossInvoker(parserPath);
         var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
-        if (baselineReportFirst) await RunBaselineReportAsync(invoker, parserPath, scope, groupMeasureIds);
+        if (baselineFromAutomaticRun) await RunQueuedBaselineBundleAsync(invoker, parserPath);
+        else if (baselineReportFirst) await RunBaselineReportAsync(invoker, parserPath, scope, groupMeasureIds);
         scope = candidateScope ?? scope;
         _invocationsBeforeCandidate = FakeParser.Invocations(parserPath).Count;
         var sourceJob = sourceOf is null ? dryRunJob : sourceOf(_jobs.Get(dryRunJob.JobId)!, proposalJson);
@@ -363,6 +365,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath },
             wrapInvoker(invoker, parserPath), lanes);
 
+        handler.RunSidesInSequence = serialSides;
         var outcome = await handler.RunAsync(candidateClaim, CancellationToken.None);
         return (outcome, candidateClaim, parserPath);
     }
@@ -434,6 +437,79 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         claim.Transition(outcome.Status, outcome.Category, outcome.ResultJson);
     }
 
+    // Queues the Baseline bundle the way the Dry Run does, and runs that job.
+    private async Task RunQueuedBaselineBundleAsync(PanGlossInvoker invoker, string parserPath)
+    {
+        var queued = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath);
+        Assert.NotNull(queued);
+        Assert.Null(ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath));
+        var claimed = new JobClaims(_database, parserKey: ParserIdentity.KeyOf(parserPath)).Claim(_projectKey,
+            "candidate-evidence-test", AfterTheBaselineBundleDelay, TimeSpan.FromMinutes(5));
+        Assert.Equal(queued, claimed!.JobId);
+        var claim = new ClaimedJob(_jobs, claimed);
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
+        var outcome = await handler.RunAsync(claim, CancellationToken.None);
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        claim.Transition(outcome.Status, outcome.Category, outcome.ResultJson);
+        Assert.Null(ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath));
+    }
+
+    [Fact]
+    public async Task TheFirstCandidateAfterTheQueuedBaselineBundleReusesItsBeforeSide()
+    {
+        var group = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
+
+        var (outcome, claim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            groupMeasureIds: group, baselineFromAutomaticRun: true);
+
+        var completed = Assert.IsType<JobOutcome>(outcome);
+        Assert.True(completed.Status == JobStatus.Completed, completed.ResultJson);
+        claim.Transition(completed.Status, completed.Category, completed.ResultJson);
+        Assert.Equal(["import", "facts"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate));
+        var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
+            SIL.Motif.Contract.MotifJson.CreateOptions())!;
+        Assert.Equal(group.Skip(1), response.MoreMeasures!.Select(item => item.MeasureId));
+        Assert.DoesNotContain(response.StageTimings!, timing => timing is { Stage: "facts", Side: "baseline" });
+    }
+
+    [Fact]
+    public void ABaselineBundleIsQueuedAgainOnlyForANewBaselineToken()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
+        Assert.NotNull(ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath));
+        Assert.Null(ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath));
+        var next = new BaselineToken(_token.ProjectIdentity, "sha256:" + new string('3', 64), _token.ProjectionVersion,
+            _token.CapturedUtc, "sha256:" + new string('4', 64));
+        Assert.NotNull(ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, next, parserPath));
+    }
+
+    [Fact]
+    public async Task SidesBuiltAtTheSameTimeWriteTheSameReportsAsSidesBuiltInSequence()
+    {
+        var group = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
+        var proposal = DisableProhibitionProposal(_prohibitionGuid);
+        var (parallelOutcome, parallelClaim, parserPath) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal, groupMeasureIds: group);
+        var parallel = Assert.IsType<JobOutcome>(parallelOutcome);
+        Assert.True(parallel.Status == JobStatus.Completed, parallel.ResultJson);
+        parallelClaim.Transition(parallel.Status, parallel.Category, parallel.ResultJson);
+        AssertBothSidesBuilt(CandidateCommands(parserPath));
+
+        // A changed executable keeps the stored before side from being reused, so the second run builds both again.
+        using (var stream = new FileStream(parserPath, FileMode.Append, FileAccess.Write)) stream.WriteByte(0);
+        var (serialOutcome, serialClaim, _) = await RunCandidateAsync((invoker, _) => invoker,
+            proposalText: proposal, groupMeasureIds: group, existingParserPath: parserPath, serialSides: true);
+        var serial = Assert.IsType<JobOutcome>(serialOutcome);
+        Assert.True(serial.Status == JobStatus.Completed, serial.ResultJson);
+        serialClaim.Transition(serial.Status, serial.Category, serial.ResultJson);
+        Assert.Equal(["import", "facts", "import", "facts"], CandidateCommands(parserPath));
+
+        static string Normal(string answer) => System.Text.RegularExpressions.Regex.Replace(answer,
+            "parsimony-bundle-[0-9a-f]{32}", "bundle");
+        Assert.Equal(Normal(Answer(parallel.ResultJson!)), Normal(Answer(serial.ResultJson!)));
+    }
+
     [Fact]
     public async Task TheCandidateReusesTheStoredBaselineSideAndParsesOnlyTheCandidate()
     {
@@ -457,7 +533,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         var (outcome, _, parserPath) = await RunCandidateAsync((invoker, _) => invoker);
 
         Assert.Equal(JobStatus.Completed, Assert.IsType<JobOutcome>(outcome).Status);
-        Assert.Equal(["import", "facts", "import", "facts"], FakeParser.Invocations(parserPath)
+        AssertBothSidesBuilt(FakeParser.Invocations(parserPath)
             .Skip(_invocationsBeforeCandidate).Where(command => command != "describe"));
     }
 
@@ -471,7 +547,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         var first = Assert.IsType<JobOutcome>(firstOutcome);
         Assert.True(first.Status == JobStatus.Completed, first.ResultJson);
         firstClaim.Transition(first.Status, first.Category, first.ResultJson);
-        Assert.Equal(["import", "facts", "import", "facts"], FakeParser.Invocations(parserPath)
+        AssertBothSidesBuilt(FakeParser.Invocations(parserPath)
             .Skip(_invocationsBeforeCandidate).Where(command => command != "describe"));
 
         var (secondOutcome, secondClaim, _) = await RunCandidateAsync((invoker, _) => invoker,
@@ -499,11 +575,154 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             existingParserPath: parserPath);
 
         Assert.Equal(JobStatus.Completed, Assert.IsType<JobOutcome>(secondOutcome).Status);
-        Assert.Equal(["import", "facts", "import", "facts"], FakeParser.Invocations(parserPath)
+        AssertBothSidesBuilt(FakeParser.Invocations(parserPath)
             .Skip(_invocationsBeforeCandidate).Where(command => command != "describe"));
     }
 
-    private static readonly string[] BothSidesBuilt = ["import", "facts", "import", "facts"];
+    // The two sides run at once, so only the multiset of commands is fixed, not their interleaving.
+    [Fact]
+    public void ATrialQueuedAfterABaselineBundleIsClaimedBeforeIt()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
+        var prebuild = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath)!;
+        var trial = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey, TrialJobHandler.TrialKind, "{}",
+            "2026-10-07T00:00:05Z").JobId;
+        var candidate = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey,
+            ParsimonyCandidateEvidenceBuilder.JobKind, "{}", "2026-10-07T00:00:00Z").JobId;
+        var claims = new JobClaims(_database, parserKey: ParserIdentity.KeyOf(parserPath));
+        var order = new List<string>();
+        for (var step = 0; step < 3; step++)
+        {
+            var head = claims.PeekHead(_projectKey, AfterTheBaselineBundleDelay)!.Value;
+            order.Add(head.JobId);
+            Assert.NotNull(claims.Claim(_projectKey, "owner", AfterTheBaselineBundleDelay, TimeSpan.FromMinutes(5)));
+        }
+
+        Assert.Equal([trial, prebuild, candidate], order);
+    }
+
+    private static string AfterTheBaselineBundleDelay =>
+        JobTimestamp.FormatUtc(DateTimeOffset.UtcNow + ParsimonyAutoRun.BaselineBundleDelay + TimeSpan.FromMinutes(1));
+
+    [Fact]
+    public void ATrialQueuedWithinTheBaselineBundleDelayIsClaimedBeforeIt()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
+        var prebuild = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath)!;
+        var trial = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey, TrialJobHandler.TrialKind, "{}",
+            JobTimestamp.FormatUtc(DateTimeOffset.UtcNow)).JobId;
+        var claims = new JobClaims(_database, parserKey: ParserIdentity.KeyOf(parserPath));
+        var soon = JobTimestamp.FormatUtc(DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5));
+
+        var first = claims.Claim(_projectKey, "owner", soon, TimeSpan.FromMinutes(5));
+
+        Assert.Equal(trial, first!.JobId);
+        Assert.Null(claims.PeekHead(_projectKey, soon));
+        Assert.Equal(prebuild, claims.PeekHead(_projectKey, AfterTheBaselineBundleDelay)!.Value.JobId);
+    }
+
+    [Fact]
+    public async Task ADryRunQueuesTheBaselineBundleExactlyOnce()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
+        var dryRuns = 0;
+        var handler = ProjectJobHandlers.WithBaselineBundlePrebuild(
+            (_, _) => { dryRuns++; return Task.FromResult<JobOutcome?>(null); },
+            () => _ = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath));
+
+        await handler(null!, CancellationToken.None);
+        await handler(null!, CancellationToken.None);
+
+        Assert.Equal(2, dryRuns);
+        using var connection = _database.OpenConnection();
+        using var count = connection.CreateCommand();
+        count.CommandText = "SELECT COUNT(*) FROM Jobs WHERE Kind = $kind AND json_extract(InputJson, '$.note') = $note;";
+        count.Parameters.AddWithValue("$kind", ParsimonyJobHandler.JobKind);
+        count.Parameters.AddWithValue("$note", ParsimonyAutoRun.BaselineBundleNote(_token));
+        Assert.Equal(1L, count.ExecuteScalar());
+    }
+
+    [Fact]
+    public async Task AFailingBaselineBundleEnqueueDoesNotFailTheDryRun()
+    {
+        var expected = new JobOutcome(JobStatus.Completed);
+        foreach (Exception failure in new Exception[]
+                 { new InvalidOperationException("x"), new IOException("x"), new Microsoft.Data.Sqlite.SqliteException("x", 5) })
+        {
+            var handler = ProjectJobHandlers.WithBaselineBundlePrebuild(
+                (_, _) => Task.FromResult<JobOutcome?>(expected), () => throw failure);
+
+            Assert.Same(expected, await handler(null!, CancellationToken.None));
+        }
+    }
+
+    [Fact]
+    public async Task ABaselineBundleForAReplacedBaselineIsSkippedWhenItRuns()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
+        var other = new BaselineToken(_token.ProjectIdentity, "sha256:" + new string('5', 64), _token.ProjectionVersion,
+            _token.CapturedUtc, "sha256:" + new string('6', 64));
+        var jobId = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, other, parserPath)!;
+        var claimed = new JobClaims(_database, parserKey: ParserIdentity.KeyOf(parserPath)).Claim(_projectKey,
+            "candidate-evidence-test", AfterTheBaselineBundleDelay, TimeSpan.FromMinutes(5));
+        Assert.Equal(jobId, claimed!.JobId);
+        using var invoker = new PanGlossInvoker(parserPath);
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
+
+        var outcome = await handler.RunAsync(new ClaimedJob(_jobs, claimed), CancellationToken.None);
+
+        Assert.Equal(JobStatus.Completed, outcome!.Status);
+        Assert.Contains("stale-baseline", outcome.ResultJson, StringComparison.Ordinal);
+        Assert.Empty(FakeParser.Invocations(parserPath));
+    }
+
+    public static TheoryData<string, bool> SideFailures => new()
+    {
+        { "baseline-refused", false }, { "baseline-cancelled", false }, { "candidate-refused", false },
+        { "baseline-refused", true }, { "baseline-cancelled", true }, { "candidate-refused", true },
+    };
+
+    [Theory]
+    [MemberData(nameof(SideFailures))]
+    public async Task AFailedOrCancelledSideEndsTheJobAsInSequenceAndLeavesNothingBehind(string failure, bool _)
+    {
+        var unobserved = new List<string>();
+        // The event is process-wide, so only this test's own failures count.
+        void Watch(object? sender, UnobservedTaskExceptionEventArgs args)
+        {
+            var text = args.Exception.ToString();
+            if (text.Contains("boom", StringComparison.Ordinal) || text.Contains(nameof(CandidateEvidenceBuilder), StringComparison.Ordinal))
+                lock (unobserved) unobserved.Add(text);
+        }
+        TaskScheduler.UnobservedTaskException += Watch;
+        try
+        {
+            var (concurrent, _, _) = await RunCandidateAsync((invoker, _) => new SideFailingInvoker(invoker, failure));
+            for (var i = 0; i < 3; i++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+            var (serial, _, _) = await RunCandidateAsync((invoker, _) => new SideFailingInvoker(invoker, failure),
+                serialSides: true);
+
+            Assert.NotEqual(JobStatus.Completed, concurrent!.Status);
+            Assert.Equal(serial!.Status, concurrent.Status);
+            Assert.Equal(serial.Category, concurrent.Category);
+            Assert.Equal(serial.ResultJson, concurrent.ResultJson);
+            Assert.Empty(new EvidenceArtifactPublisher(Path.Combine(_root, "worker"), _projectKey)
+                .ListWorkingDirectories());
+            Assert.True(unobserved.Count == 0, string.Join("\n", unobserved));
+        }
+        finally
+        {
+            TaskScheduler.UnobservedTaskException -= Watch;
+        }
+    }
+
+    private static void AssertBothSidesBuilt(IEnumerable<string> commands) =>
+        Assert.Equal(["facts", "facts", "import", "import"], commands.Order(StringComparer.Ordinal));
 
     private string[] CandidateCommands(string parserPath) => [.. FakeParser.Invocations(parserPath)
         .Skip(_invocationsBeforeCandidate).Where(command => command != "describe")];
@@ -523,7 +742,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             candidateScope: new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.DefaultSelection, selection));
 
         Assert.True(Assert.IsType<JobOutcome>(secondOutcome).Status == JobStatus.Completed);
-        Assert.Equal(BothSidesBuilt, CandidateCommands(parserPath));
+        AssertBothSidesBuilt(CandidateCommands(parserPath));
     }
 
     [Fact]
@@ -561,7 +780,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             existingParserPath: parserPath);
 
         Assert.True(Assert.IsType<JobOutcome>(secondOutcome).Status == JobStatus.Completed);
-        Assert.Equal(BothSidesBuilt, CandidateCommands(parserPath));
+        AssertBothSidesBuilt(CandidateCommands(parserPath));
     }
 
     [Fact]
@@ -589,7 +808,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
 
         var second = Assert.IsType<JobOutcome>(secondOutcome);
         Assert.True(second.Status == JobStatus.Completed, second.ResultJson);
-        Assert.Equal(BothSidesBuilt, CandidateCommands(parserPath));
+        AssertBothSidesBuilt(CandidateCommands(parserPath));
     }
 
     private static readonly HashSet<string> PerRun = new(
@@ -629,6 +848,24 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             }
             else if (item is System.Text.Json.Nodes.JsonArray list)
                 foreach (var child in list) Strip(child);
+        }
+    }
+
+    /// <summary>Fails or cancels the facts run for one side of the comparison.</summary>
+    private sealed class SideFailingInvoker(PanGlossInvoker inner, string failure) : IPanGlossInvoker
+    {
+        public Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
+            CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
+        {
+            if (request is PanGlossRequest.Facts facts)
+            {
+                var baseline = facts.ContextJson.Contains("\"inputKind\":\"baseline\"", StringComparison.Ordinal);
+                if (failure == "baseline-refused" && baseline || failure == "candidate-refused" && !baseline)
+                    return Task.FromResult<PanGlossOutcome>(new PanGlossOutcome.Refused(1, "boom", "", "boom"));
+                if (failure == "baseline-cancelled" && baseline)
+                    return Task.FromResult<PanGlossOutcome>(new PanGlossOutcome.Cancelled());
+            }
+            return inner.RunAsync(request, label, cancellationToken, wallClockCap);
         }
     }
 

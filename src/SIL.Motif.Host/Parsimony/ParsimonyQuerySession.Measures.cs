@@ -9,6 +9,15 @@ public sealed partial class ParsimonyQuerySession
     public IReadOnlyList<AllomorphMeasureFact> ReadAllomorphsForMeasure()
     {
         RequireSections("allomorphs", "environments");
+        return _allomorphsForMeasure ??= ReadAllomorphsForMeasureUncached();
+    }
+
+    // The session reads one immutable pair of files, so the table is read once and dies with the session.
+    private IReadOnlyList<AllomorphMeasureFact>? _allomorphsForMeasure;
+    private Dictionary<string, AllomorphMeasureFact>? _allomorphsByGuid;
+
+    private IReadOnlyList<AllomorphMeasureFact> ReadAllomorphsForMeasureUncached()
+    {
         var builders = new Dictionary<string, AllomorphMeasureBuilder>(StringComparer.Ordinal);
         using (var command = NewCommand())
         {
@@ -70,11 +79,23 @@ public sealed partial class ParsimonyQuerySession
         RequireSections([.. StatementReferenceSections]);
         if (statementKind is not (null or "environment" or "natural-class"))
             throw new ArgumentException("Statement kind must be 'environment' or 'natural-class'.", nameof(statementKind));
+        if (_statementUsage.TryGetValue(statementKind ?? "", out var cached)) return cached;
         var rows = new List<ParsimonyStatementUsageViewRow>();
         if (statementKind is null or "environment") ReadStatementUsageFor(rows, "environment");
         if (statementKind is null or "natural-class") ReadStatementUsageFor(rows, "natural-class");
-        return Array.AsReadOnly(rows.OrderBy(row => row.StatementKind, StringComparer.Ordinal)
+        return _statementUsage[statementKind ?? ""] = Array.AsReadOnly(rows
+            .OrderBy(row => row.StatementKind, StringComparer.Ordinal)
             .ThenBy(row => row.StatementGuid, StringComparer.Ordinal).ToArray());
+    }
+
+    // At most three entries (all, environment, natural-class); dies with the session.
+    private readonly Dictionary<string, IReadOnlyList<ParsimonyStatementUsageViewRow>> _statementUsage = new();
+
+    private AllomorphMeasureFact? FindAllomorphForMeasure(string guid)
+    {
+        _allomorphsByGuid ??= ReadAllomorphsForMeasure().GroupBy(item => item.Guid, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        return _allomorphsByGuid.GetValueOrDefault(guid);
     }
 
     /// <summary>Reads one allomorph and its approved analyses through the connection-local view.</summary>
@@ -82,7 +103,7 @@ public sealed partial class ParsimonyQuerySession
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(guid);
         RequireSections("allomorphs", "environments");
-        AllomorphMeasureFact? fact = ReadAllomorphsForMeasure().FirstOrDefault(item => item.Guid == guid);
+        AllomorphMeasureFact? fact = FindAllomorphForMeasure(guid);
         if (fact is null)
         {
             using var command = NewCommand();

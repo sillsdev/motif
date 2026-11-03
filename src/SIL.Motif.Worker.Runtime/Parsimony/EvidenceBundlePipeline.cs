@@ -37,10 +37,16 @@ internal sealed class ParsimonyStages(Action<JobStageProgress> publish, int step
     /// <returns>The same stage payload published to the job row.</returns>
     public JobStageProgress Enter(string stage, string? detail = null)
     {
-        Current = new JobStageProgress(stage, ++_step, Math.Max(steps, _step), detail);
-        publish(Current);
-        return Current;
+        // The two sides of a candidate job enter stages from different threads.
+        lock (_gate)
+        {
+            Current = new JobStageProgress(stage, ++_step, Math.Max(steps, _step), detail);
+            publish(Current);
+            return Current;
+        }
     }
+
+    private readonly object _gate = new();
 
     /// <summary>Steps of a fresh Baseline build that runs <paramref name="measures"/> measures.</summary>
     public static int FreshSteps(int measures) => 8 + measures;

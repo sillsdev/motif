@@ -31,6 +31,20 @@ public static class ProjectJobHandlers
     /// <summary>The job kind that measures a Parsimony Report from the current Baseline.</summary>
     public const string ParsimonyKind = ParsimonyJobHandler.JobKind;
 
+    /// <summary>
+    /// Queues the Baseline-side prebuild the automatic Parsimony job will reuse while the owner reads the Dry Run,
+    /// then runs the Dry Run. The queueing is advisory: a store or file error never fails the Dry Run, and the
+    /// automatic job builds its own Baseline side when none is stored.
+    /// </summary>
+    internal static JobRunnerLoop.Handler WithBaselineBundlePrebuild(JobRunnerLoop.Handler dryRun, Action enqueue) =>
+        (job, token) =>
+        {
+            try { enqueue(); }
+            catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
+                                                  InvalidOperationException) { }
+            return dryRun(job, token);
+        };
+
     /// <summary>Builds the loop that claims and runs one project's queued jobs.</summary>
     /// <param name="database">The project's opened Motif store.</param>
     /// <param name="baselines">The store's Baseline repository.</param>
@@ -75,7 +89,11 @@ public static class ProjectJobHandlers
         var handlers = new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal)
         {
             [BaselineRefreshKind] = (_, token) => refresh.RunAsync(project, token),
-            [DryRunKind] = (job, token) => dryRun.RunAsync(job, project, token),
+            [DryRunKind] = WithBaselineBundlePrebuild((job, token) => dryRun.RunAsync(job, project, token), () =>
+            {
+                if (baselines.GetCurrentPublished(workspaceKey)?.Token is { } current)
+                    _ = ParsimonyAutoRun.EnqueueBaselineBundle(database, workspaceKey, current, options.ParserPath);
+            }),
             [ParsimonyKind] = (job, token) => new ParsimonyJobHandler(database, baselines, workspaceKey,
                 project, options, invoker).RunAsync(job, token),
             [PhonologyCheckJobHandler.JobKind] = (job, token) =>

@@ -61,6 +61,54 @@ public sealed class JobRepository
         }
     }
 
+    /// <summary>
+    /// Queues a job unless one of the same kind and <c>$.note</c> is already waiting, running or done; the check and
+    /// the insert share one transaction, so two callers cannot both queue it.
+    /// </summary>
+    /// <param name="requested">The job to queue.</param>
+    /// <param name="note">The note that identifies the job.</param>
+    /// <param name="delay">How long the job waits before it may be claimed, or null for none.</param>
+    /// <returns>The new job, or null when a live one with this note exists.</returns>
+    internal JobRecord? CreateOncePerNote(JobRecord requested, string note, TimeSpan? delay = null)
+    {
+        var record = Normalize(requested);
+        if (delay is { } wait)
+            // The store keeps a not-before only on a queued retry attempt, so a delayed job starts as attempt 2.
+            record = record with
+            {
+                Attempt = 2,
+                NotBeforeUtc = JobTimestamp.FormatUtc(ValidateUtc(record.CreatedUtc, nameof(requested)) + wait),
+            };
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            using (var find = connection.CreateCommand())
+            {
+                find.Transaction = transaction;
+                find.CommandText = "SELECT 1 FROM Jobs WHERE ProjectKey = $project AND Kind = $kind AND " +
+                    "json_extract(InputJson, '$.note') = $note AND Status NOT IN ('failed', 'cancelled', 'interrupted') " +
+                    "LIMIT 1;";
+                find.Parameters.AddWithValue("$project", record.ProjectKey);
+                find.Parameters.AddWithValue("$kind", record.Kind);
+                find.Parameters.AddWithValue("$note", note);
+                if (find.ExecuteScalar() is not null)
+                {
+                    transaction.Rollback();
+                    return null;
+                }
+            }
+            Insert(connection, transaction, record);
+            transaction.Commit();
+            return record;
+        }
+        catch
+        {
+            try { transaction.Rollback(); } catch (SqliteException) { }
+            throw;
+        }
+    }
+
     public JobRecord Create(string jobId, string projectKey, string kind, string inputJson, string createdUtc,
         string? lineageId = null) => Create(new JobRecord(jobId, projectKey, kind, JobStatus.Queued, 1, inputJson,
             null, createdUtc, createdUtc, null, lineageId));

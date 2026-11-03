@@ -43,17 +43,28 @@ internal sealed class ParsimonyStageTimer
     }
 
     /// <summary>The stages in the order they first ran, then <c>total</c> for the whole job so far.</summary>
-    public IReadOnlyList<ParsimonyStageTiming> Snapshot() =>
-    [
-        .. _order.Select(key => new ParsimonyStageTiming(key.Stage, key.Side, _elapsed[key])),
-        new ParsimonyStageTiming("total", null, Milliseconds(_started)),
-    ];
+    public IReadOnlyList<ParsimonyStageTiming> Snapshot()
+    {
+        lock (_gate)
+            return
+            [
+                .. _order.Select(key => new ParsimonyStageTiming(key.Stage, key.Side, _elapsed[key])),
+                new ParsimonyStageTiming("total", null, Milliseconds(_started)),
+            ];
+    }
+
+    // Two sides may run at once, so the totals are updated under a lock.
+    private readonly object _gate = new();
 
     private void Add(string stage, string? side, long begun)
     {
         var key = (stage, side);
-        if (!_elapsed.TryGetValue(key, out var known)) _order.Add(key);
-        _elapsed[key] = known + Milliseconds(begun);
+        var span = Milliseconds(begun);
+        lock (_gate)
+        {
+            if (!_elapsed.TryGetValue(key, out var known)) _order.Add(key);
+            _elapsed[key] = known + span;
+        }
     }
 
     private long Milliseconds(long begun) =>

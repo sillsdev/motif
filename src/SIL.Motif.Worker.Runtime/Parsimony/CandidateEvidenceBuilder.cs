@@ -72,6 +72,9 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         _retention = new EvidenceRetentionCleaner(_artifacts, WorkspaceOwnership.Bootstrap(options.Root));
     }
 
+    /// <summary>Runs the two sides one after the other; only tests set it.</summary>
+    internal bool RunSidesInSequence { get; set; }
+
     /// <summary>Reconstructs a completed Dry Run on a private copy and stores paired evidence and Reports.</summary>
     public async Task<JobOutcome?> RunAsync(ClaimedJob claim, CancellationToken cancellationToken)
     {
@@ -126,6 +129,9 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         string? afterStaging = null;
         string? beforeFinal = null;
         string? afterFinal = null;
+        Task<BaselineSide>? baselineSide = null;
+        // A candidate-side failure cancels the baseline side instead of waiting out its PanGloss pass.
+        using var sides = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         try
         {
             var assessmentIds = input.AssessmentIds ?? [];
@@ -146,18 +152,17 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 ? timer.Time("baseline-reuse", "baseline", () => TryReuseBaselineSide(claim, claimToken, source.Token,
                     input.ScopeBinding!, measureIds, stages, cancellationToken))
                 : null;
-            var baselineFacts = reused is not null ? null
-                : await BuildFactsAsync(prepared.BaselineProjectPath, source.Token, false, null,
-                    Path.Combine(beforeWorking, "facts"), claim, stages, "baseline", timer, cancellationToken)
-                    .ConfigureAwait(false);
+            var baselineTokenJson = EvidenceBundlePipeline.TokenJson(source.Token);
+            // PanGloss runs one job at a time, so the baseline Report render overlaps the candidate's PanGloss calls.
+            if (reused is null)
+                baselineSide = BuildBaselineSideAsync(prepared, source, baselineTokenJson, parserIdentity,
+                    beforeBundleId, beforeWorking, measureIds, input, claim, stages, timer,
+                    (staging, final) => (beforeStaging, beforeFinal) = (staging, final), sides.Token);
+            // Tests run the sides one after the other to prove both orders write the same Reports.
+            if (RunSidesInSequence && baselineSide is not null) await baselineSide.ConfigureAwait(false);
             var candidateFacts = await BuildFactsAsync(prepared.CandidateProjectPath, source.Token, true,
                 prepared.DryRun.EffectDigest, Path.Combine(afterWorking, "facts"), claim, stages, "candidate",
-                timer, cancellationToken)
-                .ConfigureAwait(false);
-            var beforeSchema = baselineFacts?.SchemaVersion ?? reused!.Bundle.GrammarFactsSchemaVersion;
-            if (_pipeline.ParserIdentity(fresh: true) != parserBefore || beforeSchema != candidateFacts.SchemaVersion)
-                return Failure(JobFailureCategory.Semantic,
-                    "PanGloss changed during the comparison; rerun the candidate evidence job.");
+                timer, cancellationToken).ConfigureAwait(false);
 
             var judgmentDigest = CombineJudgmentDigests(prepared.BaselineJudgments, prepared.CandidateJudgments);
             var candidateIdentity = ComputeCandidateIdentity(dryRunInput.Proposal, prepared.Prerequisites,
@@ -166,13 +171,6 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 parserIdentity, candidateFacts.SchemaVersion, EvidenceSchema.Version, input.ScopeBinding!,
                 judgmentDigest, input.RetirementExpectationTranslation?.MappingDigest,
                 measureIds.Count > 1 ? measureIds : null);
-            var baselineTokenJson = EvidenceBundlePipeline.TokenJson(source.Token);
-            ParsimonyArtifactDigest? beforeEvidence = null;
-            var beforeEvidencePath = Path.Combine(beforeWorking, "evidence.sqlite");
-            if (baselineFacts is not null)
-                beforeEvidence = timer.Time("evidence", "baseline", () => EvidenceWriter.Write(beforeEvidencePath,
-                    prepared.BaselineEvidence, baselineTokenJson, source.Token.BundleDigest,
-                    baselineFacts!.ModelFingerprint));
             ParserOverlayProjection parserOverlay;
             IReadOnlyList<ReportableAssessment> reportableAssessments;
             try
@@ -199,21 +197,21 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 "candidate", source.Token, candidateFacts.ModelFingerprint, parserIdentity,
                 candidateFacts.SchemaVersion, afterEvidence.SchemaVersion, input.ScopeBinding!, [],
                 candidateIdentity);
-            PreparedEvidenceBundle? before = null;
-            if (baselineFacts is not null)
-            {
-                var beforeMaterial = EvidenceBundlePipeline.MaterialKey(EvidenceBundlePipeline.ComparisonOrigin,
-                    "baseline", source.Token, baselineFacts.ModelFingerprint, parserIdentity,
-                    baselineFacts.SchemaVersion, beforeEvidence!.SchemaVersion, input.ScopeBinding!, [], null);
-                before = timer.Time("report", "baseline", () => PrepareReport(beforeBundleId, beforeMaterial, source,
-                    baselineFacts!, beforeEvidence!, beforeEvidencePath, input.ScopeBinding!, measureIds, "baseline",
-                    null, [], [], input.RetirementExpectationTranslation,
-                    (staging, final) => (beforeStaging, beforeFinal) = (staging, final), cancellationToken));
-            }
-            var after = timer.Time("report", "candidate", () => PrepareReport(afterBundleId, afterMaterial, source,
-                candidateFacts, afterEvidence, afterEvidencePath, input.ScopeBinding!, measureIds, "candidate",
-                candidateIdentity, assessmentIds, reportableAssessments, input.RetirementExpectationTranslation,
+            PreparedEvidenceBundle after = timer.Time("report", "candidate", () => PrepareReport(afterBundleId,
+                afterMaterial, source, candidateFacts, afterEvidence, afterEvidencePath, input.ScopeBinding!,
+                measureIds, "candidate", candidateIdentity, assessmentIds, reportableAssessments,
+                input.RetirementExpectationTranslation,
                 (staging, final) => (afterStaging, afterFinal) = (staging, final), cancellationToken));
+            PreparedEvidenceBundle? before = null;
+            if (baselineSide is not null)
+            {
+                var built = await baselineSide.ConfigureAwait(false);
+                before = built.Bundle;
+                if (built.Facts.SchemaVersion != candidateFacts.SchemaVersion ||
+                    _pipeline.ParserIdentity(fresh: true) != parserBefore)
+                    return Failure(JobFailureCategory.Semantic,
+                        "PanGloss changed during the comparison; rerun the candidate evidence job.");
+            }
             timer.Time("publish", null, () =>
             {
                 if (before is not null)
@@ -273,6 +271,13 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         }
         finally
         {
+            // The baseline side may still be writing into its working directory.
+            if (baselineSide is not null)
+            {
+                sides.Cancel();
+                await baselineSide.ContinueWith(side => _ = side.Exception, CancellationToken.None, TaskContinuationOptions.None,
+                    TaskScheduler.Default).ConfigureAwait(false);
+            }
             DiscardAttempt(beforeBundleId, beforeWorking, beforeStaging, beforeFinal);
             DiscardAttempt(afterBundleId, afterWorking, afterStaging, afterFinal);
         }
@@ -468,6 +473,27 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         return new ReusedBeforeSide(bundle, responses);
     }
 
+    // Facts, evidence and Report of the Baseline's own side; a fresh candidate before side carries no disposition.
+    private async Task<BaselineSide> BuildBaselineSideAsync(CandidateProjectStates prepared, DryRunSourceBinding source,
+        string baselineTokenJson, string parserIdentity, string bundleId, string working,
+        IReadOnlyList<string> measureIds, ParsimonyCandidateJobInput input, ClaimedJob claim, ParsimonyStages stages,
+        ParsimonyStageTimer timer, Action<string, string> located, CancellationToken cancellationToken)
+    {
+        var facts = await BuildFactsAsync(prepared.BaselineProjectPath, source.Token, false, null,
+            Path.Combine(working, "facts"), claim, stages, "baseline", timer, cancellationToken)
+            .ConfigureAwait(false);
+        var evidencePath = Path.Combine(working, "evidence.sqlite");
+        var evidence = timer.Time("evidence", "baseline", () => EvidenceWriter.Write(evidencePath,
+            prepared.BaselineEvidence, baselineTokenJson, source.Token.BundleDigest, facts.ModelFingerprint));
+        var material = EvidenceBundlePipeline.MaterialKey(EvidenceBundlePipeline.ComparisonOrigin, "baseline",
+            source.Token, facts.ModelFingerprint, parserIdentity, facts.SchemaVersion, evidence.SchemaVersion,
+            input.ScopeBinding!, [], null);
+        var bundle = timer.Time("report", "baseline", () => PrepareReport(bundleId, material, source, facts, evidence,
+            evidencePath, input.ScopeBinding!, measureIds, "baseline", null, [], [],
+            input.RetirementExpectationTranslation, located, cancellationToken));
+        return new BaselineSide(facts, bundle);
+    }
+
     private async Task<FactsResult> BuildFactsAsync(string projectPath, BaselineToken token, bool candidate,
         string? dryRunEffectDigest, string outputDirectory, ClaimedJob claim, ParsimonyStages stages,
         string inputName, ParsimonyStageTimer timer, CancellationToken cancellationToken)
@@ -595,6 +621,8 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         IReadOnlyList<FrozenProposalRevision> Prerequisites, BoundDryRunAnchor PublishedAnchor);
 
     private sealed record ReusedBeforeSide(ParsimonyBundleRecord Bundle, IReadOnlyList<ParsimonyReportResponse> Responses);
+
+    private sealed record BaselineSide(FactsResult Facts, PreparedEvidenceBundle Bundle);
 
     private sealed record FactsResult(string Path, string ModelFingerprint, int SchemaVersion, string Sha256);
 
