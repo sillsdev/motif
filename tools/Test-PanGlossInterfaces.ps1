@@ -62,6 +62,19 @@ if (-not $sourceTagMatch.Success) {
 }
 $expectedParserVersion = if ($isPinnedCandidate) { [string] $pin.version } else { $sourceTagMatch.Groups[1].Value }
 
+# 120 s x MOTIF_TEST_DEADLINE_SCALE (1 to 20): a busy machine starves children.
+$deadlineScale = 1.0
+$scaleText = $env:MOTIF_TEST_DEADLINE_SCALE
+if (-not [string]::IsNullOrWhiteSpace($scaleText)) {
+    $parsedScale = 0.0
+    if ([double]::TryParse($scaleText, [System.Globalization.NumberStyles]::Float,
+            [System.Globalization.CultureInfo]::InvariantCulture, [ref] $parsedScale) -and
+        [double]::IsFinite($parsedScale) -and $parsedScale -ge 1) {
+        $deadlineScale = [Math]::Min($parsedScale, 20.0)
+    }
+}
+$childTimeoutSeconds = [int][Math]::Ceiling(120 * $deadlineScale)
+
 function Invoke-ChildProcess {
     param(
         [string] $ExecutablePath,
@@ -86,10 +99,10 @@ function Invoke-ChildProcess {
         $started = $true
         $stdout = $process.StandardOutput.ReadToEndAsync()
         $stderr = $process.StandardError.ReadToEndAsync()
-        if (-not $process.WaitForExit(60000)) {
+        if (-not $process.WaitForExit($childTimeoutSeconds * 1000)) {
             try { $process.Kill($true) } catch { }
             [void] $process.WaitForExit(10000)
-            throw "$Purpose did not finish within 60 seconds: $($Arguments -join ' ')"
+            throw "$Purpose did not finish within $childTimeoutSeconds seconds (120 s x MOTIF_TEST_DEADLINE_SCALE $deadlineScale; raise MOTIF_TEST_DEADLINE_SCALE, up to 20, on a busy machine): $($Arguments -join ' ')"
         }
         $process.WaitForExit()
         return [pscustomobject]@{
