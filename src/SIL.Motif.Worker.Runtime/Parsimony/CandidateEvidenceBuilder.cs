@@ -229,12 +229,14 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                     _artifacts.Publish(before.Bundle, before.Report, cancellationToken,
                         () => _publisher.BeforeStoreCommit(before.FinalDirectory),
                         () => _publisher.AfterStoreCommit(before.FinalDirectory),
-                        requireCurrentBaseline: false, setCurrentBaseline: false, moreReports: before.MoreReports);
+                        requireCurrentBaseline: false, setCurrentBaseline: false, moreReports: before.MoreReports,
+                        frozenViews: before.FrozenViews);
                     beforeFinal = null;
                 }
                 _artifacts.Publish(after.Bundle, after.Report, cancellationToken,
                     () => _publisher.BeforeStoreCommit(after.FinalDirectory),
-                    () => _publisher.AfterStoreCommit(after.FinalDirectory), moreReports: after.MoreReports);
+                    () => _publisher.AfterStoreCommit(after.FinalDirectory), moreReports: after.MoreReports,
+                    frozenViews: after.FrozenViews);
                 afterFinal = null;
             });
             _ = _retention.Clean(_projectKey);
@@ -456,11 +458,13 @@ public sealed class ParsimonyCandidateEvidenceBuilder
         if (reused is null) return null;
         var bundle = _artifacts.Get(reused.BundleId);
         if (bundle is null) return null;
-        var reports = new ReportRepository(_database);
-        var responses = reused.ReportIds.Select(id => JsonSerializer.Deserialize<ParsimonyReportResponse>(
-            reports.Get(id)?.ReportJson ?? throw new InvalidDataException("The reused Baseline Report vanished."),
-            new JsonSerializerOptions(JsonSerializerDefaults.Web))
-            ?? throw new InvalidDataException("The reused Baseline Report is empty.")).ToArray();
+        // A fresh candidate before side carries no disposition projection, so a reused Baseline Report drops it too.
+        var responses = reused.Reports.Select(report => (JsonSerializer.Deserialize<ParsimonyReportResponse>(
+            report.ReportJson, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+            ?? throw new InvalidDataException("The reused Baseline Report is empty.")) with
+        {
+            DispositionProjection = null,
+        }).ToArray();
         return new ReusedBeforeSide(bundle, responses);
     }
 
@@ -495,7 +499,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             throw new PanGlossInvocationException(CategoryOf(outcome), outcome.Message);
         using var lease = completed.FactsArtifactLease;
         var destination = Path.Combine(outputDirectory, "grammar-facts.sqlite");
-        // The lease deletes the PanGloss output when it is released, so the file moves out; staging proves its digest.
+        // The lease deletes its output on release, so the file moves out and is discarded after the render.
         timer.Time("adopt", inputName, () => File.Move(completed.Facts.Path, destination));
         return new FactsResult(destination, completed.Facts.ModelFingerprint, completed.Facts.SchemaVersion,
             StripDigest(completed.Facts.OutputSha256));

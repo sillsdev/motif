@@ -449,6 +449,12 @@ person may reasonably fix, keep, ask or defer, and the update a Draft can stage 
 without a Recipe states what information is missing instead.
 _Avoid_: fix, autofix, script, playbook
 
+**Kept view**:
+A drill-down result a Parsimony finding points to, computed while the grammar facts were still open and stored with
+its bundle. The facts are then discarded, so a view no finding points to answers "not kept" and needs the measures run
+again ([ADR 0086](docs/adr/0086-parsimony-keeps-reports-and-drill-down-rows-and-discards-grammar-facts.md)).
+_Avoid_: cached view, frozen facts
+
 **Parsimony note**:
 An information line in a Parsimony review that is never a recommendation: either a check that could not look
 (for example, no Approved words in the Parsimony Selection) or an authored statement that has no effect on parsing.

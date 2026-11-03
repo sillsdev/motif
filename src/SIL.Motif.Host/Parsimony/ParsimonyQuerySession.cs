@@ -30,12 +30,25 @@ public sealed partial class ParsimonyQuerySession : IDisposable
     {
     }
 
+    /// <summary>
+    /// Validates and attaches the evidence file alone, for a stored bundle whose grammar facts were discarded once
+    /// its Reports were written. The recorded facts digest still binds the Reports; every query that reads grammar
+    /// facts reports its sections as unavailable instead of failing.
+    /// </summary>
+    public static ParsimonyQuerySession OpenWithoutFacts(string evidencePath, ParsimonyReportInputs inputs,
+        CancellationToken leaseCancellationToken = default) =>
+        new(null, evidencePath, inputs, leaseCancellationToken, beforeCommand: null);
+
+    /// <summary>Whether the grammar facts are attached; false for a stored bundle, which keeps none.</summary>
+    public bool FactsKept { get; }
+
     /// <summary>Attaches like the public constructor and runs a test hook before each statement of a page.</summary>
-    internal ParsimonyQuerySession(string grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs,
+    internal ParsimonyQuerySession(string? grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs,
         CancellationToken leaseCancellationToken, Action<SqliteConnection>? beforeCommand)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(grammarFactsPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(evidencePath);
+        if (grammarFactsPath is not null) ArgumentException.ThrowIfNullOrWhiteSpace(grammarFactsPath);
+        FactsKept = grammarFactsPath is not null;
         _inputs = inputs ?? throw new ArgumentNullException(nameof(inputs));
         _leaseCancellationToken = leaseCancellationToken;
         _beforeCommand = beforeCommand;
@@ -52,12 +65,12 @@ public sealed partial class ParsimonyQuerySession : IDisposable
         try
         {
             _connection.Open();
-            Attach("facts", grammarFactsPath);
+            if (grammarFactsPath is not null) Attach("facts", grammarFactsPath);
             Attach("evidence", evidencePath);
-            VerifyReadOnly("facts");
+            if (grammarFactsPath is not null) VerifyReadOnly("facts");
             VerifyReadOnly("evidence");
             InstallTemporaryViews();
-            ValidateFacts(inputs);
+            if (grammarFactsPath is not null) ValidateFacts(inputs);
             ValidateAssessmentBindings(inputs);
             Execute("PRAGMA query_only=ON;");
         }
@@ -420,6 +433,7 @@ public sealed partial class ParsimonyQuerySession : IDisposable
 
     private string? ReadSectionStatus(string name)
     {
+        if (!FactsKept) return null;
         using var command = NewCommand();
         command.CommandText = "SELECT status FROM facts.artifact_section WHERE section=$section;";
         command.Parameters.AddWithValue("$section", name);
@@ -446,11 +460,11 @@ public sealed partial class ParsimonyQuerySession : IDisposable
     /// <summary>Identifies the proved file pair, so a cached result never outlives a changed file.</summary>
     internal string ProofKey { get; }
 
-    private static string ProveBundle(string grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs)
+    private static string ProveBundle(string? grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs)
     {
         var proofKey = ProofKeyOf(grammarFactsPath, evidencePath, inputs);
         if (proofKey is not null && ProvedBundles.ContainsKey(proofKey)) return proofKey;
-        ValidateDigest(grammarFactsPath, inputs.GrammarFacts);
+        if (grammarFactsPath is not null) ValidateDigest(grammarFactsPath, inputs.GrammarFacts);
         ValidateDigest(evidencePath, inputs.Evidence);
         var tokenJson = JsonSerializer.Serialize(inputs.BaselineToken,
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -462,14 +476,14 @@ public sealed partial class ParsimonyQuerySession : IDisposable
         return proofKey;
     }
 
-    // Size and write time stand in for the bytes, so a file changed after proof is hashed and refused again.
-    private static string? ProofKeyOf(string grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs)
+    // Size and write time stand in for the bytes; without facts the recorded facts digest stands in for them.
+    private static string? ProofKeyOf(string? grammarFactsPath, string evidencePath, ParsimonyReportInputs inputs)
     {
-        var facts = new FileInfo(grammarFactsPath);
+        var facts = grammarFactsPath is null ? null : new FileInfo(grammarFactsPath);
         var evidence = new FileInfo(evidencePath);
-        if (!facts.Exists || !evidence.Exists) return null;
-        return string.Join('|', inputs.BundleId, facts.FullName, facts.Length, facts.LastWriteTimeUtc.Ticks,
-            inputs.GrammarFacts.Sha256, evidence.FullName, evidence.Length, evidence.LastWriteTimeUtc.Ticks,
+        if (facts is { Exists: false } || !evidence.Exists) return null;
+        return string.Join('|', inputs.BundleId, facts?.FullName ?? "no-facts", facts?.Length ?? 0,
+            facts?.LastWriteTimeUtc.Ticks ?? 0, inputs.GrammarFacts.Sha256, evidence.FullName, evidence.Length, evidence.LastWriteTimeUtc.Ticks,
             inputs.Evidence.Sha256, inputs.BaselineToken.BundleDigest, inputs.ModelFingerprint,
             inputs.InputKind, inputs.Candidate);
     }

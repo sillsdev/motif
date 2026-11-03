@@ -400,7 +400,7 @@ public sealed partial class ParsimonyQuerySession
     /// Returns <see langword="null"/> when the attached artifacts hold no readable description.
     /// </summary>
     public string? DescribeObject(string guid) =>
-        _objectDescriptions.GetOrAdd(guid, key => ReadObjectDescription(key));
+        FactsKept ? _objectDescriptions.GetOrAdd(guid, key => ReadObjectDescription(key)) : null;
 
     private string? ReadObjectDescription(string guid)
     {
@@ -461,7 +461,7 @@ public sealed partial class ParsimonyQuerySession
     }
 
     internal string? DescribeMsa(string guid) =>
-        _msaDescriptions.GetOrAdd(guid, key => ReadMsaDescription(key));
+        FactsKept ? _msaDescriptions.GetOrAdd(guid, key => ReadMsaDescription(key)) : null;
 
     private string? ReadMsaDescription(string guid)
     {
@@ -475,7 +475,7 @@ public sealed partial class ParsimonyQuerySession
               'unnamed entry') || coalesce(
               (SELECT ' (' || t.text || ')' FROM facts.sense AS s JOIN facts.sense_text AS t
                  ON t.sense_guid=s.sense_guid WHERE s.msa_guid=m.msa_guid AND t.kind='gloss'
-                 ORDER BY t.ordinal, t.writing_system LIMIT 1), '')
+                 ORDER BY t.ordinal, t.writing_system, t.sense_guid LIMIT 1), '')
             FROM facts.msa AS m WHERE m.msa_guid=$guid;
             """;
         command.Parameters.AddWithValue("$guid", guid);

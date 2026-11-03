@@ -739,7 +739,7 @@ internal static class GeneratedArtifactReferences
         if (finding.ValueKind != JsonValueKind.Object) return false;
         var valid = IsObjectShape(finding, "Parsimony finding",
             ["findingId", "measureId", "axis", "tier", "attachesTo", "groupKey", "number", "threshold",
-                "evidenceDigest", "evidenceRefs", "recipeLink", "limitations", "verification", "itemNames"],
+                "evidenceDigest", "evidenceRefs", "recipeLink", "limitations", "verification", "itemNames", "description"],
             ["findingId", "measureId", "axis", "tier", "attachesTo", "groupKey", "number", "threshold",
                 "evidenceDigest", "evidenceRefs", "recipeLink", "limitations", "verification"]);
         valid &= HasDefinedEnumDiscriminant(finding, "axis", typeof(ParsimonyAxis));
@@ -1616,7 +1616,7 @@ internal static class GeneratedArtifactReferences
             if (finding.ValueKind != JsonValueKind.Object) { valid = false; continue; }
             valid &= IsObjectShape(finding, "candidate Parsimony finding",
                 ["FindingId", "MeasureId", "Axis", "Tier", "AttachesTo", "GroupKey", "Number", "Threshold",
-                    "EvidenceDigest", "EvidenceRefs", "RecipeLink", "Limitations", "Verification", "ItemNames"],
+                    "EvidenceDigest", "EvidenceRefs", "RecipeLink", "Limitations", "Verification", "ItemNames", "Description"],
                 ["FindingId", "MeasureId", "Axis", "Tier", "AttachesTo", "GroupKey", "Number", "Threshold",
                     "EvidenceDigest", "EvidenceRefs", "RecipeLink", "Limitations", "Verification"]);
             valid &= HasDefinedEnumDiscriminant(finding, "Axis", typeof(ParsimonyAxis));

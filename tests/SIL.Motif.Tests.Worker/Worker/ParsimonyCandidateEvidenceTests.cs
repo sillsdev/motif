@@ -359,7 +359,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             JsonSerializer.Serialize(candidateInput, SIL.Motif.Contract.MotifJson.CreateOptions()),
             "2026-10-07T00:01:00Z");
         var candidateClaim = Claim(candidateJob.JobId);
-        var handler = new ParsimonyCandidateEvidenceBuilder(_database, _projectKey, _project,
+        var handler = RetainedFacts.Builder(_database, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath },
             wrapInvoker(invoker, parserPath), lanes);
 
@@ -427,7 +427,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
                 : new ParsimonyJobInput(ParsimonyAdmission.AllMeasures, scope, null, groupMeasureIds),
                 SIL.Motif.Contract.MotifJson.CreateOptions()), "2026-10-07T00:00:30Z");
         var claim = Claim(job.JobId);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(claim, CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);

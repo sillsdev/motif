@@ -833,6 +833,12 @@ public sealed record ParsimonyFinding(
 {
     /// <summary>The names the stored facts give the items this finding concerns; empty when the facts name none.</summary>
     public IReadOnlyList<string> ItemNames { get; init; } = [];
+
+    /// <summary>
+    /// The finding's subject in words, written when the Report was made so a Search over findings needs no grammar
+    /// facts (they are discarded once the Report exists); null on a Report made without it.
+    /// </summary>
+    public string? Description { get; init; }
 }
 
 /// <summary>A durable advisory disposition tied to one finding identity and evidence digest.</summary>

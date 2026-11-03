@@ -141,8 +141,39 @@ public sealed class EvidenceRetentionCleaner
             if (cleaned) _artifacts.RemoveBuildClaim(claim.BundleId);
         }
         RecoverUnclaimedWorkDirectories(projectKey, publisher, handled, deleted, failures);
+        RecoverUnregisteredBundles(projectKey, publisher, deleted, failures);
         return new WorkspaceCleanupResult(deleted, failures);
     }
+
+    // Reclaims published directories that no row or claim names (ADR 0086).
+    private void RecoverUnregisteredBundles(string projectKey, EvidenceArtifactPublisher publisher,
+        List<string> deleted, List<WorkspaceCleanupFailure> failures)
+    {
+        try
+        {
+            foreach (var directory in publisher.ListFinalBundleDirectories())
+            {
+                try
+                {
+                    if (publisher.DiscardUnreferencedBundle(directory, _clock.UtcNow.UtcDateTime, UnregisteredBundleMinimumAge,
+                            path => _artifacts.IsAccountedBundleDirectory(projectKey, path)))
+                        deleted.Add(directory);
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(new WorkspaceCleanupFailure(directory,
+                        "The unregistered Parsimony bundle directory could not be removed.", exception));
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            failures.Add(new WorkspaceCleanupFailure(publisher.WorkRoot,
+                "The Parsimony bundle directories could not be listed and were left in place.", exception));
+        }
+    }
+
+    private static readonly TimeSpan UnregisteredBundleMinimumAge = TimeSpan.FromHours(1);
 
     private void RecoverUnclaimedWorkDirectories(string projectKey, EvidenceArtifactPublisher publisher,
         ISet<string> handled, List<string> deleted, List<WorkspaceCleanupFailure> failures)

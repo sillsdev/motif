@@ -92,6 +92,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         _jobs = new JobRepository(_database);
         _baselines = new BaselineRepository(_database);
         _projectKey = ProjectWorkspaceKey.Compute(_project);
+        // A build discards its grammar facts; most tests here edit the facts and measure them, so they keep a copy.
         _token = new BaselineToken("live-project-identity", "sha256:" + new string('1', 64), "1",
             "2026-10-05T00:00:00Z", "sha256:" + new string('2', 64));
     }
@@ -102,7 +103,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         await PublishBaselineAsync(_pristine);
         var invoker = new FactsRequestCaptureInvoker();
         var job = CreateJob("P-adhoc-duplicate");
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker") }, invoker);
 
         _ = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
@@ -154,7 +155,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             new ParsimonySelectionSnapshot("Default", [_seededText.TextId], [], selection.Words,
                 selection.Sha256));
         var job = CreateJob("P-adhoc-duplicate", scopeBinding);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
         var claim = Claim(job.JobId);
         var outcome = await handler.RunAsync(claim, CancellationToken.None);
@@ -236,8 +237,6 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             bundle.CandidateIdentity, bundle.BundleId);
         Assert.Equal(Path.GetFullPath(expectedDirectory), Path.GetFullPath(bundleDirectory));
         var factsPath = Path.Combine(bundleDirectory, "grammar-facts.sqlite");
-        Assert.Equal(new[] { "evidence.sqlite", "grammar-facts.sqlite" },
-            Directory.EnumerateFiles(bundleDirectory).Select(Path.GetFileName).Order(StringComparer.Ordinal));
         Assert.Equal("allomorphCoOccurrence", ReadText(factsPath,
             "SELECT subject_kind FROM load_fact WHERE subject_guid='00000000-0000-0000-0000-000000000001';"));
         Assert.Equal("{\"identity\":{\"guid\":\"00000000-0000-0000-0000-000000000001\",\"kind\":\"object\"}," +
@@ -265,7 +264,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-without-baseline"));
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob("P-adhoc-duplicate");
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker-without-baseline"), ParserPath = parserPath }, invoker);
 
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
@@ -285,7 +284,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var invoker = new ParserReplacingInvoker(real, parserPath);
         var job = CreateJob("P-adhoc-duplicate");
         var workerRoot = Path.Combine(_root, "replaced-parser-worker");
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = workerRoot, ParserPath = parserPath }, invoker);
 
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
@@ -326,7 +325,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var scopeBinding = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         var job = CreateJob("P-allo-duplicate-form", scopeBinding);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "older-facts-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -367,7 +366,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var scopeBinding = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         var job = CreateJob("P-allo-duplicate-form", scopeBinding);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "measure-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -574,7 +573,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         var job = CreateJob("R-tmpl-precedence", scope);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "template-measure-worker"), ParserPath = parserPath }, invoker);
 
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
@@ -696,7 +695,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob("R-tmpl-precedence",
             new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "affix-position-zero-affix-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.Equal(JobStatus.Completed, outcome!.Status);
@@ -1007,7 +1006,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob("P-statement-unused",
             new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "statement-usage-worker"), ParserPath = parserPath },
             invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
@@ -1033,7 +1032,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var scopeBinding = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         var job = CreateJob("P-allo-duplicate-form", scopeBinding);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "measure-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -1089,7 +1088,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var scopeBinding = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         var job = CreateJob("P-allo-duplicate-form", scopeBinding);
         var checkedPaths = new List<string>();
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "integrity-worker"), ParserPath = parserPath }, invoker,
             null, path =>
             {
@@ -1114,7 +1113,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var scopeBinding = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         var job = CreateJob("P-allo-duplicate-form", scopeBinding);
         var workerRoot = Path.Combine(_root, "integrity-refused-worker");
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = workerRoot, ParserPath = parserPath }, invoker);
 
         var error = await Assert.ThrowsAsync<InvalidDataException>(() =>
@@ -1679,7 +1678,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var scopeBinding = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         var job = CreateJob("P-allo-duplicate-form", scopeBinding);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "duplicate-identity-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -1804,7 +1803,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             new ParsimonySelectionSnapshot("Default", [_seededText.TextId], [], selection.Words,
                 selection.Sha256));
         var job = CreateJob("P-adhoc-duplicate", scopeBinding);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, workerRoot), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -1870,7 +1869,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var scope = new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null);
         var job = CreateJob("R-tmpl-precedence", scope);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "adhoc-slot-order-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -2829,7 +2828,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
 
         var first = await RunReportAsync(handler, "P-adhoc-duplicate");
@@ -2839,10 +2838,10 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Equal(1, BundleCount());
         Assert.Equal(invocationsAfterFirst, FakeParser.Invocations(parserPath));
         Assert.Equal(first.Response.Inputs.BundleId, second.Response.Inputs.BundleId);
-        Assert.NotEqual(first.ReportId, second.ReportId);
-        Assert.Equal(second.ReportId, new ReportRepository(_database).GetLatest("parsimony")!.ReportId);
-        Assert.Contains("report:" + second.ReportId,
-            new EvidenceArtifactRepository(_database).GetPinReasons(first.Response.Inputs.BundleId));
+        // The stored Report is the answer: nothing new is rendered, so the same Report is named again.
+        Assert.Equal(first.ReportId, second.ReportId);
+        var pins = new EvidenceArtifactRepository(_database).GetPinReasons(first.Response.Inputs.BundleId);
+        Assert.Contains("report:" + first.ReportId, pins);
     }
 
     [Fact]
@@ -2851,7 +2850,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
 
         var fresh = await RunReportAsync(handler, "P-adhoc-duplicate");
@@ -2863,20 +2862,26 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
-    public async Task AnotherMeasureOnTheSameBaselineReusesTheBundle()
+    public async Task AnotherMeasureOnTheSameBaselineBuildsItsOwnBundleAndTheFirstMeasureStillReusesItsBundle()
     {
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
 
         var first = await RunReportAsync(handler, "P-adhoc-duplicate");
         var other = await RunReportAsync(handler, "P-allo-alternation-family");
 
-        Assert.Equal(1, BundleCount());
-        Assert.Equal(first.Response.Inputs.BundleId, other.Response.Inputs.BundleId);
+        // A bundle keeps no grammar facts, so a measure it holds no Report for needs a fresh build (ADR 0086).
+        Assert.Equal(2, BundleCount());
+        Assert.NotEqual(first.Response.Inputs.BundleId, other.Response.Inputs.BundleId);
         Assert.Equal("P-allo-alternation-family", Assert.Single(other.Response.MeasureRuns).MeasureId);
+        var invocations = FakeParser.Invocations(parserPath).Count;
+        var again = await RunReportAsync(handler, "P-adhoc-duplicate");
+        Assert.Equal(first.Response.Inputs.BundleId, again.Response.Inputs.BundleId);
+        Assert.Equal(2, BundleCount());
+        Assert.Equal(invocations, FakeParser.Invocations(parserPath).Count);
     }
 
     [Fact]
@@ -2900,7 +2905,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         });
         var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker, null,
-            checks, digests);
+            RetainedFacts.Retaining(checks), digests);
         int Hashed(string name) => hashes.GetValueOrDefault(name);
         var parserName = Path.GetFileName(parserPath);
         int ProjectHashes() => hashes.Where(item => item.Key.EndsWith(".fwdata", StringComparison.Ordinal))
@@ -2916,18 +2921,16 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Equal(1, ProjectHashes());
         Assert.Equal(2, Hashed(parserName));
 
-        _ = await RunReportAsync(handler, "P-allo-alternation-family");
-        Assert.Equal(2, ProjectHashes());
-        Assert.Equal(2, Hashed(parserName));
-        var afterReuse = hashes.ToDictionary(item => item.Key, item => item.Value);
+        var afterFirst = hashes.ToDictionary(item => item.Key, item => item.Value);
         _ = await RunReportAsync(handler, "P-adhoc-duplicate");
 
-        // A reuse checks the stored bytes against the digest recorded when they passed the whole-file check.
-        Assert.Equal(3, sessions);
+        // A reuse hashes the stored evidence once and opens no session; the facts are gone and are never read.
+        Assert.Equal(1, sessions);
         Assert.Equal(1, factsChecks);
         Assert.Equal(1, BundleCount());
-        Assert.Equal(afterReuse.OrderBy(item => item.Key), hashes.OrderBy(item => item.Key));
-        Assert.Equal(0, Hashed("evidence.sqlite"));
+        Assert.Equal(1, Hashed("evidence.sqlite"));
+        Assert.Equal(0, Hashed("grammar-facts.sqlite"));
+        Assert.Equal(afterFirst.GetValueOrDefault(parserName), Hashed(parserName));
     }
 
     [Fact]
@@ -2936,7 +2939,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
 
         var first = await RunReportAsync(handler, "P-adhoc-duplicate");
@@ -2955,7 +2958,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker);
         var first = await RunReportAsync(handler, "P-adhoc-duplicate");
 
@@ -2971,7 +2974,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Action<JobStageProgress> observer, EvidenceBundleChecks? checks = null) =>
         new(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "worker"), ParserPath = parserPath }, invoker, null,
-            checks ?? EvidenceBundleChecks.Create(), FileDigestCache.Shared, observer);
+            RetainedFacts.Retaining(checks ?? EvidenceBundleChecks.Create()), FileDigestCache.Shared, observer);
 
     private async Task<JobStageProgress?> WaitForStageProgressAsync(string jobId, string expectedStage)
     {
@@ -3015,10 +3018,10 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var outcome = await handler.RunAsync(claim, CancellationToken.None);
 
         Assert.Equal(JobStatus.Completed, outcome!.Status);
-        Assert.Equal(["copy", "import", "facts", "evidence", "validate", "measure", "render", "publish"],
+        Assert.Equal(["copy", "import", "facts", "evidence", "validate", "measure", "freeze", "render", "publish"],
             seen.Select(item => item.Stage));
-        Assert.Equal(Enumerable.Range(1, 8), seen.Select(item => item.Step));
-        Assert.All(seen, item => Assert.Equal(8, item.Steps));
+        Assert.Equal(Enumerable.Range(1, 9), seen.Select(item => item.Step));
+        Assert.All(seen, item => Assert.Equal(9, item.Steps));
         Assert.Equal("P-adhoc-duplicate", seen.Single(item => item.Stage == "measure").Detail);
         var stored = JsonSerializer.Deserialize<JobStageProgress>(_jobs.Get(job.JobId)!.ProgressJson!,
             SIL.Motif.Contract.MotifJson.CreateOptions());
@@ -3098,10 +3101,10 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         _ = await RunReportAsync(handler, "P-adhoc-duplicate");
         seen.Clear();
 
-        _ = await RunReportAsync(handler, "P-allo-alternation-family");
+        _ = await RunReportAsync(handler, "P-adhoc-duplicate");
 
-        Assert.Equal(["validate", "measure", "render", "publish"], seen.Select(item => item.Stage));
-        Assert.All(seen, item => Assert.Equal(4, item.Steps));
+        Assert.Equal(["validate", "publish"], seen.Select(item => item.Stage));
+        Assert.All(seen, item => Assert.Equal(2, item.Steps));
     }
 
     [Fact]
@@ -3180,12 +3183,12 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Equal(supported, stored.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
         Assert.Single(stored.Select(report => report.Inputs.BundleId).Distinct());
         Assert.Equal(supported.Count, seen.Count(item => item.Stage == "measure"));
-        Assert.Equal(7 + supported.Count, seen.Count);
-        Assert.All(seen, item => Assert.Equal(7 + supported.Count, item.Steps));
+        Assert.Equal(8 + supported.Count, seen.Count);
+        Assert.All(seen, item => Assert.Equal(8 + supported.Count, item.Steps));
     }
 
     [Fact]
-    public async Task AllMeasuresReuseAnExistingBundleForEveryReport()
+    public async Task AllMeasuresReuseABundleThatHoldsEveryReportAndOtherwiseBuildOne()
     {
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
@@ -3194,6 +3197,11 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         _ = await RunReportAsync(handler, "P-adhoc-duplicate");
         var invocations = FakeParser.Invocations(parserPath).Count;
         var job = CreateJob(ParsimonyAdmission.AllMeasures);
+        var built = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
+        Assert.True(built!.Status == JobStatus.Completed, built.ResultJson);
+        Assert.Equal(2, BundleCount());
+        invocations = FakeParser.Invocations(parserPath).Count;
+        job = CreateJob(ParsimonyAdmission.AllMeasures);
 
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
 
@@ -3201,8 +3209,139 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var result = JsonDocument.Parse(outcome.ResultJson!);
         Assert.Equal(ParsimonyAdmission.SupportedMeasureIds().Count,
             result.RootElement.GetProperty("reportIds").GetArrayLength());
-        Assert.Equal(1, BundleCount());
+        Assert.Equal(2, BundleCount());
         Assert.Equal(invocations, FakeParser.Invocations(parserPath).Count);
+    }
+
+    [Fact]
+    public async Task ABuildDiscardsItsGrammarFactsAndKeepsOnlyTheEvidenceFileAndTheRecordedDigest()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var workerRoot = Path.Combine(_root, "discard-worker");
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = workerRoot, ParserPath = parserPath }, invoker);
+
+        var run = await RunReportAsync(handler, "P-adhoc-duplicate");
+
+        var bundle = new ParsimonyBundleRepository(_database).Get(run.Response.Inputs.BundleId)!;
+        Assert.Equal(["evidence.sqlite"], Directory.EnumerateFiles(bundle.EvidenceDirectory)
+            .Select(Path.GetFileName));
+        Assert.Empty(Directory.EnumerateFiles(workerRoot, "grammar-facts.sqlite", SearchOption.AllDirectories));
+        Assert.False(File.Exists(bundle.GrammarFactsPath));
+        // The Report stays bound to the facts it was computed from, through the digest the bundle still records.
+        Assert.Equal(bundle.GrammarFactsSha256, run.Response.Inputs.GrammarFacts.Sha256);
+        var total = Directory.EnumerateFiles(workerRoot, "*", SearchOption.AllDirectories).Sum(file => new FileInfo(file).Length);
+        Assert.True(total < 10 * 1024 * 1024, $"A bundle must stay under 10 MB, but {workerRoot} holds {total} bytes.");
+    }
+
+    [Fact]
+    public async Task AKeptViewServesTheLiveRowsAndAnotherFactsViewSaysItIsNotKept()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var job = CreateJob("P-allo-duplicate-form", new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "kept-worker"), ParserPath = parserPath }, invoker);
+        var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        using var result = JsonDocument.Parse(outcome.ResultJson!);
+        var bundleId = result.RootElement.GetProperty("bundleId").GetString()!;
+        var bundle = new ParsimonyBundleRepository(_database).Get(bundleId)!;
+        AddNamedMeasureFacts(bundle.GrammarFactsPath);
+        var inputs = new ParsimonyReportInputs(bundle.BundleId, _token, "baseline", null, bundle.ModelFingerprint,
+            new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion, Sha256Of(bundle.GrammarFactsPath)),
+            new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion, bundle.EvidenceSha256),
+            null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
+        using var session = new ParsimonyQuerySession(bundle.GrammarFactsPath, bundle.EvidencePath, inputs);
+        var duplicate = Assert.Single(MeasureRunner.Execute("P-allo-duplicate-form", session, bundleId).Findings);
+
+        var frozen = ParsimonyViewsQuery.Freeze(session, [duplicate]);
+
+        Assert.NotEmpty(frozen);
+        using var withoutFacts = ParsimonyQuerySession.OpenWithoutFacts(bundle.EvidencePath, inputs);
+        foreach (var view in frozen)
+        {
+            var reference = duplicate.EvidenceRefs.First(item => item.View == view.View &&
+                view.FilterDigest == ParsimonyViewsQuery.FilterDigest(new ParsimonyViewFilters(
+                    ObjectGuid: item.Arguments.GetProperty("objectGuid").GetString())));
+            var request = new ParsimonyNamedViewRequest(bundleId, view.View, new ParsimonyViewFilters(
+                ObjectGuid: reference.Arguments.GetProperty("objectGuid").GetString()), 200);
+            var live = ParsimonyViewsQuery.Execute(session, request);
+            var kept = ParsimonyViewsQuery.Execute(withoutFacts, request, frozen: view);
+            Assert.Equal(JsonSerializer.Serialize(live.Rows, SIL.Motif.Contract.MotifJson.CreateOptions()),
+                JsonSerializer.Serialize(kept.Rows, SIL.Motif.Contract.MotifJson.CreateOptions()));
+            Assert.Equal(live.ItemsDigest, kept.ItemsDigest);
+            Assert.NotEmpty(kept.Rows);
+            // Without the kept rows the same request cannot be answered.
+            var notKept = ParsimonyViewsQuery.Execute(withoutFacts, request);
+            Assert.Equal(ParsimonyMeasureStatus.NotAvailable, notKept.Status);
+            Assert.Contains("not kept", notKept.Detail, StringComparison.Ordinal);
+            Assert.Empty(notKept.Rows);
+        }
+        var other = ParsimonyViewsQuery.Execute(withoutFacts, new ParsimonyNamedViewRequest(bundleId,
+            ParsimonyViews.AlternationFamilies, new ParsimonyViewFilters()));
+        Assert.Equal(ParsimonyMeasureStatus.NotAvailable, other.Status);
+        Assert.Contains("not kept", other.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task KeepingAViewIsBestEffortAndItsCapsCountUtf8BytesNotCharacters()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var job = CreateJob("P-allo-duplicate-form", new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "cap-worker"), ParserPath = parserPath }, invoker);
+        var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
+        Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
+        using var result = JsonDocument.Parse(outcome.ResultJson!);
+        var bundleId = result.RootElement.GetProperty("bundleId").GetString()!;
+        var bundle = new ParsimonyBundleRepository(_database).Get(bundleId)!;
+        AddNamedMeasureFacts(bundle.GrammarFactsPath);
+        var inputs = new ParsimonyReportInputs(bundle.BundleId, _token, "baseline", null, bundle.ModelFingerprint,
+            new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion, Sha256Of(bundle.GrammarFactsPath)),
+            new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion, bundle.EvidenceSha256),
+            null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
+        using var session = new ParsimonyQuerySession(bundle.GrammarFactsPath, bundle.EvidencePath, inputs);
+        var duplicate = Assert.Single(MeasureRunner.Execute("P-allo-duplicate-form", session, bundleId).Findings);
+
+        // An unexpected failure in one view's reader leaves that view out and does not fail the build.
+        Assert.Empty(ParsimonyViewsQuery.Freeze(session, [duplicate],
+            (_, _) => throw new InvalidOperationException("a view reader broke")));
+
+        static ParsimonyViewResult Rows(string name) => new([new ParsimonyStatementUsageViewRow("environment",
+            "guid", name, 1, 1, true, null, "used")], "sha256:" + new string('0', 64), null, null, null);
+        // 400,000 characters: about 0.4 MiB as ASCII, but 1.2 MiB as three-byte Chinese text.
+        Assert.NotEmpty(ParsimonyViewsQuery.Freeze(session, [duplicate], (_, _) => Rows(new string('a', 400_000))));
+        Assert.Empty(ParsimonyViewsQuery.Freeze(session, [duplicate], (_, _) => Rows(new string('\u4e2d', 400_000))));
+    }
+
+    [Fact]
+    public async Task FindingSearchReadsTheDescriptionStoredInTheReport()
+    {
+        await PublishBaselineAsync(_pristine);
+        var parserPath = FactsParser(_pristine.Seed);
+        using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
+        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+            new RunnerOptions { Root = Path.Combine(_root, "search-worker"), ParserPath = parserPath }, invoker);
+        var run = await RunReportAsync(handler, "P-adhoc-duplicate");
+        var bundle = new ParsimonyBundleRepository(_database).Get(run.Response.Inputs.BundleId)!;
+        var described = run.Response.Findings.Where(finding => !string.IsNullOrWhiteSpace(finding.Description)).ToArray();
+        Assert.NotEmpty(described);
+        var word = described[0].Description!.Split(' ', '"')[0];
+
+        using var withoutFacts = ParsimonyQuerySession.OpenWithoutFacts(bundle.EvidencePath, run.Response.Inputs);
+        var response = ParsimonyViewsQuery.Execute(withoutFacts, new ParsimonyNamedViewRequest(bundle.BundleId,
+            ParsimonyViews.ParsimonyActiveFindings, new ParsimonyViewFilters(ReportId: run.ReportId, Search: word)),
+            JsonSerializer.Deserialize<ParsimonyReportResponse>(
+                new ReportRepository(_database).Get(run.ReportId)!.ReportJson,
+                new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+
+        Assert.NotEmpty(response.Rows);
     }
 
     private async Task<string> PublishBaselineAsync(PristineProjectFixture fixture, BaselineToken? token = null,
@@ -3358,7 +3497,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob("R-allo-unconditioned",
             new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "unconditioned-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.Equal(JobStatus.Completed, outcome!.Status);
@@ -3437,7 +3576,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob("R-allo-unconditioned",
             new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "final-elsewhere-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.Equal(JobStatus.Completed, outcome!.Status);
@@ -3464,7 +3603,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob("R-env-broad",
             new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "environment-class-worker"), ParserPath = parserPath },
             invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
@@ -4258,7 +4397,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var parserPath = FactsParser(_pristine.Seed);
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob(measureId, binding);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, workerName), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -4294,7 +4433,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var parserPath = FactsParser(_pristine.Seed);
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob(measureId, binding);
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, workerName), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -4313,7 +4452,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob("P-allo-alternation-family",
             new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "alternation-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);
@@ -4431,7 +4570,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         using var invoker = new SIL.Motif.Host.PanGloss.PanGlossInvoker(parserPath);
         var job = CreateJob("P-allo-alternation-family",
             new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null));
-        var handler = new ParsimonyJobHandler(_database, _baselines, _projectKey, _project,
+        var handler = RetainedFacts.Handler(_database, _baselines, _projectKey, _project,
             new RunnerOptions { Root = Path.Combine(_root, "alternation-several-worker"), ParserPath = parserPath }, invoker);
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
         Assert.True(outcome!.Status == JobStatus.Completed, outcome.ResultJson);

@@ -22,7 +22,9 @@ store and to files outside it. No store schema change: the budget and the sweep 
    as good as forever. Its Difference word detail goes when it is decided (ADR 0067), and a prune drops any that a
    store written earlier still holds. Its Parsimony Reports keep their numbers, but stop pinning their candidate
    bundles when the Proposal is applied, rejected, withdrawn or superseded, and the worker's retention removes
-   those bundles at its next pass. A decided Proposal's own cost is its authored content: a swh Revision is the
+   those bundles at its next pass. A bundle holds its evidence file and the rows its findings point at, not
+   the grammar facts ([ADR 0086](0086-parsimony-keeps-reports-and-drill-down-rows-and-discards-grammar-facts.md)),
+   so a whole Proposal stays under 10 MB. A decided Proposal's own cost is its authored content: a swh Revision is the
    Proposal's operations (about 37 KB), its Receipt repeats the effects as applied (about 14 KB), and the
    summary is capped at 8 KB. None of it is word-level or timing data, so none of it is trimmed.
 3. **Space returns to the file.** Deleting rows frees pages inside the file but does not shrink it. Prune

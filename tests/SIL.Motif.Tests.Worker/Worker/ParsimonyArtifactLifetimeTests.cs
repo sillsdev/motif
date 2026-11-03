@@ -149,8 +149,8 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         _artifacts.Publish(second.Bundle, second.Report);
 
         Assert.NotEqual(first.Bundle.EvidenceDirectory, second.Bundle.EvidenceDirectory);
-        Assert.Equal(first.Bundle.GrammarFactsSha256, HashFile(first.Bundle.GrammarFactsPath));
-        Assert.Equal(second.Bundle.GrammarFactsSha256, HashFile(second.Bundle.GrammarFactsPath));
+        Assert.Equal(first.Bundle.EvidenceSha256, HashFile(first.Bundle.EvidencePath));
+        Assert.Equal(second.Bundle.EvidenceSha256, HashFile(second.Bundle.EvidencePath));
         Assert.NotNull(_artifacts.Get(first.Bundle.BundleId));
         Assert.NotNull(_artifacts.Get(second.Bundle.BundleId));
     }
@@ -248,39 +248,39 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
     }
 
     [Fact]
-    public void AChangedFactsFileIsRefusedAtOpenAndClassifiedCorrupt()
+    public void AChangedEvidenceFileIsRefusedAtOpenAndClassifiedCorrupt()
     {
-        var build = Publish("changed-facts");
+        var build = Publish("changed-evidence");
         var inputs = InputsFor(build.Bundle);
-        File.WriteAllText(build.Bundle.GrammarFactsPath, "facts changed after publication");
+        File.WriteAllText(build.Bundle.EvidencePath, "evidence changed after publication");
 
-        var exception = Assert.Throws<InvalidDataException>(() => new ParsimonyQuerySession(
-            build.Bundle.GrammarFactsPath, build.Bundle.EvidencePath, inputs));
+        var exception = Assert.Throws<InvalidDataException>(() => ParsimonyQuerySession.OpenWithoutFacts(
+            build.Bundle.EvidencePath, inputs));
         Assert.Equal(ParsimonyBundleFault.Corrupt, ParsimonyBundleFaults.Classify(exception, BundlePaths(build.Bundle)));
     }
 
     [Fact]
-    public void AFactsFileHeldExclusivelyByAnotherProcessOpensAsBusy()
+    public void AnEvidenceFileHeldExclusivelyByAnotherProcessOpensAsBusy()
     {
-        var build = Publish("held-facts");
+        var build = Publish("held-evidence");
         var inputs = InputsFor(build.Bundle);
-        using var exclusive = new FileStream(build.Bundle.GrammarFactsPath, FileMode.Open, FileAccess.ReadWrite,
+        using var exclusive = new FileStream(build.Bundle.EvidencePath, FileMode.Open, FileAccess.ReadWrite,
             FileShare.None);
 
-        var exception = Assert.ThrowsAny<Exception>(() => new ParsimonyQuerySession(
-            build.Bundle.GrammarFactsPath, build.Bundle.EvidencePath, inputs));
+        var exception = Assert.ThrowsAny<Exception>(() => ParsimonyQuerySession.OpenWithoutFacts(
+            build.Bundle.EvidencePath, inputs));
         Assert.Equal(ParsimonyBundleFault.Busy, ParsimonyBundleFaults.Classify(exception, BundlePaths(build.Bundle)));
         Assert.Equal("available", _artifacts.Get(build.Bundle.BundleId)!.State);
     }
 
     private ParsimonyReportInputs InputsFor(ParsimonyBundleRecord bundle) => new(bundle.BundleId, _token,
         "baseline", null, bundle.ModelFingerprint,
-        new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion, HashFile(bundle.GrammarFactsPath)),
+        new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion, bundle.GrammarFactsSha256),
         new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion, HashFile(bundle.EvidencePath)),
         null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
 
     private static string[] BundlePaths(ParsimonyBundleRecord bundle) =>
-        [bundle.EvidenceDirectory, bundle.GrammarFactsPath, bundle.EvidencePath];
+        [bundle.EvidenceDirectory, bundle.EvidencePath];
 
     private sealed class ReadRecordingStream(Stream inner) : Stream
     {
@@ -376,14 +376,15 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         var materialKey = Hash("material-" + identity);
         var staging = _publisher.CreateStagingDirectory(bundleId, _token, modelFingerprint, materialKey, "candidate",
             "candidate-" + identity);
-        File.WriteAllText(Path.Combine(staging, "grammar-facts.sqlite"), "facts:" + identity);
         File.WriteAllText(Path.Combine(staging, "evidence.sqlite"), "evidence:" + identity);
         _publisher.FlushAndClose(staging);
         var final = _publisher.Publish(staging, bundleId);
+        // The facts file is discarded after the render, so only its recorded name and digest remain.
         var facts = Path.Combine(final, "grammar-facts.sqlite");
+        var factsSha = Hash("facts:" + identity);
         var evidence = Path.Combine(final, "evidence.sqlite");
         var bundle = new ParsimonyBundleRecord(bundleId, TokenJson(), final, facts, evidence, modelFingerprint,
-            1, HashFile(facts), 1, HashFile(evidence), JobTimestamp.FormatUtc(_clock.UtcNow), _projectKey,
+            1, factsSha, 1, HashFile(evidence), JobTimestamp.FormatUtc(_clock.UtcNow), _projectKey,
             _token.BundleDigest[7..], materialKey, "available", null, _baselineRoot, "candidate", "candidate-" + identity);
         var report = new ReportRecord("report-" + identity, proposal, null,
             JsonSerializer.Serialize(new { inputs = new { bundleId } }), "{}", "parsimony", "stored report",
@@ -435,7 +436,7 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         var readerTask = Task.Run(() =>
         {
             using var lease = _artifacts.AcquireReaderLease(old.Bundle.BundleId, "barrier-reader");
-            using var facts = new FileStream(old.Bundle.GrammarFactsPath, FileMode.Open, FileAccess.Read,
+            using var facts = new FileStream(old.Bundle.EvidencePath, FileMode.Open, FileAccess.Read,
                 FileShare.ReadWrite | FileShare.Delete);
             entered.Set();
             release.Wait();
@@ -446,7 +447,7 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
 
         var whileOpen = cleaner.Clean(_projectKey);
         Assert.Empty(whileOpen.DeletedBundleIds);
-        Assert.True(File.Exists(old.Bundle.GrammarFactsPath));
+        Assert.True(File.Exists(old.Bundle.EvidencePath));
         release.Set();
         await readerTask;
 
@@ -565,7 +566,7 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         Assert.False(Directory.Exists(orphanWork));
         Assert.True(Directory.Exists(liveWork));
         Assert.Equal("available", _artifacts.Get(published.Bundle.BundleId)!.State);
-        Assert.Equal(published.Bundle.GrammarFactsSha256, HashFile(published.Bundle.GrammarFactsPath));
+        Assert.False(File.Exists(published.Bundle.GrammarFactsPath));
         Assert.Equal(published.Bundle.EvidenceSha256, HashFile(published.Bundle.EvidencePath));
         Assert.Equal("stored report", new ReportRepository(_database).Get(published.Report.ReportId)!.RenderedText);
     }
@@ -828,6 +829,198 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         return outside;
     }
 
+    private string OldFinalDirectory(string identity, TimeSpan age)
+    {
+        var build = CreateFiles(_publisher, identity, "material-" + identity);
+        Age(build.FinalDirectory, age);
+        return build.FinalDirectory;
+    }
+
+    private void Age(string directory, TimeSpan age)
+    {
+        var when = _clock.UtcNow.UtcDateTime - age;
+        foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            File.SetLastWriteTimeUtc(file, when);
+        Directory.SetLastWriteTimeUtc(directory, when);
+    }
+
+    private WorkspaceCleanupResult Sweep() =>
+        new EvidenceRetentionCleaner(_artifacts, WorkspaceOwnership.Bootstrap(_workerRoot), _clock)
+            .RecoverExpiredBuilds(_projectKey, _publisher);
+
+    [Fact]
+    public void AnOldBundleDirectoryWithNoRowAndNoClaimIsDeleted()
+    {
+        var orphan = OldFinalDirectory("old-orphan", TimeSpan.FromHours(2));
+
+        var result = Sweep();
+
+        Assert.Empty(result.Failures);
+        Assert.False(Directory.Exists(orphan));
+    }
+
+    [Fact]
+    public void ABundleDirectoryWithARowIsKeptHoweverOldItIs()
+    {
+        var kept = Publish("old-registered");
+        Age(kept.Bundle.EvidenceDirectory, TimeSpan.FromDays(30));
+
+        Assert.Empty(Sweep().Failures);
+
+        Assert.True(Directory.Exists(kept.Bundle.EvidenceDirectory));
+    }
+
+    [Fact]
+    public void AYoungBundleDirectoryWithNoRowIsKept()
+    {
+        var young = OldFinalDirectory("young-orphan", TimeSpan.FromMinutes(5));
+
+        Assert.Empty(Sweep().Failures);
+
+        Assert.True(Directory.Exists(young));
+    }
+
+    [Fact]
+    public void AnOldBundleDirectoryThatALiveClaimNamesIsKept()
+    {
+        _ = new JobRepository(_database, _clock).Create("claim-job", _projectKey, ParsimonyJobHandler.JobKind, "{}",
+            JobTimestamp.FormatUtc(_clock.UtcNow));
+        var claimed = new JobClaims(_database, _clock).Claim(_projectKey, "writer", JobTimestamp.FormatUtc(_clock.UtcNow),
+            TimeSpan.FromHours(5))!;
+        var build = CreateFiles(_publisher, "claimed", "material-claimed");
+        var working = _publisher.CreateWorkingDirectory("claimed");
+        _artifacts.RegisterBuildClaim(new ParsimonyBuildClaim("bundle-claimed", _projectKey, claimed.JobId,
+            claimed.ClaimToken!, _baselineRoot, working, build.StagingDirectory, build.FinalDirectory,
+            JobTimestamp.FormatUtc(_clock.UtcNow)));
+        _artifacts.SetBuildClaimPaths("bundle-claimed", build.StagingDirectory, build.FinalDirectory);
+        Age(build.FinalDirectory, TimeSpan.FromHours(2));
+        _clock.Advance(TimeSpan.FromMinutes(1));
+
+        Assert.Empty(Sweep().Failures);
+
+        Assert.True(Directory.Exists(build.FinalDirectory));
+    }
+
+    [Fact]
+    public void AnOldStagingDirectoryWithNoClaimIsLeftToTheClaimRecovery()
+    {
+        var staging = CreateStagingFiles(_publisher, "old-staging", "material-old-staging");
+        Age(staging, TimeSpan.FromHours(2));
+
+        Assert.Empty(Sweep().Failures);
+
+        Assert.True(Directory.Exists(staging));
+    }
+
+    [Fact]
+    public void AnOldBundleDirectoryHoldingAYoungFileIsKept()
+    {
+        var directory = OldFinalDirectory("young-file", TimeSpan.FromHours(3));
+        File.SetLastWriteTimeUtc(Path.Combine(directory, "evidence.sqlite"), _clock.UtcNow.UtcDateTime);
+
+        Assert.Empty(Sweep().Failures);
+
+        Assert.True(Directory.Exists(directory));
+    }
+
+    [Fact]
+    public void AnExpiredClaimsDirectoriesAreTheClaimRecoverysAndTheClaimStaysAccountedUntilThen()
+    {
+        _ = new JobRepository(_database, _clock).Create("expired-job", _projectKey, ParsimonyJobHandler.JobKind, "{}",
+            JobTimestamp.FormatUtc(_clock.UtcNow));
+        var claimed = new JobClaims(_database, _clock).Claim(_projectKey, "writer", JobTimestamp.FormatUtc(_clock.UtcNow),
+            TimeSpan.FromMinutes(1))!;
+        var build = CreateFiles(_publisher, "expired", "material-expired");
+        var working = _publisher.CreateWorkingDirectory("expired");
+        _artifacts.RegisterBuildClaim(new ParsimonyBuildClaim("bundle-expired", _projectKey, claimed.JobId,
+            claimed.ClaimToken!, _baselineRoot, working, build.StagingDirectory, build.FinalDirectory,
+            JobTimestamp.FormatUtc(_clock.UtcNow)));
+        _artifacts.SetBuildClaimPaths("bundle-expired", build.StagingDirectory, build.FinalDirectory);
+        Age(build.FinalDirectory, TimeSpan.FromHours(3));
+        _clock.Advance(TimeSpan.FromMinutes(5));
+
+        // The store accounts for the directory of an expired claim; the claim recovery, not the sweep, removes it.
+        Assert.True(_artifacts.IsAccountedBundleDirectory(_projectKey, build.FinalDirectory));
+        Assert.Empty(Sweep().Failures);
+
+        Assert.False(Directory.Exists(build.FinalDirectory));
+        Assert.Empty(_artifacts.ListExpiredBuildClaims(_projectKey));
+    }
+
+    [Fact]
+    public void ARowCommittedBetweenTheReferenceCheckAndTheDeleteKeepsTheDirectory()
+    {
+        var build = CreateFiles(_publisher, "late-row", "material-late-row");
+        Age(build.FinalDirectory, TimeSpan.FromHours(3));
+
+        var removed = _publisher.DiscardUnreferencedBundle(build.FinalDirectory, _clock.UtcNow.UtcDateTime,
+            TimeSpan.FromHours(1), path =>
+            {
+                Assert.False(_artifacts.IsAccountedBundleDirectory(_projectKey, path));
+                _artifacts.Publish(build.Bundle, build.Report);
+                return _artifacts.IsAccountedBundleDirectory(_projectKey, path);
+            });
+
+        Assert.False(removed);
+        Assert.True(Directory.Exists(build.FinalDirectory));
+    }
+
+    [Fact]
+    public void AnotherProjectsBundleDirectoryIsLeftAlone()
+    {
+        var other = new EvidenceArtifactPublisher(_workerRoot, "another-project");
+        var staging = other.CreateStagingDirectory("bundle-other", _token, "sha256:" + Hash("model"), Hash("other"));
+        File.WriteAllText(Path.Combine(staging, "evidence.sqlite"), "other");
+        other.FlushAndClose(staging);
+        var final = other.Publish(staging, "bundle-other");
+        Age(final, TimeSpan.FromHours(3));
+
+        Assert.Empty(Sweep().Failures);
+
+        Assert.True(Directory.Exists(final));
+    }
+
+    [Fact]
+    public void ARowWhoseStoredPathIsSpelledWithAnotherRootStillKeepsTheDirectory()
+    {
+        var build = CreateFiles(_publisher, "spelled", "material-spelled");
+        var relative = Path.GetRelativePath(_workerRoot, build.FinalDirectory);
+        var alias = Path.Combine(Path.GetTempPath(), "motif-alias-root", relative);
+        _artifacts.Publish(build.Bundle, build.Report);
+        using (var connection = _database.OpenConnection())
+        using (var respell = connection.CreateCommand())
+        {
+            respell.CommandText = "UPDATE ParsimonyBundles SET EvidenceDirectory=$alias WHERE BundleId=$id;";
+            respell.Parameters.AddWithValue("$alias", alias);
+            respell.Parameters.AddWithValue("$id", build.Bundle.BundleId);
+            Assert.Equal(1, respell.ExecuteNonQuery());
+        }
+        Age(build.FinalDirectory, TimeSpan.FromHours(3));
+
+        Assert.Empty(Sweep().Failures);
+
+        Assert.True(Directory.Exists(build.FinalDirectory));
+    }
+
+    [Fact]
+    public void AfterAnUpgradeDropsEveryBundleRowOnePassLeavesNoBundleDirectories()
+    {
+        var first = Publish("upgraded-one");
+        var second = Publish("upgraded-two");
+        foreach (var bundle in new[] { first.Bundle, second.Bundle }) Age(bundle.EvidenceDirectory, TimeSpan.FromHours(3));
+        // The store upgrade drops the bundle rows and leaves the directories where they were.
+        using (var connection = _database.OpenConnection())
+        using (var drop = connection.CreateCommand())
+        {
+            drop.CommandText = "DELETE FROM ParsimonyBundles;";
+            drop.ExecuteNonQuery();
+        }
+
+        Assert.Empty(Sweep().Failures);
+
+        Assert.Empty(_publisher.ListFinalBundleDirectories());
+    }
+
     private (ParsimonyBundleRecord Bundle, ReportRecord Report) Publish(string identity)
     {
         var build = CreateFiles(_publisher, identity, "material-" + identity);
@@ -849,7 +1042,6 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         var modelFingerprint = "sha256:" + Hash("model-fingerprint");
         var materialKey = Hash(material);
         var staging = publisher.CreateStagingDirectory(bundleId, _token, modelFingerprint, materialKey);
-        File.WriteAllText(Path.Combine(staging, "grammar-facts.sqlite"), "facts:" + identity);
         File.WriteAllText(Path.Combine(staging, "evidence.sqlite"), "evidence:" + identity);
         return staging;
     }
@@ -861,10 +1053,12 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         var modelFingerprint = "sha256:" + Hash("model-fingerprint");
         var materialKey = Hash(material);
         var final = publisher.Publish(staging, bundleId);
+        // The facts file is discarded after the render, so only its recorded name and digest remain.
         var facts = Path.Combine(final, "grammar-facts.sqlite");
+        var factsSha = Hash("facts:" + identity);
         var evidence = Path.Combine(final, "evidence.sqlite");
         var bundle = new ParsimonyBundleRecord(bundleId, TokenJson(), final, facts, evidence, modelFingerprint,
-            1, HashFile(facts), 1, HashFile(evidence), JobTimestamp.FormatUtc(_clock.UtcNow), _projectKey,
+            1, factsSha, 1, HashFile(evidence), JobTimestamp.FormatUtc(_clock.UtcNow), _projectKey,
             _token.BundleDigest[7..], materialKey, "available", null, _baselineRoot);
         var reportId = "report-" + identity;
         var reportJson = JsonSerializer.Serialize(new { inputs = new { bundleId } });

@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 60;
+    public const int CurrentSchema = 61;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -64,7 +64,7 @@ public static class MotifSchema
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "ParsimonySelection", "AssessmentObjectTimings",
             "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
-            "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
+            "ParsimonyFrozenViews", "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
             "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets",
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
             "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies"
@@ -438,6 +438,7 @@ public static class MotifSchema
         "ParsedAnalyses" => [new("AssessedWords", "AssessedWordId", "AssessedWordId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessmentPins" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "ParsimonyBundleReferences" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
+        "ParsimonyFrozenViews" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "ParsimonyReaderLeases" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "CurrentParsimonyBundles" => [new("ParsimonyBundles", "BundleId", "BundleId", "NO ACTION", "CASCADE", "NONE")],
         "ProposalRevisions" => [new("Proposals", "ProposalId", "ProposalId", "NO ACTION", "NO ACTION", "NONE")],
@@ -536,6 +537,9 @@ public static class MotifSchema
             C("GrammarFactsSha256", "TEXT", true), C("EvidenceSchemaVersion", "INTEGER", true),
             C("EvidenceSha256", "TEXT", true), C("CreatedUtc", "TEXT", true),
             C("State", "TEXT", true, defaultValue: "'available'"), C("UnavailableReason", "TEXT")],
+        "ParsimonyFrozenViews" => [C("BundleId", "TEXT", true, 1), C("ViewCode", "TEXT", true, 2),
+            C("FilterDigest", "TEXT", true, 3), C("ViewVersion", "INTEGER", true), C("ItemsDigest", "TEXT", true),
+            C("RowCount", "INTEGER", true), C("ResultJson", "TEXT", true)],
         "ParsimonyBundleReferences" => [C("BundleId", "TEXT", true, 1), C("ReferenceKind", "TEXT", true, 2),
             C("ReferenceId", "TEXT", true, 3), C("CreatedUtc", "TEXT", true)],
         "ParsimonyReaderLeases" => [C("LeaseId", "TEXT", false, 1), C("BundleId", "TEXT", true),
@@ -1138,6 +1142,17 @@ public static class MotifSchema
         """;
 
     private const string ParsimonyBundleLifetimeDdl = """
+        CREATE TABLE ParsimonyFrozenViews (
+            BundleId TEXT NOT NULL REFERENCES ParsimonyBundles(BundleId) ON DELETE CASCADE,
+            ViewCode TEXT NOT NULL,
+            FilterDigest TEXT NOT NULL,
+            ViewVersion INTEGER NOT NULL CHECK (ViewVersion > 0),
+            ItemsDigest TEXT NOT NULL,
+            RowCount INTEGER NOT NULL CHECK (RowCount >= 0),
+            ResultJson TEXT NOT NULL,
+            PRIMARY KEY (BundleId, ViewCode, FilterDigest)
+        );
+
         CREATE TABLE ParsimonyBundleReferences (
             BundleId TEXT NOT NULL REFERENCES ParsimonyBundles(BundleId) ON DELETE CASCADE,
             ReferenceKind TEXT NOT NULL,

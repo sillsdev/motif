@@ -7,6 +7,7 @@ using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Parsimony;
 
 namespace SIL.Motif.Worker.Store;
 
@@ -113,6 +114,33 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
         return claims;
     }
 
+    /// <summary>
+    /// Whether the store still accounts for a bundle directory of one project: a registered bundle or a build claim
+    /// (live or expired) names it by full path, or by the directory name its bundle identity gives, so a root spelled
+    /// differently (WSL or Windows form, an alias) still counts as the same directory.
+    /// </summary>
+    public bool IsAccountedBundleDirectory(string projectKey, string directory)
+    {
+        var full = Path.GetFullPath(directory);
+        var name = Path.GetFileName(full);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT BundleId, EvidenceDirectory AS A, NULL AS B FROM ParsimonyBundles " +
+            "WHERE ProjectKey=$project UNION ALL SELECT BundleId, StagingDirectory, FinalDirectory " +
+            "FROM ParsimonyBuildClaims WHERE ProjectKey=$project;";
+        command.Parameters.AddWithValue("$project", projectKey);
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            if (StringComparer.Ordinal.Equals(ParsimonyArtifactPath.BundleDirectoryName(reader.GetString(0)), name))
+                return true;
+            for (var column = 1; column <= 2; column++)
+                if (!reader.IsDBNull(column) && StringComparer.OrdinalIgnoreCase.Equals(
+                        Path.GetFullPath(reader.GetString(column)), full)) return true;
+        }
+        return false;
+    }
+
     /// <summary>Returns the full working directories still owned by a running job with an unexpired lease.</summary>
     public IReadOnlySet<string> ListLiveBuildClaimWorkingDirectories(string projectKey)
     {
@@ -134,7 +162,7 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
     public void Publish(ParsimonyBundleRecord bundle, ReportRecord report,
         CancellationToken cancellationToken = default, Action? beforeCommit = null, Action? afterCommit = null,
         bool requireCurrentBaseline = true, bool setCurrentBaseline = true,
-        IReadOnlyList<ReportRecord>? moreReports = null)
+        IReadOnlyList<ReportRecord>? moreReports = null, IReadOnlyList<FrozenParsimonyView>? frozenViews = null)
     {
         ArgumentNullException.ThrowIfNull(bundle);
         ArgumentNullException.ThrowIfNull(report);
@@ -144,7 +172,7 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
         foreach (var more in moreReports ?? [])
             if (!StringComparer.Ordinal.Equals(bundle.BundleId, more.BundleIdFromJson()))
                 throw new ArgumentException("Every Report must name the bundle being published.", nameof(moreReports));
-        ValidateFileDigest(bundle.GrammarFactsPath, bundle.GrammarFactsSha256);
+        // The grammar facts were checked against their digest before they were discarded; only the evidence remains.
         ValidateFileDigest(bundle.EvidencePath, bundle.EvidenceSha256);
 
         if (bundle.InputKind == "candidate" && !Directory.Exists(bundle.BaselineRootDirectory))
@@ -193,6 +221,24 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
                 """;
             BindBundle(command, bundle);
             command.ExecuteNonQuery();
+        }
+        foreach (var frozen in frozenViews ?? [])
+        {
+            if (!StringComparer.Ordinal.Equals(frozen.BundleId, bundle.BundleId))
+                throw new ArgumentException("Every kept view must name the bundle being published.", nameof(frozenViews));
+            using var view = connection.CreateCommand();
+            view.Transaction = transaction;
+            view.CommandText = "INSERT INTO ParsimonyFrozenViews " +
+                "(BundleId, ViewCode, FilterDigest, ViewVersion, ItemsDigest, RowCount, ResultJson) " +
+                "VALUES ($bundle, $view, $filters, $version, $digest, $rows, $json);";
+            view.Parameters.AddWithValue("$bundle", frozen.BundleId);
+            view.Parameters.AddWithValue("$view", frozen.View);
+            view.Parameters.AddWithValue("$filters", frozen.FilterDigest);
+            view.Parameters.AddWithValue("$version", frozen.Version);
+            view.Parameters.AddWithValue("$digest", frozen.ItemsDigest);
+            view.Parameters.AddWithValue("$rows", frozen.RowCount);
+            view.Parameters.AddWithValue("$json", frozen.ResultJson);
+            view.ExecuteNonQuery();
         }
         foreach (var saved in new[] { report }.Concat(moreReports ?? []))
         {
@@ -262,22 +308,53 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
     }
 
     /// <summary>
-    /// Publishes a Report over a bundle that is already registered, under the job's live claim. The bundle is not
-    /// rewritten; the Report pins it and it stays the current Baseline bundle.
+    /// Lists the Reports a bundle holds, newest first. A bundle keeps no grammar facts, so these stored Reports are
+    /// all a later job can reuse of it.
     /// </summary>
-    public void PublishReportOnExistingBundle(string bundleId, ReportRecord report, string jobId, string claimToken,
-        CancellationToken cancellationToken = default, IReadOnlyList<ReportRecord>? moreReports = null)
+    public IReadOnlyList<ReportRecord> ListReports(string bundleId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bundleId);
-        ArgumentNullException.ThrowIfNull(report);
+        var reports = new ReportRepository(_database);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT ReferenceId FROM ParsimonyBundleReferences " +
+            "WHERE BundleId=$bundle AND ReferenceKind='report' ORDER BY CreatedUtc DESC, ReferenceId DESC;";
+        command.Parameters.AddWithValue("$bundle", bundleId);
+        var ids = new List<string>();
+        using (var reader = command.ExecuteReader())
+            while (reader.Read()) ids.Add(reader.GetString(0));
+        return [.. ids.Select(reports.Get).OfType<ReportRecord>()];
+    }
+
+    /// <summary>Finds the view kept for a bundle under one set of filters, or null when it was not kept.</summary>
+    public FrozenParsimonyView? FindFrozenView(string bundleId, string view, string filterDigest)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleId);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT ViewVersion, ItemsDigest, RowCount, ResultJson FROM ParsimonyFrozenViews " +
+            "WHERE BundleId=$bundle AND ViewCode=$view AND FilterDigest=$filters;";
+        command.Parameters.AddWithValue("$bundle", bundleId);
+        command.Parameters.AddWithValue("$view", view);
+        command.Parameters.AddWithValue("$filters", filterDigest);
+        using var reader = command.ExecuteReader();
+        return reader.Read()
+            ? new FrozenParsimonyView(bundleId, view, filterDigest, reader.GetInt32(0), reader.GetString(1),
+                reader.GetInt32(2), reader.GetString(3))
+            : null;
+    }
+
+    /// <summary>
+    /// Lets a job reuse the stored Reports of an available Baseline-input bundle instead of building it again: the job
+    /// pins the bundle and the bundle stays the current Baseline bundle. Nothing is rendered, because the bundle's
+    /// grammar facts are gone and its Reports already say what the facts said.
+    /// </summary>
+    public void ReuseExistingBundle(string bundleId, string jobId, string claimToken,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(bundleId);
         ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
         ArgumentException.ThrowIfNullOrWhiteSpace(claimToken);
-        if (!StringComparer.Ordinal.Equals(bundleId, report.BundleIdFromJson()))
-            throw new ArgumentException("The Report must name the bundle it is published on.", nameof(report));
-        foreach (var more in moreReports ?? [])
-            if (!StringComparer.Ordinal.Equals(bundleId, more.BundleIdFromJson()))
-                throw new ArgumentException("Every Report must name the bundle it is published on.",
-                    nameof(moreReports));
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         ParsimonyBundleRecord bundle;
@@ -291,7 +368,7 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
             bundle = ReadBundle(reader);
         }
         if (bundle.State != "available" || bundle.InputKind != "baseline")
-            throw new InvalidDataException("A Report can only be published on an available Baseline bundle.");
+            throw new InvalidDataException("Only an available Baseline bundle can be reused.");
         EnsureBaselineStillCurrent(connection, transaction, bundle);
         var now = Stamp(_clock.UtcNow);
         using (var job = connection.CreateCommand())
@@ -304,17 +381,13 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
                 reader.GetString(1) != "running" || reader.IsDBNull(2) || reader.GetString(2).CompareTo(now) <= 0)
                 throw new InvalidOperationException("The Parsimony job no longer holds its writer claim.");
         }
-        var reports = new[] { report }.Concat(moreReports ?? []).ToArray();
-        foreach (var saved in reports) ReportRepository.SaveImmutable(connection, transaction, saved);
-        foreach (var (kind, id) in reports.Select(item => ("report", item.ReportId)).Append(("job", jobId)))
+        using (var reference = connection.CreateCommand())
         {
-            using var reference = connection.CreateCommand();
             reference.Transaction = transaction;
-            reference.CommandText = "INSERT INTO ParsimonyBundleReferences " +
-                "(BundleId, ReferenceKind, ReferenceId, CreatedUtc) VALUES ($bundle, $kind, $id, $created);";
+            reference.CommandText = "INSERT OR IGNORE INTO ParsimonyBundleReferences " +
+                "(BundleId, ReferenceKind, ReferenceId, CreatedUtc) VALUES ($bundle, 'job', $job, $created);";
             reference.Parameters.AddWithValue("$bundle", bundleId);
-            reference.Parameters.AddWithValue("$kind", kind);
-            reference.Parameters.AddWithValue("$id", id);
+            reference.Parameters.AddWithValue("$job", jobId);
             reference.Parameters.AddWithValue("$created", now);
             reference.ExecuteNonQuery();
         }

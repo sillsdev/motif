@@ -201,7 +201,7 @@ public sealed class ParsimonyJobHandler
             staging = null;
             _artifacts.Publish(prepared.Bundle, prepared.Report, cancellationToken,
                 () => _publisher.BeforeStoreCommit(finalDirectory),
-                () => _publisher.AfterStoreCommit(finalDirectory), moreReports: prepared.MoreReports);
+                () => _publisher.AfterStoreCommit(finalDirectory), moreReports: prepared.MoreReports, frozenViews: prepared.FrozenViews);
             _ = _retention.Clean(_projectKey);
             return Completed([prepared.Report.ReportId, .. (prepared.MoreReports ?? []).Select(item => item.ReportId)],
                 bundleId, assessmentIds);

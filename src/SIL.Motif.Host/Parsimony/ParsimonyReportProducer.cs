@@ -148,6 +148,7 @@ public sealed class ParsimonyReportProducer : IReportProducer
             ParsimonyFindings = [.. findings.Select(finding => finding with
             {
                 ItemNames = ItemNamesFor(finding, session.DescribeObject),
+                Description = DescribeFinding(session, finding),
             })],
             ParsimonyMeasureRuns = [result.Run],
             ParsimonyJoinQuality = joinQuality,

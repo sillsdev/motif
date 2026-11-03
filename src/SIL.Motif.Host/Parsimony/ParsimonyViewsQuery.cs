@@ -9,7 +9,7 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Host.Parsimony;
 
 /// <summary>Executes documented fixed views over a validated Parsimony bundle.</summary>
-public static class ParsimonyViewsQuery
+public static partial class ParsimonyViewsQuery
 {
     private const int DefaultLimit = 50;
     private const int MaximumLimit = 200;
@@ -22,8 +22,10 @@ public static class ParsimonyViewsQuery
     /// <param name="request">The fixed view, filters and page position to read.</param>
     /// <param name="report">The stored Report the view is bound to, when the request names one.</param>
     /// <param name="pageDeadline">How long the page may run; a page past it reports not-computed, not zero.</param>
+    /// <param name="frozen">The rows kept for this exact view when the bundle was stored, which are served as they were.</param>
     public static ParsimonyNamedViewResponse Execute(ParsimonyQuerySession session,
-        ParsimonyNamedViewRequest request, ParsimonyReportResponse? report = null, TimeSpan? pageDeadline = null)
+        ParsimonyNamedViewRequest request, ParsimonyReportResponse? report = null, TimeSpan? pageDeadline = null,
+        FrozenParsimonyView? frozen = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(request);
@@ -33,7 +35,7 @@ public static class ParsimonyViewsQuery
         var registration = session.BeginPage(page.Token);
         try
         {
-            return ExecuteCore(session, request, report);
+            return ExecuteCore(session, request, report, frozen);
         }
         // Lease loss is refused as busy; a deadline is not-computed. SQLite's interrupt code names a stopped statement.
         catch (Exception exception) when (page.IsCancellationRequested &&
@@ -61,7 +63,7 @@ public static class ParsimonyViewsQuery
     }
 
     private static ParsimonyNamedViewResponse ExecuteCore(ParsimonyQuerySession session,
-        ParsimonyNamedViewRequest request, ParsimonyReportResponse? report)
+        ParsimonyNamedViewRequest request, ParsimonyReportResponse? report, FrozenParsimonyView? frozen)
     {
         session.ThrowIfLeaseLost();
         ArgumentException.ThrowIfNullOrWhiteSpace(request.BundleId);
@@ -84,112 +86,36 @@ public static class ParsimonyViewsQuery
 
         var cacheKey = new ParsimonyViewCacheKey(session.ProofKey, request.View, definition.Version, filterDigest,
             report?.ReportId);
-        var cached = ParsimonyViewResultCache.Shared.Find(cacheKey);
+        var cached = frozen is not null && frozen.Version == definition.Version && frozen.FilterDigest == FilterDigest(request.Filters)
+            ? frozen.ToResult()
+            : ParsimonyViewResultCache.Shared.Find(cacheKey);
+        if (cached is null && !session.FactsKept && NeedsFacts(request.View))
+            return Unavailable(request, definition, NotKeptDetail);
         IReadOnlyList<ParsimonyViewRow> allRows = cached?.Rows ?? [];
         ParsimonyDispositionProjection? dispositionProjection = cached?.DispositionProjection;
         ParsimonyMeasureStatus? computedStatus = cached?.ComputedStatus;
         string? computedDetail = cached?.ComputedDetail;
         if (cached is null)
-        try
         {
-            if (request.View is ParsimonyViews.ParsimonyActiveFindings or ParsimonyViews.ParsimonySuppressed or
-                ParsimonyViews.ParsimonySuppressionHistory)
+            try
             {
-                dispositionProjection = ParsimonyDispositionQuery.Project(session, report?.Findings ?? [],
-                    request.Filters.ReportId, report is not null);
-                allRows = ReadDispositionRows(request, dispositionProjection, session);
+                var computed = Compute(session, request, report);
+                (allRows, dispositionProjection, computedStatus, computedDetail) = (computed.Rows,
+                    computed.DispositionProjection, computed.ComputedStatus, computed.ComputedDetail);
             }
-            else if (request.View == ParsimonyViews.ParserCases)
+            catch (ParsimonyQueryUnavailableException exception)
             {
-                var parserCases = session.ReadParserCases(request.Filters.CaseKey);
-                allRows = parserCases.Cast<ParsimonyViewRow>().ToArray();
-                if (parserCases.Count == 0)
-                {
-                    computedStatus = ParsimonyMeasureStatus.NotAvailable;
-                    computedDetail = "No validated parser cases are available for this bundle.";
-                }
-                else if (parserCases.Any(item => item.Status != "complete"))
-                {
-                    computedStatus = ParsimonyMeasureStatus.Inconclusive;
-                    computedDetail = "Some parser cases are incomplete or lack an exact wordform identity.";
-                }
+                return Unavailable(request, definition,
+                    $"Required facts sections are unavailable: {string.Join(", ", exception.Sections)}.");
             }
-            else if (request.View == ParsimonyViews.AlternationFamilies)
+            catch (ParsimonyScopeUnavailableException exception)
             {
-                var discovery = session.ReadAlternationFamilies();
-                var limitations = discovery.Limitations.Concat(
-                [
-                    "This static evidence does not establish that a sound change is productive.",
-                    "Text and parser witness counts were unavailable for this static measure run.",
-                ]).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-                allRows = discovery.Families.Select(family => (ParsimonyViewRow)new ParsimonyAlternationFamilyViewRow(
-                    family.Key, family.Description, family.Lane, family.Directed, family.ContextKey, family.GateKey,
-                    family.SideDescription, family.InputPhonemeGuids, family.OutputPhonemeGuids,
-                    family.ChangedFeatures.Select(item => new ParsimonyAlternationFeatureChange(item.FeatureGuid,
-                        item.InputValueGuid, item.OutputValueGuid)).ToArray(),
-                    family.SharedFeatures.Select(item => new ParsimonyAlternationFeatureChange(item.FeatureGuid,
-                        item.InputValueGuid, item.OutputValueGuid)).ToArray(),
-                    family.Members.Select(item => new ParsimonyAlternationMemberView(item.EntryGuid,
-                        item.EntryDescription, item.AllomorphGuids, item.WritingSystems, item.Forms,
-                        item.LocalContexts, item.AlignmentEvidence)).ToArray(), limitations)).ToArray();
-                computedStatus = discovery.Inconclusive
-                    ? ParsimonyMeasureStatus.Inconclusive
-                    : ParsimonyMeasureStatus.Computed;
-                computedDetail = discovery.Inconclusive
-                    ? string.Join(" ", discovery.Limitations)
-                    : null;
+                return Unavailable(request, definition, exception.Message);
             }
-            else if (request.View == ParsimonyViews.EnvironmentExcess)
-            {
-                var discovery = session.ReadEnvironmentExcess();
-                allRows = discovery.Sites.Where(site => request.Filters.ObjectGuid is null ||
-                        site.AllomorphGuid == request.Filters.ObjectGuid ||
-                        site.EnvironmentGuids.Contains(request.Filters.ObjectGuid, StringComparer.Ordinal))
-                    .Select(site => EnvironmentRow(site, request.Filters.ObjectGuid is null)).ToArray();
-                var missingSites = discovery.Sites.Count(site => site.MissingObserved.Count > 0);
-                computedStatus = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 && missingSites == 0
-                    ? ParsimonyMeasureStatus.Computed
-                    : ParsimonyMeasureStatus.Inconclusive;
-                computedDetail = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 && missingSites == 0
-                    ? null
-                    : $"Abstained on {discovery.UnsupportedSites} unsupported site(s) and " +
-                      $"{discovery.AmbiguousAlignments} ambiguous alignment(s); {missingSites} site(s) miss attested triggers.";
-            }
-            else if (request.View == ParsimonyViews.NaturalClassExcess)
-            {
-                var discovery = session.ReadNaturalClassExcess();
-                allRows = discovery.Sites.Where(site => request.Filters.ObjectGuid is null ||
-                        site.ClassGuid == request.Filters.ObjectGuid)
-                    .Select(site => NaturalClassRow(site, request.Filters.ObjectGuid is null)).ToArray();
-                computedStatus = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0
-                    ? ParsimonyMeasureStatus.Computed
-                    : ParsimonyMeasureStatus.Inconclusive;
-                computedDetail = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 ? null :
-                    $"Abstained on {discovery.UnsupportedSites} unsupported usage site(s) and " +
-                    $"{discovery.AmbiguousAlignments} ambiguous alignment(s).";
-            }
-            else
-                allRows = ReadRows(session, request);
-        }
-        catch (ParsimonyQueryUnavailableException exception)
-        {
-            return Unavailable(request, definition,
-                $"Required facts sections are unavailable: {string.Join(", ", exception.Sections)}.");
-        }
-        catch (ParsimonyScopeUnavailableException exception)
-        {
-            return Unavailable(request, definition, exception.Message);
         }
         if (offset > allRows.Count)
             throw new ArgumentException("The view cursor is beyond the end of this result.", nameof(request));
-        if ((request.View is ParsimonyViews.AllomorphContext or ParsimonyViews.AffixContext or ParsimonyViews.AdhocContext or
-                ParsimonyViews.NaturalClassContext or ParsimonyViews.SlotContext) ||
-            (request.View is ParsimonyViews.ApprovedMorphSequences or ParsimonyViews.UnslottedAffixes or ParsimonyViews.NullOptional &&
-             request.Filters.ObjectGuid is not null))
-        {
-            if (allRows.Count == 0)
-                throw new KeyNotFoundException($"The requested '{request.View}' identity was not found.");
-        }
+        RequireFound(request, allRows);
         var digest = cached?.ItemsDigest ?? ItemsDigest(allRows);
         if (cached is null)
             ParsimonyViewResultCache.Shared.Store(cacheKey, new ParsimonyViewResult(allRows, digest, dispositionProjection,
@@ -210,6 +136,95 @@ public static class ParsimonyViewsQuery
             UnresolvedJudgmentCount = dispositionProjection?.UnresolvedJudgmentCount,
             JudgmentProjectionDigest = dispositionProjection?.JudgmentProjectionDigest,
         };
+    }
+
+    // Runs the view's reader and returns its whole ordered result.
+    private static ParsimonyViewResult Compute(ParsimonyQuerySession session, ParsimonyNamedViewRequest request,
+        ParsimonyReportResponse? report)
+    {
+        IReadOnlyList<ParsimonyViewRow> allRows = [];
+        ParsimonyDispositionProjection? dispositionProjection = null;
+        ParsimonyMeasureStatus? computedStatus = null;
+        string? computedDetail = null;
+        if (request.View is ParsimonyViews.ParsimonyActiveFindings or ParsimonyViews.ParsimonySuppressed or
+            ParsimonyViews.ParsimonySuppressionHistory)
+        {
+            dispositionProjection = ParsimonyDispositionQuery.Project(session, report?.Findings ?? [],
+                request.Filters.ReportId, report is not null);
+            allRows = ReadDispositionRows(request, dispositionProjection);
+        }
+        else if (request.View == ParsimonyViews.ParserCases)
+        {
+            var parserCases = session.ReadParserCases(request.Filters.CaseKey);
+            allRows = parserCases.Cast<ParsimonyViewRow>().ToArray();
+            if (parserCases.Count == 0)
+            {
+                computedStatus = ParsimonyMeasureStatus.NotAvailable;
+                computedDetail = "No validated parser cases are available for this bundle.";
+            }
+            else if (parserCases.Any(item => item.Status != "complete"))
+            {
+                computedStatus = ParsimonyMeasureStatus.Inconclusive;
+                computedDetail = "Some parser cases are incomplete or lack an exact wordform identity.";
+            }
+        }
+        else if (request.View == ParsimonyViews.AlternationFamilies)
+        {
+            var discovery = session.ReadAlternationFamilies();
+            var limitations = discovery.Limitations.Concat(
+            [
+                "This static evidence does not establish that a sound change is productive.",
+                "Text and parser witness counts were unavailable for this static measure run.",
+            ]).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+            allRows = discovery.Families.Select(family => (ParsimonyViewRow)new ParsimonyAlternationFamilyViewRow(
+                family.Key, family.Description, family.Lane, family.Directed, family.ContextKey, family.GateKey,
+                family.SideDescription, family.InputPhonemeGuids, family.OutputPhonemeGuids,
+                family.ChangedFeatures.Select(item => new ParsimonyAlternationFeatureChange(item.FeatureGuid,
+                    item.InputValueGuid, item.OutputValueGuid)).ToArray(),
+                family.SharedFeatures.Select(item => new ParsimonyAlternationFeatureChange(item.FeatureGuid,
+                    item.InputValueGuid, item.OutputValueGuid)).ToArray(),
+                family.Members.Select(item => new ParsimonyAlternationMemberView(item.EntryGuid,
+                    item.EntryDescription, item.AllomorphGuids, item.WritingSystems, item.Forms,
+                    item.LocalContexts, item.AlignmentEvidence)).ToArray(), limitations)).ToArray();
+            computedStatus = discovery.Inconclusive
+                ? ParsimonyMeasureStatus.Inconclusive
+                : ParsimonyMeasureStatus.Computed;
+            computedDetail = discovery.Inconclusive
+                ? string.Join(" ", discovery.Limitations)
+                : null;
+        }
+        else if (request.View == ParsimonyViews.EnvironmentExcess)
+        {
+            var discovery = session.ReadEnvironmentExcess();
+            allRows = discovery.Sites.Where(site => request.Filters.ObjectGuid is null ||
+                    site.AllomorphGuid == request.Filters.ObjectGuid ||
+                    site.EnvironmentGuids.Contains(request.Filters.ObjectGuid, StringComparer.Ordinal))
+                .Select(site => EnvironmentRow(site, request.Filters.ObjectGuid is null)).ToArray();
+            var missingSites = discovery.Sites.Count(site => site.MissingObserved.Count > 0);
+            computedStatus = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 && missingSites == 0
+                ? ParsimonyMeasureStatus.Computed
+                : ParsimonyMeasureStatus.Inconclusive;
+            computedDetail = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 && missingSites == 0
+                ? null
+                : $"Abstained on {discovery.UnsupportedSites} unsupported site(s) and " +
+                  $"{discovery.AmbiguousAlignments} ambiguous alignment(s); {missingSites} site(s) miss attested triggers.";
+        }
+        else if (request.View == ParsimonyViews.NaturalClassExcess)
+        {
+            var discovery = session.ReadNaturalClassExcess();
+            allRows = discovery.Sites.Where(site => request.Filters.ObjectGuid is null ||
+                    site.ClassGuid == request.Filters.ObjectGuid)
+                .Select(site => NaturalClassRow(site, request.Filters.ObjectGuid is null)).ToArray();
+            computedStatus = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0
+                ? ParsimonyMeasureStatus.Computed
+                : ParsimonyMeasureStatus.Inconclusive;
+            computedDetail = discovery.UnsupportedSites == 0 && discovery.AmbiguousAlignments == 0 ? null :
+                $"Abstained on {discovery.UnsupportedSites} unsupported usage site(s) and " +
+                $"{discovery.AmbiguousAlignments} ambiguous alignment(s).";
+        }
+        else
+            allRows = ReadRows(session, request);
+        return new ParsimonyViewResult(allRows, string.Empty, dispositionProjection, computedStatus, computedDetail);
     }
 
     /// <summary>Lists saved decisions when their finding artifact or Report cannot be read.</summary>
@@ -253,7 +268,7 @@ public static class ParsimonyViewsQuery
     }
 
     private static IReadOnlyList<ParsimonyViewRow> ReadDispositionRows(ParsimonyNamedViewRequest request,
-        ParsimonyDispositionProjection projection, ParsimonyQuerySession? session = null)
+        ParsimonyDispositionProjection projection)
     {
         var filters = request.Filters;
         IEnumerable<ParsimonyViewRow> rows = request.View switch
@@ -297,15 +312,15 @@ public static class ParsimonyViewsQuery
                 _ => false,
             });
         if (filters.Search is { } search)
-            rows = rows.Where(row => SearchText(row, session).Contains(search, StringComparison.OrdinalIgnoreCase));
+            rows = rows.Where(row => SearchText(row).Contains(search, StringComparison.OrdinalIgnoreCase));
         return rows.ToArray();
     }
 
-    private static string SearchText(ParsimonyViewRow row, ParsimonyQuerySession? session) => row switch
+    private static string SearchText(ParsimonyViewRow row) => row switch
     {
         ParsimonyFindingDispositionViewRow finding => string.Join('\n', finding.Finding.MeasureId,
             finding.Finding.FindingId, finding.Finding.AttachesTo.Identity,
-            session is null ? null : ParsimonyReportProducer.DescribeFinding(session, finding.Finding),
+            finding.Finding.Description ?? finding.Finding.AttachesTo.Identity,
             finding.Reason, finding.Finding.RecipeLink),
         ParsimonySuppressionHistoryViewRow history => string.Join('\n', history.MeasureId, history.SubjectKey,
             history.SubjectCaption, history.MeasureCaption, history.Disposition, history.Reason, history.State, history.VisibleId, history.RecordTitle),
@@ -368,6 +383,19 @@ public static class ParsimonyViewsQuery
         RowReaders.TryGetValue(request.View, out var reader)
             ? reader(session, request)
             : throw new ArgumentException($"Unknown Parsimony view '{request.View}'.", nameof(request));
+
+    // A context view of one identity that returned nothing is a missing identity, not an empty list.
+    private static void RequireFound(ParsimonyNamedViewRequest request, IReadOnlyList<ParsimonyViewRow> rows)
+    {
+        if ((request.View is ParsimonyViews.AllomorphContext or ParsimonyViews.AffixContext or ParsimonyViews.AdhocContext or
+                ParsimonyViews.NaturalClassContext or ParsimonyViews.SlotContext) ||
+            (request.View is ParsimonyViews.ApprovedMorphSequences or ParsimonyViews.UnslottedAffixes or ParsimonyViews.NullOptional &&
+             request.Filters.ObjectGuid is not null))
+        {
+            if (rows.Count == 0)
+                throw new KeyNotFoundException($"The requested '{request.View}' identity was not found.");
+        }
+    }
 
     private static T RequireRow<T>(T? row, string view) where T : ParsimonyViewRow =>
         row ?? throw new KeyNotFoundException($"The requested '{view}' identity was not found.");

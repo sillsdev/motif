@@ -43,17 +43,19 @@ internal sealed class ParsimonyStages(Action<JobStageProgress> publish, int step
     }
 
     /// <summary>Steps of a fresh Baseline build that runs <paramref name="measures"/> measures.</summary>
-    public static int FreshSteps(int measures) => 7 + measures;
+    public static int FreshSteps(int measures) => 8 + measures;
 
     /// <summary>Steps of a Report written onto an existing bundle that runs <paramref name="measures"/> measures.</summary>
-    public static int ReuseSteps(int measures) => 3 + measures;
+    public static int ReuseSteps(int measures) => 2;
 }
 
 /// <summary>The checks a build runs on what it stages; tests replace them to count how often each one runs.</summary>
 /// <param name="FactsIntegrity">The whole-file SQLite check of the staged grammar facts, run once per bundle.</param>
 /// <param name="OpenSession">Opens the one verifying session a job renders from.</param>
+/// <param name="BeforeFactsDiscard">Told the facts path and the staging directory just before the facts are discarded.</param>
 internal sealed record EvidenceBundleChecks(Action<string> FactsIntegrity,
-    Func<string, string, ParsimonyReportInputs, ParsimonyQuerySession> OpenSession)
+    Func<string, string, ParsimonyReportInputs, ParsimonyQuerySession> OpenSession,
+    Action<string, string>? BeforeFactsDiscard = null)
 {
     /// <summary>The production checks, with an optional replacement for the facts integrity check.</summary>
     public static EvidenceBundleChecks Create(Action<string>? factsIntegrity = null) =>
@@ -95,12 +97,14 @@ internal sealed record EvidenceBundleBuild(string BundleId, BaselineToken Token,
 /// <param name="MoreReports">The Reports for the measures after the first, when the build ran several.</param>
 internal sealed record PreparedEvidenceBundle(ParsimonyBundleRecord Bundle, ReportRecord Report,
     ParsimonyReportResponse Response, RenderedReport Rendered, string StagingDirectory, string FinalDirectory,
-    IReadOnlyList<ReportRecord>? MoreReports = null);
+    IReadOnlyList<ReportRecord>? MoreReports = null, IReadOnlyList<FrozenParsimonyView>? FrozenViews = null);
 
-/// <summary>Reports written onto an existing Baseline bundle instead of a new one.</summary>
-/// <param name="ReportIds">One Report id per measure, in the order the measures ran.</param>
+/// <summary>The stored Reports of an existing Baseline bundle, reused instead of building a new one.</summary>
+/// <param name="ReportIds">One Report id per measure, in the order the measures were requested.</param>
 /// <param name="BundleId">The bundle the Reports pin.</param>
-internal sealed record ReusedEvidenceBundle(IReadOnlyList<string> ReportIds, string BundleId);
+/// <param name="Reports">The stored Reports, in the same order.</param>
+internal sealed record ReusedEvidenceBundle(IReadOnlyList<string> ReportIds, string BundleId,
+    IReadOnlyList<ReportRecord> Reports);
 
 /// <summary>One measure's rendered Report and the strings stored with it.</summary>
 internal sealed record RenderedMeasure(string ReportId, ParsimonyReportResponse Response, RenderedReport Rendered,
@@ -122,6 +126,12 @@ internal sealed class EvidenceBundlePipeline
 
     /// <summary>Marks the key of a bundle built beside a candidate by a Dry Run comparison.</summary>
     public const string ComparisonOrigin = "dry-run-comparison";
+
+    /// <summary>
+    /// The name the grammar-facts file had inside a bundle. The file is no longer kept; the name stays in the
+    /// bundle row and the Report evidence so the recorded shape and every stored path check are unchanged.
+    /// </summary>
+    public const string DiscardedFactsFileName = "grammar-facts.sqlite";
 
     private readonly EvidenceArtifactPublisher _publisher;
     private readonly EvidenceArtifactRepository _artifacts;
@@ -206,12 +216,10 @@ internal sealed class EvidenceBundlePipeline
         located(staging, final);
         _publisher.CreateStagingDirectory(build.BundleId, build.Token, build.ModelFingerprint, build.MaterialKey,
             build.InputKind, build.CandidateIdentity);
-        var stagedFacts = Path.Combine(staging, "grammar-facts.sqlite");
         var stagedEvidence = Path.Combine(staging, "evidence.sqlite");
-        File.Copy(build.FactsPath, stagedFacts, overwrite: false);
         File.Copy(build.EvidencePath, stagedEvidence, overwrite: false);
         _publisher.FlushAndClose(staging);
-        // The session opened below hashes each staged copy against these reported digests.
+        // The facts are not staged; the session below hashes them and the staged evidence against these digests.
         var factsSha = build.FactsSha256;
         var evidenceSha = build.Evidence.Sha256;
         var inputs = new ParsimonyReportInputs(build.BundleId, build.Token, build.InputKind, build.CandidateIdentity,
@@ -220,18 +228,21 @@ internal sealed class EvidenceBundlePipeline
             build.Scope.Selection is null ? null : RemoveDigestPrefix(build.Scope.Selection.SelectionSha256), null,
             build.AssessmentIds, build.Scope.Kind, build.RetirementTranslation);
         stages?.Enter("validate");
-        _checks.FactsIntegrity(stagedFacts);
-        var measures = Render(inputs, stagedFacts, stagedEvidence, build.Assessments, build.MeasureIds,
-            build.AssessmentIds, build.IncludeDispositionProjection, stages, cancellation);
+        _checks.FactsIntegrity(build.FactsPath);
+        var measures = Render(inputs, build.FactsPath, stagedEvidence, build.Assessments, build.MeasureIds,
+            build.AssessmentIds, build.IncludeDispositionProjection, stages, cancellation, out var frozen);
+        // Nothing after the render needs the facts (ADR 0086).
+        _checks.BeforeFactsDiscard?.Invoke(build.FactsPath, staging);
+        DiscardFacts(build.FactsPath);
         var first = measures[0];
         var bundle = new ParsimonyBundleRecord(build.BundleId, TokenJson(build.Token), final,
-            Path.Combine(final, "grammar-facts.sqlite"), Path.Combine(final, "evidence.sqlite"),
+            Path.Combine(final, DiscardedFactsFileName), Path.Combine(final, "evidence.sqlite"),
             build.ModelFingerprint, build.FactsSchemaVersion, factsSha, build.Evidence.SchemaVersion, evidenceSha,
             JobTimestamp.FormatUtc(DateTimeOffset.UtcNow), _projectKey, RemoveDigestPrefix(build.Token.BundleDigest),
             build.MaterialKey, "available", null, build.BaselineRootDirectory, build.InputKind,
             build.CandidateIdentity);
         return new PreparedEvidenceBundle(bundle, first.Record, first.Response, first.Rendered, staging, final,
-            [.. measures.Skip(1).Select(item => item.Record)]);
+            [.. measures.Skip(1).Select(item => item.Record)], frozen);
     }
 
     /// <summary>
@@ -264,31 +275,27 @@ internal sealed class EvidenceBundlePipeline
             if (bundle.GrammarFactsSchemaVersion != SIL.Motif.Host.PanGloss.PanGlossInterfaceVersions.FactsSchemaVersion ||
                 bundle.EvidenceSchemaVersion != EvidenceSchema.Version ||
                 !(KeyMatches(bundle, BaselineJobOrigin) || (reuseComparisonBefore && KeyMatches(bundle, ComparisonOrigin))) ||
-                !File.Exists(bundle.GrammarFactsPath) || !File.Exists(bundle.EvidencePath))
+                !File.Exists(bundle.EvidencePath))
                 continue;
             try
             {
                 using var lease = _artifacts.AcquireReaderLease(bundle.BundleId, "job-" + claimed.JobId);
                 var sourceDigest = ProjectDigest(baseline.FwDataPath);
                 _ = ParserAssessmentMaterial.Read(database, assessmentIds, baseline.Token, sourceDigest,
-                    parserDigest, out var reportableAssessments);
-                var inputs = new ParsimonyReportInputs(bundle.BundleId, baseline.Token, "baseline", null,
-                    bundle.ModelFingerprint, new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion,
-                        bundle.GrammarFactsSha256), new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion,
-                        bundle.EvidenceSha256),
-                    scope.Selection is null ? null : RemoveDigestPrefix(scope.Selection.SelectionSha256),
-                    null, assessmentIds, scope.Kind);
+                    parserDigest, out _);
+                // No facts remain, so reuse stored Reports; a measure with no stored Report is a miss (ADR 0086).
+                var stored = StoredReportsFor(bundle, measureIds, !reuseComparisonBefore);
+                if (stored is null) continue;
                 stages?.Enter("validate");
-                // The session below proves these bytes equal the digest recorded when they passed the check.
-                var measures = Render(inputs, bundle.GrammarFactsPath, bundle.EvidencePath, reportableAssessments,
-                    measureIds, assessmentIds, !reuseComparisonBefore, stages, cancellationToken);
+                // Re-verification reads what is kept: the evidence file is hashed against its recorded digest.
+                if (!StringComparer.OrdinalIgnoreCase.Equals(RemoveDigestPrefix(_digests.Fresh(bundle.EvidencePath)),
+                        bundle.EvidenceSha256)) continue;
                 stages?.Enter("publish");
-                _artifacts.PublishReportOnExistingBundle(bundle.BundleId, measures[0].Record, claimed.JobId,
-                    claimToken, cancellationToken, [.. measures.Skip(1).Select(item => item.Record)]);
-                return new ReusedEvidenceBundle([.. measures.Select(item => item.ReportId)], bundle.BundleId);
+                _artifacts.ReuseExistingBundle(bundle.BundleId, claimed.JobId, claimToken, cancellationToken);
+                return new ReusedEvidenceBundle([.. stored.Select(item => item.ReportId)], bundle.BundleId, stored);
             }
             catch (Exception exception) when (exception is InvalidDataException or IOException or
-                Microsoft.Data.Sqlite.SqliteException or KeyNotFoundException)
+                Microsoft.Data.Sqlite.SqliteException or KeyNotFoundException or JsonException)
             {
                 // A damaged or vanished bundle is not reused; the fresh build replaces it.
             }
@@ -296,10 +303,47 @@ internal sealed class EvidenceBundlePipeline
         return null;
     }
 
+    // The newest stored Report per measure bound to this bundle's digests, or null when any measure has none.
+    private IReadOnlyList<ReportRecord>? StoredReportsFor(ParsimonyBundleRecord bundle,
+        IReadOnlyList<string> measureIds, bool needDispositionProjection)
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var reports = _artifacts.ListReports(bundle.BundleId);
+        var found = new List<ReportRecord>();
+        foreach (var measureId in measureIds)
+        {
+            ReportRecord? match = null;
+            foreach (var report in reports)
+            {
+                var response = JsonSerializer.Deserialize<ParsimonyReportResponse>(report.ReportJson, options);
+                if (response is null || response.MeasureRuns.Count == 0 ||
+                    !StringComparer.Ordinal.Equals(response.MeasureRuns[0].MeasureId, measureId) ||
+                    !StringComparer.Ordinal.Equals(response.Inputs.GrammarFacts.Sha256, bundle.GrammarFactsSha256) ||
+                    !StringComparer.Ordinal.Equals(response.Inputs.Evidence.Sha256, bundle.EvidenceSha256))
+                    continue;
+                if (needDispositionProjection && response.DispositionProjection is null) continue;
+                match = report;
+                break;
+            }
+            if (match is null) return null;
+            found.Add(match);
+        }
+        return found;
+    }
+
+    private static void DiscardFacts(string path)
+    {
+        try { File.Delete(path); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // The owner of the file (the working directory or the PanGloss lease) removes it later.
+        }
+    }
+
     private IReadOnlyList<RenderedMeasure> Render(ParsimonyReportInputs inputs, string factsPath,
         string evidencePath, IReadOnlyList<ReportableAssessment> assessments, IReadOnlyList<string> measureIds,
         IReadOnlyList<string> assessmentIds, bool includeDispositionProjection, ParsimonyStages? stages,
-        CancellationToken cancellation)
+        CancellationToken cancellation, out IReadOnlyList<FrozenParsimonyView> frozen)
     {
         // One session verifies the files and serves the join-quality read and every measure of the render.
         var produced = new List<(string MeasureId, RenderedReport Rendered)>();
@@ -314,6 +358,10 @@ internal sealed class EvidenceBundlePipeline
                 var reportInput = ReportInput.FromParsimonyFiles(inputs, factsPath, evidencePath, assessments, measureId);
                 produced.Add((measureId, producer.Produce(reportInput, session, cancellation)));
             }
+            // Keep the views findings point to now, while the facts can still be read (ADR 0086).
+            stages?.Enter("freeze");
+            frozen = ParsimonyViewsQuery.Freeze(session, produced.SelectMany(item =>
+                item.Rendered.ParsimonyFindings ?? []));
         }
         stages?.Enter("render");
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);

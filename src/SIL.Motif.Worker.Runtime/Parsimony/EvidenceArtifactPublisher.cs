@@ -168,10 +168,10 @@ public sealed class EvidenceArtifactPublisher
         var directory = Path.GetFullPath(stagingDirectory);
         EnsureOwnedDirectory(directory);
         var files = Directory.EnumerateFileSystemEntries(directory).Order(StringComparer.Ordinal).ToArray();
-        var expected = new[] { Path.Combine(directory, "evidence.sqlite"),
-            Path.Combine(directory, "grammar-facts.sqlite") }.Order(StringComparer.Ordinal).ToArray();
+        // Grammar facts are discarded after the render (ADR 0086), so a bundle holds the evidence file alone.
+        var expected = new[] { Path.Combine(directory, "evidence.sqlite") };
         if (!files.SequenceEqual(expected, StringComparer.Ordinal))
-            throw new InvalidDataException("A Parsimony staging directory must contain exactly its two SQLite files.");
+            throw new InvalidDataException("A Parsimony staging directory must contain exactly its evidence SQLite file.");
         foreach (var path in expected)
         {
             if (!File.Exists(path) || (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
@@ -225,6 +225,49 @@ public sealed class EvidenceArtifactPublisher
             return OrphanDiscard.Removed;
         }
         return File.Exists(path) ? OrphanDiscard.NotADirectory : OrphanDiscard.Absent;
+    }
+
+    /// <summary>
+    /// Lists the published bundle directories under this project's material directories, never the work root or a
+    /// staging directory, and never following a link.
+    /// </summary>
+    public IReadOnlyList<string> ListFinalBundleDirectories()
+    {
+        var result = new List<string>();
+        if (!Directory.Exists(_parsimonyRoot)) return result;
+        foreach (var material in Directory.EnumerateDirectories(_parsimonyRoot).Order(StringComparer.Ordinal))
+        {
+            if (!IsHashName(Path.GetFileName(material)) || IsLink(material)) continue;
+            result.AddRange(Directory.EnumerateDirectories(material).Order(StringComparer.Ordinal)
+                .Where(entry => IsHashName(Path.GetFileName(entry)) && !IsLink(entry)));
+        }
+        return result;
+    }
+
+    // Final bundle names are 32 hex digits.
+    private static bool IsHashName(string name) =>
+        name.Length == 32 && name.All(character => character is >= '0' and <= '9' or >= 'a' and <= 'f');
+
+    /// <summary>
+    /// Removes a published bundle directory that nothing references, only when nothing under it was written within
+    /// the minimum age and the caller's reference check, run just before the delete, still finds none.
+    /// </summary>
+    public bool DiscardUnreferencedBundle(string directory, DateTime nowUtc, TimeSpan minimumAge,
+        Func<string, bool> isReferenced)
+    {
+        ArgumentNullException.ThrowIfNull(isReferenced);
+        var path = Path.GetFullPath(directory);
+        if (!IsParsimonyPath(path) || IsLink(path) || !Directory.Exists(path) || !_ownership.IsOwned(path)) return false;
+        var newest = Directory.GetLastWriteTimeUtc(path);
+        foreach (var file in Directory.EnumerateFileSystemEntries(path, "*", SearchOption.AllDirectories))
+        {
+            var written = File.GetLastWriteTimeUtc(file);
+            if (written > newest) newest = written;
+        }
+        if (nowUtc - newest < minimumAge) return false;
+        if (isReferenced(path)) return false;
+        DeleteTree(path);
+        return true;
     }
 
     /// <summary>Runs the store-commit checkpoint for an otherwise fully validated bundle.</summary>

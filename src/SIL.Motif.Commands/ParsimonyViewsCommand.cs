@@ -75,8 +75,7 @@ public static class ParsimonyViewsCommand
                     }
                 }
                 if (CanListSavedDecisions(request.Query) &&
-                    (!Directory.Exists(bundle.EvidenceDirectory) || !File.Exists(bundle.GrammarFactsPath) ||
-                     !File.Exists(bundle.EvidencePath)))
+                    (!Directory.Exists(bundle.EvidenceDirectory) || !File.Exists(bundle.EvidencePath)))
                     return ReadSavedDecisions(project, request.Query);
                 using var lease = artifacts.AcquireReaderLease(bundle.BundleId,
                     "view-" + Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
@@ -90,9 +89,14 @@ public static class ParsimonyViewsCommand
                     new ParsimonyArtifactDigest(bundle.GrammarFactsSchemaVersion, bundle.GrammarFactsSha256),
                     new ParsimonyArtifactDigest(bundle.EvidenceSchemaVersion, bundle.EvidenceSha256),
                     null, null, [], ParsimonyEvidenceScopeKind.ProjectApproved);
-                using var session = new ParsimonyQuerySession(bundle.GrammarFactsPath, bundle.EvidencePath, inputs,
+                // Facts are discarded after the Reports are written (ADR 0086); only findings' views were kept.
+                var frozen = ParsimonyViewsQuery.NeedsFacts(request.Query.View)
+                    ? artifacts.FindFrozenView(bundle.BundleId, request.Query.View,
+                        ParsimonyViewsQuery.FilterDigest(request.Query.Filters))
+                    : null;
+                using var session = ParsimonyQuerySession.OpenWithoutFacts(bundle.EvidencePath, inputs,
                     leaseSignal.Token);
-                var result = ParsimonyViewsQuery.Execute(session, request.Query, storedReport);
+                var result = ParsimonyViewsQuery.Execute(session, request.Query, storedReport, frozen: frozen);
                 session.ThrowIfLeaseLost();
                 return CommandOutcome<ParsimonyNamedViewResponse>.Success(result);
             }
@@ -113,7 +117,7 @@ public static class ParsimonyViewsCommand
                     return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.InvalidViewRequest,
                         FailureReason.InvalidArgument, exception.Message);
                 var fault = ParsimonyBundleFaults.Classify(exception,
-                    [bundle.EvidenceDirectory, bundle.GrammarFactsPath, bundle.EvidencePath]);
+                    [bundle.EvidenceDirectory, bundle.EvidencePath]);
                 if (fault == ParsimonyBundleFault.Busy)
                     return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.BundleBusy, FailureReason.Busy,
                         exception.Message);
@@ -189,18 +193,15 @@ public static class ParsimonyViewsCommand
         string projectKey)
     {
         var directory = Path.GetFullPath(bundle.EvidenceDirectory);
-        var facts = Path.GetFullPath(bundle.GrammarFactsPath);
         var evidence = Path.GetFullPath(bundle.EvidencePath);
         var expectedRoot = ParsimonyArtifactPath.ProjectRoot(ownership.WorkerRoot, projectKey);
         var expectedDirectory = Path.GetFullPath(ParsimonyArtifactPath.BundleDirectory(ownership.WorkerRoot,
             projectKey, bundle.BaselineDigest, bundle.ModelFingerprint, bundle.MaterialKey, bundle.InputKind,
             bundle.CandidateIdentity, bundle.BundleId));
         var relative = Path.GetRelativePath(expectedRoot, directory);
-        if (!StringComparer.Ordinal.Equals(facts, Path.Combine(directory, "grammar-facts.sqlite")) ||
-            !StringComparer.Ordinal.Equals(evidence, Path.Combine(directory, "evidence.sqlite")) ||
-            !Directory.Exists(directory) || !File.Exists(facts) || !File.Exists(evidence) ||
+        if (!StringComparer.Ordinal.Equals(evidence, Path.Combine(directory, "evidence.sqlite")) ||
+            !Directory.Exists(directory) || !File.Exists(evidence) ||
             (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0 ||
-            (File.GetAttributes(facts) & FileAttributes.ReparsePoint) != 0 ||
             (File.GetAttributes(evidence) & FileAttributes.ReparsePoint) != 0 ||
             !ownership.IsOwned(directory) || relative is "." or ".." ||
             relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
@@ -208,7 +209,7 @@ public static class ParsimonyViewsCommand
             !StringComparer.Ordinal.Equals(directory, expectedDirectory) ||
             !StringComparer.Ordinal.Equals(Path.GetFileName(directory),
                 ParsimonyArtifactPath.BundleDirectoryName(bundle.BundleId)))
-            throw new InvalidDataException("The registered Parsimony bundle does not contain its two closed artifact files.");
+            throw new InvalidDataException("The registered Parsimony bundle does not contain its closed evidence file.");
     }
 
     private static CommandOutcome<T> Refused<T>(string code, FailureReason reason, string message) where T : class =>

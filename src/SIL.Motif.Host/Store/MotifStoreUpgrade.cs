@@ -18,7 +18,7 @@ public static class MotifStoreUpgrade
         "ActiveParse", "AssessedWords", "AssessmentInvocations", "AssessmentObjectTimings", "AssessmentPins",
         "AssessmentWordPayloads", "Assessments", "BaselineSummaries", "BaselineTextReadIndex", "BaselineTextWordforms",
         "BaselineTextWords", "Baselines", "CurrentParsimonyBundles", "GrammarChecks", "Jobs", "ParsedAnalyses",
-        "ParserRefusals", "ParsimonyBuildClaims", "ParsimonyBundleReferences", "ParsimonyBundles", "ParsimonyReaderLeases",
+        "ParserRefusals", "ParsimonyBuildClaims", "ParsimonyBundleReferences", "ParsimonyBundles", "ParsimonyFrozenViews", "ParsimonyReaderLeases",
         "PendingChangeFits", "PhonologyAssessmentBindings", "PhonologyAssessmentDependencies", "PhonologyAssessmentRows",
         "ProposalDifferenceBuckets", "ProposalDifferenceCases", "ProposalDifferenceOccurrences",
         "Reports", "RetainedInvocationMembers", "RetainedInvocations"

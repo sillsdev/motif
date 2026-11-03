@@ -415,7 +415,7 @@ public sealed class ParsimonyCommandsTests : IDisposable
         using (var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
                    MotifSchema.CurrentSchema, new Version(1, 0)))
         {
-            factsPath = new EvidenceArtifactRepository(database).Get(bundleId)!.GrammarFactsPath;
+            factsPath = new EvidenceArtifactRepository(database).Get(bundleId)!.EvidencePath;
         }
 
         using (var held = new FileStream(factsPath, FileMode.Open, FileAccess.Read, FileShare.None))
@@ -497,10 +497,10 @@ public sealed class ParsimonyCommandsTests : IDisposable
         var materialKey = new string('4', 64);
         var publisher = new EvidenceArtifactPublisher(workerRoot, projectKey);
         var staging = publisher.CreateStagingDirectory(bundleId, token, modelFingerprint, materialKey);
-        File.WriteAllText(Path.Combine(staging, "grammar-facts.sqlite"), "facts");
         WriteOlderEvidenceWithoutTables(Path.Combine(staging, "evidence.sqlite"));
         publisher.FlushAndClose(staging);
         var final = publisher.Publish(staging, bundleId);
+        // The facts file is discarded; the row keeps its name and a digest.
         var facts = Path.Combine(final, "grammar-facts.sqlite");
         var evidence = Path.Combine(final, "evidence.sqlite");
         var baselineRoot = Path.Combine(workerRoot, ProjectWorkspaceKey.StorageSegment(projectKey), "baseline",
@@ -508,7 +508,7 @@ public sealed class ParsimonyCommandsTests : IDisposable
         Directory.CreateDirectory(baselineRoot);
         var bundle = new ParsimonyBundleRecord(bundleId, JsonSerializer.Serialize(token,
                 new JsonSerializerOptions(JsonSerializerDefaults.Web)), final, facts, evidence, modelFingerprint,
-            1, HashFile(facts), 1, HashFile(evidence), "2026-10-05T00:00:00Z", projectKey, token.BundleDigest[7..],
+            1, new string('5', 64), 1, HashFile(evidence), "2026-10-05T00:00:00Z", projectKey, token.BundleDigest[7..],
             materialKey, "available", null, baselineRoot);
         var report = new ReportRecord(reportId, null, null, reportJson, "{}", "parsimony", "stored report");
 

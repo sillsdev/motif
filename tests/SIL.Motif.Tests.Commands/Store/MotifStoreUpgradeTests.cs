@@ -129,6 +129,34 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void Schema60UpgradeDropsBundlesReportsAndKeptViewsAndKeepsProposals()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+        {
+            Execute(old, "INSERT INTO Proposals (ProposalId, Status) VALUES ('proposal', 'proposed');" +
+                "INSERT INTO Reports (ReportId, ProposalId, ReportJson, CreatedUtc) VALUES ('report', 'proposal', '{}', '2020');" +
+                "INSERT INTO ParsimonyBundles VALUES ('bundle', '{}', 'key', 'sha256:a', 'material', 'dir', " +
+                "'dir/grammar-facts.sqlite', 'dir/evidence.sqlite', 'root', 'baseline', NULL, 'model', 1, 'f', 1, 'e', " +
+                "'2020', 'available', NULL);" +
+                "INSERT INTO ParsimonyFrozenViews VALUES ('bundle', 'allomorph-context', 'digest', 1, 'items', 0, '{}');");
+        }
+
+        var output = Path.Combine(_root, "copy.db");
+        var report = MotifStoreUpgrade.Copy(Source, output);
+
+        Assert.Equal(MotifSchema.CurrentSchema, report.TargetSchema);
+        Assert.Equal(1, report.Carried["Proposals"]);
+        foreach (var table in new[] { "ParsimonyBundles", "ParsimonyFrozenViews", "Reports" })
+            Assert.Contains(table, report.Dropped);
+        using var copy = Connect(output);
+        Assert.Equal(1, Count(copy, "Proposals"));
+        Assert.Equal(0, Count(copy, "ParsimonyBundles"));
+        Assert.Equal(0, Count(copy, "ParsimonyFrozenViews"));
+        Assert.Equal(0, Count(copy, "Reports"));
+    }
+
+    [Fact]
     public async Task CliCopiesAnImmutableSourceAndPrintsTheReport()
     {
         CreateSchema49();
