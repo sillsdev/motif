@@ -45,7 +45,9 @@ public sealed class SidePanelRevealTests
                 Assert.Contains(reveal.GetVisualDescendants().OfType<TextBlock>(), label => label.Text == "TEXTS");
                 AssertInside(window, reveal);
                 Activate(window, reveal, keyboard);
-                PageScreenshots.Settle(window);
+                KeyPresses.SettleUntil(window, () => side.IsEffectivelyVisible && !reveal.IsVisible,
+                    "the side panel shown and its reveal button hidden",
+                    () => $"side visible={side.IsEffectivelyVisible}, reveal visible={reveal.IsVisible}");
                 Assert.True(side.IsEffectivelyVisible);
                 Assert.False(reveal.IsVisible);
                 var selector = Assert.IsType<ContentControl>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
@@ -54,7 +56,9 @@ public sealed class SidePanelRevealTests
                 var close = host.FindControl<Button>("SidePanelCollapseButton")!;
                 AssertInside(window, close);
                 Activate(window, close, keyboard);
-                PageScreenshots.Settle(window);
+                KeyPresses.SettleUntil(window, () => !side.IsVisible && reveal.IsFocused,
+                    "the side panel hidden and focus back on the reveal button",
+                    () => $"side visible={side.IsVisible}, reveal focused={reveal.IsFocused}");
                 Assert.False(side.IsVisible);
                 Assert.True(reveal.IsEffectivelyVisible);
                 Assert.True(reveal.IsFocused);
@@ -101,16 +105,17 @@ public sealed class SidePanelRevealTests
                     Assert.Equal(entry.Page, workspace.CurrentPage);
                 }
                 Assert.True(RailItem(rail, entries[^1]).Focus(NavigationMethod.Directional));
-                window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.Home, null);
-                window.KeyRelease(Key.Home, RawInputModifiers.None, PhysicalKey.Home, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.PressUntil(window, Key.Home, () => workspace.CurrentPage == entries[0].Page,
+                    $"page {entries[0].Page}", () => workspace.CurrentPage.ToString(),
+                    physicalKey: PhysicalKey.Home, release: true);
                 Assert.Equal(entries[0].Page, workspace.CurrentPage);
                 for (var index = 1; index < entries.Length; index++)
                 {
                     Assert.True(RailItem(rail, entries[index - 1]).Focus(NavigationMethod.Directional));
-                    window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
-                    window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
-                    PageScreenshots.Settle(window);
+                    var expectedPage = entries[index].Page;
+                    KeyPresses.PressUntil(window, Key.Down, () => workspace.CurrentPage == expectedPage,
+                        $"page {expectedPage}", () => workspace.CurrentPage.ToString(),
+                        physicalKey: PhysicalKey.ArrowDown, release: true);
                     Assert.Equal(entries[index].Page, workspace.CurrentPage);
                     AssertInside(window, RailItem(rail, entries[index]));
                 }

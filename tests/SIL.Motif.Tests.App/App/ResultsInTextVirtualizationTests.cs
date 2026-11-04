@@ -97,8 +97,9 @@ public sealed class ResultsInTextVirtualizationTests
             var strip = Assert.Single(AnalyzeTextsLayoutTests.Strips(panel), border =>
                 ResultsInTextPanel.TokenOf(border)?.Occurrence == target);
             Assert.True(strip.Focus(NavigationMethod.Directional));
-            window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
-            window.KeyRelease(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
+            await KeyPresses.PressUntilAsync(window, Key.Right,
+                () => FocusedForm(window) == $"word-{boundary.Header.Number + 1}-0",
+                $"focus on 'word-{boundary.Header.Number + 1}-0'", () => $"'{FocusedForm(window)}'", release: true);
             await SettleAsync(setup);
             var focused = Assert.IsType<WordStripToken>(window.FocusManager!.GetFocusedElement());
             Assert.Equal($"word-{boundary.Header.Number + 1}-0", Assert.IsType<ResultsTokenViewModel>(focused.Tag).Form);
@@ -164,8 +165,8 @@ public sealed class ResultsInTextVirtualizationTests
             var strip = Assert.Single(AnalyzeTextsLayoutTests.Strips(setup.Panel), border =>
                 ResultsInTextPanel.TokenOf(border)?.Occurrence?.Index == 19);
             Assert.True(strip.Focus(NavigationMethod.Directional));
-            setup.Window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
-            setup.Window.KeyRelease(Key.Right, RawInputModifiers.None, PhysicalKey.None, null);
+            await KeyPresses.PressUntilAsync(setup.Window, Key.Right, () => FocusedForm(setup.Window) == "word-1-20",
+                "focus on 'word-1-20'", () => $"'{FocusedForm(setup.Window)}'", release: true);
             await SettleAsync(setup);
             var focused = Assert.IsType<WordStripToken>(setup.Window.FocusManager!.GetFocusedElement());
             Assert.Equal(20, Assert.IsType<ResultsTokenViewModel>(focused.Tag).Occurrence!.Index);
@@ -206,12 +207,17 @@ public sealed class ResultsInTextVirtualizationTests
                 ResultsInTextPanel.TokenOf(border)?.Occurrence == first.Model!.Tokens[0].Occurrence);
             Assert.True(strip.Focus(NavigationMethod.Directional));
             Assert.Same(strip, setup.Window.FocusManager!.GetFocusedElement());
-            setup.Window.KeyPress(Key.PageDown, RawInputModifiers.None, PhysicalKey.None, null);
+            await KeyPresses.PressUntilAsync(setup.Window, Key.PageDown,
+                () => FocusedForm(setup.Window) == $"word-{localLinesPerPage + 1}-0",
+                $"focus on 'word-{localLinesPerPage + 1}-0'", () => $"'{FocusedForm(setup.Window)}'");
             await SettleAsync(setup);
             var focused = Assert.IsType<WordStripToken>(setup.Window.FocusManager!.GetFocusedElement());
             Assert.Equal($"word-{localLinesPerPage + 1}-0", Assert.IsType<ResultsTokenViewModel>(focused.Tag).Form);
         }, TimeSpan.FromSeconds(60));
     }
+
+    private static string? FocusedForm(Window window) =>
+        (window.FocusManager!.GetFocusedElement() as WordStripToken)?.Tag is ResultsTokenViewModel token ? token.Form : null;
 
     private static async Task SettleAsync(ReaderSetup setup, bool renderFrame = true)
     {

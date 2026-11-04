@@ -215,8 +215,8 @@ public sealed class TryWordHLayoutTests
                 var selectedRow = Assert.IsType<ListBoxItem>(steps.ContainerFromItem(attempt.Steps.Last()));
                 selectedRow.BringIntoView();
                 Assert.True(selectedRow.Focus());
-                window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.Home, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.PressUntil(window, Key.Home, () => ReferenceEquals(otherStep, model.Trace.SelectedStep),
+                    "the first step selected", () => $"selected '{model.Trace.SelectedStep}'", physicalKey: PhysicalKey.Home);
                 Assert.Same(otherStep, steps.SelectedItem);
                 Assert.Same(otherStep, model.Trace.SelectedStep);
                 Assert.Same(otherStep.RecordedStep, model.Trace.SelectedStep!.RecordedStep);
@@ -357,8 +357,8 @@ public sealed class TryWordHLayoutTests
                 attempts.BringIntoView();
                 var firstAttempt = Assert.IsType<ListBoxItem>(attempts.ContainerFromIndex(0));
                 Assert.True(firstAttempt.Focus());
-                window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.PressUntil(window, Key.Down, () => model.Trace.SelectedCandidate is not null,
+                    "a candidate selected", () => "none selected", physicalKey: PhysicalKey.ArrowDown);
                 Assert.NotNull(model.Trace.SelectedCandidate);
                 Assert.Same(attempts.SelectedItem, model.Trace.SelectedCandidate);
                 Save($"reason-attempt-{size}-{theme}-{zoom}");

@@ -248,18 +248,24 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.Equal(SettingsGroup.Display, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
                     Assert.True(groups.Focus());
 
-                    window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
-                    PageScreenshots.Settle(window);
+                    KeyPresses.PressUntil(window, Key.Down,
+                        () => (groups.SelectedItem as SettingsGroupOption)?.Group == SettingsGroup.KeyboardShortcuts,
+                        "the KeyboardShortcuts group selected", () => (groups.SelectedItem as SettingsGroupOption)?.Group.ToString() ?? "none",
+                        physicalKey: PhysicalKey.ArrowDown);
                     Assert.Equal(SettingsGroup.KeyboardShortcuts, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
                     Assert.Equal(SIL.Motif.App.MotifAppStrings.KeyboardShortcuts, ActiveGroupHeading(page));
 
-                    window.KeyPress(Key.End, RawInputModifiers.None, PhysicalKey.End, null);
-                    PageScreenshots.Settle(window);
+                    KeyPresses.PressUntil(window, Key.End,
+                        () => (groups.SelectedItem as SettingsGroupOption)?.Group == SettingsGroup.About,
+                        "the About group selected", () => (groups.SelectedItem as SettingsGroupOption)?.Group.ToString() ?? "none",
+                        physicalKey: PhysicalKey.End);
                     Assert.Equal(SettingsGroup.About, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
                     Assert.Equal(SIL.Motif.App.MotifAppStrings.AboutMotif, ActiveGroupHeading(page));
 
-                    window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.Home, null);
-                    PageScreenshots.Settle(window);
+                    KeyPresses.PressUntil(window, Key.Home,
+                        () => (groups.SelectedItem as SettingsGroupOption)?.Group == SettingsGroup.Display,
+                        "the Display group selected", () => (groups.SelectedItem as SettingsGroupOption)?.Group.ToString() ?? "none",
+                        physicalKey: PhysicalKey.Home);
                     Assert.Equal(SettingsGroup.Display, Assert.IsType<SettingsGroupOption>(groups.SelectedItem).Group);
                     Assert.Equal(SIL.Motif.App.MotifAppStrings.Display, ActiveGroupHeading(page));
                 }

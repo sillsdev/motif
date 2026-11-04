@@ -172,7 +172,8 @@ public sealed class MenuBarBehaviorTests
                 window.KeyPressQwerty(PhysicalKey.E, RawInputModifiers.Alt);
                 window.KeyReleaseQwerty(PhysicalKey.E, RawInputModifiers.Alt);
                 window.KeyRelease(Key.LeftAlt, RawInputModifiers.None, PhysicalKey.AltLeft, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.SettleUntil(window, () => Item(window, "EditMenu").IsSubMenuOpen,
+                    "the Edit menu open", () => $"IsSubMenuOpen={Item(window, "EditMenu").IsSubMenuOpen}");
                 Assert.True(Item(window, "EditMenu").IsSubMenuOpen, "Alt+E must open the real Edit menu.");
                 var copy = Item(window, "CopyMenuItem");
                 copy.BringIntoView();
@@ -186,7 +187,7 @@ public sealed class MenuBarBehaviorTests
                 copy.Click += (_, _) => clicked = true;
                 popup.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
                 popup.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.SettleUntil(window, () => clicked, "the Copy item clicked", () => $"clicked={clicked}");
                 Assert.True(clicked, "Enter must activate the Copy item in its popup.");
                 Assert.Equal("morpheme", await window.Clipboard!.TryGetTextAsync());
             }
@@ -223,7 +224,8 @@ public sealed class MenuBarBehaviorTests
                 window.KeyPressQwerty(PhysicalKey.F, RawInputModifiers.Alt);
                 window.KeyReleaseQwerty(PhysicalKey.F, RawInputModifiers.Alt);
                 window.KeyRelease(Key.LeftAlt, RawInputModifiers.None, PhysicalKey.AltLeft, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.SettleUntil(window, () => Item(window, "FileMenu").IsSubMenuOpen,
+                    "the File menu open", () => $"IsSubMenuOpen={Item(window, "FileMenu").IsSubMenuOpen}");
                 Assert.True(Item(window, "FileMenu").IsSubMenuOpen);
                 var recent = Item(window, "OpenRecentMenuItem");
                 Assert.True(recent.Focus(NavigationMethod.Directional));
@@ -231,22 +233,24 @@ public sealed class MenuBarBehaviorTests
                     throw new InvalidOperationException("The open menu item must have an attached input root.");
                 filePopup.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
                 filePopup.KeyRelease(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.SettleUntil(window, () => recent.IsSubMenuOpen && ShownPaths().Any(),
+                    "Open Recent open with its first page", () => $"IsSubMenuOpen={recent.IsSubMenuOpen}, shown={ShownPaths().Count()}");
                 Assert.True(recent.IsSubMenuOpen, "Right must open the actual Open Recent popup.");
                 Assert.Equal(ordered.Take(20), ShownPaths());
                 if (previous)
                 {
-                    Activate("next", Key.Enter, PhysicalKey.Enter);
+                    Activate("next", Key.Enter, PhysicalKey.Enter, ordered.Skip(20).Take(20));
                     Assert.Equal(ordered.Skip(20).Take(20), ShownPaths());
                 }
-                Activate(previous ? "previous" : "next", Key.Space, PhysicalKey.Space);
+                Activate(previous ? "previous" : "next", Key.Space, PhysicalKey.Space,
+                    previous ? ordered.Take(20) : ordered.Skip(20).Take(20));
                 Assert.True(recent.IsSubMenuOpen, "Paging must keep Open Recent open.");
                 Assert.Equal(previous ? ordered.Take(20) : ordered.Skip(20).Take(20), ShownPaths());
 
                 IEnumerable<string> ShownPaths() => window.RecentProjectItems
                     .Select(item => ((RecentProjectViewModel)item.CommandParameter!).FullFwDataPath).ToArray();
 
-                void Activate(string direction, Key key, PhysicalKey physicalKey)
+                void Activate(string direction, Key key, PhysicalKey physicalKey, IEnumerable<string> afterwards)
                 {
                     var paging = Assert.Single(recent.Items.OfType<MenuItem>(), item => Equals(item.Tag, direction));
                     paging.BringIntoView();
@@ -258,7 +262,8 @@ public sealed class MenuBarBehaviorTests
                         throw new InvalidOperationException("The open menu item must have an attached input root.");
                     popup.KeyPress(key, RawInputModifiers.None, physicalKey, null);
                     popup.KeyRelease(key, RawInputModifiers.None, physicalKey, null);
-                    PageScreenshots.Settle(window);
+                    KeyPresses.SettleUntil(window, () => ShownPaths().SequenceEqual(afterwards),
+                        "the paged recent projects", () => $"{ShownPaths().Count()} shown, first '{ShownPaths().FirstOrDefault()}'");
                 }
             }
             finally

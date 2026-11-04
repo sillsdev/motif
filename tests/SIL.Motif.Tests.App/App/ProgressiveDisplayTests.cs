@@ -645,17 +645,18 @@ public sealed class ProgressiveDisplayTests
                 var initialOffset = scroll.Offset.Y;
                 for (var index = 0; index < navigationSteps; index++)
                 {
-                    window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                    window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                    PageScreenshots.SettleLayout(window);
+                    var next = children[index + 1];
+                    KeyPresses.PressUntil(window, Key.Down, () => ReferenceEquals(next, tree.SelectedItem),
+                        $"child {index + 1} selected", () => $"selected '{tree.SelectedItem}'", release: true);
                 }
                 Assert.Same(children[navigationSteps], tree.SelectedItem);
                 Assert.True(scroll.Offset.Y > initialOffset);
                 for (var index = 0; index < navigationSteps; index++)
                 {
-                    window.KeyPress(Key.Up, RawInputModifiers.None, PhysicalKey.None, null);
-                    window.KeyRelease(Key.Up, RawInputModifiers.None, PhysicalKey.None, null);
-                    PageScreenshots.SettleLayout(window);
+                    var previous = children[navigationSteps - 1 - index];
+                    KeyPresses.PressUntil(window, Key.Up, () => ReferenceEquals(previous, tree.SelectedItem),
+                        $"child {navigationSteps - 1 - index} selected", () => $"selected '{tree.SelectedItem}'",
+                        release: true);
                 }
                 Assert.Same(children[0], tree.SelectedItem);
                 Assert.InRange(root.GetRealizedContainers().Count(), 1, 64);
@@ -677,9 +678,9 @@ public sealed class ProgressiveDisplayTests
                 Assert.True(Assert.IsType<TreeViewItem>(tree.ContainerFromIndex(0)).Focus());
                 for (var index = 0; index < navigationSteps; index++)
                 {
-                    window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                    window.KeyRelease(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
-                    PageScreenshots.SettleLayout(window);
+                    var next = roots[index + 1];
+                    KeyPresses.PressUntil(window, Key.Down, () => ReferenceEquals(next, tree.SelectedItem),
+                        $"root {index + 1} selected", () => $"selected '{tree.SelectedItem}'", release: true);
                 }
                 Assert.Same(roots[navigationSteps], tree.SelectedItem);
                 tree.ScrollIntoView(1999);

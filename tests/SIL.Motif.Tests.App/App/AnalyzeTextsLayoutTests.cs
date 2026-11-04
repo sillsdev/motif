@@ -211,18 +211,13 @@ public sealed class AnalyzeTextsLayoutTests
     private static ResultsTokenViewModel FocusedToken(ResultsInTextPanel panel) =>
         Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(Assert.Single(Strips(panel), strip => strip.IsFocused)));
 
-    // The key handler awaits the reader before it moves focus, so a dispatcher pump alone can return first.
-    private static async Task PressUntilFocusedAsync(
-        WorkspaceShellViewModel workspace, Window window, ResultsInTextPanel panel, Key key, ResultsTokenViewModel expected)
-    {
-        window.KeyPress(key, RawInputModifiers.None, PhysicalKey.None, null);
-        await Wait.UntilAsync(() => ReferenceEquals(FocusedTokenOrNull(panel), expected),
-            $"focus to reach '{expected.Form}' after {key}",
-            detail: () => $"focused='{FocusedTokenOrNull(panel)?.Form}' " +
+    private static Task PressUntilFocusedAsync(
+        WorkspaceShellViewModel workspace, Window window, ResultsInTextPanel panel, Key key, ResultsTokenViewModel expected) =>
+        KeyPresses.PressUntilAsync(window, key, () => ReferenceEquals(FocusedTokenOrNull(panel), expected),
+            $"focus on '{expected.Form}'",
+            () => $"focused='{FocusedTokenOrNull(panel)?.Form}' " +
                 $"keyboard='{window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")?.Text}' " +
-                $"pending={workspace.PageModel<TextsPageModel>().ResultsInText.SelectionRefresh.IsCompleted}",
-            between: () => PageScreenshots.Settle(window));
-    }
+                $"refreshCompleted={workspace.PageModel<TextsPageModel>().ResultsInText.SelectionRefresh.IsCompleted}");
 
     private static ResultsTokenViewModel? FocusedTokenOrNull(ResultsInTextPanel panel) =>
         Strips(panel).Where(strip => strip.IsFocused).Take(2).ToArray() is [var only]

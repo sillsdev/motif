@@ -793,12 +793,15 @@ public sealed class SettingsPageTests
                 var groups = page.Navigation.FindControl<ListBox>("SettingsGroups")!;
                 page.FocusSelectedGroup();
                 Assert.Same(groups, window.FocusManager!.GetFocusedElement());
-                window.KeyPress(Key.End, RawInputModifiers.None, PhysicalKey.End, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.PressUntil(window, Key.End, () => settings.SelectedGroup == Group.About,
+                    "the About group selected", () => settings.SelectedGroup.ToString(), physicalKey: PhysicalKey.End);
                 Assert.Equal(Group.About, settings.SelectedGroup);
-                window.KeyPress(Key.Home, RawInputModifiers.None, PhysicalKey.Home, null);
-                window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.PressUntil(window, Key.Home, () => settings.SelectedGroup != Group.About,
+                    "selection to leave the About group", () => settings.SelectedGroup.ToString(),
+                    physicalKey: PhysicalKey.Home);
+                KeyPresses.PressUntil(window, Key.Down, () => settings.SelectedGroup == Group.KeyboardShortcuts,
+                    "the Keyboard shortcuts group selected", () => settings.SelectedGroup.ToString(),
+                    physicalKey: PhysicalKey.ArrowDown);
                 Assert.Equal(Group.KeyboardShortcuts, settings.SelectedGroup);
                 page.FocusShortcutSearch();
                 PageScreenshots.Settle(window);

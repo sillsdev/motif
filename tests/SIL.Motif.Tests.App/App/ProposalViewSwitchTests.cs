@@ -154,9 +154,11 @@ public sealed class ProposalViewSwitchTests
                 var chosen = views.Items.OfType<ListBoxItem>().ElementAt(views.SelectedIndex);
                 Assert.True(chosen.Focus(NavigationMethod.Tab));
 
-                window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
-                window.KeyRelease(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
-                PageScreenshots.Settle(window);
+                KeyPresses.PressUntil(window, Key.Right, () => workspace.Context.Lens!.View == MarkupView.Proposal &&
+                        window.FocusManager!.GetFocusedElement() is ListBoxItem { IsSelected: true },
+                    "the Proposal view chosen with focus on it",
+                    () => $"view {workspace.Context.Lens!.View}, focus {window.FocusManager!.GetFocusedElement()}",
+                    physicalKey: PhysicalKey.ArrowRight, release: true);
 
                 var focused = Assert.IsType<ListBoxItem>(window.FocusManager!.GetFocusedElement());
                 Assert.True(focused.IsSelected);
