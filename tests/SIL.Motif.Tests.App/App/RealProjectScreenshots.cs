@@ -201,7 +201,8 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
 
         var compare = workspace.Assess.Compare;
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Lost"));
-        if (compare.Words.FirstOrDefault() is { } spelling)
+        // Staging needs a wordform in the project; a pasted word the project never saw is refused by design.
+        if (compare.Words.FirstOrDefault(word => word.WordRow.HasWordAnalysesLink) is { } spelling)
         {
             spelling.IsChecked = true;
             compare.ProposeCommand.Execute(ChangeKinds.IncorrectSpelling);
@@ -209,7 +210,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 TimeSpan.FromMinutes(2), "The spelling change did not finish");
         }
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New: PanGloss proposes"));
-        if (compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0) is { } candidate)
+        if (compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0 && word.WordRow.HasWordAnalysesLink) is { } candidate)
         {
             candidate.IsChecked = true;
             compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
