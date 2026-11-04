@@ -56,6 +56,7 @@ internal static class ComposerDefinitions
         new RetireRedundantZeroAffixDefinition(),
         new RetireBoundaryMarkerDefinition(),
         new MergeBoundaryMarkersDefinition(),
+        new RetireAffixSlotDefinition(),
         new RecordParsimonyDispositionDefinition(),
         new RecordSourceValidatedDecisionDefinition(),
     ];

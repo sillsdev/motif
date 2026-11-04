@@ -589,8 +589,11 @@ internal static class AgentTools
             Schema.Object(
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("target", Schema.String("Canonical id of the existing affix slot."), true),
-                ("expected_optional", Schema.Boolean("The optionality the project must currently have."), true),
-                ("optional", Schema.Boolean("The requested optionality."), true)),
+                ("expected_optional", Schema.Boolean("The optionality the project must currently have. Give with optional."), false),
+                ("optional", Schema.Boolean("The requested optionality. Give with expected_optional."), false),
+                ("writingSystem", Schema.String("Writing system of the slot name. Give with expectedName and name to rename."), false),
+                ("expectedName", Schema.String("The slot name the project must currently have."), false),
+                ("name", Schema.String("The requested slot name."), false)),
             false,
             false,
             false,
@@ -1401,12 +1404,15 @@ internal static class AgentTools
         ["disabled"] = args.RequiredBoolean("disabled"),
     }.ToJsonString();
 
-    private static string EditAffixSlotIntent(ToolArgs args) => new JsonObject
+    private static string EditAffixSlotIntent(ToolArgs args)
     {
-        ["target"] = args.Required("target"),
-        ["expectedOptional"] = args.RequiredBoolean("expected_optional"),
-        ["optional"] = args.RequiredBoolean("optional"),
-    }.ToJsonString();
+        var intent = new JsonObject { ["target"] = args.Required("target") };
+        if (args.OptionalBoolean("expected_optional") is { } expectedOptional) intent["expectedOptional"] = expectedOptional;
+        if (args.OptionalBoolean("optional") is { } optional) intent["optional"] = optional;
+        foreach (var field in new[] { "writingSystem", "expectedName", "name" })
+            if (args.Optional(field) is { } text) intent[field] = text;
+        return intent.ToJsonString();
+    }
 
     private static string EditAffixTemplateIntent(ToolArgs args) => new JsonObject
     {

@@ -125,7 +125,8 @@ public sealed class ParsimonyToolSurfaceTests
             ["motif_add_affix_slot"] = ["draft", "category", "name", "ws", "optional", "assignments"],
             ["motif_add_affix_template"] =
                 ["draft", "category", "name", "ws", "prefix_slots", "suffix_slots", "final"],
-            ["motif_edit_affix_slot"] = ["draft", "target", "expected_optional", "optional"],
+            ["motif_edit_affix_slot"] =
+                ["draft", "target", "expected_optional", "optional", "writingSystem", "expectedName", "name"],
             ["motif_edit_affix_template"] =
                 ["draft", "target", "expected_prefix_slots", "prefix_slots", "expected_suffix_slots", "suffix_slots"],
             ["motif_edit_inflectional_affix"] = ["draft", "target", "expected_slots", "slots"],

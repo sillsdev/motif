@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -23,17 +24,40 @@ public static class EditAffixSlotComposer
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
         var slot = ReferenceFieldLowering.Resolve<IMoInflAffixSlot>(cache, intent.Target, ConstructName);
+        var operations = new List<OperationEnvelope>();
+        if (intent.Rename is { } rename) operations.AddRange(BuildRename(cache, slot, intent.Target, rename));
+        if (intent.Optional is not { } optional) return operations;
         if (slot.Optional != intent.ExpectedOptional)
             throw new InvalidOperationException(
                 $"'{ConstructName}': target '{intent.Target.Value}' has Optional={slot.Optional}; " +
                 $"the intent expected Optional={intent.ExpectedOptional}.");
-        if (slot.Optional == intent.Optional) return [];
-        return
-        [
-            new OperationEnvelope(CanonicalId.Mint(), MoInflAffixSlotOptionalOperationKinds.SetOptional,
-                target: intent.Target, after: JsonSerializer.SerializeToElement(new { value = intent.Optional }),
-                rationale: Rationale),
-        ];
+        if (slot.Optional == optional) return operations;
+        operations.Add(new OperationEnvelope(CanonicalId.Mint(), MoInflAffixSlotOptionalOperationKinds.SetOptional,
+            target: intent.Target, after: JsonSerializer.SerializeToElement(new { value = optional }),
+            rationale: Rationale));
+        return operations;
+    }
+
+    private static IEnumerable<OperationEnvelope> BuildRename(LcmCache cache, IMoInflAffixSlot slot,
+        CanonicalId target, EditAffixSlotRename rename)
+    {
+        var ws = cache.WritingSystemFactory.GetWsFromStr(rename.WritingSystem);
+        if (string.IsNullOrWhiteSpace(rename.WritingSystem) || ws == 0)
+            throw new InvalidOperationException(
+                $"'{ConstructName}': writing system tag '{rename.WritingSystem}' is not known to this project.");
+        SoundSystemAuthoring.RequireName(rename.Name);
+        var current = slot.Name.get_String(ws)?.Text ?? string.Empty;
+        if (!string.Equals(current, rename.ExpectedName, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                $"'{ConstructName}': target '{target.Value}' is named '{current}' in '{rename.WritingSystem}'; " +
+                $"the intent expected '{rename.ExpectedName}'.");
+        if (string.Equals(current, rename.Name.Normalize(NormalizationForm.FormD), StringComparison.Ordinal)) yield break;
+        yield return new OperationEnvelope(CanonicalId.Mint(), MoInflAffixSlotNameOperationKinds.SetName,
+            target: target, after: JsonSerializer.SerializeToElement(new
+            {
+                ws = rename.WritingSystem,
+                text = rename.Name.Normalize(NormalizationForm.FormD),
+            }), rationale: Rationale);
     }
 
     /// <summary>Returns every inflectional MSA and template whose grammar uses the slot.</summary>

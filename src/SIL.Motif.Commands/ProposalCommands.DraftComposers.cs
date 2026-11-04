@@ -101,7 +101,8 @@ public static partial class ProposalCommands
         new("compose-edit-affix-slot", "EditAffixSlot", ["affix-slots-and-templates"], (cache, input, _) =>
                 EditAffixSlotComposer.Build(cache, EditAffixSlotIntentParser.Parse(input)),
             ReplacePrevious: (input, operation) => ReplacesTarget(input, operation,
-                MoInflAffixSlotOptionalOperationKinds.SetOptional, MoInflAffixSlotOptionalOperationKinds.ClearOptional),
+                MoInflAffixSlotOptionalOperationKinds.SetOptional, MoInflAffixSlotOptionalOperationKinds.ClearOptional,
+                MoInflAffixSlotNameOperationKinds.SetName, MoInflAffixSlotNameOperationKinds.ClearName),
             RelatedObjects: (cache, input) => EditAffixSlotComposer.ReadAffectedUsers(cache,
                 EditAffixSlotIntentParser.Parse(input))),
         new("compose-edit-affix-template", "EditAffixTemplate", ["affix-slots-and-templates"], (cache, input, _) =>

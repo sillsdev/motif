@@ -159,6 +159,7 @@ public static class ChangeVocabulary
             ["RetireAllomorph"] = ("Retire allomorph", "Retire an allomorph"),
             ["MergeBoundaryMarkers"] = ("Merge boundary markers", "Merge a duplicate boundary marker into the standard one"),
             ["RetireBoundaryMarker"] = ("Retire boundary marker", "Retire a duplicate boundary marker"),
+            ["RetireAffixSlot"] = ("Retire affix slot", "Retire an unused affix slot"),
             ["RetireRedundantZeroAffix"] = ("Retire zero affix", "Retire a zero affix"),
             ["RecordParsimonyDisposition"] = ("Record a decision on", "Record a Parsimony decision"),
         };

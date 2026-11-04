@@ -617,11 +617,12 @@
   },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
-    "description": "Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
+    "description": "Changes whether an existing inflectional affix slot is optional, renames it, or both. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
     "source": "Hand-written from command behavior.",
     "goals": [
       "Make an affix slot optional",
       "Make a slot required again",
+      "Rename an affix slot",
       "See which affixes and templates a slot affects"
     ],
     "guides": [
@@ -876,6 +877,24 @@
       "Remove a redundant allomorph",
       "Drop an alternate spelling nothing uses"
     ]
+  },
+  "compose-retire-affix-slot": {
+    "title": "Retire an affix slot",
+    "description": "Deletes an inflectional affix slot that no affix analysis and no template uses any more. It refuses a slot still in use and names what uses it; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "slot": "Id of the unused affix slot to delete."
+    },
+    "goals": [
+      "Delete an affix slot nothing uses",
+      "Retire a slot after moving its affixes elsewhere",
+      "Clean up slots left behind by a template change"
+    ],
+    "guides": [
+      "suffix-prefix-slots"
+    ],
+    "redirect": "Move the slot's affixes and drop it from its templates first. To rename it or make it optional, edit it instead (guide suffix-prefix-slots)."
   },
   "compose-retire-boundary-marker": {
     "title": "Retire a boundary marker",

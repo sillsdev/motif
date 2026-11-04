@@ -1143,6 +1143,20 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal(1, slotEdit.GetProperty("result").GetProperty("operationCount").GetInt32());
         Assert.StartsWith("Draft now has 1 change.", slotEdit.GetProperty("next").GetString(), StringComparison.Ordinal);
 
+        await session.CallAsync("motif_start_proposal", ("draft", "slot-rename"),
+            ("label", "Rename one affix slot"), ("rationale", "This is a Draft-only check."));
+        var slotRename = await session.CallAsync("motif_edit_affix_slot", ("draft", "slot-rename"),
+            ("target", slotId.Value), ("writingSystem", "en"), ("expectedName", "MCP slot"), ("name", "Renamed slot"));
+        var renameOperation = Assert.Single(slotRename.GetProperty("result").GetProperty("operations").EnumerateArray());
+        Assert.Equal("grammar/moInflAffixSlot/setName", renameOperation.GetProperty("kind").GetString());
+
+        var oneSided = await session.Client.CallToolAsync("motif_edit_affix_slot", new Dictionary<string, object?>
+        {
+            ["project"] = session.ProjectPath, ["draft"] = "slot-rename", ["target"] = slotId.Value, ["optional"] = true,
+        });
+        Assert.True(oneSided.IsError);
+        Assert.Contains("expectedOptional", ((TextContentBlock)oneSided.Content[0]).Text);
+
         await session.CallAsync("motif_start_proposal", ("draft", "slot-create"),
             ("label", "Add a category-owned slot"), ("rationale", "The affix needs a new position class."));
         var createdSlot = await session.CallAsync("motif_add_affix_slot", ("draft", "slot-create"),

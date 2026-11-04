@@ -2906,18 +2906,28 @@
                       },
                       "expectedOptional": {
                         "type": "boolean",
-                        "description": "The optionality the project must currently have."
+                        "description": "The optionality the project must currently have. Give with optional."
                       },
                       "optional": {
                         "type": "boolean",
-                        "description": "The requested optionality."
+                        "description": "The requested optionality. Give with expected_optional."
+                      },
+                      "writingSystem": {
+                        "type": "string",
+                        "description": "Writing system of the slot name. Give with expectedName and name to rename."
+                      },
+                      "expectedName": {
+                        "type": "string",
+                        "description": "The slot name the project must currently have."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The requested slot name."
                       }
                     },
                     "additionalProperties": false,
                     "required": [
-                      "target",
-                      "expectedOptional",
-                      "optional"
+                      "target"
                     ]
                   },
                   "citation": {

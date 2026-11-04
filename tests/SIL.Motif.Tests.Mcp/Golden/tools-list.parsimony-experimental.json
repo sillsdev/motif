@@ -645,7 +645,7 @@
   },
   {
     "name": "motif_edit_affix_slot",
-    "description": "Edit an affix slot. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Changes whether an existing inflectional affix slot is optional. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Edit an affix slot. Research first: motif_guide topic suffix-prefix-slots or feature-conditioned-slots; check best practice. Put affixes in slots in speakers\u0027 order. No entry per stem, and no one broad slot for affixes with different jobs (guide suffix-prefix-slots). Changes whether an existing inflectional affix slot is optional, renames it, or both. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-edit-affix-slot. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -659,11 +659,23 @@
         },
         "expected_optional": {
           "type": "boolean",
-          "description": "The optionality the project must currently have."
+          "description": "The optionality the project must currently have. Give with optional."
         },
         "optional": {
           "type": "boolean",
-          "description": "The requested optionality."
+          "description": "The requested optionality. Give with expected_optional."
+        },
+        "writingSystem": {
+          "type": "string",
+          "description": "Writing system of the slot name. Give with expectedName and name to rename."
+        },
+        "expectedName": {
+          "type": "string",
+          "description": "The slot name the project must currently have."
+        },
+        "name": {
+          "type": "string",
+          "description": "The requested slot name."
         },
         "project": {
           "type": "string",
@@ -673,8 +685,6 @@
       "required": [
         "draft",
         "target",
-        "expected_optional",
-        "optional",
         "project"
       ],
       "additionalProperties": false
