@@ -464,7 +464,7 @@ public sealed class InspectorTests
 
         var ranIn = InspectorWordsViewModel.ForRanIn(new ObjectUseWords([first, second], []), _ => { });
 
-        Assert.Equal("Ran in 2 words · 5 recorded calls · some call counts unavailable", ranIn.Heading);
+        Assert.Equal("Ran in 2 words · 5 counted · some counts unavailable", ranIn.Heading);
     }
 
     [Fact]

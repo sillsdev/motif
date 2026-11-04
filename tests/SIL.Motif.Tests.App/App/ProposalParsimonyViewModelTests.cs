@@ -162,7 +162,7 @@ public sealed class ProposalParsimonyViewModelTests
     {
         var model = await WatchedAsync(ProposalParsimonyStatusFixtures.Running(Id, "measure", 3, 6));
 
-        Assert.Equal("Parsimony is measuring this Proposal's candidate: measuring, step 3 of 6.", model.Sentence);
+        Assert.Equal("Parsimony is measuring this Proposal's candidate: measuring, stage 3 of 6.", model.Sentence);
         Assert.DoesNotMatch(new Regex(@"\d\d:\d\d|\b\d{4}-\d\d|\bms\b|second|minute|ago|elapsed", RegexOptions.IgnoreCase),
             AllText(model));
     }
@@ -225,8 +225,8 @@ public sealed class ProposalParsimonyViewModelTests
         await watching;
 
         Assert.Equal(["Not Yet Run", "Queued|Parsimony is waiting for other work to finish before it starts.",
-            "Running|Parsimony is measuring this Proposal's candidate: reading the grammar, step 1 of 5.",
-            "Running|Parsimony is measuring this Proposal's candidate: measuring, step 3 of 5.",
+            "Running|Parsimony is measuring this Proposal's candidate: reading the grammar, stage 1 of 5.",
+            "Running|Parsimony is measuring this Proposal's candidate: measuring, stage 3 of 5.",
             "Ready|" + model.Sentence], seen);
         Assert.Equal(5, fake.ProposalParsimonyStatusRequests.Count);
         Assert.All(fake.ProposalParsimonyStatusRequests, request =>

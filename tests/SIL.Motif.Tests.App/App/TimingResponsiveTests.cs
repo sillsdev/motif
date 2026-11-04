@@ -45,7 +45,7 @@ public sealed class TimingResponsiveTests
                     "AI Handoff for these words" or "More ways to choose words")
                 .ToArray();
             var callsButton = page.GetLogicalDescendants().OfType<Button>()
-                .Single(button => AutomationProperties.GetName(button) == "Show calls per kind");
+                .Single(button => AutomationProperties.GetName(button) == "Show counts per kind");
             var ruleHandoff = page.GetLogicalDescendants().OfType<Button>()
                 .Single(button => button.Content?.ToString() == MotifAppStrings.AIHandoffForThisRule);
             var pageScroll = Assert.IsType<ScrollViewer>(pageBorder.FindAncestorOfType<ScrollViewer>());

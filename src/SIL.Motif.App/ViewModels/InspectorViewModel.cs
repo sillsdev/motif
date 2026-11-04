@@ -435,9 +435,9 @@ public sealed partial class InspectorWordsViewModel : ObservableObject
         var words = ranIn?.Words ?? [];
         var calls = TimingAggregation.CombineCalls(words.Select(word => ((long?)word.Calls, word.CallsArePartial)));
         var callText = calls.Calls is { } total
-            ? calls.IsPartial ? $" · {total:N0} recorded calls · some call counts unavailable"
-                : $" · {total:N0} {(total == 1 ? "call" : "calls")}"
-            : " · call counts not recorded";
+            ? calls.IsPartial ? $" · {total:N0} counted · some counts unavailable"
+                : $" · {total:N0} {(total == 1 ? "time" : "times")}"
+            : " · counts not recorded";
         var heading = words.Count == 0 ? string.Empty
             : (words.Count == 1 ? "Ran in 1 word" : $"Ran in {words.Count:N0} words") +
               callText;
@@ -486,7 +486,7 @@ public sealed partial class InspectorWordsViewModel : ObservableObject
         string.Join(" · ", meanings.Select(meaning => $"{meaning.Meaning} {meaning.Words:N0}"));
 
     private static string TimeText(ObjectUseWord word) => word.ParserWork is { } work ? TimingShare.FormatParserWork(work)
-        : word.Calls is { } calls ? $"{calls:N0} calls" : MotifAppStrings.ParserWorkNotRecorded;
+        : word.Calls is { } calls ? $"{calls:N0} {(calls == 1 ? "time" : "times")}" : MotifAppStrings.ParserWorkNotRecorded;
 }
 
 /// <summary>One word in an inspector section: the word, what it means for the grammar, and a way to try it.</summary>

@@ -583,7 +583,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             await stage.Until(() => timing.HasKindCalls, "Timing's per-kind calls");
             if (!timing.ShowKindCalls)
             {
-                var calls = stage.Named<Button>("Show calls per kind");
+                var calls = stage.Named<Button>("Show counts per kind");
                 calls.Command!.Execute(calls.CommandParameter);
             }
             PageScreenshots.Settle(stage.Window);

@@ -2976,8 +2976,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Timing by kind". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.CallsByKindAccessibleName" xml:space="preserve">
-    <value>Calls by kind</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Calls by kind". Not visible on screen.</comment>
+    <value>Counts by kind</value>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Timing page: "Counts by kind". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimingByRuleAccessibleName" xml:space="preserve">
     <value>Timing by rule</value>
@@ -3308,8 +3308,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Sentence shown on the Try a Word page. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.NoStepRecorded" xml:space="preserve">
-    <value>No step recorded</value>
-    <comment>Heading or field label on the Try a Word page: "No step recorded".</comment>
+    <value>Not in the parser trace</value>
+    <comment>Status under a stored analysis piece on the Try a Word page when the recorded parser trace has nothing for it.</comment>
   </data>
   <data name="MotifApp.ParserLabel" xml:space="preserve">
     <value>Parser</value>
@@ -4168,20 +4168,20 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Reason the checked-words button is unavailable. Texts is the name of a page.</comment>
   </data>
   <data name="MotifApp.TimingHideCalls" xml:space="preserve">
-    <value>Hide calls</value>
-    <comment>Button on the Timing page that hides the call counts by kind.</comment>
+    <value>Hide counts</value>
+    <comment>Button on the Timing page that hides the counts by kind.</comment>
   </data>
   <data name="MotifApp.TimingShowCalls" xml:space="preserve">
-    <value>Show calls</value>
-    <comment>Button on the Timing page that shows the call counts by kind.</comment>
+    <value>Show counts</value>
+    <comment>Button on the Timing page that shows the counts by kind.</comment>
   </data>
   <data name="MotifApp.TimingHideCallsAccessibleName" xml:space="preserve">
-    <value>Hide calls per kind</value>
-    <comment>Accessible name of the button that hides the call counts by kind.</comment>
+    <value>Hide counts per kind</value>
+    <comment>Accessible name of the button that hides the counts by kind.</comment>
   </data>
   <data name="MotifApp.TimingShowCallsAccessibleName" xml:space="preserve">
-    <value>Show calls per kind</value>
-    <comment>Accessible name of the button that shows the call counts by kind.</comment>
+    <value>Show counts per kind</value>
+    <comment>Accessible name of the button that shows the counts by kind.</comment>
   </data>
   <data name="MotifApp.TimingRerunProgressFormat" xml:space="preserve">
     <value>{0} of {1} words done</value>
@@ -4208,16 +4208,16 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Shown in a Timing table cell when the parser did not record the value.</comment>
   </data>
   <data name="MotifApp.TimingCallsPartialFormat" xml:space="preserve">
-    <value>{0} recorded calls; some call counts unavailable</value>
-    <comment>Calls cell of the Timing table when some call counts are missing; {0} is how many calls were recorded.</comment>
+    <value>{0} counted; some counts unavailable</value>
+    <comment>Count cell of the Timing table when some counts are missing; {0} is how many were counted.</comment>
   </data>
   <data name="MotifApp.TimingCallsPattern" xml:space="preserve">
-    <value>{0, plural, one {# call} other {# calls}}</value>
-    <comment>Plural pattern: the number of calls in the Timing table; # is the count.</comment>
+    <value>{0, plural, one {# time} other {# times}}</value>
+    <comment>Plural pattern: the number of times a rule or object was applied in the Timing table; # is the count.</comment>
   </data>
   <data name="MotifApp.TimingNotCounted" xml:space="preserve">
     <value>Not counted</value>
-    <comment>Calls cell of the Timing table when the parser did not count calls.</comment>
+    <comment>Count cell of the Timing table when the parser did not count.</comment>
   </data>
   <data name="MotifApp.TimingKindMorphologicalRules" xml:space="preserve">
     <value>Morphological rules</value>
@@ -8329,15 +8329,15 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.ProposalParsimonyRunning" xml:space="preserve">
     <value>Parsimony is measuring this Proposal's candidate.</value>
-    <comment>Sentence under the Running Parsimony state when the step is not known.</comment>
+    <comment>Sentence under the Running Parsimony state when the stage is not known.</comment>
   </data>
   <data name="MotifApp.ProposalParsimonyRunningStepFormat" xml:space="preserve">
-    <value>Parsimony is measuring this Proposal's candidate: step {0} of {1}.</value>
-    <comment>Sentence under the Running Parsimony state; {0} is the step and {1} the number of steps.</comment>
+    <value>Parsimony is measuring this Proposal's candidate: stage {0} of {1}.</value>
+    <comment>Sentence under the Running Parsimony state; {0} is the stage and {1} the number of stages.</comment>
   </data>
   <data name="MotifApp.ProposalParsimonyRunningStageFormat" xml:space="preserve">
-    <value>Parsimony is measuring this Proposal's candidate: {0}, step {1} of {2}.</value>
-    <comment>Sentence under the Running Parsimony state; {0} names the step, {1} is the step and {2} the number of steps.</comment>
+    <value>Parsimony is measuring this Proposal's candidate: {0}, stage {1} of {2}.</value>
+    <comment>Sentence under the Running Parsimony state; {0} names the stage, {1} is the stage and {2} the number of stages.</comment>
   </data>
   <data name="MotifApp.ProposalParsimonyStageFacts" xml:space="preserve">
     <value>reading the grammar</value>

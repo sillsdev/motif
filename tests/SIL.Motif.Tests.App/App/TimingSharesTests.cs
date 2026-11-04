@@ -121,7 +121,7 @@ public sealed class TimingSharesTests
         Assert.Equal(1d, timing.KindShares.Sum(share => share.Share!.Value), precision: 6);
         Assert.Equal("Every share is of the 8,000 parser work these 9 words needed to parse.", timing.ShareDenominatorText);
         Assert.Equal("Not attributed: 1,200 parser work (15%).", timing.NotAttributedText);
-        Assert.Equal(["420 calls", "70 calls", "Not counted"], timing.KindCallShares.Select(share => share.CallsText));
+        Assert.Equal(["420 times", "70 times", "Not counted"], timing.KindCallShares.Select(share => share.CallsText));
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public sealed class TimingSharesTests
         };
         var share = new TimingShare("Morphological rules", "morph_rule", 10, 0.5, 1, source);
 
-        Assert.Equal("5 recorded calls; some call counts unavailable", share.CallsText);
+        Assert.Equal("5 counted; some counts unavailable", share.CallsText);
     }
 
     [Fact]
@@ -568,14 +568,14 @@ public sealed class TimingSharesTests
                 });
 
                 var calls = window.GetLogicalDescendants().OfType<Button>()
-                    .Single(button => AutomationProperties.GetName(button) == "Show calls per kind");
+                    .Single(button => AutomationProperties.GetName(button) == "Show counts per kind");
                 Assert.True(calls.IsTabStop);
-                Assert.DoesNotContain("420 calls", VisibleText(window));
+                Assert.DoesNotContain("420 times", VisibleText(window));
                 calls.Command!.Execute(calls.CommandParameter);
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                Assert.Contains("420 calls", VisibleText(window));
-                Assert.Contains("70 calls", VisibleText(window));
+                Assert.Contains("420 times", VisibleText(window));
+                Assert.Contains("70 times", VisibleText(window));
                 Assert.Contains("Not counted", VisibleText(window));
             }
             finally

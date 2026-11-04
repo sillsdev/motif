@@ -1107,7 +1107,7 @@ public sealed class TryWordPageTests
                 PageScreenshots.SettleLayout(window);
 
                 Assert.Equal(2, Assert.Single(page.FieldWorksAnalyses).Pieces.Count);
-                Assert.Equal(1, ContextTexts(window).Count(text => text == "No step recorded"));
+                Assert.Equal(1, ContextTexts(window).Count(text => text == "Not in the parser trace"));
             }
             finally { window.Close(); }
         });
