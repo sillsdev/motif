@@ -13,10 +13,13 @@ namespace SIL.Motif.Tests.App;
 internal sealed class SampleWorkspace : IAsyncDisposable
 {
     private readonly StoredSelectionFixture readerFixture;
+    private readonly System.Collections.Concurrent.ConcurrentQueue<Task> storeWork;
     private int disposed;
 
-    internal SampleWorkspace(WorkspaceShellViewModel workspace, FakeCommandClient fake, StoredSelectionFixture readerFixture)
+    internal SampleWorkspace(WorkspaceShellViewModel workspace, FakeCommandClient fake, StoredSelectionFixture readerFixture,
+        System.Collections.Concurrent.ConcurrentQueue<Task> storeWork)
     {
+        this.storeWork = storeWork;
         Workspace = workspace;
         Fake = fake;
         this.readerFixture = readerFixture;
@@ -39,7 +42,19 @@ internal sealed class SampleWorkspace : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.Exchange(ref disposed, 1) != 0) return;
+        // Stopping writes read state through the store, so in-flight store calls finish first.
+        await DrainStoreWorkAsync();
         await Workspace.Context.StopProjectWorkAsync();
+        await DrainStoreWorkAsync();
         readerFixture.Dispose();
+    }
+
+    private async Task DrainStoreWorkAsync()
+    {
+        while (storeWork.TryDequeue(out var work))
+        {
+            try { await work.ConfigureAwait(false); }
+            catch (Exception) { }
+        }
     }
 }

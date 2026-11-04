@@ -20,8 +20,18 @@ public sealed class ReadStateRepository
     public ReadStateWriteTransaction BeginTransaction()
     {
         if (_transaction is not null) throw new InvalidOperationException("A Read-state transaction is already open.");
-        _transactionConnection = _database.OpenConnection();
-        _transaction = _transactionConnection.BeginTransaction();
+        var connection = _database.OpenConnection();
+        try
+        {
+            _transaction = connection.BeginTransaction();
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
+
+        _transactionConnection = connection;
         return new ReadStateWriteTransaction(this, _transactionConnection, _transaction);
     }
 

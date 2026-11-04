@@ -962,9 +962,15 @@ public sealed class PageScreenshots
         Record("configure-fakes");
         if (parse && capturedWords is not null) readerFixture.RecordAssessment(capturedAssessment ?? Assessment());
         fake.SelectionReaderHandler = readerFixture.OpenAsync;
-        fake.OnReadWordState((request, cancellation) => Task.Run(() =>
-            SIL.Motif.Commands.ReadStateCommands.Execute(request with { ProjectPath = readerFixture.ProjectPath },
-                cancellation), cancellation));
+        var storeWork = new System.Collections.Concurrent.ConcurrentQueue<Task>();
+        fake.OnReadWordState((request, cancellation) =>
+        {
+            var work = Task.Run(() =>
+                SIL.Motif.Commands.ReadStateCommands.Execute(request with { ProjectPath = readerFixture.ProjectPath },
+                    cancellation), cancellation);
+            storeWork.Enqueue(work);
+            return work;
+        });
         var check = await fake.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(ProjectPath), CancellationToken.None);
         if (check.Value?.Check is { } warnings) readerFixture.RecordGrammarCheck(warnings);
 
@@ -976,7 +982,7 @@ public sealed class PageScreenshots
             new Folder(), new Drag(),
             fake, clock, techDemoNotice: FirstRunNotice(), advancedAiModeEnabled: advancedAiModeEnabled,
             assistantConnections: assistantConnections);
-        var sample = new SampleWorkspace(workspace, fake, readerFixture);
+        var sample = new SampleWorkspace(workspace, fake, readerFixture, storeWork);
         attachShell?.Invoke(workspace);
 
         Record("compose-and-show");

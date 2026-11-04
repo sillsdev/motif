@@ -394,6 +394,7 @@ internal sealed class MotifSqliteStore : IDisposable
         {
             if (HasShortTestTimeout(path)) connection.DefaultTimeout = 1;
             connection.Open();
+            if (pooled) RollBackAbandonedTransaction(connection, path);
             configure(connection);
             if (HasShortTestTimeout(path))
             {
@@ -408,6 +409,16 @@ internal sealed class MotifSqliteStore : IDisposable
             connection.Dispose();
             throw;
         }
+    }
+
+    /// <summary>Rolls back a transaction a pooled handle came back from the pool still holding.</summary>
+    private static void RollBackAbandonedTransaction(SqliteConnection connection, string path)
+    {
+        if (connection.Handle is not { } handle || SQLitePCL.raw.sqlite3_get_autocommit(handle) != 0) return;
+        Console.Error.WriteLine($"Motif rolled back a transaction left open on a pooled connection to {Path.GetFileName(path)}.");
+        using var command = connection.CreateCommand();
+        command.CommandText = "ROLLBACK;";
+        command.ExecuteNonQuery();
     }
 
     private static string ConnectionString(string path, bool pooled) => new SqliteConnectionStringBuilder
