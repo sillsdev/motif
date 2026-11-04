@@ -25,14 +25,10 @@ internal static class LexicalFormAuthoring
     public static void RequireMatchingKind(ILexEntry entry, MoFormConcreteClass formClass, string construct)
     {
         var incumbent = entry.LexemeFormOA;
-        if (incumbent is IMoAffixProcess || entry.AlternateFormsOS.Any(form => form is IMoAffixProcess))
-            throw new InvalidOperationException(
-                $"'{construct}': entry '{CanonicalId.FromGuid(entry.Guid).Value}' has an affix process as its " +
-                "form; ordinary alternates are not supported in a process graph.");
         var entryClass = incumbent switch
         {
             IMoStemAllomorph => MoFormConcreteClass.StemAllomorph,
-            IMoAffixAllomorph => MoFormConcreteClass.AffixAllomorph,
+            IMoAffixAllomorph or IMoAffixProcess => MoFormConcreteClass.AffixAllomorph,
             _ => throw new InvalidOperationException(
                 $"'{construct}': entry '{CanonicalId.FromGuid(entry.Guid).Value}' has no stem or affix lexeme " +
                 "form to match the alternate form against."),

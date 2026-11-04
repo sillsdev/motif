@@ -132,8 +132,9 @@ public sealed class AuthorAffixProcessAllomorphComposerTests : IDisposable
         Refused(Intent(missing), missing, "does not exist");
         var stem = AddStem(_cache, "tal", _category).Entry;
         Refused(Intent(stem), stem, "stem");
-        var plain = AddInflectionalPrefix(_cache, "pa", _category).Entry;
-        Refused(Intent(plain), plain, "mixes plain allomorphs");
+        var noForm = AddInflectionalPrefix(_cache, "pa", _category).Entry;
+        Setup(() => Get<ILexEntry>(_cache, noForm).LexemeFormOA = null);
+        Refused(Intent(noForm), noForm, "no lexeme form");
         var entry = ProcessEntry();
         Refused(Intent(entry) with { Placement = new Placement(CanonicalId.Mint(), null) }, entry, "first alternate form");
         var first = AddAlternate(entry, Intent(entry));
@@ -147,13 +148,41 @@ public sealed class AuthorAffixProcessAllomorphComposerTests : IDisposable
     }
 
     [Fact]
-    public void AProcessEntryWithAPlainAlternateIsRefusedAsMixed()
+    public void AProcessAllomorphIsAddedBesideAPlainLexemeFormAndAPlainAlternate()
+    {
+        var plain = AddInflectionalPrefix(_cache, "pa", _category);
+        var entry = Get<ILexEntry>(_cache, plain.Entry);
+        var lexeme = entry.LexemeFormOA!;
+        var first = AddAlternate(plain.Entry, Intent(plain.Entry));
+        var plainAlternate = Created(ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache,
+            new AuthorAlternateFormIntent(plain.Entry, "pang", Vern(_cache), MorphType(MoMorphTypeTags.kguidMorphPrefix),
+                Placement: new Placement(first, null)))), LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
+        var third = AddAlternate(plain.Entry, Intent(plain.Entry, 3) with { Placement = new Placement(plainAlternate, null) });
+
+        Assert.Equal(new[] { first, plainAlternate, third }.Select(id => id.ToGuid()), entry.AlternateFormsOS.Select(form => form.Guid));
+        Assert.IsAssignableFrom<IMoAffixProcess>(entry.AlternateFormsOS[0]);
+        Assert.IsAssignableFrom<IMoAffixAllomorph>(entry.AlternateFormsOS[1]);
+        Assert.IsAssignableFrom<IMoAffixProcess>(entry.AlternateFormsOS[2]);
+        Assert.Same(lexeme, entry.LexemeFormOA);
+        Assert.IsAssignableFrom<IMoAffixAllomorph>(lexeme);
+        Assert.Equal(lexeme.MorphTypeRA!.Guid, Get<IMoAffixProcess>(_cache, first).MorphTypeRA!.Guid);
+    }
+
+    [Fact]
+    public void AProcessEntryTakesAPlainAlternateAndAStemEntryStillRefusesAProcess()
     {
         var entry = ProcessEntry();
-        Setup(() => Get<ILexEntry>(_cache, entry).AlternateFormsOS.Add(
-            _cache.ServiceLocator.GetInstance<IMoAffixAllomorphFactory>().Create()));
-        Refused(Intent(entry) with { Placement = new Placement(Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[0]), null) },
-            entry, "mixes plain allomorphs");
+        var first = AddAlternate(entry, Intent(entry));
+        var plain = Created(ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache,
+            new AuthorAlternateFormIntent(entry, "mw", Vern(_cache), MorphType(MoMorphTypeTags.kguidMorphPrefix),
+                [AddEnvironment(_cache, "after vowel")], Placement: new Placement(first, null)))), LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
+        Assert.IsAssignableFrom<IMoAffixAllomorph>(Get<IMoForm>(_cache, plain));
+        var stem = AddStem(_cache, "tal", _category).Entry;
+        Refused(Intent(stem), stem, "stem");
+        var wrongKind = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache,
+            new AuthorAlternateFormIntent(entry, "tal", Vern(_cache), MorphType(MoMorphTypeTags.kguidMorphStem),
+                Placement: new Placement(plain, null))));
+        Assert.Contains("affix", wrongKind.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -192,17 +221,6 @@ public sealed class AuthorAffixProcessAllomorphComposerTests : IDisposable
             Intent(entry) with { Input = [new("c", Phoneme: CanonicalId.Mint()), new("rest", Remaining: true)] }));
         Assert.Throws<InvalidOperationException>(() => AuthorAffixProcessAllomorphComposer.Build(_cache,
             Intent(entry) with { Output = [new(Copy: "gone"), new(Copy: "rest")] }));
-    }
-
-    [Fact]
-    public void TheOrdinaryAlternateFormComposerStillRefusesProcessEntries()
-    {
-        var entry = ProcessEntry();
-        AddAlternate(entry, Intent(entry));
-        var intent = new AuthorAlternateFormIntent(entry, "mw", Vern(_cache),
-            MorphType(MoMorphTypeTags.kguidMorphPrefix));
-        var failure = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache, intent));
-        Assert.Contains("affix process", failure.Message, StringComparison.Ordinal);
     }
 
     [Fact]

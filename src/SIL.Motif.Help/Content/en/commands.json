@@ -245,11 +245,11 @@
   },
   "compose-author-affix-process-allomorph": {
     "title": "Add an affix process allomorph",
-    "description": "Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry that already realizes itself as a process. The entry's morph type is copied and the form applies to all of the entry's grammatical info. It refuses a stem, an entry with plain allomorphs, a repeated pattern and a missing placement.",
+    "description": "Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry whose forms may be plain allomorphs or processes. The lexeme form's morph type is copied and the form applies to all of the entry's grammatical info. It refuses a stem, a repeated pattern and a missing placement.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
-      "entry": "Id of the existing or earlier-staged affix entry whose lexeme form is an affix process.",
+      "entry": "Id of the existing affix entry that gains the process.",
       "input": "Ordered pattern parts, each with a name and one of phoneme, naturalClass or remaining true; the remaining-stem part is last.",
       "output": "Ordered realization, each item exactly one of: copy of a named input part; insert of phoneme ids; insertClass, the id of a natural class one of whose segments is inserted (a class of several segments leaves the choice of member to the parser); modify, the name of an input part (a phoneme, a natural class or the remaining stem), with features, the id of a feature natural class laid over the copied part. An input part left out of the output is deleted.",
       "inflectionClasses": "Optional ids of inflection classes of the stems this form attaches to. Inflectional affixes only; a derivational affix is refused (use compose-edit-derivational-affix-restriction).",
@@ -780,6 +780,20 @@
       "Give a derived word its own entry",
       "Take a headword out of its root's senses",
       "Split a sense into an entry of its own"
+    ]
+  },
+  "compose-delete-lexical-entry": {
+    "title": "Delete an entry",
+    "description": "Deletes one whole dictionary entry, with its forms, senses and grammatical info, because the entry is redundant; Motif stages a Draft for a person to review and Apply. It refuses an entry that a variant, relation, parser analysis or prohibition still refers to.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entry": "Id of the entry to delete."
+    },
+    "goals": [
+      "Delete a duplicate entry after its forms moved to another entry",
+      "Replace an old entry with a new one",
+      "Remove an entry that was added by mistake"
     ]
   },
   "compose-delete-sense": {

@@ -66,6 +66,7 @@ public sealed class HelpCatalogTests
         ["compose-delete-empty-sense"] = "removes an empty sense, which encodes no phenomenon",
         ["compose-edit-clitic-attachment"] = "restricts the categories a clitic attaches to, a lexical property of one analysis",
         ["compose-edit-morph-type"] = "changes an existing stem form within its morph-type family",
+        ["compose-delete-lexical-entry"] = "removes a whole unreferenced entry, a lexical clean-up rather than a grammar rule",
         ["compose-delete-sense"] = "removes a sense kept elsewhere, a lexical clean-up rather than a grammar rule",
         ["compose-remove-alternate-form"] = "removes an unused alternate form, a lexical clean-up rather than a grammar rule",
         ["compose-retire-boundary-marker"] = "removes a stray duplicate boundary marker, a sound-inventory clean-up rather than a grammar rule",

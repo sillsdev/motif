@@ -5,7 +5,7 @@ using SIL.Motif.Commands.Catalog;
 
 namespace SIL.Motif.Commands;
 
-/// <summary>Stages one more pattern-based form for an existing affix entry that already realizes itself as a process.</summary>
+/// <summary>Stages one more pattern-based form for an existing affix entry whose other forms may be plain or processes.</summary>
 internal sealed class AuthorAffixProcessAllomorphDefinition : ComposerDefinition<AuthorAffixProcessAllomorphIntent>
 {
     /// <inheritdoc />

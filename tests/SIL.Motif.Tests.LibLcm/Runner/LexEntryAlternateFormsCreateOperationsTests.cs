@@ -235,15 +235,15 @@ public sealed class LexEntryAlternateFormsCreateOperationsTests : IDisposable
     }
 
     [Fact]
-    public void RawAlternateCreateRefusesAnEntryWithAProcessAlternate()
+    public void RawAlternateCreateAcceptsAnEntryWithAProcessAlternate()
     {
         var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
         SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
             Get<ILexEntry>(_cache, entry).AlternateFormsOS.Add(
                 _cache.ServiceLocator.GetInstance<IMoAffixProcessFactory>().Create()));
-        Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(_cache,
+        Assert.Null(Record.Exception(() => ScratchDryRun.Of(_cache,
             Proposal([Create(entry, MoMorphTypeTags.kguidMorphPrefix,
-                placement: new Placement(Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[0]), null))])));
+                placement: new Placement(Id(Get<ILexEntry>(_cache, entry).AlternateFormsOS[0]), null))]))));
     }
 
 }

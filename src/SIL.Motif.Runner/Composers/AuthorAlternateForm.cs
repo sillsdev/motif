@@ -175,7 +175,9 @@ public static class AuthorAlternateFormComposer
             if (lexeme is not null && lexeme.Guid == id.ToGuid())
                 return $"'{constructName}': '{word}' names the lexeme form '{FormText(lexeme)}', which is not an alternate form " +
                     "and cannot be a neighbour; the alternate forms always come before it. To place the new form last, put it " +
-                    $"after the last alternate form. Alternate forms in order: {order}.";
+                    "after the last alternate form. To make the new form win over the lexeme form's text, or to swap the two, " +
+                    "see 'Swapping the lexeme form with an alternate form' in the compose-author-alternate-form help. " +
+                    $"Alternate forms in order: {order}.";
             if (!entry.AlternateFormsOS.Any(form => form.Guid == id.ToGuid()))
                 return $"'{constructName}': '{word}' names {id.Value}, which is not an alternate form of this entry. " +
                     $"Alternate forms in order: {order}.";
@@ -200,13 +202,17 @@ public static class AuthorAlternateFormComposer
                 throw new InvalidOperationException(
                     $"'{ConstructName}': a restricted form placed after the unrestricted form '{FormText(blocker)}' would " +
                     "never be selected, because an unrestricted form earlier in the order always wins. Place it " +
-                    $"before '{FormText(blocker)}'.");
+                    $"before '{FormText(blocker)}'. The lexeme form is always the last candidate and is never a placement neighbour.");
         }
         else if (behind.FirstOrDefault(HasEnvironments) is { } shadowed)
         {
             throw new InvalidOperationException(
                 $"'{ConstructName}': an unrestricted form placed before the restricted form '{FormText(shadowed)}' " +
-                $"would stop it from ever being selected. Place it after '{FormText(shadowed)}', or give it environments.");
+                $"would stop it from ever being selected. Place it after '{FormText(shadowed)}', or give it environments." +
+                (shadowed == entry.LexemeFormOA
+                    ? " The lexeme form is always the last candidate and cannot be moved behind or in front of an alternate form; " +
+                      "give the new form environments, or swap the two as the compose-author-alternate-form help describes."
+                    : ""));
         }
     }
 
@@ -214,6 +220,8 @@ public static class AuthorAlternateFormComposer
     {
         IMoAffixAllomorph affix => affix.PhoneEnvRC.Count > 0,
         IMoStemAllomorph stem => stem.PhoneEnvRC.Count > 0,
+        // A process is conditioned by its input pattern; only a bare remaining-stem input matches everything.
+        IMoAffixProcess process => process.InputOS.Any(part => part is not IPhVariable),
         _ => false,
     };
 

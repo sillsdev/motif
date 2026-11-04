@@ -593,6 +593,13 @@ judged. The effects are `lexical/lexSense/examples` of both senses, each with a 
 writing system with its translations, and both senses with their entries and glosses. The composers are
 `compose-move-example` and `compose-add-example`, CLI-first.
 
+`lexical/lexEntry/remove` targets one `LexEntry` and has the closed `after` shape `{ "lexicon": "<id>" }`, the project's lexicon, which a different value makes stale. It deletes the entry with
+everything it owns (lexeme form, alternate forms, senses, examples, analyses, entry references). LibLCM would silently
+unlink every reference to the entry, so the operation refuses an entry when any object outside it refers to the entry
+or to an object it owns, naming up to five referrers. The effect is `lexical/lexDb/entries` on the lexicon, whose
+membership entry `ref` goes, with a preview of the headword, forms, senses and analyses. The composer is
+`compose-delete-lexical-entry`, CLI-first.
+
 `lexical/lexEntry/removeAlternateForm` targets one `LexEntry` and has the closed `after` shape
 `{ "form": "<id>" }`. The form must be one of the entry's alternate forms, never its lexeme form, and nothing may
 refer to it (a morph bundle, an ad hoc prohibition or any other object); the refusal names the referrer. The effect

@@ -221,6 +221,42 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
         Assert.NotEqual(digest, BaselineSemanticDigest.Compute(_cache));
     }
 
+    [Fact]
+    public void AHyphenInTheFormIsKeptExactlyAsWrittenAndNeverAddedOrStripped()
+    {
+        var (entry, _, _) = AddInflectionalPrefix(_cache, "m", _category);
+        var solid = Assert.Single(AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "an")),
+            operation => operation.Kind == LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
+        Assert.Equal("an", solid.After!.Value.GetProperty("text").GetString());
+        var hyphen = Assert.Single(AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "-an")),
+            operation => operation.Kind == LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
+        Assert.Equal("-an", hyphen.After!.Value.GetProperty("text").GetString());
+
+        var proposal = ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "-an")));
+        var stored = Get<IMoForm>(_cache, Created(proposal, LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms));
+        Assert.Equal("-an", stored.Form.get_String(_cache.DefaultVernWs).Text);
+    }
+
+    [Fact]
+    public void ARestrictedLexemeFormBehindAnUnrestrictedAlternateIsRefusedWithTheSwapRecipe()
+    {
+        var environment = AddEnvironment(_cache, "after vowel");
+        var proposal = ApplyOps(_cache, AuthorLexicalEntryComposer.Build(_cache, new AuthorLexicalEntryIntent(
+            "m", Vern(_cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "CL1", Anal(_cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Inflectional, _category), null, null, [environment])));
+        var entry = Created(proposal, LexDbEntriesOperationKinds.Create);
+        var lexeme = Id(Get<ILexEntry>(_cache, entry).LexemeFormOA!);
+
+        var shadow = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache, Prefix(entry, "mw")));
+        Assert.Contains("lexeme form is always the last candidate", shadow.Message, StringComparison.Ordinal);
+        Assert.Contains("compose-author-alternate-form help", shadow.Message, StringComparison.Ordinal);
+        Created(ApplyOps(_cache, AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mw", [environment]))), LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms);
+        var neighbour = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache,
+            Prefix(entry, "mx", [environment], placement: new Placement(lexeme, null))));
+        Assert.Contains("Swapping the lexeme form with an alternate form", neighbour.Message, StringComparison.Ordinal);
+    }
+
     private CanonicalId EnvironmentWithPattern(string pattern)
     {
         IPhEnvironment environment = null!;
@@ -245,13 +281,11 @@ public sealed class AuthorAlternateFormComposerTests : IDisposable
             new(affixEntry, "x", Vern(_cache), MorphType(MoMorphTypeTags.kguidMorphStem))));
         var affixOnStem = Assert.Throws<InvalidOperationException>(() =>
             AuthorAlternateFormComposer.Build(_cache, Prefix(stemEntry)));
-        var process = Assert.Throws<InvalidOperationException>(() =>
-            AuthorAlternateFormComposer.Build(_cache, Prefix(processEntry)));
+        AuthorAlternateFormComposer.Build(_cache, Prefix(processEntry));
         var empty = Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache, Prefix(noForm)));
 
         Assert.Contains("makes a stem form but the entry's lexeme form is an affix", stemOnAffix.Message, StringComparison.Ordinal);
         Assert.Contains("makes an affix form but the entry's lexeme form is a stem", affixOnStem.Message, StringComparison.Ordinal);
-        Assert.Contains("affix process", process.Message, StringComparison.Ordinal);
         Assert.Contains("no stem or affix lexeme form", empty.Message, StringComparison.Ordinal);
         Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache, Prefix(stemMsa)));
         Assert.Throws<InvalidOperationException>(() => AuthorAlternateFormComposer.Build(_cache, Prefix(CanonicalId.Mint())));

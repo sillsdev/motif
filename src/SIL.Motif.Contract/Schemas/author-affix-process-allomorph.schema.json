@@ -175,5 +175,5 @@
       "pattern": "^[\\s\\S]*[A-Za-z0-9_-]{22}(?![\\s\\S])"
     }
   },
-  "$comment": "Runtime semantic validation also requires the entry to be an affix whose lexeme form is an affix process, placement beside an existing alternate form when it has any, and no repeat of a pattern the entry already has. The allomorph copies the entry's morph type and applies to all of its grammatical info. Duplicate JSON properties are refused by the parser."
+  "$comment": "Runtime semantic validation also requires the entry to be an affix (its other forms may be plain allomorphs or processes), placement beside an existing alternate form when it has any, and no repeat of a pattern the entry already has. The allomorph copies the entry's morph type and applies to all of its grammatical info. Duplicate JSON properties are refused by the parser."
 }

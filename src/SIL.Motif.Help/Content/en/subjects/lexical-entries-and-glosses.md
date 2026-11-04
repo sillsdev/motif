@@ -23,6 +23,7 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 11. `compose-move-sense-to-entry` moves a sense into a new entry of its own, for a derived word imported as a sense of its root.
 12. `compose-delete-sense` deletes a sense or sub-sense that carries content, refusing an entry's only sense and any sense something refers to.
 13. `compose-remove-alternate-form` removes an alternate form that nothing refers to.
+14. `compose-delete-lexical-entry` deletes a whole entry that nothing outside it refers to.
 14. `compose-move-example` moves an example, with its translations, to another sense, in the same entry or another, refusing an example something refers to.
 15. `compose-add-example` adds a new example, with text in one or more writing systems and optional translations, to a sense.
 16. `compose-rewrite-lexeme-form` rewrites the lexeme forms of existing entries in one batch, for example to drop stress marks the parser cannot match.

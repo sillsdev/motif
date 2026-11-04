@@ -15,6 +15,7 @@ internal static class ComposerDefinitions
         new MoveExampleDefinition(),
         new AddExampleDefinition(),
         new DeleteSenseDefinition(),
+        new DeleteLexicalEntryDefinition(),
         new RemoveAlternateFormDefinition(),
         new LinkVariantDefinition(),
         new MakeVariantOfDefinition(),

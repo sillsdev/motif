@@ -3565,7 +3565,7 @@
                     "properties": {
                       "entry": {
                         "type": "string",
-                        "description": "Id of the existing or earlier-staged affix entry whose lexeme form is an affix process."
+                        "description": "Id of the existing affix entry that gains the process."
                       },
                       "input": {
                         "type": "array",
@@ -6815,7 +6815,7 @@
   },
   {
     "name": "motif_add_affix_process_allomorph",
-    "description": "Add an affix process allomorph. Research first: motif_guide topic conditioned-allomorphs or workflow; check best practice. Use for one morpheme with several pattern-based forms. Plain spelling variants use an alternate form; a new morpheme needs its own entry (guide conditioned-allomorphs). Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry that already realizes itself as a process. The entry\u0027s morph type is copied and the form applies to all of the entry\u0027s grammatical info. It refuses a stem, an entry with plain allomorphs, a repeated pattern and a missing placement.\nCommand: compose-author-affix-process-allomorph. Agent class: Draft.",
+    "description": "Add an affix process allomorph. Research first: motif_guide topic conditioned-allomorphs or workflow; check best practice. Use for one morpheme with several pattern-based forms. Plain spelling variants use an alternate form; a new morpheme needs its own entry (guide conditioned-allomorphs). Stages one more pattern-based form, an affix process with its own input pattern and output, on an existing affix entry whose forms may be plain allomorphs or processes. The lexeme form\u0027s morph type is copied and the form applies to all of the entry\u0027s grammatical info. It refuses a stem, a repeated pattern and a missing placement.\nCommand: compose-author-affix-process-allomorph. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -6825,7 +6825,7 @@
         },
         "entry": {
           "type": "string",
-          "description": "Id of the existing or earlier-staged affix entry whose lexeme form is an affix process."
+          "description": "Id of the existing affix entry that gains the process."
         },
         "input": {
           "type": "array",

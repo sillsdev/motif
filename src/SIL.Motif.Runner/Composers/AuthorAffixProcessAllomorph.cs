@@ -10,7 +10,7 @@ using SIL.Motif.Runner.Operations;
 
 namespace SIL.Motif.Runner.Composers;
 
-/// <summary>One further affix-process form of an existing affix entry that already realizes itself as a process.</summary>
+/// <summary>One further affix-process form of an existing affix entry, whose other forms may be plain or processes.</summary>
 /// <param name="Entry">The existing, or earlier-staged, affix entry that gains the form.</param>
 /// <param name="Input">The ordered flat stem pattern, as for a new affix process.</param>
 /// <param name="Output">The realization, as for a new affix process.</param>
@@ -41,8 +41,8 @@ public static class AuthorAffixProcessAllomorphIntentParser
 
 /// <summary>
 /// Lowers one <see cref="AuthorAffixProcessAllomorphIntent"/> into the operations that add an affix process to an
-/// existing entry's alternate forms. The morph type is the entry's own, and the form applies to every
-/// grammatical info the entry carries.
+/// existing entry's alternate forms. The morph type is the lexeme form's own, the entry's other forms may be plain
+/// affix allomorphs or processes, and the form applies to every grammatical info the entry carries.
 /// </summary>
 public static class AuthorAffixProcessAllomorphComposer
 {
@@ -65,9 +65,9 @@ public static class AuthorAffixProcessAllomorphComposer
             gap.After is { } left ? LexicalFormAuthoring.Normalize(left) : null,
             gap.Before is { } right ? LexicalFormAuthoring.Normalize(right) : null) : null;
         var entry = LexicalFormAuthoring.Resolve<ILexEntry>(cache, entryId, ConstructName);
-        AffixProcessConstruction.RequireProcessEntry(entry, ConstructName);
-        var morphType = ((IMoAffixProcess)entry.LexemeFormOA).MorphTypeRA ?? throw new InvalidOperationException(
-            $"'{ConstructName}': entry '{entryId.Value}' has an affix process without a morph type.");
+        AffixProcessConstruction.RequireAffixEntry(entry, ConstructName);
+        var morphType = entry.LexemeFormOA!.MorphTypeRA ?? throw new InvalidOperationException(
+            $"'{ConstructName}': entry '{entryId.Value}' has a lexeme form without a morph type.");
         AffixProcessConstruction.RequireAffixMorphType(morphType);
         var categories = AuthorAlternateFormComposer.AffixCategories(entry);
         if (categories.Count == 0)

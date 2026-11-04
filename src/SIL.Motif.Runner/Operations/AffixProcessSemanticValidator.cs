@@ -99,7 +99,7 @@ internal static class AffixProcessSemanticValidator
         if (process.MorphTypeRA is not { } morphType)
             throw new InvalidOperationException("An affix process needs a morph type.");
         AffixProcessConstruction.RequireAffixMorphType(morphType);
-        if (entry.AlternateFormsOS.Contains(process)) AffixProcessConstruction.RequireProcessEntry(entry, "affix process");
+        if (entry.AlternateFormsOS.Contains(process)) AffixProcessConstruction.RequireAffixEntry(entry, "affix process");
         if (process.IsAbstract)
             throw new InvalidOperationException("An authored affix process must be concrete.");
         if (process.InputOS.Count is < 1 or > 16 || process.OutputOS.Count is < 1 or > 256)
