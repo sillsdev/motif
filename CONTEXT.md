@@ -95,6 +95,23 @@ does and why. It keeps one permanent ID and title, is stored in the FieldWorks p
 the Proposals that touched it are its history. Agents read it before changing the objects it describes. Also GDR.
 _Avoid_: design doc, wiki page, note, decision log
 
+**FieldWorks Markdown**:
+The Markdown form of FieldWorks text: a strict profile of Pandoc Markdown, marked by `fwmd: 1` in its front matter,
+that people and agents read and edit and that the clipboard carries. FieldWorks still stores the text; the Markdown is
+a view of it (ADR 0089, SIL.TextEditing ADR 0028).
+_Avoid_: GDR Markdown (for the general format), FWMD (in prose), source (for the stored text)
+
+**GDR Markdown**:
+A **Grammar Design Record**'s text as **FieldWorks Markdown**, written to the GDR template (title, ID, abstract, body
+sections). It is not a format of its own: it has no notation, links or checks beyond FieldWorks Markdown's.
+_Avoid_: GDR profile, agent Markdown, extended Markdown
+
+**Project path**:
+How FieldWorks Markdown names a FieldWorks object in a link: a path in a designed tree of the project, such as
+`/lexicon/palit(2)`, always written with the object's GUID. The GUID is the identity; the path is a readable locator that
+is refreshed when the object is renamed or moved.
+_Avoid_: link kind, object URL, ownership path
+
 **Proposal snapshot**:
 A saved copy of the project as it would be after a Proposal, opened in FLEx to look around. It is built from the
 Proposal on request and deleted when the Proposal's content changes or it is decided. Edits typed into it are never
