@@ -40,11 +40,13 @@ internal static class ProposalNumberText
         new(label, value, moved, value.Length == 0 ? blankNote ?? MotifAppStrings.TextsWordNotMeasured
             : PairedSideNote.For(side, value));
 
-    // Parser work is the cost; with no comparison the cell is blank, never a time in their place.
-    private static string ShowWork(TrialWork? work) => HasWorkComparison(work)
-        ? $"{work!.BaselineWork!.Value.ToString("N0", CultureInfo.CurrentCulture)} → " +
-            work.TrialParserWork!.Value.ToString("N0", CultureInfo.CurrentCulture)
-        : string.Empty;
+    // Parser work reads as a percent against the Baseline, never two totals; blank with no comparison.
+    private static string ShowWork(TrialWork? work)
+    {
+        if (!HasWorkComparison(work)) return string.Empty;
+        var text = ProposalParsimonyText.ParserWork(work);
+        return text == MotifAppStrings.ProposalWorkNotComparable ? string.Empty : text;
+    }
 
     // TrialWorkComparison leaves both totals empty when two tries cannot be compared; the Overview asks the same.
     public static bool HasWorkComparison(TrialWork? work) => work is { BaselineWork: not null, TrialParserWork: not null };

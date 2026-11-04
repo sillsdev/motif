@@ -400,9 +400,10 @@ public sealed class ProposalsPageModelTests
         var compared = page.Groups[0].Cards[0];
         var unavailable = page.Groups[0].Cards[1];
 
-        Assert.Equal("1,000 → 1,200", compared.Work!.Value);
+        Assert.Equal("About 20% more parser work than the Baseline", compared.Work!.Value);
         Assert.True(compared.Work.Moved);
-        Assert.Equal("1,000 → 1,200", compared.TableWorkText);
+        Assert.Equal("About 20% more parser work than the Baseline", compared.TableWorkText);
+        Assert.DoesNotContain("1,000", compared.TableWorkText);
         Assert.Equal("Time on this computer", compared.Numbers[^1].Label);
         Assert.Equal("2.5 s → 2.6 s", compared.Numbers[^1].Value);
         Assert.Equal(string.Empty, unavailable.Work!.Value);
