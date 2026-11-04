@@ -103,12 +103,6 @@ public static class ParsimonyAutoRun
 
     internal const string BaselineBundleNotePrefix = "baseline-bundle:";
 
-    /// <summary>
-    /// How long the prebuild waits, so a Trial queued while the owner reads the Dry Run is never behind it in the
-    /// one-job PanGloss queue.
-    /// </summary>
-    internal static readonly TimeSpan BaselineBundleDelay = TimeSpan.FromSeconds(30);
-
     /// <summary>The note that marks, and dedupes, the Baseline-side prebuild of one Baseline token.</summary>
     internal static string BaselineBundleNote(BaselineToken baseline) =>
         BaselineBundleNotePrefix + ParsimonyAutoInputs.Digest(EvidenceBundlePipeline.TokenJson(baseline));
@@ -116,7 +110,8 @@ public static class ParsimonyAutoRun
     /// <summary>
     /// Queues, once per Baseline token, the Baseline-side bundle in the automatic job's own scope (project-approved)
     /// and measure set (the Grammar group), so the first Proposal's automatic job finds a reusable before side
-    /// (the same reuse a later Proposal already gets). Called when a Dry Run starts, ahead of the Trial.
+    /// (the same reuse a later Proposal already gets). Called as soon as Capture completes (and again, harmlessly, when a
+    /// Dry Run starts); the job has no delay, and the claim order puts it behind any Trial or candidate job.
     /// </summary>
     /// <param name="database">The project's store.</param>
     /// <param name="projectKey">The project's workspace key.</param>
@@ -138,7 +133,7 @@ public static class ParsimonyAutoRun
         var created = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
         return jobs.CreateOncePerNote(new JobRecord(CanonicalId.Mint("job/").Value, projectKey,
             ParsimonyJobHandler.JobKind, JobStatus.Queued, 1, JobParserPin.Stamp(input, parserPath), null, created,
-            created, null, null), note, BaselineBundleDelay)?.JobId;
+            created, null, null), note)?.JobId;
     }
 
     /// <summary>

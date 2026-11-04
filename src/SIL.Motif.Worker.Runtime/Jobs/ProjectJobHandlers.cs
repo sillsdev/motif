@@ -1,3 +1,4 @@
+using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
@@ -32,8 +33,8 @@ public static class ProjectJobHandlers
     public const string ParsimonyKind = ParsimonyJobHandler.JobKind;
 
     /// <summary>
-    /// Queues the Baseline-side prebuild the automatic Parsimony job will reuse while the owner reads the Dry Run,
-    /// then runs the Dry Run. The queueing is advisory: a store or file error never fails the Dry Run, and the
+    /// Queues the Baseline-side prebuild the automatic Parsimony job will reuse when a Dry Run starts (the fallback
+    /// for a Baseline captured before the prebuild existed), then runs the Dry Run. The queueing is advisory: a store or file error never fails the Dry Run, and the
     /// automatic job builds its own Baseline side when none is stored.
     /// </summary>
     internal static JobRunnerLoop.Handler WithBaselineBundlePrebuild(JobRunnerLoop.Handler dryRun, Action enqueue) =>
@@ -43,6 +44,23 @@ public static class ProjectJobHandlers
             catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
                                                   InvalidOperationException) { }
             return dryRun(job, token);
+        };
+
+    /// <summary>
+    /// Queues the Baseline-side prebuild as soon as a Capture (Baseline refresh) completes, so it runs while the owner
+    /// composes and reads, not ahead of the Trial. Advisory in the same way as <see cref="WithBaselineBundlePrebuild"/>.
+    /// </summary>
+    internal static JobRunnerLoop.Handler WithBaselineBundlePrebuildAfter(JobRunnerLoop.Handler capture, Action enqueue) =>
+        async (job, token) =>
+        {
+            var outcome = await capture(job, token).ConfigureAwait(false);
+            if (outcome is null || outcome.Status == JobStatus.Completed)
+            {
+                try { enqueue(); }
+                catch (Exception exception) when (exception is Microsoft.Data.Sqlite.SqliteException or IOException or
+                                                      InvalidOperationException) { }
+            }
+            return outcome;
         };
 
     /// <summary>Builds the loop that claims and runs one project's queued jobs.</summary>
@@ -86,14 +104,18 @@ public static class ProjectJobHandlers
             },
             (scratch, plan, _) => Task.FromResult(ProposalDryRunner.Run(scratch!, plan)));
 
+        void enqueuePrebuild()
+        {
+            if (baselines.GetCurrentPublished(workspaceKey)?.Token is { } current)
+                _ = ParsimonyAutoRun.EnqueueBaselineBundle(database, workspaceKey, current, options.ParserPath);
+        }
+
         var handlers = new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal)
         {
-            [BaselineRefreshKind] = (_, token) => refresh.RunAsync(project, token),
-            [DryRunKind] = WithBaselineBundlePrebuild((job, token) => dryRun.RunAsync(job, project, token), () =>
-            {
-                if (baselines.GetCurrentPublished(workspaceKey)?.Token is { } current)
-                    _ = ParsimonyAutoRun.EnqueueBaselineBundle(database, workspaceKey, current, options.ParserPath);
-            }),
+            [BaselineRefreshKind] = WithBaselineBundlePrebuildAfter((_, token) => refresh.RunAsync(project, token),
+                enqueuePrebuild),
+            [DryRunKind] = WithBaselineBundlePrebuild((job, token) => dryRun.RunAsync(job, project, token),
+                enqueuePrebuild),
             [ParsimonyKind] = (job, token) => new ParsimonyJobHandler(database, baselines, workspaceKey,
                 project, options, invoker).RunAsync(job, token),
             [PhonologyCheckJobHandler.JobKind] = (job, token) =>

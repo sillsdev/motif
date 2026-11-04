@@ -1,3 +1,4 @@
+using SIL.Motif.Commands.Baselines;
 using System.Diagnostics;
 using System.Text.Json;
 using SIL.Motif.Commands;
@@ -110,9 +111,8 @@ public sealed class ParsimonyArgvTests : IDisposable
     {
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
         var project = _pristine.CopyProjectFile();
-        var captured = await CliProcess.RunAsync(StartWithParser(_preferencePath, null,
-            "baseline", "capture", "--project", project, "--json"));
-        Assert.Equal(0, captured.ExitCode);
+        // Captured below the front end: the CLI verb also queues the Baseline prebuild, which these tests do not want.
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _workerRoot).Succeeded);
         var parserPath = FactsParser();
 
         var result = await CliProcess.RunAsync(StartWithParser(_preferencePath, parserPath,
@@ -150,11 +150,7 @@ public sealed class ParsimonyArgvTests : IDisposable
     {
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
         var project = _pristine.CopyProjectFile();
-        var captureStart = StartWithParser(_preferencePath, null,
-            "baseline", "capture", "--project", project, "--json");
-        var captured = await CliProcess.RunAsync(captureStart);
-        Assert.Equal(0, captured.ExitCode);
-        Assert.Empty(captured.Error);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _workerRoot).Succeeded);
 
         var parserPath = FactsParser();
         var start = StartWithParser(_preferencePath, parserPath,

@@ -75,8 +75,18 @@ public sealed partial class CommandClient : ICommandClient
 
     public Task<CommandOutcome<BaselineCaptureResponse>> CaptureBaselineAsync(
         BaselineCaptureRequest request, CancellationToken cancellationToken) =>
-        OneAtATime(() => BaselineCaptureCommand.Capture(
-            request, _managedRoot, _options.TimeProvider ?? TimeProvider.System), cancellationToken);
+        OneAtATime(() =>
+        {
+            var captured = BaselineCaptureCommand.Capture(
+                request, _managedRoot, _options.TimeProvider ?? TimeProvider.System);
+            // The Baseline-side prebuild builds while the owner composes; wake the runner only if one was queued.
+            if (captured.Succeeded && BaselineBundlePrebuild.QueueAfterCapture(request.ProjectPath, _options.ParserPath))
+            {
+                try { _options.RunnerLauncher.Start(request.ProjectPath); }
+                catch (Exception exception) when (exception is InvalidOperationException or IOException) { }
+            }
+            return captured;
+        }, cancellationToken);
 
     public Task<IReadOnlyList<KnownProjectSummary>> ListKnownProjectsAsync(CancellationToken cancellationToken) =>
         Task.Run(() => KnownProjectsQuery.List(_managedRoot));

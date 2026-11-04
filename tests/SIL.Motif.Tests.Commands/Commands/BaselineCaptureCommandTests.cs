@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
 using SIL.Motif.Commands;
@@ -17,6 +18,7 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -61,6 +63,24 @@ public sealed class BaselineCaptureCommandTests : IDisposable
         Assert.True(File.Exists(response.FwDataPath));
         Assert.NotEqual(fwDataPath, response.FwDataPath);
         Assert.Equal(File.GetLastWriteTimeUtc(fwDataPath), response.SourceLastWriteUtc.UtcDateTime);
+    }
+
+    // The prebuild is queued right after Capture, with no not-before, once per Baseline, and only with a parser.
+    [Fact]
+    public void ACaptureQueuesTheBaselineBundlePrebuildOnceWithNoDelay()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot()).Succeeded);
+
+        Assert.False(BaselineBundlePrebuild.QueueAfterCapture(fwDataPath, parserPath: null));
+        Assert.True(BaselineBundlePrebuild.QueueAfterCapture(fwDataPath, "/parser/pangloss"));
+        Assert.False(BaselineBundlePrebuild.QueueAfterCapture(fwDataPath, "/parser/pangloss"));
+
+        var queued = ProjectStoreCommand.Run(fwDataPath, MotifProductVersion.CurrentText, (database, project) =>
+            SIL.Motif.Contract.Commands.CommandOutcome<string>.Success(string.Join(",",
+                new JobRepository(database).ListByProjectAndKind(ProjectWorkspaceKey.Compute(project), "parsimony-report")
+                    .Select(job => job.Status + ":" + (job.NotBeforeUtc ?? "none")))));
+        Assert.Equal("Queued:none", queued.Value);
     }
 
     // The window lists Known projects from the same store the CLI fills, so capture itself must fill it.

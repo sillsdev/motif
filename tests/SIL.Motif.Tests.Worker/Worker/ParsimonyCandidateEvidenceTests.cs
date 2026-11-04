@@ -581,7 +581,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
 
     // The two sides run at once, so only the multiset of commands is fixed, not their interleaving.
     [Fact]
-    public void ATrialQueuedAfterABaselineBundleIsClaimedBeforeIt()
+    public void ATrialAndACandidateQueuedAfterABaselineBundleAreClaimedBeforeIt()
     {
         var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
         var prebuild = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath)!;
@@ -598,27 +598,82 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
             Assert.NotNull(claims.Claim(_projectKey, "owner", AfterTheBaselineBundleDelay, TimeSpan.FromMinutes(5)));
         }
 
-        Assert.Equal([trial, prebuild, candidate], order);
+        Assert.Equal([trial, candidate, prebuild], order);
     }
 
-    private static string AfterTheBaselineBundleDelay =>
-        JobTimestamp.FormatUtc(DateTimeOffset.UtcNow + ParsimonyAutoRun.BaselineBundleDelay + TimeSpan.FromMinutes(1));
+    // The prebuild has no not-before, so any later instant claims it; a fixed one keeps the tests clock-free.
+    private const string AfterTheBaselineBundleDelay = "2999-01-01T00:00:00Z";
 
     [Fact]
-    public void ATrialQueuedWithinTheBaselineBundleDelayIsClaimedBeforeIt()
+    public void TheBaselineBundleHasNoNotBeforeAndIsClaimableAtOnce()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
+        var prebuild = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath)!;
+        var claims = new JobClaims(_database, parserKey: ParserIdentity.KeyOf(parserPath));
+
+        Assert.Null(_jobs.Get(prebuild)!.NotBeforeUtc);
+        Assert.Equal(prebuild, claims.PeekHead(_projectKey, JobTimestamp.FormatUtc(DateTimeOffset.UtcNow))!.Value.JobId);
+    }
+
+    [Fact]
+    public void ATrialQueuedWhileTheBaselineBundleWaitsIsClaimedBeforeIt()
     {
         var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
         var prebuild = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath)!;
         var trial = _jobs.Create(CanonicalId.Mint("job/").Value, _projectKey, TrialJobHandler.TrialKind, "{}",
             JobTimestamp.FormatUtc(DateTimeOffset.UtcNow)).JobId;
         var claims = new JobClaims(_database, parserKey: ParserIdentity.KeyOf(parserPath));
-        var soon = JobTimestamp.FormatUtc(DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5));
 
-        var first = claims.Claim(_projectKey, "owner", soon, TimeSpan.FromMinutes(5));
+        var first = claims.Claim(_projectKey, "owner", AfterTheBaselineBundleDelay, TimeSpan.FromMinutes(5));
 
         Assert.Equal(trial, first!.JobId);
-        Assert.Null(claims.PeekHead(_projectKey, soon));
         Assert.Equal(prebuild, claims.PeekHead(_projectKey, AfterTheBaselineBundleDelay)!.Value.JobId);
+    }
+
+    [Fact]
+    public async Task ACaptureQueuesTheBaselineBundleOnlyAfterItCompletes()
+    {
+        var parserPath = FakeParser.CopyRecordingInvocations(Path.Combine(_root, "parser-" + Guid.NewGuid().ToString("N")));
+        long BundleJobs()
+        {
+            using var connection = _database.OpenConnection();
+            using var count = connection.CreateCommand();
+            count.CommandText = "SELECT COUNT(*) FROM Jobs WHERE Kind = $kind;";
+            count.Parameters.AddWithValue("$kind", ParsimonyJobHandler.JobKind);
+            return (long)count.ExecuteScalar()!;
+        }
+        long duringCapture = -1;
+        var handler = ProjectJobHandlers.WithBaselineBundlePrebuildAfter(
+            (_, _) => { if (duringCapture < 0) duringCapture = BundleJobs(); return Task.FromResult<JobOutcome?>(new JobOutcome(JobStatus.Completed)); },
+            () => _ = ParsimonyAutoRun.EnqueueBaselineBundle(_database, _projectKey, _token, parserPath));
+
+        await handler(null!, CancellationToken.None);
+        await handler(null!, CancellationToken.None);
+
+        Assert.Equal(0, duringCapture);
+        Assert.Equal(1, BundleJobs());
+    }
+
+    [Fact]
+    public async Task AFailedCaptureQueuesNoBaselineBundle()
+    {
+        var enqueued = 0;
+        var handler = ProjectJobHandlers.WithBaselineBundlePrebuildAfter(
+            (_, _) => Task.FromResult<JobOutcome?>(new JobOutcome(JobStatus.Failed)), () => enqueued++);
+
+        await handler(null!, CancellationToken.None);
+
+        Assert.Equal(0, enqueued);
+    }
+
+    [Fact]
+    public async Task AFailingBaselineBundleEnqueueDoesNotFailTheCapture()
+    {
+        var expected = new JobOutcome(JobStatus.Completed);
+        var handler = ProjectJobHandlers.WithBaselineBundlePrebuildAfter(
+            (_, _) => Task.FromResult<JobOutcome?>(expected), () => throw new IOException("x"));
+
+        Assert.Same(expected, await handler(null!, CancellationToken.None));
     }
 
     [Fact]

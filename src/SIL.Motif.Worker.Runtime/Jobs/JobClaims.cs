@@ -56,14 +56,15 @@ public sealed class JobClaims : IJobClaimProtocol
     }
 
     /// <summary>
-    /// Candidate Parsimony waits behind every other kind, so a parse never queues behind it. The Baseline-side
-    /// prebuild comes just before it, behind every Trial, so a Trial queued later never waits for a prebuild.
+    /// Trials and every other kind come first, then the automatic candidate Parsimony job, and the Baseline-side
+    /// prebuild last: it is queued as soon as Capture completes, so it must never start ahead of a Trial or a
+    /// candidate job that is already queued (a prebuild already running is not preempted).
     /// </summary>
     internal const string ClaimOrder =
-        "(CASE WHEN Kind = 'parsimony-candidate' THEN 2 " +
+        "(CASE WHEN Kind = 'parsimony-candidate' THEN 1 " +
         "WHEN Kind = '" + SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind + "' AND " +
         "CASE WHEN json_valid(InputJson) THEN json_extract(InputJson, '$.note') END LIKE '" +
-        SIL.Motif.Worker.Parsimony.ParsimonyAutoRun.BaselineBundleNotePrefix + "%' THEN 1 ELSE 0 END), " +
+        SIL.Motif.Worker.Parsimony.ParsimonyAutoRun.BaselineBundleNotePrefix + "%' THEN 2 ELSE 0 END), " +
         "QueueOrder, JobId";
 
     /// <summary>Reads the identity and position of one project's next claimable row, without claiming it.</summary>

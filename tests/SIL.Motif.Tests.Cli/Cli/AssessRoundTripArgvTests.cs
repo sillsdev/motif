@@ -199,7 +199,8 @@ public sealed class AssessRoundTripArgvTests : IDisposable
             Assert.True(File.Exists(heartbeat), result.FailureDetails);
             Assert.NotNull(TryReadProcessId(parserIdPath));
             await AssertProcessStopped(TryReadProcessId(parserIdPath)!.Value);
-            Assert.Equal(1L, ReadCount(project, "Jobs"));
+            // The Capture also queued the Baseline prebuild (a Parsimony report job); the Trial left one job of its own.
+            Assert.Equal(1L, ReadCount(project, "Jobs WHERE Kind = 'trial'"));
             Assert.Equal(0L, ReadAssessmentCount(project));
         }
         finally { AssessCommand.BudgetDurationForTests.Value = null; }

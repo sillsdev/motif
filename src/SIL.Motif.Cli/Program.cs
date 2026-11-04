@@ -1465,6 +1465,10 @@ try
                         string.IsNullOrWhiteSpace(captureProject))
                         return Usage(BaselineUsage(), asJson);
                     result = RenderCommand(CaptureBaseline(captureProject, ResolveRoot()));
+                    // The prebuild builds while the owner composes and reads; a runner is woken only if one was queued.
+                    if (result.ExitCode == 0 && BaselineBundlePrebuild.QueueAfterCapture(
+                            captureProject, JobRunnerLaunchOptions.FromEnvironment().ParserPath))
+                        startRunner(captureProject, error.WriteLine);
                     break;
 
                 default:

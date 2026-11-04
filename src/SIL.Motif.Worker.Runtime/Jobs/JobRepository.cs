@@ -67,18 +67,10 @@ public sealed class JobRepository
     /// </summary>
     /// <param name="requested">The job to queue.</param>
     /// <param name="note">The note that identifies the job.</param>
-    /// <param name="delay">How long the job waits before it may be claimed, or null for none.</param>
     /// <returns>The new job, or null when a live one with this note exists.</returns>
-    internal JobRecord? CreateOncePerNote(JobRecord requested, string note, TimeSpan? delay = null)
+    internal JobRecord? CreateOncePerNote(JobRecord requested, string note)
     {
         var record = Normalize(requested);
-        if (delay is { } wait)
-            // The store keeps a not-before only on a queued retry attempt, so a delayed job starts as attempt 2.
-            record = record with
-            {
-                Attempt = 2,
-                NotBeforeUtc = JobTimestamp.FormatUtc(ValidateUtc(record.CreatedUtc, nameof(requested)) + wait),
-            };
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         try
