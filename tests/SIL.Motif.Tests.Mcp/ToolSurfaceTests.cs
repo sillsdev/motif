@@ -36,6 +36,7 @@ public sealed class ToolSurfaceTests
     [InlineData("motif_link_variant", new[] { "draft", "target", "component", "variantType", "project" })]
     [InlineData("motif_author_adhoc_prohibition", new[] { "draft", "kind", "first", "rest", "restAnyOf", "adjacency", "project" })]
     [InlineData("motif_make_variant_of", new[] { "draft", "entry", "component", "variantType", "project" })]
+    [InlineData("motif_make_variants_of", new[] { "draft", "variantType", "links", "onlyStubs", "project" })]
     [InlineData("motif_delete_empty_sense", new[] { "draft", "target", "entry", "project" })]
     public void VariantComposersHaveTypedDraftOnlyTools(string name, string[] arguments)
     {
@@ -318,13 +319,14 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(57, verbs.Length);
+        Assert.Equal(58, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
             "compose-delete-empty-sense",
             "compose-link-variant",
             "compose-make-variant-of",
+            "compose-make-variants-of",
             "compose-author-adhoc-prohibition",
             "compose-edit-morph-type",
             "compose-change-affix-kind",

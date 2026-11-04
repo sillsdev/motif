@@ -193,7 +193,7 @@ public sealed class LegacyComposerAdapterTests
     [Fact]
     public void TheRegistryHoldsEveryVerbAsATypedDefinitionOrThroughTheAdapter()
     {
-        Assert.Equal(75, ProposalCommands.DraftComposers.Count);
+        Assert.Equal(76, ProposalCommands.DraftComposers.Count);
         Assert.All(ProposalCommands.DraftComposers, pair =>
         {
             Assert.Equal(pair.Key, pair.Value.Verb);

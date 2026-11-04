@@ -749,6 +749,21 @@
       "Record a dialect or free variant of a main entry"
     ]
   },
+  "compose-make-variants-of": {
+    "title": "Make many entries variants",
+    "description": "Makes many existing entries variants of their main entries or senses in one step, all with one variant type, such as cross-reference stubs that should be variants. Every link is checked against the project and the links before it, and a refusal names the link and the blocking object; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "variantType": "Id of a type in the project's variant types list, such as Spelling Variant.",
+      "links": "The entries to convert: each has an entry (the variant) and a component (its main entry or sense).",
+      "onlyStubs": "When true, an entry whose senses have content is refused, so only stubs convert."
+    },
+    "goals": [
+      "Convert cross-reference stub entries to variants in bulk",
+      "Make a list of existing entries variants of their main entries"
+    ]
+  },
   "compose-delete-empty-sense": {
     "title": "Delete an empty sense",
     "description": "Deletes an empty sense and its unused analysis. An analysis containing only a part of speech is allowed when the entry has a linked variant reference; Motif stages a Draft for a person to review and Apply.",

@@ -3958,6 +3958,79 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-make-variants-of"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-make-variants-of.",
+                    "properties": {
+                      "variantType": {
+                        "type": "string",
+                        "description": "Id of a type in the project\u0027s variant types list, such as Spelling Variant."
+                      },
+                      "links": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "entry": {
+                              "type": "string"
+                            },
+                            "component": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "entry",
+                            "component"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "The entries to convert: each has an entry (the variant) and a component (its main entry or sense)."
+                      },
+                      "onlyStubs": {
+                        "type": "boolean",
+                        "description": "When true, an entry whose senses have content is refused, so only stubs convert."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "variantType",
+                      "links"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-author-adhoc-prohibition"
                     ]
                   },
