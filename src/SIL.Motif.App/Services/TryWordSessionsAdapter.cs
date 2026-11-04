@@ -37,7 +37,7 @@ public sealed class TryWordSessionsAdapter : ITryWordSessions
         }
     }
 
-    public void Evict(string projectPath) => TryWordSessions.Evict(projectPath);
+    public Task EvictAsync(string projectPath) => TryWordSessions.EvictAsync(projectPath);
 
     public void Shutdown() => TryWordSessions.Shutdown();
 

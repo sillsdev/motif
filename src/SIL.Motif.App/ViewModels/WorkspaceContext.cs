@@ -426,7 +426,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     private void ClearOwnProjectState()
     {
         // Every route out of a project passes here; its resident parser can hold the Baseline file open on Windows.
-        if (ProjectPath is { } leaving) TryWordSessions.Evict(leaving);
+        if (ProjectPath is { } leaving) _ = TryWordSessions.EvictAsync(leaving);
         ++_pageRequestVersion;
         _selectionReaderRequested = false;
         _readerEvidence = null;

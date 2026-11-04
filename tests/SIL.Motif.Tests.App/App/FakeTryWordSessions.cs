@@ -33,7 +33,11 @@ public sealed class FakeTryWordSessions : ITryWordSessions
         remove => _changed -= value;
     }
 
-    public void Evict(string projectPath) => Calls.Add("evict " + projectPath);
+    public Task EvictAsync(string projectPath)
+    {
+        Calls.Add("evict " + projectPath);
+        return Task.CompletedTask;
+    }
 
     public void Shutdown() => Calls.Add("shutdown");
 

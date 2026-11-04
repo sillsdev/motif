@@ -61,10 +61,11 @@ public static class TryWordSessions
     /// project is deleted, moved or rebaselined, because on Windows a resident parser can hold the Baseline file open.
     /// Baseline capture calls it.
     /// </summary>
-    public static void Evict(string projectPath)
-    {
-        foreach (var pool in Pools.Values) pool.Evict(projectPath);
-    }
+    public static void Evict(string projectPath) => EvictAsync(projectPath).GetAwaiter().GetResult();
+
+    /// <summary>Drops the project's sessions at once and completes when their parsers are gone; safe to start from the UI thread.</summary>
+    public static Task EvictAsync(string projectPath) =>
+        Task.WhenAll(Pools.Values.ToArray().Select(pool => pool.EvictAsync(projectPath)));
 
     internal static WarmPanGlossPool PoolFor(string? parserPath)
     {

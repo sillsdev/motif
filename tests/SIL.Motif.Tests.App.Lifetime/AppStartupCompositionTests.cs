@@ -143,7 +143,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             }
             finally
             {
-                session.Workspace.Context.TryWordSessions.Evict(session.Workspace.Context.ProjectPath ?? project.FwDataPath);
+                await session.Workspace.Context.TryWordSessions.EvictAsync(session.Workspace.Context.ProjectPath ?? project.FwDataPath);
                 session.Workspace.Context.TryWordSessions.Shutdown();
             }
         });

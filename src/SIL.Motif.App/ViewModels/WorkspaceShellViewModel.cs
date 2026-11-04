@@ -641,7 +641,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
         await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (!string.Equals(projectPath, Context.ProjectPath, StringComparison.Ordinal)) return;
-        Context.TryWordSessions.Evict(projectPath);
+        await Context.TryWordSessions.EvictAsync(projectPath).ConfigureAwait(true);
         var outcome = await _commandClient.DeleteRefusedStoreAsync(
             new ProjectStoreResetRequest(projectPath), CancellationToken.None).ConfigureAwait(true);
         if (outcome.Refusal is { } refusal)

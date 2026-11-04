@@ -164,22 +164,40 @@ public sealed class WarmPanGlossPool : IDisposable
         }
     }
 
-    /// <summary>Kills and drops every session of the project, whatever its caps, so nothing holds its Baseline files open. Idempotent.</summary>
-    public void Evict(string projectKey)
+    /// <summary>Kills and drops every session of the project, whatever its caps, so nothing holds its Baseline files open. Idempotent. Returns only after the parsers are gone; never call it from the UI thread.</summary>
+    public void Evict(string projectKey) => EvictAsync(projectKey).GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Drops every session of the project at once, so a new session for it starts clean, and kills their processes on the
+    /// thread pool. The task completes when the parsers are gone, or when the kill wait has passed and logged a warning.
+    /// </summary>
+    public Task EvictAsync(string projectKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectKey);
         var project = Normalize(projectKey);
         List<Session> evicted;
         lock (_gate)
         {
-            if (_disposed) return;
+            if (_disposed) return Task.CompletedTask;
             evicted = _sessions.Values.Where(session => string.Equals(session.ProjectKey, project,
                 StringComparison.OrdinalIgnoreCase)).ToList();
             foreach (var session in evicted) _sessions.Remove(session.Key);
         }
-        if (evicted.Count == 0) return;
-        foreach (var session in evicted) session.Kill(WarmSessionState.Idle, raise: false);
+        if (evicted.Count == 0) return Task.CompletedTask;
         Raise(project, WarmSessionState.Idle);
+        return Task.Run(() =>
+        {
+            // Nobody observes this task from the UI, so one failing kill must neither skip the rest nor vanish silently.
+            foreach (var session in evicted)
+            {
+                try { session.Kill(WarmSessionState.Idle, raise: false); }
+                catch (Exception exception)
+                {
+                    Trace.TraceWarning("Stopping the resident parser of session '{0}' for project '{1}' failed: {2}",
+                        session.Key, session.ProjectKey, exception.Message);
+                }
+            }
+        });
     }
 
     public void Dispose()
@@ -195,6 +213,17 @@ public sealed class WarmPanGlossPool : IDisposable
         _sweeper.Dispose();
         foreach (var session in all) session.Kill(WarmSessionState.Idle, raise: false);
         if (_ownsQueue) _queue.Dispose();
+    }
+
+    /// <summary>Stops the process, then waits for it to be gone, because a caller that deletes the parser copy next would meet "access denied". Logs when it outlives the wait.</summary>
+    internal static bool TerminateAndWait(PanGlossContainmentJob job, PanGlossChildProcess process, TimeSpan wait,
+        string projectKey, string sessionKey)
+    {
+        job.Terminate(process);
+        if (process.WaitForExitAsync().Wait(wait)) return true;
+        Trace.TraceWarning("The resident parser (pid {0}) of session '{1}' for project '{2}' was still running {3} seconds after it was killed.",
+            process.Id, sessionKey, projectKey, wait.TotalSeconds);
+        return false;
     }
 
     private static string Normalize(string projectKey) => Path.GetFullPath(projectKey);
@@ -609,11 +638,7 @@ public sealed class WarmPanGlossPool : IDisposable
             {
                 if (job is not null && process is not null)
                 {
-                    job.Terminate(process);
-                    // Termination is asynchronous; a caller that deletes the parser copy next would meet "access denied".
-                    if (!process.WaitForExitAsync().Wait(pool._options.KillWait))
-                        Trace.TraceWarning("The resident parser (pid {0}) was still running {1} seconds after it was killed.",
-                            process.Id, pool._options.KillWait.TotalSeconds);
+                    TerminateAndWait(job, process, pool._options.KillWait, ProjectKey, Key);
                 }
                 job?.Dispose();
                 process?.Dispose();

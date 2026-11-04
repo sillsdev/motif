@@ -435,4 +435,54 @@ public sealed class WarmPanGlossPoolTests : IDisposable
         Assert.Equal(viaCold.Document!.Signature, viaWarm.Document!.Signature);
         Assert.Equal("motifa", viaFallback.Word);
     }
+
+    [Fact]
+    public async Task AnUnmovingParserWarnsWithProjectAndSession()
+    {
+        var wait = Wait.Scaled(TimeSpan.FromSeconds(2));
+        var stuck = new StuckProcess();
+        var warnings = new CapturingListener();
+        Trace.Listeners.Add(warnings);
+        try
+        {
+            var killed = await Task.Run(() => WarmPanGlossPool.TerminateAndWait(new StubJob(), new PanGlossChildProcess(stuck), wait,
+                "/projects/ceb.fwdata", "ceb|cap"));
+            Assert.False(killed);
+            var warning = Assert.Single(warnings.Messages, message => message.Contains("ceb|cap", StringComparison.Ordinal));
+            Assert.Contains("/projects/ceb.fwdata", warning);
+            Assert.Contains("1234", warning);
+
+            stuck.Exit();
+            Assert.True(WarmPanGlossPool.TerminateAndWait(new StubJob(), new PanGlossChildProcess(stuck), wait, "p", "s"));
+        }
+        finally { Trace.Listeners.Remove(warnings); }
+    }
+
+    private sealed class CapturingListener : TraceListener
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<string> Messages { get; } = new();
+        public override void Write(string? message) { if (message is not null) Messages.Enqueue(message); }
+        public override void WriteLine(string? message) => Write(message);
+    }
+
+    private sealed class StubJob() : PanGlossContainmentJob(new PanGlossContainmentReport(null, null, false, "", "", "", []))
+    {
+        public override PanGlossChildProcess Start(ProcessStartInfo startInfo) => throw new NotSupportedException();
+        public override void Terminate(PanGlossChildProcess process) { }
+        public override void Dispose() { }
+    }
+
+    private sealed class StuckProcess : IPanGlossChildProcess
+    {
+        private readonly TaskCompletionSource _exited = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int Id => 1234;
+        public int ExitCode => 0;
+        public PanGlossMemoryKill? MemoryKill => null;
+        public void Exit() => _exited.TrySetResult();
+        public Task WaitForExitAsync(CancellationToken cancellationToken) => _exited.Task;
+        public Task<string> ReadStandardOutputAsync() => Task.FromResult("");
+        public Task<string> ReadStandardErrorAsync() => Task.FromResult("");
+        public void KillProcessTree() { }
+        public void Dispose() { }
+    }
 }
