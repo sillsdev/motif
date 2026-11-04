@@ -33,6 +33,11 @@
   Compile without the comment and design-token gates. For bisecting a build break only -- CI never passes this, so
   anything it lets through fails there instead.
 
+.PARAMETER FullGrammarScan
+  Make the grammar-data worktree guard read every tracked file. By default, outside CI, it reads only the files that differ
+  from the merge-base with origin/main plus untracked files, because the rest are byte-identical to commits that
+  main's range and tip checks already vetted. CI, and a checkout with no origin/main, always scan everything.
+
 .PARAMETER NoProcessSweep
 Keep the worktree lock and process policy but skip stale-process cleanup.
 
@@ -52,6 +57,7 @@ param(
     [string] $Configuration = 'Debug',
     [string[]] $Project,
     [switch] $SkipHygiene,
+    [switch] $FullGrammarScan,
     [switch] $NoProcessSweep
 )
 
@@ -115,7 +121,9 @@ elseif ($env:LOCAL_NUGET_REPO) {
 }
 
 Write-Step 'grammar-data worktree guard'
-& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Check-GrammarData.ps1') -Mode Worktree -RepositoryRoot $repoRoot
+$grammarGuardArguments = @('-Mode', 'Worktree', '-RepositoryRoot', $repoRoot)
+if (-not $FullGrammarScan) { $grammarGuardArguments += '-Changed' }
+& pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Check-GrammarData.ps1') @grammarGuardArguments
 if ($LASTEXITCODE -ne 0) {
     Write-Host 'Grammar-data worktree guard failed.' -ForegroundColor Red
     exit $LASTEXITCODE

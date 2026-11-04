@@ -162,6 +162,41 @@ public sealed class GrammarDataHygieneTests
     }
 
     [Fact]
+    public void WorktreeSinceReadsOnlyChangedAndUntrackedFilesAndFallsBackToEverythingOnAnUnknownBase()
+    {
+        var temp = NewTemp();
+        try
+        {
+            InitGit(temp);
+            // A violation already in the base is not re-read: the range and tip scans vetted it when it landed.
+            File.WriteAllBytes(Path.Combine(temp, "old.txt"), RuntimePayload(temp));
+            File.WriteAllText(Path.Combine(temp, "clean.txt"), "{}");
+            RunGit(temp, "add", "."); RunGit(temp, "commit", "-m", "initial");
+            var baseCommit = GitOutput(temp, "rev-parse", "HEAD").Trim();
+            Assert.Equal(1, RunGuard("--worktree", temp));
+            Assert.Equal(0, RunGuard("--worktree", temp, "--since", baseCommit));
+
+            File.WriteAllBytes(Path.Combine(temp, "clean.txt"), RuntimePayload(temp));
+            Assert.Equal(1, RunGuard("--worktree", temp, "--since", baseCommit));
+            File.WriteAllText(Path.Combine(temp, "clean.txt"), "{}");
+            Assert.Equal(0, RunGuard("--worktree", temp, "--since", baseCommit));
+
+            File.WriteAllBytes(Path.Combine(temp, "untracked.txt"), RuntimePayload(temp));
+            Assert.Equal(1, RunGuard("--worktree", temp, "--since", baseCommit));
+            File.Delete(Path.Combine(temp, "untracked.txt"));
+
+            File.WriteAllBytes(Path.Combine(temp, "clean.txt"), RuntimePayload(temp));
+            RunGit(temp, "add", "clean.txt"); RunGit(temp, "commit", "-m", "violation");
+            Assert.Equal(1, RunGuard("--worktree", temp, "--since", baseCommit));
+            Assert.Equal(0, RunGuard("--worktree", temp, "--since", GitOutput(temp, "rev-parse", "HEAD").Trim()));
+
+            // An unusable base reads every tracked file, so the old violation is found again.
+            Assert.Equal(1, RunGuard("--worktree", temp, "--since", "no-such-revision"));
+        }
+        finally { DeleteTemp(temp); }
+    }
+
+    [Fact]
     public void IndexWorktreeAndAlternateIndexInspectTheirOwnBytesAndConflictsFailOperationally()
     {
         var temp = NewTemp();
@@ -416,7 +451,8 @@ public sealed class GrammarDataHygieneTests
     {
         var args = mode switch
         {
-            "--index" or "--worktree" => new[] { mode, "--repo", root },
+            "--index" => new[] { mode, "--repo", root },
+            "--worktree" => new[] { mode, "--repo", root }.Concat(revisions).ToArray(),
             "--tip" => new[] { "--tip", revisions.Single(), "--repo", root },
             "--range" => new[] { "--range", revisions[0], revisions[1], "--repo", root },
             _ => throw new ArgumentOutOfRangeException(nameof(mode)),

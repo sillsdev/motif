@@ -228,7 +228,7 @@ $buildExitCode = 0
 if ($SkipBuild) {
     Write-Step 'build gate -- SKIPPED (-SkipBuild)'
     Write-Step 'grammar-data worktree guard'
-    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Check-GrammarData.ps1') -Mode Worktree -RepositoryRoot $repoRoot
+    & pwsh -NoProfile -File (Join-Path $repoRoot 'tools/Check-GrammarData.ps1') -Mode Worktree -RepositoryRoot $repoRoot -Changed
     $buildExitCode = $LASTEXITCODE
 }
 else {

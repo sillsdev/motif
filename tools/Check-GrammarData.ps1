@@ -3,7 +3,9 @@ param(
     [Parameter(Mandatory)][ValidateSet('Worktree', 'Index', 'Tip', 'Range')][string] $Mode,
     [Parameter(Mandatory)][string] $RepositoryRoot,
     [string] $Base,
-    [string] $Head
+    [string] $Head,
+    [string] $Since,
+    [switch] $Changed
 )
 
 Set-StrictMode -Version Latest
@@ -19,7 +21,18 @@ Import-Module (Join-Path $repository 'tools/MotifToolEnvironment.psm1') -Force
 Initialize-MotifToolEnvironment -RepoRoot $repository
 $arguments = @()
 switch ($Mode) {
-    'Worktree' { $arguments += '--worktree' }
+    'Worktree' {
+        $arguments += '--worktree'
+        # -Changed: since the merge-base with origin/main, unless CI or a missing origin/main says to scan everything.
+        if ($Changed -and [string]::IsNullOrWhiteSpace($Since) -and $env:CI -notin @('true', '1', 'yes')) {
+            $global:LASTEXITCODE = 0
+            $mergeBase = ([string] (& git -C $repository merge-base HEAD origin/main 2>$null)).Trim()
+            if ($LASTEXITCODE -eq 0 -and $mergeBase -match '^[0-9a-f]{40,64}$') { $Since = $mergeBase }
+            else { Write-Host 'No merge-base with origin/main: scanning every tracked file.' }
+        }
+        # Without -Since every tracked file is read: the safe default, and what CI and the scheduled run use.
+        if (-not [string]::IsNullOrWhiteSpace($Since)) { $arguments += @('--since', $Since) }
+    }
     'Index' { $arguments += '--index' }
     'Tip' {
         if ([string]::IsNullOrWhiteSpace($Head)) { Write-Error 'Tip mode requires -Head.'; exit 2 }

@@ -67,7 +67,7 @@ internal static class GrammarDataHygiene
             else if (resolvedHead is not null) Console.WriteLine($"grammar-data-hygiene: tip={resolvedHead}");
             var findings = options.Mode switch
             {
-                "worktree" => ScanWorktree(options.Repository),
+                "worktree" => ScanWorktree(options.Repository, options.Since),
                 "index" => ScanIndex(options.Repository),
                 "tip" => ScanTip(options.Repository, resolvedHead!),
                 "range" => ScanRange(options.Repository, resolvedBase!, resolvedHead!),
@@ -90,7 +90,7 @@ internal static class GrammarDataHygiene
         }
     }
 
-    private sealed record Options(string Mode, string Repository, string? Base, string? Head);
+    private sealed record Options(string Mode, string Repository, string? Base, string? Head, string? Since = null);
     private sealed record PathFinding(string Path, GrammarFinding Finding, string Digest);
     private sealed record GitResult(int ExitCode, byte[] Output, byte[] Error);
     private sealed record IndexEntry(string Path, string Mode, string ObjectId, int Stage);
@@ -99,7 +99,7 @@ internal static class GrammarDataHygiene
 
     private static Options Parse(string[] args)
     {
-        string? mode = null, repository = null, baseSha = null, headSha = null;
+        string? mode = null, repository = null, baseSha = null, headSha = null, since = null;
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i])
@@ -116,6 +116,10 @@ internal static class GrammarDataHygiene
                     if (i + 2 >= args.Length) throw new ArgumentException("--range requires base and head commits.");
                     baseSha = args[++i]; headSha = args[++i];
                     break;
+                case "--since":
+                    if (++i >= args.Length || since is not null) throw new ArgumentException("--since requires one commit.");
+                    since = args[i];
+                    break;
                 case "--repo":
                     if (++i >= args.Length || repository is not null) throw new ArgumentException("--repo requires one repository root.");
                     repository = Path.GetFullPath(args[i]);
@@ -123,10 +127,11 @@ internal static class GrammarDataHygiene
                 default: throw new ArgumentException($"Unknown argument '{args[i]}'.");
             }
         }
-        if (mode is null || repository is null) throw new ArgumentException("Usage: (--worktree|--index|--tip <sha>|--range <base> <head>) --repo <root>.");
+        if (mode is null || repository is null) throw new ArgumentException("Usage: (--worktree [--since <commit>]|--index|--tip <sha>|--range <base> <head>) --repo <root>.");
         if ((mode == "range") != (baseSha is not null) || (mode is "tip" or "range") != (headSha is not null))
             throw new ArgumentException("The selected mode has missing or unexpected commit arguments.");
-        return new Options(mode, repository, baseSha, headSha);
+        if (since is not null && mode != "worktree") throw new ArgumentException("--since belongs to --worktree.");
+        return new Options(mode, repository, baseSha, headSha, since);
     }
 
     private static string SetMode(string? existing, string mode)
@@ -510,7 +515,25 @@ internal static class GrammarDataHygiene
     private static string NormalizeKey(string value) => new(value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
     private static void Add(List<GrammarFinding> findings, string rule, FindingSeverity severity, string explanation) => findings.Add(new(rule, severity, explanation));
 
-    private static List<PathFinding> ScanWorktree(string repository)
+    // Only paths that differ from a vetted commit, plus untracked files; an unusable base reads every tracked file.
+    private static HashSet<string>? PathsChangedSince(string repository, string since)
+    {
+        try
+        {
+            var commit = ResolveCommit(repository, since);
+            // Minimal stat: drvfs checkouts record no inode, so the default check reads every file.
+            var diff = GitOptional(repository, "-c", "core.checkStat=minimal", "diff", "--name-only", "--no-renames", "-z", commit, "--");
+            if (diff.ExitCode != 0) throw new IOException("git diff failed");
+            return SplitNulBytes(diff.Output).Select(DecodeDisplayPath).ToHashSet(StringComparer.Ordinal);
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or InvalidDataException)
+        {
+            Console.WriteLine($"grammar-data-hygiene: cannot use --since base ({SafeMessage(ex.Message)}); scanning every tracked file.");
+            return null;
+        }
+    }
+
+    private static List<PathFinding> ScanWorktree(string repository, string? since = null)
     {
         var findings = new List<PathFinding>();
         var indexEntries = ParseIndex(Git(repository, "ls-files", "--stage", "-z").Output);
@@ -530,8 +553,11 @@ internal static class GrammarDataHygiene
             entriesByPath.TryAdd(displayPath, new IndexEntry(displayPath, "100644", string.Empty, 0));
         }
         var root = Path.GetFullPath(repository);
+        var changed = since is null ? null : PathsChangedSince(repository, since);
+        if (changed is not null) Console.WriteLine($"grammar-data-hygiene: worktree scan limited to {changed.Count} paths changed since {since} plus untracked files.");
         foreach (var entry in entriesByPath.Values)
         {
+            if (changed is not null && entry.ObjectId.Length > 0 && !changed.Contains(entry.Path)) continue;
             if (entry.Mode == "160000")
             {
                 AddPathFinding(findings, entry.Path, "gitlink", FindingSeverity.Review, "submodule contents are not inspected by this scan", entry.ObjectId);
