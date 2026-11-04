@@ -64,6 +64,9 @@ public sealed record CurrentEvidenceSnapshot(
     public IReadOnlyDictionary<string, string> WordAnalysesLinksByWord { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
+    /// <summary>The word forms the project holds a wordform for; <see langword="null"/> when they were not read.</summary>
+    public IReadOnlySet<string>? WordformsPresent { get; init; }
+
     /// <summary>The correctness measurement recorded by the same invocation as the matching ParseTime run.</summary>
     public string? MatchingCorrectnessAssessmentId { get; init; }
 
@@ -212,6 +215,7 @@ public static class CurrentEvidenceQuery
                 WordContextAvailable = true,
                 StoredAnalysesByWord = context.Analyses,
                 WordAnalysesLinksByWord = context.WordLinks,
+                WordformsPresent = context.PresentWords,
                 ResolvedReadingsByWord = resolvedReadings,
             });
         }

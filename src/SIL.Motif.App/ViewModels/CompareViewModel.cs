@@ -192,6 +192,7 @@ public sealed partial class CompareViewModel : ObservableObject
     private bool CanPropose(string? kind)
     {
         var chosen = _listed.Where(word => word.IsChecked).ToArray();
+        if (chosen.Any(word => word.HasNoWordform)) return false;
         return kind switch
         {
             ChangeKinds.IncorrectSpelling => chosen.Length > 0,
@@ -211,6 +212,8 @@ public sealed partial class CompareViewModel : ObservableObject
             model.Facts.IsChecked = model.IsChecked;
             OnPropertyChanged(nameof(CheckedWordCount));
             OnPropertyChanged(nameof(CheckedWordText));
+            OnPropertyChanged(nameof(ProposeDisabledReason));
+            OnPropertyChanged(nameof(ProposeTip));
             OnPropertyChanged(nameof(HasCheckedWords));
             CheckedWordsChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -503,6 +506,14 @@ public sealed partial class CompareViewModel : ObservableObject
 
     /// <summary>Whether any listed word is ticked, so the list's controls say how many; not in the Proposal's own view.</summary>
     public bool HasCheckedWords => CheckedWordCount > 0 && _proposalView != MarkupView.Proposal;
+
+    /// <summary>Why Propose is unavailable for a ticked word the project has no wordform for, or empty when it is not.</summary>
+    public string ProposeDisabledReason => _listed.FirstOrDefault(word => word.IsChecked && word.HasNoWordform) is { } missing
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WordRowNoWordformFormat, missing.Word)
+        : string.Empty;
+
+    /// <summary>The Propose buttons' tip: the reason they are unavailable, else how many words are ticked.</summary>
+    public string ProposeTip => ProposeDisabledReason.Length > 0 ? ProposeDisabledReason : CheckedWordText;
 
     public string CheckedWordText => CheckedWordCount switch
     {
@@ -811,6 +822,8 @@ public sealed partial class CompareViewModel : ObservableObject
         OnPropertyChanged(nameof(HandOffLabel));
         OnPropertyChanged(nameof(CheckedWordCount));
         OnPropertyChanged(nameof(CheckedWordText));
+        OnPropertyChanged(nameof(ProposeDisabledReason));
+        OnPropertyChanged(nameof(ProposeTip));
         OnPropertyChanged(nameof(HasCheckedWords));
         HandOffCommand.NotifyCanExecuteChanged();
         ProposeCommand.NotifyCanExecuteChanged();

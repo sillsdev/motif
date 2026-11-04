@@ -279,12 +279,12 @@
               <Button Content="{x:Static app:MotifAppStrings.AddAsUnknown}" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"
                       IsVisible="{Binding Compare.HasCheckedWords}"
                       Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                      ToolTip.Tip="{Binding Compare.CheckedWordText}"
+                      ToolTip.Tip="{Binding Compare.ProposeTip}"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.AddCheckedWordsAsUnknownAccessibleName}" />
               <Button Content="{x:Static app:MotifAppStrings.IncorrectSpelling}" Command="{Binding Compare.ProposeCommand}" CommandParameter="incorrect-spelling"
                       IsVisible="{Binding Compare.HasCheckedWords}"
                       Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
-                      ToolTip.Tip="{Binding Compare.CheckedWordText}"
+                      ToolTip.Tip="{Binding Compare.ProposeTip}"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkCheckedWordsAsIncorrectSpellingAccessibleName}" />
           </WrapPanel>
 

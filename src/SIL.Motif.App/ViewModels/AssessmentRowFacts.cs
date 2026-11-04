@@ -12,6 +12,8 @@ internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? Occu
         new(word, counted ?? word.OccurrenceCount) { PlacesFromWordList = fromWordList && counted is not null };
 
     public string Word => Source.Word;
+    /// <summary>Whether the project was read and holds no wordform spelled like this word, so no change can attach to it.</summary>
+    public bool HasNoWordform => Source.HasNoWordform;
     public WordComparison Comparison { get; } = CompareSemantics.Compare(Source);
     public bool StoppedAtALimit => CompareSemantics.StoppedAtLimit(Source.Outcome, Source.IsIncomplete, Source.Morphology);
     public bool IsRefused => Comparison.MeaningCode == "refused";

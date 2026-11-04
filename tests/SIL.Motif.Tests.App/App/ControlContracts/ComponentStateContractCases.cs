@@ -761,12 +761,12 @@ internal static class TooltipOwners
         new("Parse stopped words again", "Views/ComparePanel.axaml", "Parse the stopped and unparsed words again",
             TooltipScene.Matrix,
             control => control is SplitButton && Name(control) == "Parse the stopped and unparsed words again"),
-        new("add checked words as Unknown", "Views/ComparePanel.axaml", "{Binding Compare.CheckedWordText}", TooltipScene.Matrix,
+        new("add checked words as Unknown", "Views/ComparePanel.axaml", "{Binding Compare.ProposeTip}", TooltipScene.Matrix,
             control => control is Button && Name(control) == "Add checked words as Unknown")
         {
             Pending = "the Matrix scene has no checked words, so the action is hidden",
         },
-        new("mark checked words as incorrect spelling", "Views/ComparePanel.axaml", "{Binding Compare.CheckedWordText}", TooltipScene.Matrix,
+        new("mark checked words as incorrect spelling", "Views/ComparePanel.axaml", "{Binding Compare.ProposeTip}", TooltipScene.Matrix,
             control => control is Button && Name(control) == "Mark checked words as incorrect spelling")
         {
             Pending = "the Matrix scene has no checked words, so the action is hidden",

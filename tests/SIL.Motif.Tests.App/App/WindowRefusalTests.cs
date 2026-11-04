@@ -463,7 +463,8 @@ public sealed class WindowRefusalTests
         Assert.Equal("Accept the new set needs every word parsed. Parse all words first.", parse);
         Assert.Equal("Choose one wordform, one Selection, or one Text.", scope);
         Assert.DoesNotContain("Assessment selection", scope, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal("That word isn't in the FieldWorks project. Refresh and try again.", missingWord);
+        Assert.Equal("That word isn't in the FieldWorks project, so it has no analyses to change.", missingWord);
+        Assert.DoesNotContain("Refresh", missingWord);
     }
 
     [Fact]

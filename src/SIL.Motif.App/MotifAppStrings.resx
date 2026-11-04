@@ -6066,7 +6066,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Sentence the window shows when the command refuses with code C.ChangeWordformChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalChangeWordformMissing" xml:space="preserve">
-    <value>That word isn't in the FieldWorks project. Refresh and try again.</value>
+    <value>That word isn't in the FieldWorks project, so it has no analyses to change.</value>
     <comment>Sentence the window shows when the command refuses with code C.ChangeWordformMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalConfigInvalid" xml:space="preserve">

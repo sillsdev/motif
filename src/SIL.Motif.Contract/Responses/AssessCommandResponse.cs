@@ -55,6 +55,12 @@ public sealed record AssessmentWordResult(
     /// with it entered; <see langword="null"/> when the project has no wordform spelled this way.
     /// </summary>
     public string? TryWordLink { get; init; }
+    /// <summary>
+    /// <see langword="true"/> only when the project's wordforms were read and none is spelled this way; it stays
+    /// <see langword="false"/> when a wordform exists without a link (several share the spelling, or the saved
+    /// project no longer matches) and when the wordforms were not read.
+    /// </summary>
+    public bool HasNoWordform { get; init; }
     public WordCorrectness? Correctness { get; init; }
     /// <summary>
     /// One grade per entry of <see cref="Readings"/>, in the same order: <c>approved</c> when the reading is an

@@ -154,6 +154,68 @@ public sealed class CompareActionsTests
         Assert.True(Assert.Single(compare.Changes.Items).Fit?.StillFits);
     }
 
+    private static (CompareViewModel Compare, List<string> Changed) ProposeFixture()
+    {
+        var table = new AssessWordsViewModel();
+        table.Load([
+            Word("linked", "analysed", ProjectStanding.NotPresent) with { StoredAnalysesAvailable = true, TryWordLink = "silfw://linked" },
+            Word("shared", "analysed", ProjectStanding.NotPresent) with { StoredAnalysesAvailable = true },
+            Word("unread", "analysed", ProjectStanding.NotPresent),
+            Word("ghost", "analysed", ProjectStanding.NotPresent) with { StoredAnalysesAvailable = true, HasNoWordform = true }]);
+        var compare = NewCompare();
+        compare.Load(table.AllRows);
+        var changed = new List<string>();
+        compare.PropertyChanged += (_, e) => changed.Add(e.PropertyName ?? string.Empty);
+        return (compare, changed);
+    }
+
+    [Theory]
+    [InlineData("linked")]
+    [InlineData("shared")]
+    [InlineData("unread")]
+    public void ProposeStaysAvailableForAWordWithAWordformOrUnreadWordforms(string word)
+    {
+        var (compare, _) = ProposeFixture();
+
+        compare.Words.Single(row => row.Word == word).IsChecked = true;
+
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
+        Assert.Equal(string.Empty, compare.ProposeDisabledReason);
+        Assert.Equal(compare.CheckedWordText, compare.ProposeTip);
+    }
+
+    [Fact]
+    public async Task ProposeIsUnavailableForAWordTheProjectHasNoWordformFor()
+    {
+        var (compare, changed) = ProposeFixture();
+        var linked = compare.Words.Single(word => word.Word == "linked");
+        var ghost = compare.Words.Single(word => word.Word == "ghost");
+        linked.IsChecked = true;
+        changed.Clear();
+        var canChange = 0;
+        compare.ProposeCommand.CanExecuteChanged += (_, _) => canChange++;
+
+        ghost.IsChecked = true;
+
+        Assert.Contains(nameof(CompareViewModel.ProposeTip), changed);
+        Assert.Contains(nameof(CompareViewModel.ProposeDisabledReason), changed);
+        Assert.True(canChange > 0);
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
+        Assert.False(compare.ProposeCommand.CanExecute(ChangeKinds.AddCandidate));
+        Assert.Equal("FieldWorks has no wordform spelled ghost", compare.ProposeDisabledReason);
+        Assert.Equal(compare.ProposeDisabledReason, compare.ProposeTip);
+
+        await compare.ProposeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
+        Assert.Empty(compare.Changes.Items);
+
+        changed.Clear();
+        ghost.IsChecked = false;
+        Assert.Contains(nameof(CompareViewModel.ProposeTip), changed);
+        Assert.Equal(string.Empty, compare.ProposeDisabledReason);
+        Assert.True(compare.ProposeCommand.CanExecute(ChangeKinds.IncorrectSpelling));
+    }
+
     [Fact]
     public async Task MatrixAllowsOnlyBulkAddAndSpellingForCheckedWords()
     {

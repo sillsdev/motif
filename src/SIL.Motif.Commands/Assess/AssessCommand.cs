@@ -648,6 +648,7 @@ public static class AssessCommand
                                 Origin = origin,
                                 Readings = readings,
                                 TryWordLink = storedContext.WordLinks.GetValueOrDefault(word.Word),
+                                HasNoWordform = !storedContext.PresentWords.Contains(word.Word),
                                 WordWritingSystem = storedContext.WordWritingSystems.GetValueOrDefault(word.Word),
                                 ReadingGrades = readingGrades,
                                 ProjectStanding = projectStanding,

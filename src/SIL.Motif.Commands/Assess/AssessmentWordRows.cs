@@ -117,6 +117,8 @@ internal static class AssessmentWordRows
                 ? row with { StoredAnalyses = stored, ExpectedAnalysis = ExpectedAnalysis(stored) } : row;
             row = snapshot.WordAnalysesLinksByWord.TryGetValue(word.Word, out var link)
                 ? row with { TryWordLink = link } : row;
+            row = snapshot.WordformsPresent is { } present
+                ? row with { HasNoWordform = !present.Contains(word.Word) } : row;
             row = row with { WordWritingSystem = snapshot.ProjectSummary?.WordWritingSystems.GetValueOrDefault(word.Word) };
             row = row with { StoredAnalysesAvailable = snapshot.WordContextAvailable };
             row = snapshot.ResolvedReadingsByWord.TryGetValue(word.Word, out var readings)
