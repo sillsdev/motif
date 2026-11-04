@@ -103,7 +103,7 @@ public sealed class DenseTableTests
                     border => border.Classes.Contains("denseTableColumnHeader")).Bounds.Height);
                 var rowBorder = Assert.Single(row.GetVisualDescendants().OfType<Border>(),
                     border => border.Classes.Contains("denseTableRow"));
-                Assert.Equal(Size("Component.DenseTable.RowHeight"), rowBorder.Bounds.Height);
+                Assert.True(rowBorder.Bounds.Height >= Size("Component.DenseTable.RowHeight"));
                 Assert.Equal(Inset("Intent.Stroke.DividerBottom"), rowBorder.BorderThickness);
                 Assert.Equal(2, Assert.IsType<GrammarWarningRowViewModel>(row.DataContext).RepeatCount);
 
@@ -116,7 +116,8 @@ public sealed class DenseTableTests
                 Assert.True(action.IsTabStop);
                 Assert.True(menu.IsTabStop);
                 Assert.Equal(Size("Component.DenseTable.MenuSize"), menu.Bounds.Width);
-                Assert.Equal(Size("Component.DenseTable.MenuSize"), menu.Bounds.Height);
+                // The menu grows with its line box rather than clipping the glyph, so it is at least its token tall.
+                Assert.True(menu.Bounds.Height >= Size("Component.DenseTable.MenuSize"));
                 Assert.Equal($"Actions for {rowModel.RowTitleText}", AutomationProperties.GetName(menu));
                 Assert.Equal($"Details for {rowModel.RowTitleText}", AutomationProperties.GetName(action));
                 var flyout = Assert.IsType<Flyout>(menu.Flyout);

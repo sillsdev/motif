@@ -8,6 +8,7 @@
     <StaticResource x:Key="Component.WordPresentation.Radius" ResourceKey="Primitive.Radius.3" />
     <StaticResource x:Key="Component.WordPresentation.TickSize" ResourceKey="Primitive.Size.18" />
     <StaticResource x:Key="Component.WordPresentation.TickGlyphSize" ResourceKey="Primitive.Size.10" />
+    <StreamGeometry x:Key="Component.WordPresentation.TickGeometry">M0 5.2 L1.4 3.8 L3.8 6.2 L8.6 1.4 L10 2.8 L3.8 9 Z</StreamGeometry>
     <StaticResource x:Key="Component.WordPresentation.VisibleOpacity" ResourceKey="Primitive.Opacity.100" />
   </Styles.Resources>
   <Style Selector="Border.wordPresentationFrame">
@@ -38,7 +39,7 @@
                 Background="{TemplateBinding Background}"
                 BorderBrush="{TemplateBinding BorderBrush}"
                 BorderThickness="{TemplateBinding BorderThickness}">
-          <PathIcon Data="M0 5.2 L1.4 3.8 L3.8 6.2 L8.6 1.4 L10 2.8 L3.8 9 Z"
+          <PathIcon Data="{StaticResource Component.WordPresentation.TickGeometry}"
                     Width="{StaticResource Component.WordPresentation.TickGlyphSize}"
                     Height="{StaticResource Component.WordPresentation.TickGlyphSize}"
                     IsVisible="{TemplateBinding IsChecked}"

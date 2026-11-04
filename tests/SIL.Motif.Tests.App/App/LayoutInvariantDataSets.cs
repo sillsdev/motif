@@ -25,13 +25,27 @@ internal sealed record LayoutDataSet(
     string Tier, TextWordsResponse Words, AssessCommandResponse Assessment, Action<FakeCommandClient> Configure,
     Func<WorkspaceShellViewModel, Task> Arrange, IReadOnlyList<LayoutVisit>? Visits = null)
 {
+    /// <summary>Ticks every listed word and marks every Review row Looked at, since a row's checked state changes its layout.</summary>
+    internal static Task TickEveryRow(WorkspaceShellViewModel workspace)
+    {
+        var compared = workspace.Assess.Compare.Words;
+        var listed = workspace.PageModel<TextsPageModel>().Words.ProjectWords;
+        Assert.True(compared.Count + listed.Count > 0, "No word row exists to tick.");
+        foreach (var word in compared) word.IsChecked = true;
+        foreach (var word in listed) word.IsChecked = true;
+        var reviewed = workspace.PageModel<ReviewPageModel>().ReviewEntries.Where(entry => entry.Review is not null).ToArray();
+        Assert.NotEmpty(reviewed);
+        foreach (var entry in reviewed) entry.Review!.IsLookedAt = true;
+        return Task.CompletedTask;
+    }
+
     private const string FirstForm = "hawajafika";
     private const string SecondForm = "kitabu";
     private const string ArabicFirst = WritingSystemTestData.Form;
     private const string ArabicSecond = "كِتَاب";
 
     internal static LayoutDataSet Plain() => new("quick", LayoutInvariantFixtures.QuickWords(),
-        LayoutInvariantFixtures.QuickAssessment(), LayoutInvariantFixtures.ConfigurePopulated, _ => Task.CompletedTask);
+        LayoutInvariantFixtures.QuickAssessment(), LayoutInvariantFixtures.ConfigurePopulated, TickEveryRow);
 
     /// <summary>Both words, one text title, one Review change and the project's default vernacular are Arabic script.</summary>
     internal static LayoutDataSet RightToLeft()
@@ -103,7 +117,7 @@ internal sealed record LayoutDataSet(
             WalkthroughFonts.Register();
             var overview = workspace.PageModel<OverviewPageModel>();
             overview.Overview = overview.Overview! with { WritingSystems = [WritingSystemTestData.English with { IsDefault = false }, arabic] };
-            return Task.CompletedTask;
+            return TickEveryRow(workspace);
         }, [
             new(WorkspacePage.Overview, "Overview/populated", false,
                 [new(ArabicFirst, FlowDirection.RightToLeft), new(ArabicSecond, FlowDirection.RightToLeft)]),
@@ -140,12 +154,12 @@ internal sealed record LayoutDataSet(
                 ProposalsPageScreenshots.Configure(fake, name);
                 fake.PendingChangesIs(ReviewScreenshots.Blocked());
             },
-            Arrange = workspace =>
+            Arrange = async workspace =>
             {
+                await TickEveryRow(workspace);
                 // The advice shows in the Inspector for a selected finding.
                 var page = workspace.PageModel<ParsimonyPageModel>();
                 Assert.True(page.SelectFinding(page.Rows.First(row => !row.IsHeader).Link!), page.SelectionMessage);
-                return Task.CompletedTask;
             },
         };
     }

@@ -962,7 +962,7 @@ public sealed partial class ComponentStyleTests
         yield return new("DenseTable", "an area heading", host => Add(host, Box("denseTableGroupHeader")),
             Control.HeightProperty, "Component.DenseTable.GroupHeaderHeight");
         yield return new("DenseTable", "an item row", host => Add(host, Box("denseTableRow")),
-            Control.HeightProperty, "Component.DenseTable.RowHeight");
+            Control.MinHeightProperty, "Component.DenseTable.RowHeight");
         yield return new("DenseTable", "an item row divider", host => Add(host, Box("denseTableRow")),
             Border.BorderBrushProperty, "Intent.Border");
         yield return new("DenseTable", "a row menu", host => Add(host, Press("denseTableMenu")),

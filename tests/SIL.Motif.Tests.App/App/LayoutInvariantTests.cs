@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using SIL.Motif.App.Views.Shell;
+using SIL.Motif.App.ViewModels;
 using Avalonia.VisualTree;
 using Avalonia.Styling;
 using SIL.Motif.App;
@@ -56,11 +57,19 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
                 var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 foreach (var cell in LayoutInvariantFixtures.QuickCells)
                     if (data.Visits is null)
+                    {
                         foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
                         {
                             workspace.CurrentPage = page;
                             run.Inspect(window, $"{page}/populated", cell, quick: true, workspace);
                         }
+                        // The Lists tab carries the word-row tick, and a checked tick is its own layout.
+                        workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
+                        workspace.CurrentPage = WorkspacePage.Texts;
+                        run.Inspect(window, "Texts/lists-ticked", cell, quick: true, workspace);
+                        Assert.Contains(window.GetVisualDescendants().OfType<CheckBox>(), tick =>
+                            tick.Classes.Contains("wordPresentationTick") && tick.IsChecked == true && tick.IsEffectivelyVisible);
+                    }
                     else
                         foreach (var visit in data.Visits)
                         {
