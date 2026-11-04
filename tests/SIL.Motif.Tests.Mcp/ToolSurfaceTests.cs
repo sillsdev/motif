@@ -48,12 +48,12 @@ public sealed class ToolSurfaceTests
     }
 
     [Fact]
-    public void EntryFlagToolIsDraftOnlyAndExplainsParserSupport()
+    public void EntryFlagToolIsDraftOnlyAndSaysAllParsersParseAFlaggedEntry()
     {
         var tool = AgentTools.All.Single(item => item.Name == "motif_set_entry_do_not_parse");
         Assert.Equal(AgentClass.Draft, tool.Class);
-        Assert.Contains("FieldWorks HermitCrab does not read the flag", tool.Description, StringComparison.Ordinal);
-        Assert.Contains("the next PanGloss release will too", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("does not stop the entry parsing", tool.Description, StringComparison.Ordinal);
+        Assert.Contains("all parse a flagged entry", tool.Description, StringComparison.Ordinal);
         Assert.Contains("retype or delete it", tool.Description, StringComparison.Ordinal);
         Assert.Equal(new[] { "draft", "target", "expectedDoNotParse", "doNotParse", "project" }.Order(StringComparer.Ordinal),
             tool.ArgumentNames.Order(StringComparer.Ordinal));

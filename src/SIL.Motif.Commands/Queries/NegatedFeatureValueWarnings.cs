@@ -12,8 +12,8 @@ namespace SIL.Motif.Commands.Queries;
 
 /// <summary>
 /// Warns about each stored negated feature value. LibLCM can hold one, but FieldWorks' parser loader throws on it
-/// (and so FieldWorks parses nothing from the project), while PanGloss reads the rest of the project and drops the
-/// value's constraint, so a stem carrying one matches more than its author meant.
+/// (and so FieldWorks parses nothing from the project), and PanGloss declines the project too, so a Trial
+/// declines until the value is removed.
 /// </summary>
 internal static class NegatedFeatureValueWarnings
 {
@@ -52,7 +52,7 @@ internal static class NegatedFeatureValueWarnings
             Title = "Negated feature value FieldWorks cannot read",
             Description = description,
             Explanation = "FieldWorks' parser loader throws when it reads a negated feature value, so FieldWorks " +
-                "cannot parse with this project. PanGloss skips the value, so what carries it is not held back by it.",
+                "cannot parse with this project. PanGloss declines the project too, so a Trial declines until the value is removed.",
             Guidance = Guidance(value, owner),
             Origin = GrammarFindingOrigin.Check,
             Scope = GrammarSubjectStatus.Object,
@@ -66,7 +66,7 @@ internal static class NegatedFeatureValueWarnings
                 "structure and the feature, then author a closed value if the stem or affix should carry one. " +
                 "A person reviews and applies the Proposal."
             : $"Motif has no command that removes a negated value from {owner}, and whether FieldWorks can clear " +
-                "it was not checked. Until it is gone FieldWorks cannot parse with this project; PanGloss ignores it.";
+                "it was not checked. Until it is gone FieldWorks cannot parse with this project and a Trial declines.";
 
     private static string Owner(LcmCache cache, ICmObject value)
     {

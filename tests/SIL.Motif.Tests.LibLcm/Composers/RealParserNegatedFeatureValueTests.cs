@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.Composers;
 public sealed class RealParserNegatedFeatureValueTests(PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [RealParserFact]
-    public async Task ANegatedValueOnAStemDoesNotStopPanGlossParsingItAndIsLeftOutOfItsFeatures()
+    public async Task ANegatedValueOnAStemMakesPanGlossRefuseTheProjectAsHCLoaderDoes()
     {
         using var cache = pristine.NewScratch();
         RealParserProject.PrepareForParsing(cache, "k", "i", "t", "a", "b", "u");
@@ -53,13 +53,13 @@ public sealed class RealParserNegatedFeatureValueTests(PristineProjectFixture pr
 
         using var invoker = new PanGlossInvoker();
         var tracer = new PanGlossTracer(invoker);
-        var closedMorph = await OnlyMorph(tracer, path, "kitabu");
-        var negatedMorph = await OnlyMorph(tracer, path, "kibu");
-
-        output.WriteLine("closed: " + closedMorph.Raw.GetProperty("features"));
-        output.WriteLine("negated: " + negatedMorph.Raw.GetProperty("features"));
-        Assert.True(closedMorph.Raw.GetProperty("features").TryGetProperty("source", out _));
-        Assert.Equal("unavailable", negatedMorph.Raw.GetProperty("features").GetProperty("status").GetString());
+        // A negated value declines the whole project.
+        foreach (var word in new[] { "kitabu", "kibu" })
+        {
+            var outcome = Assert.IsType<PanGlossTraceOutcome.Declined>(
+                await tracer.TraceAsync(path, word, CancellationToken.None));
+            output.WriteLine(word + ": " + outcome.Detail);
+        }
     }
 
     private static IMoStemMsa Stem(LcmCache cache, string form, IPartOfSpeech category)
@@ -69,13 +69,5 @@ public sealed class RealParserNegatedFeatureValueTests(PristineProjectFixture pr
             TsStringUtils.MakeString(form, cache.DefaultVernWs), form,
             SandboxGenericMSA.Create(MsaType.kStem, category));
         return (IMoStemMsa)entry.MorphoSyntaxAnalysesOC.Single();
-    }
-
-    private static async Task<PanGlossTraceMorph> OnlyMorph(PanGlossTracer tracer, string path, string word)
-    {
-        var outcome = Assert.IsType<PanGlossTraceOutcome.Completed>(
-            await tracer.TraceAsync(path, word, CancellationToken.None));
-        Assert.True(outcome.Details!.SearchCompleted, word);
-        return Assert.Single(Assert.Single(outcome.Document!.Analyses).Morphs);
     }
 }

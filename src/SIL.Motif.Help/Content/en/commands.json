@@ -558,7 +558,7 @@
   },
   "compose-set-entry-do-not-parse": {
     "title": "Set entry parsing flag",
-    "description": "Stages the FieldWorks do-not-parse flag on a lexical entry. FieldWorks HermitCrab does not read the flag, so it parses a flagged entry, and the next PanGloss release will too (the pinned 0.14.0 still leaves it out); to stop a stem parsing, retype it with compose-set-stem-part-of-speech or delete it.",
+    "description": "Stages the FieldWorks do-not-parse flag on a lexical entry. The flag does not stop the entry parsing: PanGloss, FieldWorks HermitCrab and XAmple all parse a flagged entry, whole entry and not just compounds; to stop a stem parsing, retype it with compose-set-stem-part-of-speech or delete it.",
     "source": "Hand-written from the FieldWorks model and parser importer.",
     "fields": {
       "draft": "Draft name.",
@@ -574,7 +574,7 @@
       "workflow",
       "ask-the-linguist"
     ],
-    "redirect": "FieldWorks parses a flagged entry and the next PanGloss release will too. To stop a stem parsing, retype or delete it."
+    "redirect": "The flag changes no parse, so it does not retire an entry. To stop a stem parsing, retype or delete it."
   },
   "compose-set-no-default-compounding": {
     "title": "Set default compounding",

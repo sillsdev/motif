@@ -167,7 +167,6 @@ public static class GrammarCheckQuery
                 projected = PhonemeNeverUsedWarnings.AddTo(projected, Cache());
                 projected = IgnoredEnvironmentWarnings.AddTo(projected, Cache());
                 projected = RepeatedEnvironmentMaterialWarnings.AddTo(projected, Cache());
-                projected = DoNotParseWarnings.AddTo(projected, Cache());
                 projected = EntryHygieneWarnings.AddTo(projected, Cache());
                 response = projected with
                 {

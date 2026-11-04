@@ -22,7 +22,7 @@ public sealed class SetEntryDoNotParseParserTests(PristineProjectFixture pristin
     }
 
     [RealParserFact]
-    public async Task ARetiredEntryStopsParsingAndClearingTheFlagRestoresIt()
+    public async Task TheDoNotParseFlagIsWrittenAndClearedButPanGlossParsesTheEntryEitherWay()
     {
         Guid retired = default;
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
@@ -40,7 +40,8 @@ public sealed class SetEntryDoNotParseParserTests(PristineProjectFixture pristin
 
         SetFlag(retired, expected: false, desired: true);
         var retiredParse = await ParseAsync(invoker, "ayu", "batu");
-        Assert.Equal(WordOutcome.NoAnalysis, retiredParse["ayu"]);
+        // Since 0.15.0 PanGloss parses do-not-parse entries again; FieldWorks never reads the flag.
+        Assert.Equal(WordOutcome.Analysed, retiredParse["ayu"]);
         Assert.Equal(WordOutcome.Analysed, retiredParse["batu"]);
 
         SetFlag(retired, expected: true, desired: false);

@@ -53,14 +53,14 @@ public sealed class SetEntryDoNotParseComposerTests(PristineProjectFixture prist
     }
 
     [Fact]
-    public void SettingTheFlagCarriesANoteThatFieldWorksStillParsesTheEntry()
+    public void SettingTheFlagCarriesANoteThatItChangesNoParse()
     {
         var entry = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId);
         var target = CanonicalId.FromGuid(entry.Guid);
 
         var set = Assert.Single(SetEntryDoNotParseComposer.Build(_cache, new(target, false, true)));
-        Assert.Contains("the pinned PanGloss leaves it out", set.Rationale, StringComparison.Ordinal);
-        Assert.Contains("FieldWorks' parsers do not read the flag", set.Rationale, StringComparison.Ordinal);
+        Assert.Contains("It changes no parse", set.Rationale, StringComparison.Ordinal);
+        Assert.Contains("both still parse the entry", set.Rationale, StringComparison.Ordinal);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => entry.DoNotUseForParsing = true);
         var clear = Assert.Single(SetEntryDoNotParseComposer.Build(_cache, new(target, true, false)));
         Assert.DoesNotContain("FieldWorks", clear.Rationale, StringComparison.Ordinal);

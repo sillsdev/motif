@@ -237,7 +237,7 @@ public sealed class DroppedGrammarClassifierTests
     public void TheRecordedCodeListIsTheOneOfTheReleaseTheProjectPins()
     {
         using var pinned = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.14.0.json")));
+            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.15.2.json")));
         using var release = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoPaths.FindRepoRoot(),
             "pangloss-release.json")));
 
@@ -250,7 +250,7 @@ public sealed class DroppedGrammarClassifierTests
     public void EveryDroppedGrammarCodeIsACodeOfThePinnedParserRelease()
     {
         using var pinned = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.14.0.json")));
+            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.15.2.json")));
         var released = pinned.RootElement.GetProperty("codes").EnumerateArray()
             .Select(code => code.GetString()!).ToHashSet(StringComparer.Ordinal);
 
@@ -258,7 +258,7 @@ public sealed class DroppedGrammarClassifierTests
 
         Assert.True(missing.Length == 0,
             "The pinned PanGloss release no longer has these dropped-grammar codes: " + string.Join(", ", missing));
-        Assert.Equal(48, DroppedGrammarClassifier.Codes.Count);
+        Assert.Equal(44, DroppedGrammarClassifier.Codes.Count);
     }
 
     private static GrammarWarning CompileFailure(string text) =>

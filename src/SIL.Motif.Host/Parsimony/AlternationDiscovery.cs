@@ -287,8 +287,10 @@ internal static class AlternationDiscovery
     private static bool HasSiblingForms(AlternationEntryFacts entry) => entry.Allomorphs
         .GroupBy(item => item.MorphType, StringComparer.Ordinal).Any(group => group.Count() > 1);
 
+    // Simulfix and suprafix are affix processes, not segment strings, so they have no form alternation.
     private static bool UnsupportedMorphType(string morphType) => morphType is
-        "circumfix" or "discontigPhrase" or "infixingInterfix" or "prefixingInterfix" or "suffixingInterfix";
+        "circumfix" or "discontigPhrase" or "infixingInterfix" or "prefixingInterfix" or "suffixingInterfix"
+        or "simulfix" or "suprafix";
 
     private static bool TrySingleForm(AlternationAllomorphFacts allomorph, string writingSystem, out string form)
     {

@@ -144,7 +144,7 @@ public sealed class RealParserRuleEditorTests(PristineProjectFixture pristine, I
 
         // The elsewhere rule comes first, so the archiphoneme is gone before the class rules can see it.
         Assert.Equal(["paN+puk"], await Readings(tracer, chain, "paxpuk"));
-        Assert.Empty(await Readings(tracer, chain, "pamuk")); // expected failure: PanGloss issue #120 (featureless grammars ignore natural classes)
+        Assert.Empty(await Readings(tracer, chain, "pamuk")); // this rule order leaves no reading for pamuk
 
         Reorder(chain);
         Save(chain);
@@ -157,7 +157,7 @@ public sealed class RealParserRuleEditorTests(PristineProjectFixture pristine, I
         var deletion = chain.Rules[4];
         ApplyOps(cache, SetPhonologicalRuleDisabledComposer.Build(cache, new(deletion, false, true)));
         Save(chain);
-        Assert.Empty(await Readings(tracer, chain, "pamuk")); // expected failure: PanGloss issue #120 (featureless grammars ignore natural classes)
+        Assert.Empty(await Readings(tracer, chain, "pamuk")); // this rule order leaves no reading for pamuk
         Assert.Equal(["paN+puk"], await Readings(tracer, chain, "paxmuk"));
 
         ApplyOps(cache, SetPhonologicalRuleDisabledComposer.Build(cache, new(deletion, true, false)));
@@ -167,7 +167,7 @@ public sealed class RealParserRuleEditorTests(PristineProjectFixture pristine, I
         // Moving one rule reaches the same order as naming the whole order.
         ApplyOps(cache, OrderPhonologicalRulesComposer.Build(cache, new(Rule: chain.Rules[0], Before: chain.Rules[1])));
         Save(chain);
-        Assert.Empty(await Readings(tracer, chain, "pamuk")); // expected failure: PanGloss issue #120 (featureless grammars ignore natural classes)
+        Assert.Empty(await Readings(tracer, chain, "pamuk")); // this rule order leaves no reading for pamuk
     }
 
     [RealParserFact]
@@ -196,16 +196,16 @@ public sealed class RealParserRuleEditorTests(PristineProjectFixture pristine, I
     }
 
     [RealParserFact]
-    public async Task AFeaturelessGrammarIgnoresTheSegmentClassesInTheChain_PanGlossIssue120()
+    public async Task AFeaturelessGrammarAppliesTheSegmentClassesInTheChain()
     {
-        // sillsdev/pangloss#120: featureless grammars ignore natural classes in rewrite rules.
+        // Since PanGloss 0.15.0 (#120), featureless grammars apply natural classes in rewrite rules.
         var chain = Build(featured: false);
         using var cache = chain.Cache;
         Reorder(chain);
         Save(chain);
         using var invoker = new PanGlossInvoker();
         var tracer = new PanGlossTracer(invoker);
-        Assert.Empty(await Readings(tracer, chain, "pamuk")); // expected failure: PanGloss issue #120 (featureless grammars ignore natural classes)
+        Assert.Equal(["paN+puk"], await Readings(tracer, chain, "pamuk"));
     }
 
     [RealParserFact]

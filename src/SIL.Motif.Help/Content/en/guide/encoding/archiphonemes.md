@@ -28,4 +28,4 @@ Decide from the attested spellings, and ask the linguist when they do not decide
 
 - Do not author a second phoneme for a surface variant that a rule can derive.
 - Do not remove an unused archiphoneme while a rule that will use it is still planned.
-- Defining the first phonological feature changes how segment classes behave in a featureless project; try the rules in a Trial first (guide nasal-assimilation).
+- Segment classes in a rewrite rule behave the same in a featureless project and in one with features (guide nasal-assimilation).

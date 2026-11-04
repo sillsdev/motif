@@ -50,8 +50,7 @@ public static class AddPhonologicalFeatureValueIntentParser
 }
 
 /// <summary>
-/// Creates a closed feature in <c>LangProject.PhFeatureSystemOA</c>. Defining the first feature of a project changes
-/// how its segment classes behave in the parser, so Help states that before a project goes from featureless to featured.
+/// Creates a closed feature in <c>LangProject.PhFeatureSystemOA</c>.
 /// </summary>
 public static class AuthorPhonologicalFeatureComposer
 {

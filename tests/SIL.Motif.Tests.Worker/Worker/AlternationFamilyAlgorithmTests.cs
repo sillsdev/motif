@@ -160,6 +160,26 @@ public sealed class AlternationFamilyAlgorithmTests
             }, knownConditions, NoGate);
     }
 
+    [Theory]
+    [InlineData("simulfix")]
+    [InlineData("suprafix")]
+    public void SiblingProcessAllomorphsOfASimulfixOrSuprafixAreExcludedAndAbstained(string morphType)
+    {
+        var conditions = new AlternationConditionFacts(true, false, false, []);
+        var gate = new AlternationGateFacts("shared-gate", "shared");
+        AlternationAllomorphFacts Allomorph(string guid, string form) => new(guid, morphType,
+            new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal) { ["qaa"] = [form] },
+            conditions, gate);
+        var entry = new AlternationEntryFacts("entry", "entry", ["shared-gate"],
+            [Allomorph("a", "n"), Allomorph("b", "m")]);
+
+        var result = AlternationDiscovery.Analyze(new AlternationInput(0, IdentityPhonemes(), [entry], [], true));
+
+        Assert.Empty(result.Families);
+        Assert.Equal(1, result.AbstentionsByReason["unsupported-morph-type-group"]);
+        Assert.True(result.Inconclusive);
+    }
+
     [Fact]
     public void DiscoveryKeepsUnconditionedVariationUndirectedAndSeparatesMorphologicalGates()
     {

@@ -30,9 +30,6 @@ public static class GrammarFindingCodes
     /// <summary>A form that already spells the material its environment asks of its neighbour, which may be a mistake.</summary>
     public const string AllomorphRepeatsEnvironmentMaterial = "grammar.allomorph-repeats-environment-material";
 
-    /// <summary>An entry marked do-not-parse, which FieldWorks' parsers use; the pinned PanGloss leaves it out until its next release.</summary>
-    public const string DoNotParseIgnoredByFieldWorks = "fieldworks.do-not-parse-ignored";
-
     /// <summary>A Noun, Verb or Adjective stem whose form is one letter or whose gloss marks it as a stub, letter or function word.</summary>
     public const string StemTypedAsContentWord = "lexicon.stem-typed-as-content-word";
 

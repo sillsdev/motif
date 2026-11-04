@@ -102,24 +102,13 @@ public sealed class TagalogFeasibilityTests
             return;
         }
 
+        // A bracket form without a valid environment is no rule form since PanGloss 0.15.0.
         var warnings = run.Response.GrammarWarnings ?? [];
-        Assert.Contains(
-            "warning: Allomorph '[C^1][V^1]' has a reduplication pattern that cannot be loaded as an affix rule.",
-            warnings);
-        Assert.Contains(
-            "warning: Allomorph '[C^1][V^1]' has a reduplication pattern that cannot be checked against the phoneme inventory.",
-            warnings);
+        Assert.Contains(warnings, warning => warning.StartsWith("warning: Affix allomorph in lexical entry '[C^1][V^1]", StringComparison.Ordinal));
         Assert.Equal("no-analysis", row.Outcome);
-        Assert.Equal("Some morphology evidence is unavailable.", row.EvidenceStatus);
-        Assert.Equal("unavailable", row.Correctness!.Status);
-        Assert.Equal(1, row.Correctness.Expected);
+        Assert.Equal("No parser readings were returned.", row.EvidenceStatus);
+        Assert.Equal(1, row.Correctness!.Expected);
         Assert.Equal(0, row.Correctness.Matched);
-        Assert.Contains(
-            "warning: Allomorph '[C^1][V^1]' has a reduplication pattern that cannot be loaded as an affix rule.",
-            row.Morphology!.Unavailable);
-        Assert.Contains(
-            "warning: Allomorph '[C^1][V^1]' has a reduplication pattern that cannot be checked against the phoneme inventory.",
-            row.Morphology.Unavailable);
     }
 
     [RealParserFact]
