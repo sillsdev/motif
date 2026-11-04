@@ -216,6 +216,7 @@ public sealed partial record WindowRefusal
         ["trial.none"] = () => MotifAppStrings.RefusalTrialNone,
         [RefusalCodes.SelectionReaderNoBaseline] = () => MotifAppStrings.RefusalSelectionReaderNoBaseline,
         [RefusalCodes.SelectionReaderRangeInvalid] = () => MotifAppStrings.RefusalSelectionReaderRangeInvalid,
+        [RefusalCodes.SelectionReaderPresentationChanged] = () => MotifAppStrings.RefusalSelectionReaderPresentationChanged,
         [RefusalCodes.SelectionReaderOwnershipLimit] = () => MotifAppStrings.RefusalSelectionReaderOwnershipLimit,
         [RefusalCodes.SelectionReaderProjectPathRequired] = () => MotifAppStrings.RefusalSelectionReaderProjectPathRequired,
         [C.TextsEvidenceChanged] = () => MotifAppStrings.RefusalTextsEvidenceChanged,

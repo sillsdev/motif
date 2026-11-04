@@ -3196,6 +3196,8 @@ public static class MotifAppStrings
 
     public static string RefusalSelectionReaderRangeInvalid => Text("MotifApp.RefusalSelectionReaderRangeInvalid");
 
+    public static string RefusalSelectionReaderPresentationChanged => Text("MotifApp.RefusalSelectionReaderPresentationChanged");
+
     public static string RefusalSelectionReaderOwnershipLimit => Text("MotifApp.RefusalSelectionReaderOwnershipLimit");
 
     public static string RefusalSelectionReaderProjectPathRequired => Text("MotifApp.RefusalSelectionReaderProjectPathRequired");

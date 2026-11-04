@@ -693,6 +693,30 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
     }
 
     [Fact]
+    public void ARefusedReadMarkWriteSurvivesASuccessfulPresentationRead()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            Func<Task>? reload = null;
+            var (inText, _, client) = await Loaded(captureReload: reloadAll => reload = reloadAll);
+            var token = SelectionModelFixture.VisibleLines(inText).SelectMany(line => line.Tokens)
+                .First(candidate => candidate.IsWord);
+            client.OnReadWordState((_, _) => Task.FromResult(
+                CommandOutcome<WordReadStateResponse>.Refused(new Refusal("word.read-state-invalid",
+                    FailureReason.InvalidArgument, "This paragraph has not been parsed."))));
+            await inText.MarkReadAsync(token);
+            var refusal = inText.ReadStateRefusal;
+            Assert.NotNull(refusal);
+
+            await reload!();
+            await inText.SelectionRefresh;
+            await inText.StartPresentationRefresh();
+
+            Assert.Same(refusal, inText.ReadStateRefusal);
+        }, TimeSpan.FromSeconds(180));
+    }
+
+    [Fact]
     public void APartialTextReadPublishesTheSkippedOccurrenceNoticeForTheWindow()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

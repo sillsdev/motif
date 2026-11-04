@@ -6281,6 +6281,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Choose a valid range of words to read.</value>
     <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderRangeInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalSelectionReaderPresentationChanged" xml:space="preserve">
+    <value>The text view changed while it was loading. Try again.</value>
+    <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderPresentationChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalSelectionReaderOwnershipLimit" xml:space="preserve">
     <value>Too much text is open at once. Close a card or choose a smaller range.</value>
     <comment>Sentence the window shows when the command refuses with code RefusalCodes.SelectionReaderOwnershipLimit. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

@@ -19,6 +19,8 @@ public sealed partial class ResultsInTextViewModel
     private SelectionPresentationState? _nativePresentation;
     private SelectionRead<SelectionPresentationState>? _presentationRead;
     private WindowRefusal? _presentationRefusal;
+    private long _presentationStarted;
+    private long _presentationSettled;
     private SelectionLinePages? _linePages;
     private IDisposable? _lineObservation;
     private Task _selectionWork = Task.CompletedTask;
@@ -225,7 +227,7 @@ public sealed partial class ResultsInTextViewModel
         SelectedText = Texts.FirstOrDefault(text => text.TextId == previous) ?? Texts.FirstOrDefault();
         NotifyNativeCounts();
         RefreshNativeLines();
-        TrackSelectionWork(RefreshNativePresentationAsync(_selectionVersion));
+        TrackSelectionWork(StartPresentationRefresh());
     }
 
     private bool SameLineShape(SelectionLineHeader left, SelectionLineHeader right) => left.Number == right.Number &&
@@ -266,7 +268,7 @@ public sealed partial class ResultsInTextViewModel
         OnPropertyChanged(nameof(ScopeCountSummary));
         NotifyNativeCounts();
         RefreshNativeLines();
-        TrackSelectionWork(RefreshNativePresentationAsync(_selectionVersion));
+        TrackSelectionWork(StartPresentationRefresh());
         return true;
     }
 
@@ -322,7 +324,10 @@ public sealed partial class ResultsInTextViewModel
     // A store commit landing during the read only means the read is stale, so read again before showing anything.
     private const int PresentationRereads = 5;
 
-    private async Task RefreshNativePresentationAsync(long version, int reread = 0)
+    internal Task StartPresentationRefresh() => RefreshNativePresentationAsync(_selectionVersion, ++_presentationStarted);
+
+    // A refresh that started before the one already shown or refused must not replace it.
+    private async Task RefreshNativePresentationAsync(long version, long sequence, int reread = 0)
     {
         if (_selectionOwner.Reader is not { } reader) return;
         var writes = _readStateWritesApplied.ToDictionary();
@@ -330,14 +335,16 @@ public sealed partial class ResultsInTextViewModel
         var acquired = outcome.Value;
         try
         {
-            if (version != _selectionVersion || !ReferenceEquals(reader, _selectionOwner.Reader)) return;
+            if (version != _selectionVersion || !ReferenceEquals(reader, _selectionOwner.Reader) ||
+                sequence < _presentationSettled) return;
             if (!outcome.Succeeded && outcome.Refusal?.Code == RefusalCodes.SelectionReaderPresentationChanged &&
                 (reread < PresentationRereads ||
                  _readStateWritesApplied.Any(pair => pair.Value != writes.GetValueOrDefault(pair.Key))))
             {
-                await RefreshNativePresentationAsync(version, reread + 1).ConfigureAwait(true);
+                await RefreshNativePresentationAsync(version, sequence, reread + 1).ConfigureAwait(true);
                 return;
             }
+            _presentationSettled = sequence;
             if (!outcome.Succeeded)
             {
                 ReadStateRefusal = _presentationRefusal =
