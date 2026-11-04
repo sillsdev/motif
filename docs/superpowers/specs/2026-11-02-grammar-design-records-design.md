@@ -10,8 +10,9 @@ for each change that no longer fits.
 **Status:** approved by the owner 2026-11-02. Decisions only; nothing is built. Records in
 [ADR 0083](../../adr/0083-grammar-design-records-live-in-the-fieldworks-project.md),
 [ADR 0084](../../adr/0084-proposal-discussion-rationale-comments-and-pictures.md) and
-[ADR 0085](../../adr/0085-proposal-snapshots-are-disposable-derived-files.md). Terms are in `CONTEXT.md`. The extended
-Markdown and its converter are a separate, later spec and are only referenced here.
+[ADR 0085](../../adr/0085-proposal-snapshots-are-disposable-derived-files.md). Terms are in `CONTEXT.md`. The Markdown
+form of GDR text and its converter are specified separately, in
+[FieldWorks Markdown and the GDR profile](2026-11-03-gdr-markdown-design.md), and are only referenced here.
 
 ## 1. Grammar Design Records
 
@@ -119,17 +120,21 @@ merge screen and no "Fit decision" term; **Conflict** and **Drift** keep their p
 
 ## 7. Text and editor
 
-GDR text is stored in FieldWorks as StText, never as Markdown. Markdown is only for AI agents: an importer, an exporter
-and a checker, with the extended notation and converter specified in a separate spec. There is no source mode.
+GDR text is stored in FieldWorks as StText, never as Markdown. Its Markdown form, FieldWorks Markdown with the GDR
+profile, is a view that agents and people can both read and edit, through an importer, an exporter and a checker, and
+the editor has a source mode that shows it. Both are specified in
+[FieldWorks Markdown and the GDR profile](2026-11-03-gdr-markdown-design.md). This replaces the earlier rule that
+Markdown was for agents only and that there was no source mode
+([ADR 0089](../../adr/0089-gdr-text-is-human-editable-fieldworks-markdown.md), owner decision of 2026-11-04).
 
 Per the owner's decision of 2026-11-02, FieldWorks needs a new editor anyway, so one editor serves both FieldWorks and
 Motif's GDRs. It targets Avalonia 11 and 12 and is built from FieldWorks code plus a small Markdown importer, exporter and
 checker. Tiptap is rejected. The part with no FieldWorks code to take is the text surface itself, which is new, built on
 Avalonia's text layout.
 
-People edit with this editor; agents use Markdown. Text carries its writing system on every run, and the editor switches
-the default vernacular and default analysis systems, with others from a list. Tables are paragraphs of cells separated by
-tabs, in a table-row paragraph style.
+People edit with this editor, and may also edit the Markdown in its source mode; agents use Markdown. Text carries its
+writing system on every run, and the editor switches the default vernacular and default analysis systems, with others
+from a list. Tables are paragraphs of cells separated by tabs, in a table-row paragraph style.
 
 ## 8. The outline
 
@@ -181,7 +186,7 @@ and any gap found is a Motif defect to fix.
 2. Read-only GDRs: list, seed, MCP levels, read logging.
 3. One-line change list in Review changes.
 4. Snapshot link.
-5. Extended Markdown, converter and agent GDR writes: the separate Markdown spec, then the importer, exporter and checker.
+5. FieldWorks Markdown, converter and GDR writes: the separate Markdown spec, then the importer, exporter and checker.
 6. The shared editor for people (FieldWorks and GDRs), after its first proof: a text surface on Avalonia's text layout
    behind the existing preview gate, which must pass typing in the active writing system, mixed-direction text with a
    correct caret, Keyman, and paragraph split, and compile against Avalonia 11 and 12.
