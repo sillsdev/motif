@@ -1,0 +1,9 @@
+{
+  "SIL.Motif.Tests.App": 4775,
+  "SIL.Motif.Tests.Cli": 3747,
+  "SIL.Motif.Tests.Commands": 1111,
+  "SIL.Motif.Tests.Contract": 155,
+  "SIL.Motif.Tests.LibLcm": 3388,
+  "SIL.Motif.Tests.Mcp": 259,
+  "SIL.Motif.Tests.Worker": 605
+}

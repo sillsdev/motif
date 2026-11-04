@@ -128,6 +128,7 @@ $scope = @'
       "SIL.Motif.Tests.Contract"
     ],
     "tests/test-shard-weights.json": [],
+    "tests/test-project-seconds.json": [],
     "tests/SIL.Motif.Tests.App.Lifetime/*": [
       "SIL.Motif.Tests.App.Lifetime"
     ]

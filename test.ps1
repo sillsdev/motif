@@ -315,8 +315,19 @@ Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
 $availableProcessors = [Environment]::ProcessorCount
 # 0.6 of the processors, one per 2 GB, at most twelve; see the help text. MOTIF_TEST_PROCESSES overrides.
 $projectConcurrency = Get-MotifTestProcessConcurrency -ProcessorCount $availableProcessors
-# The biggest projects start first, so the throttle does not leave one long shard running alone at the end.
-$testRuns = @(foreach ($testProject in @($testProjects | Sort-Object -Property Shards -Descending)) {
+# Longest shards first, by seconds per shard from tests/test-project-seconds.json.
+$projectSeconds = @{}
+$projectSecondsPath = Join-Path $repoRoot 'tests/test-project-seconds.json'
+if (Test-Path -LiteralPath $projectSecondsPath) {
+    foreach ($property in (Get-Content -LiteralPath $projectSecondsPath -Raw | ConvertFrom-Json).PSObject.Properties) {
+        $projectSeconds[$property.Name] = [double] $property.Value
+    }
+}
+$startOrder = @($testProjects | Sort-Object `
+    @{ Expression = { if ($projectSeconds.ContainsKey($_.Name)) { $projectSeconds[$_.Name] / $_.Shards } else { 0 } }; Descending = $true }, `
+    @{ Expression = { $_.Shards }; Descending = $true }, `
+    @{ Expression = { $_.Name } })
+$testRuns = @(foreach ($testProject in $startOrder) {
     $runShards = $testProject.Shards
     if ($changedClasses) { $runShards = [Math]::Min($runShards, $changedPlan.Projects[$testProject.Name].Shards) }
     elseif ($Filter) { $runShards = 1 }
