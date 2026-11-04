@@ -62,8 +62,8 @@ public sealed class JobClaims : IJobClaimProtocol
     internal const string ClaimOrder =
         "(CASE WHEN Kind = 'parsimony-candidate' THEN 2 " +
         "WHEN Kind = '" + SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind + "' AND " +
-        "json_extract(InputJson, '$.note') LIKE '" + SIL.Motif.Worker.Parsimony.ParsimonyAutoRun.BaselineBundleNotePrefix +
-        "%' THEN 1 ELSE 0 END), " +
+        "CASE WHEN json_valid(InputJson) THEN json_extract(InputJson, '$.note') END LIKE '" +
+        SIL.Motif.Worker.Parsimony.ParsimonyAutoRun.BaselineBundleNotePrefix + "%' THEN 1 ELSE 0 END), " +
         "QueueOrder, JobId";
 
     /// <summary>Reads the identity and position of one project's next claimable row, without claiming it.</summary>

@@ -166,6 +166,31 @@ public sealed class JobLeaseTests : IDisposable
     }
 
     [Fact]
+    public void AnInfrastructureRetryIsClaimedOnlyOnceDueAndThenReadsAsRunning()
+    {
+        var jobs = new JobRepository(_database);
+        var claims = new JobClaims(_database);
+        jobs.Create("job-1", Project, "trial", "{}", Now());
+        var first = claims.Claim(Project, "runner-a", Now(), Lease())!;
+        Assert.True(claims.Finish(first.JobId, first.ClaimToken!, JobStatus.Failed,
+            JobFailureCategory.Infrastructure, null));
+        var retry = jobs.RetryInfrastructure(first.JobId, jobs.Get(first.JobId)!.Version, DateTimeOffset.UtcNow);
+        var due = DateTimeOffset.Parse(retry.NotBeforeUtc!, System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Null(claims.Claim(Project, "runner-b", Stamp(due.AddSeconds(-1)), Lease()));
+        Assert.Equal(JobStatus.Queued, jobs.Get(retry.JobId)!.Status);
+
+        var claimed = claims.Claim(Project, "runner-b", Stamp(due), Lease())!;
+        Assert.Equal(retry.JobId, claimed.JobId);
+        Assert.Equal(JobStatus.Running, claimed.Status);
+        Assert.Null(claimed.NotBeforeUtc);
+        Assert.Equal(2, claimed.Attempt);
+        Assert.NotNull(claimed.ClaimToken);
+        Assert.NotEqual(first.ClaimToken, claimed.ClaimToken);
+        Assert.Null(jobs.Get(retry.JobId)!.NotBeforeUtc);
+    }
+
+    [Fact]
     public void CreatingAQueuedJobWithARetryScheduleIsRefused()
     {
         var jobs = new JobRepository(_database);
