@@ -5,17 +5,17 @@ using SIL.Motif.Host.PanGloss;
 namespace SIL.Motif.App.Services;
 
 /// <summary>
-/// <see cref="TryWordSessions"/> for the window: it names the parser the Workbench query uses and raises phase changes on the
+/// <see cref="TryWordSessions"/> for the window: it raises phase changes on the
 /// UI thread. It holds the static event only while something listens, so an abandoned listener cannot keep a view model alive.
 /// </summary>
-public sealed class TryWordSessionsAdapter(string? parserPath) : ITryWordSessions
+public sealed class TryWordSessionsAdapter : ITryWordSessions
 {
     private readonly object _gate = new();
     private EventHandler? _changed;
 
-    public void Prewarm(string projectPath) => _ = TryWordSessions.Prewarm(projectPath, parserPath);
+    public void Prewarm(string projectPath, string? parserPath) => _ = TryWordSessions.Prewarm(projectPath, parserPath);
 
-    public WarmSessionPhase GetPhase(string projectPath) => TryWordSessions.GetState(projectPath, parserPath).Phase;
+    public WarmSessionPhase GetPhase(string projectPath, string? parserPath) => TryWordSessions.GetState(projectPath, parserPath).Phase;
 
     public event EventHandler? PhaseChanged
     {

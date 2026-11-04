@@ -16,6 +16,9 @@ namespace SIL.Motif.App.Services;
 /// </summary>
 public partial interface ICommandClient
 {
+    /// <summary>The parser the window's commands run, or <see langword="null"/> for none; Try a Word warms the same one.</summary>
+    string? ParserPath { get; }
+
     /// <summary>
     /// Starts one explicit window action for usage recording. Automatic reads stay unrecorded, and nested
     /// scopes in one workflow are suppressed by the shared recorder.

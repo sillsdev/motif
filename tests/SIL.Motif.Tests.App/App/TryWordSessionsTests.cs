@@ -34,6 +34,18 @@ public sealed class TryWordSessionsTests
     }
 
     [Fact]
+    public async Task PrewarmNamesTheParserThePageIsConfiguredWith()
+    {
+        var (fake, context) = NewContext();
+        fake.ParserPath = Path.Combine(Path.GetTempPath(), "substituted", "pangloss");
+        await context.OpenProjectAsync(ProjectA);
+
+        context.OpenPage(WorkspacePage.TryAWord);
+
+        Assert.Equal([fake.ParserPath], fake.TryWordSessionsFake.PrewarmParserPaths);
+    }
+
+    [Fact]
     public void OpeningThePageWithNoProjectPrewarmsNothing()
     {
         var (fake, context) = NewContext();

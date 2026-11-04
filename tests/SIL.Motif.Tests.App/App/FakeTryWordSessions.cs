@@ -15,9 +15,16 @@ public sealed class FakeTryWordSessions : ITryWordSessions
     /// <summary>How many listeners are subscribed to <see cref="PhaseChanged"/>.</summary>
     public int ListenerCount => _changed?.GetInvocationList().Length ?? 0;
 
-    public void Prewarm(string projectPath) => Calls.Add("prewarm " + projectPath);
+    public void Prewarm(string projectPath, string? parserPath)
+    {
+        Calls.Add("prewarm " + projectPath);
+        PrewarmParserPaths.Add(parserPath);
+    }
 
-    public WarmSessionPhase GetPhase(string projectPath) =>
+    /// <summary>The parser path each prewarm named, in order.</summary>
+    public List<string?> PrewarmParserPaths { get; } = [];
+
+    public WarmSessionPhase GetPhase(string projectPath, string? parserPath) =>
         _phases.TryGetValue(projectPath, out var phase) ? phase : WarmSessionPhase.Idle;
 
     public event EventHandler? PhaseChanged

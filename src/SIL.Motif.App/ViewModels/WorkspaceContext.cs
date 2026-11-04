@@ -864,7 +864,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         using var span = MotifTrace.BeginInSwitch("switch.page-changed");
         ++_pageRequestVersion;
         if (value == WorkspacePage.TryAWord && ProjectPath is { } projectPath)
-            TryWordSessions.Prewarm(projectPath);
+            TryWordSessions.Prewarm(projectPath, Commands.ParserPath);
         if (value is not (WorkspacePage.Texts or WorkspacePage.Review)) return;
         RequireSelectionReader();
     }

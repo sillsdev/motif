@@ -91,7 +91,7 @@ public sealed class ICommandClientCatalogParityTests
     public void EveryClientMethodMapsToACataloguedCommandOrAStoreFreeRead()
     {
         var methods = typeof(ICommandClient).GetMethods()
-            .Where(method => method.Name != nameof(ICommandClient.BeginUsageAction))
+            .Where(method => method.Name != nameof(ICommandClient.BeginUsageAction) && !method.IsSpecialName)
             .ToDictionary(method => method.Name, StringComparer.Ordinal);
         var accountedFor = CataloguedCommands.Keys.Concat(ReadsThatNeverWriteTheStore)
             .Concat(ReadsViaCataloguedCommand.Keys).ToArray();

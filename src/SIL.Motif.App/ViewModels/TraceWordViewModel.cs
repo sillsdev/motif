@@ -727,7 +727,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private IDisposable WatchGrammarLoad(ITryWordSessions sessions, string path)
     {
         void Refresh(object? sender, EventArgs e) =>
-            IsLoadingGrammar = IsLoading && sessions.GetPhase(path) == WarmSessionPhase.Loading;
+            IsLoadingGrammar = IsLoading && sessions.GetPhase(path, _commandClient?.ParserPath) == WarmSessionPhase.Loading;
         sessions.PhaseChanged += Refresh;
         Refresh(null, EventArgs.Empty);
         return new GrammarWatch(() =>

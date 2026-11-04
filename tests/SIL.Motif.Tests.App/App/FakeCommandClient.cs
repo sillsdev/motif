@@ -19,6 +19,9 @@ namespace SIL.Motif.Tests.App;
 /// </summary>
 public sealed partial class FakeCommandClient : ICommandClient
 {
+    /// <summary>The parser path the window is configured with.</summary>
+    public string? ParserPath { get; set; }
+
     private readonly List<UsageLogEntry> _usageEntries = [];
     private readonly UsageRecorder _usageRecorder;
 

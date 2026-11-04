@@ -111,7 +111,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
         var picker = new RecordingProjectPicker(project.FwDataPath);
         var options = Options(project.ManagedRoot, picker) with { ParserPath = parser,
             RunnerLauncher = new NoRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parser)),
-            TryWordSessions = new TryWordSessionsAdapter(parser) };
+            TryWordSessions = new TryWordSessionsAdapter() };
 
         host.Run("open Try a Word, trace a word on the resident session", JourneyLimit, async () =>
         {
@@ -123,7 +123,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 await Wait.UntilAsync(() => session.Workspace.Baseline.HasBaseline, "the Baseline did not load");
                 await ShowPageAsync(session, WorkspacePage.TryAWord);
                 var path = session.Workspace.Context.ProjectPath!;
-                await Wait.UntilAsync(() => session.Workspace.Context.TryWordSessions.GetPhase(path) == WarmSessionPhase.Ready,
+                await Wait.UntilAsync(() => session.Workspace.Context.TryWordSessions.GetPhase(path, parser) == WarmSessionPhase.Ready,
                     "opening Try a Word did not warm the parser");
 
                 var trace = session.Workspace.Assess.Trace;

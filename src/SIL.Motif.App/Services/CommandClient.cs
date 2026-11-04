@@ -45,6 +45,8 @@ public sealed partial class CommandClient : ICommandClient
     private readonly UsageRecorder _usageRecorder;
     private int _parseInFlight;
 
+    public string? ParserPath => _options.ParserPath;
+
     public CommandClient() : this(CommandClientOptions.ForInstallation()) { }
 
     public CommandClient(CommandClientOptions options) : this(options, new ProjectGate()) { }

@@ -74,7 +74,7 @@ public sealed record MotifAppOptions(
             AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation(),
             AssistantConnections: AssistantConnectionService.ForInstallation(),
             DefaultProposalChecks: FileDefaultProposalChecksStore.ForInstallation(),
-            TryWordSessions: new TryWordSessionsAdapter(commands.ParserPath))
+            TryWordSessions: new TryWordSessionsAdapter())
         {
             OwnedUserPreferencesFactory = static () => new FileUserPreferencesStore(
                 FileUserPreferencesStore.DefaultPath, FileUserPreferencesStore.InstallationSaveDelay),

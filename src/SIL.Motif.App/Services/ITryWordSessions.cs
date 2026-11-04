@@ -9,10 +9,10 @@ namespace SIL.Motif.App.Services;
 public interface ITryWordSessions
 {
     /// <summary>Starts loading the project's grammar in the background; returns at once and never faults.</summary>
-    void Prewarm(string projectPath);
+    void Prewarm(string projectPath, string? parserPath);
 
-    /// <summary>The phase of the project's session.</summary>
-    WarmSessionPhase GetPhase(string projectPath);
+    /// <summary>The phase of the project's session under the parser the window runs.</summary>
+    WarmSessionPhase GetPhase(string projectPath, string? parserPath);
 
     /// <summary>Raised on the UI thread when any project's session changes phase; read <see cref="GetPhase"/> for the new one.</summary>
     event EventHandler? PhaseChanged;
@@ -29,9 +29,9 @@ public sealed class NoTryWordSessions : ITryWordSessions
 {
     public static readonly NoTryWordSessions Instance = new();
 
-    public void Prewarm(string projectPath) { }
+    public void Prewarm(string projectPath, string? parserPath) { }
 
-    public WarmSessionPhase GetPhase(string projectPath) => WarmSessionPhase.Idle;
+    public WarmSessionPhase GetPhase(string projectPath, string? parserPath) => WarmSessionPhase.Idle;
 
     public event EventHandler? PhaseChanged { add { } remove { } }
 

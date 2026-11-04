@@ -172,6 +172,20 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     }
 
     [Fact]
+    public async Task EvictReturnsOnlyAfterTheParserProcessIsGone()
+    {
+        var (grammar, startLog, _) = Project("evict-waits");
+        using var pool = Pool();
+        await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None);
+        var pid = int.Parse(Lines(startLog)[0]);
+        Assert.True(Alive(pid));
+
+        pool.Evict(grammar);
+
+        Assert.False(Alive(pid), "Evict returned while the parser process was still running.");
+    }
+
+    [Fact]
     public async Task ACancelKillsTheProcessAndTheNextWordRestartsIt()
     {
         var (grammar, startLog, _) = Project("cancel");

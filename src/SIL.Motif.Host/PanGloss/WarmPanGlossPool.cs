@@ -70,6 +70,8 @@ public sealed record WarmPanGlossOptions
     public TimeSpan ParseTimeout { get; init; } = TimeSpan.FromMinutes(5);
     /// <summary>After a failure a word takes the cold path for this long before the session is tried again.</summary>
     public TimeSpan RetryCooldown { get; init; } = TimeSpan.FromSeconds(30);
+    /// <summary>How long a kill waits for the parser to be gone, so a caller can delete its files; exceeding it is logged.</summary>
+    public TimeSpan KillWait { get; init; } = TimeSpan.FromSeconds(30);
 }
 
 /// <summary>
@@ -605,11 +607,18 @@ public sealed class WarmPanGlossPool : IDisposable
             }
             try
             {
-                if (job is not null && process is not null) job.Terminate(process);
+                if (job is not null && process is not null)
+                {
+                    job.Terminate(process);
+                    // Termination is asynchronous; a caller that deletes the parser copy next would meet "access denied".
+                    if (!process.WaitForExitAsync().Wait(pool._options.KillWait))
+                        Trace.TraceWarning("The resident parser (pid {0}) was still running {1} seconds after it was killed.",
+                            process.Id, pool._options.KillWait.TotalSeconds);
+                }
                 job?.Dispose();
                 process?.Dispose();
             }
-            catch (Exception exception) when (exception is IOException or ObjectDisposedException)
+            catch (Exception exception) when (exception is IOException or ObjectDisposedException or AggregateException)
             {
                 Trace.TraceWarning("Stopping the resident parser failed: {0}", exception.Message);
             }
