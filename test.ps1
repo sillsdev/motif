@@ -257,6 +257,7 @@ if (-not $Project -and -not $changedClasses) {
         @{ Name = 'artifact preparation host regression'; Title = 'artifact preparation host regression'; Script = 'Test-PrepareTestArtifacts.Tests.ps1'; Configured = $true }
         @{ Name = 'publication policy regression'; Title = 'publication policy regression'; Script = 'MotifReleasePublication.Tests.ps1' }
         @{ Name = 'help golden regression'; Title = 'help golden gate regression'; Script = 'MotifHelpGolden.Tests.ps1' }
+        @{ Name = 'shard abort regression'; Title = 'aborted shard detection regression'; Script = 'MotifShardVerdict.Tests.ps1' }
         @{ Name = 'changed-files selection regression'; Title = 'changed-files selection regression'; Script = 'MotifChangedTests.Tests.ps1' }
         @{ Name = 'shard weights regression'; Title = 'shard weight merge regression'; Script = 'Update-TestShardWeights.Tests.ps1' }
     )
@@ -312,6 +313,7 @@ if ($missingNames.Count -gt 0) { throw "No selected test project named '$($missi
 $duplicateNames = @($testProjects | Group-Object Name | Where-Object Count -gt 1)
 if ($duplicateNames.Count -gt 0) { throw "Test project names must be unique: $($duplicateNames.Name -join ', ')" }
 Import-Module (Join-Path $repoRoot 'tools/MotifTestRunPlan.psm1') -Force
+Import-Module (Join-Path $repoRoot 'tools/MotifShardVerdict.psm1') -Force
 $availableProcessors = [Environment]::ProcessorCount
 # 0.6 of the processors, one per 2 GB, at most twelve; see the help text. MOTIF_TEST_PROCESSES overrides.
 $projectConcurrency = Get-MotifTestProcessConcurrency -ProcessorCount $availableProcessors
@@ -636,13 +638,21 @@ foreach ($outcome in $outcomes) {
     foreach ($key in @($totals.Keys)) { $totals[$key] += $counters[$key] }
 
     $stale = $counters.total -eq 0
-    $ok = $outcome.ExitCode -eq 0 -and -not $stale
+    # A host that Blame aborted still prints a passing summary for the tests that ran, so the evidence is read too.
+    $abortReasons = @(Get-MotifShardAbortReasons -ResultsDirectory $outcome.ResultsDirectory `
+        -LogPaths @($outcome.Log, $outcome.ErrorLog) -ExitCode $outcome.ExitCode)
+    $ok = $outcome.ExitCode -eq 0 -and -not $stale -and $abortReasons.Count -eq 0
+    # The tests that never ran cannot be counted, so an aborted shard counts as one failure at least.
+    if ($abortReasons.Count -gt 0 -and $counters.failed -eq 0) { $counters.failed = 1; $totals.failed++; $totals.total++ }
     $line = '  {0,-36} {1,6:N1} s  passed {2,5}  failed {3,3}  skipped {4,3}' -f $outcome.Name, $outcome.Seconds,
         $counters.passed, $counters.failed, $counters.notExecuted
     Write-Host $line -ForegroundColor $(if ($ok) { 'Gray' } else { 'Red' })
     if ($stale) { Write-Host '    reported zero test results (a shard with none means too many shards)' -ForegroundColor Red }
     if (-not $ok) {
         $failed = $true
+        if ($abortReasons.Count -gt 0) {
+            Write-Host "    $($outcome.Name) did not finish cleanly, so tests may not have run: $($abortReasons -join '; ')" -ForegroundColor Red
+        }
         if ($outcome.StopReason) { Write-Host "    stopped: $($outcome.StopReason)" -ForegroundColor Red }
         Write-Host "    log: $($outcome.Log)" -ForegroundColor Red
         $failureDetails = foreach ($log in @($outcome.Log, $outcome.ErrorLog)) {
