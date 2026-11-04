@@ -12,7 +12,7 @@ for each change that no longer fits.
 [ADR 0084](../../adr/0084-proposal-discussion-rationale-comments-and-pictures.md) and
 [ADR 0085](../../adr/0085-proposal-snapshots-are-disposable-derived-files.md). Terms are in `CONTEXT.md`. The Markdown
 form of GDR text and its converter are specified separately, in
-[FieldWorks Markdown and the GDR profile](2026-11-03-gdr-markdown-design.md), and are only referenced here.
+[FieldWorks Markdown, and the GDR template](2026-11-03-gdr-markdown-design.md), and are only referenced here.
 
 ## 1. Grammar Design Records
 
@@ -120,10 +120,10 @@ merge screen and no "Fit decision" term; **Conflict** and **Drift** keep their p
 
 ## 7. Text and editor
 
-GDR text is stored in FieldWorks as StText, never as Markdown. Its Markdown form, FieldWorks Markdown with the GDR
-profile, is a view that agents and people can both read and edit, through an importer, an exporter and a checker, and
+GDR text is stored in FieldWorks as StText, never as Markdown. Its Markdown form, FieldWorks Markdown written to the
+GDR template, is a view that agents and people can both read and edit, through an importer, an exporter and a checker, and
 the editor has a source mode that shows it. Both are specified in
-[FieldWorks Markdown and the GDR profile](2026-11-03-gdr-markdown-design.md). This replaces the earlier rule that
+[FieldWorks Markdown, and the GDR template](2026-11-03-gdr-markdown-design.md). This replaces the earlier rule that
 Markdown was for agents only and that there was no source mode
 ([ADR 0089](../../adr/0089-gdr-text-is-human-editable-fieldworks-markdown.md), owner decision of 2026-11-04).
 

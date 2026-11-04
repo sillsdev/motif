@@ -102,9 +102,15 @@ a view of it (ADR 0089, SIL.TextEditing ADR 0028).
 _Avoid_: GDR Markdown (for the general format), FWMD (in prose), source (for the stored text)
 
 **GDR Markdown**:
-The GDR profile of **FieldWorks Markdown**: the form a **Grammar Design Record**'s text takes for agents and people,
-with links to grammar objects by name, the abstract, and the checker's rules.
-_Avoid_: agent Markdown, extended Markdown
+A **Grammar Design Record**'s text as **FieldWorks Markdown**, written to the GDR template (title, ID, abstract, body
+sections). It is not a format of its own: it has no notation, links or checks beyond FieldWorks Markdown's.
+_Avoid_: GDR profile, agent Markdown, extended Markdown
+
+**Project path**:
+How FieldWorks Markdown names a FieldWorks object in a link: a path in a designed tree of the project, such as
+`/lexicon/palit(2)`, always written with the object's GUID. The GUID is the identity; the path is a readable locator that
+is refreshed when the object is renamed or moved.
+_Avoid_: link kind, object URL, ownership path
 
 **Proposal snapshot**:
 A saved copy of the project as it would be after a Proposal, opened in FLEx to look around. It is built from the
