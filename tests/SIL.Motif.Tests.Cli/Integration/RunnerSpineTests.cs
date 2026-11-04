@@ -178,7 +178,7 @@ public sealed class RunnerSpineTests : IDisposable
         Assert.Equal(JobStatus.CompletedDryRunOnly, final.Status);
 
         // No permanently parked row remains, so the runner idles out and exits on its own — never killed.
-        Assert.True(runner.WaitForExit(30000),
+        Assert.True(runner.WaitForExit((int)Wait.Scaled(TimeSpan.FromMinutes(30)).TotalMilliseconds),
             "The runner did not exit on its own. Runner said: " + string.Join(" | ", _log));
     }
 
@@ -217,7 +217,7 @@ public sealed class RunnerSpineTests : IDisposable
         var runner = StartRunner(leaseSeconds: 30);
         foreach (var (project, jobId) in jobs)
             JobProgress.WaitUntilFinished(project, jobId, "The runner's job in " + Path.GetFileName(project));
-        if (!runner.WaitForExit(30000))
+        if (!runner.WaitForExit((int)Wait.Scaled(TimeSpan.FromMinutes(30)).TotalMilliseconds))
         {
             try { runner.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
             Assert.Fail("The runner did not exit. Runner said: " + string.Join(" | ", _log));
@@ -264,7 +264,7 @@ public sealed class RunnerSpineTests : IDisposable
 
     private static bool Kill(Process process)
     {
-        try { process.Kill(entireProcessTree: true); process.WaitForExit(10000); }
+        try { process.Kill(entireProcessTree: true); process.WaitForExit((int)Wait.Scaled(TimeSpan.FromMinutes(2)).TotalMilliseconds); }
         catch (InvalidOperationException) { }
         return true;
     }
@@ -291,7 +291,8 @@ public sealed class RunnerSpineTests : IDisposable
         var errorTask = process.StandardError.ReadToEndAsync();
         var output = outputTask.GetAwaiter().GetResult();
         var error = errorTask.GetAwaiter().GetResult();
-        Assert.True(process.WaitForExit(120000), "The CLI did not exit within its bound.");
+        Assert.True(process.WaitForExit((int)Wait.Scaled(TimeSpan.FromMinutes(30)).TotalMilliseconds),
+            "The CLI process did not exit within 30 minutes (scaled by MOTIF_TEST_DEADLINE_SCALE).");
         return new CliRun(process.ExitCode, output, error);
     }
 

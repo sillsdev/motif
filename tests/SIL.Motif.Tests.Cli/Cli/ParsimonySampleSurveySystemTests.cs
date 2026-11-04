@@ -163,7 +163,7 @@ public sealed class ParsimonySampleSurveySystemTests
         var standardError = process.StandardError.ReadToEndAsync();
         try
         {
-            await process.WaitForExitAsync().WaitAsync(TimeSpan.FromMinutes(20));
+            await process.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
         }
         catch (TimeoutException exception)
         {

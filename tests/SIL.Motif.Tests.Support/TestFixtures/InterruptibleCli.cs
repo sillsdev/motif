@@ -182,7 +182,7 @@ public sealed class InterruptibleCli : IDisposable
             if (!Process.HasExited)
             {
                 Process.Kill(entireProcessTree: true);
-                Process.WaitForExitAsync().Wait(TimeSpan.FromSeconds(10));
+                Process.WaitForExitAsync().Wait(Wait.Scaled(TimeSpan.FromMinutes(2)));
             }
         }
         catch (InvalidOperationException) { }

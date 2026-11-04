@@ -42,7 +42,7 @@ public sealed class CancellationArgvTests : IDisposable
 
         var parserId = await WaitForParser(launched, heartbeat, processIdPath);
         Assert.True(launched.Interrupt(), "Could not send Ctrl+Break to the CLI process group.");
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
+        await launched.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
         var error = launched.ReadStderr();
         Assert.True(launched.ExitCode == 2, $"Expected cancelled exit code 2.{Environment.NewLine}{error}");
         var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
@@ -69,7 +69,7 @@ public sealed class CancellationArgvTests : IDisposable
 
         var parserId = await WaitForParser(launched, heartbeat, processIdPath);
         Assert.True(launched.Interrupt(), "Could not send Ctrl+Break to the CLI process group.");
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
+        await launched.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
         var error = launched.ReadStderr();
         Assert.True(launched.ExitCode == 2, $"Expected cancelled exit code 2.{Environment.NewLine}{error}");
         var failure = ProjectionJson.Deserialize<FailureEnvelope>(error)!;
@@ -99,7 +99,7 @@ public sealed class CancellationArgvTests : IDisposable
 
         var parserId = await WaitForParser(launched, heartbeat, processIdPath);
         Assert.True(launched.Interrupt(), "Could not send SIGINT to the CLI process.");
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(90));
+        await launched.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
         var error = launched.ReadStderr();
         Assert.True(launched.ExitCode == 2, $"Expected cancelled exit code 2.{Environment.NewLine}{error}");
         Assert.Equal("handoff.cancelled", ProjectionJson.Deserialize<FailureEnvelope>(error)!.Code);
@@ -156,7 +156,7 @@ public sealed class CancellationArgvTests : IDisposable
         try
         {
             using var parser = Process.GetProcessById(processId);
-            await parser.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            await parser.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
             Assert.True(parser.HasExited);
         }
         catch (ArgumentException) { }

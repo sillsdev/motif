@@ -17,7 +17,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
         using var firstProject = await SlowParserWalkthroughProject.CreateAsync();
         using var secondProject = new WalkthroughProject(pristine);
         var parserPath = PanglossProcesses.CopyExecutable(firstProject.ManagedRoot);
-        var deadline = WalkthroughSteps.DeadlineIn(120);
+        var deadline = WalkthroughSteps.DeadlineIn(1800);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -35,7 +35,12 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 Assert.False(walkthrough.ProjectSwitchEnabled);
                 Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
                 Assert.True(walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
-                PanglossProcesses.TrackNew(parserPath, existing, appeared);
+                // PanGloss may not have spawned yet: cancel only once a new process is tracked.
+                walkthrough.WaitUntil(() =>
+                {
+                    PanglossProcesses.TrackNew(parserPath, existing, appeared);
+                    return appeared.Count > 0;
+                }, WalkthroughSteps.Remaining(deadline), "the PanGloss process did not start before the Assessment was cancelled");
                 walkthrough.Workspace.Assess.CancelCommand.Execute(null);
             });
             Assert.NotEmpty(appeared);

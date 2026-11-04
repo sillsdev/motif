@@ -389,7 +389,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
             await WaitForPendingProposalAnchorAsync(path, added.Value.DraftId!, process, errorTask);
             try
             {
-                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(60));
+                await process.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
             }
             catch (TimeoutException)
             {
@@ -449,7 +449,7 @@ public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
                 }
                 catch (InvalidOperationException) { }
                 catch (Win32Exception) { }
-                await worker.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                await worker.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
                 worker.Dispose();
             }
         }

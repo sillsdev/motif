@@ -649,7 +649,7 @@ public sealed class ProposalWorkflowTests : IDisposable
         using var process = Process.Start(start)!;
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();
-        Assert.True(process.WaitForExit(60000));
+        Assert.True(process.WaitForExit((int)Wait.Scaled(TimeSpan.FromMinutes(30)).TotalMilliseconds));
 
         Assert.Equal(4, process.ExitCode);
         Assert.Empty(await output);

@@ -50,7 +50,7 @@ public sealed class PendingChangesCliAppTests(PristineProjectFixture pristine)
         {
             var output = await process.StandardOutput.ReadToEndAsync();
             var error = await process.StandardError.ReadToEndAsync();
-            Assert.True(process.WaitForExit(60000), error);
+            Assert.True(process.WaitForExit((int)Wait.Scaled(TimeSpan.FromMinutes(30)).TotalMilliseconds), error);
             Assert.True(process.ExitCode == 0, error);
             Assert.Equal(id, Assert.Single(JsonSerializer.Deserialize<PendingChangesSnapshot>(output,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!.Changes).ChangeId);

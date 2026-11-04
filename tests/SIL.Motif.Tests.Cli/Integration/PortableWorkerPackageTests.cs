@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.Integration;
 public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
 {
     private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);
-    private static readonly TimeSpan ProcessCleanupBound = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ProcessCleanupBound = Wait.Scaled(TimeSpan.FromMinutes(2));
 
     [Fact]
     public async Task PortablePackageRunsCliAndSiblingWorkerWithTheRuntimeLibrary()

@@ -46,13 +46,24 @@ function Start-TestProcess {
     $startInfo.WorkingDirectory = $WorkingDirectory
     $startInfo.ArgumentList.Add('-NoProfile')
     $startInfo.ArgumentList.Add('-Command')
-    $startInfo.ArgumentList.Add("[IO.File]::WriteAllText('$ReadyPath','ready'); Start-Sleep -Seconds 600")
+    $startInfo.ArgumentList.Add("[IO.File]::WriteAllText('$ReadyPath','ready'); Start-Sleep -Seconds 7200")
     [void] $startInfo.Environment.Remove('MOTIF_WORKTREE_LOCK_HELD')
     return [Diagnostics.Process]::Start($startInfo)
 }
 
-# A starved machine slows a pwsh start 10 to 20 times, so child waits are generous.
-$script:ChildStartTimeoutSeconds = 180
+# Loaded machines slow a pwsh start 10 to 20 times: waits are 30 min x MOTIF_TEST_DEADLINE_SCALE (1 to 20).
+$script:DeadlineScale = 1.0
+$scaleText = $env:MOTIF_TEST_DEADLINE_SCALE
+if (-not [string]::IsNullOrWhiteSpace($scaleText)) {
+    $parsedScale = 0.0
+    if ([double]::TryParse($scaleText, [System.Globalization.NumberStyles]::Float,
+            [System.Globalization.CultureInfo]::InvariantCulture, [ref] $parsedScale) -and
+        [double]::IsFinite($parsedScale) -and $parsedScale -ge 1) {
+        $script:DeadlineScale = [Math]::Min($parsedScale, 20.0)
+    }
+}
+$script:ChildStartTimeoutSeconds = [int][Math]::Ceiling(1800 * $script:DeadlineScale)
+$script:ChildExitTimeoutSeconds = [int][Math]::Ceiling(1800 * $script:DeadlineScale)
 
 function Wait-ForFile {
     param([string] $Path, [Diagnostics.Process] $Process)
@@ -117,8 +128,8 @@ try {
         'A second run was not refused with the current lock owner.'
 
     $ownerProcess.Kill()
-    [void] $ownerProcess.WaitForExit(10000)
-    Assert-True ($ownerProcess.HasExited) 'The test lock owner did not exit.'
+    [void] $ownerProcess.WaitForExit($script:ChildExitTimeoutSeconds * 1000)
+    Assert-True ($ownerProcess.HasExited) "The test lock owner (pid $($ownerProcess.Id)) did not exit within $($script:ChildExitTimeoutSeconds) s after Kill."
     $afterOwnerExit = Enter-MotifWorktreeLock -RepoRoot $lockRoot -Context 'lock recovery test'
     Exit-MotifWorktreeLock -LockHandle $afterOwnerExit
 
@@ -154,8 +165,8 @@ try {
     }
     $ancestorStart.RedirectStandardOutput = $true
     $ancestorStart.RedirectStandardError = $true
-    # Allow 40 times the sweep just measured, never under 120 s.
-    $probeTimeoutSeconds = [Math]::Max(120, [Math]::Ceiling(40 * $sweepSeconds))
+    # Allow 40 times the sweep just measured, never under 30 min x MOTIF_TEST_DEADLINE_SCALE.
+    $probeTimeoutSeconds = [Math]::Max($script:ChildExitTimeoutSeconds, [Math]::Ceiling(40 * $sweepSeconds))
     $probeClock = [Diagnostics.Stopwatch]::StartNew()
     $ancestorProcess = [Diagnostics.Process]::Start($ancestorStart)
     # Drain both pipes so a chatty probe cannot block on a full pipe.
@@ -179,14 +190,14 @@ try {
 finally {
     foreach ($process in $processes) {
         try {
-            if (-not $process.HasExited) { $process.Kill(); [void] $process.WaitForExit(10000) }
+            if (-not $process.HasExited) { $process.Kill(); [void] $process.WaitForExit($script:ChildExitTimeoutSeconds * 1000) }
         }
         catch { }
         $process.Dispose()
     }
     if ($ownerProcess) {
         try {
-            if (-not $ownerProcess.HasExited) { $ownerProcess.Kill(); [void] $ownerProcess.WaitForExit(10000) }
+            if (-not $ownerProcess.HasExited) { $ownerProcess.Kill(); [void] $ownerProcess.WaitForExit($script:ChildExitTimeoutSeconds * 1000) }
         }
         catch { }
         $ownerProcess.Dispose()

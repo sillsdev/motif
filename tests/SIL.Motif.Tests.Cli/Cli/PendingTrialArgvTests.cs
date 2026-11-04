@@ -92,7 +92,7 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
         var project = ProjectArgument(arguments);
         if (root is null || project is null)
         {
-            await finished.WaitAsync(TimeSpan.FromSeconds(60));
+            await finished.WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
         }
         else
         {

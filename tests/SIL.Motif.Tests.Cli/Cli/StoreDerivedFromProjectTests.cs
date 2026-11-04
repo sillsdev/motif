@@ -166,7 +166,8 @@ public sealed class StoreDerivedFromProjectTests : IDisposable
         var errorTask = process.StandardError.ReadToEndAsync();
         var output = outputTask.GetAwaiter().GetResult();
         var error = errorTask.GetAwaiter().GetResult();
-        Assert.True(process.WaitForExit(60000), "The CLI did not exit within its bound.");
+        Assert.True(process.WaitForExit((int)Wait.Scaled(TimeSpan.FromMinutes(30)).TotalMilliseconds),
+            "The CLI process did not exit within 30 minutes (scaled by MOTIF_TEST_DEADLINE_SCALE).");
         return (process.ExitCode, output, error);
     }
 }

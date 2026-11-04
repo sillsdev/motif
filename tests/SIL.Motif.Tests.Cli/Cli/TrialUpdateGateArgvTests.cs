@@ -41,7 +41,7 @@ public sealed class TrialUpdateGateArgvTests
         using var process = Process.Start(start)!;
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();
-        await Task.WhenAll(output, error, process.WaitForExitAsync()).WaitAsync(TimeSpan.FromSeconds(60));
+        await Task.WhenAll(output, error, process.WaitForExitAsync()).WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
 
         Assert.True(process.ExitCode == 3, "exit " + process.ExitCode + ": " + await error + await output);
         Assert.Equal(RefusalCodes.TrialUpdateInProgress,

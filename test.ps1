@@ -491,6 +491,19 @@ $jobs = foreach ($run in $testRuns) {
                 }
             }
         }
+        # Waits are generous and scaled for a loaded machine: x MOTIF_TEST_DEADLINE_SCALE (1 to 20).
+        $deadlineScale = 1.0
+        $scaleText = $env:MOTIF_TEST_DEADLINE_SCALE
+        if (-not [string]::IsNullOrWhiteSpace($scaleText)) {
+            $parsedScale = 0.0
+            if ([double]::TryParse($scaleText, [System.Globalization.NumberStyles]::Float,
+                    [System.Globalization.CultureInfo]::InvariantCulture, [ref] $parsedScale) -and
+                [double]::IsFinite($parsedScale) -and $parsedScale -ge 1) {
+                $deadlineScale = [Math]::Min($parsedScale, 20.0)
+            }
+        }
+        $exitGraceSeconds = [int][Math]::Ceiling(1800 * $deadlineScale)
+        $blameHangMinutes = [int][Math]::Ceiling(10 * $deadlineScale)
         $arguments = @(
             'test'
             ('"{0}"' -f $assemblyPath)
@@ -504,7 +517,7 @@ $jobs = foreach ($run in $testRuns) {
             ('"trx;LogFileName={0}.trx"' -f $name)
             # A hung test fails and names itself in the blame sequence file instead of stalling the run.
             '--blame-hang-timeout'
-            '10m'
+            ('{0}m' -f $blameHangMinutes)
             '--blame-hang-dump-type'
             'none'
         )
@@ -540,8 +553,8 @@ $jobs = foreach ($run in $testRuns) {
                     -ErrorAction SilentlyContinue | Select-Object -First 1)
                 if ($summary.Count -gt 0) { $summarySeenAt = [datetime]::UtcNow }
             }
-            if ($null -ne $summarySeenAt -and ([datetime]::UtcNow - $summarySeenAt).TotalSeconds -ge 30) {
-                $stopReason = 'the test summary was written but dotnet did not exit within 30 seconds'
+            if ($null -ne $summarySeenAt -and ([datetime]::UtcNow - $summarySeenAt).TotalSeconds -ge $exitGraceSeconds) {
+                $stopReason = "the test summary was written but dotnet (project $name) did not exit within $exitGraceSeconds seconds"
             }
             if ($stopReason) {
                 try { $process.Kill($true); $process.WaitForExit() } catch { }

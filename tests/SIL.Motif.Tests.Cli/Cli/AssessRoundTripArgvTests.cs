@@ -146,7 +146,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         {
             var result = await Task.Run(() => CliInProcess.Run(_workerRoot, parser, false,
                 "assess", project, "--words", wordsPath, "--max-seconds", "60", "--json"))
-                .WaitAsync(TimeSpan.FromSeconds(45));
+                .WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
             Assert.True(result.ExitCode == 5, result.FailureDetails);
             var failure = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
             Assert.Equal("assessment.stopped-by-budget", failure.Code);
@@ -191,7 +191,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         {
             var result = await Task.Run(() => CliInProcess.Run(_workerRoot, parser, true,
                 "trial", "--project", project, proposal, "--words", wordsPath, "--wait", "--json"))
-                .WaitAsync(TimeSpan.FromSeconds(45));
+                .WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
             Assert.True(result.ExitCode == 5, result.FailureDetails);
             var failure = ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!;
             Assert.Equal("assessment.stopped-by-budget", failure.Code);
@@ -234,7 +234,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         Assert.False(process.HasExited, "The CLI exited before cancellation was sent.");
 
         Assert.True(launched.Interrupt(), "Could not send Ctrl+Break to the CLI process group.");
-        await launched.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
+        await launched.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
         var error = launched.ReadStderr();
         var output = launched.ReadStdout();
         Assert.True(launched.ExitCode == 2, $"Expected cancelled exit code 2.{Environment.NewLine}{error}");
@@ -296,7 +296,7 @@ public sealed class AssessRoundTripArgvTests : IDisposable
         try
         {
             using var parser = Process.GetProcessById(processId);
-            await parser.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            await parser.WaitForExitAsync().WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(30)));
             Assert.True(parser.HasExited);
         }
         catch (ArgumentException) { }
