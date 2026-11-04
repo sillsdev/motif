@@ -134,8 +134,35 @@ public sealed class WarningsProposalKeyTests
         Assert.Equal(["e", "f"], Codes(page));
     }
 
+    // The UI thread pumps every continuation; the pump stands in for it.
     [Fact]
-    public async Task AReadForTheOldProposalThatLandsAfterTheNewOneOpenedIsDropped()
+    public Task AReadForTheOldProposalThatLandsAfterTheNewOneOpenedIsDropped() =>
+        SingleThreadPump.RunAsync(async () =>
+        {
+            var (page, touchedBy) = await OldReadLandsAfterTheNewOneOpenedAsync();
+
+            Assert.Equal(["e", "f"], Codes(page));
+            Assert.Single(touchedBy);
+        });
+
+    [Fact]
+    public async Task TheOldReadScenarioWithoutThePumpResumesOnMoreThanOneThread()
+    {
+        var (_, touchedBy) = await OldReadLandsAfterTheNewOneOpenedAsync();
+
+        Assert.True(touchedBy.Count > 1, "The scenario never left its first thread, so it proves nothing about the pump.");
+    }
+
+    // A read answers from a worker in the App; a thread of its own is never the one the test is already on.
+    private static void OnAnotherThread(Action answer)
+    {
+        var worker = new Thread(() => answer());
+        worker.Start();
+        worker.Join();
+    }
+
+    // Opens Proposal one then two, lands one's read last, and returns the threads that edited the rows.
+    private static async Task<(WarningsPageModel Page, HashSet<int> TouchedBy)> OldReadLandsAfterTheNewOneOpenedAsync()
     {
         var oneGate = new TaskCompletionSource<CommandOutcome<StoredGrammarCheckResponse>>();
         var todayGate = new TaskCompletionSource<CommandOutcome<StoredGrammarCheckResponse>>();
@@ -146,6 +173,11 @@ public sealed class WarningsProposalKeyTests
             null when holdToday => todayGate.Task,
             _ => Answer(Of(request.ProposalId)),
         });
+        var touchedBy = new HashSet<int>();
+        page.Grammar.Warnings.TableEntries.CollectionChanged += (_, _) =>
+        {
+            lock (touchedBy) touchedBy.Add(Environment.CurrentManagedThreadId);
+        };
         await context.OpenProjectAsync(ProjectPath);
         context.OpenPage(WorkspacePage.Warnings);
         var openingOne = context.OpenProposalAsync("proposal/one", CancellationToken.None);
@@ -154,15 +186,17 @@ public sealed class WarningsProposalKeyTests
         var openingTwo = context.OpenProposalAsync("proposal/two", CancellationToken.None);
         await Task.Yield();
 
-        oneGate.SetResult(CommandOutcome<StoredGrammarCheckResponse>.Success(new StoredGrammarCheckResponse(ProposalOne())));
+        OnAnotherThread(() => oneGate.SetResult(
+            CommandOutcome<StoredGrammarCheckResponse>.Success(new StoredGrammarCheckResponse(ProposalOne()))));
         await Task.Yield();
         context.ShowProposalView(MarkupView.Proposal);
         Assert.DoesNotContain("d", Codes(page));
 
-        todayGate.SetResult(CommandOutcome<StoredGrammarCheckResponse>.Success(new StoredGrammarCheckResponse(Today())));
+        OnAnotherThread(() => todayGate.SetResult(
+            CommandOutcome<StoredGrammarCheckResponse>.Success(new StoredGrammarCheckResponse(Today()))));
         await openingOne;
         await openingTwo;
-        Assert.Equal(["e", "f"], Codes(page));
+        return (page, touchedBy);
     }
 
     [Fact]
