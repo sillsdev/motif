@@ -36,8 +36,20 @@ each proves and how to run it by hand are in [docs/testing-slow-run.md](docs/tes
 **Landers run `./test.ps1 -All`.** Rebase onto the current `origin/main`, then run
 `pwsh -NoProfile -File ./test.ps1 -All` with no `-SkipBuild`, so the build is fresh and the counts come from the final SHA.
 It runs every test project plus the tooling regressions and process hygiene, so no lander has to work out which
-projects a change reaches; a hand-picked list of projects let breaks through to `main`. A lander's report lists the
+projects a change reaches; a hand-picked list of projects let breaks through to `main`. Before the gate, a lander provisions the pinned test inputs: `./evals/Get-SyntheticSamples.ps1 -Download` and `./evals/Get-ConformanceFixture.ps1`.
+The second downloads six pinned files from public `sillsdev/machine` and checks each one's sha256; `test.ps1` stays offline and does not run either. A lander's report lists the
 passed, failed and skipped counts for each project.
+
+**Batch landing.** A queue of reviewed branches may land as one batch, so the gate runs once instead of once per branch.
+Stack the branches on one integration branch cut from the current `origin/main`, by cherry-pick, with no merge commits.
+Regenerate the goldens and counts (Help golden, Mcp goldens, registry counts, ADR numbers) in one separate commit
+labelled as a fixup. Run one fresh `-All` on that tip and fast-forward `main` to that exact SHA. If the gate is red, find
+the owning branch with targeted runs of the failing classes on each branch tip and on integration prefixes, then fix or drop it
+and run the gate again. After two red runs on one batch, split the batch and land the first half. If `origin/main` moves
+before the fast-forward, rebase and rerun, unless the only movement is direct-to-main documentation (ADRs, AGENTS, CLAUDE,
+CONTEXT, glossaries). Batching changes nothing else: `./test.ps1 -All` with a fresh build on the rebased tip, no
+`-SkipBuild`, and at most two suites at once (`MOTIF_TEST_SLOTS=2`) stay as they are. The report lists the branches with
+their commit SHAs and the passed, failed and skipped counts for each project.
 
 **The text editor library is a submodule.** `build.ps1` and `test.ps1` run `git submodule update --init external/SIL.TextEditing` when it is empty; a bare `dotnet build` fails with that command in its message.
 
