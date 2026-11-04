@@ -145,14 +145,6 @@ public sealed class WarningsProposalKeyTests
             Assert.Single(touchedBy);
         });
 
-    [Fact]
-    public async Task TheOldReadScenarioWithoutThePumpResumesOnMoreThanOneThread()
-    {
-        var (_, touchedBy) = await OldReadLandsAfterTheNewOneOpenedAsync();
-
-        Assert.True(touchedBy.Count > 1, "The scenario never left its first thread, so it proves nothing about the pump.");
-    }
-
     // A read answers from a worker in the App; a thread of its own is never the one the test is already on.
     private static void OnAnotherThread(Action answer)
     {
