@@ -149,6 +149,21 @@ public sealed partial class StoredSelectionFixture : IDisposable
         command.ExecuteNonQuery();
     }
 
+    /// <summary>The fixture's store, for tests that open a reader with a request of their own.</summary>
+    public MotifDatabase Database => _database;
+
+    /// <summary>The workspace key the fixture's Baseline is published under.</summary>
+    public string ProjectKey => _projectKey;
+
+    /// <summary>Commits a write from another connection, as a parse saving its results in the background would.</summary>
+    public void CommitUnrelatedWrite()
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "CREATE TABLE FixtureUnrelatedWrite (Value INTEGER); DROP TABLE FixtureUnrelatedWrite;";
+        command.ExecuteNonQuery();
+    }
+
     /// <summary>Publishes a named current-format Assessment alongside the fixture's Baseline records.</summary>
     public void RecordAssessment(NewAssessmentRecord assessment) => new AssessmentRepository(_database).Record(assessment);
 
