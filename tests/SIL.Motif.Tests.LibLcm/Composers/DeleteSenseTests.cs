@@ -87,7 +87,10 @@ public sealed class DeleteSenseTests : IDisposable
         });
         var refused = Assert.Throws<InvalidOperationException>(() => Compose(root.Senses[1], root.Entry));
         Assert.Contains("WfiMorphBundle", refused.Message, StringComparison.Ordinal);
-        Assert.Contains("analysis", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("its analysis MoStemMsa " + CanonicalId.FromGuid(root.OtherMsa!.Value).Value,
+            refused.Message, StringComparison.Ordinal);
+        Assert.Contains("which WfiMorphBundle", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("still refers to", refused.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -134,10 +137,13 @@ public sealed class DeleteSenseTests : IDisposable
 
         var bundleRefusal = Assert.Throws<InvalidOperationException>(() => Compose(root.Senses[1], root.Entry));
         Assert.Contains("WfiMorphBundle", bundleRefusal.Message, StringComparison.Ordinal);
+        Assert.Contains("still refers to", bundleRefusal.Message, StringComparison.Ordinal);
+        Assert.Contains(CanonicalId.FromGuid(root.Senses[1]).Value, bundleRefusal.Message, StringComparison.Ordinal);
         var relationRefusal = Assert.Throws<InvalidOperationException>(() => Compose(root.Senses[2], root.Entry));
         Assert.Contains("Synonyms", relationRefusal.Message, StringComparison.Ordinal);
         var componentRefusal = Assert.Throws<InvalidOperationException>(() => Compose(root.Senses[3], root.Entry));
         Assert.Contains("LexEntryRef", componentRefusal.Message, StringComparison.Ordinal);
+        Assert.Contains(CanonicalId.FromGuid(root.Senses[3]).Value, componentRefusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]

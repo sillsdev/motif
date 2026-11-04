@@ -81,12 +81,39 @@ public sealed class MakeVariantOfComposerTests : IDisposable
     {
         var (variant, main, type) = Seed();
         Assert.Equal(RefusalCodes.VariantSelfLink, Code(() => MakeVariantOfComposer.Build(_cache, new(Id(variant), Id(variant), Id(type)))));
+        Assert.Contains("cannot be a variant of", Message(() =>
+            MakeVariantOfComposer.Build(_cache, new(Id(variant), Id(variant), Id(type)))), StringComparison.Ordinal);
         Assert.Equal(RefusalCodes.VariantInvalidType, Code(() => MakeVariantOfComposer.Build(_cache, new(Id(variant), Id(main), Id(main)))));
         Assert.Equal(RefusalCodes.VariantInvalidComponent, Code(() => MakeVariantOfComposer.Build(_cache, new(Id(variant), Id(type), Id(type)))));
         Assert.Equal(RefusalCodes.VariantInvalidEntry, Code(() => MakeVariantOfComposer.Build(_cache, new(Id(type), Id(main), Id(type)))));
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => variant.MakeVariantOf(main, type));
         Assert.Equal(RefusalCodes.VariantAlreadyLinked, Code(() => MakeVariantOfComposer.Build(_cache, new(Id(variant), Id(main), Id(type)))));
+        var linked = Message(() => MakeVariantOfComposer.Build(_cache, new(Id(variant), Id(main), Id(type))));
+        Assert.Contains($"LexEntry {Id(variant).Value}", linked, StringComparison.Ordinal);
+        Assert.Contains(Id(main).Value, linked, StringComparison.Ordinal);
         Assert.Equal(RefusalCodes.VariantCycle, Code(() => MakeVariantOfComposer.Build(_cache, new(Id(main), Id(variant), Id(type)))));
+        var cycle = Message(() => MakeVariantOfComposer.Build(_cache, new(Id(main), Id(variant), Id(type))));
+        Assert.Contains($"LexEntry {Id(variant).Value} '", cycle, StringComparison.Ordinal);
+        Assert.Contains(Id(main).Value, cycle, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ACycleThroughALinkAlreadyInTheProjectNamesTheEntriesOnTheRoute()
+    {
+        var (first, second, type) = Seed();
+        ILexEntry third = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            third = _cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
+            second.MakeVariantOf(first, type);
+            third.MakeVariantOf(second, type);
+        });
+        var message = Message(() => MakeVariantOfComposer.Build(_cache, new(Id(first), Id(third), Id(type))));
+        Assert.Contains($"LexEntry {Id(third).Value}", message, StringComparison.Ordinal);
+        Assert.Contains(Id(second).Value, message, StringComparison.Ordinal);
+        Assert.Contains(", through LexEntry ", message, StringComparison.Ordinal);
+        Assert.Contains($"a variant of ", message, StringComparison.Ordinal);
+        Assert.Contains(Id(first).Value, message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -108,6 +135,7 @@ public sealed class MakeVariantOfComposerTests : IDisposable
         Assert.ThrowsAny<Exception>(() => ProposalApplier.Apply(_cache, proposal, dry.Anchor, "tester"));
     }
 
+    private static string Message(Action action) => Assert.ThrowsAny<ProposalRefusalException>(action).Message;
     private static string Code(Action action) => Assert.ThrowsAny<ProposalRefusalException>(action).Code;
 
     private (ILexEntry Variant, ILexEntry Main, ILexEntryType Type) Seed()

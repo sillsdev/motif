@@ -49,8 +49,9 @@ public static class DeleteEmptySenseComposer
         if (LexSenseEmptiness.FirstPopulatedField(cache, sense) is { } field)
             throw new InvalidOperationException(
                 $"The sense is not empty ('{field}' has content); only a wholly empty sense can be deleted.");
-        if (sense.ReferringObjects.Any())
-            throw new InvalidOperationException("Other objects still refer to the sense, so it cannot be deleted.");
+        if (sense.ReferringObjects.FirstOrDefault() is { } referrer)
+            throw new InvalidOperationException(
+                $"{SenseRemoval.Describe(referrer)} still refers to {SenseRemoval.Describe(sense)}, so it cannot be deleted.");
         var msa = sense.MorphoSyntaxAnalysisRA;
         CanonicalId? deletedMsa = null;
         if (msa is not null && !entry.SensesOS.Any(other => other.Guid != sense.Guid &&
@@ -59,9 +60,10 @@ public static class DeleteEmptySenseComposer
             if (msa.Owner?.Guid != entry.Guid)
                 throw new InvalidOperationException("The sense's analysis is not owned by its entry.");
             VariantSenseAnalysisSafety.Check(cache, entry, msa);
-            if (msa.ReferringObjects.Any(other => other.Guid != sense.Guid))
+            if (msa.ReferringObjects.FirstOrDefault(other => other.Guid != sense.Guid) is { } msaReferrer)
                 throw new InvalidOperationException(
-                    "Other objects, such as parser analyses, still refer to the sense's analysis, so it cannot be deleted with the sense.");
+                    $"{SenseRemoval.Describe(msaReferrer)} still refers to the sense's analysis {SenseRemoval.Describe(msa)}, " +
+                    "so it cannot be deleted with the sense.");
             deletedMsa = CanonicalId.FromGuid(msa.Guid);
         }
         var variant = deletedMsa is not null && VariantSenseAnalysisSafety.PartOfSpeech(msa) is not null

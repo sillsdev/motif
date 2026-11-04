@@ -785,6 +785,45 @@ public sealed class PendingChangesTests
         Assert.Equal("incorrect-spelling", Assert.Single(put.Value!.Changes).Kind);
     }
 
+    [Fact]
+    public void AnAssessmentFromAnOlderBaselineIsRefusedNamingItAndBothCaptureTimes()
+    {
+        var loader = new FwDataProjectLoader();
+        Guid wordformId = Guid.Empty;
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                wordformId = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("stale-word", cache.DefaultVernWs)).Guid);
+            loader.Save(cache);
+        }
+        var managed = Path.Combine(Path.GetDirectoryName(_path)!, "stale-managed");
+        var older = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed);
+        Assert.True(older.Succeeded, older.Refusal?.Message);
+        const string assessmentId = "stale-assessment";
+        RecordParseAssessment(_path, assessmentId, "stale-word");
+        using (var cache = loader.LoadCache(_path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("another-word", cache.DefaultVernWs)));
+            loader.Save(cache);
+        }
+        var newer = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(_path), managed);
+        Assert.True(newer.Succeeded, newer.Refusal?.Message);
+        Assert.NotEqual(older.Value!.Token.CapturedUtc, newer.Value!.Token.CapturedUtc);
+        var initial = PendingChanges.Load(new PendingChangesRequest(_path, "1.0"));
+
+        var put = PendingChanges.Put(new PutPendingChangeRequest(_path, "1.0", initial.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling", CanonicalId.FromGuid(wordformId).Value,
+                "stale-word", assessmentId, OriginPage: "Texts")));
+
+        Assert.Equal("change.assessment-stale", put.Refusal?.Code);
+        Assert.Contains(assessmentId, put.Refusal!.Message, StringComparison.Ordinal);
+        Assert.Contains(older.Value.Token.CapturedUtc, put.Refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(newer.Value.Token.CapturedUtc, put.Refusal.Message, StringComparison.Ordinal);
+    }
+
     private static void RecordParseAssessment(string path, string assessmentId, string word)
     {
         var fullPath = Path.GetFullPath(path);

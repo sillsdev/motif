@@ -159,15 +159,15 @@ public sealed class LexSenseDeleteOperationsTests : IDisposable
 
     [Fact]
     public void ASenseAParserBundleRefersToIsRefused() =>
-        AssertRefused("refer to", (seed, entry) => Bundle(seed, sense: true));
+        AssertRefused("WfiMorphBundle", (seed, entry) => Bundle(seed, sense: true), "still refers to it");
 
     [Fact]
     public void AnAnalysisAParserBundleRefersToIsRefused() =>
-        AssertRefused("analysis", (seed, entry) => Bundle(seed, sense: false));
+        AssertRefused("refuses the analysis MoStemMsa", (seed, entry) => Bundle(seed, sense: false), "WfiMorphBundle");
 
     [Fact]
     public void ASenseAVariantEntryReferenceRefersToIsRefused() =>
-        AssertRefused("refer to", (seed, entry) => NonUndo(() =>
+        AssertRefused("LexEntryRef", (seed, entry) => NonUndo(() =>
         {
             var variant = _cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create();
             var reference = _cache.ServiceLocator.GetInstance<ILexEntryRefFactory>().Create();
@@ -295,13 +295,14 @@ public sealed class LexSenseDeleteOperationsTests : IDisposable
         Assert.Contains("no longer points", failure.ToString(), StringComparison.Ordinal);
     }
 
-    private void AssertRefused(string expected, Action<EmptySenseSeed, ILexEntry> arrange)
+    private void AssertRefused(string expected, Action<EmptySenseSeed, ILexEntry> arrange, string? alsoExpected = null)
     {
         var seed = EmptySenseSeed.Add(_cache, "refused");
         arrange(seed, _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(seed.EntryId));
         var failure = Assert.ThrowsAny<Exception>(() =>
             ScratchDryRun.Of(_cache, Proposal(seed.SenseId, new { msa = Id(seed.MsaId) })));
         Assert.Contains(expected, failure.ToString(), StringComparison.Ordinal);
+        if (alsoExpected is not null) Assert.Contains(alsoExpected, failure.ToString(), StringComparison.Ordinal);
         Assert.True(_cache.ServiceLocator.ObjectRepository.IsValidObjectId(seed.SenseId));
     }
 

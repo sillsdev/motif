@@ -33,6 +33,11 @@ public static class PendingChanges
 {
     public const string DraftName = "pending-changes";
 
+    /// <summary>Names the Assessment and the two Baselines, so the person knows which run to repeat.</summary>
+    private static string StaleAssessmentMessage(string assessmentId, BaselineToken? assessed, BaselineToken current) =>
+        $"Assessment {assessmentId} was run on the Baseline captured {assessed?.CapturedUtc ?? "at an unreadable time"}, " +
+        $"not the current Baseline captured {current.CapturedUtc}; run the Assessment again.";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -292,7 +297,7 @@ public static class PendingChanges
                 assessmentBaseline = null;
             }
             if (assessmentBaseline != baseline.Token)
-                return Refuse("change.assessment-stale", "The Assessment belongs to an older Baseline.",
+                return Refuse("change.assessment-stale", StaleAssessmentMessage(request.AssessmentId, assessmentBaseline, baseline.Token),
                     ("assessmentId", request.AssessmentId));
 
             using var cache = LoadBaselineCache(baseline.FwDataPath);
@@ -541,7 +546,7 @@ public static class PendingChanges
                     assessmentBaseline = null;
                 }
                 if (assessmentBaseline != baseline.Token)
-                    return RefusePut("change.assessment-stale", "The Assessment belongs to an older Baseline.",
+                    return RefusePut("change.assessment-stale", StaleAssessmentMessage(assessmentId, assessmentBaseline, baseline.Token),
                         ("changeId", change.ChangeId), ("wordformId", change.WordformId),
                         ("assessmentId", assessmentId));
                 var word = assessment.Words?.SingleOrDefault(item =>

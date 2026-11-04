@@ -230,8 +230,9 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
         if (LexSenseEmptiness.FirstPopulatedField(cache, sense) is { } field)
             throw new InvalidOperationException(
                 $"'{Kind}' deletes only a wholly empty sense; the sense has content in '{field}'.");
-        if (sense.ReferringObjects.Any())
-            throw new InvalidOperationException($"'{Kind}' refuses a sense that other objects still refer to.");
+        if (sense.ReferringObjects.FirstOrDefault() is { } referrer)
+            throw new InvalidOperationException(
+                $"'{Kind}' refuses {SenseRemoval.Describe(sense)} because {SenseRemoval.Describe(referrer)} still refers to it.");
         var current = sense.MorphoSyntaxAnalysisRA;
         if (payload.Msa is null)
             return (id, sense, entry, null);
@@ -248,9 +249,10 @@ internal sealed class LexSenseDeleteHandler : ICompoundOperationHandler
         VariantSenseAnalysisSafety.Check(cache, entry, current, requireLinked: !footprint);
         if (entry.SensesOS.Any(other => other.Guid != sense.Guid && other.MorphoSyntaxAnalysisRA?.Guid == current.Guid))
             throw new InvalidOperationException($"'{Kind}' refuses an analysis another sense of the entry uses.");
-        if (current.ReferringObjects.Any(other => other.Guid != sense.Guid))
+        if (current.ReferringObjects.FirstOrDefault(other => other.Guid != sense.Guid) is { } msaReferrer)
             throw new InvalidOperationException(
-                $"'{Kind}' refuses an analysis that other objects, such as parser analyses, still refer to.");
+                $"'{Kind}' refuses the analysis {SenseRemoval.Describe(current)} because " +
+                $"{SenseRemoval.Describe(msaReferrer)} still refers to it.");
         return (id, sense, entry, current);
     }
 

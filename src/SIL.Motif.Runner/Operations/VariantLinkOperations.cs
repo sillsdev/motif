@@ -51,7 +51,14 @@ public static class VariantLinkSafety
     /// <summary>Checks a proposed component and variant type for a variant entry: the component must be an entry or
     /// sense, the type must be in the variant types list, and the link must be neither a self-link nor a cycle.</summary>
     public static (ICmObject Component, ILexEntryType Type) CheckLink(
-        LcmCache cache, ILexEntry source, CanonicalId componentId, CanonicalId typeId)
+        LcmCache cache, ILexEntry source, CanonicalId componentId, CanonicalId typeId) =>
+        CheckLink(cache, source, componentId, typeId, null);
+
+    /// <summary>As <see cref="CheckLink(LcmCache, ILexEntry, CanonicalId, CanonicalId)"/>, also following variant
+    /// links a bulk composer has staged but not applied, as entry to main-entry edges.</summary>
+    public static (ICmObject Component, ILexEntryType Type) CheckLink(
+        LcmCache cache, ILexEntry source, CanonicalId componentId, CanonicalId typeId,
+        IReadOnlyDictionary<Guid, List<Guid>>? staged)
     {
         var component = ResolveObject<ICmObject>(cache, componentId, RefusalCodes.VariantInvalidComponent,
             "The component must be an entry or sense.");
@@ -63,19 +70,41 @@ public static class VariantLinkSafety
         while (owner is not null && owner.Guid != list?.Guid) owner = owner.Owner;
         if (owner is null) throw Refuse(RefusalCodes.VariantInvalidType, "The type must belong to the variant types list.");
         if (destination.Guid == source.Guid)
-            throw Refuse(RefusalCodes.VariantSelfLink, "A variant cannot link to its own entry or sense.");
+            throw Refuse(RefusalCodes.VariantSelfLink,
+                $"A variant cannot link to its own entry or sense: {SenseRemoval.Describe(source)} cannot be a " +
+                $"variant of {SenseRemoval.Describe(component)}.");
         var pending = new Stack<ILexEntry>();
         var seen = new HashSet<Guid>();
+        var through = new Dictionary<Guid, Guid>();
         pending.Push(destination);
         while (pending.Count > 0)
         {
             var current = pending.Pop();
             if (current.Guid == source.Guid)
-                throw Refuse(RefusalCodes.VariantCycle, "The variant link would form a cycle.");
+            {
+                var between = new List<string>();
+                for (var step = through.GetValueOrDefault(current.Guid); step != Guid.Empty && step != destination.Guid;
+                     step = through.GetValueOrDefault(step))
+                    between.Insert(0, SenseRemoval.Describe(cache.ServiceLocator.GetObject(step)));
+                var route = between.Count == 0 ? "directly" : $"through {string.Join(" -> ", between)}";
+                throw Refuse(RefusalCodes.VariantCycle,
+                    $"The variant link would form a cycle: {SenseRemoval.Describe(destination)} is already, {route}, " +
+                    $"a variant of {SenseRemoval.Describe(source)}.");
+            }
             if (!seen.Add(current.Guid)) continue;
+            if (staged is not null && staged.TryGetValue(current.Guid, out var stagedTargets))
+                foreach (var target in stagedTargets)
+                    if (cache.ServiceLocator.GetObject(target) is ILexEntry stagedEntry)
+                    {
+                        through.TryAdd(stagedEntry.Guid, current.Guid);
+                        pending.Push(stagedEntry);
+                    }
             foreach (var next in current.EntryRefsOS.Where(r => r.RefType == LexEntryRefTags.krtVariant)
                          .SelectMany(r => r.ComponentLexemesRS).Select(OwningEntry).OfType<ILexEntry>())
+            {
+                through.TryAdd(next.Guid, current.Guid);
                 pending.Push(next);
+            }
         }
         return (component, type);
     }
@@ -85,7 +114,8 @@ public static class VariantLinkSafety
     {
         if (source.EntryRefsOS.Any(r => r.RefType == LexEntryRefTags.krtVariant &&
                                         r.ComponentLexemesRS.Any(c => c.Guid == component.Guid)))
-            throw Refuse(RefusalCodes.VariantAlreadyLinked, "The entry is already a variant of that entry or sense.");
+            throw Refuse(RefusalCodes.VariantAlreadyLinked,
+                $"{SenseRemoval.Describe(source)} is already a variant of {SenseRemoval.Describe(component)}.");
     }
 
     internal static VariantLinkRefusalException Refuse(string code, string message) => new(code, message);
