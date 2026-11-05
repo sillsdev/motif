@@ -29,6 +29,11 @@ internal static class RuleContextSemanticValidator
         PhIterationContextMemberOperationKinds.SetMember,
         PhIterationContextMemberOperationKinds.ClearMember,
         PhIterationContextBoundsOperationKinds.SetBounds,
+        PhFeatureConstraintFeatureOperationKinds.SetFeature,
+        PhSimpleContextNCPlusConstrOperationKinds.AddRefPlusConstr,
+        PhSimpleContextNCMinusConstrOperationKinds.AddRefMinusConstr,
+        PhSimpleContextNCPlusConstrOperationKinds.RemoveRefPlusConstr,
+        PhSimpleContextNCMinusConstrOperationKinds.RemoveRefMinusConstr,
     };
 
     public static void ValidateProposal(LcmCache cache, IReadOnlyList<OperationEnvelope> operations)
@@ -134,8 +139,10 @@ internal static class RuleContextSemanticValidator
                 if (naturalClassContext.FeatureStructureRA is not { } naturalClass || !IsOwnedBy(naturalClass, data) ||
                     !data.NaturalClassesOS.Contains(naturalClass))
                     throw new InvalidOperationException("A natural-class context must reference a class in this project.");
-                if (naturalClassContext.PlusConstrRS.Count != 0 || naturalClassContext.MinusConstrRS.Count != 0)
-                    throw new InvalidOperationException("Natural-class feature constraints are not supported in rule contexts.");
+                var constraints = naturalClassContext.PlusConstrRS.Concat(naturalClassContext.MinusConstrRS).ToArray();
+                if (constraints.Any(c => c.Owner?.Guid != data.Guid || c.FeatureRA is not IFsClosedFeature) ||
+                    constraints.Select(c => c.FeatureRA.Guid).Distinct().Count() != constraints.Length)
+                    throw new InvalidOperationException("A rule alpha variable needs one feature and noncontradictory polarity in each context.");
                 break;
             case IPhSimpleContextBdry boundaryContext:
                 if (boundaryContext.FeatureStructureRA is not { } boundary ||

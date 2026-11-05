@@ -81,7 +81,7 @@ public sealed class PhonologicalRuleReaderTests(PristineProjectFixture pristine)
     [InlineData("left-sequence-iteration", false)]
     [InlineData("right-sequence-iteration", true)]
     [InlineData("right-sequence-iteration", false)]
-    public void AlphaConstraintsMakeTheIntentUnrepresentableAndRefuseEditsWithoutRemovingReferences(
+    public void AlphaConstraintsReadFaithfullyAndAStaleGuardCannotRemoveTheirReferences(
         string location, bool positive)
     {
         using var cache = pristine.NewScratch();
@@ -113,11 +113,16 @@ public sealed class PhonologicalRuleReaderTests(PristineProjectFixture pristine)
         var detail = GrammarReader.Read(cache, "phonological_rules", "Sequence", detailed: true)["items"]![0]!.AsObject();
         Assert.Equal(1, detail["rightHandSideCount"]!.GetValue<int>());
         Assert.True(detail.ContainsKey("intent"));
-        Assert.Null(detail["intent"]);
+        var read = Assert.IsType<System.Text.Json.Nodes.JsonObject>(detail["intent"]);
+        var side = location.Split('-')[0];
+        var referenced = Assert.Single(read[side]!.AsArray(), item => item?["naturalClass"] is not null);
+        var alpha = Assert.Single(referenced!["variables"]!.AsArray());
+        Assert.Equal(CanonicalId.FromGuid(constraint.Guid).Value, alpha!["variable"]!.GetValue<string>());
+        Assert.Equal(positive ? "+" : "-", alpha["polarity"]!.GetValue<string>());
         var minted = 0;
         var refused = Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleComposer.Build(cache, edit,
             mintId: () => { minted++; return CanonicalId.Mint(); }));
-        Assert.Contains("cannot read back", refused.Message);
+        Assert.Contains("expectation", refused.Message);
         Assert.Equal(0, minted);
         Assert.True(context.IsValidObject);
         Assert.Equal(contextId, context.Guid);
@@ -125,6 +130,48 @@ public sealed class PhonologicalRuleReaderTests(PristineProjectFixture pristine)
         Assert.Equal(plus, context.PlusConstrRS.Select(item => item.Guid));
         Assert.Equal(minus, context.MinusConstrRS.Select(item => item.Guid));
         Assert.Equal(constraint.Guid, Assert.Single(cache.LangProject.PhonologicalDataOA.FeatConstraintsOS).Guid);
+    }
+
+    [Theory]
+    [InlineData("contradictory-polarity")]
+    [InlineData("missing-feature")]
+    [InlineData("nested-iteration")]
+    public void AnUnrepresentableAlphaOrContextStillRefusesAnEditableIntent(string scenario)
+    {
+        using var cache = pristine.NewScratch();
+        var rule = Rule(cache);
+        var context = AddNaturalClassContext(cache, rule, "right-iteration");
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var data = cache.LangProject.PhonologicalDataOA;
+            if (scenario == "nested-iteration")
+            {
+                var outer = (IPhIterationContext)rule.RightHandSidesOS[0].RightContextOA;
+                var inner = services.GetInstance<IPhIterationContextFactory>().Create();
+                data.ContextsOS.Add(inner);
+                inner.Minimum = 0;
+                inner.Maximum = 1;
+                inner.MemberRA = context;
+                outer.MemberRA = inner;
+                return;
+            }
+            var constraint = services.GetInstance<IPhFeatureConstraintFactory>().Create();
+            data.FeatConstraintsOS.Add(constraint);
+            context.PlusConstrRS.Add(constraint);
+            if (scenario == "contradictory-polarity")
+            {
+                var feature = services.GetInstance<IFsClosedFeatureFactory>().Create();
+                cache.LangProject.PhFeatureSystemOA.FeaturesOC.Add(feature);
+                constraint.FeatureRA = feature;
+                context.MinusConstrRS.Add(constraint);
+            }
+        });
+        Assert.Null(PhonologicalRuleReader.Read(rule));
+        var minted = 0;
+        Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleComposer.Build(cache,
+            new(CanonicalId.FromGuid(rule.Guid), new(Name: "renamed")), () => { minted++; return CanonicalId.Mint(); }));
+        Assert.Equal(0, minted);
     }
 
     private static IPhSimpleContextNC AddNaturalClassContext(LcmCache cache, IPhRegularRule rule, string location)

@@ -18,6 +18,8 @@ public static class PhonologicalRuleReader
     {
         ArgumentNullException.ThrowIfNull(rule);
         if (rule is not IPhRegularRule { RightHandSidesOS.Count: 1 } regular) return null;
+        if (rule.Direction is < 0 or > 2 || rule.StrucDescOS.Count > 8 || regular.RightHandSidesOS[0].StrucChangeOS.Count > 8)
+            return null;
         var rhs = regular.RightHandSidesOS[0];
         var input = rule.StrucDescOS.Select(Item).ToArray();
         var output = rhs.StrucChangeOS.Select(Item).ToArray();
@@ -37,9 +39,26 @@ public static class PhonologicalRuleReader
 
     /// <summary>The wire form of one rule item list, as the authoring tools accept it.</summary>
     public static JsonArray ItemsJson(IEnumerable<PhonologicalRuleItem> items) => new(items.Select(item =>
-        (JsonNode)(item.Phoneme is { } phoneme
-            ? new JsonObject { ["phoneme"] = phoneme.Value }
-            : new JsonObject { ["naturalClass"] = item.NaturalClass!.Value.Value })).ToArray());
+    {
+        var node = new JsonObject();
+        if (item.Phoneme is { } phoneme) node["phoneme"] = phoneme.Value;
+        else if (item.Change is { } change) node["change"] = new JsonArray(change.Select(value => (JsonNode)new JsonObject
+        {
+            ["feature"] = value.Feature.Value, ["value"] = value.Value.Value,
+        }).ToArray());
+        else node["naturalClass"] = item.NaturalClass!.Value.Value;
+        AddVariables(node, item.Variables);
+        return (JsonNode)node;
+    }).ToArray());
+
+    private static void AddVariables(JsonObject node, IReadOnlyList<PhonologicalRuleVariable>? variables)
+    {
+        if (variables is not { Count: > 0 }) return;
+        node["variables"] = new JsonArray(variables.Select(v => (JsonNode)new JsonObject
+        {
+            ["variable"] = v.Variable, ["feature"] = v.Feature.Value, ["polarity"] = v.Polarity,
+        }).ToArray());
+    }
 
     /// <summary>The wire form of one context list, as the authoring tools accept it.</summary>
     public static JsonArray ContextsJson(IEnumerable<EnvironmentContext> contexts) => new(contexts.Select(context =>
@@ -49,6 +68,7 @@ public static class PhonologicalRuleReader
         else if (context.NaturalClass is { } naturalClass) node["naturalClass"] = naturalClass.Value;
         else if (context.Boundary is { } boundary) node["boundary"] = boundary;
         else node["boundaryMarker"] = context.BoundaryMarker!.Value.Value;
+        AddVariables(node, context.Variables);
         if (context.Minimum is { } minimum)
         {
             node["minimum"] = minimum;
@@ -75,19 +95,32 @@ public static class PhonologicalRuleReader
         _ => "left-to-right",
     };
 
-    private static PhonologicalRuleItem? Item(IPhPhonContext context) => context switch
+    private static PhonologicalRuleItem? Item(IPhPhonContext context)
     {
-        IPhSimpleContextSeg { FeatureStructureRA: { } phoneme } => new(Phoneme: Id(phoneme)),
-        IPhSimpleContextNC { FeatureStructureRA: { } naturalClass, PlusConstrRS.Count: 0, MinusConstrRS.Count: 0 }
-            => new(NaturalClass: Id(naturalClass)),
-        _ => null,
-    };
+        if (context is IPhSimpleContextSeg { FeatureStructureRA: { } phoneme }) return new(Phoneme: Id(phoneme));
+        if (context is not IPhSimpleContextNC { FeatureStructureRA: { } naturalClass } nc) return null;
+        var variables = Variables(nc);
+        if (variables is null) return null;
+        return new(NaturalClass: Id(naturalClass), Variables: variables.Length == 0 ? null : variables);
+    }
+
+    internal static string VariableName(IPhFeatureConstraint constraint) => Id(constraint).Value;
+
+    private static PhonologicalRuleVariable[]? Variables(IPhSimpleContextNC context)
+    {
+        var all = context.PlusConstrRS.Concat(context.MinusConstrRS).ToArray();
+        if (all.Any(c => c.FeatureRA is not IFsClosedFeature || c.Owner is not IPhPhonData) ||
+            all.Select(c => c.FeatureRA.Guid).Distinct().Count() != all.Length) return null;
+        return context.PlusConstrRS.Select(c => new PhonologicalRuleVariable(VariableName(c), Id(c.FeatureRA), "+"))
+            .Concat(context.MinusConstrRS.Select(c => new PhonologicalRuleVariable(VariableName(c), Id(c.FeatureRA), "-"))).ToArray();
+    }
 
     private static EnvironmentContext[]? Contexts(IPhPhonContext? context)
     {
         if (context is null) return [];
         if (context is IPhSequenceContext sequence)
         {
+            if (sequence.MembersRS.Count is < 1 or > 8) return null;
             var members = sequence.MembersRS.Select(Context).ToArray();
             return members.Any(member => member is null) ? null : members.Select(member => member!).ToArray();
         }
@@ -97,15 +130,19 @@ public static class PhonologicalRuleReader
     private static EnvironmentContext? Context(IPhPhonContext context) => context switch
     {
         IPhSimpleContextSeg { FeatureStructureRA: { } phoneme } => new(Phoneme: Id(phoneme)),
-        IPhSimpleContextNC { FeatureStructureRA: { } naturalClass, PlusConstrRS.Count: 0, MinusConstrRS.Count: 0 }
-            => new(NaturalClass: Id(naturalClass)),
+        IPhSimpleContextNC { FeatureStructureRA: { } naturalClass } nc => Variables(nc) is { } variables
+            ? new(NaturalClass: Id(naturalClass), Variables: variables.Length == 0 ? null : variables) : null,
         IPhSimpleContextBdry { FeatureStructureRA: { } marker } => marker.Guid == LangProjectTags.kguidPhRuleWordBdry
             ? new(Boundary: "word")
             : marker.Guid == LangProjectTags.kguidPhRuleMorphBdry ? new(Boundary: "morpheme")
             : new(BoundaryMarker: Id(marker)),
-        IPhIterationContext { MemberRA: { } member } iteration => Context(member) is { } inner
-            ? inner with { Minimum = iteration.Minimum, Maximum = iteration.Maximum }
-            : null,
+        IPhIterationContext { MemberRA: IPhSimpleContext member } iteration
+            when member is not IPhSimpleContextBdry && iteration.Minimum >= 0 &&
+                 (iteration.Maximum == -1 || (iteration.Maximum >= 1 && iteration.Maximum >= iteration.Minimum))
+            => Context(member) is { } inner
+                ? iteration is { Minimum: 1, Maximum: 1 } ? inner
+                    : inner with { Minimum = iteration.Minimum, Maximum = iteration.Maximum }
+                : null,
         _ => null,
     };
 

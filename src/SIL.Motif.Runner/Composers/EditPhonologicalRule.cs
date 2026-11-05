@@ -102,6 +102,24 @@ public static class EditPhonologicalRuleComposer
         var right = change.Right is null ? null
             : AuthorPhonologicalRuleComposer.ResolveContexts(cache, change.Right, isLeft: false, null);
 
+        FeatureRuleAuthoring.Validate(cache, new(current.Name, change.Direction ?? current.Direction,
+            change.Input ?? current.Input, change.Output ?? current.Output, change.Left ?? current.Left, change.Right ?? current.Right));
+        var currentVariables = current.Input.Concat(current.Output).SelectMany(i => i.Variables ?? [])
+            .Concat(current.Left.Concat(current.Right).SelectMany(c => c.Variables ?? []))
+            .Select(v => v.Variable).ToHashSet(StringComparer.Ordinal);
+        var variables = data.FeatConstraintsOS.Where(c => currentVariables.Contains(PhonologicalRuleReader.VariableName(c)))
+            .ToDictionary(PhonologicalRuleReader.VariableName);
+        var replacements = (input ?? []).Concat(output ?? []).Concat(left ?? []).Concat(right ?? []);
+        foreach (var variable in replacements.SelectMany(c => c.Variables ?? []))
+            if (variables.TryGetValue(variable.Variable, out var stored) && stored.FeatureRA?.Guid != variable.Feature.ToGuid())
+                throw new InvalidOperationException($"Variable '{variable.Variable}' cannot change its feature in place.");
+        if (input is not null)
+        {
+            var removedInput = rule.StrucDescOS.Select(c => c.Guid).ToHashSet();
+            // Last-Input collection is pinned by `ReplacingAllInputReferencesPreservesAlphaSharing`.
+            foreach (var variable in variables.Where(v => v.Value.ReferringObjects.All(o => removedInput.Contains(o.Guid))).ToArray())
+                variables.Remove(variable.Key);
+        }
         var builder = new SoundSystemAuthoring.Builder(mintId, Rationale);
         var boundaries = AuthorPhonologicalRuleComposer.EnsureBoundaries(cache, builder, left, right);
         var target = SoundSystemAuthoring.Id(rule);
@@ -115,30 +133,40 @@ public static class EditPhonologicalRuleComposer
         if (input is not null)
             foreach (var context in rule.StrucDescOS)
                 deletions.Add(Delete(builder, context));
+        var inputDeletions = deletions.ToArray();
         if (output is not null)
             foreach (var context in rhs.StrucChangeOS)
-                deletions.Add(Delete(builder, context));
-        if (left is not null && rhs.LeftContextOA is { } oldLeft) deletions.Add(Delete(builder, oldLeft));
-        if (right is not null && rhs.RightContextOA is { } oldRight) deletions.Add(Delete(builder, oldRight));
+                deletions.Add(Delete(builder, context, inputDeletions));
+        if (left is not null && rhs.LeftContextOA is { } oldLeft) deletions.Add(Delete(builder, oldLeft, inputDeletions));
+        if (right is not null && rhs.RightContextOA is { } oldRight) deletions.Add(Delete(builder, oldRight, inputDeletions));
         var after = deletions.Concat(boundaries).ToArray();
 
-        AuthorPhonologicalRuleComposer.AddStructure(builder, SoundSystemAuthoring.Id(data), target,
-            SoundSystemAuthoring.Id(rhs), input, output, left, right, after.Length == 0 ? null : after);
+        AuthorPhonologicalRuleComposer.AddStructure(cache, builder, SoundSystemAuthoring.Id(data), target,
+            SoundSystemAuthoring.Id(rhs), input, output, left, right, after.Length == 0 ? null : after, variables);
         return builder.Operations;
     }
 
-    private static OperationEnvelope Delete(SoundSystemAuthoring.Builder builder, IPhPhonContext context) =>
-        builder.Add(PhonologicalRuleDeleteOperationKinds.DeleteContexts, SoundSystemAuthoring.Id(context), new { });
+    private static OperationEnvelope Delete(SoundSystemAuthoring.Builder builder, IPhPhonContext context,
+        IReadOnlyList<OperationEnvelope>? after = null) =>
+        builder.Add(PhonologicalRuleDeleteOperationKinds.DeleteContexts, SoundSystemAuthoring.Id(context), new { }, requires: after);
 
-    private static PhonologicalRuleItem NormalizeItem(PhonologicalRuleItem item) => new(
-        item.Phoneme is { } phoneme ? LexicalFormAuthoring.Normalize(phoneme) : null,
-        item.NaturalClass is { } naturalClass ? LexicalFormAuthoring.Normalize(naturalClass) : null);
+    private static PhonologicalRuleItem NormalizeItem(PhonologicalRuleItem item) => item with
+    {
+        Phoneme = item.Phoneme is { } phoneme ? LexicalFormAuthoring.Normalize(phoneme) : null,
+        NaturalClass = item.NaturalClass is { } naturalClass ? LexicalFormAuthoring.Normalize(naturalClass) : null,
+        Change = item.Change?.Select(v => new PhonologicalFeatureValue(LexicalFormAuthoring.Normalize(v.Feature), LexicalFormAuthoring.Normalize(v.Value))).ToArray(),
+        Variables = NormalizeVariables(item.Variables),
+    };
+
+    private static PhonologicalRuleVariable[]? NormalizeVariables(IReadOnlyList<PhonologicalRuleVariable>? variables) =>
+        variables?.Select(v => v with { Feature = LexicalFormAuthoring.Normalize(v.Feature) }).ToArray();
 
     private static EnvironmentContext NormalizeContext(EnvironmentContext context) => context with
     {
         Phoneme = context.Phoneme is { } phoneme ? LexicalFormAuthoring.Normalize(phoneme) : null,
         NaturalClass = context.NaturalClass is { } naturalClass ? LexicalFormAuthoring.Normalize(naturalClass) : null,
         BoundaryMarker = context.BoundaryMarker is { } marker ? LexicalFormAuthoring.Normalize(marker) : null,
+        Variables = NormalizeVariables(context.Variables),
     };
 
     private static void CheckExpected(CanonicalId rule, AuthorPhonologicalRuleIntent current, PhonologicalRuleParts expected)

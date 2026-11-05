@@ -149,6 +149,8 @@ public static class AuthorEnvironmentComposer
         for (var i = 0; i < contexts.Count; i++)
         {
             var context = contexts[i] ?? throw new InvalidOperationException("An environment context cannot be null.");
+            if (context.Variables is { Count: > 0 })
+                throw new InvalidOperationException($"Variable '{context.Variables[0].Variable}' belongs in a phonological rule, not an allomorph environment.");
             if ((context.Phoneme is null ? 0 : 1) + (context.NaturalClass is null ? 0 : 1) +
                 (context.Boundary is null ? 0 : 1) + (context.BoundaryMarker is null ? 0 : 1) != 1)
                 throw new InvalidOperationException("Each context names exactly one phoneme, natural class or boundary marker.");

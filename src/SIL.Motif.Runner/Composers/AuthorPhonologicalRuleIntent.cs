@@ -23,13 +23,19 @@ public enum PhonologicalRuleDirection
 /// <summary>One input or output item in a simple phonological rewrite rule.</summary>
 /// <param name="Phoneme">The identity of an existing phoneme, when the item names a phoneme.</param>
 /// <param name="NaturalClass">The identity of an existing natural class, when the item names a class.</param>
-public sealed record PhonologicalRuleItem(CanonicalId? Phoneme = null, CanonicalId? NaturalClass = null);
+/// <param name="Change">Feature values to change on the matched segment; only Output accepts this item kind.</param>
+/// <param name="Variables">Alpha references on a natural class or feature change.</param>
+public sealed record PhonologicalRuleItem(CanonicalId? Phoneme = null, CanonicalId? NaturalClass = null,
+    IReadOnlyList<PhonologicalFeatureValue>? Change = null, IReadOnlyList<PhonologicalRuleVariable>? Variables = null);
+
+/// <summary>An alpha variable shares one closed feature across contexts; minus polarity requires disagreement.</summary>
+public sealed record PhonologicalRuleVariable(string Variable, CanonicalId Feature, string Polarity = "+");
 
 /// <summary>One regular rewrite rule with typed input, output, contexts and declared rule placement.</summary>
 /// <param name="Name">The rule name stored in the project's default analysis writing system.</param>
 /// <param name="Direction">The closed direction value to author.</param>
 /// <param name="Input">Up to eight phoneme or natural-class items in order; an empty list means insertion.</param>
-/// <param name="Output">Up to eight phoneme or natural-class items in order; an empty list means deletion.</param>
+/// <param name="Output">Up to eight phoneme, natural-class or feature-change items; an empty list means deletion.</param>
 /// <param name="Left">Contexts in order; an item may be optional or repeated.</param>
 /// <param name="Right">Contexts in order; an item may be optional or repeated.</param>
 /// <param name="Placement">The neighboring rule identities that define the insertion gap.</param>
@@ -68,17 +74,31 @@ public static class AuthorPhonologicalRuleIntentParser
     {
         var items = SoundSystemIntentParsing.Array(authored, name).Select(item =>
         {
-            SoundSystemIntentParsing.Object(item, "phonological rule item", "phoneme", "naturalClass");
-            if (item.EnumerateObject().Count() != 1)
-                throw new ContractParseException("Each rule input or output item must name one phoneme or natural class.");
+            SoundSystemIntentParsing.Object(item, "phonological rule item", "phoneme", "naturalClass", "change", "variables");
+            if (new[] { "phoneme", "naturalClass", "change" }.Count(p => item.TryGetProperty(p, out _)) != 1)
+                throw new ContractParseException("Each rule input or output item must name one phoneme, natural class or feature change.");
             return new PhonologicalRuleItem(
                 item.TryGetProperty("phoneme", out _) ? SoundSystemIntentParsing.Id(item, "phoneme") : null,
-                item.TryGetProperty("naturalClass", out _) ? SoundSystemIntentParsing.Id(item, "naturalClass") : null);
+                item.TryGetProperty("naturalClass", out _) ? SoundSystemIntentParsing.Id(item, "naturalClass") : null,
+                SoundSystemIntentParsing.Features(item, "change"), ParseVariables(item));
         }).ToArray();
+        if (name == "input" && items.Any(item => item.Change is not null))
+            throw new ContractParseException("A feature change is allowed only in rule output.");
         if (items.Length > MaximumSequenceMembers)
             throw new ContractParseException($"A rewrite rule supports at most {MaximumSequenceMembers} {name} items.");
         return items;
     }
+
+    internal static PhonologicalRuleVariable[]? ParseVariables(JsonElement item) =>
+        !item.TryGetProperty("variables", out _) ? null : SoundSystemIntentParsing.Array(item, "variables").Select(v =>
+        {
+            SoundSystemIntentParsing.Object(v, "alpha reference", "variable", "feature", "polarity");
+            var polarity = v.TryGetProperty("polarity", out _) ? SoundSystemIntentParsing.Text(v, "polarity") : "+";
+            var variable = SoundSystemIntentParsing.Text(v, "variable");
+            if (string.IsNullOrWhiteSpace(variable) || polarity is not ("+" or "-"))
+                throw new ContractParseException($"Variable '{variable}' needs a name and polarity '+' or '-'.");
+            return new PhonologicalRuleVariable(variable, SoundSystemIntentParsing.Id(v, "feature"), polarity);
+        }).ToArray();
 
     internal static PhonologicalRuleDirection ParseDirection(JsonElement authored) => Direction(authored);
 

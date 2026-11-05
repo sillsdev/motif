@@ -10,9 +10,20 @@ internal static class PhonologicalRuleShapes
 {
     private static readonly string[] Directions = ["left-to-right", "right-to-left", "simultaneous"];
 
+    public static IntentShape Variable { get; } = IntentShape.Of(
+        Field.Text("variable", required: true), Field.Id("feature", required: true), Field.Choice("polarity", ["+", "-"]));
+
+    public static IntentShape FeatureValue { get; } = IntentShape.Of(
+        Field.Id("feature", required: true), Field.Id("value", required: true));
+
     public static IntentShape Item { get; } = IntentShape.Of(
         Field.Id("phoneme", IdRole.Reference),
-        Field.Id("naturalClass", IdRole.Reference));
+        Field.Id("naturalClass", IdRole.Reference),
+        Field.Nested("variables", Variable, many: true));
+
+    public static IntentShape OutputItem { get; } = IntentShape.Of(
+        Field.Id("phoneme", IdRole.Reference), Field.Id("naturalClass", IdRole.Reference),
+        Field.Nested("change", FeatureValue, many: true), Field.Nested("variables", Variable, many: true));
 
     public static IntentShape Context { get; } = IntentShape.Of(
         Field.Id("phoneme", IdRole.Reference),
@@ -21,14 +32,15 @@ internal static class PhonologicalRuleShapes
         Field.Id("boundaryMarker", IdRole.Reference),
         Field.Flag("optional", trueOnly: true),
         Field.Number("minimum"),
-        Field.Number("maximum"));
+        Field.Number("maximum"),
+        Field.Nested("variables", Variable, many: true));
 
     public static IntentField[] Parts() =>
     [
         Field.Text("name"),
         Field.Choice("direction", Directions),
         Field.Nested("input", Item, many: true),
-        Field.Nested("output", Item, many: true),
+        Field.Nested("output", OutputItem, many: true),
         Field.Nested("left", Context, many: true),
         Field.Nested("right", Context, many: true),
     ];

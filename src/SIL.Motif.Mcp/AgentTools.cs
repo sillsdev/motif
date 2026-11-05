@@ -1045,11 +1045,21 @@ internal static class AgentTools
     {
         var item = Schema.Object(("phoneme", Schema.String("Phoneme id in the first phoneme set."), false),
             ("naturalClass", Schema.String("Natural class id owned by this project's phonological data."), false));
-        var changedItems = Schema.Array("Zero or one explicit phoneme or natural-class items.", item);
-        changedItems["maxItems"] = 1;
+        var variables = Schema.Array("Alpha references; use one variable name for one feature throughout the rule.",
+            Schema.Object(("variable", Schema.String("Variable name; reads return the stored constraint identity."), true),
+                ("feature", Schema.String("Closed phonological feature id."), true),
+                ("polarity", Schema.String("Agreement (+) or disagreement (-); defaults to +.", "+", "-"), false)));
+        item["properties"]!["variables"] = variables.DeepClone();
+        var changedItems = Schema.Array("Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.", item);
+        changedItems["maxItems"] = 8;
+        var outputItems = changedItems.DeepClone().AsObject();
+        outputItems["items"]!["properties"]!["change"] = Schema.Array("Feature values to set on the matched segment, preserving its other features; Output only.",
+            Schema.Object(("feature", Schema.String("Closed phonological feature id."), true),
+                ("value", Schema.String("Value id belonging to that feature."), true)));
         var contexts = NaturalClassContexts();
         contexts["maxItems"] = 8;
         var contextProperties = contexts["items"]!.AsObject()["properties"]!.AsObject();
+        contextProperties["variables"] = variables.DeepClone();
         contextProperties["optional"] = new JsonObject
         {
             ["type"] = "boolean",
@@ -1062,7 +1072,7 @@ internal static class AgentTools
             ("direction", Schema.String("Rule scan direction or application mode.",
                 "left-to-right", "right-to-left", "simultaneous"), true),
             ("input", changedItems.DeepClone().AsObject(), true),
-            ("output", changedItems.DeepClone().AsObject(), true),
+            ("output", outputItems, true),
             ("left", contexts.DeepClone().AsObject(), false),
             ("right", contexts.DeepClone().AsObject(), false),
             ("placement", Schema.Object(("after", Schema.String("Adjacent existing rule before the insertion gap."), false),

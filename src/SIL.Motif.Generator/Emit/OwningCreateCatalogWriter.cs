@@ -58,6 +58,9 @@ public static class OwningCreateCatalogWriter
         new("PhPhonData", "Environments", "PhEnvironment", FieldCard.Seq,
             "var child = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create(guid);\n" +
             "owner.EnvironmentsOS.Insert(index, child);"),
+        new("PhPhonData", "FeatConstraints", "PhFeatureConstraint", FieldCard.Seq,
+            "var child = cache.ServiceLocator.GetInstance<IPhFeatureConstraintFactory>().Create(guid);\n" +
+            "owner.FeatConstraintsOS.Insert(index, child);", PositionMatters: false),
         new("PhPhonData", "Contexts", "PhContextOrVar", FieldCard.Seq,
             "IPhContextOrVar child = concreteClass switch\n" +
             "{\n" +

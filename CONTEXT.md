@@ -149,12 +149,18 @@ _Avoid_: entity, class, feature
 **Rewrite rule**:
 A regular phonological rule with an Input and Output of up to eight phoneme or natural-class items each, in order,
 with left and right contexts. The two sequences may have different lengths; empty Input means insertion, and empty
-Output means deletion. These sequence shapes are proven through FieldWorks' HermitCrab and PanGloss. A natural
-class in the Output produces any member of that class. A context item may be optional or repeated, and a context
+Output means deletion. These sequence shapes are proven through FieldWorks' HermitCrab and PanGloss. An Output
+segment-list natural class produces any member of that class. A context item may be optional or repeated, and a context
 may name a word or morpheme boundary. A rule can be edited in place, reordered, switched off (disabled) or deleted;
 its order is meaning, because a later rule sees the output of the earlier ones. Multiple right-hand sides are read
-with their actual count and no editable intent; editing them is deferred. An alpha constraint also prevents an
-editable intent, so an edit cannot silently remove it
+with their actual count and no editable intent; editing them is deferred. An aligned feature-class Output changes
+only its specified features; Output `change` bundles express this explicitly. Alpha variables share a closed feature across Input, Output and contexts through positive or negative
+constraints, including single or all-negative references to any declared closed phonological feature with values,
+without requiring its use on phonemes. They read back with stored identities so edits preserve sharing; replacing
+all Input referrers recreates the constraint when LibLCM collects the old one. A variable confined to repeated
+items inside multi-item contexts is refused because FieldWorks' loader cannot discover it; another reference
+outside those iterations makes it discoverable. An unrepresentable context
+still prevents an editable intent
 ([ADR 0088](docs/adr/0088-phonological-rules-are-edited-in-place-and-hold-one-item-each-side.md)).
 _Avoid_: sound change (for the stored rule), multi-item rule
 

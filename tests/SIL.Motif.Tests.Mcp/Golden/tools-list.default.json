@@ -610,7 +610,7 @@
   },
   {
     "name": "motif_add_phonological_rule",
-    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs). Stages one regular phonological rule in a Draft, with up to eight phonemes or natural classes in each Input and Output sequence and declared context and rule placement. Empty Input or Output means insertion or deletion; a natural class in the Output produces any member of that class. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or feature-rules or conditioned-allomorphs; check best practice. Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs). Stages one regular phonological rule in a Draft, with up to eight phonemes or natural classes in each Input and Output sequence and declared context and rule placement. Empty Input or Output means insertion or deletion; Output feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -643,12 +643,42 @@
               "naturalClass": {
                 "type": "string",
                 "description": "Natural class id owned by this project\u0027s phonological data."
+              },
+              "variables": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "variable": {
+                      "type": "string",
+                      "description": "Variable name; reads return the stored constraint identity."
+                    },
+                    "feature": {
+                      "type": "string",
+                      "description": "Closed phonological feature id."
+                    },
+                    "polarity": {
+                      "type": "string",
+                      "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                      "enum": [
+                        "\u002B",
+                        "-"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "variable",
+                    "feature"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Alpha references; use one variable name for one feature throughout the rule."
               }
             },
             "additionalProperties": false
           },
-          "description": "Zero or one explicit phoneme or natural-class items.",
-          "maxItems": 1
+          "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
+          "maxItems": 8
         },
         "output": {
           "type": "array",
@@ -662,12 +692,64 @@
               "naturalClass": {
                 "type": "string",
                 "description": "Natural class id owned by this project\u0027s phonological data."
+              },
+              "variables": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "variable": {
+                      "type": "string",
+                      "description": "Variable name; reads return the stored constraint identity."
+                    },
+                    "feature": {
+                      "type": "string",
+                      "description": "Closed phonological feature id."
+                    },
+                    "polarity": {
+                      "type": "string",
+                      "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                      "enum": [
+                        "\u002B",
+                        "-"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "variable",
+                    "feature"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Alpha references; use one variable name for one feature throughout the rule."
+              },
+              "change": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "feature": {
+                      "type": "string",
+                      "description": "Closed phonological feature id."
+                    },
+                    "value": {
+                      "type": "string",
+                      "description": "Value id belonging to that feature."
+                    }
+                  },
+                  "required": [
+                    "feature",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Feature values to set on the matched segment, preserving its other features; Output only."
               }
             },
             "additionalProperties": false
           },
-          "description": "Zero or one explicit phoneme or natural-class items.",
-          "maxItems": 1
+          "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
+          "maxItems": 8
         },
         "left": {
           "type": "array",
@@ -693,6 +775,36 @@
               "boundaryMarker": {
                 "type": "string",
                 "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              },
+              "variables": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "variable": {
+                      "type": "string",
+                      "description": "Variable name; reads return the stored constraint identity."
+                    },
+                    "feature": {
+                      "type": "string",
+                      "description": "Closed phonological feature id."
+                    },
+                    "polarity": {
+                      "type": "string",
+                      "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                      "enum": [
+                        "\u002B",
+                        "-"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "variable",
+                    "feature"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Alpha references; use one variable name for one feature throughout the rule."
               },
               "optional": {
                 "type": "boolean",
@@ -740,6 +852,36 @@
               "boundaryMarker": {
                 "type": "string",
                 "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+              },
+              "variables": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "variable": {
+                      "type": "string",
+                      "description": "Variable name; reads return the stored constraint identity."
+                    },
+                    "feature": {
+                      "type": "string",
+                      "description": "Closed phonological feature id."
+                    },
+                    "polarity": {
+                      "type": "string",
+                      "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                      "enum": [
+                        "\u002B",
+                        "-"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "variable",
+                    "feature"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Alpha references; use one variable name for one feature throughout the rule."
               },
               "optional": {
                 "type": "boolean",
@@ -1993,12 +2135,42 @@
                             "naturalClass": {
                               "type": "string",
                               "description": "Natural class id owned by this project\u0027s phonological data."
+                            },
+                            "variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "variable": {
+                                    "type": "string",
+                                    "description": "Variable name; reads return the stored constraint identity."
+                                  },
+                                  "feature": {
+                                    "type": "string",
+                                    "description": "Closed phonological feature id."
+                                  },
+                                  "polarity": {
+                                    "type": "string",
+                                    "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                                    "enum": [
+                                      "\u002B",
+                                      "-"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "variable",
+                                  "feature"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Alpha references; use one variable name for one feature throughout the rule."
                             }
                           },
                           "additionalProperties": false
                         },
-                        "description": "Zero or one explicit phoneme or natural-class items.",
-                        "maxItems": 1
+                        "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
+                        "maxItems": 8
                       },
                       "output": {
                         "type": "array",
@@ -2012,12 +2184,64 @@
                             "naturalClass": {
                               "type": "string",
                               "description": "Natural class id owned by this project\u0027s phonological data."
+                            },
+                            "variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "variable": {
+                                    "type": "string",
+                                    "description": "Variable name; reads return the stored constraint identity."
+                                  },
+                                  "feature": {
+                                    "type": "string",
+                                    "description": "Closed phonological feature id."
+                                  },
+                                  "polarity": {
+                                    "type": "string",
+                                    "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                                    "enum": [
+                                      "\u002B",
+                                      "-"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "variable",
+                                  "feature"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Alpha references; use one variable name for one feature throughout the rule."
+                            },
+                            "change": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "feature": {
+                                    "type": "string",
+                                    "description": "Closed phonological feature id."
+                                  },
+                                  "value": {
+                                    "type": "string",
+                                    "description": "Value id belonging to that feature."
+                                  }
+                                },
+                                "required": [
+                                  "feature",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Feature values to set on the matched segment, preserving its other features; Output only."
                             }
                           },
                           "additionalProperties": false
                         },
-                        "description": "Zero or one explicit phoneme or natural-class items.",
-                        "maxItems": 1
+                        "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
+                        "maxItems": 8
                       },
                       "left": {
                         "type": "array",
@@ -2043,6 +2267,36 @@
                             "boundaryMarker": {
                               "type": "string",
                               "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            },
+                            "variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "variable": {
+                                    "type": "string",
+                                    "description": "Variable name; reads return the stored constraint identity."
+                                  },
+                                  "feature": {
+                                    "type": "string",
+                                    "description": "Closed phonological feature id."
+                                  },
+                                  "polarity": {
+                                    "type": "string",
+                                    "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                                    "enum": [
+                                      "\u002B",
+                                      "-"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "variable",
+                                  "feature"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Alpha references; use one variable name for one feature throughout the rule."
                             },
                             "optional": {
                               "type": "boolean",
@@ -2090,6 +2344,36 @@
                             "boundaryMarker": {
                               "type": "string",
                               "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            },
+                            "variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "variable": {
+                                    "type": "string",
+                                    "description": "Variable name; reads return the stored constraint identity."
+                                  },
+                                  "feature": {
+                                    "type": "string",
+                                    "description": "Closed phonological feature id."
+                                  },
+                                  "polarity": {
+                                    "type": "string",
+                                    "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                                    "enum": [
+                                      "\u002B",
+                                      "-"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "variable",
+                                  "feature"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Alpha references; use one variable name for one feature throughout the rule."
                             },
                             "optional": {
                               "type": "boolean",
@@ -5208,6 +5492,32 @@
                             },
                             "naturalClass": {
                               "type": "string"
+                            },
+                            "variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "variable": {
+                                    "type": "string"
+                                  },
+                                  "feature": {
+                                    "type": "string"
+                                  },
+                                  "polarity": {
+                                    "type": "string",
+                                    "enum": [
+                                      "\u002B",
+                                      "-"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "variable",
+                                  "feature"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "additionalProperties": false
@@ -5224,11 +5534,56 @@
                             },
                             "naturalClass": {
                               "type": "string"
+                            },
+                            "change": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "feature": {
+                                    "type": "string"
+                                  },
+                                  "value": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "feature",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "variable": {
+                                    "type": "string"
+                                  },
+                                  "feature": {
+                                    "type": "string"
+                                  },
+                                  "polarity": {
+                                    "type": "string",
+                                    "enum": [
+                                      "\u002B",
+                                      "-"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "variable",
+                                  "feature"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "additionalProperties": false
                         },
-                        "description": "New Output: up to eight items in order; empty means deletion. A natural class produces any member."
+                        "description": "New Output: up to eight items in order; empty means deletion. Feature changes preserve the matched segment\u0027s other features; alpha variables share feature values."
                       },
                       "left": {
                         "type": "array",
@@ -5260,6 +5615,32 @@
                             },
                             "maximum": {
                               "type": "number"
+                            },
+                            "variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "variable": {
+                                    "type": "string"
+                                  },
+                                  "feature": {
+                                    "type": "string"
+                                  },
+                                  "polarity": {
+                                    "type": "string",
+                                    "enum": [
+                                      "\u002B",
+                                      "-"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "variable",
+                                  "feature"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "additionalProperties": false
@@ -5296,6 +5677,32 @@
                             },
                             "maximum": {
                               "type": "number"
+                            },
+                            "variables": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "variable": {
+                                    "type": "string"
+                                  },
+                                  "feature": {
+                                    "type": "string"
+                                  },
+                                  "polarity": {
+                                    "type": "string",
+                                    "enum": [
+                                      "\u002B",
+                                      "-"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "variable",
+                                  "feature"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "additionalProperties": false
@@ -5326,6 +5733,32 @@
                                 },
                                 "naturalClass": {
                                   "type": "string"
+                                },
+                                "variables": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "variable": {
+                                        "type": "string"
+                                      },
+                                      "feature": {
+                                        "type": "string"
+                                      },
+                                      "polarity": {
+                                        "type": "string",
+                                        "enum": [
+                                          "\u002B",
+                                          "-"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "variable",
+                                      "feature"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 }
                               },
                               "additionalProperties": false
@@ -5341,6 +5774,51 @@
                                 },
                                 "naturalClass": {
                                   "type": "string"
+                                },
+                                "change": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "feature": {
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "feature",
+                                      "value"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "variables": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "variable": {
+                                        "type": "string"
+                                      },
+                                      "feature": {
+                                        "type": "string"
+                                      },
+                                      "polarity": {
+                                        "type": "string",
+                                        "enum": [
+                                          "\u002B",
+                                          "-"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "variable",
+                                      "feature"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 }
                               },
                               "additionalProperties": false
@@ -5376,6 +5854,32 @@
                                 },
                                 "maximum": {
                                   "type": "number"
+                                },
+                                "variables": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "variable": {
+                                        "type": "string"
+                                      },
+                                      "feature": {
+                                        "type": "string"
+                                      },
+                                      "polarity": {
+                                        "type": "string",
+                                        "enum": [
+                                          "\u002B",
+                                          "-"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "variable",
+                                      "feature"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 }
                               },
                               "additionalProperties": false
@@ -5411,6 +5915,32 @@
                                 },
                                 "maximum": {
                                   "type": "number"
+                                },
+                                "variables": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "variable": {
+                                        "type": "string"
+                                      },
+                                      "feature": {
+                                        "type": "string"
+                                      },
+                                      "polarity": {
+                                        "type": "string",
+                                        "enum": [
+                                          "\u002B",
+                                          "-"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "variable",
+                                      "feature"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 }
                               },
                               "additionalProperties": false

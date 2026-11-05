@@ -29,8 +29,10 @@ public sealed record AuthorNaturalClassIntent(string Name, string Abbreviation,
 /// contexts accept it.
 /// </param>
 /// <param name="Maximum">The most times it may repeat, or -1 for no limit; set together with <paramref name="Minimum"/>.</param>
+/// <param name="Variables">Alpha references in rule natural-class contexts only.</param>
 public sealed record EnvironmentContext(CanonicalId? Phoneme = null, CanonicalId? NaturalClass = null,
-    string? Boundary = null, CanonicalId? BoundaryMarker = null, int? Minimum = null, int? Maximum = null);
+    string? Boundary = null, CanonicalId? BoundaryMarker = null, int? Minimum = null, int? Maximum = null,
+    IReadOnlyList<PhonologicalRuleVariable>? Variables = null);
 
 /// <summary>Authors a parser-visible environment string from typed left and right contexts.</summary>
 public sealed record AuthorEnvironmentIntent(string Name, IReadOnlyList<EnvironmentContext> Left,
@@ -74,7 +76,7 @@ public static class AuthorEnvironmentIntentParser
         {
             if (allowRepeat)
                 SoundSystemIntentParsing.Object(e, "environment context", "phoneme", "naturalClass", "boundary",
-                    "boundaryMarker", "optional", "minimum", "maximum");
+                    "boundaryMarker", "optional", "minimum", "maximum", "variables");
             else
                 SoundSystemIntentParsing.Object(e, "environment context", "phoneme", "naturalClass", "boundary", "boundaryMarker");
             var references = new[] { "phoneme", "naturalClass", "boundary", "boundaryMarker" }
@@ -87,7 +89,7 @@ public static class AuthorEnvironmentIntentParser
                 e.TryGetProperty("naturalClass", out _) ? SoundSystemIntentParsing.Id(e, "naturalClass") : null,
                 e.TryGetProperty("boundary", out _) ? SoundSystemIntentParsing.Text(e, "boundary") : null,
                 e.TryGetProperty("boundaryMarker", out _) ? SoundSystemIntentParsing.Id(e, "boundaryMarker") : null,
-                minimum, maximum);
+                minimum, maximum, allowRepeat ? AuthorPhonologicalRuleIntentParser.ParseVariables(e) : null);
         }).ToArray();
 
     /// <summary>Reads optional, or minimum and maximum (-1 is unbounded).</summary>

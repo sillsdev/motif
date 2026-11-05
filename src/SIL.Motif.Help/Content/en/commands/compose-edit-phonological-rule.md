@@ -7,7 +7,7 @@ motif compose-edit-phonological-rule --project language.fwdata --draft widen-rul
   --intent '{"rule":"<rule-id>","right":[{"phoneme":"<u-id>","optional":true},{"phoneme":"<p-id>"}],"expected":{"right":[{"phoneme":"<p-id>"}]}}'
 ```
 
-- `name`, `direction`, `input`, `output`, `left` and `right` are the same as in [Author a sound rule](cmd:compose-author-phonological-rule). FieldWorks' Input and Output each hold up to eight phoneme or natural-class items in order, and may have different lengths. A natural class in the output means any member of that class, not the segment matched in the input. An empty list clears `left` or `right`, turns the rule into an insertion (empty `input`) or into a deletion (empty `output`).
+- `name`, `direction`, `input`, `output`, `left` and `right` are the same as in [Author a sound rule](cmd:compose-author-phonological-rule). FieldWorks' Input and Output each hold up to eight phoneme or natural-class items in order, and may have different lengths. A segment-list Output class produces any member; an aligned feature-class Output changes only its specified features. Output also accepts `change` feature bundles and alpha `variables` as described in the feature-rules encoding guide. An empty list clears `left` or `right`, turns the rule into an insertion (empty `input`) or into a deletion (empty `output`).
 - `expected` is a guard. Give the current value of any part you change; if the rule no longer matches, nothing is staged and the message names the part.
 - A context item may be `optional` (zero or one time), or carry `minimum` and `maximum` (`-1` for no limit). Boundaries cannot repeat.
 
@@ -20,3 +20,5 @@ motif compose-edit-phonological-rule --project language.fwdata --draft sequence-
 ```
 
 A detailed read also returns `rightHandSideCount`. An `intent` of null means the rule cannot be represented by this composer, for example because it has more than one right-hand side. Edit that rule in FieldWorks.
+
+Feature and alpha rules read back faithfully. The returned variable names are stored constraint identities: reuse those names in replacement parts to preserve sharing with Input or contexts you leave in place. Removing the last binding of an Output variable refuses the edit. Read `motif help guide:encoding/feature-rules --full` for feature change, polarity and parser limitations.

@@ -94,6 +94,9 @@ public static partial class SnapshotFields
     /// <summary>A <c>PhPhonData</c>'s <c>Environments</c> owning PhEnvironment field.</summary>
     public const string PhPhonDataEnvironments = "grammar/phPhonData/environments";
 
+    /// <summary>A <c>PhPhonData</c>'s <c>FeatConstraints</c> owning PhFeatureConstraint field.</summary>
+    public const string PhPhonDataFeatConstraints = "grammar/phPhonData/featConstraints";
+
     /// <summary>A <c>PhPhonData</c>'s <c>NaturalClasses</c> owning PhNaturalClass field.</summary>
     public const string PhPhonDataNaturalClasses = "grammar/phPhonData/naturalClasses";
 

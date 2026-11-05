@@ -28,6 +28,7 @@ public static class AuthorPhonologicalRuleComposer
         RequireContextLength(intent.Left, "left");
         RequireContextLength(intent.Right, "right");
 
+        FeatureRuleAuthoring.Validate(cache, intent);
         var data = cache.LangProject.PhonologicalDataOA;
         ValidateBoundaryMarkers(cache, intent.Left, intent.Right);
         ValidatePlacement(data, intent.Placement);
@@ -49,7 +50,7 @@ public static class AuthorPhonologicalRuleComposer
             new { value = DirectionValue(intent.Direction) });
 
         var rhsId = builder.Create(PhRegularRuleRightHandSidesOperationKinds.Create, ruleId);
-        AddStructure(builder, dataId, ruleId, rhsId, input, output, left, right);
+        AddStructure(cache, builder, dataId, ruleId, rhsId, input, output, left, right);
 
         var toEnable = builder.Operations.ToArray();
         var enable = builder.Add(PhSegmentRuleDisabledOperationKinds.SetDisabled, ruleId, new { value = false });
@@ -71,11 +72,17 @@ public static class AuthorPhonologicalRuleComposer
     }
 
     /// <summary>Creates each part that is given under a rule whose same part is empty.</summary>
-    internal static void AddStructure(SoundSystemAuthoring.Builder builder, CanonicalId dataId, CanonicalId ruleId,
+    internal static void AddStructure(LcmCache cache, SoundSystemAuthoring.Builder builder, CanonicalId dataId, CanonicalId ruleId,
         CanonicalId rhsId, IReadOnlyList<ResolvedContext>? input, IReadOnlyList<ResolvedContext>? output,
         IReadOnlyList<ResolvedContext>? left, IReadOnlyList<ResolvedContext>? right,
-        IReadOnlyList<OperationEnvelope>? after = null)
+        IReadOnlyList<OperationEnvelope>? after = null,
+        IReadOnlyDictionary<string, IPhFeatureConstraint>? existingVariables = null)
     {
+        var lowering = new FeatureRuleAuthoring.Lowering(cache, builder, dataId, existingVariables);
+        input = lowering.Prepare(input);
+        output = lowering.Prepare(output);
+        left = lowering.Prepare(left);
+        right = lowering.Prepare(right);
         if (input is not null) CreateOwnedItems(builder, ruleId, input, PhSegmentRuleStrucDescOperationKinds.Create, after);
         if (output is not null) CreateOwnedItems(builder, rhsId, output, PhSegRuleRHSStrucChangeOperationKinds.Create, after);
         if (left is not null)
@@ -112,7 +119,7 @@ public static class AuthorPhonologicalRuleComposer
             var placement = previous is { } prior ? new Placement(prior, null) : null;
             var contextId = builder.Create(createKind, owner, new { @class = item.ClassName }, placement,
                 requires: after);
-            SetContextReference(builder, contextId, item.Reference, item.ClassName);
+            SetContextReference(builder, contextId, item);
             previous = contextId;
         }
     }
@@ -125,7 +132,7 @@ public static class AuthorPhonologicalRuleComposer
         if (contexts.Count == 1 && contexts[0].Minimum is null)
         {
             var contextId = builder.Create(createKind, rhsId, new { @class = contexts[0].ClassName }, requires: after);
-            SetContextReference(builder, contextId, contexts[0].Reference, contexts[0].ClassName);
+            SetContextReference(builder, contextId, contexts[0]);
             return;
         }
         if (contexts.Count == 1)
@@ -165,7 +172,7 @@ public static class AuthorPhonologicalRuleComposer
         {
             id = builder.Create(PhPhonDataContextsOperationKinds.Create, dataId, new { @class = item.ClassName },
                 requires: after);
-            SetContextReference(builder, id, item.Reference, item.ClassName);
+            SetContextReference(builder, id, item);
         }
         else
         {
@@ -181,32 +188,38 @@ public static class AuthorPhonologicalRuleComposer
     }
 
     private static void SetContextReference(SoundSystemAuthoring.Builder builder, CanonicalId context,
-        CanonicalId reference, string contextClass)
+        ResolvedContext item)
     {
-        var kind = contextClass switch
+        var kind = item.ClassName switch
         {
             "PhSimpleContextSeg" => PhSimpleContextSegFeatureStructureOperationKinds.SetFeatureStructure,
             "PhSimpleContextNC" => PhSimpleContextNCFeatureStructureOperationKinds.SetFeatureStructure,
             "PhSimpleContextBdry" => PhSimpleContextBdryFeatureStructureOperationKinds.SetFeatureStructure,
-            _ => throw new InvalidOperationException($"Context class '{contextClass}' is not a supported simple context."),
+            _ => throw new InvalidOperationException($"Context class '{item.ClassName}' is not a supported simple context."),
         };
-        builder.Add(kind, context, new { @ref = reference.Value });
+        builder.Add(kind, context, new { @ref = item.Reference.Value }, requires: item.Requires);
+        foreach (var (constraint, positive) in item.Constraints ?? [])
+            builder.Add(positive ? PhSimpleContextNCPlusConstrOperationKinds.AddRefPlusConstr
+                : PhSimpleContextNCMinusConstrOperationKinds.AddRefMinusConstr,
+                context, new { member = constraint.Value }, requires: item.Requires);
     }
 
     internal static ResolvedContext ResolveRuleItem(LcmCache cache, PhonologicalRuleItem item,
         CanonicalId? plannedNaturalClass)
     {
         ArgumentNullException.ThrowIfNull(item);
-        if ((item.Phoneme is null ? 0 : 1) + (item.NaturalClass is null ? 0 : 1) != 1)
-            throw new InvalidOperationException("Each rule input or output item must name one phoneme or natural class.");
+        if ((item.Phoneme is null ? 0 : 1) + (item.NaturalClass is null ? 0 : 1) + (item.Change is null ? 0 : 1) != 1)
+            throw new InvalidOperationException("Each rule input or output item must name one phoneme, natural class or Output feature change.");
+        if (item.Change is { } change)
+            return new("PhSimpleContextNC", default, Change: change, Variables: item.Variables);
         if (item.Phoneme is { } phoneme)
         {
             _ = SoundSystemAuthoring.RequirePhoneme(cache, phoneme);
             return new("PhSimpleContextSeg", phoneme);
         }
         var naturalClass = item.NaturalClass ?? throw new InvalidOperationException("A rule item needs a phoneme or natural class.");
-        if (naturalClass != plannedNaturalClass) _ = RequireNaturalClass(cache, naturalClass);
-        return new("PhSimpleContextNC", naturalClass);
+        if (naturalClass != plannedNaturalClass) _ = RequireNaturalClass(cache, naturalClass, item.Variables is { Count: > 0 });
+        return new("PhSimpleContextNC", naturalClass, Variables: item.Variables);
     }
 
     internal static IReadOnlyList<ResolvedContext> ResolveContexts(LcmCache cache,
@@ -227,8 +240,8 @@ public static class AuthorPhonologicalRuleComposer
                     with { Minimum = item.Minimum, Maximum = item.Maximum };
             else if (item.NaturalClass is { } naturalClass)
             {
-                if (naturalClass != plannedNaturalClass) _ = RequireNaturalClass(cache, naturalClass);
-                resolved[index] = new("PhSimpleContextNC", naturalClass, item.Minimum, item.Maximum);
+                if (naturalClass != plannedNaturalClass) _ = RequireNaturalClass(cache, naturalClass, item.Variables is { Count: > 0 });
+                resolved[index] = new("PhSimpleContextNC", naturalClass, item.Minimum, item.Maximum, Variables: item.Variables);
             }
             else if (item.BoundaryMarker is { } boundaryId)
             {
@@ -252,7 +265,7 @@ public static class AuthorPhonologicalRuleComposer
         return resolved;
     }
 
-    private static IPhNaturalClass RequireNaturalClass(LcmCache cache, CanonicalId id)
+    private static IPhNaturalClass RequireNaturalClass(LcmCache cache, CanonicalId id, bool hasVariables = false)
     {
         var naturalClass = ReferenceFieldLowering.Resolve<IPhNaturalClass>(cache, id, "AuthorPhonologicalRule");
         var data = cache.LangProject.PhonologicalDataOA;
@@ -267,7 +280,7 @@ public static class AuthorPhonologicalRuleComposer
         }
         else if (naturalClass is IPhNCFeatures features)
         {
-            if (features.FeaturesOA is null || features.FeaturesOA.FeatureSpecsOC.Count == 0)
+            if (!hasVariables && (features.FeaturesOA is null || features.FeaturesOA.FeatureSpecsOC.Count == 0))
                 throw new InvalidOperationException("An empty natural class cannot be used in a rewrite rule.");
         }
         else
@@ -373,5 +386,7 @@ public static class AuthorPhonologicalRuleComposer
             throw new InvalidOperationException($"A rewrite rule supports at most {MaximumItems} {side} items.");
     }
 
-    internal sealed record ResolvedContext(string ClassName, CanonicalId Reference, int? Minimum = null, int? Maximum = null);
+    internal sealed record ResolvedContext(string ClassName, CanonicalId Reference, int? Minimum = null, int? Maximum = null,
+        IReadOnlyList<PhonologicalFeatureValue>? Change = null, IReadOnlyList<PhonologicalRuleVariable>? Variables = null,
+        IReadOnlyList<(CanonicalId Id, bool Positive)>? Constraints = null, IReadOnlyList<OperationEnvelope>? Requires = null);
 }
