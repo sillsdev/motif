@@ -98,6 +98,8 @@ writingSystems:
   knows its defaults, a clipboard fragment) and takes the host's defaults. A front-matter block with no `fwmd` key is some
   other YAML and is ignored (D5). An `fwmd` that is not a whole number, an `analysis` or `vernacular` that is empty or a
   list, and a tab in the indentation (Pandoc refuses it) are `fwmd.syntax.malformed-attribute`.
+- **Front-matter values are Markdown to Pandoc.** Double quotes are YAML quoting, so a font name such as `Charis *SIL*`
+  would still read as emphasis in Pandoc's metadata. It does not affect our reader.
 
 ### 2.2 Document model
 
@@ -150,7 +152,8 @@ in a paragraph is a `\` at a line end (§3.4).
 
 The importer reads a soft line break inside a paragraph as one space, as Pandoc does, and two spaces at a line end as a
 U+2028 hard break. A line that starts with `#`, `-`, `+`, `*`, `>`, `1.` or `1)` right after a paragraph line stays in
-that paragraph (an editor wrapped it), as in Pandoc. A `:::` fence there ends no paragraph and is a finding (§7).
+that paragraph (an editor wrapped it), as in Pandoc. The exceptions are a line of `---` or `===`, which underlines a
+setext heading (see below), and a `:::` fence, which is a finding (§7) with a blank line before it as the fix.
 
 | Markdown | Paragraph style |
 |---|---|
@@ -278,7 +281,7 @@ each.
   - its first and last characters are letters (Unicode L*) or numbers (N*), which is stricter than every CommonMark
     version and does not depend on the parser (synthesis R1);
   - the run after it does not start with a combining mark (Mn, Mc, Me), so a grapheme is never split around a closing
-    star (synthesis R3; open, §10);
+    star (synthesis R3);
   - no other star-written run touches it in the same paragraph. If two would touch, every bold and italic run in that
     paragraph takes the attribute form (synthesis R2).
 - Every other case uses `[text]{bold=on}`, `{bold=off}`, `{bold=invert}`, and the same for `italic`. So a run with a
@@ -310,8 +313,10 @@ quoted  = DQUOTE { char | "\" DQUOTE | "\\" } DQUOTE
   Nothing else is a class. An unknown class is `fwmd.syntax.unknown-attribute`.
 - **Bare values (D35)** are letters, digits and `- _ . : # /`: `p150=1:default`, `forecolor=#ff0000`, `custom-style=Example`,
   `s6x=0005006100620063`. The writer writes a value bare whenever it can, and quotes it otherwise: `custom-style="Heading 2"`.
-- **Quoted values (D35)** are `"…"` with exactly two escapes, as in JSON: `\"` for `"` and `\\` for `\`. Every other
-  character is literal, including `}`, spaces, `=` and `'`. There are no single-quoted values and no `&quot;`.
+- **Quoted values (D35)** are `"…"` with two backslash escapes, as in JSON: `\"` for `"` and `\\` for `\`. Every other
+  character is literal, including `}`, spaces, `=` and `'`. The writer writes no single-quoted value and no `&quot;`. The
+  reader also takes single-quoted values and decodes character references as Pandoc does (`&quot;`, `&#65;`); the writer
+  writes only the two escapes and the references named below.
 - **`&` in a value** is written `&amp;` only where it would otherwise read as a character reference (`&` followed by
   `#` or by letters and `;`), because Pandoc decodes references in attribute values. So `a & b` is written as is, and a
   literal `&amp;` is written `&amp;amp;`.
@@ -391,7 +396,7 @@ means Unicode categories P and S, as CommonMark 0.31.2 defines it.
 | `:`, `~` | at the start of a paragraph line, followed by a space, a tab or `:` (for `~`, also `~`), so it could start a definition, a div fence or a strikeout |
 | `{` | it starts a `{…}` group that ends a heading line, so it could read as heading attributes (`## Rule \{x=y}`); or it comes right after a link's or picture's `)`, where it would read as that link's attribute block |
 | `:` after `Table` | a paragraph line starting `Table:` (in any case) has the `:` escaped, so it could read as a table caption |
-| a list number | a paragraph line starting with one or more digits, one letter, or a Roman numeral (`ivxlcdm`, either case), then `.` or `)` and a space, a tab or the line end, has the `.` or `)` escaped (`1\. `, `a\) `, `iv\. `); a line starting `(` with such a marker and `)` has the `(` escaped (`\(a) `, `\(1) `). `(@)` is written `(\@) `: its `@` already carries the escape, and the `(` then needs none |
+| a list number | a paragraph line starting with one or more digits, one letter, or a run of the Roman-numeral letters `ivxlcdm` (either case, so `civil.` counts), then `.` or `)` and a space, a tab or the line end, has the `.` or `)` escaped (`1\. `, `a\) `, `iv\. `); a line starting `(` with such a marker and `)` has the `(` escaped (`\(a) `, `\(1) `). `(@)` is written `(\@) `: its `@` already carries the escape, and the `(` then needs none |
 | `[` at line start | the line starts with `[…]:`, so it could read as a link reference definition |
 | `=` | a paragraph line made only of `=` has its first `=` escaped (`\==`), so that it cannot underline a setext heading |
 | `%` | the first line of a text written with no front matter, or of an inline field, starts with `%`, which Pandoc reads as a title block (`\%`) |
@@ -510,7 +515,7 @@ FLEx tool that edits the object.
 ```
 
 - **Top folders (D41):** `lexicon`, `texts`, `grammar`, `notebook`, `lists`, `reversals` and `objects`, plus `files`
-  for LinkedFiles (D49). Wordforms (`/wordforms/<form>` in paths §2.2) are open (§10).
+  for LinkedFiles (D49). Wordforms (`/wordforms/<form>` in paths §2.2) are not a folder in 1.0: the library's list is exactly these eight.
 - **The tool comes from the path.** The first two segments (for `/lists`, the list) give the FLEx tool, through the jump
   table in FLEx's `Main.xml` and the area tool lists. A child object takes its record's tool, as FLEx does: a sense opens
   in `lexiconEdit` on its entry. There is no per-kind tool table. The core carries the mapping of the first segments for
@@ -699,8 +704,8 @@ text has no front matter, and the host names the field's writing system.
 
 The Markdown carries no paragraph GUIDs, because IDs on every line would clutter the text that agents and people read and
 write. Instead the importer aligns the new document against the base it was exported from. Edits in a Proposal already
-remember their base text (Q16 of 2026-11-02). Alignment is not in `SIL.TextEditing.Markdown`: the parser returns
-paragraphs with a null `Key`, and the importer that holds the base does the alignment (§8.2 step 3).
+remember their base text (Q16 of 2026-11-02). Alignment is not in `SIL.TextEditing.Markdown` and is not built yet: the
+parser returns paragraphs with a null `Key`. Where it will live follows the ownership boundary (§10 item 3).
 
 1. **Unchanged paragraphs are matched exactly**, by text and properties, in order (an LCS over paragraph equality; ties go
    to the earlier paragraph). Text is compared in NFD on both sides. Each keeps its GUID and is written back as the
@@ -754,7 +759,7 @@ paragraph identity has to move into the file or into a merge driver; this sectio
 - **The reader does not accept what Pandoc reads as something else.** Hand-written math, citations, notes, strikeout,
   line starts that Pandoc takes for a list, a definition, a line block or a div, and the rest of §7's
   `fwmd.syntax.unsupported-markup`, are findings, with the escape the writer would have written as the fix.
-- **Non-canonical input is information, not an error.** The import reads it, and the next export writes the canonical
+- **Non-canonical input is accepted, not an error.** The import reads it, and the next export writes the canonical
   form. A Proposal's change list shows any change of meaning. Only input that has no FieldWorks meaning, or is ambiguous,
   is a finding (§7).
 - Spellings of the 2026-11-03 draft (`{v}`, `{empty}`, `[[kind:Name]]`, `{link=…}`, `cs=`, `fw:<kind>/…`, `\uXXXX`) are
@@ -906,8 +911,8 @@ tests and the fixtures (§6.3) cover each ID.
 - **`SIL.TextEditing.LCModel`** (ADR 0016) converts `ITsString` to and from runs. It is the only package that touches
   liblcm.
 
-**Paragraph alignment (§5.2) is not in `SIL.TextEditing.Markdown`.** It needs the base document that the importer holds, so
-it is built where the importer is, in Motif, and may move into a shared package (§10 item 3).
+**Paragraph alignment (§5.2) is not in `SIL.TextEditing.Markdown`, and it is not built yet.** It needs the base document
+that the importer holds. Where it lives follows the ownership boundary (§10 item 3).
 
 **In Motif:** the implementation of the project interfaces over liblcm (unless it moves to `SIL.TextEditing.LCModel`;
 §10), `gdr check` and `motif_check_gdr`, the Proposal write operations with Dry Run and the Finalize check, the
@@ -1041,28 +1046,25 @@ GDRs add no notation, no link kinds and no finding ids of their own. What GDR ad
    object as one `*.fw.md` file (a YAML frame and Markdown), with full two-way fidelity and checking, as Motif's read API,
    as the way agents edit records instead of JSON change sets, and as the shape of the file export. The scoping report
    on which editable surfaces SIL.TextEditing could own is part of the same exploration.
-3. **The project-ownership boundary (Q51′).** The owner agreed that SIL.TextEditing owns what both FieldWorks and Motif would
-   use, split into projects by dependency, with host shell and workflow staying in the hosts (decision 51). The exact
-   boundary, and the ADR that supersedes ADR 0011's split, are pending with the owner after the scoping report. Until then
-   this spec keeps the implementation of the project interfaces (§8.1) and paragraph alignment (§5.2) in Motif, where
-   they may move into a shared package.
-4. **Wordforms.** D41's top folders leave out `/wordforms/<form>`, which paths §2.2 has. Is it a top folder, or under
-   `/texts`?
-5. **List keys (D45).** This spec reads "keyed by abbreviation, else name" as applying to custom lists, with items keyed
-   by the list's display option and GDR items always by abbreviation. Built-in lists keep the fixed slugs of paths §2.2.
-6. **Example numbers.** Should the exporter renumber `[(1)]` links in document order, or keep the author's text? This
-   spec keeps the author's text.
-7. **The combining-mark clause of the star rule** (§3.2, synthesis R3). The library implements it as written.
-8. **Ids and rules this spec names without a decision:** `fwmd.version.unsupported`, `fwmd.picture.unknown`,
-   `fwmd.field.block-syntax`; and from paths §2.8 and §3, `fwmd.link.guid-mismatch`, `.relative-without-base`,
-   `.stale-path` and `.url-rebuilt`, with the retargeting rule of §4.5. The library implements them as written, with
-   fixtures, and so do the escapes and the Pandoc-construct findings that the builder added because Pandoc needed them
-   (§3.4, §7).
-9. **Control characters in values other than string properties**, such as a style name. The library writes a numeric
-   reference (`custom-style="a&#x9;b"`, §3.3); URLs percent-encode them, and a URL with a NUL or a lone surrogate takes the
-   generic hex form. This spec records that and the owner has not ruled on it.
-10. **Front-matter values are Markdown to Pandoc.** Double quotes are YAML quoting, so a font name such as `Charis *SIL*`
-    would still read as emphasis in Pandoc's metadata. It does not affect our reader.
+3. **The project-ownership boundary (Q51′).** Pending with the owner. The owner agreed that SIL.TextEditing owns what both
+   FieldWorks and Motif would use, split into projects by dependency, with host shell and workflow staying in the hosts
+   (decision 51). The exact boundary, and the ADR that supersedes ADR 0011's split, wait for the scoping report. Until
+   then this spec does not say where paragraph alignment (§5.2) and the implementation of the project interfaces (§8.1)
+   live.
+
+**Settled as implemented** in SIL.TextEditing e1eeebf (these were open in the earlier text; the owner can object):
+
+- **Wordforms:** not a top folder in 1.0. The library's list is D41's seven plus `files` (§4.2).
+- **List keys (D45):** the segment rules for lists are the host's, through the resolver (§4.3). The spec text says what D45
+  says.
+- **Example numbers:** the link text is the author's, and the exporter does not renumber (§4.7).
+- **The combining-mark clause of the star rule:** implemented as written (§3.2).
+- **Ids and rules named without a decision** (`fwmd.version.unsupported`, `fwmd.picture.unknown`, `fwmd.field.block-syntax`,
+  `fwmd.link.guid-mismatch`, `.relative-without-base`, `.stale-path`, `.url-rebuilt`, and the retargeting rule of §4.5), and
+  the escapes and Pandoc-construct findings that Pandoc needed (§3.4, §7): implemented as this spec says, with fixtures.
+- **`tool=`:** kept, as D19 says, and written only when the path does not give the tool (§4.1).
+- **Control characters in values other than string properties:** a numeric reference (§3.3).
+- **Front-matter values are Markdown to Pandoc:** a note in §2.1, not a question.
 
 Paths not taken: our own Markdig dialect (the 2026-11-03 draft); MyST, Djot, Typst and XLingPaper as the source format
 (SIL.TextEditing ADR 0028); `fw:<kind>/<Name>` links with a kind table, wiki links, URNs and verbatim silfw URLs (paths
