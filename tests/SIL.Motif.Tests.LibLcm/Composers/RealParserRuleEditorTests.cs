@@ -326,6 +326,55 @@ public sealed class RealParserRuleEditorTests(PristineProjectFixture pristine, I
     }
 
     [RealParserFact]
+    public async Task TheNasalChainSkipsAStemTaggedWithTheExcludedFeatureAndADeletedDuplicateEntryLeavesTheRestAlone()
+    {
+        var chain = Build(featured: true);
+        using var cache = chain.Cache;
+        Reorder(chain);
+        var category = Id(cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.Single(item =>
+            item.Name.get_String(cache.DefaultAnalWs).Text == "Word"));
+        var ws = Anal(cache);
+
+        // A stem that must keep its initial consonant: tagged with a feature the three class rules exclude.
+        var kept = AddStem(cache, "pik", category);
+        chain.Names[kept.Form] = "pik";
+        var feature = Created(ApplyOps(cache, AuthorExceptionFeatureComposer.Build(cache,
+            new("No substitution", ws, "ns"))), CmPossibilityListPossibilitiesOperationKinds.Create);
+        ApplyOps(cache, EditExceptionFeaturesComposer.Build(cache, new(kept.Msa, [feature])));
+        foreach (var rule in chain.Rules.Skip(1).Take(3))
+            ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, ExcludedFeatures: [feature])));
+
+        // An older duplicate of the prefix entry, as the lexicon had before the replacement.
+        var duplicate = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("paN",
+            Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "old nominalise", ws,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Unclassified, category))));
+        chain.Names[Created(duplicate, LexEntryLexemeFormOperationKinds.CreateLexemeForm)] = "old-paN";
+        Save(chain);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+
+        string[] Both(string stem) => ["old-paN+" + stem, "paN+" + stem];
+        Assert.Equal(Both("puk"), await Readings(tracer, chain, "pamuk"));
+        Assert.Equal(Both("tak"), await Readings(tracer, chain, "panak"));
+        Assert.Equal(Both("kan"), await Readings(tracer, chain, "paxan"));
+        Assert.Equal(Both("apa"), await Readings(tracer, chain, "paxapa"));
+        // The tagged stem is not substituted: only the elsewhere rule runs on it.
+        Assert.Equal(Both("pik"), await Readings(tracer, chain, "paxpik"));
+        // The tagged stem is not read as substituted.
+        Assert.DoesNotContain(await Readings(tracer, chain, "pamik"), reading => reading.EndsWith("+pik"));
+
+        ApplyOps(cache, DeleteLexicalEntryComposer.Build(cache,
+            new DeleteLexicalEntryIntent(Created(duplicate, LexDbEntriesOperationKinds.Create))));
+        Save(chain);
+        Assert.Equal(["paN+puk"], await Readings(tracer, chain, "pamuk"));
+        Assert.Equal(["paN+tak"], await Readings(tracer, chain, "panak"));
+        Assert.Equal(["paN+kan"], await Readings(tracer, chain, "paxan"));
+        Assert.Equal(["paN+apa"], await Readings(tracer, chain, "paxapa"));
+        Assert.Equal(["paN+pik"], await Readings(tracer, chain, "paxpik"));
+        Assert.DoesNotContain(await Readings(tracer, chain, "pamik"), reading => reading.EndsWith("+pik"));
+    }
+
+    [RealParserFact]
     public async Task AnOptionalContextItemMatchesWithAndWithoutTheItem()
     {
         using var cache = pristine.NewScratch();
