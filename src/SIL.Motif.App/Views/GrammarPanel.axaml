@@ -84,10 +84,11 @@
           </views:LazyContent>
           <views:LazyContent IsVisible="{Binding ShowInlineFilters}">
             <views:LazyContent.Build><DataTemplate x:DataType="views:GrammarPanel">
-              <ToggleButton Content="{Binding Grammar.Warnings.TouchYourWordsText}"
-                            IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
+              <ToggleButton IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
                             AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowFindingsWithExactUsesInYourWordsAccessibleName}"
-                            Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                            Margin="{DynamicResource Intent.Gap.AfterRelated}">
+                <TextBlock Text="{Binding Grammar.Warnings.TouchYourWordsText}" TextWrapping="Wrap" />
+              </ToggleButton>
             </DataTemplate></views:LazyContent.Build>
           </views:LazyContent>
           <Button Content="{Binding Grammar.Warnings.SortLabel}"

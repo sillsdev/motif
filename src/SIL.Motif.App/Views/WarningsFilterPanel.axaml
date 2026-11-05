@@ -58,9 +58,10 @@
 
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
         <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.NamesYourWords}" />
-        <ToggleButton Content="{Binding Grammar.Warnings.TouchYourWordsText}"
-                      IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
-                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowFindingsWithExactUsesInYourWordsAccessibleName}" />
+        <ToggleButton IsChecked="{Binding Grammar.Warnings.TouchYourWords, Mode=TwoWay}"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.ShowFindingsWithExactUsesInYourWordsAccessibleName}">
+          <TextBlock Text="{Binding Grammar.Warnings.TouchYourWordsText}" TextWrapping="Wrap" />
+        </ToggleButton>
         <views:CopyableTextBlock Classes="muted" Text="{Binding Grammar.Warnings.ShownObjectTimingDetailText}"
                                  IsVisible="{Binding Grammar.Warnings.ShownObjectTimingDetailText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
                                  TextWrapping="Wrap" />
