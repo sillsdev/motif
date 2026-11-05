@@ -11,7 +11,7 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Commands;
 
 /// <summary>The Proposal a selector named and whether a person wrote after the builder last did.</summary>
-public sealed record NoteFinding(string ProposalId, bool NoteChanged);
+public sealed record NoteFinding(string ProposalId, bool CommentsChanged);
 
 /// <summary>
 /// A Proposal's Rationale. It says what the Proposal changes and why, and whoever builds the Proposal writes it;
@@ -33,46 +33,10 @@ public static class ProposalTexts
     }
 
     /// <summary>
-    /// Adds a Comment written by the person, or with a null text removes the Comments the person wrote on a Proposal.
-    /// </summary>
-    public static CommandOutcome<ProposalTextChangedResponse> SetNote(SetNoteRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        if (request.Text is not null)
-        {
-            var added = ProposalComments.Add(new AddCommentRequest(request.FwDataPath, request.ProductVersion,
-                request.ProposalId, request.Text, Environment.UserName));
-            return added.Succeeded
-                ? CommandOutcome<ProposalTextChangedResponse>.Success(new ProposalTextChangedResponse(
-                    added.Value!.ProposalId, "note", StoredTime(request, added.Value.CommentId),
-                    added.Value.NoteChanged))
-                : CommandOutcome<ProposalTextChangedResponse>.Refused(added.Refusal!);
-        }
-        var cleared = ProposalComments.RemovePersonComments(request);
-        return cleared.Succeeded
-            ? CommandOutcome<ProposalTextChangedResponse>.Success(new ProposalTextChangedResponse(
-                cleared.Value!.ProposalId, "note", null, cleared.Value.NoteChanged))
-            : CommandOutcome<ProposalTextChangedResponse>.Refused(cleared.Refusal!);
-    }
-
-    // The time the store kept for a Comment, so the legacy response reports what a reader will see.
-    private static string? StoredTime(SetNoteRequest request, long commentId)
-    {
-        var outcome = ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
-        {
-            if (!CanonicalId.TryParse(request.ProposalId, out var id)) return CommandOutcome<string?>.Success(null);
-            var stored = new ProposalDiscussionRepository(database).ListComments(id)
-                .FirstOrDefault(comment => comment.CommentId == commentId)?.CreatedUtc;
-            return CommandOutcome<string?>.Success(stored);
-        });
-        return outcome.Succeeded ? outcome.Value : null;
-    }
-
-    /// <summary>
     /// Whether a person wrote after the builder last did, for the Proposal a full id or a Draft name selects; null
     /// when the selector names no Proposal.
     /// </summary>
-    public static NoteFinding? NoteChangedFor(
+    public static NoteFinding? CommentsChangedFor(
         string fwDataPath, string productVersion, string selector)
     {
         var outcome = ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
@@ -91,12 +55,12 @@ public static class ProposalTexts
                 return CommandOutcome<NoteFinding?>.Success(null);
             }
             return CommandOutcome<NoteFinding?>.Success(new NoteFinding(record.ProposalId.Value,
-                NoteChanged(database, record)));
+                CommentsChanged(database, record)));
         });
         return outcome.Succeeded ? outcome.Value : null;
     }
 
-    internal static bool NoteChanged(MotifDatabase database, ProposalRecord record) =>
+    internal static bool CommentsChanged(MotifDatabase database, ProposalRecord record) =>
         ProposalDetailProjectionBuilder.PersonCommentIsNewer(ProposalRecordMapping.ToManifest(record,
             new ProposalDiscussionRepository(database).ListComments(record.ProposalId)));
 
@@ -132,7 +96,7 @@ public static class ProposalTexts
             repository.SetRationale(id, text, new DiscussionAuthor(authorLabel, personName ?? ""));
             var written = repository.Get(id);
             return CommandOutcome<ProposalTextChangedResponse>.Success(new ProposalTextChangedResponse(
-                id.Value, "rationale", written.RationaleUpdatedUtc, NoteChanged(database, written)));
+                id.Value, "rationale", written.RationaleUpdatedUtc, CommentsChanged(database, written)));
         });
     }
 

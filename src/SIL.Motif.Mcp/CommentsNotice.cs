@@ -4,11 +4,11 @@ using SIL.Motif.Commands;
 namespace SIL.Motif.Mcp;
 
 /// <summary>
-/// Tells an agent that the person left a note. Every result about one Proposal carries <c>noteChanged</c>, true when
-/// the person wrote after the Rationale was last written; the next step then says how to read the note. It needs no
-/// reader identity, because the agent's own next Rationale write clears it.
+/// Tells an agent that the person left a Comment. Every result about one Proposal carries <c>commentsChanged</c>, true
+/// when the person wrote after the builder last did; the next step then says how to read the Comments. It needs no
+/// reader identity, because the agent's own next Rationale or Comment write clears it.
 /// </summary>
-internal static class NoteNotice
+internal static class CommentsNotice
 {
     public static ToolOutcome Apply(ServerContext context, JsonObject args, ToolOutcome outcome)
     {
@@ -17,12 +17,12 @@ internal static class NoteNotice
         var selector = Text(args, "proposal") ?? Text(args, "draft") ?? Text(value, "proposalId") ??
             Text(value, "proposal");
         if (selector is null) return outcome;
-        if (ProposalTexts.NoteChangedFor(context.ProjectPath, context.ProductVersion, selector) is not { } found)
+        if (ProposalTexts.CommentsChangedFor(context.ProjectPath, context.ProductVersion, selector) is not { } found)
             return outcome;
-        value["noteChanged"] = found.NoteChanged;
-        if (!found.NoteChanged) return outcome;
-        var advice = $"The person left a note on this Proposal. Read it with motif_proposals(proposal='{found.ProposalId}'): " +
-            "the note field. Answer it in a new Rationale with motif_set_rationale.";
+        value["commentsChanged"] = found.CommentsChanged;
+        if (!found.CommentsChanged) return outcome;
+        var advice = $"The person left a Comment on this Proposal. Read it with motif_proposals(proposal='{found.ProposalId}'): " +
+            "the comments field. Answer it with motif_add_comment or in a new Rationale with motif_set_rationale.";
         return outcome with { Next = outcome.Next is null ? advice : outcome.Next + " " + advice };
     }
 

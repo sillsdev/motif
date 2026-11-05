@@ -549,12 +549,20 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "proposal", "proposal review",
             new[] { "proposal review --project <fwdata> [--proposal <id>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal rationale",
-            new[] { "proposal rationale <proposalId> --project <fwdata> (--text <markdown> | --file <path>) [--json]" }),
-        new CliVerbDescriptor("Commands", "proposal", "proposal note",
+            new[] { "proposal rationale <proposalId> --project <fwdata> (--text <markdown> | --file <path>) [--author <label>] [--person <name>] [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal comment add",
             new[]
             {
-                "proposal note <proposalId> --project <fwdata> (--text <markdown> | --file <path> | --clear) [--json]",
+                "proposal comment add <proposalId> --project <fwdata> (--text <markdown> | --file <path>) " +
+                "[--author <label>] [--person <name>] [--json]",
             }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal comment edit",
+            new[]
+            {
+                "proposal comment edit <proposalId> <commentId> --project <fwdata> (--text <markdown> | --file <path>) [--json]",
+            }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal comment delete",
+            new[] { "proposal comment delete <proposalId> <commentId> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal looked-at",
             new[]
             {

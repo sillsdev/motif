@@ -53,10 +53,6 @@ public static class ProposalComments
             Result(id, discussion.DeleteComment(id, request.CommentId), "deleted"));
     }
 
-    internal static CommandOutcome<ProposalCommentChangedResponse> RemovePersonComments(SetNoteRequest request) =>
-        Run(request.FwDataPath, request.ProductVersion, request.ProposalId, (discussion, id) =>
-            Result(id, discussion.DeletePersonComments(id), "deleted"));
-
     /// <summary>Why an author label or person name is unacceptable, or null when both are.</summary>
     internal static string? AuthorProblem(string? authorLabel, string? personName)
     {
@@ -83,7 +79,7 @@ public static class ProposalComments
             if (!outcome.Succeeded) return outcome;
             var record = new ProposalRepository(database).Get(id);
             return CommandOutcome<ProposalCommentChangedResponse>.Success(
-                outcome.Value! with { NoteChanged = ProposalTexts.NoteChanged(database, record) });
+                outcome.Value! with { CommentsChanged = ProposalTexts.CommentsChanged(database, record) });
         });
 
     private static CommandOutcome<ProposalCommentChangedResponse> Result(CanonicalId id, CommentWrite write,

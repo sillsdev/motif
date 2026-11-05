@@ -84,32 +84,31 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
         Assert.True(ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(path, id)).Succeeded);
 
         var rationale = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Too late."));
-        var note = ProposalTexts.SetNote(new SetNoteRequest(path, Version, id, "Too late."));
+        var note = ProposalComments.Add(new AddCommentRequest(path, Version, id, "Too late.", "John"));
         Assert.Equal("proposal.closed", rationale.Refusal?.Code);
         Assert.Equal("proposal.closed", note.Refusal?.Code);
         Assert.Equal("Rewritten while ready.", Show(path, id).Rationale!.Markdown);
     }
 
     [Fact]
-    public void TheNoteChangedFlagIsTrueAfterThePersonsCommentAndFalseAfterTheNextRationale()
+    public void TheCommentsChangedFlagIsTrueAfterThePersonsCommentAndFalseAfterTheNextRationale()
     {
         var (path, id) = Finalized("noted");
-        Assert.False(Show(path, id).NoteChanged);
+        Assert.False(Show(path, id).CommentsChanged);
 
-        var noted = ProposalTexts.SetNote(new SetNoteRequest(path, Version, id, "Please reconsider the second gloss."));
+        var noted = ProposalComments.Add(new AddCommentRequest(path, Version, id, "Please reconsider the second gloss.", "John"));
         Assert.True(noted.Succeeded, noted.Refusal?.Message);
-        Assert.True(noted.Value!.NoteChanged);
+        Assert.True(noted.Value!.CommentsChanged);
         var shown = Show(path, id);
-        Assert.True(shown.NoteChanged);
+        Assert.True(shown.CommentsChanged);
         Assert.Equal("Please reconsider the second gloss.", Assert.Single(shown.Comments!).Markdown);
-        Assert.Equal(Assert.Single(shown.Comments!).CreatedUtc, noted.Value.UpdatedUtc);
-        Assert.True(Standing(path, id).HasNote);
+                Assert.True(Standing(path, id).HasNote);
 
         var answered = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Reconsidered."));
-        Assert.False(answered.Value!.NoteChanged);
-        Assert.False(Show(path, id).NoteChanged);
+        Assert.False(answered.Value!.CommentsChanged);
+        Assert.False(Show(path, id).CommentsChanged);
 
-        Assert.True(ProposalTexts.SetNote(new SetNoteRequest(path, Version, id, null)).Succeeded);
+        Assert.True(ProposalComments.Delete(new DeleteCommentRequest(path, Version, id, noted.Value.CommentId)).Succeeded);
         Assert.Empty(Show(path, id).Comments!);
     }
 
@@ -122,12 +121,12 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
             "Claude (Opus 5.5)"));
 
         Assert.True(added.Succeeded, added.Refusal?.Message);
-        Assert.False(added.Value!.NoteChanged);
+        Assert.False(added.Value!.CommentsChanged);
         var comment = Assert.Single(Show(path, id).Comments!);
         Assert.Equal("Claude (Opus 5.5)", comment.AuthorLabel);
         Assert.Equal("John", comment.PersonName);
         Assert.Equal(added.Value.CommentId, comment.CommentId);
-        Assert.False(Show(path, id).NoteChanged);
+        Assert.False(Show(path, id).CommentsChanged);
         Assert.Contains("Claude (Opus 5.5) for John", SIL.Motif.Projection.Rendering.CommandTextRenderer.Render(Show(path, id)));
     }
 
@@ -234,16 +233,19 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void ProposalNoteIsAHumanOnlyCommandAndRationaleIsAReleasedDraftCommand()
+    public void AgentsMayAddCommentsButEditAndDeleteAreHumanOnlyAndNoNoteCommandRemains()
     {
-        var note = CommandCatalog.All.Single(command => command.Name == "proposal note");
+        var add = CommandCatalog.All.Single(command => command.Name == "proposal comment add");
+        var edit = CommandCatalog.All.Single(command => command.Name == "proposal comment edit");
+        var delete = CommandCatalog.All.Single(command => command.Name == "proposal comment delete");
         var rationale = CommandCatalog.All.Single(command => command.Name == "proposal rationale");
 
-        Assert.Equal(AgentClass.HumanOnly, note.Agent);
-        Assert.Equal(CommandSurface.Released, note.Surface);
+        Assert.Equal(AgentClass.Draft, add.Agent);
+        Assert.Equal(AgentClass.HumanOnly, edit.Agent);
+        Assert.Equal(AgentClass.HumanOnly, delete.Agent);
+        Assert.All(new[] { add, edit, delete, rationale }, command => Assert.Equal(CommandSurface.Released, command.Surface));
         Assert.Equal(AgentClass.Draft, rationale.Agent);
-        Assert.Equal(CommandSurface.Released, rationale.Surface);
-        Assert.DoesNotContain(CommandCatalog.All, command => command.Name == "comment");
+        Assert.DoesNotContain(CommandCatalog.All, command => command.Name is "proposal note" or "comment");
     }
 
     private bool Decide(string path, string id, string decision) => decision switch

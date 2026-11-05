@@ -166,6 +166,30 @@ public sealed class CommandsRefusalsTests : IDisposable
     }
 
     [Fact]
+    public void CommentVerbsAddEditAndDeleteAndShowTheAttributionInProposalShow()
+    {
+        New("d", null);
+        var proposalId = ReadDraft("d").ProposalId;
+        var project = $"--project \"{_fwDataPath}\"";
+
+        var added = RunCli($"proposal comment add {proposalId} {project} --text \"Checked it.\" --author \"Claude (Opus 5.5)\" --person John");
+        Assert.Equal(0, added.ExitCode);
+        Assert.Contains("added", added.Output, StringComparison.Ordinal);
+        var shown = RunCli($"show {proposalId} {project}");
+        Assert.Contains("Claude (Opus 5.5) for John", shown.Output, StringComparison.Ordinal);
+
+        var edited = RunCli($"proposal comment edit {proposalId} 1 {project} --text \"Checked twice.\"");
+        Assert.Equal(0, edited.ExitCode);
+        Assert.Contains("Checked twice.", RunCli($"show {proposalId} {project}").Output, StringComparison.Ordinal);
+
+        Assert.NotEqual(0, RunCli($"proposal comment add {proposalId} {project}").ExitCode);
+        Assert.NotEqual(0, RunCli($"proposal comment delete {proposalId} {project}").ExitCode);
+        Assert.Equal(0, RunCli($"proposal comment delete {proposalId} 1 {project}").ExitCode);
+        Assert.DoesNotContain("Checked twice.", RunCli($"show {proposalId} {project}").Output, StringComparison.Ordinal);
+        Assert.NotEqual(0, RunCli($"proposal note {proposalId} {project} --text x").ExitCode); // the note verb is gone
+    }
+
+    [Fact]
     public void ARationaleCannotBeClearedAndTheFlagIsRefusedInsteadOfIgnored()
     {
         New("d", null);

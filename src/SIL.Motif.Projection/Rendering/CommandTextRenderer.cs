@@ -62,8 +62,8 @@ public static class CommandTextRenderer
             if (comment.OutOfDate)
                 sb.AppendLine($"  commentOutOfDate:    {ChangesText(comment.ChangesSince)}");
         }
-        if (projection.NoteChanged)
-            sb.AppendLine("  noteChanged:         the person wrote after the Rationale");
+        if (projection.CommentsChanged)
+            sb.AppendLine("  commentsChanged:     the person wrote after the Rationale");
         if (projection.DraftName is not null)
             sb.AppendLine($"  draftName:           {projection.DraftName}");
         if (projection.DraftRevision is not null)

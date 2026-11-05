@@ -423,16 +423,42 @@
     },
     {
       "kind": "command",
-      "code": "proposal note",
-      "slug": "proposal-note",
-      "title": "Write your note on a Proposal",
-      "description": "Writes or clears the person\u0027s own note on a Proposal, in Markdown. Only a person writes it; an assistant can read it beside the Rationale.",
-      "helpPage": "# Write your note on a Proposal\n\nWrites or clears the person\u0027s own note on a Proposal, in Markdown. The note is the person\u0027s reply to the Rationale; only a person writes it, and an assistant reads it.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal note \u003CproposalId\u003E --project \u003Cfwdata\u003E --text \u0022Please keep the second gloss\u0022\nmotif proposal note \u003CproposalId\u003E --project \u003Cfwdata\u003E --file note.md\nmotif proposal note \u003CproposalId\u003E --project \u003Cfwdata\u003E --clear\n\u0060\u0060\u0060\n\nGive the full Proposal id. The note stays outside the Proposal\u0027s changes, remembers which content it was written for, and holds at most 64 KiB. It can change until the Proposal is applied or closed.\n\nWhen the note is newer than the [Rationale](cmd:proposal%20rationale), \u0060proposal show\u0060 reports it as changed, and an assistant is told to read it. Writing a new Rationale clears that.\n",
+      "code": "proposal comment add",
+      "slug": "proposal-comment-add",
+      "title": "Add a Proposal Comment",
+      "description": "Adds a Comment to an open Proposal, in Markdown. A person or an assistant may add one; an assistant says what it calls itself, and the Comment shows as author for person.",
+      "helpPage": "# Add a Comment to a Proposal\n\nAdds a Comment to an open Proposal, in Markdown. A person or an assistant may add one; an assistant says what it calls itself with \u0060--author\u0060.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal comment add \u003CproposalId\u003E --project \u003Cfwdata\u003E --text \u0022Please keep the second gloss\u0022\nmotif proposal comment add \u003CproposalId\u003E --project \u003Cfwdata\u003E --file comment.md --author \u0022Claude (Opus 5.5)\u0022\n\u0060\u0060\u0060\n\nGive the full Proposal id. Without \u0060--author\u0060 the Comment is the person\u0027s; \u0060--person\u0060 names the person, and defaults to the computer\u0027s user name. An author label and a person name hold at most 100 characters, and a Comment shows as \u0022author for person\u0022. The label is only a label: Motif does not check it, and nothing depends on it.\n\nA Comment stays outside the Proposal\u0027s changes and remembers which content it was written for. It can be added until the Proposal is applied, declined, withdrawn or superseded; reopening the Proposal allows Comments again. When a person\u0027s Comment is newer than the [Rationale](cmd:proposal%20rationale), \u0060show\u0060 reports \u0060commentsChanged\u0060, and an assistant is told to read it.\n",
       "usage": [
-        "Usage: motif proposal note \u003CproposalId\u003E --project \u003Cfwdata\u003E (--text \u003Cmarkdown\u003E | --file \u003Cpath\u003E | --clear) [--json]"
+        "Usage: motif proposal comment add \u003CproposalId\u003E --project \u003Cfwdata\u003E (--text \u003Cmarkdown\u003E | --file \u003Cpath\u003E) [--author \u003Clabel\u003E] [--person \u003Cname\u003E] [--json]"
       ],
       "surface": "Released",
-      "url": "https://motif-docs.pages.dev/reference/commands/proposal-note/"
+      "url": "https://motif-docs.pages.dev/reference/commands/proposal-comment-add/"
+    },
+    {
+      "kind": "command",
+      "code": "proposal comment delete",
+      "slug": "proposal-comment-delete",
+      "title": "Delete a Proposal Comment",
+      "description": "Deletes a Comment from an open Proposal. Only a person deletes a Comment.",
+      "helpPage": "# Delete a Comment on a Proposal\n\nDeletes a Comment from an open Proposal. Only a person deletes a Comment; an assistant cannot.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal comment delete \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E\n\u0060\u0060\u0060\n\nGive the full Proposal id and the Comment number that \u0060show\u0060 lists. A deleted Comment is gone. Comments cannot change once the Proposal is applied, declined, withdrawn or superseded.\n",
+      "usage": [
+        "Usage: motif proposal comment delete \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/proposal-comment-delete/"
+    },
+    {
+      "kind": "command",
+      "code": "proposal comment edit",
+      "slug": "proposal-comment-edit",
+      "title": "Edit a Proposal Comment",
+      "description": "Replaces the text of a Comment on an open Proposal. Only a person edits a Comment; it then shows that it was edited, and when.",
+      "helpPage": "# Edit a Comment on a Proposal\n\nReplaces the text of a Comment on an open Proposal. Only a person edits a Comment; an assistant cannot.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal comment edit \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E --text \u0022Keep the second gloss, drop the third\u0022\nmotif proposal comment edit \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E --file comment.md\n\u0060\u0060\u0060\n\nGive the full Proposal id and the Comment number that \u0060show\u0060 lists. The Comment then shows that it was edited, and when; the earlier text is not kept. A Comment cannot be empty: [delete it](cmd:proposal%20comment%20delete) instead. Comments cannot change once the Proposal is applied, declined, withdrawn or superseded.\n",
+      "usage": [
+        "Usage: motif proposal comment edit \u003CproposalId\u003E \u003CcommentId\u003E --project \u003Cfwdata\u003E (--text \u003Cmarkdown\u003E | --file \u003Cpath\u003E) [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/proposal-comment-edit/"
     },
     {
       "kind": "command",
@@ -440,9 +466,9 @@
       "slug": "proposal-rationale",
       "title": "Write a Proposal\u0027s Rationale",
       "description": "Writes or replaces what a Proposal changes and why, in Markdown. The Rationale stays outside the Proposal\u0027s content, so rewriting it never changes what the Proposal does, and it can be rewritten until the Proposal is applied or closed.",
-      "helpPage": "# Write a Proposal\u0027s Rationale\n\nWrites or replaces a Proposal\u0027s Rationale: what the Proposal changes and why, in Markdown. Whoever builds the Proposal, usually an assistant, writes it.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E --text \u0022Plural -s was missing from the noun template\u0022\nmotif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E --file rationale.md\n\u0060\u0060\u0060\n\nGive the full Proposal id, the one \u0060new\u0060 or \u0060proposals\u0060 returned; a name or a prefix is refused. A Draft that has never been finalized has a Proposal id too, so write the Rationale before [\u0060finalize\u0060](cmd:finalize), which refuses a Proposal without one.\n\nThe Rationale is kept apart from the Proposal\u0027s changes, so rewriting it never changes what the Proposal does. It remembers which content it was written for: after the Proposal changes, the person sees it marked out of date, and a rewrite clears that mark. It can be rewritten until the Proposal is applied or closed, and it holds at most 64 KiB.\n\nIf the person left a [note](cmd:proposal%20note), a new Rationale is the answer to it.\n",
+      "helpPage": "# Write a Proposal\u0027s Rationale\n\nWrites or replaces a Proposal\u0027s Rationale: what the Proposal changes and why, in Markdown. Whoever builds the Proposal, usually an assistant, writes it.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E --text \u0022Plural -s was missing from the noun template\u0022\nmotif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E --file rationale.md\nmotif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E --text \u0022...\u0022 --author \u0022Claude (Opus 5.5)\u0022\n\u0060\u0060\u0060\n\nGive the full Proposal id, the one \u0060new\u0060 or \u0060proposals\u0060 returned; a name or a prefix is refused. A Draft that has never been finalized has a Proposal id too, so write the Rationale before [\u0060finalize\u0060](cmd:finalize), which refuses a Proposal without one.\n\nThe Rationale is kept apart from the Proposal\u0027s changes, so rewriting it never changes what the Proposal does. It remembers which content it was written for: after the Proposal changes, the person sees it marked out of date, and a rewrite clears that mark. It can be rewritten until the Proposal is applied or closed, and it holds at most 64 KiB.\n\nIf the person left a [Comment](cmd:proposal%20comment%20add), a new Rationale is one answer to it. \u0060--author\u0060 says what an assistant calls itself, as it does for a Comment; each rewrite is kept, with its author, until the Proposal is decided.\n",
       "usage": [
-        "Usage: motif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E (--text \u003Cmarkdown\u003E | --file \u003Cpath\u003E) [--json]"
+        "Usage: motif proposal rationale \u003CproposalId\u003E --project \u003Cfwdata\u003E (--text \u003Cmarkdown\u003E | --file \u003Cpath\u003E) [--author \u003Clabel\u003E] [--person \u003Cname\u003E] [--json]"
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/proposal-rationale/"

@@ -6379,6 +6379,10 @@
           "type": "string",
           "description": "What this Proposal changes and why, in Markdown. Replaces the earlier text."
         },
+        "author": {
+          "type": "string",
+          "description": "What you call yourself, such as \u0027Claude (Opus 5.5)\u0027. Shown beside the text as a label only."
+        },
         "project": {
           "type": "string",
           "description": "Known project name or recorded .fwdata path."
@@ -6387,6 +6391,41 @@
       "required": [
         "proposal",
         "rationale",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_comment",
+    "description": "Add a Proposal Comment. Adds a Comment to an open Proposal, in Markdown. A person or an assistant may add one; an assistant says what it calls itself, and the Comment shows as author for person.\nCommand: proposal comment add. Agent class: Draft.\nProposalId: The full id of the Proposal the Comment is on.\nText: The Comment in Markdown.\nPersonName: The person the Comment is by or for; empty when unknown.\nAuthorLabel: What an agent calls itself, kept as typed; null when the person writes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "type": "string",
+          "description": "The full Proposal id, as motif_start_proposal or motif_proposals returned it."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Your Comment in Markdown, such as an answer to the person."
+        },
+        "author": {
+          "type": "string",
+          "description": "What you call yourself, such as \u0027Claude (Opus 5.5)\u0027. Shown beside the Comment as a label only, never checked."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "proposal",
+        "comment",
+        "author",
         "project"
       ],
       "additionalProperties": false

@@ -40,8 +40,9 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
    change does and why, in Markdown. Rewrite it with `motif_set_rationale` (the full Proposal id) whenever the
    Proposal changes, until the person has applied or closed it; the window marks a Rationale out of date once
    the Proposal moves past it.
-   The person may answer in a note. Any result about a Proposal carries `noteChanged`; when it is true, read the
-   note with `motif_proposals` (the Proposal id) and reply by writing a new Rationale. You never write the note.
+   The person may answer in a Comment. Any result about a Proposal carries `commentsChanged`; when it is true, read the
+   Comments with `motif_proposals` (the Proposal id) and reply with `motif_add_comment` (give `author`, what you call
+   yourself, such as "Claude (Opus 5.5)") or by writing a new Rationale. You can add Comments but never edit or delete one.
 2. Use the semantic composer tool whose description matches the intended operation. For example,
    `motif_set_gloss` changes a gloss; it does not authorize a raw property write. Keep each operation
    grounded in ids and current values returned by Motif.

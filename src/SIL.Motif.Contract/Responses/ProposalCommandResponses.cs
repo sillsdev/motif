@@ -82,15 +82,15 @@ public sealed record PromoteGlossAddedResponse(
 /// <param name="ProposalId">The Proposal the text belongs to.</param>
 /// <param name="Field">Which text changed: <c>rationale</c> or <c>note</c>.</param>
 /// <param name="UpdatedUtc">When the text was written; null when a note was cleared.</param>
-/// <param name="NoteChanged">Whether a person's Comment is now newer than the Rationale.</param>
-public sealed record ProposalTextChangedResponse(string ProposalId, string Field, string? UpdatedUtc, bool NoteChanged);
+/// <param name="CommentsChanged">Whether a person's Comment is now newer than the Rationale.</param>
+public sealed record ProposalTextChangedResponse(string ProposalId, string Field, string? UpdatedUtc, bool CommentsChanged);
 
 /// <summary>A Comment was added, edited or deleted on a Proposal.</summary>
 /// <param name="ProposalId">The Proposal the Comment is on.</param>
 /// <param name="CommentId">The Comment's number.</param>
 /// <param name="Change"><c>added</c>, <c>edited</c> or <c>deleted</c>.</param>
-/// <param name="NoteChanged">Whether a person's Comment is now newer than the builder's last write.</param>
-public sealed record ProposalCommentChangedResponse(string ProposalId, long CommentId, string Change, bool NoteChanged);
+/// <param name="CommentsChanged">Whether a person's Comment is now newer than the builder's last write.</param>
+public sealed record ProposalCommentChangedResponse(string ProposalId, long CommentId, string Change, bool CommentsChanged);
 
 /// <summary>The Draft field <c>label</c> set to a new value.</summary>
 public sealed record DraftFieldChangedResponse(string DraftName, string Field, string Value);

@@ -201,7 +201,7 @@ public sealed class HelpCatalogTests
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
 
-        foreach (var code in new[] { "label", "proposal rationale", "proposal note", "apply" })
+        foreach (var code in new[] { "label", "proposal rationale", "proposal comment add", "proposal comment edit", "proposal comment delete", "apply" })
         {
             var entry = Assert.IsType<HelpEntry>(catalog.Find(HelpEntryKind.Command, code));
             Assert.InRange(entry.Title.Length, 1, 30);

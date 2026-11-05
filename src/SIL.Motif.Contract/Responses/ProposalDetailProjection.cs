@@ -85,7 +85,7 @@ public sealed record CommentView(
 /// <param name="DraftName">The name of the Draft whose operations are shown, or <c>null</c> for a committed revision.</param>
 /// <param name="DraftRevision">The SHA-256 revision of the exact stored Draft JSON bytes, or <c>null</c> for a committed revision.</param>
 /// <param name="Comments">The Proposal's Comments, oldest first.</param>
-/// <param name="NoteChanged">Whether the person wrote a Comment after the builder last wrote the Rationale or a Comment.</param>
+/// <param name="CommentsChanged">Whether the person wrote a Comment after the builder last wrote the Rationale or a Comment.</param>
 public sealed record ProposalDetailProjection(
     string ProposalId,
     string Status,
@@ -100,4 +100,4 @@ public sealed record ProposalDetailProjection(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? DraftRevision = null,
     IReadOnlyList<CommentView>? Comments = null,
-    bool NoteChanged = false);
+    bool CommentsChanged = false);

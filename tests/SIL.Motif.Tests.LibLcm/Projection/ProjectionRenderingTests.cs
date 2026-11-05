@@ -155,7 +155,7 @@ public sealed class ProjectionRenderingTests
             "      \"afterJson\": \"{\\u0022ws\\u0022:\\u0022en\\u0022,\\u0022text\\u0022:\\u0022move quickly\\u0022}\"",
             "    }",
             "  ],",
-            "  \"noteChanged\": false",
+            "  \"commentsChanged\": false",
             "}",
         });
 

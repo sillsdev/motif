@@ -230,14 +230,18 @@ public sealed class ToolSurfaceTests
     [InlineData("phonology")]
     [InlineData("parsimony")]
     [InlineData("parsimony-experimental")]
-    public void NoToolWritesThePersonsNoteAndTheRationaleToolIsOffered(string profile)
+    public void NoToolEditsOrDeletesACommentAndTheRationaleToolIsOffered(string profile)
     {
         var tools = MotifMcpServer.Expose(ToolProfile.Load(profile));
 
         Assert.DoesNotContain(tools, tool => tool.Name.Contains("note", StringComparison.OrdinalIgnoreCase));
-        Assert.DoesNotContain(tools, tool => tool.Tool.Requests.Contains(typeof(SIL.Motif.Commands.Requests.SetNoteRequest)));
+        Assert.DoesNotContain(tools, tool => tool.Tool.Requests.Contains(typeof(SIL.Motif.Commands.Requests.EditCommentRequest)));
+        Assert.DoesNotContain(tools, tool => tool.Tool.Requests.Contains(typeof(SIL.Motif.Commands.Requests.DeleteCommentRequest)));
         if (profile == "default")
+        {
             Assert.Contains(tools, tool => tool.Name == "motif_set_rationale");
+            Assert.Contains(tools, tool => tool.Name == "motif_add_comment");
+        }
     }
 
     [Fact]

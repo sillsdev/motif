@@ -33,6 +33,7 @@
     { "tool": "motif_finalize_proposal" },
     { "tool": "motif_withdraw_proposal" },
     { "tool": "motif_set_rationale" },
+    { "tool": "motif_add_comment" },
     { "tool": "motif_proposals" },
     { "tool": "motif_activity" },
     { "tool": "motif_open" },

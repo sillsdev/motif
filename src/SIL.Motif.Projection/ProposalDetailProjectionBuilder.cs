@@ -52,7 +52,7 @@ public static class ProposalDetailProjectionBuilder
         return new ProposalDetailProjection(
             proposalId, manifest.Status, manifest.Label, rationale, manifest.CurrentIntentDigest, operations,
             manifest.SupersededBy, envelope.Extensions?.GetRawText(), Comments: comments,
-            NoteChanged: PersonCommentIsNewer(manifest));
+            CommentsChanged: PersonCommentIsNewer(manifest));
     }
 
     /// <summary>

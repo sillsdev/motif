@@ -58,6 +58,7 @@ public static class ProposalCommandRenderer
             PromoteGlossAddedResponse r => RenderPromoteGlossAdded(r),
             DraftFieldChangedResponse r => $"Set {r.Field} on draft '{r.DraftName}'.{Environment.NewLine}",
             ProposalTextChangedResponse r => RenderTextChanged(r),
+            ProposalCommentChangedResponse r => RenderCommentChanged(r),
             ProposalFinalizedResponse r => RenderProposalFinalized(r),
             DraftDiscardedResponse r => RenderDraftDiscarded(r),
             ReopenedResponse r => RenderReopened(r),
@@ -248,12 +249,18 @@ public static class ProposalCommandRenderer
 
     internal static string RenderTextChanged(ProposalTextChangedResponse response)
     {
-        var verb = response.UpdatedUtc is null ? "Cleared" : "Wrote";
-        var text = $"{verb} the {response.Field} on Proposal {response.ProposalId}.{Environment.NewLine}";
-        return response.NoteChanged
-            ? text + "The person's note is newer than the Rationale; read it with `proposal show`." + Environment.NewLine
-            : text;
+        var text = $"Wrote the {response.Field} on Proposal {response.ProposalId}.{Environment.NewLine}";
+        return response.CommentsChanged ? text + CommentsNewer : text;
     }
+
+    internal static string RenderCommentChanged(ProposalCommentChangedResponse response)
+    {
+        var text = $"Comment {response.CommentId} {response.Change} on Proposal {response.ProposalId}.{Environment.NewLine}";
+        return response.CommentsChanged ? text + CommentsNewer : text;
+    }
+
+    private static readonly string CommentsNewer =
+        "A person's Comment is newer than the Rationale; read it with `show`." + Environment.NewLine;
 
     private static string RenderProposalFinalized(ProposalFinalizedResponse r)
     {

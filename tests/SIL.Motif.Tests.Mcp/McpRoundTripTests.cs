@@ -742,36 +742,56 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public async Task ANoteTheLinguistLeftIsReportedOnEveryResultAboutTheProposalUntilTheNextRationale()
+    public async Task ACommentTheLinguistLeftIsReportedOnEveryResultAboutTheProposalUntilTheNextRationale()
     {
         using var project = new WalkthroughProject(pristine);
         await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
         var started = await session.CallAsync("motif_start_proposal", ("draft", "noted-draft"),
             ("label", "A noted draft"), ("rationale", "Why this draft exists."));
         var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
-        Assert.False(started.GetProperty("result").GetProperty("noteChanged").GetBoolean());
+        Assert.False(started.GetProperty("result").GetProperty("commentsChanged").GetBoolean());
 
-        var noted = SIL.Motif.Commands.ProposalTexts.SetNote(new SIL.Motif.Commands.Requests.SetNoteRequest(
-            project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, proposalId, "Please explain the gloss."));
+        var noted = SIL.Motif.Commands.ProposalComments.Add(new SIL.Motif.Commands.Requests.AddCommentRequest(
+            project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, proposalId, "Please explain the gloss.", "John"));
         Assert.True(noted.Succeeded, noted.Refusal?.Message);
 
         var shown = await session.CallAsync("motif_proposals", ("proposal", proposalId));
         var result = shown.GetProperty("result");
-        Assert.True(result.GetProperty("noteChanged").GetBoolean());
+        Assert.True(result.GetProperty("commentsChanged").GetBoolean());
         Assert.Equal("Please explain the gloss.", result.GetProperty("comments")[0].GetProperty("markdown").GetString());
-        Assert.Contains("left a note", shown.GetProperty("next").GetString(), StringComparison.Ordinal);
+        Assert.Contains("left a Comment", shown.GetProperty("next").GetString(), StringComparison.Ordinal);
 
         var batched = await session.CallAsync("motif_compose_batch", ("draft", "noted-draft"), ("intents", new object[]
         {
             new { verb = "compose-author-phoneme", intent = new { name = "NoteBatchPhoneme", representations = new[] { "nb" } } },
         }));
-        Assert.True(batched.GetProperty("result").GetProperty("noteChanged").GetBoolean(), batched.ToString());
+        Assert.True(batched.GetProperty("result").GetProperty("commentsChanged").GetBoolean(), batched.ToString());
 
         var answered = await session.CallAsync("motif_set_rationale", ("proposal", proposalId),
             ("rationale", "The gloss is explained here."));
-        Assert.False(answered.GetProperty("result").GetProperty("noteChanged").GetBoolean());
+        Assert.False(answered.GetProperty("result").GetProperty("commentsChanged").GetBoolean());
         Assert.False((await session.CallAsync("motif_proposals", ("proposal", proposalId)))
-            .GetProperty("result").GetProperty("noteChanged").GetBoolean());
+            .GetProperty("result").GetProperty("commentsChanged").GetBoolean());
+    }
+
+    [Fact]
+    public async Task AnAgentAddsAnAttributedCommentWhichDoesNotRaiseTheFlagAndCannotBeEditedOrDeletedByTool()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "agent-comment-draft"),
+            ("label", "An agent comment draft"), ("rationale", "Why this draft exists."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+
+        var added = await session.CallAsync("motif_add_comment", ("proposal", proposalId),
+            ("comment", "Checked the gloss."), ("author", "Claude (Opus 5.5)"));
+        Assert.True(added.GetProperty("ok").GetBoolean(), added.ToString());
+        Assert.False(added.GetProperty("result").GetProperty("commentsChanged").GetBoolean());
+
+        var comment = (await session.CallAsync("motif_proposals", ("proposal", proposalId)))
+            .GetProperty("result").GetProperty("comments")[0];
+        Assert.Equal("Claude (Opus 5.5)", comment.GetProperty("authorLabel").GetString());
+        Assert.Equal("Checked the gloss.", comment.GetProperty("markdown").GetString());
     }
 
     [Fact]
@@ -891,15 +911,15 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Equal(new[] { TrialResults.Categories[0], "droppedGrammar" }.Concat(TrialResults.Categories.Skip(1))
                 .Append("counts"),
             evidence.GetProperty("summary").EnumerateObject().Select(property => property.Name));
-        var noted = SIL.Motif.Commands.ProposalTexts.SetNote(new SIL.Motif.Commands.Requests.SetNoteRequest(
-            project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, proposalId, "Check the other gloss too."));
+        var noted = SIL.Motif.Commands.ProposalComments.Add(new SIL.Motif.Commands.Requests.AddCommentRequest(
+            project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, proposalId, "Check the other gloss too.", "John"));
         Assert.True(noted.Succeeded, noted.Refusal?.Message);
         var dryRunAgain = await session.CallAsync("motif_dry_run", ("proposal", proposalId), ("wait_seconds", 120));
-        Assert.True(dryRunAgain.GetProperty("result").GetProperty("noteChanged").GetBoolean(), dryRunAgain.ToString());
-        Assert.Contains("left a note", dryRunAgain.GetProperty("next").GetString(), StringComparison.Ordinal);
+        Assert.True(dryRunAgain.GetProperty("result").GetProperty("commentsChanged").GetBoolean(), dryRunAgain.ToString());
+        Assert.Contains("left a Comment", dryRunAgain.GetProperty("next").GetString(), StringComparison.Ordinal);
         var trialAgain = await session.CallAsync("motif_trial", ("proposal", proposalId),
             ("words", new[] { SeededProject.AnalysedWordForm }), ("wait_seconds", 120));
-        Assert.True(trialAgain.GetProperty("result").GetProperty("noteChanged").GetBoolean(), trialAgain.ToString());
+        Assert.True(trialAgain.GetProperty("result").GetProperty("commentsChanged").GetBoolean(), trialAgain.ToString());
 
         var difference = evidence.GetProperty("difference").GetString()!;
         var page = await session.CallAsync("motif_difference", ("difference", difference),

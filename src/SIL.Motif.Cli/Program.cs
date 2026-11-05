@@ -1489,27 +1489,61 @@ try
             }
             if (positionals.Count == 1 && positionals[0] == "review")
                 return Usage(UsageLineFor("proposal review"), asJson);
-            if (positionals.Count == 2 && positionals[0] is "rationale" or "note")
+            if (positionals.Count >= 1 && positionals[0] == "comment")
             {
-                var isNote = positionals[0] == "note";
-                var textUsage = UsageLineFor(isNote ? "proposal note" : "proposal rationale");
+                var commentUsage = positionals.Count >= 2 && positionals[1] is "add" or "edit" or "delete"
+                    ? UsageLineFor("proposal comment " + positionals[1])
+                    : "proposal comment (add | edit | delete) <proposalId> ... --project <fwdata>";
+                if (positionals.Count < 3 || positionals[1] is not ("add" or "edit" or "delete") ||
+                    !flags.TryGetValue("project", out var commentProject))
+                    return Usage(commentUsage, asJson);
+                var wantsText = positionals[1] != "delete";
+                var textSources = new[] { "text", "file" }.Count(flags.ContainsKey);
+                if (wantsText ? textSources != 1 : textSources != 0) return Usage(commentUsage, asJson);
+                string commentBody = "";
+                if (flags.TryGetValue("file", out var commentFile))
+                {
+                    if (!File.Exists(commentFile))
+                        return Usage("The file '" + commentFile + "' does not exist. " + commentUsage, asJson);
+                    commentBody = File.ReadAllText(commentFile);
+                }
+                else if (flags.TryGetValue("text", out var commentText)) commentBody = commentText;
+                if (positionals[1] == "add")
+                {
+                    if (positionals.Count != 3) return Usage(commentUsage, asJson);
+                    result = RenderCommand(ProposalComments.Add(new AddCommentRequest(commentProject, CliProductVersion(),
+                        positionals[2], commentBody, flags.GetValueOrDefault("person") ?? Environment.UserName,
+                        flags.GetValueOrDefault("author"))));
+                    break;
+                }
+                if (positionals.Count != 4 || !long.TryParse(positionals[3], out var commentId))
+                    return Usage(commentUsage, asJson);
+                result = RenderCommand(positionals[1] == "edit"
+                    ? ProposalComments.Edit(new EditCommentRequest(
+                        commentProject, CliProductVersion(), positionals[2], commentId, commentBody))
+                    : ProposalComments.Delete(new DeleteCommentRequest(
+                        commentProject, CliProductVersion(), positionals[2], commentId)));
+                break;
+            }
+            if (positionals.Count == 2 && positionals[0] == "rationale")
+            {
+                var textUsage = UsageLineFor("proposal rationale");
                 if (!flags.TryGetValue("project", out var textProject)) return Usage(textUsage, asJson);
-                if (!isNote && flags.ContainsKey("clear"))
+                if (flags.ContainsKey("clear"))
                     return Usage("A Rationale cannot be cleared, only rewritten: give --text or --file. " + textUsage, asJson);
-                var sources = new[] { "text", "file" }.Count(flags.ContainsKey) + (isNote && flags.ContainsKey("clear") ? 1 : 0);
-                if (sources != 1) return Usage(textUsage, asJson);
-                string? textBody;
+                if (new[] { "text", "file" }.Count(flags.ContainsKey) != 1) return Usage(textUsage, asJson);
+                string textBody;
                 if (flags.TryGetValue("file", out var textFile))
                 {
                     if (!File.Exists(textFile))
                         return Usage("The file '" + textFile + "' does not exist. " + textUsage, asJson);
                     textBody = File.ReadAllText(textFile);
                 }
-                else textBody = flags.TryGetValue("text", out var textValue) ? textValue : null;
-                result = RenderCommand(isNote
-                    ? ProposalTexts.SetNote(new SetNoteRequest(textProject, CliProductVersion(), positionals[1], textBody))
-                    : ProposalTexts.SetRationale(new SetRationaleRequest(
-                        textProject, CliProductVersion(), positionals[1], textBody ?? "")));
+                else textBody = flags.GetValueOrDefault("text") ?? "";
+                var rationaleAuthor = flags.GetValueOrDefault("author");
+                result = RenderCommand(ProposalTexts.SetRationale(new SetRationaleRequest(
+                    textProject, CliProductVersion(), positionals[1], textBody, rationaleAuthor,
+                    rationaleAuthor is null ? null : flags.GetValueOrDefault("person") ?? Environment.UserName)));
                 break;
             }
             if (positionals.Count == 1 && positionals[0] == "looked-at")
