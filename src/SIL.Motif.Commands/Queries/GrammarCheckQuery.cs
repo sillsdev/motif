@@ -168,6 +168,7 @@ public static class GrammarCheckQuery
                 projected = IgnoredEnvironmentWarnings.AddTo(projected, Cache());
                 projected = RepeatedEnvironmentMaterialWarnings.AddTo(projected, Cache());
                 projected = EntryHygieneWarnings.AddTo(projected, Cache());
+                projected = ReduplicationOrderWarnings.AddTo(projected, Cache());
                 response = projected with
                 {
                     Findings = projected.Findings.Select(finding => WithReach(finding, Cache)).ToArray(),

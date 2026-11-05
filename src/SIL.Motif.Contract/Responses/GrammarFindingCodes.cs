@@ -30,6 +30,9 @@ public static class GrammarFindingCodes
     /// <summary>A form that already spells the material its environment asks of its neighbour, which may be a mistake.</summary>
     public const string AllomorphRepeatsEnvironmentMaterial = "grammar.allomorph-repeats-environment-material";
 
+    /// <summary>An earlier restricted solid full-copy form competing with a later unrestricted hyphenated copy.</summary>
+    public const string RestrictedSolidBlocksHyphen = "grammar.restricted-solid-blocks-hyphen";
+
     /// <summary>A Noun, Verb or Adjective stem whose form is one letter or whose gloss marks it as a stub, letter or function word.</summary>
     public const string StemTypedAsContentWord = "lexicon.stem-typed-as-content-word";
 

@@ -23,6 +23,9 @@ using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Runner.Composers;
+using SIL.Motif.Runner.Operations;
+using SIL.Motif.Contract.Model;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -1282,6 +1285,91 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(grammar.FwDataPath)).Value!.Check!;
         Assert.Equal(JsonSerializer.Serialize(outcome.Value.Findings.Select(finding => finding.Subject)),
             JsonSerializer.Serialize(stored.Findings.Select(finding => finding.Subject)));
+    }
+
+    [Theory]
+    [InlineData("ahead", true)]
+    [InlineData("reverse", false)]
+    [InlineData("separate", false)]
+    [InlineData("ignored", false)]
+    [InlineData("not-reduplicating", false)]
+    public void ARestrictedSolidCopyAheadOfAWholeStemHyphenCopyWarnsWithoutRefusingTheGrammar(string arrangement, bool warns)
+    {
+        var path = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        CanonicalId entryId, solidId, hyphenId;
+        using (var cache = loader.LoadCache(path))
+        {
+            var phones = AddPhonemes(cache, "p", "u", "l", "-");
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                foreach (var (text, phone) in phones)
+                {
+                    cache.LangProject.PhonologicalDataOA.PhonemeSetsOS[0].PhonemesOC.Add(phone);
+                    phone.CodesOS[0].Representation.set_String(cache.DefaultVernWs, text);
+                }
+            });
+            CanonicalId Phone(string text) => CanonicalId.FromGuid(phones[text].Guid);
+            var category = CanonicalId.FromGuid(_pristine.Seed.PartOfSpeechId);
+            var msa = new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, category, category);
+            var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+            var vern = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+            AffixProcessInputPart[] shape = [new("p", Phoneme: Phone("p")), new("u", Phoneme: Phone("u")), new("l", Phoneme: Phone("l"))];
+            AffixProcessOutputStep[] solid = [new(Copy: "p"), new(Copy: "u"), new(Copy: "l"), new(Copy: "p"), new(Copy: "u"), new(Copy: "l")];
+            if (arrangement == "not-reduplicating") solid = [new(Copy: "p"), new(Copy: "u")];
+            AffixProcessInputPart[] whole = [new("rest", Remaining: true)];
+            AffixProcessOutputStep[] hyphen = [new(Copy: "rest"), new(Insert: [Phone("-")]), new(Copy: "rest")];
+            var first = Apply(AuthorAffixProcessComposer.Build(cache, new(
+                CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix), "REDUP", ws, msa,
+                arrangement == "reverse" ? shape : whole, arrangement == "reverse" ? solid : hyphen,
+                Form: "REDUP", FormWritingSystem: vern)));
+            entryId = first.Single(operation => operation.Kind == LexDbEntriesOperationKinds.Create).EntityId!.Value;
+            var firstForm = first.Single(operation => operation.Kind == LexEntryLexemeFormOperationKinds.CreateLexemeForm).EntityId!.Value;
+            var second = arrangement == "separate"
+                ? Apply(AuthorAffixProcessComposer.Build(cache, new(CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix),
+                    "REDUP-solid", ws, msa, shape, solid)))
+                : Apply(AuthorAffixProcessAllomorphComposer.Build(cache,
+                    new(entryId, arrangement == "reverse" ? whole : shape, arrangement == "reverse" ? hyphen : solid)));
+            var secondForm = second.Single(operation => operation.Kind is LexEntryLexemeFormOperationKinds.CreateLexemeForm or
+                LexEntryAlternateFormsCreateOperationKinds.CreateAlternateForms).EntityId!.Value;
+            solidId = arrangement == "reverse" ? firstForm : secondForm;
+            hyphenId = arrangement == "reverse" ? secondForm : firstForm;
+            if (arrangement == "ignored")
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                    cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(entryId.ToGuid()).DoNotUseForParsing = true);
+            loader.Save(cache);
+
+            OperationEnvelope[] Apply(System.Collections.Generic.IReadOnlyList<OperationEnvelope> operations)
+            {
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                {
+                    foreach (var operation in operations)
+                        OperationHandlerRegistry.Resolve(operation.Kind, "reduplication warning fixture").ApplyAndCaptureEffect(cache, operation, []);
+                });
+                return operations.ToArray();
+            }
+        }
+        var bytes = File.ReadAllBytes(path);
+        Capture(path);
+        var check = Check(path);
+        const string code = "grammar.restricted-solid-blocks-hyphen";
+        var findings = check.Findings.Where(finding => finding.Code == code).ToArray();
+        if (warns)
+        {
+            var finding = Assert.Single(findings);
+            Assert.Equal(GrammarDiagnosticLevel.Warning, finding.Severity);
+            Assert.Contains("REDUP", finding.Description, StringComparison.Ordinal);
+            Assert.Contains("solid copy (pul copied twice)", finding.Description, StringComparison.Ordinal);
+            Assert.Contains("REDUP (whole stem + '-' + whole stem)", finding.Description, StringComparison.Ordinal);
+            Assert.Contains("own entry", finding.Guidance, StringComparison.Ordinal);
+            Assert.Equal(new[] { entryId.Value, solidId.Value, hyphenId.Value }.Order(),
+                finding.Subject.Select(subject => subject.ObjectId).Order());
+            Assert.Equal(1, Assert.Single(check.Summary, summary => summary.Code == code).Count);
+            var stored = StoredGrammarCheckQuery.Query(new GrammarCheckRequest(path)).Value!.Check!;
+            Assert.Contains(stored.Findings, finding => finding.Code == code);
+        }
+        else Assert.Empty(findings);
+        Assert.Equal(bytes, File.ReadAllBytes(path));
     }
 
     private void Capture(string fwDataPath)
