@@ -1,6 +1,8 @@
 using System.Globalization;
 using Avalonia;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
+using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Jobs;
@@ -19,6 +21,46 @@ namespace SIL.Motif.Tests.App;
 public sealed class ProposalReviewScreenshots
 {
     private const string ProposalId = "proposal/sound";
+
+    [Fact]
+    public void KeepingAWordShowsTheNextWordsOwnReading()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var kitabu = WordChange("kitabu");
+            var watoto = WordChange("watoto");
+            fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [kitabu, watoto],
+                [new ChangeFit("kitabu", true, []), new ChangeFit("watoto", true, [])]));
+            fake.Review = new ProposalReviewResponse(ProposalId, "sha256:intent", "sha256:revision",
+                [Word(0, kitabu), Word(1, watoto)], null, null, [], 0)
+                { EvidenceDigest = "sha256:evidence", Label = "Sound change" };
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                await workspace.Context.OpenProposalAsync(ProposalId, CancellationToken.None);
+                var page = workspace.PageModel<ReviewPageModel>();
+                workspace.CurrentPage = WorkspacePage.Review;
+                await page.LoadReviewAsync();
+                page.SelectEntry(page.Entries.Single(entry => entry.Change?.Word == "kitabu"));
+                PageScreenshots.Settle(window);
+                await page.KeepCommand.ExecuteAsync(null);
+                PageScreenshots.Settle(window);
+
+                Assert.Equal("watoto", page.Current?.Change?.Word);
+                await Wait.UntilAsync(() => window.GetVisualDescendants().OfType<WordCard>()
+                    .Any(card => card.Document?.Key == page.Current?.Change?.Presentation.Key), "Word card did not load.");
+                var card = Assert.Single(window.GetVisualDescendants().OfType<WordCard>());
+                var pending = Assert.Single(card.Document!.Sections.OfType<WordCardPendingChange>());
+                Assert.Equal(["wa-", "toto"], pending.Morphs.Select(morph => morph.Form));
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
 
     [ScreenshotFact]
     public void CaptureReviewOfAProposal()
@@ -85,10 +127,13 @@ public sealed class ProposalReviewScreenshots
             "AuthorPhonologicalRule", "1 rule", [], [], []);
 
     private static PendingChange WordChange(string word) => ReviewScreenshots.Change(word, ChangeKinds.Approve,
-        "analysis/" + word, ReviewScreenshots.Stored(("ki-", "7"), ("tabu", "book")));
+        "analysis/" + word, word == "watoto" ? ReviewScreenshots.Stored(("wa-", "2"), ("toto", "child"))
+            : ReviewScreenshots.Stored(("ki-", "7"), ("tabu", "book")));
 
     private static WordChangeEntry Word(int ordinal, PendingChange change) =>
         new(change.Word, ordinal, "Approve " + change.Word, change.OperationIds, [], "digest-" + change.Word, false,
-            change, null, new Paired<ParserReading?>(ReviewScreenshots.Reading(("ki-", "7"), ("tabu", "book")), null,
+            change, null, new Paired<ParserReading?>(change.Word == "watoto"
+                ? ReviewScreenshots.Reading(("wa-", "2"), ("toto", "child"))
+                : ReviewScreenshots.Reading(("ki-", "7"), ("tabu", "book")), null,
                 true, false, false, null));
 }
