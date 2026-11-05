@@ -243,7 +243,7 @@
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}"
                       VerticalAlignment="Center">
                   <TextBlock Classes="denseTableCell denseTableItem" Text="{Binding Label}"
-                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                             TextWrapping="Wrap"
                              ToolTip.Tip="{Binding Label}" />
                   <Border Grid.Column="1" controls:DenseTable.Secondary="True">
                     <TextBlock Classes="denseTableCell" Text="{Binding ChangeCountText}"

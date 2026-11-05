@@ -94,6 +94,9 @@ public sealed class ProposalsNarrowFrameTests
                 var list = page.FindControl<ListBox>("ProposalsRowsItems")!;
                 var row = Assert.IsType<ListBoxItem>(list.ContainerFromItem(model.SelectedProposal!));
                 Assert.True(row.IsEffectivelyVisible);
+                var title = Assert.Single(row.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Classes.Contains("denseTableItem"));
+                Assert.DoesNotContain(title.TextLayout.TextLines, line => line.HasCollapsed);
                 var tracks = Assert.Single(row.GetVisualDescendants().OfType<Grid>(),
                     grid => DenseTable.GetColumns(grid) is not null);
                 var minimumIdentityWidth = Assert.IsType<double>(app.FindResource("Component.DenseTable.Column.NarrowWidth"));
