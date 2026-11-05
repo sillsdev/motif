@@ -257,7 +257,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             Assert.Equal($"Motif stops a word after {3100:N0} parser work.", setup.ParserWorkLimitEstimateText);
             Assert.Equal(3100m, walkthrough.Find<NumericUpDown>("Parser work limit for each word").Value);
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextUseSelection);
             walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);
             walkthrough.WaitUntil(
                 () => !setup.IsOpen,

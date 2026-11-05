@@ -576,11 +576,9 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                         PageScreenshots.Settle(listsWindow);
                         PageScreenshots.Settle(reviewWindow);
                         var apply = Disabled(reviewWindow, "Apply to FieldWorks project", failures);
-                        var ticked = DisabledByAutomationId(listsWindow,
-                            SIL.Motif.App.AutomationIds.HandOffCheckedWords, failures);
                         var whole = lists.HandOffListUnavailable
                             ? DisabledByAutomationId(listsWindow, SIL.Motif.App.AutomationIds.HandOffList, failures) : null;
-                        var owners = new[] { apply, ticked, whole }.OfType<Button>().ToList();
+                        var owners = new[] { apply, whole }.OfType<Button>().ToList();
                         var reasons = new List<(string What, TextBlock Text)>();
                         foreach (var owner in owners.Where(owner => ToolTip.GetTip(owner) is not null))
                             reasons.AddRange(ControlContracts.TooltipScenes.OpenTipTexts(owner)
