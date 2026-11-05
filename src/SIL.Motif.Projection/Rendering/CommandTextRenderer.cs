@@ -446,6 +446,9 @@ public static class CommandTextRenderer
             else
                 sb.AppendLine("      operations: (no direct operation link)");
 
+            if (effect.Preview is { ValueKind: JsonValueKind.Object } details &&
+                details.TryGetProperty("summary", out var summary) && summary.ValueKind == JsonValueKind.String)
+                sb.AppendLine($"      {summary.GetString()}");
             if (effect.Changes.Count == 0)
             {
                 sb.AppendLine("      (no observable before/after change)");

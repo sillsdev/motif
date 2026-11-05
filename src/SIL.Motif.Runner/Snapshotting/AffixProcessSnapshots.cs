@@ -12,14 +12,14 @@ namespace SIL.Motif.Runner.Snapshotting;
 /// <summary>Reads lexical process graphs by identity, including class, owner, input/output order and references.</summary>
 public static class AffixProcessSnapshots
 {
-    public static IReadOnlyDictionary<CanonicalId, ObjectSnapshot> Read(LcmCache cache)
+    public static IReadOnlyDictionary<CanonicalId, ObjectSnapshot> Read(LcmCache cache, IReadOnlySet<Guid>? includedEntries = null)
     {
         var result = new Dictionary<CanonicalId, ObjectSnapshot>();
         foreach (var entry in cache.LangProject.LexDbOA.Entries)
         {
             var processes = entry.AlternateFormsOS.OfType<IMoAffixProcess>().ToList();
             if (entry.LexemeFormOA is IMoAffixProcess lexeme) processes.Add(lexeme);
-            if (processes.Count == 0) continue;
+            if (processes.Count == 0 && includedEntries?.Contains(entry.Guid) != true) continue;
             Add(entry, LexEntryRelationsSnapshotter.Snapshot(cache, entry), LexiconOwningSnapshots.Snapshot(cache, entry),
                 LexEntryAlternateFormsSnapshotter.Snapshot(cache, entry));
             foreach (var sense in entry.SensesOS)
@@ -77,7 +77,10 @@ public static class AffixProcessSnapshots
         LcmCache cache, List<ExpectedEffect> effects)
     {
         var captured = effects.Select(effect => (effect.CanonicalId, effect.Field)).ToHashSet();
-        foreach (var effect in SoundSystemSnapshots.Compare(before, Read(cache)))
+        var entries = before.Where(pair => pair.Value.AlternativesFields.TryGetValue("class", out var field) &&
+                field.TryGetValue("value", out var name) && name == "LexEntry")
+            .Select(pair => pair.Key.ToGuid()).ToHashSet();
+        foreach (var effect in SoundSystemSnapshots.Compare(before, Read(cache, entries)))
             if (!captured.Contains((effect.CanonicalId, effect.Field))) effects.Add(effect);
     }
 

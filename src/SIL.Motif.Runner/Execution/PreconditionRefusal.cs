@@ -25,10 +25,14 @@ public enum PreconditionKind
 
     /// <summary>The live footprint no longer matches the one the Dry Run measured.</summary>
     FootprintDrift,
+
+    /// <summary>Read-back effects differ from the reviewed Dry Run; the unit of work is rolled back.</summary>
+    EffectDrift,
 }
 
 /// <summary>
-/// Apply's precondition is not met, raised before any unit of work opens, so nothing rolled back.
+/// Apply's precondition is not met. An effect drift refusal rolls back the open unit of work;
+/// other precondition refusals precede mutation.
 /// <see cref="Kind"/> says which precondition, and the facts repeat it as <c>precondition</c> in kebab case.
 /// </summary>
 public sealed class PreconditionRefusal : ProposalRefusalException
@@ -60,6 +64,7 @@ public sealed class PreconditionRefusal : ProposalRefusalException
         PreconditionKind.PrerequisiteMissing => "prerequisite-missing",
         PreconditionKind.TargetGone => "target-gone",
         PreconditionKind.FootprintDrift => "footprint-drift",
+        PreconditionKind.EffectDrift => "effect-drift",
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 }

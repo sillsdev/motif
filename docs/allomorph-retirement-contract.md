@@ -108,3 +108,46 @@ The R2 adapter composes exact bundle Morph and ad hoc allomorph-reference retarg
 | Model coverage Manifest | Generated bundle/ad hoc/delete/dependent surface classified and consistency gates clean; no unclassified class/custom-field exemption. |
 
 No package behavior, parser causality, rollback or full operation-family completion is asserted by the pure contract tests. The integration slices must prove them against the actual pins before changing the capability or registering a Released command.
+
+## Authored process deletion and prohibition edits
+
+`compose-edit-adhoc-prohibition-references` and `compose-delete-adhoc-prohibition` operate on flat
+allomorph and morpheme prohibitions, including disabled records, grouped members and legacy allomorph
+sequences. Both require the complete expected reference state: kind, nullable first, ordered rest,
+ordered legacy allomorphs, adjacency and Disabled. Reference editing preserves occurrence counts and
+order, adjacency and Disabled; each occurrence can move only to another form or grammatical analysis
+of its original entry. This is an authored change of restriction, so an enabled prohibition can move
+without asserting that its denotation is unchanged. It requires a Trial appropriate to that change.
+It does not weaken the ordinary retirement recipe's same-denotation certificate.
+
+Removing a morpheme prohibition reference permits FieldWorks' native unused-grammatical-analysis
+cleanup, including component analyses and stored word-analysis references. The Dry Run records each
+deleted grammatical analysis and each cleared reference as a separate deletion, before a person
+Applies. Its footprint binds the candidate analyses' complete owned content and incoming references,
+including senses, other prohibitions, components and bundles. Apply refuses a changed footprint and
+checks actual effects against the reviewed effect digest inside the atomic unit of work; a mismatch
+rolls back and requires reloading the saved project and reviewing a fresh Dry Run.
+
+`compose-delete-affix-process` deletes a lexeme or alternate `MoAffixProcess` and its entire owned
+graph. Its optional replacement is a plain allomorph of the same entry and morph type. A replacement
+for a lexeme process is promoted from the alternate list through native owning-atomic assignment.
+An alternate process is removed while its replacement stays in place. Without a replacement, deletion
+leaves the lexeme slot empty if the source was the lexeme; no implicit survivor is chosen.
+
+The composer reads the candidate after earlier Draft changes and refuses every remaining native or
+custom incoming reference to the process or any owned descendant. Refusals enumerate source ids,
+fields, sequence occurrences and remedies, including unsupported compound/derivation references that
+must be cleared in FieldWorks. It never relies on LibLCM silently clearing incoming references. The
+operation binds every stored field of the owned graph, including rich text and custom fields, and
+rechecks graph membership and reference absence before deletion. Unsupported stored field types
+refuse rather than weakening the guard. Apply's before footprint also binds the complete incoming
+reference census and any existing plain replacement's owned content, so a newly added reference or
+changed replacement invalidates the Dry Run.
+
+Plain-form creation, prohibition retargets/deletions and process deletion can share one Draft. The
+compose engine declares edges from the process deletion to prior operations whose authored payloads
+name deleted graph members, in addition to ordinary creator/reference edges. Reversing the stored
+operation array preserves execution order. Dry Run previews name the deleted graph, moved references,
+plain replacement and retained entry content. MCP stages these intents; Apply remains human-only.
+This authoring route makes no automatic parse-preservation, frozen-expectation translation or completed
+sound-rule retirement claim; those require the independent evidence described above.

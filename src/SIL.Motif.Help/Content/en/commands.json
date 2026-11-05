@@ -1318,7 +1318,9 @@
       "Choose an affix form by the stem's grammatical features",
       "Give a derivational allomorph Required Features"
     ],
-    "guides": ["conditioned-allomorphs"],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
     "redirect": "Use for one form's Required Features; whole-affix requirements use compose-author-feature-structure."
   },
   "compose-author-feature-value": {
@@ -1962,5 +1964,63 @@
       "Clear a refusal that the phoneme set has conflicting boundary markers",
       "Merge a second plus marker that a rule already uses"
     ]
+  },
+  "compose-edit-adhoc-prohibition-references": {
+    "title": "Retarget a prohibition",
+    "description": "Stages new allomorph or morpheme references for one ad hoc prohibition with an expected-current guard. Each occurrence stays within its original entry; first means Key Allomorph / Key Morpheme, rest means Other Allomorph(s) / Other Morpheme(s), and disabled is the inverse of Active.",
+    "goals": [
+      "retarget ad hoc prohibition allomorph references",
+      "move process allomorph restrictions to plain allomorph",
+      "retarget first morpheme and other morphemes"
+    ],
+    "source": "Hand-written from the guarded prohibition and process replacement composers.",
+    "fields": {
+      "draft": "The Draft name from motif_start_proposal.",
+      "target": "Canonical id of one flat allomorph or morpheme ad hoc prohibition.",
+      "expected": "Complete expected-current state: kind; nullable first (Key Allomorph / Key Morpheme); ordered rest (Other Allomorph(s) / Other Morpheme(s)) and legacy allomorphs arrays; integer adjacency; Boolean disabled (the inverse of Active). Includes disabled records and every legacy occurrence.",
+      "references": "Complete desired state with the same kind, adjacency, disabled (inverse of Active) and occurrence counts/order: first is Key Allomorph / Key Morpheme; rest is Other Allomorph(s) / Other Morpheme(s). Each new form or MSA belongs to the same entry as the occurrence it replaces; native grammatical-analysis and word-analysis-reference deletions are listed by the Dry Run."
+    },
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Use when a retained restriction must follow a replacement form or grammatical analysis of the same entry (guide conditioned-allomorphs)."
+  },
+  "compose-delete-adhoc-prohibition": {
+    "title": "Delete a prohibition",
+    "description": "Stages deletion of one flat ad hoc prohibition after checking its complete expected-current state. Referenced entries and forms are kept; the Dry Run lists any grammatical analyses and word-analysis references deleted by native FieldWorks cleanup.",
+    "goals": [
+      "delete ad hoc prohibition",
+      "remove co-occurrence restriction blocking allomorph replacement"
+    ],
+    "source": "Hand-written from the guarded prohibition and process replacement composers.",
+    "fields": {
+      "draft": "The Draft name from motif_start_proposal.",
+      "target": "Canonical id of one flat allomorph or morpheme ad hoc prohibition.",
+      "expected": "Complete expected-current state: kind; nullable first (Key Allomorph / Key Morpheme); ordered rest (Other Allomorph(s) / Other Morpheme(s)) and legacy allomorphs arrays; integer adjacency; Boolean disabled (the inverse of Active). Includes disabled records and every legacy occurrence."
+    },
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Remove a restriction when it should disappear; keep and retarget it when replacing forms (guide conditioned-allomorphs)."
+  },
+  "compose-delete-affix-process": {
+    "title": "Delete an affix process",
+    "description": "Stages deletion of an affix process and its whole owned graph after every incoming reference has been explicitly moved or removed. An optional plain allomorph of the same entry replaces it, becoming the lexeme form when needed.",
+    "goals": [
+      "replace affix process with plain archiphoneme allomorph",
+      "delete referenced process graph after retargeting prohibitions",
+      "remove pattern based allomorph"
+    ],
+    "source": "Hand-written from the guarded prohibition and process replacement composers.",
+    "fields": {
+      "draft": "The Draft name from motif_start_proposal.",
+      "entry": "Canonical id of the lexical entry that owns the process.",
+      "form": "Canonical id of the existing MoAffixProcess lexeme or alternate form whose whole graph will be deleted. Every incoming reference must already have moved or gone in this Draft.",
+      "replacement": "Optional canonical id of a plain affix allomorph of the same entry and morph type, possibly authored earlier in this Draft. Promoted to lexeme form when replacing a lexeme process; retained in place for an alternate process. Omit for deletion alone."
+    },
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Replace a pattern with a plain form after moving or removing every incoming reference (guide conditioned-allomorphs)."
   }
 }

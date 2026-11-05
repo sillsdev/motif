@@ -4518,6 +4518,300 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-edit-adhoc-prohibition-references"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-adhoc-prohibition-references.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of one flat allomorph or morpheme ad hoc prohibition."
+                      },
+                      "expected": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "allomorph",
+                              "morpheme"
+                            ]
+                          },
+                          "first": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rest": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "allomorphs": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "adjacency": {
+                            "type": "number"
+                          },
+                          "disabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "first",
+                          "rest",
+                          "allomorphs",
+                          "adjacency",
+                          "disabled"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Complete expected-current state: kind; nullable first (Key Allomorph / Key Morpheme); ordered rest (Other Allomorph(s) / Other Morpheme(s)) and legacy allomorphs arrays; integer adjacency; Boolean disabled (the inverse of Active). Includes disabled records and every legacy occurrence."
+                      },
+                      "references": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "allomorph",
+                              "morpheme"
+                            ]
+                          },
+                          "first": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rest": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "allomorphs": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "adjacency": {
+                            "type": "number"
+                          },
+                          "disabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "first",
+                          "rest",
+                          "allomorphs",
+                          "adjacency",
+                          "disabled"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Complete desired state with the same kind, adjacency, disabled (inverse of Active) and occurrence counts/order: first is Key Allomorph / Key Morpheme; rest is Other Allomorph(s) / Other Morpheme(s). Each new form or MSA belongs to the same entry as the occurrence it replaces; native grammatical-analysis and word-analysis-reference deletions are listed by the Dry Run."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expected",
+                      "references"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-delete-adhoc-prohibition"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-delete-adhoc-prohibition.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical id of one flat allomorph or morpheme ad hoc prohibition."
+                      },
+                      "expected": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "allomorph",
+                              "morpheme"
+                            ]
+                          },
+                          "first": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rest": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "allomorphs": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "adjacency": {
+                            "type": "number"
+                          },
+                          "disabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "first",
+                          "rest",
+                          "allomorphs",
+                          "adjacency",
+                          "disabled"
+                        ],
+                        "additionalProperties": false,
+                        "description": "Complete expected-current state: kind; nullable first (Key Allomorph / Key Morpheme); ordered rest (Other Allomorph(s) / Other Morpheme(s)) and legacy allomorphs arrays; integer adjacency; Boolean disabled (the inverse of Active). Includes disabled records and every legacy occurrence."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "expected"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-delete-affix-process"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-delete-affix-process.",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "description": "Canonical id of the lexical entry that owns the process."
+                      },
+                      "form": {
+                        "type": "string",
+                        "description": "Canonical id of the existing MoAffixProcess lexeme or alternate form whose whole graph will be deleted. Every incoming reference must already have moved or gone in this Draft."
+                      },
+                      "replacement": {
+                        "type": "string",
+                        "description": "Optional canonical id of a plain affix allomorph of the same entry and morph type, possibly authored earlier in this Draft. Promoted to lexeme form when replacing a lexeme process; retained in place for an alternate process. Omit for deletion alone."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entry",
+                      "form"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-edit-morph-type"
                     ]
                   },
@@ -7844,6 +8138,246 @@
           }
         }
       ]
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_adhoc_prohibition_references",
+    "description": "Retarget a prohibition. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use when a retained restriction must follow a replacement form or grammatical analysis of the same entry (guide conditioned-allomorphs). Stages new allomorph or morpheme references for one ad hoc prohibition with an expected-current guard. Each occurrence stays within its original entry; first means Key Allomorph / Key Morpheme, rest means Other Allomorph(s) / Other Morpheme(s), and disabled is the inverse of Active.\nCommand: compose-edit-adhoc-prohibition-references. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of one flat allomorph or morpheme ad hoc prohibition."
+        },
+        "expected": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "allomorph",
+                "morpheme"
+              ]
+            },
+            "first": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rest": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "allomorphs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "adjacency": {
+              "type": "number"
+            },
+            "disabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "first",
+            "rest",
+            "allomorphs",
+            "adjacency",
+            "disabled"
+          ],
+          "additionalProperties": false,
+          "description": "Complete expected-current state: kind; nullable first (Key Allomorph / Key Morpheme); ordered rest (Other Allomorph(s) / Other Morpheme(s)) and legacy allomorphs arrays; integer adjacency; Boolean disabled (the inverse of Active). Includes disabled records and every legacy occurrence."
+        },
+        "references": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "allomorph",
+                "morpheme"
+              ]
+            },
+            "first": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rest": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "allomorphs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "adjacency": {
+              "type": "number"
+            },
+            "disabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "first",
+            "rest",
+            "allomorphs",
+            "adjacency",
+            "disabled"
+          ],
+          "additionalProperties": false,
+          "description": "Complete desired state with the same kind, adjacency, disabled (inverse of Active) and occurrence counts/order: first is Key Allomorph / Key Morpheme; rest is Other Allomorph(s) / Other Morpheme(s). Each new form or MSA belongs to the same entry as the occurrence it replaces; native grammatical-analysis and word-analysis-reference deletions are listed by the Dry Run."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expected",
+        "references",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_delete_adhoc_prohibition",
+    "description": "Delete a prohibition. Research first: motif_guide topic conditioned-allomorphs; check best practice. Remove a restriction when it should disappear; keep and retarget it when replacing forms (guide conditioned-allomorphs). Stages deletion of one flat ad hoc prohibition after checking its complete expected-current state. Referenced entries and forms are kept; the Dry Run lists any grammatical analyses and word-analysis references deleted by native FieldWorks cleanup.\nCommand: compose-delete-adhoc-prohibition. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical id of one flat allomorph or morpheme ad hoc prohibition."
+        },
+        "expected": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "allomorph",
+                "morpheme"
+              ]
+            },
+            "first": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rest": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "allomorphs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "adjacency": {
+              "type": "number"
+            },
+            "disabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "first",
+            "rest",
+            "allomorphs",
+            "adjacency",
+            "disabled"
+          ],
+          "additionalProperties": false,
+          "description": "Complete expected-current state: kind; nullable first (Key Allomorph / Key Morpheme); ordered rest (Other Allomorph(s) / Other Morpheme(s)) and legacy allomorphs arrays; integer adjacency; Boolean disabled (the inverse of Active). Includes disabled records and every legacy occurrence."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "expected",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_delete_affix_process",
+    "description": "Delete an affix process. Research first: motif_guide topic conditioned-allomorphs; check best practice. Replace a pattern with a plain form after moving or removing every incoming reference (guide conditioned-allomorphs). Stages deletion of an affix process and its whole owned graph after every incoming reference has been explicitly moved or removed. An optional plain allomorph of the same entry replaces it, becoming the lexeme form when needed.\nCommand: compose-delete-affix-process. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "The Draft name from motif_start_proposal."
+        },
+        "entry": {
+          "type": "string",
+          "description": "Canonical id of the lexical entry that owns the process."
+        },
+        "form": {
+          "type": "string",
+          "description": "Canonical id of the existing MoAffixProcess lexeme or alternate form whose whole graph will be deleted. Every incoming reference must already have moved or gone in this Draft."
+        },
+        "replacement": {
+          "type": "string",
+          "description": "Optional canonical id of a plain affix allomorph of the same entry and morph type, possibly authored earlier in this Draft. Promoted to lexeme form when replacing a lexeme process; retained in place for an alternate process. Omit for deletion alone."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "entry",
+        "form",
+        "project"
+      ],
+      "additionalProperties": false
     },
     "readOnlyHint": false,
     "destructiveHint": false,

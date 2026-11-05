@@ -1,4 +1,5 @@
 using Avalonia.Input;
+using System.Text.Json;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands;
@@ -14,6 +15,30 @@ public sealed class ReviewPageModelTests
 {
     private const string ProjectPath = @"C:\projects\one.fwdata";
     private const string InternalId = "12345678-1234-1234-1234-123456789abc";
+
+    [Fact]
+    public async Task ReviewNamesEveryNativeProhibitionDeletionWithoutTruncation()
+    {
+        var effects = Enumerable.Range(0, 12).Select(index => new EffectView($"bundle-{index}",
+            "analysis/wfiMorphBundle/msa", [new EffectChange("ref", $"msa-{index}", null)],
+            JsonSerializer.SerializeToElement(new { nativeProhibitionCleanup = true,
+                summary = $"Delete word-analysis reference bundle-{index}.Msa to msa-{index}." }))).ToArray();
+        var entry = new GrammarChangeEntry("cleanup", 0, "Retarget a prohibition", ["cleanup"], [],
+            "digest", false, "EditAdhocProhibitionReferences", "1 prohibition", effects, [], []);
+        var fake = new FakeCommandClient
+        {
+            Review = new ProposalReviewResponse(string.Empty, string.Empty, "revision/one", [entry], null, null, [], 0)
+            { IsDraft = true, DraftName = PendingChanges.DraftName, IsPendingChanges = true },
+        };
+        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
+        var context = NewContext(fake);
+        var page = new ReviewPageModel(context);
+        await context.OpenProjectAsync(ProjectPath);
+        await page.LoadReviewAsync();
+        var text = Assert.Single(page.Entries).EffectText;
+        foreach (var index in Enumerable.Range(0, 12))
+            Assert.Contains($"Delete word-analysis reference bundle-{index}.Msa to msa-{index}.", text);
+    }
 
     [Fact]
     public async Task ReviewBadgeCountsAStagedParsimonyJudgment()

@@ -760,13 +760,29 @@ public static partial class ProposalCommands
             var creatorSet = creators.ToHashSet();
             var editors = staged.PositionsMatching(staged.ByTarget, references)
                 .Select(position => staged.Operations[position].OperationId).Except(creatorSet).ToArray();
+            var clearing = operation.Kind == AffixProcessDeleteOperationKinds.Delete
+                ? staged.Operations.Where(prior => prior.After is { } priorAfter && (ReferencesDeletedGraph(priorAfter, operation) ||
+                        prior.Kind == AffixProcessDeleteOperationKinds.Delete &&
+                        priorAfter.GetProperty("entry").GetString() == operation.After!.Value.GetProperty("entry").GetString()))
+                    .Select(prior => prior.OperationId)
+                : Enumerable.Empty<CanonicalId>();
             var dependencies = operation.DependsOn.Select(dependency => dependency.OperationId)
+                .Concat(clearing)
                 .Concat(creators)
                 .Concat(WithoutImplied(creators.Concat(editors).ToArray(), editors, staged.Operations, staged.Positions))
                 .Distinct().Select(id => new OperationDependency(id)).ToArray();
             return new OperationEnvelope(operation.OperationId, operation.Kind, operation.EntityId,
                 operation.Target, operation.After, operation.Placement, dependencies, rationale: operation.Rationale);
         }).ToArray();
+    }
+
+    private static bool ReferencesDeletedGraph(JsonElement prior, OperationEnvelope deletion)
+    {
+        var deleted = new HashSet<Guid>();
+        CollectIds(deletion.After!.Value.GetProperty("members"), deleted, reference: true);
+        var references = new HashSet<Guid>();
+        CollectIds(prior, references);
+        return deleted.Overlaps(references);
     }
 
     /// <summary>Staged operations and their lookups, kept across steps.</summary>
@@ -910,7 +926,7 @@ public static partial class ProposalCommands
                 CollectIds(property.Value, ids, property.Name is "msa" or "featStruc" or "feature" or "value" or
                     "entry" or "form" or "inflType" or "morphType" or "sense" or "recordTypeId" or "wordformId" or
                     "analysisId" or "words" or "environments" or "members" or "phoneme" or
-                    "naturalClass" or "ref" or "member" or "variant" or "component" or "variantType" or "first" or "rest");
+                    "naturalClass" or "ref" or "member" or "variant" or "component" or "variantType" or "first" or "rest" or "replacement" or "allomorphs");
         else if (value.ValueKind == JsonValueKind.Array)
             foreach (var item in value.EnumerateArray()) CollectIds(item, ids, reference);
     }

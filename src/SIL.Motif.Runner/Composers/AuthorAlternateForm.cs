@@ -204,7 +204,7 @@ public static class AuthorAlternateFormComposer
                     "never be selected, because an unrestricted form earlier in the order always wins. Place it " +
                     $"before '{FormText(blocker)}'. The lexeme form is always the last candidate and is never a placement neighbour.");
         }
-        else if (behind.FirstOrDefault(HasEnvironments) is { } shadowed)
+        else if (behind.FirstOrDefault(form => form is not IMoAffixProcess && HasEnvironments(form)) is { } shadowed)
         {
             throw new InvalidOperationException(
                 $"'{ConstructName}': an unrestricted form placed before the restricted form '{FormText(shadowed)}' " +

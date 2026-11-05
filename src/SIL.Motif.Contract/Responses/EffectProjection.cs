@@ -18,6 +18,6 @@ public sealed record EffectChange(string Ws, string? Before, string? After);
 public sealed record EffectView(string CanonicalId, string Field, IReadOnlyList<EffectChange> Changes,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] JsonElement? Preview = null)
 {
-    /// <summary>The Proposal operations whose targets or created entities match this observed effect.</summary>
+    /// <summary>The Proposal operations that caused this effect, including native cleanup of referenced objects.</summary>
     public IReadOnlyList<string> OperationIds { get; init; } = [];
 }

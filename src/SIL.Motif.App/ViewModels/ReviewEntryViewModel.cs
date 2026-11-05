@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Text.Json;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Responses;
 
@@ -77,9 +78,16 @@ public sealed partial class ReviewEntryViewModel : ObservableObject
 
     /// <summary>What the Dry Run observed this change doing, one line per field that moved.</summary>
     public string EffectText => Entry is GrammarChangeEntry grammar
-        ? string.Join("\n", grammar.Effects.SelectMany(effect => effect.Changes.Select(change =>
-            $"{effect.Field}: {change.Before ?? "(none)"} → {change.After ?? "(none)"}")).Take(6))
+        ? string.Join("\n", grammar.Effects.Where(effect => !IsNativeCleanup(effect))
+            .SelectMany(effect => effect.Changes.Select(change =>
+                $"{effect.Field}: {change.Before ?? "(none)"} → {change.After ?? "(none)"}")).Take(6)
+            .Concat(grammar.Effects.Where(IsNativeCleanup).Select(effect =>
+                effect.Preview!.Value.GetProperty("summary").GetString())))
         : string.Empty;
+
+    private static bool IsNativeCleanup(EffectView effect) => effect.Preview is { ValueKind: JsonValueKind.Object } preview &&
+        preview.TryGetProperty("nativeProhibitionCleanup", out var cleanup) && cleanup.ValueKind == JsonValueKind.True &&
+        preview.TryGetProperty("summary", out var summary) && summary.ValueKind == JsonValueKind.String;
 
     public bool HasEffects => EffectText.Length > 0;
 

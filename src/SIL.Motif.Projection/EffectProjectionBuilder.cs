@@ -44,7 +44,7 @@ public static class EffectProjectionBuilder
     private static IReadOnlyList<string> LinkOperations(ExpectedEffect effect, Proposal proposal, bool shared)
     {
         var candidates = proposal.Operations.Where(operation => operation.Target == effect.CanonicalId ||
-            operation.EntityId == effect.CanonicalId);
+            operation.EntityId == effect.CanonicalId || IsProhibitionCleanup(operation));
         if (effect.Field is "analysis/wfiMorphBundle/morph" or "analysis/wfiMorphBundle/form")
             candidates = candidates.Where(operation => operation.Kind == "analysis/wfiMorphBundle/setMorph");
         else if (effect.Field == "lexical/lexEntry/alternateForms")
@@ -62,5 +62,11 @@ public static class EffectProjectionBuilder
         }
         return linked.Select(operation => operation.OperationId.Value)
             .OrderBy(id => id, System.StringComparer.Ordinal).ToArray();
+
+        bool IsProhibitionCleanup(OperationEnvelope operation) =>
+            operation.Kind is "grammar/moAdhocProhib/retargetReferences" or "grammar/moAdhocProhib/delete" &&
+            effect.Preview is { ValueKind: System.Text.Json.JsonValueKind.Object } preview &&
+            preview.TryGetProperty("nativeProhibitionCleanup", out var cleanup) && cleanup.ValueKind == System.Text.Json.JsonValueKind.True &&
+            preview.TryGetProperty("operationId", out var origin) && origin.GetString() == operation.OperationId.Value;
     }
 }

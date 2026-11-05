@@ -222,6 +222,16 @@ public static class ProposalApplier
             LexicalFormSemanticValidator.ValidateProposal(cache, proposal.Operations);
             InflFeatsSemanticValidator.ValidateProposal(cache, proposal.Operations);
             AffixProcessSnapshots.AppendGraphEffects(processBefore, cache, effects);
+            ProhibitionMsaCleanup.ValidateSlots(proposal, effects);
+
+            if (proposal.Operations.Any(operation => operation.Kind is AdhocReferenceOperationKinds.Edit or AdhocReferenceOperationKinds.Delete))
+            {
+                AffixProcessSemanticValidator.AppendUnparsedShapeWarnings(cache, proposal.Operations, effects);
+                if (!string.Equals(ExpectedEffectSetDigest.Compute(effects), anchor.EffectDigest, StringComparison.Ordinal))
+                    throw new PreconditionRefusal(PreconditionKind.EffectDrift,
+                        "Apply's effects differ from the reviewed Dry Run, including native prohibition cleanup. " +
+                        "The Proposal is stale; discard this cache, reload the saved project and review a fresh Dry Run.");
+            }
 
             if (note is not null) ApplyNoteWriter.Write(cache, note, logEntry, description);
 
