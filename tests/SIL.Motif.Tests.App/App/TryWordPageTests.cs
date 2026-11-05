@@ -120,7 +120,12 @@ public sealed class TryWordPageTests
                 var texts = VisibleTexts(window).ToArray();
                 Assert.Contains("Why It Did Not Parse", texts);
                 Assert.Contains(TraceFailureSentences.Explain("RequiredSyntacticFeatureStruct"), texts);
-                Assert.Contains("RequiredSyntacticFeatureStruct", texts);
+                Assert.DoesNotContain("RequiredSyntacticFeatureStruct", texts);
+                var details = Assert.Single(window.GetVisualDescendants().OfType<Expander>(), expander =>
+                    expander.IsEffectivelyVisible && Equals(expander.Header, "Details"));
+                details.IsExpanded = true;
+                PageScreenshots.SettleLayout(window);
+                Assert.Contains("RequiredSyntacticFeatureStruct", VisibleTexts(window));
                 Assert.DoesNotContain(texts, text => text.Contains("Explanation not recorded", StringComparison.Ordinal));
                 Assert.DoesNotContain("Analyses", texts);
                 Assert.False(Assert.Single(page.Trace.StopGroups).ShowsShare);
@@ -1191,6 +1196,44 @@ public sealed class TryWordPageTests
                 var texts = ContextTexts(window);
                 Assert.DoesNotContain(texts, text => text?.Contains("saved", StringComparison.OrdinalIgnoreCase) == true);
                 Assert.DoesNotContain(texts, text => text is not null && text.Contains(saved.ToString("O")));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    public void StaleTraceWarnsOnlyWhenTheLiveSaveComparisonNamesItsBaseline(bool stale, bool same, bool shows)
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var baseline = Assessment().Baseline.Token;
+            context.Baseline = new WorkspaceBaseline(true, "captured", "saved", "captured", "closed", null)
+            { Token = baseline, SourceLastWriteUtc = DateTimeOffset.Parse(baseline.CapturedUtc) };
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DogsOrigin.MeasuredUtc, false));
+            var traced = same ? baseline : new BaselineToken(baseline.ProjectIdentity, "sha256:" + new string('c', 64),
+                baseline.ProjectionVersion, baseline.CapturedUtc, "sha256:" + new string('d', 64));
+            fake.WordContextHandler = (request, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(
+                new(request.Word, true) { IsInFieldWorks = true, Baseline = baseline, IsStale = stale }));
+            fake.TraceWordCompletesWith(DogsTrace() with
+            {
+                HostCapture = new TraceHostCapture(null, null, null, traced.BundleDigest, null, null, [])
+                { Baseline = new TraceBaselineSource(traced, DateTimeOffset.Parse(traced.CapturedUtc),
+                    DateTimeOffset.Parse(traced.CapturedUtc), "capture") },
+            });
+            var page = new TryWordPageModel(context);
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            var window = new MotifTestWindow { Content = new TryWordPanel(page), Width = 1040, Height = 1500 };
+            try
+            {
+                window.Show();
+                PageScreenshots.SettleLayout(window);
+                Assert.Equal(shows, VisibleTexts(window).Contains("FieldWorks edits since then are not in this trace."));
             }
             finally { window.Close(); }
         });

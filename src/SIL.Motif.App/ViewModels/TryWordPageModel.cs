@@ -154,6 +154,11 @@ public sealed class TryWordPageModel : PageModel
         : Trace.Result?.GrammarSource is { Length: > 0 } ? MotifAppStrings.TryWordTracedSavedGrammar
         : MotifAppStrings.TryWordGrammarNotRecorded;
 
+    /// <summary>Whether the live FieldWorks save is newer than the Baseline used by this trace.</summary>
+    public bool IsTraceBaselineStale => Trace.Result?.HostCapture?.Baseline?.Token is { } traced &&
+        ResultWordContext is { IsStale: true, Baseline: { } baseline } context &&
+        context.Word == Trace.Result.Word && traced.HasSameSemanticIdentity(baseline);
+
     /// <summary>Different recorded project states, without inferring that their grammars or outcomes differ.</summary>
     public string TraceBaselineWarning => Trace.Result?.HostCapture?.Baseline?.Token is { } traced &&
         _earlierTiming?.Baseline is { } measured && !traced.HasSameSemanticIdentity(measured) &&
@@ -282,6 +287,7 @@ public sealed class TryWordPageModel : PageModel
         else if (e.PropertyName == nameof(TraceWordViewModel.Result))
         {
             OnPropertyChanged(nameof(TracedGrammarText));
+            OnPropertyChanged(nameof(IsTraceBaselineStale));
             _timingGeneration++;
             ShowEarlierTiming(null);
             if (Trace.Result is not null) _ = LoadStoredRuleTimingsAsync();
@@ -364,6 +370,7 @@ public sealed class TryWordPageModel : PageModel
                 .Select(group => new TryWordStoredAnalysis(group.ToArray(), Trace.Reading)).ToArray()
             : [];
         OnPropertyChanged(nameof(ResultWordContext));
+        OnPropertyChanged(nameof(IsTraceBaselineStale));
         OnPropertyChanged(nameof(FieldWorksContextStatus));
         OnPropertyChanged(nameof(FieldWorksAnalyses));
         OnPropertyChanged(nameof(HasFieldWorksAnalyses));

@@ -108,6 +108,10 @@
             </WrapPanel>
 
           <views:CopyableTextBlock Text="{Binding Trace.SearchStatusText}" Classes="status" TextWrapping="Wrap" IsVisible="{Binding !Trace.Result.Complete}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchCompletenessAccessibleName}" />
+          <WrapPanel IsVisible="{Binding IsTraceBaselineStale}" ItemSpacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TryWordStaleBaseline}" TextWrapping="Wrap" />
+            <Button Content="{x:Static app:MotifAppStrings.Refresh}" Command="{Binding Context.RefreshProjectCommand}" />
+          </WrapPanel>
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
             <views:CopyableTextBlock Text="{Binding TracedGrammarText}" Classes="muted" TextWrapping="Wrap"
                                      FontSize="{DynamicResource Intent.Type.Label}" />
@@ -264,6 +268,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:TraceStopGroupViewModel">
+                <StackPanel>
                 <Button Classes="stopGroup" Classes.chosen="{Binding IsSelected}" HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch" Margin="{DynamicResource Component.TryWord.SmallRowInset}"
                         Command="{Binding $parent[views:TryWordPanel].Trace.SelectStopGroupCommand}"
@@ -273,11 +278,14 @@
                     <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
                       <TextBlock Text="{Binding RuleText}" IsVisible="{Binding HasRule}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
                       <TextBlock Classes="stopReason" Text="{Binding ReasonText}" TextWrapping="Wrap" />
-                      <TextBlock Text="{Binding ReasonCode}" Classes="traceNotation" TextWrapping="Wrap" />
                     </StackPanel>
                     <TextBlock Grid.Column="1" Text="{Binding CountText}" FontWeight="{DynamicResource Intent.Weight.Section}" TextAlignment="Right" />
                   </Grid>
                 </Button>
+                <Expander Header="{x:Static app:MotifAppStrings.Details}">
+                  <TextBlock Text="{Binding ReasonCode}" Classes="traceNotation" TextWrapping="Wrap" />
+                </Expander>
+                </StackPanel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
