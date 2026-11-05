@@ -222,13 +222,15 @@ public sealed class ProjectEvidenceTests
         Assert.Equal(clock.GetLocalNow(), handoff.Handoff.WrittenAt);
     }
 
-    [Fact]
-    public async Task TheHandoffCoverageNamesTheParseInTheContextsTimeZone()
+    [Theory]
+    [InlineData("en-US", "8:00 PM")]
+    [InlineData("en-GB", "20:00")]
+    public async Task TheHandoffCoverageNamesTheParseInTheContextsTimeZone(string cultureName, string expectedTime)
     {
         var previousCulture = System.Globalization.CultureInfo.CurrentCulture;
         try
         {
-            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+            System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo(cultureName);
             var zone = TimeZoneInfo.CreateCustomTimeZone("test-plus-9-30", TimeSpan.FromHours(9.5), "Test", "Test");
             var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero), zone);
             var context = NewContext(new FakeCommandClient(), clock);
@@ -238,7 +240,8 @@ public sealed class ProjectEvidenceTests
             context.PublishEvidence(new WorkspaceEvidence(Run("invocation/one"), clock.GetUtcNow(), false));
             await context.EvidencePublication;
 
-            Assert.StartsWith("Covers the words parsed on Wed 4 Mar, 8:00 PM: ", handoff.Handoff.CoverageText);
+            Assert.StartsWith("Covers the words parsed on Wed 4 Mar, ", handoff.Handoff.CoverageText);
+            Assert.Contains(expectedTime + ":", handoff.Handoff.CoverageText!.Replace('\u202f', ' ').Replace('\u00a0', ' '));
         }
         finally
         {

@@ -87,8 +87,7 @@ public sealed class AiHandoffPageModel : PageModel
             ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.HandoffCoverageJoinFormat, sources[0], sources[1])
             : sources.Count == 1 ? sources[0] : null;
         var culture = System.Globalization.CultureInfo.CurrentCulture;
-        // The window's clock names the zone, as the project chip does, so the two times agree.
-        DateTimeOffset? shown = at is { } parsed ? TimeZoneInfo.ConvertTime(parsed, clock.LocalTimeZone) : null;
+        var shown = at is { } parsed ? WindowTimeText.FormatWithDate(parsed, clock) : null;
         return shown is { } when
             ? from is null
                 ? string.Format(culture, MotifAppStrings.HandoffCoverageOnFormat, when, words)

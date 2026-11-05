@@ -4658,11 +4658,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Joins two kinds of source the AI Handoff covers, such as 2 texts and 1 pasted word.</comment>
   </data>
   <data name="MotifApp.HandoffCoverageOnFormat" xml:space="preserve">
-    <value>Covers the words parsed on {0:ddd d MMM, h:mm tt}: {1}.</value>
+    <value>Covers the words parsed on {0}: {1}.</value>
     <comment>Says which parse the AI Handoff covers; {0} is the date and time of the parse and {1} how many words.</comment>
   </data>
   <data name="MotifApp.HandoffCoverageOnFromFormat" xml:space="preserve">
-    <value>Covers the words parsed on {0:ddd d MMM, h:mm tt}: {1} from {2}.</value>
+    <value>Covers the words parsed on {0}: {1} from {2}.</value>
     <comment>Says which parse the AI Handoff covers; {0} is the date and time, {1} how many words and {2} where they came from, such as 2 texts.</comment>
   </data>
   <data name="MotifApp.HandoffCoverageLatestFormat" xml:space="preserve">
