@@ -424,7 +424,7 @@ public sealed class TryWordPageModel : PageModel
         {
             var total = word.ParserWork;
             string ShareOf(long steps) => total is > 0
-                ? ((double)steps / total.Value).ToString("P0", CultureInfo.CurrentCulture) : string.Empty;
+                ? TimingShare.FormatPercent((double)steps / total.Value) : string.Empty;
             var rules = timing.ParserWorkAggregates.Where(row => !row.IsUnattributed).ToArray();
             foreach (var rule in rules.Take(EarlierRuleLimit))
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(rule.Name, TimingShare.KindName(rule.Kind),

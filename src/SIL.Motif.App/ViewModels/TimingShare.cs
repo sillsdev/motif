@@ -161,8 +161,14 @@ public sealed record TimingShare(string Label, string Kind, long? ParserWork, do
     public static string FormatPercent(double share)
     {
         var culture = CultureInfo.CurrentCulture;
-        if (share > 0 && share < 0.01) return "<" + 0.01.ToString("P0", culture);
-        return share.ToString("P0", culture);
+        var format = (NumberFormatInfo)culture.NumberFormat.Clone();
+        if (culture.Name.Length == 0 || culture.TwoLetterISOLanguageName == "en")
+        {
+            format.PercentPositivePattern = 1;
+            format.PercentNegativePattern = 1;
+        }
+        if (share > 0 && share < 0.01) return "<" + 0.01.ToString("P0", format);
+        return share.ToString("P0", format);
     }
 
     /// <summary>The window's name for a stored parser kind.</summary>

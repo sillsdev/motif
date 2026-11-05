@@ -50,6 +50,14 @@ public sealed class TimingSharesTests
     ];
 
     [Fact]
+    public void ParserWorkSharesUseCompactPercentSignsInEnglish()
+    {
+        using var culture = new CultureScope(CultureInfo.InvariantCulture);
+        Assert.Equal("90%", TimingShare.FormatPercent(0.9));
+        Assert.Equal("<1%", TimingShare.FormatPercent(0.001));
+    }
+
+    [Fact]
     public void APairedShareWithOneSideMissingNamesWhichSideInItsTextAndNote()
     {
         var both = new TimingShare("Rule", "morph_rule", 480, 0.6, 9, null) { ProposalShareText = "12%" };
