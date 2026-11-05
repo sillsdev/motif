@@ -340,7 +340,7 @@ public sealed class TraceWordViewModelTests
 
         // Unfiltered, the closest three of all five: most morphemes first.
         Assert.Equal(["hawajafik", "hawafika", "hawajaf"], trace.ClosestAttempts.Select(attempt => attempt.Surface));
-        Assert.Equal("Show the other 2 attempts", trace.MoreAttemptsText);
+        Assert.Equal("Show the Other 2 Attempts", trace.MoreAttemptsText);
 
         trace.SelectStopGroupCommand.Execute(trace.StopGroups[1]);
         Assert.True(trace.StopGroups[1].IsSelected);
@@ -349,7 +349,7 @@ public sealed class TraceWordViewModelTests
 
         trace.SelectStopGroupCommand.Execute(trace.StopGroups[0]);
         Assert.Equal(3, trace.ClosestAttempts.Count);
-        Assert.Equal("Show the other attempt refused by -a", trace.MoreAttemptsText);
+        Assert.Equal("Show the Other Attempt Refused by -a", trace.MoreAttemptsText);
         trace.ShowEveryAttemptCommand.Execute(null);
         Assert.Equal(4, trace.ClosestAttempts.Count);
 

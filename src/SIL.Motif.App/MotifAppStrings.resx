@@ -7168,15 +7168,15 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Heading over the closest attempts on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.TraceMoreAttemptsCountPattern" xml:space="preserve">
-    <value>{0, plural, one {attempt} other {# attempts}}</value>
+    <value>{0, plural, one {Attempt} other {# Attempts}}</value>
     <comment>The attempts a Try a Word button offers to show. Used inside "Show the other {0}"; one has no number. # is the count.</comment>
   </data>
   <data name="MotifApp.TraceShowOtherFormat" xml:space="preserve">
-    <value>Show the other {0}</value>
+    <value>Show the Other {0}</value>
     <comment>Button text on the Try a Word page. {0} is the attempts phrase.</comment>
   </data>
   <data name="MotifApp.TraceShowOtherRefusedByFormat" xml:space="preserve">
-    <value>Show the other {0} refused by {1}</value>
+    <value>Show the Other {0} Refused by {1}</value>
     <comment>Button text on the Try a Word page. {0} is the attempts phrase; {1} is the name of the rule that refused them.</comment>
   </data>
   <data name="MotifApp.TraceSearchIncompleteFormat" xml:space="preserve">
