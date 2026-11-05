@@ -12,7 +12,7 @@ public static partial class ProposalCommands
     /// <summary>
     /// Discards every Draft that was never finalized and holds no operation, which is what a failed compose leaves
     /// behind after <see cref="New"/>. Pending changes and finalized or reopened Drafts are never touched.
-    /// A Draft with Rationale, Comments or retained evidence stays and is reported with the reason.
+    /// A Draft with Rationale, Comments, pictures or retained evidence stays and is reported with the reason.
     /// </summary>
     public static CommandOutcome<EmptyDraftsDiscardedResponse> DiscardEmptyDrafts(DiscardEmptyDraftsRequest request)
     {

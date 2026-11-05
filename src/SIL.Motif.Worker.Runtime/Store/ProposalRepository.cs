@@ -202,9 +202,9 @@ public sealed record ProposalRevisionRecord(
 public sealed class DraftChangedException(string draftName)
     : InvalidOperationException($"Draft '{draftName}' changed. Reload it and try again.");
 
-/// <summary>A Draft has authored discussion that automatic cleanup must preserve.</summary>
+/// <summary>A Draft has authored content that automatic cleanup must preserve.</summary>
 internal sealed class DraftAuthoredContentException()
-    : InvalidOperationException("This Draft has a Rationale or Comments; its authored content is kept.");
+    : InvalidOperationException("This Draft has a Rationale or Comments or pictures; its authored content is kept.");
 
 /// <summary>A Proposal's identity and label, read without its revision content.</summary>
 public sealed record ProposalListing(CanonicalId ProposalId, string? Label);
@@ -1053,7 +1053,7 @@ public sealed class ProposalRepository : IProposalRepository
     /// Called inside the transaction for a never-finalized Draft, before its evidence goes, so the caller can remove
     /// records the store does not link to the Proposal (its Trial jobs).
     /// </param>
-    /// <param name="emptyDraftId">When supplied, requires this never-finalized Draft with no authored discussion.</param>
+    /// <param name="emptyDraftId">When supplied, requires this never-finalized Draft with no authored content.</param>
     /// <exception cref="ProposalRetainedByExampleSetException">A phonology Example Set cites the Draft.</exception>
     /// <exception cref="ProposalEvidenceRetainedException">A result of the Draft is pinned or retained.</exception>
     internal bool DiscardDraft(string draftName, string? expectedJson,
@@ -1085,14 +1085,15 @@ public sealed class ProposalRepository : IProposalRepository
             discussion.CommandText = """
                 SELECT Role, Rationale,
                     EXISTS (SELECT 1 FROM ProposalComments WHERE ProposalId = $id),
-                    EXISTS (SELECT 1 FROM ProposalRationaleRevisions WHERE ProposalId = $id)
+                    EXISTS (SELECT 1 FROM ProposalRationaleRevisions WHERE ProposalId = $id),
+                    EXISTS (SELECT 1 FROM ProposalPictures WHERE ProposalId = $id)
                 FROM Proposals WHERE ProposalId = $id;
                 """;
             discussion.Parameters.AddWithValue("$id", proposalId.Value);
             using var reader = discussion.ExecuteReader();
             if (!reader.Read() || (!reader.IsDBNull(0) && reader.GetString(0) == ProposalRoles.PendingChanges))
                 throw new DraftChangedException(draftName);
-            if (!reader.IsDBNull(1) || reader.GetBoolean(2) || reader.GetBoolean(3))
+            if (!reader.IsDBNull(1) || reader.GetBoolean(2) || reader.GetBoolean(3) || reader.GetBoolean(4))
                 throw new DraftAuthoredContentException();
         }
         if (!wasReopened)

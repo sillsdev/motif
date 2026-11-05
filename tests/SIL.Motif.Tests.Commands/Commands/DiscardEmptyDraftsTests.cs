@@ -96,6 +96,64 @@ public sealed class DiscardEmptyDraftsTests(PristineProjectFixture pristine)
         else Assert.Empty(comments);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PicturesOnTheProposalOrItsCommentsAreKeptAndReported(bool onComment)
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        var created = ProposalCommands.New(new(path, Version, "pictured", null));
+        Assert.True(created.Succeeded);
+        var id = created.Value!.ProposalId;
+        long? commentId = null;
+        if (onComment)
+        {
+            var comment = ProposalComments.Add(new(path, Version, id, "Keep this picture.", "Alex"));
+            Assert.True(comment.Succeeded);
+            commentId = comment.Value!.CommentId;
+        }
+        var bytes = onComment ? ProposalPicturesTests.Jpeg(20, 10) : ProposalPicturesTests.Png(20, 10);
+        var picture = ProposalPictures.Add(new(path, Version, id, bytes, commentId));
+        Assert.True(picture.Succeeded, picture.Refusal?.Message);
+
+        var outcome = ProposalCommands.DiscardEmptyDrafts(new(path, Version));
+
+        Assert.True(outcome.Succeeded);
+        Assert.Empty(outcome.Value!.Discarded);
+        var kept = Assert.Single(outcome.Value.Kept);
+        Assert.Equal("pictured", kept.DraftName);
+        Assert.Equal("draft.authored-content", kept.Code);
+        Assert.Contains("pictures", kept.Reason, StringComparison.Ordinal);
+        using var database = ProjectMotifDatabase.Open(path);
+        Assert.Equal(id, new ProposalRepository(database).GetDraft("pictured").ProposalId.Value);
+        var pictures = new ProposalPictureRepository(database);
+        var stored = Assert.Single(pictures.List(CanonicalId.Parse(id)));
+        Assert.Equal(picture.Value!.PictureId, stored.PictureId);
+        Assert.Equal(commentId, stored.CommentId);
+        Assert.Equal(bytes, pictures.ReadBytes(CanonicalId.Parse(id), stored.PictureId));
+    }
+
+    [Fact]
+    public void APictureAttachedAfterListingIsProtectedInsideTheDiscardTransaction()
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        Assert.True(ProposalCommands.New(new(path, Version, "picture-after-listing", null)).Succeeded);
+        using var database = ProjectMotifDatabase.Open(path);
+        var repository = new ProposalRepository(database);
+        var listed = repository.GetDraft("picture-after-listing");
+        var bytes = ProposalPicturesTests.Png(20, 10);
+        var picture = ProposalPictures.Add(new(path, Version, listed.ProposalId.Value, bytes));
+        Assert.True(picture.Succeeded, picture.Refusal?.Message);
+
+        Assert.Throws<DraftAuthoredContentException>(() => repository.DiscardDraft("picture-after-listing",
+            listed.ProposalJson, beforeEvidenceRemoved: null, emptyDraftId: listed.ProposalId));
+
+        Assert.Equal(listed, repository.GetDraft("picture-after-listing"));
+        Assert.Equal(bytes, new ProposalPictureRepository(database).ReadBytes(listed.ProposalId, picture.Value!.PictureId));
+    }
+
     [Fact]
     public void AnEmptyReopenedDraftIsUntouched()
     {

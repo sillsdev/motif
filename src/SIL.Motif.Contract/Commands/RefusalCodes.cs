@@ -395,7 +395,7 @@ public static class RefusalCodes
     /// <summary>The clitic's Attaches to Categories changed since the edit was composed.</summary>
     public const string CliticAttachmentStaleSource = "clitic-attachment.stale-source";
 
-    /// <summary>The Draft has authored discussion that automatic cleanup must preserve.</summary>
+    /// <summary>The Draft has authored content that automatic cleanup must preserve.</summary>
     public const string DraftAuthoredContent = "draft.authored-content";
     /// <summary>The Draft's Trial results are still pinned or retained, so it is kept.</summary>
     public const string DraftEvidenceRetained = "draft.evidence-retained";
