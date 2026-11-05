@@ -68,7 +68,7 @@ public sealed class LongProjectTitleTests
                     "The project chip overlaps the menu bar.");
                 Capture(window, width, height, zoom, dark, windowsShaped);
                 Assert.Equal(workspace.ProjectName, nameText.Text);
-                Assert.Equal(workspace.ProjectChipAccessibleName, ToolTip.GetTip(chip));
+                Assert.Equal(workspace.ProjectPathTooltip, ToolTip.GetTip(chip));
                 Assert.Contains(workspace.ProjectName, workspace.ProjectChipAccessibleName, StringComparison.Ordinal);
                 AssertInside(window, chip);
                 AssertInside(window, refresh);

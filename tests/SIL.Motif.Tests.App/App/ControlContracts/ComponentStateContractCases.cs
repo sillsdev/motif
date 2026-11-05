@@ -705,7 +705,7 @@ internal static class TooltipOwners
         },
         new("refresh", "Views/MainWindow.axaml", "Refresh", TooltipScene.Overview,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.RefreshProject),
-        new("project chip", "Views/MainWindow.axaml", "{Binding ProjectChipAccessibleName}", TooltipScene.Overview,
+        new("project chip", "Views/MainWindow.axaml", "{Binding ProjectPathTooltip}", TooltipScene.Overview,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectChip),
         new("menu button", "Views/MainWindow.axaml.cs", "MotifAppStrings.MainMenuButtonAccessibleName", TooltipScene.FrameNarrowTopBar,
             control => control is MenuItem && AutomationProperties.GetAutomationId(control) == AutomationIds.MenuButton),
@@ -1022,6 +1022,12 @@ internal static class TooltipOwners
         },
         new("Proposal name", "Views/Pages/ProposalsPage.axaml", "{Binding Label}", TooltipScene.Overview,
             control => control is TextBlock { DataContext: ProposalCardViewModel } && control.Classes.Contains("denseTableItem"))
+        {
+            Pending = "the sample window has no scene on the Proposals page",
+        },
+        new("Proposal status", "Views/Pages/ProposalsPage.axaml", "{Binding TableStatusText}", TooltipScene.Overview,
+            control => control is TextBlock text && text.DataContext is ProposalCardViewModel card &&
+                text.Text == card.TableStatusText)
         {
             Pending = "the sample window has no scene on the Proposals page",
         },

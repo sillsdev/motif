@@ -37,7 +37,7 @@ public sealed class ProjectCardTests
                 Assert.Equal(workspace.ProjectChipAccessibleName, AutomationProperties.GetName(chip));
                 Assert.Contains(workspace.ProjectName, AutomationProperties.GetName(chip), StringComparison.Ordinal);
                 Assert.Contains(workspace.FreshnessLabel, AutomationProperties.GetName(chip), StringComparison.Ordinal);
-                Assert.Equal(workspace.ProjectChipAccessibleName, ToolTip.GetTip(chip));
+                Assert.Equal(workspace.ProjectPathTooltip, ToolTip.GetTip(chip));
                 var detail = window.FindInWindowOrWorkspace<TextBlock>("ProjectChipDetail")!;
                 Assert.True(detail.IsEffectivelyVisible);
                 Assert.StartsWith("· " + workspace.FreshnessLabel, detail.Text, StringComparison.Ordinal);
