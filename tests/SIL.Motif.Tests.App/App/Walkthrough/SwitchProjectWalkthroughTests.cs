@@ -17,7 +17,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
         using var firstProject = await SlowParserWalkthroughProject.CreateAsync();
         using var secondProject = new WalkthroughProject(pristine);
         var parserPath = PanglossProcesses.CopyExecutable(firstProject.ManagedRoot);
-        // Scaled like the blame hang limit (10 minutes), so a stuck wait fails by name first.
+        // Scaled like the blame hang limit (40 minutes), so a stuck wait fails by name first.
         var deadline = WalkthroughSteps.DeadlineIn(420);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>

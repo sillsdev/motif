@@ -11,7 +11,7 @@ The mechanics behind the diagnosis steps in [`SKILL.md`](SKILL.md). The reposito
   console log and a TRX file. Download them with
   `gh run download <run> -R sillsdev/motif -n test-results-<os> -D <dir>/test-results-<os>`, then list the
   failures with `python trx-failures.py <dir>` (run it with `PYTHONIOENCODING=utf-8` on Windows).
-- A test that hung is killed after 10 minutes by the blame collector; the `Sequence_*.xml` file in that
+- A test that hung is killed after 40 minutes (scaled) by the blame collector, after any test's own 30-minute wait would have named it; the `Sequence_*.xml` file in that
   project's results names the test that was running, and the project's `.stderr.log` has the abort.
 - macOS jobs upload `crash-reports-<os>` on failure: the `.ips` crash reports of processes that aborted.
   `python ips-stack.py <dir>` prints each report's faulting-thread stack.

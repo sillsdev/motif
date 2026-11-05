@@ -22,6 +22,18 @@ public sealed class TestScriptLevelGuardTests
     }
 
     [Fact]
+    public void BlameHangTimeoutOutlastsTheLongestTestWaitAtTheSameScale()
+    {
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "test.ps1"));
+        var match = System.Text.RegularExpressions.Regex.Match(
+            script, @"\$blameHangMinutes = \[int\]\[Math\]::Ceiling\((\d+) \* \$deadlineScale\)");
+
+        Assert.True(match.Success, "test.ps1 no longer sets $blameHangMinutes from the deadline scale.");
+        Assert.True(int.Parse(match.Groups[1].Value) > 30,
+            "The blame hang timeout must exceed the 30 minute waits tests make, so their named failure fires first.");
+    }
+
+    [Fact]
     public void AllPreparesOnlyArtifactsUsedByTheSelectedTests()
     {
         var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "test.ps1"));

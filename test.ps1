@@ -516,7 +516,8 @@ $jobs = foreach ($run in $testRuns) {
             }
         }
         $exitGraceSeconds = [int][Math]::Ceiling(1800 * $deadlineScale)
-        $blameHangMinutes = [int][Math]::Ceiling(10 * $deadlineScale)
+        # Past the longest test wait (30 minutes) at the same scale, so a stuck wait names itself before the host dies.
+        $blameHangMinutes = [int][Math]::Ceiling(40 * $deadlineScale)
         $arguments = @(
             'test'
             ('"{0}"' -f $assemblyPath)
