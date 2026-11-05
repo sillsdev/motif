@@ -57,6 +57,9 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.RetractParsimonyDispositionAsync)] = "parsimony retract",
             [nameof(ICommandClient.ProposalStandingsAsync)] = "proposals",
             [nameof(ICommandClient.DeleteProposalAsync)] = "delete --proposal",
+            [nameof(ICommandClient.ShowProposalPicturesAsync)] = "proposal picture show",
+            [nameof(ICommandClient.AddProposalPictureAsync)] = "proposal picture add",
+            [nameof(ICommandClient.RemoveProposalPictureAsync)] = "proposal picture remove",
             [nameof(ICommandClient.ReadProposalDifferenceAsync)] = "difference show",
             [nameof(ICommandClient.ProduceProposalDifferenceAsync)] = "difference produce",
         };

@@ -213,6 +213,52 @@ public sealed partial class FakeCommandClient
         return Task.FromResult(_deleteProposal(request));
     }
 
+    public List<AddPictureRequest> AddPictureRequests { get; } = [];
+    public List<RemovePictureRequest> RemovePictureRequests { get; } = [];
+
+    /// <summary>The pictures the fake holds for each Proposal, as the store would.</summary>
+    public Dictionary<string, List<(PictureView View, byte[] Bytes)>> StoredPictures { get; } = [];
+
+    public string? PictureWriteRefusal { get; set; }
+
+    public Task<CommandOutcome<ProposalPicturesResponse>> ShowProposalPicturesAsync(
+        ShowPicturesRequest request, CancellationToken cancellationToken)
+    {
+        var held = StoredPictures.GetValueOrDefault(request.ProposalId) ?? [];
+        var data = request.PictureId is { } id
+            ? Convert.ToBase64String(held.Single(picture => picture.View.PictureId == id).Bytes) : null;
+        return Task.FromResult(CommandOutcome<ProposalPicturesResponse>.Success(
+            new ProposalPicturesResponse(request.ProposalId, [.. held.Select(picture => picture.View)], data)));
+    }
+
+    public Task<CommandOutcome<ProposalPictureChangedResponse>> AddProposalPictureAsync(
+        AddPictureRequest request, CancellationToken cancellationToken)
+    {
+        AddPictureRequests.Add(request);
+        if (PictureWriteRefusal is { } code)
+            return Task.FromResult(CommandOutcome<ProposalPictureChangedResponse>.Refused(
+                new Refusal(code, FailureReason.Refused, "refused")));
+        var held = StoredPictures.TryGetValue(request.ProposalId, out var list) ? list : StoredPictures[request.ProposalId] = [];
+        var sniffed = SIL.Motif.Commands.PictureSniffer.Read(request.Bytes)!.Value;
+        var view = new PictureView(held.Count + 1, request.CommentId, sniffed.MediaType, sniffed.Width, sniffed.Height,
+            request.Bytes.Length, "2026-01-01T00:00:00Z");
+        held.Add((view, request.Bytes));
+        return Task.FromResult(CommandOutcome<ProposalPictureChangedResponse>.Success(
+            new ProposalPictureChangedResponse(request.ProposalId, view.PictureId, "added", view)));
+    }
+
+    public Task<CommandOutcome<ProposalPictureChangedResponse>> RemoveProposalPictureAsync(
+        RemovePictureRequest request, CancellationToken cancellationToken)
+    {
+        RemovePictureRequests.Add(request);
+        if (PictureWriteRefusal is { } code)
+            return Task.FromResult(CommandOutcome<ProposalPictureChangedResponse>.Refused(
+                new Refusal(code, FailureReason.Refused, "refused")));
+        StoredPictures[request.ProposalId].RemoveAll(picture => picture.View.PictureId == request.PictureId);
+        return Task.FromResult(CommandOutcome<ProposalPictureChangedResponse>.Success(
+            new ProposalPictureChangedResponse(request.ProposalId, request.PictureId, "removed", null)));
+    }
+
     public Task<CommandOutcome<TrialRecord?>> ReadTrialAsync(
         ReadTrialRequest request, CancellationToken cancellationToken)
     {

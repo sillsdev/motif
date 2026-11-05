@@ -30,4 +30,12 @@
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
 
+  <Style Selector="Image.proposalPicture">
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.Proposals.PictureThumbSize}" />
+    <Setter Property="MaxHeight" Value="{DynamicResource Component.Proposals.PictureThumbSize}" />
+    <Setter Property="Stretch" Value="Uniform" />
+  </Style>
+  <Style Selector="StackPanel.proposalPictureItem">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+  </Style>
 </Styles>

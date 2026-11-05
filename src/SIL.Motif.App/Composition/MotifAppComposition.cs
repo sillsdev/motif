@@ -132,7 +132,8 @@ public static class MotifAppComposition
             assistantConnections: options.AssistantConnections,
             defaultProposalChecks: options.DefaultProposalChecks,
             uriLauncher: new AvaloniaLauncher(window),
-            tryWordSessions: options.TryWordSessions);
+            tryWordSessions: options.TryWordSessions,
+            pictureIntake: new AvaloniaPictureIntake(window));
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
         return new MotifAppCompositionResult(window, workspace, crashes, surfacePolicy)

@@ -52,6 +52,18 @@ public partial interface ICommandClient
     Task<CommandOutcome<ProposalDeletedResponse>> DeleteProposalAsync(
         DeleteProposalRequest request, CancellationToken cancellationToken);
 
+    /// <summary>Lists a Proposal's pictures, and reads the bytes of one when it is named.</summary>
+    Task<CommandOutcome<ProposalPicturesResponse>> ShowProposalPicturesAsync(
+        ShowPicturesRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Adds a picture, already scaled to fit, to an open Proposal.</summary>
+    Task<CommandOutcome<ProposalPictureChangedResponse>> AddProposalPictureAsync(
+        AddPictureRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Removes a picture from an open Proposal.</summary>
+    Task<CommandOutcome<ProposalPictureChangedResponse>> RemoveProposalPictureAsync(
+        RemovePictureRequest request, CancellationToken cancellationToken);
+
     /// <summary>Reads the stored Baseline, default Selection, matching Assessment, and current freshness.</summary>
     Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
         string projectPath, CancellationToken cancellationToken);

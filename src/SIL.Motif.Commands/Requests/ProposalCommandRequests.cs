@@ -372,6 +372,27 @@ public sealed record DeleteCommentRequest(string FwDataPath, string ProductVersi
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The full id of the Proposal the picture is for.</param>
+/// <param name="Bytes">A PNG or JPEG picture of at most <see cref="ProposalPictures.MaxBytes"/> bytes; the window scales a larger one first.</param>
+/// <param name="CommentId">The Comment to attach it to; null attaches it to the Proposal.</param>
+public sealed record AddPictureRequest(
+    string FwDataPath, string ProductVersion, string ProposalId, byte[] Bytes, long? CommentId = null);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The full id of the Proposal the picture is on.</param>
+/// <param name="PictureId">The number of the picture.</param>
+public sealed record RemovePictureRequest(string FwDataPath, string ProductVersion, string ProposalId, long PictureId);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The full id of the Proposal whose pictures are listed.</param>
+/// <param name="PictureId">The picture whose bytes are returned as well; null lists the pictures only.</param>
+public sealed record ShowPicturesRequest(
+    string FwDataPath, string ProductVersion, string ProposalId, long? PictureId = null);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="ExpectedRevision">The required Draft revision for this write.</param>
 public sealed record FinalizeRequest(

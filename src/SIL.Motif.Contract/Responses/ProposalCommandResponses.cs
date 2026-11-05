@@ -129,3 +129,28 @@ public sealed record ProposalSplitResponse(
 
 /// <summary>A Proposal moved to a new status (<c>defer</c>, <c>reject</c>, or <c>supersede</c>).</summary>
 public sealed record ProposalStatusChangedResponse(string ProposalId, string Status, string? RelatedProposalId);
+
+/// <summary>One picture attached to a Proposal, without its bytes.</summary>
+/// <param name="PictureId">The picture's number, which a remove or a read names.</param>
+/// <param name="CommentId">The Comment the picture is attached to; null when it is attached to the Proposal itself.</param>
+/// <param name="MediaType"><c>image/png</c> or <c>image/jpeg</c>.</param>
+/// <param name="Width">The picture's width in pixels.</param>
+/// <param name="Height">The picture's height in pixels.</param>
+/// <param name="ByteCount">How many bytes the stored picture takes, counted in the store's size budget.</param>
+/// <param name="CreatedUtc">When it was added.</param>
+public sealed record PictureView(
+    long PictureId, long? CommentId, string MediaType, int Width, int Height, int ByteCount, string CreatedUtc);
+
+/// <summary>A picture added to or removed from a Proposal.</summary>
+/// <param name="ProposalId">The Proposal's id.</param>
+/// <param name="PictureId">The picture's number.</param>
+/// <param name="Change"><c>added</c> or <c>removed</c>.</param>
+/// <param name="Picture">The picture just added; null after a removal.</param>
+public sealed record ProposalPictureChangedResponse(string ProposalId, long PictureId, string Change, PictureView? Picture);
+
+/// <summary>A Proposal's pictures, and the bytes of one of them when it was asked for.</summary>
+/// <param name="ProposalId">The Proposal's id.</param>
+/// <param name="Pictures">Every picture on the Proposal, oldest first.</param>
+/// <param name="DataBase64">The bytes of the asked-for picture, Base64; null when none was asked for.</param>
+public sealed record ProposalPicturesResponse(
+    string ProposalId, IReadOnlyList<PictureView> Pictures, string? DataBase64 = null);

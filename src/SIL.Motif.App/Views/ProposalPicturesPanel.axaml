@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalPicturesPanel"
+             x:DataType="vm:ProposalPicturesViewModel"
+             IsVisible="{Binding IsVisible}"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.PicturesAccessibleName}"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalPicturesPanel}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ProposalsScoped.axaml" />
+  </UserControl.Styles>
+  <Border Classes="inspectorSection">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+      <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.PicturesTitle}" />
+      <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.NoPicturesYet}"
+                               IsVisible="{Binding IsEmpty}" />
+      <ItemsControl x:Name="ProposalPictureItems" ItemsSource="{Binding Items}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
+                       LineSpacing="{DynamicResource Intent.Space.Related}" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProposalPictureItem">
+            <StackPanel Classes="proposalPictureItem">
+              <Image Classes="proposalPicture" Source="{Binding Bytes, Converter={x:Static views:PictureBytesConverter.Instance}}"
+                     AutomationProperties.Name="{Binding Description}" />
+              <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Description}" />
+              <Button Content="{x:Static app:MotifAppStrings.RemovePicture}"
+                      IsVisible="{Binding $parent[ItemsControl].((vm:ProposalPicturesViewModel)DataContext).CanRemove}"
+                      Command="{Binding $parent[ItemsControl].((vm:ProposalPicturesViewModel)DataContext).RemoveCommand}"
+                      CommandParameter="{Binding}" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <views:CopyableTextBlock Classes="inspectorMeaning problem" TextWrapping="Wrap" Text="{Binding Problem}"
+                               IsVisible="{Binding HasProblem}" />
+      <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+      <Button x:Name="AddProposalPicture" Content="{x:Static app:MotifAppStrings.AddPicture}"
+              IsVisible="{Binding CanAdd}" Command="{Binding AddCommand}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalPictureAdd}" />
+    </StackPanel>
+  </Border>
+</UserControl>

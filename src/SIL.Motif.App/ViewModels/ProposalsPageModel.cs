@@ -445,6 +445,11 @@ public sealed partial class ProposalsPageModel : PageModel
             parsimonyDelay,
             (request, cancellationToken) => Context.Commands.ReadParsimonyReportAsync(request, cancellationToken),
             (request, cancellationToken) => Context.Commands.ReadParsimonyViewAsync(request, cancellationToken));
+        Pictures = new ProposalPicturesViewModel(
+            (request, cancellationToken) => Context.Commands.ShowProposalPicturesAsync(request, cancellationToken),
+            (request, cancellationToken) => Context.Commands.AddProposalPictureAsync(request, cancellationToken),
+            (request, cancellationToken) => Context.Commands.RemoveProposalPictureAsync(request, cancellationToken),
+            Context.PictureIntake);
         Context.Selection.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(SelectionViewModel.TextCount)) Difference.RefreshTexts();
@@ -478,6 +483,12 @@ public sealed partial class ProposalsPageModel : PageModel
 
     /// <summary>The selected Proposal's automatic Parsimony advice, kept current while its job runs.</summary>
     public ProposalParsimonyViewModel Parsimony { get; }
+
+    /// <summary>The selected Proposal's pictures, which a person adds to and removes while it is open.</summary>
+    public ProposalPicturesViewModel Pictures { get; }
+
+    /// <summary>The read of the selected Proposal's pictures that is under way, or the last one that ended.</summary>
+    public Task PicturesLoading { get; private set; } = Task.CompletedTask;
 
     /// <summary>The watch of the selected Proposal's Parsimony status that is under way, or the last one that ended.</summary>
     public Task ParsimonyWatching { get; private set; } = Task.CompletedTask;
@@ -845,9 +856,14 @@ public sealed partial class ProposalsPageModel : PageModel
             // A re-read of the list deselects for a moment; it settles the Difference when it finishes.
             if (!_rereading) ClearDifference();
             // Only the brief empty selection of a re-read keeps a watch; any other end closes it.
-            if (value is not null || !_rereading) Parsimony.Stop();
+            if (value is not null || !_rereading)
+            {
+                Parsimony.Stop();
+                Pictures.Clear();
+            }
             return;
         }
+        PicturesLoading = Pictures.LoadAsync(path, value.ProposalId, !value.Card.IsDraft && !PicturesFrozen(value.Card.Status));
         Parsimony.SetParserWork(value.Card.Trial?.Work);
         ParsimonyWatching = Parsimony.Watch(path, value.ProposalId);
         // The same Proposal chosen again, as when the list was re-read, only refreshes what its card offers.
@@ -881,12 +897,17 @@ public sealed partial class ProposalsPageModel : PageModel
         {
             ClearDifference();
             Parsimony.Stop();
+            Pictures.Clear();
         }
     }
+
+    // A decided Proposal keeps its pictures as they were; Deferred is still open.
+    private static bool PicturesFrozen(string status) => status is "applied" or "rejected" or "withdrawn" or "superseded";
 
     protected override Task OnStopWorkAsync()
     {
         Parsimony.Stop();
+        Pictures.Clear();
         return Difference.StopAsync();
     }
 

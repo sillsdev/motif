@@ -42,12 +42,25 @@ public sealed class ProgressiveDisplayTests
 
     public ProgressiveDisplayTests(ITestOutputHelper output) => _output = output;
 
+    // The most pictures a Proposal holds, listed by a store that answers at once.
+    private static ProposalPicturesViewModel ManyPictures()
+    {
+        var views = Enumerable.Range(1, 20).Select(id => new PictureView(id, null, "image/png", 4000, 3000, 900_000,
+            "2026-01-01T00:00:00Z")).ToArray();
+        var model = new ProposalPicturesViewModel(
+            (request, _) => Task.FromResult(CommandOutcome<ProposalPicturesResponse>.Success(new ProposalPicturesResponse(
+                request.ProposalId, views, request.PictureId is null ? null : Convert.ToBase64String(new byte[8])))),
+            (_, _) => throw new NotSupportedException(), (_, _) => throw new NotSupportedException(), null);
+        model.LoadAsync("project", "proposal/scale", canEdit: true).GetAwaiter().GetResult();
+        return model;
+    }
+
     private static readonly string[] ViewNames =
     [
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
         "Inspector", "MiniMatrix", "MotifWorkspaceView", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
-        "ProposalDifferencePanel", "ProposalParsimonyPanel", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
+        "ProposalDifferencePanel", "ProposalParsimonyPanel", "ProposalPicturesPanel", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordAttemptInspector", "TryWordPanel", "WarningsFilterPanel", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
     ];
@@ -1124,6 +1137,7 @@ public sealed class ProgressiveDisplayTests
             "ProposalParsimonyPanel" => new ProposalParsimonyPanel { DataContext = new ProposalParsimonyViewModel(
                 (_, _) => Task.FromResult(CommandOutcome<SIL.Motif.Contract.Parsimony.ProposalParsimonyStatus>.Success(
                     ProposalParsimonyStatusFixtures.Ready("proposal/scale")))) },
+            "ProposalPicturesPanel" => new ProposalPicturesPanel { DataContext = ManyPictures() },
             "RefusalBlock" => new RefusalBlock { DataContext = CompileRefusal(1) },
             "ResultsInTextPanel" => new ResultsInTextPanel(texts.ResultsInText),
             "RetirementProposalReviewPanel" => new RetirementProposalReviewPanel

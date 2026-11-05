@@ -49,6 +49,18 @@ public sealed partial class CommandClient
             ? Task.FromResult(WaitCancelled<ProposalDeletedResponse>())
             : Task.Run(() => ProposalLifecycleCommand.Delete(request));
 
+    public Task<CommandOutcome<ProposalPicturesResponse>> ShowProposalPicturesAsync(
+        ShowPicturesRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalPictures.Show(request), cancellationToken);
+
+    public Task<CommandOutcome<ProposalPictureChangedResponse>> AddProposalPictureAsync(
+        AddPictureRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalPictures.Add(request), cancellationToken);
+
+    public Task<CommandOutcome<ProposalPictureChangedResponse>> RemoveProposalPictureAsync(
+        RemovePictureRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalPictures.Remove(request), cancellationToken);
+
     public Task<CommandOutcome<CurrentEvidenceSnapshot>> ReadCurrentEvidenceAsync(
         string projectPath, CancellationToken cancellationToken) =>
         Task.Run(() => CurrentEvidenceQuery.ReadCurrentEvidence(projectPath));

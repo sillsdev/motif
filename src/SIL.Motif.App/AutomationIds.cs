@@ -117,6 +117,10 @@ public static class AutomationIds
     public const string ProposalDifferencePanel = "motif-proposal-difference";
     /// <summary>The automatic Parsimony advice section of the Proposal inspector.</summary>
     public const string ProposalParsimonyPanel = "motif-proposal-parsimony";
+    /// <summary>The pictures section of the Proposal inspector.</summary>
+    public const string ProposalPicturesPanel = "motif-proposal-pictures";
+    /// <summary>The button that chooses a picture to add to the selected Proposal.</summary>
+    public const string ProposalPictureAdd = "motif-proposal-picture-add";
     public const string ProposalParsimonyState = "motif-proposal-parsimony-state";
     public const string ProposalParsimonyGroups = "motif-proposal-parsimony-groups";
     /// <summary>The short read of the Parsimony section: which measures found new Findings.</summary>

@@ -134,7 +134,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         IDiagnosticFilePicker? diagnosticFiles = null, IDiagnosticWindowDialogs? diagnosticDialogs = null,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
         IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null,
-        IDefaultProposalChecksStore? defaultProposalChecks = null, ITryWordSessions? tryWordSessions = null)
+        IDefaultProposalChecksStore? defaultProposalChecks = null, ITryWordSessions? tryWordSessions = null,
+        IPictureIntake? pictureIntake = null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -172,6 +173,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         DefaultProposalChecks = defaultProposalChecks ?? new MemoryDefaultProposalChecksStore();
         AssistantConnections = assistantConnections ?? NoAssistantConnectionService.Instance;
         UriLauncher = uriLauncher;
+        PictureIntake = pictureIntake;
         Assess.PropertyChanged += OnAssessPropertyChanged;
         Selection.PropertyChanged += OnSelectionPropertyChanged;
         Assess.Words.Routes.HasTexts = Selection.HasTexts;
@@ -255,6 +257,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The service that finds assistants and connects them to Motif.</summary>
     public IAssistantConnectionService AssistantConnections { get; }
+
+    /// <summary>Where a person chooses a picture for a Proposal; null when the window offers none.</summary>
+    public IPictureIntake? PictureIntake { get; }
 
     /// <summary>The window launcher for the plugin ZIP and client setup page.</summary>
     public IUriLauncher? UriLauncher { get; }

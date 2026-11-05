@@ -1529,6 +1529,57 @@ try
                         commentProject, CliProductVersion(), positionals[2], commentId)));
                 break;
             }
+            if (positionals.Count >= 2 && positionals[0] == "picture")
+            {
+                var pictureUsage = positionals[1] is "add" or "remove" or "show"
+                    ? UsageLineFor("proposal picture " + positionals[1])
+                    : "proposal picture (add | remove | show) <proposalId> ... --project <fwdata>";
+                if (positionals.Count < 3 || positionals[1] is not ("add" or "remove" or "show") ||
+                    !flags.TryGetValue("project", out var pictureProject))
+                    return Usage(pictureUsage, asJson);
+                if (positionals[1] == "add")
+                {
+                    if (positionals.Count != 3 || !flags.TryGetValue("file", out var pictureFile))
+                        return Usage(pictureUsage, asJson);
+                    if (!File.Exists(pictureFile))
+                        return Usage("The file '" + pictureFile + "' does not exist. " + pictureUsage, asJson);
+                    long? pictureComment = null;
+                    if (flags.TryGetValue("comment", out var pictureCommentText))
+                    {
+                        if (!long.TryParse(pictureCommentText, out var parsedComment)) return Usage(pictureUsage, asJson);
+                        pictureComment = parsedComment;
+                    }
+                    if (new FileInfo(pictureFile).Length > ProposalPictures.MaxBytes)
+                        return Usage("The file is larger than " + ProposalPictures.MaxBytes + " bytes; scale it down first. " + pictureUsage, asJson);
+                    result = RenderCommand(ProposalPictures.Add(new AddPictureRequest(pictureProject, CliProductVersion(),
+                        positionals[2], File.ReadAllBytes(pictureFile), pictureComment)));
+                    break;
+                }
+                if (positionals[1] == "remove")
+                {
+                    if (positionals.Count != 4 || !long.TryParse(positionals[3], out var removePictureId))
+                        return Usage(pictureUsage, asJson);
+                    result = RenderCommand(ProposalPictures.Remove(new RemovePictureRequest(
+                        pictureProject, CliProductVersion(), positionals[2], removePictureId)));
+                    break;
+                }
+                long? showPictureId = null;
+                if (positionals.Count == 4)
+                {
+                    if (!long.TryParse(positionals[3], out var parsedShow) || !flags.ContainsKey("out"))
+                        return Usage(pictureUsage, asJson);
+                    showPictureId = parsedShow;
+                }
+                else if (positionals.Count != 3 || flags.ContainsKey("out")) return Usage(pictureUsage, asJson);
+                var shown = ProposalPictures.Show(new ShowPicturesRequest(
+                    pictureProject, CliProductVersion(), positionals[2], showPictureId));
+                if (shown is { Succeeded: true, Value.DataBase64: { } shownData })
+                    File.WriteAllBytes(flags["out"], Convert.FromBase64String(shownData));
+                result = RenderCommand(shown.Succeeded
+                    ? CommandOutcome<ProposalPicturesResponse>.Success(shown.Value! with { DataBase64 = null })
+                    : shown);
+                break;
+            }
             if (positionals.Count == 2 && positionals[0] == "rationale")
             {
                 var textUsage = UsageLineFor("proposal rationale");
@@ -2587,6 +2638,9 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
 static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
     IReadOnlyList<string> positionals)
 {
+    if (verb == "proposal" && positionals.Count >= 2 && positionals[0] == "picture" &&
+        positionals[1] is "add" or "remove" or "show")
+        return "proposal picture " + positionals[1];
     if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note")
         return "proposal " + positionals[0];
     if (verb == "parsimony")

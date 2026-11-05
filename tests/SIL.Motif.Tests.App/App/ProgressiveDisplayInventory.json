@@ -860,6 +860,13 @@
     "control": "ItemsControl"
   },
   {
+    "view": "ProposalPicturesPanel",
+    "name": "ProposalPictureItems",
+    "source": "Items",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
     "view": "ProposalParsimonyPanel",
     "name": "ParsimonyGroups",
     "source": "Groups",

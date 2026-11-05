@@ -111,6 +111,42 @@ public sealed class StorePruneCommandTests : IDisposable
         Assert.True(new FileInfo(store).Length < afterPrune / 2);
     }
 
+    [Fact]
+    public void AStoreFullOfPicturesReportsOverBudgetAndLosesNone()
+    {
+        var project = Path.Combine(_root, "pictures.fwdata");
+        File.WriteAllText(project, "fixture");
+        var id = SIL.Motif.Contract.Ids.CanonicalId.Mint();
+        var seeded = ProjectStoreCommand.Run<string>(project, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            using (var connection = database.OpenConnection())
+            using (var insert = connection.CreateCommand())
+            {
+                insert.CommandText = "INSERT INTO Proposals (ProposalId, Status) VALUES ($id, 'proposed');";
+                insert.Parameters.AddWithValue("$id", id.Value);
+                insert.ExecuteNonQuery();
+            }
+            var pictures = new ProposalPictureRepository(database);
+            var bytes = new byte[1_000_000];
+            for (var i = 0; i < 6; i++)
+            {
+                new Random(i).NextBytes(bytes);
+                Assert.Equal(PictureWriteOutcome.Written, pictures.Add(id, null, "image/png", 10, 10, bytes).Outcome);
+            }
+            return CommandOutcome<string>.Success("seeded");
+        });
+        Assert.True(seeded.Succeeded, seeded.Refusal?.Message);
+
+        var result = StorePruneCommand.Run(new StorePruneRequest(project, ByteBudget: 3_000_000));
+
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.True(result.Value!.OverBudget);
+        Assert.True(result.Value.BytesAfter > 3_000_000);
+        var remaining = ProjectStoreCommand.Run<string>(project, MotifProductVersion.CurrentText, (database, _) =>
+            CommandOutcome<string>.Success(new ProposalPictureRepository(database).List(id).Count.ToString()));
+        Assert.Equal("6", remaining.Value);
+    }
+
     private static string SeedBulkyStore(string project, bool legacy)
     {
         File.WriteAllText(project, "fixture");

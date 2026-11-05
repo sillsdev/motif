@@ -563,6 +563,12 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor("Commands", "proposal", "proposal comment delete",
             new[] { "proposal comment delete <proposalId> <commentId> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal picture add",
+            new[] { "proposal picture add <proposalId> --project <fwdata> --file <png-or-jpeg> [--comment <commentId>] [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal picture remove",
+            new[] { "proposal picture remove <proposalId> <pictureId> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "proposal", "proposal picture show",
+            new[] { "proposal picture show <proposalId> [<pictureId> --out <path>] --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal looked-at",
             new[]
             {

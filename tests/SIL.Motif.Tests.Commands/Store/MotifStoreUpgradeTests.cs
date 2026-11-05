@@ -143,6 +143,31 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         Assert.Equal(0, Count(upgraded, "ProposalPictures"));
     }
 
+    [Fact]
+    public void UpgradeCarriesProposalPicturesWithTheirBytes()
+    {
+        CreateCurrentSchemaAsOld();
+        var bytes = new byte[5000];
+        new Random(11).NextBytes(bytes);
+        using (var old = Connect(Source))
+        {
+            Execute(old, "INSERT INTO Proposals (ProposalId, Status) VALUES ('open', 'proposed');");
+            using var insert = old.CreateCommand();
+            insert.CommandText = "INSERT INTO ProposalPictures (ProposalId, CommentId, MediaType, Width, Height, Bytes, CreatedUtc) " +
+                "VALUES ('open', NULL, 'image/png', 40, 30, $bytes, '2026-01-01T00:00:00Z');";
+            insert.Parameters.AddWithValue("$bytes", bytes);
+            insert.ExecuteNonQuery();
+        }
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(1, report.Carried["ProposalPictures"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        using var read = upgraded.CreateCommand();
+        read.CommandText = "SELECT Bytes FROM ProposalPictures WHERE ProposalId = 'open';";
+        Assert.Equal(bytes, (byte[])read.ExecuteScalar()!);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

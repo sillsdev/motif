@@ -1132,6 +1132,42 @@
     <value>Reading Proposals…</value>
     <comment>Window text.</comment>
   </data>
+  <data name="MotifApp.PicturesTitle" xml:space="preserve">
+    <value>Pictures</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.AddPicture" xml:space="preserve">
+    <value>Add Picture…</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.RemovePicture" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.NoPicturesYet" xml:space="preserve">
+    <value>No pictures yet.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.PictureNotRead" xml:space="preserve">
+    <value>That file could not be read as a picture.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.PictureNotSupported" xml:space="preserve">
+    <value>That file is not a kind of picture Motif can use. Choose a PNG, JPEG, GIF, BMP or WebP picture.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.PictureTooBig" xml:space="preserve">
+    <value>That picture could not be made small enough to keep with the Proposal.</value>
+    <comment>Window text.</comment>
+  </data>
+  <data name="MotifApp.PictureDescription" xml:space="preserve">
+    <value>{0} × {1} pixels, {2} KB</value>
+    <comment>Window text. {0} and {1} are the width and height in pixels, {2} the size in kilobytes.</comment>
+  </data>
+  <data name="MotifApp.PicturesAccessibleName" xml:space="preserve">
+    <value>Pictures on this Proposal</value>
+    <comment>Window text.</comment>
+  </data>
   <data name="MotifApp.NoProposalsYet" xml:space="preserve">
     <value>No Proposals yet</value>
     <comment>Window text.</comment>
@@ -5840,6 +5876,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.RefusalProposalCommentInvalid" xml:space="preserve">
     <value>That comment could not be saved. It needs some text, and a name can be at most 100 characters.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProposalCommentInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalProposalPictureInvalid" xml:space="preserve">
+    <value>That picture could not be added. It must be a PNG or JPEG picture of about 1 MB or less, and a Proposal holds a limited number of pictures.</value>
+    <comment>Sentence the window shows when the command refuses with code C.ProposalPictureInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalRationaleEmpty" xml:space="preserve">
     <value>These changes need an explanation of what they do before they can be finished.</value>

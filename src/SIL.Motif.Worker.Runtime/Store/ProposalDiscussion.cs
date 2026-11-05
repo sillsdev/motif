@@ -295,7 +295,7 @@ public sealed class ProposalDiscussionRepository
     }
 
     // Written means the Proposal exists and is open.
-    private static CommentWriteOutcome StateOf(SqliteConnection connection, SqliteTransaction transaction, string proposalId)
+    internal static CommentWriteOutcome StateOf(SqliteConnection connection, SqliteTransaction transaction, string proposalId)
     {
         using var read = connection.CreateCommand();
         read.Transaction = transaction;

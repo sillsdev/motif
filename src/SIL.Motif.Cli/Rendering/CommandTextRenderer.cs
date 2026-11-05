@@ -111,6 +111,8 @@ public static class CommandTextRenderer
             ProposalStandings r => RenderProposalStandings(r),
             ProposalTextChangedResponse r => ProposalCommandRenderer.RenderTextChanged(r),
             ProposalCommentChangedResponse r => ProposalCommandRenderer.RenderCommentChanged(r),
+            ProposalPictureChangedResponse r => ProposalCommandRenderer.RenderPictureChanged(r),
+            ProposalPicturesResponse r => ProposalCommandRenderer.RenderPictures(r),
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);

@@ -104,6 +104,7 @@
                                            TextWrapping="Wrap" />
                 </StackPanel>
               </Border>
+              <views:ProposalPicturesPanel DataContext="{Binding Pictures}" />
               <views:ProposalDifferencePanel DataContext="{Binding Difference}" />
               <views:RefusalBlock DataContext="{Binding SelectedProposal.ShownRefusal}" />
               <views:TrialBaselineNoticeBlock DataContext="{Binding SelectedProposal.BaselineNotice}" />

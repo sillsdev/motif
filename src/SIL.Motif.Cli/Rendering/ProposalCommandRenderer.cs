@@ -59,6 +59,8 @@ public static class ProposalCommandRenderer
             DraftFieldChangedResponse r => $"Set {r.Field} on draft '{r.DraftName}'.{Environment.NewLine}",
             ProposalTextChangedResponse r => RenderTextChanged(r),
             ProposalCommentChangedResponse r => RenderCommentChanged(r),
+            ProposalPictureChangedResponse r => RenderPictureChanged(r),
+            ProposalPicturesResponse r => RenderPictures(r),
             ProposalFinalizedResponse r => RenderProposalFinalized(r),
             DraftDiscardedResponse r => RenderDraftDiscarded(r),
             ReopenedResponse r => RenderReopened(r),
@@ -257,6 +259,20 @@ public static class ProposalCommandRenderer
     {
         var text = $"Comment {response.CommentId} {response.Change} on Proposal {response.ProposalId}.{Environment.NewLine}";
         return response.CommentsChanged ? text + CommentsNewer : text;
+    }
+
+    internal static string RenderPictureChanged(ProposalPictureChangedResponse response) =>
+        $"Picture {response.PictureId} {response.Change} on Proposal {response.ProposalId}.{Environment.NewLine}";
+
+    internal static string RenderPictures(ProposalPicturesResponse response)
+    {
+        if (response.Pictures.Count == 0)
+            return $"Proposal {response.ProposalId} has no pictures.{Environment.NewLine}";
+        var sb = new StringBuilder($"Pictures on Proposal {response.ProposalId}:{Environment.NewLine}");
+        foreach (var p in response.Pictures)
+            sb.AppendLine($"  {p.PictureId}  {p.MediaType}  {p.Width}x{p.Height}  {p.ByteCount} bytes" +
+                (p.CommentId is { } c ? $"  on Comment {c}" : ""));
+        return sb.ToString();
     }
 
     private static readonly string CommentsNewer =

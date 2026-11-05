@@ -721,6 +721,15 @@ public static class MotifAppStrings
 
     public static string SomeReviewDetailsCouldNotBe => Text("MotifApp.SomeReviewDetailsCouldNotBe");
 
+    public static string PicturesTitle => Text("MotifApp.PicturesTitle");
+    public static string AddPicture => Text("MotifApp.AddPicture");
+    public static string RemovePicture => Text("MotifApp.RemovePicture");
+    public static string NoPicturesYet => Text("MotifApp.NoPicturesYet");
+    public static string PictureNotRead => Text("MotifApp.PictureNotRead");
+    public static string PictureNotSupported => Text("MotifApp.PictureNotSupported");
+    public static string PictureTooBig => Text("MotifApp.PictureTooBig");
+    public static string PictureDescription => Text("MotifApp.PictureDescription");
+    public static string PicturesAccessibleName => Text("MotifApp.PicturesAccessibleName");
     public static string ReadingProposals => Text("MotifApp.ReadingProposals");
 
     public static string NoProposalsYet => Text("MotifApp.NoProposalsYet");
@@ -2977,6 +2986,7 @@ public static class MotifAppStrings
     public static string RefusalProposalNotFound => Text("MotifApp.RefusalProposalNotFound");
 
     public static string RefusalProposalCommentInvalid => Text("MotifApp.RefusalProposalCommentInvalid");
+    public static string RefusalProposalPictureInvalid => Text("MotifApp.RefusalProposalPictureInvalid");
     public static string RefusalProposalRationaleEmpty => Text("MotifApp.RefusalProposalRationaleEmpty");
 
     public static string RefusalProposalUnreadable => Text("MotifApp.RefusalProposalUnreadable");
