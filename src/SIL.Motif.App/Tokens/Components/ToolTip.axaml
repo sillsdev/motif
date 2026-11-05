@@ -9,7 +9,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <StaticResource x:Key="Component.ToolTip.MaxWidth" ResourceKey="Primitive.Size.320" />
-    <StaticResource x:Key="Component.ToolTip.ApplyReasonWidth" ResourceKey="Primitive.Size.280" />
     <StaticResource x:Key="Component.ToolTip.Padding" ResourceKey="Intent.Inset.Tooltip" />
     <StaticResource x:Key="Component.ToolTip.Radius" ResourceKey="Intent.Radius.Control" />
   </Styles.Resources>
@@ -33,9 +32,6 @@
         </LayoutTransformControl>
       </ControlTemplate>
     </Setter>
-  </Style>
-  <Style Selector="Button.reviewApplyTooltip ToolTip">
-    <Setter Property="MaxWidth" Value="{DynamicResource Component.ToolTip.ApplyReasonWidth}" />
   </Style>
   <Style Selector="ToolTip:open :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Tooltip.Text}" />
