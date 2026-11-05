@@ -37,5 +37,6 @@
   </Style>
   <Style Selector="StackPanel.proposalPictureItem">
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Minimal}" />
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.Proposals.PictureThumbSize}" />
   </Style>
 </Styles>

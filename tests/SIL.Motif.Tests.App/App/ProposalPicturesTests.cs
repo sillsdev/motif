@@ -230,6 +230,24 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
 
         await model.RemoveCommand.ExecuteAsync(item);
 
+        Assert.Single(model.Items);
+        Assert.Empty(fake.RemovePictureRequests);
+        Assert.True(item.IsConfirmingRemoval);
+
+        model.CancelRemoveCommand.Execute(null);
+        Assert.False(item.IsConfirmingRemoval);
+        Assert.Single(model.Items);
+
+        await model.RemoveCommand.ExecuteAsync(item);
+        await model.LoadAsync(ProjectPath, "p/other", canEdit: true);
+        await model.ConfirmRemoveCommand.ExecuteAsync(item);
+        Assert.Empty(fake.RemovePictureRequests);
+
+        await model.LoadAsync(ProjectPath, "p/one", canEdit: true);
+        item = Assert.Single(model.Items);
+        await model.RemoveCommand.ExecuteAsync(item);
+        await model.ConfirmRemoveCommand.ExecuteAsync(item);
+
         Assert.Empty(model.Items);
         Assert.True(model.IsEmpty);
     }

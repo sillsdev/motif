@@ -1144,6 +1144,10 @@
     <value>Remove</value>
     <comment>Window text.</comment>
   </data>
+  <data name="MotifApp.ConfirmRemovePicture" xml:space="preserve">
+    <value>Remove this picture?</value>
+    <comment>Confirmation shown beside the picture before it is removed.</comment>
+  </data>
   <data name="MotifApp.ParseSelectionSummaryFormat" xml:space="preserve">
     <value>Parse Selection: {0}</value>
     <comment>Status bar label followed by the words and Texts chosen for parsing. {0} is the selection summary.</comment>
@@ -1173,7 +1177,7 @@
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.PictureTooBig" xml:space="preserve">
-    <value>That picture could not be made small enough to keep with the Proposal.</value>
+    <value>That picture could not be made small enough to keep with the Proposal. Crop it or export it as a JPEG, then try again.</value>
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.PictureDescription" xml:space="preserve">

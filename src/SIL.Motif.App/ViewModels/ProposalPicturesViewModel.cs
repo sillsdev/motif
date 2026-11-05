@@ -11,7 +11,7 @@ using SIL.Motif.Host;
 namespace SIL.Motif.App.ViewModels;
 
 /// <summary>One picture on the selected Proposal: its bytes for the thumbnail and a sentence that says what it is.</summary>
-public sealed class ProposalPictureItem
+public sealed partial class ProposalPictureItem : ObservableObject
 {
     /// <summary>Creates the item.</summary>
     public ProposalPictureItem(PictureView view, byte[] bytes)
@@ -31,6 +31,10 @@ public sealed class ProposalPictureItem
 
     /// <summary>Its size in pixels and in kilobytes, in words.</summary>
     public string Description { get; }
+
+    /// <summary>Whether removal of this picture is awaiting confirmation.</summary>
+    [ObservableProperty]
+    private bool _isConfirmingRemoval;
 }
 
 /// <summary>
@@ -46,6 +50,7 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
     private string? _projectPath;
     private string? _proposalId;
     private int _generation;
+    private ProposalPictureItem? _pendingRemoval;
 
     /// <summary>Creates the model.</summary>
     public ProposalPicturesViewModel(
@@ -59,7 +64,9 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
         _remove = remove ?? throw new ArgumentNullException(nameof(remove));
         _intake = intake;
         AddCommand = new AsyncRelayCommand(AddAsync, () => CanAdd);
-        RemoveCommand = new AsyncRelayCommand<ProposalPictureItem>(RemoveAsync);
+        RemoveCommand = new AsyncRelayCommand<ProposalPictureItem>(AskToRemoveAsync);
+        ConfirmRemoveCommand = new AsyncRelayCommand<ProposalPictureItem>(RemoveAsync);
+        CancelRemoveCommand = new RelayCommand(CancelRemove);
     }
 
     /// <summary>The pictures, oldest first.</summary>
@@ -68,8 +75,14 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
     /// <summary>Chooses a picture and adds it.</summary>
     public IAsyncRelayCommand AddCommand { get; }
 
-    /// <summary>Removes the picture it is given.</summary>
+    /// <summary>Asks before removing the picture it is given.</summary>
     public IAsyncRelayCommand<ProposalPictureItem> RemoveCommand { get; }
+
+    /// <summary>Removes the picture whose removal was confirmed.</summary>
+    public IAsyncRelayCommand<ProposalPictureItem> ConfirmRemoveCommand { get; }
+
+    /// <summary>Keeps the picture whose removal was requested.</summary>
+    public IRelayCommand CancelRemoveCommand { get; }
 
     /// <summary>Whether a Proposal is shown, so the section appears.</summary>
     [ObservableProperty]
@@ -111,6 +124,8 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
     /// <summary>Reads a Proposal's pictures; <paramref name="canEdit"/> is false once it is decided.</summary>
     public async Task LoadAsync(string projectPath, string proposalId, bool canEdit, CancellationToken cancellationToken = default)
     {
+        CancelRemove();
+        CanEdit = false;
         var generation = ++_generation;
         _projectPath = projectPath;
         _proposalId = proposalId;
@@ -127,6 +142,7 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
     /// <summary>Forgets the Proposal, as when none is selected.</summary>
     public void Clear()
     {
+        CancelRemove();
         _generation++;
         _projectPath = _proposalId = null;
         Items.Clear();
@@ -198,13 +214,33 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
         await ReloadAsync(path, proposalId).ConfigureAwait(true);
     }
 
+    private Task AskToRemoveAsync(ProposalPictureItem? item)
+    {
+        CancelRemove();
+        if (item is not null && CanEdit && Items.Contains(item))
+        {
+            _pendingRemoval = item;
+            item.IsConfirmingRemoval = true;
+        }
+        return Task.CompletedTask;
+    }
+
+    private void CancelRemove()
+    {
+        if (_pendingRemoval is { } item) item.IsConfirmingRemoval = false;
+        _pendingRemoval = null;
+    }
+
     private async Task RemoveAsync(ProposalPictureItem? item)
     {
-        if (item is null || !CanEdit || _projectPath is not { } path || _proposalId is not { } proposalId) return;
+        if (item is null || !ReferenceEquals(item, _pendingRemoval) || !CanEdit ||
+            _projectPath is not { } path || _proposalId is not { } proposalId) return;
+        CancelRemove();
         Problem = "";
         ShownRefusal = null;
         var removed = await _remove(new RemovePictureRequest(path, MotifProductVersion.CurrentText, proposalId, item.PictureId),
             CancellationToken.None).ConfigureAwait(true);
+        if (path != _projectPath || proposalId != _proposalId) return;
         if (!removed.Succeeded) ShownRefusal = WindowRefusal.From(removed.Refusal!);
         await ReloadAsync(path, proposalId).ConfigureAwait(true);
     }

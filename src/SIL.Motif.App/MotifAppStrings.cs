@@ -725,6 +725,8 @@ public static class MotifAppStrings
     public static string AddPicture => Text("MotifApp.AddPicture");
     public static string RemovePicture => Text("MotifApp.RemovePicture");
 
+    public static string ConfirmRemovePicture => Text("MotifApp.ConfirmRemovePicture");
+
     public static string ParseSelectionSummaryFormat => Text("MotifApp.ParseSelectionSummaryFormat");
 
     public static string ProposalParsimonyFindingsHeader => Text("MotifApp.ProposalParsimonyFindingsHeader");

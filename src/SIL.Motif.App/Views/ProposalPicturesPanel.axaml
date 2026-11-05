@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ProposalPicturesPanel"
@@ -30,9 +31,24 @@
                      AutomationProperties.Name="{Binding Description}" />
               <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Description}" />
               <Button Content="{x:Static app:MotifAppStrings.RemovePicture}"
-                      IsVisible="{Binding $parent[ItemsControl].((vm:ProposalPicturesViewModel)DataContext).CanRemove}"
                       Command="{Binding $parent[ItemsControl].((vm:ProposalPicturesViewModel)DataContext).RemoveCommand}"
-                      CommandParameter="{Binding}" />
+                      CommandParameter="{Binding}">
+                <Button.IsVisible>
+                  <MultiBinding Converter="{x:Static conv:BoolConverters.And}">
+                    <Binding Path="$parent[ItemsControl].((vm:ProposalPicturesViewModel)DataContext).CanRemove" />
+                    <Binding Path="!IsConfirmingRemoval" />
+                  </MultiBinding>
+                </Button.IsVisible>
+              </Button>
+              <StackPanel IsVisible="{Binding IsConfirmingRemoval}" Spacing="{DynamicResource Intent.Space.Compact}">
+                <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ConfirmRemovePicture}"
+                                         TextWrapping="Wrap" />
+                <Button Content="{x:Static app:MotifAppStrings.RemovePicture}"
+                        Command="{Binding $parent[ItemsControl].((vm:ProposalPicturesViewModel)DataContext).ConfirmRemoveCommand}"
+                        CommandParameter="{Binding}" />
+                <Button Content="{x:Static app:MotifAppStrings.Cancel}"
+                        Command="{Binding $parent[ItemsControl].((vm:ProposalPicturesViewModel)DataContext).CancelRemoveCommand}" />
+              </StackPanel>
             </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
