@@ -397,6 +397,8 @@ public sealed class ReviewWorkspacePaneTests
         var apply = ApplyButton(host);
         Assert.True(apply.IsEffectivelyVisible);
         Assert.False(apply.IsEnabled);
+        Assert.Null(ToolTip.GetTip(apply));
+        Assert.Equal(page.ApplyDisabledReason, AutomationProperties.GetHelpText(apply));
         var reason = DisabledReason(host);
         Assert.True(reason.IsEffectivelyVisible);
         Assert.False(string.IsNullOrWhiteSpace(reason.Text));

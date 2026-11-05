@@ -903,8 +903,6 @@ internal static class TooltipOwners
         {
             Gap = "in the Today view a list that can go to AI Handoff has no help text, and an empty tooltip still opens; in the pair view, when the two sides cover different words, a word only the Proposal measured is counted but not sent",
         },
-        new("Apply to FieldWorks project", "Views/ReviewPanel.axaml", "{Binding ApplyDisabledReason}", TooltipScene.ReviewStaged,
-            control => control is Button && Name(control) == "Apply to FieldWorks project"),
         new("Review count title", "Views/ReviewPanel.axaml", "{Binding CountText}", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock &&
                 AutomationProperties.GetAutomationId(control) == AutomationIds.ReviewCountTitle)

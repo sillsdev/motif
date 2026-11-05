@@ -120,9 +120,8 @@
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
         <Button Content="{x:Static app:MotifAppStrings.ReviewApply}" Command="{Binding ApplyCommand}"
                 IsEnabled="{Binding CanApply}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ApplyToFieldWorksProjectAccessibleName}"
-                ToolTip.Tip="{Binding ApplyDisabledReason}" ToolTip.ShowOnDisabled="True"
-                Classes="reviewAction reviewApplyTooltip"
-                views:ClearTipPlacement.IsEnabled="True"
+                AutomationProperties.HelpText="{Binding ApplyDisabledReason}"
+                Classes="reviewAction"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyChanges}" />
         <StackPanel Grid.Column="1" VerticalAlignment="Center" IsVisible="{Binding !CanApply}">
           <ContentControl Content="{Binding ApplyBlockers[0]}" ContentTemplate="{StaticResource ApplyShortReasonTemplate}"
@@ -166,9 +165,9 @@
                 IsVisible="{Binding IsMeasuring}" />
         <Button Classes="reviewAction" Content="{Binding BackText}" Command="{Binding KeepEditingCommand}" IsVisible="{Binding ShowsBackButton}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewBack}" />
-        <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Decline}" Command="{Binding DeclineCommand}" IsVisible="{Binding ShowsDecline}"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.DeclineProposal}" />
       </WrapPanel>
+      <Button Classes="reviewAction" Content="{x:Static app:MotifAppStrings.Decline}" Command="{Binding DeclineCommand}" IsVisible="{Binding ShowsDecline}"
+              HorizontalAlignment="Left" AutomationProperties.AutomationId="{x:Static app:AutomationIds.DeclineProposal}" />
     </StackPanel>
       </Border>
     </DataTemplate>
