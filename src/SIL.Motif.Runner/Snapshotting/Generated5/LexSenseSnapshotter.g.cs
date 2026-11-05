@@ -4,7 +4,7 @@
 //   manifest or MasterLCModel.xml change, and check in the result.
 //
 //   Source rows (Scope=in, Kind=basic, Verbs=set|clear, DeclaringClass=LexSense):
-//   LexSense.Definition (MultiString).
+//   LexSense.Definition (MultiString), LexSense.AnthroNote (MultiString), LexSense.DiscourseNote (MultiString), LexSense.GeneralNote (MultiString), LexSense.GrammarNote (MultiString), LexSense.PhonologyNote (MultiString), LexSense.SemanticsNote (MultiString), LexSense.SocioLinguisticsNote (MultiString).
 // </auto-generated>
 using System.Collections.Generic;
 using SIL.Motif.Contract.Ids;
@@ -25,6 +25,13 @@ public static class LexSenseAuthoringSnapshotter
         var fields = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
         AddIfPopulated(fields, SnapshotFields.LexSenseDefinition, MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, lexSense.Definition));
+        AddIfPopulated(fields, SnapshotFields.LexSenseAnthroNote, MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, lexSense.AnthroNote));
+        AddIfPopulated(fields, SnapshotFields.LexSenseDiscourseNote, MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, lexSense.DiscourseNote));
+        AddIfPopulated(fields, SnapshotFields.LexSenseGeneralNote, MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, lexSense.GeneralNote));
+        AddIfPopulated(fields, SnapshotFields.LexSenseGrammarNote, MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, lexSense.GrammarNote));
+        AddIfPopulated(fields, SnapshotFields.LexSensePhonologyNote, MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, lexSense.PhonologyNote));
+        AddIfPopulated(fields, SnapshotFields.LexSenseSemanticsNote, MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, lexSense.SemanticsNote));
+        AddIfPopulated(fields, SnapshotFields.LexSenseSocioLinguisticsNote, MultiAlternativesFieldSnapshotting.ReadAlternatives(cache, lexSense.SocioLinguisticsNote));
 
         return new ObjectSnapshot(canonicalId, fields);
     }

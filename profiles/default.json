@@ -71,6 +71,9 @@
     { "tool": "motif_set_entry_do_not_parse" },
     { "tool": "motif_rewrite_lexeme_form" },
     { "tool": "motif_edit_allomorph_form" },
-    { "tool": "motif_edit_citation_form" }
+    { "tool": "motif_edit_citation_form" },
+    { "tool": "motif_edit_definition" },
+    { "tool": "motif_edit_gloss" },
+    { "tool": "motif_edit_lexical_note" }
   ]
 }

@@ -37,8 +37,29 @@ public static partial class SnapshotFields
     /// <summary>A <c>LexEntry</c>'s <c>Senses</c> owning LexSense field.</summary>
     public const string LexEntrySenses = "lexical/lexEntry/senses";
 
-    /// <summary>A <c>LexSense</c>'s <c>Definition</c> basic MultiUnicode field.</summary>
+    /// <summary>A <c>LexSense</c>'s <c>AnthroNote</c> basic MultiString field.</summary>
+    public const string LexSenseAnthroNote = "lexical/lexSense/anthroNote";
+
+    /// <summary>A <c>LexSense</c>'s <c>Definition</c> basic MultiString field.</summary>
     public const string LexSenseDefinition = "lexical/lexSense/definition";
+
+    /// <summary>A <c>LexSense</c>'s <c>DiscourseNote</c> basic MultiString field.</summary>
+    public const string LexSenseDiscourseNote = "lexical/lexSense/discourseNote";
+
+    /// <summary>A <c>LexSense</c>'s <c>GeneralNote</c> basic MultiString field.</summary>
+    public const string LexSenseGeneralNote = "lexical/lexSense/generalNote";
+
+    /// <summary>A <c>LexSense</c>'s <c>GrammarNote</c> basic MultiString field.</summary>
+    public const string LexSenseGrammarNote = "lexical/lexSense/grammarNote";
+
+    /// <summary>A <c>LexSense</c>'s <c>PhonologyNote</c> basic MultiString field.</summary>
+    public const string LexSensePhonologyNote = "lexical/lexSense/phonologyNote";
+
+    /// <summary>A <c>LexSense</c>'s <c>SemanticsNote</c> basic MultiString field.</summary>
+    public const string LexSenseSemanticsNote = "lexical/lexSense/semanticsNote";
+
+    /// <summary>A <c>LexSense</c>'s <c>SocioLinguisticsNote</c> basic MultiString field.</summary>
+    public const string LexSenseSocioLinguisticsNote = "lexical/lexSense/socioLinguisticsNote";
 
     /// <summary>A <c>MoAffixProcess</c>'s <c>Input</c> owning PhContextOrVar field.</summary>
     public const string MoAffixProcessInput = "grammar/moAffixProcess/input";

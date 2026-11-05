@@ -17,6 +17,41 @@ public sealed class LexiconReaderTests(PristineProjectFixture pristine) : IDispo
 
     public void Dispose() => _cache.Dispose();
 
+    [Fact]
+    public void DetailedReadsExposeEveryGuardableTextAlternativeWithoutExpandingConciseReads()
+    {
+        var entry = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId);
+        var sense = entry.SensesOS[0];
+        var ws = _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultAnalWs);
+        var other = _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultVernWs);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            entry.Comment.set_String(_cache.DefaultAnalWs, "entry example");
+            sense.Definition.set_String(_cache.DefaultAnalWs, "full meaning");
+            sense.Definition.set_String(_cache.DefaultVernWs, "other meaning");
+            sense.AnthroNote.set_String(_cache.DefaultAnalWs, "anthropology");
+            sense.DiscourseNote.set_String(_cache.DefaultAnalWs, "discourse");
+            sense.GeneralNote.set_String(_cache.DefaultAnalWs, "general");
+            sense.GrammarNote.set_String(_cache.DefaultAnalWs, "grammar");
+            sense.PhonologyNote.set_String(_cache.DefaultAnalWs, "phonology");
+            sense.SemanticsNote.set_String(_cache.DefaultAnalWs, "semantics");
+            sense.SocioLinguisticsNote.set_String(_cache.DefaultAnalWs, "sociolinguistics");
+        });
+        var detailed = LexiconReader.Read(_cache, new(), 100, 0, detailed: true)["entries"]!.AsArray()
+            .Single(item => item!["id"]!.GetValue<string>() == GrammarReader.Id(entry))!;
+        Assert.Equal("entry example", detailed["note"]![ws]!.GetValue<string>());
+        var readSense = detailed["senses"]![0]!;
+        Assert.Equal("full meaning", readSense["definition"]![ws]!.GetValue<string>());
+        Assert.Equal("other meaning", readSense["definition"]![other]!.GetValue<string>());
+        Assert.Equal(SeededProject.FirstGloss, readSense["glossAlternatives"]![ws]!.GetValue<string>());
+        foreach (var field in SIL.Motif.Runner.Composers.EditLexicalTextComposer.NoteFields.Where(field => field != "note"))
+            Assert.False(string.IsNullOrEmpty(readSense["notes"]![field]![ws]!.GetValue<string>()));
+        var concise = LexiconReader.Read(_cache, new(), 100, 0, detailed: false)["entries"]!.AsArray()
+            .Single(item => item!["id"]!.GetValue<string>() == GrammarReader.Id(entry))!;
+        Assert.Null(concise["note"]);
+        Assert.Null(concise["senses"]![0]!["definition"]);
+    }
+
     private JsonObject Read(LexiconFilter filter, int limit = 25, int offset = 0, bool detailed = false)
     {
         Fill();

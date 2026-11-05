@@ -50,6 +50,9 @@ public sealed class InflectionClassEditorCliTests
     [InlineData("compose-add-morphosyntax-analysis")]
     [InlineData("compose-set-entry-do-not-parse")]
     [InlineData("compose-rewrite-lexeme-form")]
+    [InlineData("compose-edit-definition")]
+    [InlineData("compose-edit-gloss")]
+    [InlineData("compose-edit-lexical-note")]
     public void EditorVerbsThatAreDraftAgentToolsStillReachCliUsage(string verb)
     {
         var descriptor = Assert.Single(CommandCatalog.All, command => command.Name == verb);

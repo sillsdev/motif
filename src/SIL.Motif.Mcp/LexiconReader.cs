@@ -109,6 +109,7 @@ internal static class LexiconReader
         {
             ["id"] = GrammarReader.Id(entry),
             ["headword"] = entry.HeadWord?.Text,
+            ["note"] = Alternatives(cache, entry.Comment),
             ["morphType"] = MorphTypeName(cache, entry.LexemeFormOA),
             ["morphTypeId"] = entry.LexemeFormOA?.MorphTypeRA is { } morphType ? GrammarReader.Id(morphType) : null,
             ["lexemeForm"] = entry.LexemeFormOA is null ? null : FormObject(cache, entry.LexemeFormOA, detailed),
@@ -125,9 +126,30 @@ internal static class LexiconReader
         ["id"] = GrammarReader.Id(sense),
         ["gloss"] = WritingSystemTextReader.BestAnalysis(cache, sense.Gloss).Text,
         ["glossWs"] = WritingSystemTextReader.BestAnalysis(cache, sense.Gloss).WritingSystem,
+        ["glossAlternatives"] = Alternatives(cache, sense.Gloss),
+        ["definition"] = Alternatives(cache, sense.Definition),
+        ["notes"] = new JsonObject
+        {
+            ["anthropology-note"] = Alternatives(cache, sense.AnthroNote),
+            ["discourse-note"] = Alternatives(cache, sense.DiscourseNote),
+            ["general-note"] = Alternatives(cache, sense.GeneralNote),
+            ["grammar-note"] = Alternatives(cache, sense.GrammarNote),
+            ["phonology-note"] = Alternatives(cache, sense.PhonologyNote),
+            ["semantics-note"] = Alternatives(cache, sense.SemanticsNote),
+            ["sociolinguistics-note"] = Alternatives(cache, sense.SocioLinguisticsNote),
+        },
         ["grammaticalInfo"] = sense.MorphoSyntaxAnalysisRA is { } msa
             ? new JsonObject { ["id"] = GrammarReader.Id(msa), ["kind"] = msa.ClassName } : null,
     };
+
+    private static JsonObject Alternatives(LcmCache cache, IMultiAccessorBase accessor)
+    {
+        var result = new JsonObject();
+        foreach (var ws in accessor.AvailableWritingSystemIds.Order())
+            if (accessor.get_String(ws)?.Text is { Length: > 0 } text)
+                result[cache.WritingSystemFactory.GetStrFromWs(ws)] = text;
+        return result;
+    }
 
     private static JsonObject FormObject(LcmCache cache, IMoForm form, bool detailed)
     {

@@ -116,7 +116,7 @@
   },
   {
     "name": "motif_lexicon",
-    "description": "Read lexicon. Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs and their environments.",
+    "description": "Read lexicon. Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs, environments and the writing-system alternatives for Gloss, Definition and notes.",
     "inputSchema": {
       "type": "object",
       "properties": {

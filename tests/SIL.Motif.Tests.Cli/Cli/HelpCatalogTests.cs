@@ -62,6 +62,9 @@ public sealed class HelpCatalogTests
     // Composers that change no grammar rule or lexical form, so no phenomenon guide applies.
     private static readonly IReadOnlyDictionary<string, string> ComposersWithoutGuides = new Dictionary<string, string>
     {
+        ["compose-edit-definition"] = "authors a sense meaning without encoding a grammar phenomenon",
+        ["compose-edit-gloss"] = "authors a short translation equivalent without encoding a grammar phenomenon",
+        ["compose-edit-lexical-note"] = "authors lexical documentation without encoding a grammar phenomenon",
         ["compose-author-text"] = "adds a text to analyse, not grammar",
         ["compose-delete-empty-sense"] = "removes an empty sense, which encodes no phenomenon",
         ["compose-edit-clitic-attachment"] = "restricts the categories a clitic attaches to, a lexical property of one analysis",

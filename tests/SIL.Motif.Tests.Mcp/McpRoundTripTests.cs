@@ -80,6 +80,87 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task LexicalTextToolsStageGuardedEditsAndClearsWithoutChangingSavedBytes()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var bytes = File.ReadAllBytes(project.FwDataPath);
+        var sense = CanonicalId.FromGuid(project.Seed.FirstSenseId).Value;
+        var entry = CanonicalId.FromGuid(project.Seed.FirstEntryId).Value;
+        string gloss;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath))
+            gloss = cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(project.Seed.FirstSenseId)
+                .Gloss.get_String(cache.DefaultAnalWs).Text ?? "";
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "lexical-text"),
+            ("label", "Lexical text"), ("rationale", "Separate the full meaning from its short gloss and record examples."));
+        var proposal = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        object Alternatives(string expected, string text) =>
+            new[] { new { writingSystem = "en", expectedText = expected, text } };
+        var definition = await session.CallAsync("motif_edit_definition", ("draft", "lexical-text"),
+            ("target", sense), ("alternatives", Alternatives("", "full meaning")));
+        Assert.True(definition.GetProperty("ok").GetBoolean(), definition.ToString());
+        var shortGloss = await session.CallAsync("motif_edit_gloss", ("draft", "lexical-text"),
+            ("target", sense), ("alternatives", Alternatives(gloss, "")));
+        Assert.True(shortGloss.GetProperty("ok").GetBoolean(), shortGloss.ToString());
+        var note = await session.CallAsync("motif_edit_lexical_note", ("draft", "lexical-text"),
+            ("target", entry), ("field", "note"), ("alternatives", Alternatives("", "example for this allomorph")));
+        Assert.True(note.GetProperty("ok").GetBoolean(), note.ToString());
+        var before = ReadDraftState(project.FwDataPath, "lexical-text");
+        var stale = await session.Client.CallToolAsync("motif_edit_lexical_note", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath, ["draft"] = "lexical-text", ["target"] = sense,
+            ["field"] = "grammar-note", ["alternatives"] = Alternatives("stale", "example"),
+        });
+        Assert.True(stale.IsError);
+        Assert.Contains("not the expected 'stale'", ((TextContentBlock)stale.Content[0]).Text, StringComparison.Ordinal);
+        AssertDraftStateUnchanged(before, ReadDraftState(project.FwDataPath, "lexical-text"));
+        var senseNote = await session.CallAsync("motif_edit_lexical_note", ("draft", "lexical-text"),
+            ("target", sense), ("field", "grammar-note"), ("alternatives", Alternatives("", "example")));
+        Assert.True(senseNote.GetProperty("ok").GetBoolean(), senseNote.ToString());
+        AssertDraftComposers(project.FwDataPath, "lexical-text", proposal,
+            ["EditDefinition", "EditGloss", "EditLexicalNote", "EditLexicalNote"]);
+        Assert.Equal(bytes, File.ReadAllBytes(project.FwDataPath));
+    }
+
+    [Fact]
+    public async Task DefinitionGuardsKeepLookupTextLiteralThroughMcp()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var loader = new FwDataProjectLoader();
+        void SaveDefinition(string text)
+        {
+            using var cache = loader.LoadCache(project.FwDataPath);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(project.Seed.FirstSenseId)
+                    .Definition.set_String(cache.DefaultAnalWs, text));
+            loader.Save(cache);
+        }
+        SaveDefinition("lookup:not-a-reference");
+        var sense = CanonicalId.FromGuid(project.Seed.FirstSenseId).Value;
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        foreach (var (draft, text) in new[] { ("literal-edit", "changed"), ("literal-clear", "") })
+        {
+            await session.CallAsync("motif_start_proposal", ("draft", draft),
+                ("label", "Edit definition"), ("rationale", "Check the literal guard."));
+            var result = await session.CallAsync("motif_edit_definition", ("draft", draft), ("target", sense),
+                ("alternatives", new[] { new { writingSystem = "en", expectedText = "lookup:not-a-reference", text } }));
+            Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
+            var operation = Assert.Single(result.GetProperty("result").GetProperty("operations").EnumerateArray());
+            Assert.Contains(text == "" ? "clearDefinition" : "setDefinition", operation.GetProperty("kind").GetString());
+        }
+        SaveDefinition(CanonicalId.FromGuid(project.Seed.SecondSenseId).Value);
+        await session.CallAsync("motif_start_proposal", ("draft", "literal-stale"),
+            ("label", "Edit definition"), ("rationale", "Check the literal guard."));
+        var refused = await session.Client.CallToolAsync("motif_edit_definition", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath, ["draft"] = "literal-stale", ["target"] = sense,
+            ["alternatives"] = new[] { new { writingSystem = "en", expectedText = "lookup:sense:motifb|second seeded gloss", text = "changed" } },
+        });
+        Assert.True(refused.IsError);
+        Assert.Contains("not the expected", ((TextContentBlock)refused.Content[0]).Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task EntryDoNotParseToolStagesWithoutApplying()
     {
         using var project = new WalkthroughProject(pristine);

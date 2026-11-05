@@ -116,7 +116,7 @@
   },
   {
     "name": "motif_lexicon",
-    "description": "Read lexicon. Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs and their environments.",
+    "description": "Read lexicon. Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs, environments and the writing-system alternatives for Gloss, Definition and notes.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -8161,6 +8161,240 @@
                   "intent"
                 ],
                 "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-definition"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-definition.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical identity of the existing sense."
+                      },
+                      "alternatives": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "writingSystem": {
+                              "type": "string"
+                            },
+                            "expectedText": {
+                              "type": "string"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "writingSystem",
+                            "expectedText",
+                            "text"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "alternatives"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-gloss"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-gloss.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical identity of the existing sense."
+                      },
+                      "alternatives": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "writingSystem": {
+                              "type": "string"
+                            },
+                            "expectedText": {
+                              "type": "string"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "writingSystem",
+                            "expectedText",
+                            "text"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "alternatives"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-lexical-note"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-lexical-note.",
+                    "properties": {
+                      "field": {
+                        "type": "string",
+                        "enum": [
+                          "note",
+                          "anthropology-note",
+                          "discourse-note",
+                          "general-note",
+                          "grammar-note",
+                          "phonology-note",
+                          "semantics-note",
+                          "sociolinguistics-note"
+                        ],
+                        "description": "note for an entry, or anthropology-note, discourse-note, general-note, grammar-note, phonology-note, semantics-note or sociolinguistics-note for a sense."
+                      },
+                      "target": {
+                        "type": "string",
+                        "description": "Canonical identity of the existing sense, or the entry for Note."
+                      },
+                      "alternatives": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "writingSystem": {
+                              "type": "string"
+                            },
+                            "expectedText": {
+                              "type": "string"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "writingSystem",
+                            "expectedText",
+                            "text"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "field",
+                      "target",
+                      "alternatives"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
               }
             ]
           },
@@ -10668,6 +10902,186 @@
         "writingSystem",
         "expectedForm",
         "newForm",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_definition",
+    "description": "Edit Definition. Stages the full meaning of a sense in Definition, checking the current text separately in each writing system. Empty replacement text clears that alternative; review the Draft before a person Applies it.\nCommand: compose-edit-definition. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical identity of the existing sense."
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "writingSystem": {
+                "type": "string"
+              },
+              "expectedText": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "writingSystem",
+              "expectedText",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "alternatives",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_gloss",
+    "description": "Edit Gloss. Stages the short translation equivalent of a sense in Gloss, checking the current text separately in each writing system. Use Definition for the full meaning; empty replacement text clears an alternative.\nCommand: compose-edit-gloss. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical identity of the existing sense."
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "writingSystem": {
+                "type": "string"
+              },
+              "expectedText": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "writingSystem",
+              "expectedText",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "alternatives",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_lexical_note",
+    "description": "Edit lexical notes. Stages an entry Note or a named sense note, checking the current text separately in each writing system. Record example words for an affix and its allomorphs in the entry Note; only a person can Apply.\nCommand: compose-edit-lexical-note. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "field": {
+          "type": "string",
+          "enum": [
+            "note",
+            "anthropology-note",
+            "discourse-note",
+            "general-note",
+            "grammar-note",
+            "phonology-note",
+            "semantics-note",
+            "sociolinguistics-note"
+          ],
+          "description": "note for an entry, or anthropology-note, discourse-note, general-note, grammar-note, phonology-note, semantics-note or sociolinguistics-note for a sense."
+        },
+        "target": {
+          "type": "string",
+          "description": "Canonical identity of the existing sense, or the entry for Note."
+        },
+        "alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "writingSystem": {
+                "type": "string"
+              },
+              "expectedText": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "writingSystem",
+              "expectedText",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "description": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "field",
+        "target",
+        "alternatives",
         "project"
       ],
       "additionalProperties": false

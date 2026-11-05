@@ -1581,7 +1581,7 @@
   },
   "motif_lexicon": {
     "title": "Read lexicon",
-    "description": "Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs and their environments.",
+    "description": "Searches Baseline entries and counts them by morph type and category. Filter by morphType, affix, category, headword or hasGloss. Concise results are one line per entry with its sense ids; detailed results include senses, allomorphs, environments and the writing-system alternatives for Gloss, Definition and notes.",
     "source": "Authored from the agent read contract."
   },
   "grammar read": {
@@ -2065,5 +2065,49 @@
       "conditioned-allomorphs"
     ],
     "redirect": "Retain the selected source headword here. Parser forms need represented underlying distinctions and ordered rules for written realization."
+  },
+  "compose-edit-definition": {
+    "title": "Edit Definition",
+    "description": "Stages the full meaning of a sense in Definition, checking the current text separately in each writing system. Empty replacement text clears that alternative; review the Draft before a person Applies it.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Canonical identity of the existing sense.",
+      "alternatives": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit."
+    },
+    "goals": [
+      "Write the full meaning in Definition",
+      "Clear a Definition alternative"
+    ]
+  },
+  "compose-edit-gloss": {
+    "title": "Edit Gloss",
+    "description": "Stages the short translation equivalent of a sense in Gloss, checking the current text separately in each writing system. Use Definition for the full meaning; empty replacement text clears an alternative.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Canonical identity of the existing sense.",
+      "alternatives": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit."
+    },
+    "goals": [
+      "Edit a short translation equivalent",
+      "Clear a Gloss alternative"
+    ]
+  },
+  "compose-edit-lexical-note": {
+    "title": "Edit lexical notes",
+    "description": "Stages an entry Note or a named sense note, checking the current text separately in each writing system. Record example words for an affix and its allomorphs in the entry Note; only a person can Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Canonical identity of the existing sense, or the entry for Note.",
+      "alternatives": "Nonempty list of writingSystem, expectedText and text. All three strings are required, including empty text. A stale expectedText refuses the whole edit.",
+      "field": "note for an entry, or anthropology-note, discourse-note, general-note, grammar-note, phonology-note, semantics-note or sociolinguistics-note for a sense."
+    },
+    "goals": [
+      "Record an example word in an affix entry Note",
+      "Edit a General Note or Grammar Note",
+      "Record examples for particular allomorphs in their entry Note"
+    ]
   }
 }

@@ -236,17 +236,20 @@ public sealed class ToolSurfaceTests
     [InlineData("phonology")]
     [InlineData("parsimony")]
     [InlineData("parsimony-experimental")]
-    public void NoToolEditsOrDeletesACommentAndTheRationaleToolIsOffered(string profile)
+    public void NoToolEditsOrDeletesAProposalCommentAndLexicalNotesRemainDistinct(string profile)
     {
         var tools = MotifMcpServer.Expose(ToolProfile.Load(profile));
 
-        Assert.DoesNotContain(tools, tool => tool.Name.Contains("note", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(tools, tool => tool.Name.Contains("note", StringComparison.OrdinalIgnoreCase) &&
+            tool.Name != "motif_edit_lexical_note");
         Assert.DoesNotContain(tools, tool => tool.Tool.Requests.Contains(typeof(SIL.Motif.Commands.Requests.EditCommentRequest)));
         Assert.DoesNotContain(tools, tool => tool.Tool.Requests.Contains(typeof(SIL.Motif.Commands.Requests.DeleteCommentRequest)));
         if (profile == "default")
         {
             Assert.Contains(tools, tool => tool.Name == "motif_set_rationale");
             Assert.Contains(tools, tool => tool.Name == "motif_add_comment");
+            Assert.Contains(tools, tool => tool.Name == "motif_edit_lexical_note" &&
+                tool.Tool.ComposerVerb == "compose-edit-lexical-note");
         }
     }
 
@@ -292,6 +295,11 @@ public sealed class ToolSurfaceTests
             "motif_add_affix_slot",
             "motif_add_alternate_form",
             "motif_add_affix_template",
+            "motif_edit_allomorph_form",
+            "motif_edit_citation_form",
+            "motif_edit_definition",
+            "motif_edit_gloss",
+            "motif_edit_lexical_note",
             "motif_compose_batch",
         }, name => Assert.Contains(name, names));
 
@@ -330,7 +338,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(65, verbs.Length);
+        Assert.Equal(68, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -367,6 +375,9 @@ public sealed class ToolSurfaceTests
             "compose-rewrite-lexeme-form",
             "compose-edit-allomorph-form",
             "compose-edit-citation-form",
+            "compose-edit-definition",
+            "compose-edit-gloss",
+            "compose-edit-lexical-note",
             "compose-author-natural-class",
             "compose-edit-natural-class",
             "compose-relink-natural-class",

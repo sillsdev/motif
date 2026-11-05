@@ -201,6 +201,13 @@ public static class OwningCreateCatalogWriter
         ("LexEntry", "AlternateForms"),
     ];
 
+    private static readonly (string Owner, string Field)[] SenseNoteFields =
+    [
+        ("LexSense", "AnthroNote"), ("LexSense", "DiscourseNote"), ("LexSense", "GeneralNote"),
+        ("LexSense", "GrammarNote"), ("LexSense", "PhonologyNote"), ("LexSense", "SemanticsNote"),
+        ("LexSense", "SocioLinguisticsNote"),
+    ];
+
     public static IReadOnlyList<GeneratedCatalogWriter.WrittenFile> WriteAll(LoadedMotifModel model, string repoRoot)
     {
         var selected = Creations.Select(c => (c.Owner, c.Field)).Concat(MoveOnlyFields).Concat(new[]
@@ -211,7 +218,7 @@ public static class OwningCreateCatalogWriter
             ("MoInflAffixSlot", "Name"), ("MoInflAffixTemplate", "Name"), ("CmPossibility", "Name"),
             ("LexSense", "Definition"), ("FsFeatDefn", "Name"), ("FsSymFeatVal", "Name"), ("MoInflClass", "Name"),
             ("MoStemName", "Name"),
-        }).ToHashSet();
+        }).Concat(SenseNoteFields).ToHashSet();
         var directionRows = RewriteRuleFieldSelector.SelectDirection(model.Rows);
         DescriptionCheck.CheckEmittedKinds(model.Rows.Where(r => selected.Contains((r.DeclaringClass, r.FieldName)))
                 .Concat(directionRows).ToArray(),
@@ -286,19 +293,24 @@ public static class OwningCreateCatalogWriter
             Write($"src/SIL.Motif.Runner/Operations/Generated5/{prefix}.g.cs", code);
         }
 
-        foreach (var (owner, field) in new[] { ("PhTerminalUnit", "Name"), ("PhNaturalClass", "Name"),
-                     ("PhEnvironment", "Name"), ("PhSegmentRule", "Name"), ("MoInflAffixSlot", "Name"),
-                     ("MoInflAffixTemplate", "Name"), ("CmPossibility", "Name"),
-                     ("LexSense", "Definition"), ("FsFeatDefn", "Name"), ("FsSymFeatVal", "Name"),
-                     ("MoInflClass", "Name"), ("MoStemName", "Name") })
+        var alternatives = new[] { ("PhTerminalUnit", "Name"), ("PhNaturalClass", "Name"),
+            ("PhEnvironment", "Name"), ("PhSegmentRule", "Name"), ("MoInflAffixSlot", "Name"),
+            ("MoInflAffixTemplate", "Name"), ("CmPossibility", "Name"), ("LexSense", "Definition"),
+            ("FsFeatDefn", "Name"), ("FsSymFeatVal", "Name"), ("MoInflClass", "Name"), ("MoStemName", "Name")
+        }.Concat(SenseNoteFields).Select(pair => BasicFieldSpecBuilder.Build(
+            model.Rows.Single(r => r.DeclaringClass == pair.Item1 && r.FieldName == pair.Item2))).ToArray();
+        foreach (var spec in alternatives)
         {
-            var row = model.Rows.Single(r => r.DeclaringClass == owner && r.FieldName == field);
-            var spec = BasicFieldSpecBuilder.Build(row);
-            Write($"src/SIL.Motif.Runner/Operations/Generated5/{owner}{field}.g.cs", AlternativesFieldEmitter.Render(spec).Replace(owner + "Snapshotter", owner + "AuthoringSnapshotter"));
-            Write($"src/SIL.Motif.Runner/Snapshotting/Generated5/{owner}Snapshotter.g.cs",
-                SnapshotterEmitter.Render(owner, new[] { spec }).Replace(owner + "Snapshotter", owner + "AuthoringSnapshotter"));
-            constants.Add(new(owner, field, spec.Group, spec.Construct, spec.SnapshotFieldConstant, "basic MultiUnicode"));
+            var owner = spec.DeclaringClass;
+            Write($"src/SIL.Motif.Runner/Operations/Generated5/{owner}{spec.FieldName}.g.cs",
+                AlternativesFieldEmitter.Render(spec).Replace(owner + "Snapshotter", owner + "AuthoringSnapshotter"));
+            constants.Add(new(owner, spec.FieldName, spec.Group, spec.Construct, spec.SnapshotFieldConstant,
+                "basic " + spec.Sig));
         }
+        foreach (var group in alternatives.GroupBy(spec => spec.DeclaringClass))
+            Write($"src/SIL.Motif.Runner/Snapshotting/Generated5/{group.Key}Snapshotter.g.cs",
+                SnapshotterEmitter.Render(group.Key, group.ToArray())
+                    .Replace(group.Key + "Snapshotter", group.Key + "AuthoringSnapshotter"));
         foreach (var spec in IntegerEnumFieldSpecBuilder.BuildAll(directionRows)
                      .Select(spec => spec with { SnapshotterTypeName = "PhSegmentRuleDirectionSnapshotter" }))
         {
