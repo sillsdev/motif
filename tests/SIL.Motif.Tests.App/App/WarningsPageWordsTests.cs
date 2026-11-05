@@ -260,7 +260,7 @@ public sealed class WarningsPageWordsTests
                 Assert.NotEmpty(controls.Children);
                 Assert.Equal(Avalonia.Layout.Orientation.Horizontal, controls.Orientation);
                 Assert.Contains(panel.GetVisualDescendants().OfType<ToggleButton>(), toggle =>
-                    Equals(toggle.Content, "Show warnings that name my words · 1 word"));
+                    toggle.Content is TextBlock { Text: "Show warnings that name my words · 1 word" });
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == "Severity");
                 Assert.Contains(panel.GetVisualDescendants().OfType<Button>(), button =>

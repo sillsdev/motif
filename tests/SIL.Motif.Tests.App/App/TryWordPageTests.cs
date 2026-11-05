@@ -1611,8 +1611,8 @@ public sealed class TryWordPageTests
             await page.Trace.TryCommand.ExecutionTask!;
 
             Assert.True(page.HasEarlierTiming);
-            Assert.Contains(DateTimeOffset.Parse("2026-09-25T12:00:00Z").ToLocalTime().ToString("ddd d MMM, h:mm tt",
-                CultureInfo.CurrentCulture), page.EarlierTimingTitle);
+            Assert.Contains(WindowTimeText.FormatWithDate(DateTimeOffset.Parse("2026-09-25T12:00:00Z"), context.Clock),
+                page.EarlierTimingTitle);
             Assert.Equal(["rerun-1"], Assert.Single(fake.TimingRequests).OverrideAssessmentIds);
         });
     }

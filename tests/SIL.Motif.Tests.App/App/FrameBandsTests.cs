@@ -171,7 +171,7 @@ public sealed class FrameBandsTests
     [InlineData(940, 150)]
     [InlineData(960, 150)]
     [InlineData(1240, 100)]
-    public void TheNoticeIsOneLineWithGotItBesideItsTextAtEveryWidth(int width, int zoom)
+    public void TheNoticeWrapsWithGotItBesideItsTextAtEveryWidth(int width, int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -188,7 +188,8 @@ public sealed class FrameBandsTests
                 var buttons = actions.Children.OfType<Button>().ToArray();
                 var gotIt = Assert.Single(buttons);
                 Assert.Equal("Got It", Assert.IsType<string>(gotIt.Content).Replace("_", "", StringComparison.Ordinal));
-                Assert.Single(text.TextLayout.TextLines);
+                Assert.NotEmpty(text.TextLayout.TextLines);
+                Assert.DoesNotContain(text.TextLayout.TextLines, line => line.HasCollapsed);
                 Assert.Equal(TechDemoNoticeViewModel.NoticeText, text.Text);
                 Assert.Equal(TechDemoNoticeViewModel.NoticeText, AutomationProperties.GetName(text));
                 Assert.Equal(1, Grid.GetColumn(actions));

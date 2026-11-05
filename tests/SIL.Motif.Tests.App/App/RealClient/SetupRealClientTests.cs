@@ -138,7 +138,7 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             walkthrough.Type("Words to add", "motifb");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser work limit for each word", "660000");
-            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
+            SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextUseSelection);
             walkthrough.Click(SIL.Motif.App.MotifAppStrings.UseThisSelection);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Context.Setup?.IsOpen == false,

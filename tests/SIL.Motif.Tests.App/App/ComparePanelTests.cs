@@ -259,8 +259,8 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
 
             var empty = window.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
                 cell.DataContext is CompareCellViewModel { Row: WordProjectStatus.Rejected, Column: CompareColumnKind.Match });
-            Assert.Contains(empty.GetVisualDescendants().OfType<TextBlock>(), text =>
-                text.Classes.Contains("matrixCellPlaces") && text.Text == "0 places" && text.IsEffectivelyVisible);
+            Assert.DoesNotContain(empty.GetVisualDescendants().OfType<TextBlock>(), text =>
+                text.Classes.Contains("matrixCellPlaces") && text.IsEffectivelyVisible);
         }));
     }
 
