@@ -79,6 +79,7 @@ public sealed class HelpCatalogTests
         ["compose-link-variant"] = "links existing entries and senses rather than encoding a grammar rule",
         ["compose-make-variant-of"] = "links existing entries rather than encoding a grammar rule",
         ["compose-make-variants-of"] = "links many existing entries rather than encoding a grammar rule",
+        ["compose-merge-lexical-entries"] = "merges two entries into one, a lexical clean-up rather than a grammar rule",
         ["compose-record-parsimony-disposition"] = "records a review decision about a Parsimony finding",
         ["compose-record-source-validated-decision"] = "records a decision a program made from cited sources, not a grammar rule",
     };

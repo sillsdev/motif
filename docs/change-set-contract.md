@@ -600,6 +600,15 @@ or to an object it owns, naming up to five referrers. The effect is `lexical/lex
 membership entry `ref` goes, with a preview of the headword, forms, senses and analyses. The composer is
 `compose-delete-lexical-entry`, CLI-first.
 
+`lexical/lexEntry/merge` targets one `LexEntry` and has the closed `after` shape `{ "lexicon": "<id>", "into": "<id>" }`:
+the project's lexicon, which a different value makes stale, and the entry that survives. It runs LibLCM's own
+`MergeObject(entry, true)` on the survivor, which is what FieldWorks' Merge Entry runs: senses, analyses and alternate
+forms move to the survivor, a differing lexeme form becomes an alternate form, every reference to the merged entry is
+repointed, and equal forms and analyses become one. The operation refuses an entry merged into itself and a pair whose
+lexeme forms are different kinds of form or of different morph types (LibLCM would drop one), naming both entries. The
+effect is `lexical/lexDb/entries` on the lexicon, whose membership entry `ref` of the merged entry goes, with a
+preview of what the merged entry held and the entry it joins. The composer is `compose-merge-lexical-entries`.
+
 `lexical/lexEntry/removeAlternateForm` targets one `LexEntry` and has the closed `after` shape
 `{ "form": "<id>" }`. The form must be one of the entry's alternate forms, never its lexeme form, and nothing may
 refer to it (a morph bundle, an ad hoc prohibition or any other object); the refusal names the referrer. The effect
