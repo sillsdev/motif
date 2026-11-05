@@ -26,6 +26,31 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void EveryRegisteredPageHasAnEmptySceneFixture()
+    {
+        Assert.Equal(PageRegistry.Entries.Select(entry => $"{entry.Page}/empty").Order(),
+            LayoutInvariantFixtures.EmptyScenes.Order());
+        Assert.Equal(PageRegistry.Entries.Count(), LayoutInvariantFixtures.EmptyScenes.Distinct().Count());
+    }
+
+    [Fact]
+    public void ASceneNoCaseInspectedFailsTheRun()
+    {
+        var run = new LayoutInvariantRun("unvisited", output);
+        try
+        {
+            var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => run.AssertInspected(["Overview/empty"]));
+            Assert.Contains("Overview/empty", failure.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            run.Dispose();
+            File.Delete(Path.Combine(AppContext.BaseDirectory, "test-results",
+                $"layout-invariants-unvisited-{Environment.ProcessId}.json"));
+        }
+    }
+
+    [Fact]
     public void EveryPopulatedPageSatisfiesTheQuickLayoutCells() => RunQuick(LayoutDataSet.Plain());
 
     [Fact]

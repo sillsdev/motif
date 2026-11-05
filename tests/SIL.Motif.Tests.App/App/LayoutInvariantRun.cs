@@ -75,6 +75,13 @@ internal sealed class LayoutInvariantRun(string tier, ITestOutputHelper output) 
         finally { dispatcher.ShutdownStarted -= OnShutdownStarted; }
     }
 
+    /// <summary>Fails when a named scene was never inspected, so a fixture cannot pass by being skipped.</summary>
+    internal void AssertInspected(IEnumerable<string> scenes)
+    {
+        var missing = scenes.Where(scene => !_inspected.Any(context => context.Scene == scene)).ToArray();
+        Assert.True(missing.Length == 0, $"Scenes never inspected: {string.Join(", ", missing)}.");
+    }
+
     // The gate inspects fewer cells than the work list names; the opt-in run owns the rest.
     internal void AssertFindings() => LayoutInvariantWorkList.AssertNoUnexpected(_findings,
         LayoutInvariantWorkList.For(tier).Where(entry => tier != "full" || LayoutInvariantFixtures.GridCells.Any(cell =>

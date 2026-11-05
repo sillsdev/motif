@@ -3,6 +3,7 @@ using Avalonia.Automation;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App.Walkthrough;
@@ -34,6 +35,33 @@ public sealed class AvaloniaHeadlessPlatformTests
         }, TimeSpan.FromSeconds(5));
 
         Assert.Equal(uiThreadId, continuationThreadId);
+    }
+
+    // The deadline fires off-thread and must wake a sleeping frame, or a stuck item hangs the run.
+    [Fact]
+    public async Task WorkThatNeverCompletesEndsTheFrameAtItsDeadline()
+    {
+        var run = Task.Run(() => Assert.Throws<TimeoutException>(() => AvaloniaHeadlessFixture.RunUntilComplete(
+            () => new TaskCompletionSource().Task, TimeSpan.FromMilliseconds(200))));
+        Assert.Same(run, await Task.WhenAny(run, Task.Delay(Wait.Scaled(TimeSpan.FromSeconds(60)))));
+        await run;
+    }
+
+    [Fact]
+    public async Task WorkCompletedFromAnotherThreadEndsTheFrameBeforeItsDeadline()
+    {
+        var gate = new TaskCompletionSource();
+        var started = new TaskCompletionSource();
+        var run = Task.Run(() => AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            // Runs only inside the pushed frame, so the gate completes while it sleeps.
+            Dispatcher.UIThread.Post(() => started.TrySetResult(), DispatcherPriority.Background);
+            return gate.Task;
+        }, TimeSpan.FromMinutes(5)));
+        await started.Task.WaitAsync(Wait.Scaled(TimeSpan.FromSeconds(60)));
+        gate.SetResult();
+        Assert.Same(run, await Task.WhenAny(run, Task.Delay(Wait.Scaled(TimeSpan.FromSeconds(60)))));
+        await run;
     }
 
     [Fact]

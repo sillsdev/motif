@@ -5,7 +5,7 @@ namespace SIL.Motif.Tests.App;
 [Trait("MotifTestLevel", "Integration")]
 public sealed class LayoutInvariantWorkListTests
 {
-    private static readonly LayoutFindingContext Context = new("page/empty", "640x600", 100, "light");
+    private static readonly LayoutFindingContext Context = new(LayoutInvariantFixtures.EmptyScenes[0], "640x600", 100, "light");
     private static readonly ControlDescription Action = new("Button", "Action", null, "Go", "");
     private static readonly LayoutFinding Finding = new(Context.Scene, Context.Size, Context.Zoom, Context.Theme,
         LayoutCheckNames.UnreachableControl, Action, new(0, 0, 0, 0), "zero", "Action has no target.");

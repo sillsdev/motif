@@ -31,6 +31,12 @@ internal static class LayoutInvariantFixtures
     internal static IReadOnlyList<WorkspacePage> PopulatedPages { get; } =
         RegisteredPages;
 
+    internal static string Scene(WorkspacePage page, bool populated) => $"{page}/{(populated ? "populated" : "empty")}";
+
+    /// <summary>One empty-scene fixture per registered page: a project with no words, texts or assessment yet.</summary>
+    internal static IReadOnlyList<string> EmptyScenes { get; } =
+        RegisteredPages.Select(page => Scene(page, populated: false)).ToArray();
+
     /// <summary>
     /// Returns the process-wide Application state that one case can change to what a fresh launch has: the default
     /// theme variant and 100% zoom. Cases that compose a window over sample data start from here, not from

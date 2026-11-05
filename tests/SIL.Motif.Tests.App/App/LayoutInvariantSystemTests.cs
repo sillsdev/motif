@@ -96,8 +96,10 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                             workspace.CurrentPage = page;
                             PageScreenshots.SettleLayout(window);
                             LayoutInvariantFixtures.RequirePage(window, workspace, page);
-                            InspectGrid($"{page}/{(populated ? "populated" : "empty")}");
+                            InspectGrid(LayoutInvariantFixtures.Scene(page, populated));
                         }
+                        run.AssertInspected(populated ? LayoutInvariantFixtures.PopulatedPages
+                            .Select(page => LayoutInvariantFixtures.Scene(page, true)) : LayoutInvariantFixtures.EmptyScenes);
                         if (!populated) continue;
                         workspace.CurrentPage = WorkspacePage.Timing;
                         workspace.Context.OpenInspector(InspectorSubject.Morpheme("a-form", "msa-a", "a-")!);
