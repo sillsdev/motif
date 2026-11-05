@@ -147,10 +147,15 @@ segment is derived from the declaring class. Construct is now purely about *what
 _Avoid_: entity, class, feature
 
 **Rewrite rule**:
-A regular phonological rule that changes one sound into one sound, deletes one, or inserts one, in a left and right
-context. A context item may be optional or repeated, and a context may name a word or morpheme boundary. A rule can
-be edited in place, reordered, switched off (disabled) or deleted; its order is meaning, because a later rule sees
-the output of the earlier ones ([ADR 0088](docs/adr/0088-phonological-rules-are-edited-in-place-and-hold-one-item-each-side.md)).
+A regular phonological rule with an Input and Output of up to eight phoneme or natural-class items each, in order,
+with left and right contexts. The two sequences may have different lengths; empty Input means insertion, and empty
+Output means deletion. These sequence shapes are proven through FieldWorks' HermitCrab and PanGloss. A natural
+class in the Output produces any member of that class. A context item may be optional or repeated, and a context
+may name a word or morpheme boundary. A rule can be edited in place, reordered, switched off (disabled) or deleted;
+its order is meaning, because a later rule sees the output of the earlier ones. Multiple right-hand sides are read
+with their actual count and no editable intent; editing them is deferred. An alpha constraint also prevents an
+editable intent, so an edit cannot silently remove it
+([ADR 0088](docs/adr/0088-phonological-rules-are-edited-in-place-and-hold-one-item-each-side.md)).
 _Avoid_: sound change (for the stored rule), multi-item rule
 
 **Judgement call**:
