@@ -1144,6 +1144,10 @@
     <value>Remove</value>
     <comment>Window text.</comment>
   </data>
+  <data name="MotifApp.ParseSelectionSummaryFormat" xml:space="preserve">
+    <value>Parse Selection: {0}</value>
+    <comment>Status bar label followed by the words and Texts chosen for parsing. {0} is the selection summary.</comment>
+  </data>
   <data name="MotifApp.NoPicturesYet" xml:space="preserve">
     <value>No pictures yet.</value>
     <comment>Window text.</comment>

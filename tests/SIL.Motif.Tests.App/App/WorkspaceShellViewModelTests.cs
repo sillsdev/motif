@@ -657,7 +657,7 @@ public sealed class WorkspaceShellViewModelTests
         await opening.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.False(workspace.Context.IsOpeningProject);
-        Assert.Equal(workspace.Selection.SummaryText, workspace.SelectionSummaryText);
+        Assert.Equal($"Parse Selection: {workspace.Selection.SummaryText}", workspace.SelectionSummaryText);
     }
 
     [Fact]

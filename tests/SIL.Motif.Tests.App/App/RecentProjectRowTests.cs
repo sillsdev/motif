@@ -38,6 +38,26 @@ public sealed class RecentProjectRowTests
     }
 
     [Fact]
+    public async Task OpenProjectChipShowsTheFileNameForEitherPathSeparator()
+    {
+        await using var workspace = NewWorkspace(new FakeCommandClient(), new RecordingLauncher());
+        workspace.Context.ProjectPath = @"C:\Users\linguist\FieldWorks\Sample.fwdata";
+
+        Assert.Equal("Sample.fwdata", workspace.ProjectName);
+        Assert.Equal(@"C:\Users\linguist\FieldWorks\Sample.fwdata", workspace.ProjectPathTooltip);
+    }
+
+    [Fact]
+    public async Task StatusBarNamesTheParsingSelectionWhenNothingIsSelected()
+    {
+        await using var workspace = NewWorkspace(new FakeCommandClient(), new RecordingLauncher());
+
+        Assert.Equal("Parse Selection: Nothing selected yet.", workspace.SelectionSummaryText);
+        workspace.Selection.PastedWords = "kitabu";
+        Assert.Equal("Parse Selection: 1 pasted word", workspace.SelectionSummaryText);
+    }
+
+    [Fact]
     public async Task TheChooserKeepsTheNewestCopyAndShowsItsStoredFieldsAndFolderLink()
     {
         var folder = Path.Combine(Path.GetTempPath(), "MotifSyntheticTurkic", Guid.NewGuid().ToString("N"));

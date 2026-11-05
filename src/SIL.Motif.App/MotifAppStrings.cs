@@ -724,6 +724,8 @@ public static class MotifAppStrings
     public static string PicturesTitle => Text("MotifApp.PicturesTitle");
     public static string AddPicture => Text("MotifApp.AddPicture");
     public static string RemovePicture => Text("MotifApp.RemovePicture");
+
+    public static string ParseSelectionSummaryFormat => Text("MotifApp.ParseSelectionSummaryFormat");
     public static string NoPicturesYet => Text("MotifApp.NoPicturesYet");
     public static string PictureNotRead => Text("MotifApp.PictureNotRead");
     public static string PictureNotSupported => Text("MotifApp.PictureNotSupported");

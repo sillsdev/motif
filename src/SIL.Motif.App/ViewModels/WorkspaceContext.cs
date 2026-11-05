@@ -332,7 +332,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public ProjectViewMemory ViewMemory { get; } = new();
 
     /// <summary>The open project's file name, or a prompt before one is chosen.</summary>
-    public string ProjectName => ProjectPath is null ? "Choose a project" : Path.GetFileName(ProjectPath);
+    public string ProjectName => ProjectPath is null ? "Choose a project" :
+        Path.GetFileName(ProjectPath.Replace('\\', Path.DirectorySeparatorChar));
 
     /// <summary>The open project's Baseline, as the shell last published it.</summary>
     [ObservableProperty]

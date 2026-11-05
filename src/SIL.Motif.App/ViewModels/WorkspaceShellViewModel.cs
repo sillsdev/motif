@@ -304,6 +304,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>The chosen project's file name for the top bar, or a prompt before one is chosen.</summary>
     public string ProjectName => Context.ProjectName;
 
+    /// <summary>The open project's full path, shown on the project chip.</summary>
+    public string ProjectPathTooltip => Context.ProjectPath ?? ProjectChipAccessibleName;
+
     /// <summary>Whether a project has been chosen in this window.</summary>
     public bool HasProject => Context.HasProject;
 
@@ -314,7 +317,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public string FilterHidesText => CurrentPage == WorkspacePage.Texts ? PageModel<TextsPageModel>().Words.FilterHidesText : string.Empty;
 
     /// <summary>The sidebar's Selection summary, with a brief message while its project is still loading.</summary>
-    public string SelectionSummaryText => Context.IsOpeningProject ? MotifAppStrings.LoadingProject : Selection.SummaryText;
+    public string SelectionSummaryText => Context.IsOpeningProject ? MotifAppStrings.LoadingProject :
+        string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParseSelectionSummaryFormat,
+            Selection.SummaryText);
 
     /// <summary>Whether the project menu can switch projects while an Assessment is running.</summary>
     public bool ProjectSwitchEnabled => Context.ProjectAndSelectionEnabled;
@@ -896,6 +901,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 NoteProjectOpened();
                 RaiseProjectCard();
                 OnPropertyChanged(nameof(ProjectName));
+                OnPropertyChanged(nameof(ProjectPathTooltip));
                 OnPropertyChanged(nameof(HasProject));
                 OnPropertyChanged(nameof(ProjectSwitchEnabled));
                 RaiseConfigure();
