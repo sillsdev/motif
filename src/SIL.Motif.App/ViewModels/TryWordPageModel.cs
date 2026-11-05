@@ -34,6 +34,11 @@ public sealed class TryWordPageModel : PageModel
         Diagnostics = new DiagnosticToolsViewModel(Trace, context.Clipboard, context.DiagnosticFiles,
             context.DiagnosticDialogs);
         Trace.PropertyChanged += OnTracePropertyChanged;
+        context.Evidence.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(ProjectEvidence.WordContextIsStale) or nameof(ProjectEvidence.Baseline))
+                OnPropertyChanged(nameof(IsTraceBaselineStale));
+        };
         Trace.ProposalIdSource = () => Context.Lens?.ProposalId;
         TryProposalAgainCommand = new AsyncRelayCommand(TryProposalAgainAsync);
         OpenInTextsCommand = new RelayCommand(() =>
@@ -156,8 +161,8 @@ public sealed class TryWordPageModel : PageModel
 
     /// <summary>Whether the live FieldWorks save is newer than the Baseline used by this trace.</summary>
     public bool IsTraceBaselineStale => Trace.Result?.HostCapture?.Baseline?.Token is { } traced &&
-        ResultWordContext is { IsStale: true, Baseline: { } baseline } context &&
-        context.Word == Trace.Result.Word && traced.HasSameSemanticIdentity(baseline);
+        Context.Evidence is { WordContextIsStale: true, Baseline.Token: { } baseline } &&
+        traced.HasSameSemanticIdentity(baseline);
 
     /// <summary>Different recorded project states, without inferring that their grammars or outcomes differ.</summary>
     public string TraceBaselineWarning => Trace.Result?.HostCapture?.Baseline?.Token is { } traced &&

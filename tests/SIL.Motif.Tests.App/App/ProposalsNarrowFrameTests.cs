@@ -62,6 +62,39 @@ public sealed class ProposalsNarrowFrameTests
         }, TimeSpan.FromMinutes(3));
     }
 
+    [Fact]
+    public void ReturningToProposalsKeepsTheSelectedProposal()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            ProposalsCaptureFixture.Configure(fake);
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                workspace.CurrentPage = WorkspacePage.Proposals;
+                PageScreenshots.Settle(window);
+                var model = workspace.PageModel<ProposalsPageModel>();
+                var page = window.PageView<ProposalsPage>();
+                var list = page.FindControl<ListBox>("ProposalsRowsItems")!;
+                var second = model.Rows.OfType<ProposalCardViewModel>()
+                    .Single(card => card.ProposalId == "proposal/reduplicated-forms");
+                HeadlessClick.Click(window, Assert.IsType<ListBoxItem>(list.ContainerFromItem(second)), "Choose Proposal");
+                PageScreenshots.Settle(window);
+                Assert.Same(second, model.SelectedProposal);
+
+                workspace.CurrentPage = WorkspacePage.Overview;
+                PageScreenshots.Settle(window);
+                workspace.CurrentPage = WorkspacePage.Proposals;
+                PageScreenshots.Settle(window);
+
+                Assert.Same(second, model.SelectedProposal);
+                Assert.Same(second, list.SelectedItem);
+            }
+            finally { window.Close(); await workspace.DisposeAsync(); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

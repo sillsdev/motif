@@ -287,6 +287,41 @@ public sealed class TryWordPageTests
     }
 
     [Fact]
+    public void ReturningToTryAWordKeepsTheSelectedAttemptAndEvent()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (workspace, window) = FakeComposedWindow.Create();
+            try
+            {
+                window.Width = 1240;
+                window.Height = 1000;
+                window.Show();
+                workspace.CurrentPage = WorkspacePage.TryAWord;
+                var trace = workspace.PageModel<TryWordPageModel>().Trace;
+                trace.Result = MatinluTrace();
+                PageScreenshots.Settle(window);
+                var candidate = trace.Candidates.First(item => item.IsFailure);
+                trace.SelectedCandidate = candidate;
+                var selectedEvent = candidate.Steps.Last();
+                trace.SelectedStep = selectedEvent;
+                PageScreenshots.Settle(window);
+                var selectedRecord = trace.SelectedStep!.RecordedStep;
+                Assert.Same(candidate, trace.SelectedCandidate);
+
+                workspace.CurrentPage = WorkspacePage.Overview;
+                PageScreenshots.Settle(window);
+                workspace.CurrentPage = WorkspacePage.TryAWord;
+                PageScreenshots.Settle(window);
+
+                Assert.Same(candidate, trace.SelectedCandidate);
+                Assert.Same(selectedRecord, trace.SelectedStep!.RecordedStep);
+            }
+            finally { window.Close(); await workspace.DisposeAsync(); }
+        });
+    }
+
+    [Fact]
     public void FailedEventIsNoAnalysisFoundAndPlainSelectionExplainsItsOwnRow()
     {
         _avalonia.Invoke(() =>
@@ -1236,6 +1271,44 @@ public sealed class TryWordPageTests
                 Assert.Equal(shows, VisibleTexts(window).Contains("FieldWorks edits since then are not in this trace."));
             }
             finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void AFieldWorksSaveAfterTheTraceWarnsWhenAnotherWordIsTyped()
+    {
+        RunOnAvalonia(async () =>
+        {
+            var (context, fake) = NewContext();
+            context.ProjectPath = context.Assess.ProjectPath = ProjectPath;
+            var baseline = Assessment().Baseline.Token;
+            context.Baseline = new WorkspaceBaseline(true, "captured", "saved", "captured", "closed", null)
+            { Token = baseline, SourceLastWriteUtc = DateTimeOffset.Parse(baseline.CapturedUtc) };
+            context.PublishEvidence(new WorkspaceEvidence(Assessment(), DogsOrigin.MeasuredUtc, false));
+            var stale = false;
+            fake.WordContextHandler = (request, _) => Task.FromResult(CommandOutcome<WordContextResponse>.Success(
+                new(request.Word, true) { IsInFieldWorks = true, Baseline = baseline, IsStale = stale }));
+            fake.TraceWordCompletesWith(DogsTrace() with
+            {
+                HostCapture = new TraceHostCapture(null, null, null, baseline.BundleDigest, null, null, [])
+                { Baseline = new TraceBaselineSource(baseline, DateTimeOffset.Parse(baseline.CapturedUtc),
+                    DateTimeOffset.Parse(baseline.CapturedUtc), "capture") },
+            });
+            var page = new TryWordPageModel(context);
+            context.TryWord("dogs");
+            await page.Trace.TryCommand.ExecutionTask!;
+            Assert.False(page.IsTraceBaselineStale);
+
+            var warningChanged = false;
+            page.PropertyChanged += (_, e) => warningChanged |= e.PropertyName == nameof(page.IsTraceBaselineStale);
+            stale = true;
+            page.Trace.WordToTry = "cats";
+            await Wait.UntilAsync(() => page.WordContext?.Word == "cats", "the new word context did not load");
+
+            Assert.True(context.Evidence.IsStale);
+            Assert.Equal("dogs", page.Trace.Result!.Word);
+            Assert.True(page.IsTraceBaselineStale);
+            Assert.True(warningChanged);
         });
     }
 
