@@ -249,6 +249,52 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
+    // The producer morphology tracks hold their minimum, grow toward their preferred width and stop at their maximum.
+    [Theory]
+    [InlineData(WordListColumn.FieldWorks)]
+    [InlineData(WordListColumn.PanGloss)]
+    public void ProducerMorphologyTracksGrowFromTheirMinimumAndStopAtTheirMaximum(WordListColumn column)
+    {
+        avalonia.Invoke(() =>
+        {
+            var name = column == WordListColumn.FieldWorks ? "FieldWorks" : "PanGloss";
+            var (minimum, preferred, maximum) = (SlotSize($"{name}.Minimum"), SlotSize($"{name}.Preferred"), SlotSize($"{name}.Maximum"));
+            Assert.Equal((130d, 170d, 420d), (minimum, preferred, maximum));
+
+            var observed = new List<(double Width, double Track, bool Stacked)>();
+            foreach (var width in new double[] { 600, 800, 1000, 1280, 1800, 2600, 4000 })
+            {
+                var (slot, _, _, window) = Show(width, WordListSchemas.All);
+                try
+                {
+                    var layout = Assert.IsType<WordListLayout>(slot.CurrentLayout);
+                    observed.Add((width, layout.Stacked ? 0 : layout.WidthOf(column), layout.Stacked));
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+
+            var tracks = observed.Where(item => !item.Stacked).ToArray();
+            var report = string.Join(", ", observed.Select(item => $"{item.Width}:{(item.Stacked ? "stacked" : item.Track.ToString("0.#"))}"));
+            Assert.True(tracks.Length >= 3, $"Too few unstacked widths to compare growth: {report}.");
+            Assert.All(tracks, item => Assert.InRange(item.Track, minimum - 0.01, maximum + 0.01));
+            for (var index = 1; index < tracks.Length; index++)
+                Assert.True(tracks[index].Track >= tracks[index - 1].Track - 0.01, $"Track shrank as the list widened: {report}.");
+            Assert.True(tracks[^1].Track > tracks[0].Track, $"Track never grew: {report}.");
+            Assert.Equal(maximum, tracks[^1].Track, precision: 2);
+            // Somewhere on the way the track passes through its preferred width.
+            Assert.Contains(tracks, item => item.Track >= preferred - 0.01);
+            // The narrowest unstacked width never gives it less than the minimum.
+            Assert.True(tracks[0].Track >= minimum - 0.01, $"Narrowest track {tracks[0].Track:0.#} is under the minimum: {report}.");
+        });
+    }
+
+    private static double SlotSize(string key) =>
+        Convert.ToDouble(Application.Current!.FindResource($"Component.WordListSlot.{key}"),
+            System.Globalization.CultureInfo.InvariantCulture);
+
     private static (WordListSlot Slot, WordRowHeader Header, ListBox Rows, Window Window) Show(
         double width,
         WordListSchema? schema = null,

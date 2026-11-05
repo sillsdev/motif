@@ -8,13 +8,17 @@ using SIL.Motif.App;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using AssessmentProgress = SIL.Motif.Contract.Responses.AssessmentProgress;
+using AssessmentStage = SIL.Motif.Contract.Responses.AssessmentStage;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "System")]
-public sealed class SizeMatrixReachabilityTests
+public sealed class SizeMatrixReachabilityTests(ITestOutputHelper output)
 {
     [Fact]
     public void TextsDoesNotBreakWordsAtThinSize()
@@ -139,6 +143,58 @@ public sealed class SizeMatrixReachabilityTests
             }
             finally
             {
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    // A real gated Assessment run keeps Cancel live; Cancel stays whole and inside the notice and window at 150% zoom.
+    [Theory]
+    [InlineData("thin", 150)]
+    [InlineData("half", 150)]
+    public void ParseProgressNoticeKeepsItsTextAndCancelInsideTheWindowAtScaledSizes(string sizeName, int zoom)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            FakeCommandClient? fake = null;
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: (client, _) => fake = client);
+            Task? running = null;
+            try
+            {
+                fake!.AssessBlocksUntilCancelled(
+                    new SIL.Motif.Contract.Commands.Refusal("assessment.cancelled", SIL.Motif.Contract.Responses.FailureReason.Cancelled, "Cancelled."),
+                    new AssessmentProgress(AssessmentStage.Parsing, 1, 3, "Parsing"));
+                running = workspace.Assess.RerunAsync(["a-first", "b-second", "c-third"], 1000);
+                SizeMatrixScreenshots.ApplySize(window, MatrixSizes.Read().Single(size => size.Name == sizeName), zoom);
+                PageScreenshots.Settle(window);
+                Assert.True(workspace.ShowsParseAllWordsProgress);
+                var status = window.FindInWindowOrWorkspace<Button>("StatusParseProgress")!;
+                Assert.True(status.IsEffectivelyVisible, $"The parse progress entry is hidden at {sizeName} {zoom}%.");
+                Assert.True(ReachabilityAssertions.IsReachable(status, window), $"The parse progress entry is unreachable at {sizeName} {zoom}%.");
+                HeadlessClick.Click(window, status, "parse progress status");
+                PageScreenshots.Settle(window);
+                var flyout = Assert.IsType<Flyout>(status.Flyout);
+                Assert.True(flyout.IsOpen, "The parse progress flyout did not open.");
+                var notice = Assert.IsAssignableFrom<Control>(flyout.Content);
+                var cancel = Assert.Single(window.GetVisualDescendants().OfType<Button>(),
+                    item => AutomationProperties.GetAutomationId(item) == AutomationIds.CancelAssessment);
+                Assert.True(cancel.IsEffectivelyVisible, "Cancel parsing is hidden.");
+                Assert.True(cancel.IsEffectivelyEnabled, "Cancel parsing is disabled during a running Assessment.");
+                Assert.True(cancel.Bounds.Width > 0 && cancel.Bounds.Height > 0, "Cancel parsing has no size.");
+                var inNotice = new Rect(cancel.Bounds.Size).TransformToAABB(cancel.TransformToVisual(notice)!.Value);
+                Assert.True(new Rect(notice.Bounds.Size).Inflate(0.5).Contains(inNotice),
+                    $"Cancel {inNotice} is outside the notice {notice.Bounds.Size} at {sizeName} {zoom}%.");
+                var inWindow = new Rect(cancel.Bounds.Size).TransformToAABB(cancel.TransformToVisual(window)!.Value);
+                Assert.True(new Rect(window.ClientSize).Inflate(0.5).Contains(inWindow),
+                    $"Cancel {inWindow} is outside the window {window.ClientSize} at {sizeName} {zoom}%.");
+                Assert.Empty(FixedBoxClips.Find(notice, $"parse-progress-{sizeName}@{zoom}", output));
+                flyout.Hide();
+            }
+            finally
+            {
+                workspace.Assess.CancelCommand.Execute(null);
+                if (running is not null) await running.WaitAsync(TimeSpan.FromSeconds(20));
                 WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
                 window.Close();
             }
