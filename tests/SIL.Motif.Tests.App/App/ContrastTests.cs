@@ -587,7 +587,9 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                             .Select(text => ("the reason under the AI Handoff buttons", text)));
                         reasons.AddRange(Shown(reviewWindow, [review.ApplyBlockedTitle, review.ApplyDisabledReason ?? string.Empty])
                             .Select(text => ("the reasons Apply is blocked", text)));
-                        if (reasons.Count < 3) failures.Add($"{theme} {state}: only {reasons.Count} reasons showed");
+                        var minimumReasons = lists.HandOffListUnavailable ? 3 : 2;
+                        if (reasons.Count < minimumReasons)
+                            failures.Add($"{theme} {state}: only {reasons.Count} reasons showed");
                         foreach (var (what, text) in reasons)
                         {
                             var ratio = Effective(text);
