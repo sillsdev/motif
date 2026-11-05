@@ -89,6 +89,9 @@ public abstract record PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
 
+        /// <summary>Optional provenance manifest binding the statistics cache to its exact grammar input bytes.</summary>
+        public string? StatsManifestPath { get; init; }
+
         internal bool WorkColumns { get; init; }
 
         /// <summary>Allows a retry to finish without a statistics cache, leaving its unavailable counters unknown.</summary>
@@ -107,6 +110,10 @@ public abstract record PanGlossRequest
             if (string.IsNullOrWhiteSpace(ProjectFilePath)) throw new ArgumentException("Required.", nameof(ProjectFilePath));
             ArgumentNullException.ThrowIfNull(Words);
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(ThreadCount);
+            if (StatsManifestPath is not null &&
+                (string.IsNullOrWhiteSpace(StatsManifestPath) || string.IsNullOrWhiteSpace(StatsCachePath)))
+                throw new ArgumentException("A statistics manifest requires an output path and statistics cache.",
+                    nameof(StatsManifestPath));
             if (PerWordLimit is { } timeLimit && timeLimit <= TimeSpan.Zero)
                 throw new ArgumentOutOfRangeException(nameof(PerWordLimit), "A per-word limit must be positive.");
             if (!File.Exists(ProjectFilePath))
@@ -141,12 +148,17 @@ public abstract record PanGlossRequest
             startInfo.ArgumentList.Add("--stats");
             startInfo.ArgumentList.Add("--cache");
             startInfo.ArgumentList.Add(StatsCachePath);
+            if (StatsManifestPath is null) return;
+            startInfo.ArgumentList.Add("--stats-manifest");
+            startInfo.ArgumentList.Add(StatsManifestPath);
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
             TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
         {
             batchFileDigests = null;
+            if (StatsManifestPath is not null && !File.Exists(StatsManifestPath))
+                return new PanGlossOutcome.Incomplete("The batch wrote no requested statistics manifest.", standardError);
             if (StatsCachePath is not null && !File.Exists(StatsCachePath) && !AllowMissingStatsCache)
             {
                 return new PanGlossOutcome.Incomplete(

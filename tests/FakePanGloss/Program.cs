@@ -62,7 +62,7 @@ internal static class Program
         new("batch", ["grammar", "words.txt", "out.tsv"],
             [new("--word-timeout-ms", true), new("--work-cap", true), new("--threads", true),
                 new("--stats", false), new("--work-columns", false),
-                new("--cache", true), new("--analyses", true)], RunBatch),
+                new("--cache", true), new("--analyses", true), new("--stats-manifest", true)], RunBatch),
         new("facts", ["snapshot.json"],
             [new("--out", true), new("--context", true), new("--stats", true),
                 new("--stats-manifest", true), new("--light", false), new("--json", false)], RunFacts),
@@ -277,6 +277,7 @@ internal static class Program
         var outPath = args[3];
         string? cachePath = null;
         string? analysesPath = null;
+        string? statsManifestPath = null;
         var wordTimeoutMs = 0;
         var workColumns = args.Contains("--work-columns");
         for (var i = 4; i < args.Length; i++)
@@ -285,6 +286,7 @@ internal static class Program
                 int.TryParse(args[++i], NumberStyles.Integer, CultureInfo.InvariantCulture, out wordTimeoutMs);
             else if (args[i] == "--cache" && i + 1 < args.Length) cachePath = args[++i];
             else if (args[i] == "--analyses" && i + 1 < args.Length) analysesPath = args[++i];
+            else if (args[i] == "--stats-manifest" && i + 1 < args.Length) statsManifestPath = args[++i];
         }
         var directory = Path.GetDirectoryName(Path.GetFullPath(projectPath));
         RecordArgv(directory, args);
@@ -369,6 +371,8 @@ internal static class Program
                             return new StatsCache.WordRow(word, known?.Attempts ?? 1, known?.Passes ?? 1, known?.ParserWork);
                         }).ToArray());
                 }
+                if (statsManifestPath is not null && behaviour.Mode != "noStatsManifest")
+                    File.WriteAllText(statsManifestPath, "{}");
                 return behaviour.ExitCode;
         }
     }

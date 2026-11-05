@@ -1370,17 +1370,21 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Theory]
-    [InlineData("source.fwdata")]
-    [InlineData("words.txt")]
-    public async Task CapturedBatchRefusesChangedStagedInputAndRemovesUnpublishedArtifacts(string changedFile)
+    [InlineData(".fwdata", "source.fwdata")]
+    [InlineData(".fwdata", "words.txt")]
+    [InlineData(".json", "source.json")]
+    [InlineData(".json", "words.txt")]
+    public async Task CapturedBatchRefusesChangedStagedInputAndRemovesUnpublishedArtifacts(
+        string extension, string changedFile)
     {
-        var source = Project("changed");
+        var source = Path.ChangeExtension(Project("changed"), extension);
+        File.WriteAllText(source, "the fake parser never reads this.");
         var artifacts = Path.Combine(_root, Guid.NewGuid().ToString("N"));
         using var containment = PanGlossContainment.CreateJob();
         var outcome = await PanGlossInvoker.LaunchAsync(FakeParser.ExecutablePath,
             new PanGlossRequest.Batch(source, ["motifa"], TimeSpan.FromSeconds(1), ArtifactDirectory: artifacts),
             containment,
-            TimeSpan.FromSeconds(10), CancellationToken.None,
+            Wait.Scaled(TimeSpan.FromMinutes(10)), CancellationToken.None,
             _ => File.WriteAllText(Path.Combine(artifacts, changedFile), "changed while parsing"));
 
         var refused = Assert.IsType<PanGlossOutcome.Incomplete>(outcome);
@@ -1389,10 +1393,15 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.Equal("the fake parser never reads this.", File.ReadAllText(source));
     }
 
-    [Fact]
-    public async Task CapturedBatchRetainsExactInputsAndArtifactsAfterTheInvokerReturns()
+    [Theory]
+    [InlineData(".fwdata")]
+    [InlineData(".json")]
+    [InlineData(".xml")]
+    [InlineData(".fwbackup")]
+    public async Task CapturedBatchRetainsExactInputsAndArtifactsAfterTheInvokerReturns(string extension)
     {
-        var source = Project("captured");
+        var source = Path.ChangeExtension(Project("captured"), extension);
+        File.WriteAllText(source, "the fake parser never reads this.");
         var artifacts = Path.Combine(_root, Guid.NewGuid().ToString("N"));
         using var invoker = Invoker();
 
@@ -1403,6 +1412,7 @@ public sealed class PanGlossInvokerTests : IDisposable
         var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
         var evidence = Assert.IsType<BatchInvocationEvidence>(completed.BatchEvidence);
         Assert.NotEqual(source, evidence.SourcePath);
+        Assert.Equal(Path.Combine(artifacts, "source" + extension), evidence.SourcePath);
         Assert.Equal(File.ReadAllBytes(source), File.ReadAllBytes(evidence.SourcePath));
         Assert.Equal(BatchInvocationEvidence.DigestFile(source), evidence.SourceBytesSha256);
         Assert.Equal(BatchInvocationEvidence.DigestFile(FakeParser.ExecutablePath), evidence.ExecutableBytesSha256);
@@ -1416,6 +1426,56 @@ public sealed class PanGlossInvokerTests : IDisposable
         Assert.False(evidence.CollectStatistics);
         File.WriteAllText(source, "changed after invocation");
         Assert.Equal(evidence.SourceBytesSha256, BatchInvocationEvidence.DigestFile(evidence.SourcePath));
+    }
+
+    [Fact]
+    public async Task CapturedBatchWritesTheRequestedStatisticsManifestBesideItsSnapshot()
+    {
+        var source = Path.ChangeExtension(Project("manifest"), ".json");
+        File.WriteAllText(source, "the fake parser never reads this.");
+        var artifacts = Path.Combine(_root, "batch-manifest");
+        var manifest = Path.Combine(artifacts, "stats-manifest.json");
+        using var invoker = Invoker();
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(source, ["motifa"], null,
+            Path.Combine(artifacts, "stats.sqlite"), ArtifactDirectory: artifacts) { StatsManifestPath = manifest },
+            "test:batch-manifest", CancellationToken.None);
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(outcome);
+        using var lease = completed.ArtifactLease;
+        Assert.True(File.Exists(manifest));
+        var arguments = Argv(completed.BatchEvidence!.SourcePath);
+        Assert.Equal(manifest, arguments[Array.IndexOf(arguments, "--stats-manifest") + 1]);
+    }
+
+    [Fact]
+    public async Task CapturedBatchWithoutItsRequestedStatisticsManifestIsIncomplete()
+    {
+        var source = Project("missing-manifest");
+        var artifacts = Path.Combine(_root, "batch-missing-manifest");
+        var parser = FakeParser.Copy(Path.Combine(_root, "missing-manifest-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new { Mode = "noStatsManifest" });
+        using var invoker = new PanGlossInvoker(parser, NewQueue());
+
+        var outcome = await invoker.RunAsync(new PanGlossRequest.Batch(source, ["motifa"], null,
+            Path.Combine(artifacts, "stats.sqlite"), ArtifactDirectory: artifacts)
+            { StatsManifestPath = Path.Combine(artifacts, "stats-manifest.json") },
+            "test:missing-batch-manifest", CancellationToken.None);
+
+        Assert.Contains("statistics manifest", Assert.IsType<PanGlossOutcome.Incomplete>(outcome).Detail);
+        Assert.False(Directory.Exists(artifacts));
+    }
+
+    [Theory]
+    [InlineData(null, "manifest.json")]
+    [InlineData("", "manifest.json")]
+    [InlineData("stats.sqlite", "")]
+    public void AStatisticsManifestRequiresAnOutputPathAndStatisticsCache(string? statistics, string manifest)
+    {
+        var request = new PanGlossRequest.Batch(Project("invalid-manifest"), ["motifa"], null, statistics)
+            { StatsManifestPath = manifest };
+
+        Assert.Throws<ArgumentException>(() => request.Validate());
     }
 
     [Fact]

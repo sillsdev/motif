@@ -175,7 +175,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 created = true;
                 if (retained && request is PanGlossRequest.Batch batch)
                 {
-                    var stagedSource = Path.Combine(scratch, "source.fwdata");
+                    var stagedSource = Path.Combine(scratch, "source" + Path.GetExtension(batch.ProjectFilePath));
                     File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false);
                     request = batch with { ProjectFilePath = stagedSource };
                     sourceDigest = BatchInvocationEvidence.DigestFile(stagedSource);

@@ -171,7 +171,8 @@ public sealed class FakePanGlossSurfaceTests
     {
         PanGlossRequest[] requests =
         [
-            new PanGlossRequest.Batch("project.fwdata", ["motifa"], TimeSpan.FromSeconds(1), "cache.sqlite"),
+            new PanGlossRequest.Batch("project.fwdata", ["motifa"], TimeSpan.FromSeconds(1), "cache.sqlite")
+                { StatsManifestPath = "stats-manifest.json" },
             new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
             new PanGlossRequest.Facts("snapshot.json", "{}", "facts-artifact"),
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
@@ -207,7 +208,7 @@ public sealed class FakePanGlossSurfaceTests
             Assert.Equal(flags.Keys.Where(name => request.Subcommand == "stats"
                         ? name is "--cache" or "--group" or "--format"
                         : request.Subcommand == "batch"
-                            ? name is "--word-timeout-ms" or "--work-cap" or "--threads" or "--analyses" or "--stats" or "--cache"
+                            ? name is "--word-timeout-ms" or "--work-cap" or "--threads" or "--analyses" or "--stats" or "--cache" or "--stats-manifest"
                             : request.Subcommand == "parse"
                                 ? name is "--trace" or "--trace-format" or "--trace-details" or "--work-cap"
                                 : request.Subcommand == "facts"

@@ -29,7 +29,8 @@
         "--threads": true,
         "--analyses": true,
         "--stats": false,
-        "--cache": true
+        "--cache": true,
+        "--stats-manifest": true
       },
       "stats": {
         "--cache": true,
