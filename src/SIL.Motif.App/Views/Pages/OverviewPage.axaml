@@ -422,7 +422,7 @@
                     <DockPanel LastChildFill="False">
                       <views:CopyableTextBlock DockPanel.Dock="Left" Classes="overviewHistoryKind" Text="{Binding Title}" />
                       <views:CopyableTextBlock DockPanel.Dock="Right" Classes="overviewMuted"
-                                               Text="{Binding At.LocalDateTime, StringFormat='{}{0:ddd d MMM, h:mm tt}'}" />
+                                               Text="{Binding AtText}" />
                     </DockPanel>
                     <views:CopyableTextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
                   </StackPanel>

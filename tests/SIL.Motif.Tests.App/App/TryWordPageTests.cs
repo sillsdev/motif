@@ -1513,7 +1513,7 @@ public sealed class TryWordPageTests
     {
         RunOnAvalonia(async () =>
         {
-            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+            using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-GB"));
             var (context, fake) = NewContext();
             context.ProjectPath = ProjectPath;
             context.Assess.ProjectPath = ProjectPath;
@@ -1526,7 +1526,7 @@ public sealed class TryWordPageTests
             context.TryWord("dogs");
             await page.Trace.TryCommand.ExecutionTask!;
 
-            var when = parsedAt.ToLocalTime().ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture);
+            var when = WindowTimeText.FormatWithDate(parsedAt, context.Clock);
             Assert.Equal($"Work from the parse of {when}", page.EarlierTimingTitle);
             Assert.Equal("Not from this traced search. In that parse dogs took 10 parser work; each rule's work covers that parse's " +
                 "whole search for the word, including attempts that stopped.",

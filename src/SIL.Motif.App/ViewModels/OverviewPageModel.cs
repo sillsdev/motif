@@ -21,7 +21,7 @@ public sealed partial class OverviewPageModel : PageModel
 
     public OverviewPageModel(WorkspaceContext context) : base(context)
     {
-        History = new ProjectHistoryViewModel(context.Commands);
+        History = new ProjectHistoryViewModel(context.Commands, context.Clock);
         context.Assess.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName != nameof(AssessViewModel.ShownRefusal)) return;

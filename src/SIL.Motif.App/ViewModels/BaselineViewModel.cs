@@ -70,7 +70,7 @@ public sealed partial class BaselineViewModel : ObservableObject, IProjectStateP
     /// <summary>When Motif captured the Baseline, which can be long after the save it copies.</summary>
     public string CapturedAtText => Token is { } token &&
         DateTimeOffset.TryParse(token.CapturedUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var captured)
-            ? $"Captured {TimeZoneInfo.ConvertTime(captured, _timeProvider.LocalTimeZone).ToString("ddd d MMM, h:mm tt", CultureInfo.CurrentCulture)}"
+            ? $"Captured {WindowTimeText.FormatWithDate(captured, _timeProvider)}"
             : string.Empty;
 
     /// <summary>When Motif captured the Baseline, or <c>null</c> before any capture.</summary>

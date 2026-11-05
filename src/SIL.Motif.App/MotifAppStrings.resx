@@ -5198,7 +5198,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Plural pattern: how many further rules are summed into one line of the earlier rule times; # is the count.</comment>
   </data>
   <data name="MotifApp.TryWordEarlierTimingTitleFormat" xml:space="preserve">
-    <value>Work from the parse of {0:ddd d MMM, h:mm tt}</value>
+    <value>Work from the parse of {0}</value>
     <comment>Title over earlier rule work on Try a Word; {0} is the date and time of that parse.</comment>
   </data>
   <data name="MotifApp.TryWordEarlierSourceWithWordFormat" xml:space="preserve">

@@ -12,13 +12,15 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class ProjectHistoryViewModel : ObservableObject
 {
     private readonly ICommandClient _commandClient;
+    private readonly TimeProvider _clock;
     private string? _projectPath;
     private int _generation;
 
-    public ProjectHistoryViewModel(ICommandClient commandClient)
+    public ProjectHistoryViewModel(ICommandClient commandClient, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(commandClient);
         _commandClient = commandClient;
+        _clock = clock ?? TimeProvider.System;
     }
 
     /// <summary>The project's history, newest first.</summary>
@@ -65,7 +67,7 @@ public sealed partial class ProjectHistoryViewModel : ObservableObject
 
         ShownRefusal = null;
         Entries.Clear();
-        foreach (var entry in outcome.Value!.Entries) Entries.Add(ProjectHistoryRow.From(entry));
+        foreach (var entry in outcome.Value!.Entries) Entries.Add(ProjectHistoryRow.From(entry, _clock));
         OnPropertyChanged(nameof(HasEntries));
     }
 }
@@ -77,13 +79,16 @@ public sealed partial class ProjectHistoryViewModel : ObservableObject
 public sealed record ProjectHistoryRow(DateTimeOffset At, string Title, string Summary)
 {
     /// <summary>The row for a stored history entry.</summary>
-    public static ProjectHistoryRow From(ProjectHistoryEntry entry) => entry.Kind switch
+    public static ProjectHistoryRow From(ProjectHistoryEntry entry, TimeProvider? clock = null) => (entry.Kind switch
     {
-        ProjectHistoryKind.Assessment => new(entry.At, "Parse all words", entry.Summary),
-        ProjectHistoryKind.Handoff => new(entry.At, "AI Handoff", entry.Summary),
-        ProjectHistoryKind.Baseline => new(entry.At, "Refresh", BaselineSummary(entry.Summary)),
-        _ => new(entry.At, entry.Kind.ToString(), entry.Summary),
-    };
+        ProjectHistoryKind.Assessment => new ProjectHistoryRow(entry.At, "Parse all words", entry.Summary),
+        ProjectHistoryKind.Handoff => new ProjectHistoryRow(entry.At, "AI Handoff", entry.Summary),
+        ProjectHistoryKind.Baseline => new ProjectHistoryRow(entry.At, "Refresh", BaselineSummary(entry.Summary)),
+        _ => new ProjectHistoryRow(entry.At, entry.Kind.ToString(), entry.Summary),
+    }) with { AtText = WindowTimeText.FormatWithDate(entry.At, clock ?? TimeProvider.System) };
+
+    /// <summary>The event time in the window's locale and time zone.</summary>
+    public string AtText { get; init; } = WindowTimeText.FormatWithDate(At, TimeProvider.System);
 
     private static string BaselineSummary(string summary) => summary.StartsWith("Baseline captured", StringComparison.Ordinal)
         ? "new Baseline from FieldWorks" + summary["Baseline captured".Length..]

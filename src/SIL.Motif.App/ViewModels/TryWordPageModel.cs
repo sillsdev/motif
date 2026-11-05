@@ -445,7 +445,8 @@ public sealed class TryWordPageModel : PageModel
             foreach (var other in timing.ParserWorkAggregates.Where(row => row.IsUnattributed))
                 EarlierRuleTimes.Add(new TryWordEarlierRuleTime(MotifAppStrings.TimingNotAttributedLabel, string.Empty,
                     PluralText.Format(MotifAppStrings.ParserWorkPattern, other.ParserWork), ShareOf(other.ParserWork), true));
-            EarlierTimingTitle = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierTimingTitleFormat, origin.MeasuredUtc.ToLocalTime());
+            EarlierTimingTitle = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierTimingTitleFormat,
+                WindowTimeText.FormatWithDate(origin.MeasuredUtc, Context.Clock));
             EarlierTimingSource = total is { } count
                 ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TryWordEarlierSourceWithWordFormat,
                     result.Word, PluralText.Format(MotifAppStrings.ParserWorkPattern, count))
