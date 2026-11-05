@@ -55,3 +55,7 @@ These stay until each gap is fixed in its own change, and each fix should cite t
 - A construct the parser cannot yet read (bracket-pattern reduplication in PanGloss) is still writable. The parser's warning, not Motif's refusal, tells the linguist it has no effect yet.
 - Because decisions land directly on `main`, a decision is visible to every lane at once; code that carries it still goes through the normal gate.
 - Parsimony recipes keep naming the options and the evidence, and keep ending in "ask the linguist".
+
+## Related decision
+
+[ADR 0090](0090-underlying-distinctions-survive-until-the-grammar-realizes-the-written-form.md) keeps represented underlying distinctions available to morphology and phonology until ordered rules realize the written form. Source spellings may remain in Citation Form; parsing Assessments use the actual written word and preserve ambiguity.

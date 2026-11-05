@@ -928,18 +928,18 @@
   },
   "compose-rewrite-lexeme-form": {
     "title": "Rewrite lexeme forms",
-    "description": "Rewrites the lexeme form of many existing entries in one Draft, each guarded by the form it must hold now, and can keep the old spelling as the citation form. Use it when the lexeme form carries stress marks the parser cannot match; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",
+    "description": "Rewrites existing lexeme forms with expected-current guards while preserving their identities and references. Give explicit new forms to retain underlying distinctions until ordered grammar rules realize running spelling; Motif stages a Draft for a person to review and Apply.",
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",
       "entries": "The entries to rewrite, each with entryGuid, writingSystem, expectedForm and newForm; a current form that differs from expectedForm refuses the whole batch.",
       "setEmptyCitationForm": "When true, an entry with no citation form in that writing system gets its old lexeme form as the citation form.",
-      "foldStressMarks": "When true, omit newForm: it is computed from expectedForm by removing U+0300, U+0301, U+0302, U+0304 and U+030C only."
+      "foldStressMarks": "When true, omit newForm: it is computed from expectedForm by removing U+0300, U+0301, U+0302, U+0304 and U+030C only. This destructive spelling fold is not phonological realization; use false and explicit newForm when distinctions condition grammar."
     },
     "goals": [
-      "Remove stress marks from lexeme forms so the parser matches them",
+      "Restore source-supported underlying forms without replacing form identities",
       "Rewrite the lexeme form of many entries at once",
-      "Keep the stress-marked spelling as the citation form"
+      "Keep the selected source headword as Citation Form"
     ],
     "guides": [
       "conditioned-allomorphs"
@@ -2024,5 +2024,46 @@
       "conditioned-allomorphs"
     ],
     "redirect": "Replace a pattern with a plain form after moving or removing every incoming reference (guide conditioned-allomorphs)."
+  },
+  "compose-edit-allomorph-form": {
+    "title": "Edit an allomorph form",
+    "description": "Changes one writing-system alternative of a selected ordinary stem or affix alternate after checking its owner and current form. Keeps the form identity, conditions and references; stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entry": "Expected owning lexical entry ID.",
+      "target": "Existing ordinary alternate form ID; lexeme forms use compose-rewrite-lexeme-form.",
+      "writingSystem": "Project vernacular writing system tag.",
+      "expectedForm": "Current text required for this edit, compared by canonical Unicode equivalence.",
+      "newForm": "Replacement, or an empty string to clear this alternative; no accent, quantity or segment folding is performed."
+    },
+    "goals": [
+      "Restore an underlying alternate while keeping its environments and references",
+      "Respell one ordinary alternate without replacing its identity"
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Edit an existing ordinary alternate in place. For a regular change across forms, use a phonological rule."
+  },
+  "compose-edit-citation-form": {
+    "title": "Edit a citation form",
+    "description": "Writes a selected source headword in one Citation Form alternative after checking its current text. Leaves parser forms and other writing-system alternatives intact; stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "target": "Existing lexical entry ID.",
+      "writingSystem": "Project vernacular writing system tag.",
+      "expectedForm": "Current Citation Form; use an empty string when absent.",
+      "newForm": "Selected source headword to retain, or an empty string to clear this alternative."
+    },
+    "goals": [
+      "Retain a marked dictionary headword while using underlying parser forms",
+      "Correct one Citation Form with an expected-current guard"
+    ],
+    "guides": [
+      "conditioned-allomorphs"
+    ],
+    "redirect": "Retain the selected source headword here. Parser forms need represented underlying distinctions and ordered rules for written realization."
   }
 }

@@ -36,3 +36,7 @@ code) and the rule that if LibLCM can hold a construct, Motif allows it.
 The `grammar.phoneme-never-used` check reads every form and wordform once as one string, so it adds a full pass over
 the lexicon to Check. It matches a phoneme's spelling as a substring, so a short spelling inside a digraph counts as
 used; the finding errs toward silence.
+
+## Related decision
+
+[ADR 0090](0090-underlying-distinctions-survive-until-the-grammar-realizes-the-written-form.md) keeps represented underlying distinctions available to morphology and phonology until ordered rules realize the written form. Source spellings may remain in Citation Form; parsing Assessments use the actual written word and preserve ambiguity.

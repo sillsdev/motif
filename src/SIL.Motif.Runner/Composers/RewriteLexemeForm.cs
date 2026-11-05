@@ -27,18 +27,19 @@ public sealed record RewriteLexemeFormIntent(
     IReadOnlyList<LexemeFormRewrite> Rewrites, bool SetEmptyCitationForm, bool FoldStressMarks);
 
 /// <summary>
-/// The explicit, deterministic fold: decompose to NFD, drop only the stress diacritics, recompose to NFC.
+/// The legacy spelling fold: decompose to NFD, drop the listed combining marks, recompose to NFC.
 /// Stripped code points: U+0300 COMBINING GRAVE ACCENT, U+0301 COMBINING ACUTE ACCENT, U+0302 COMBINING
 /// CIRCUMFLEX ACCENT, U+0304 COMBINING MACRON and U+030C COMBINING CARON. Every other mark, such as the tilde U+0303
-/// of a Cebuano n-tilde, is kept. In Wolff's Cebuano orthography the grave marks a final glottal stop and the acute
-/// marks length, so the marks carry meaning; that is why the old spelling is worth keeping as the citation form.
+/// of a Cebuano n-tilde, is kept. Wolff uses grave for a following glottal stop, acute for quantity and caron for
+/// exceptional stress. A fold loses those distinctions in parser forms; keeping a Citation Form alone cannot
+/// make them available to morphology or phonology. Use explicit rewrites when grammar conditions on them (ADR 0090).
 /// </summary>
 public static class LexemeFormFolding
 {
     /// <summary>The combining code points Fold removes.</summary>
     public static readonly IReadOnlyList<int> StrippedCodePoints = [0x0300, 0x0301, 0x0302, 0x0304, 0x030C];
 
-    /// <summary>Returns the form without stress diacritics, in NFC.</summary>
+    /// <summary>Returns the form without the listed combining marks, in NFC.</summary>
     public static string Fold(string form)
     {
         ArgumentNullException.ThrowIfNull(form);
@@ -98,7 +99,7 @@ public static class RewriteLexemeFormComposer
 
     /// <summary>The rationale each operation carries; a Draft still needs its own Rationale to finalize.</summary>
     public const string OperationRationale =
-        "Authored by the RewriteLexemeForm composer: the lexeme form is rewritten so the parser can match it; " +
+        "Authored by the RewriteLexemeForm composer: the entry retains the requested parser form; " +
         "any citation form set keeps the earlier spelling.";
 
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, RewriteLexemeFormIntent intent)

@@ -27,7 +27,9 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 14. `compose-merge-lexical-entries` merges one entry into another, as Merge Entry does in FieldWorks, so the two become one entry.
 14. `compose-move-example` moves an example, with its translations, to another sense, in the same entry or another, refusing an example something refers to.
 15. `compose-add-example` adds a new example, with text in one or more writing systems and optional translations, to a sense.
-16. `compose-rewrite-lexeme-form` rewrites the lexeme forms of existing entries in one batch, for example to drop stress marks the parser cannot match.
+16. `compose-rewrite-lexeme-form` rewrites existing lexeme forms in a guarded batch. Use `foldStressMarks=false` and explicit new forms when underlying distinctions condition the grammar.
+17. `compose-edit-allomorph-form` edits one ordinary alternate in place, guarded by its expected owner and current text, while keeping its conditions and references.
+18. `compose-edit-citation-form` retains a selected source headword separately from parser forms, guarded by its current text.
 
 ## Splitting one lexeme into homographs
 

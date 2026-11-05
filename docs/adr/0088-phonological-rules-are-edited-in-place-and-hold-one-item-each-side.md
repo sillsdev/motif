@@ -139,3 +139,7 @@ items, but LibLCM's sequence collector omits them; no editor-only registration r
     reads keep that shorthand for an unrestricted single case; otherwise they return the complete sequence.
     Single-case feature edits remain available, while multiple-case features are edited through the guarded
     sequence. No outcome is silently selected or discarded.
+
+## Related decision
+
+[ADR 0090](0090-underlying-distinctions-survive-until-the-grammar-realizes-the-written-form.md) keeps represented underlying distinctions available to morphology and phonology until ordered rules realize the written form. Source spellings may remain in Citation Form; parsing Assessments use the actual written word and preserve ambiguity.

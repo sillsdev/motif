@@ -7999,12 +7999,143 @@
                       },
                       "foldStressMarks": {
                         "type": "boolean",
-                        "description": "When true, omit newForm: it is computed from expectedForm by removing U\u002B0300, U\u002B0301, U\u002B0302, U\u002B0304 and U\u002B030C only."
+                        "description": "When true, omit newForm: it is computed from expectedForm by removing U\u002B0300, U\u002B0301, U\u002B0302, U\u002B0304 and U\u002B030C only. This destructive spelling fold is not phonological realization; use false and explicit newForm when distinctions condition grammar."
                       }
                     },
                     "additionalProperties": false,
                     "required": [
                       "entries"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-allomorph-form"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-allomorph-form.",
+                    "properties": {
+                      "entry": {
+                        "type": "string",
+                        "description": "Expected owning lexical entry ID."
+                      },
+                      "target": {
+                        "type": "string",
+                        "description": "Existing ordinary alternate form ID; lexeme forms use compose-rewrite-lexeme-form."
+                      },
+                      "writingSystem": {
+                        "type": "string",
+                        "description": "Project vernacular writing system tag."
+                      },
+                      "expectedForm": {
+                        "type": "string",
+                        "description": "Current text required for this edit, compared by canonical Unicode equivalence."
+                      },
+                      "newForm": {
+                        "type": "string",
+                        "description": "Replacement, or an empty string to clear this alternative; no accent, quantity or segment folding is performed."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entry",
+                      "target",
+                      "writingSystem",
+                      "expectedForm",
+                      "newForm"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-edit-citation-form"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-edit-citation-form.",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "description": "Existing lexical entry ID."
+                      },
+                      "writingSystem": {
+                        "type": "string",
+                        "description": "Project vernacular writing system tag."
+                      },
+                      "expectedForm": {
+                        "type": "string",
+                        "description": "Current Citation Form; use an empty string when absent."
+                      },
+                      "newForm": {
+                        "type": "string",
+                        "description": "Selected source headword to retain, or an empty string to clear this alternative."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "target",
+                      "writingSystem",
+                      "expectedForm",
+                      "newForm"
                     ]
                   },
                   "citation": {
@@ -10391,7 +10522,7 @@
   },
   {
     "name": "motif_rewrite_lexeme_form",
-    "description": "Rewrite lexeme forms. Research first: motif_guide topic conditioned-allomorphs; check best practice. Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation). Rewrites the lexeme form of many existing entries in one Draft, each guarded by the form it must hold now, and can keep the old spelling as the citation form. Use it when the lexeme form carries stress marks the parser cannot match; Motif stages a Draft and never Applies it automatically. Only a person can Apply.\nCommand: compose-rewrite-lexeme-form. Agent class: Draft.",
+    "description": "Rewrite lexeme forms. Research first: motif_guide topic conditioned-allomorphs; check best practice. Keep variants of one morpheme under one entry with narrow conditions. Not for a regular sound change across forms: use a phonological rule (guide nasal-assimilation). Rewrites existing lexeme forms with expected-current guards while preserving their identities and references. Give explicit new forms to retain underlying distinctions until ordered grammar rules realize running spelling; Motif stages a Draft for a person to review and Apply.\nCommand: compose-rewrite-lexeme-form. Agent class: Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -10432,7 +10563,7 @@
         },
         "foldStressMarks": {
           "type": "boolean",
-          "description": "When true, omit newForm: it is computed from expectedForm by removing U\u002B0300, U\u002B0301, U\u002B0302, U\u002B0304 and U\u002B030C only."
+          "description": "When true, omit newForm: it is computed from expectedForm by removing U\u002B0300, U\u002B0301, U\u002B0302, U\u002B0304 and U\u002B030C only. This destructive spelling fold is not phonological realization; use false and explicit newForm when distinctions condition grammar."
         },
         "project": {
           "type": "string",
@@ -10442,6 +10573,101 @@
       "required": [
         "draft",
         "entries",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_allomorph_form",
+    "description": "Edit an allomorph form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Edit an existing ordinary alternate in place. For a regular change across forms, use a phonological rule. Changes one writing-system alternative of a selected ordinary stem or affix alternate after checking its owner and current form. Keeps the form identity, conditions and references; stages a Draft for a person to review and Apply.\nCommand: compose-edit-allomorph-form. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "entry": {
+          "type": "string",
+          "description": "Expected owning lexical entry ID."
+        },
+        "target": {
+          "type": "string",
+          "description": "Existing ordinary alternate form ID; lexeme forms use compose-rewrite-lexeme-form."
+        },
+        "writingSystem": {
+          "type": "string",
+          "description": "Project vernacular writing system tag."
+        },
+        "expectedForm": {
+          "type": "string",
+          "description": "Current text required for this edit, compared by canonical Unicode equivalence."
+        },
+        "newForm": {
+          "type": "string",
+          "description": "Replacement, or an empty string to clear this alternative; no accent, quantity or segment folding is performed."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "entry",
+        "target",
+        "writingSystem",
+        "expectedForm",
+        "newForm",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_edit_citation_form",
+    "description": "Edit a citation form. Research first: motif_guide topic conditioned-allomorphs; check best practice. Retain the selected source headword here. Parser forms need represented underlying distinctions and ordered rules for written realization. Writes a selected source headword in one Citation Form alternative after checking its current text. Leaves parser forms and other writing-system alternatives intact; stages a Draft for a person to review and Apply.\nCommand: compose-edit-citation-form. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "target": {
+          "type": "string",
+          "description": "Existing lexical entry ID."
+        },
+        "writingSystem": {
+          "type": "string",
+          "description": "Project vernacular writing system tag."
+        },
+        "expectedForm": {
+          "type": "string",
+          "description": "Current Citation Form; use an empty string when absent."
+        },
+        "newForm": {
+          "type": "string",
+          "description": "Selected source headword to retain, or an empty string to clear this alternative."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "target",
+        "writingSystem",
+        "expectedForm",
+        "newForm",
         "project"
       ],
       "additionalProperties": false

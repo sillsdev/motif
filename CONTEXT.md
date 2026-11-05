@@ -40,6 +40,14 @@ nasal that is `m`, `n` or `ng` by the sound after it. LibLCM has no flag for it 
 ordinary phoneme, found by the same Composers, and a phoneme that occurs nowhere draws an information finding.
 _Avoid_: abstract segment, placeholder phoneme
 
+**Underlying form**:
+The represented phonological sequence in a parser form, which may distinguish segments, quantity or stress that
+running spelling omits. Ordinary FieldWorks morphology and ordered rules retain those distinctions until final
+written realization; a parser form stays nonabstract and its phonemes have nonempty representations.
+Citation Form may keep the selected source headword
+([ADR 0090](docs/adr/0090-underlying-distinctions-survive-until-the-grammar-realizes-the-written-form.md)).
+_Avoid_: hidden phoneme flag, empty grapheme, pre-parser folding
+
 **Subject**:
 One entry in the closed list an agent searches to find a Composer: what part of a language project the change is
 about. The grammar Subjects are the Phenomena; the others are lexicography and description, such as senses and

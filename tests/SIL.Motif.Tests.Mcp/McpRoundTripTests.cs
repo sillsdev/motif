@@ -40,6 +40,45 @@ namespace SIL.Motif.Tests.Mcp;
 [Collection(LcmCacheParallelCollections.Group3)]
 public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnderlyingFormToolsStageGuardedWritesWithoutApplying(bool citation)
+    {
+        using var project = new WalkthroughProject(pristine);
+        var alternate = AddAlternateForms(project, pristine.Seed, count: 1)[0];
+        string ws;
+        string expected;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath))
+        {
+            ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(project.Seed.FirstEntryId);
+            expected = citation ? entry.CitationForm.get_String(cache.DefaultVernWs).Text ?? ""
+                : entry.AlternateFormsOS[0].Form.get_String(cache.DefaultVernWs).Text;
+        }
+        var hash = HashProject(project.FwDataPath);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        await session.CallAsync("motif_start_proposal", ("draft", "underlying"),
+            ("label", "Restore underlying forms"), ("rationale", "Retain selected source distinctions."));
+        var entryId = CanonicalId.FromGuid(project.Seed.FirstEntryId).Value;
+        var args = new List<(string, object?)> { ("draft", "underlying"),
+            ("target", citation ? entryId : alternate), ("writingSystem", ws),
+            ("expectedForm", "stale"), ("newForm", citation ? "páta" : "pātaʔ") };
+        if (!citation) args.Add(("entry", entryId));
+        var tool = citation ? "motif_edit_citation_form" : "motif_edit_allomorph_form";
+        var staleArgs = args.ToDictionary(pair => pair.Item1, pair => pair.Item2);
+        staleArgs["project"] = project.FwDataPath;
+        var refused = await session.Client.CallToolAsync(tool, staleArgs);
+        Assert.True(refused.IsError);
+        args[3] = ("expectedForm", expected);
+        var result = await session.CallAsync(tool, args.ToArray());
+        Assert.True(result.GetProperty("ok").GetBoolean(), result.ToString());
+        var operation = Assert.Single(result.GetProperty("result").GetProperty("operations").EnumerateArray());
+        Assert.Equal(citation ? LexEntryCitationFormOperationKinds.SetCitationForm : MoFormFormOperationKinds.SetForm,
+            operation.GetProperty("kind").GetString());
+        Assert.Equal(hash, HashProject(project.FwDataPath));
+    }
+
     [Fact]
     public async Task EntryDoNotParseToolStagesWithoutApplying()
     {

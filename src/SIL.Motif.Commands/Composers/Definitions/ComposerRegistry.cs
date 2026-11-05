@@ -56,6 +56,8 @@ internal static class ComposerDefinitions
         new AddMorphoSyntaxAnalysisDefinition(),
         new SetEntryDoNotParseDefinition(),
         new RewriteLexemeFormDefinition(),
+        new EditAllomorphFormDefinition(),
+        new EditCitationFormDefinition(),
         new SetStemPartOfSpeechDefinition(),
         new RetireAllomorphDefinition(),
         new RetireRedundantZeroAffixDefinition(),
