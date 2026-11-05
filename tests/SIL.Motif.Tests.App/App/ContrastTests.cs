@@ -264,6 +264,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                     if (!banner.IsEffectivelyVisible) failures.Add($"{theme}: the notice is not visible");
                     var message = banner.GetVisualDescendants().OfType<TextBlock>()
                         .First(candidate => candidate.Text == TechDemoNoticeViewModel.NoticeText);
+                    Assert.Equal(TextWrapping.Wrap, message.TextWrapping);
                     var messageRatio = Effective(message);
                     if (messageRatio < Text) failures.Add($"{theme} notice text: {messageRatio:F2}:1");
                     foreach (var name in new[] { "Acknowledge the tech demo notice" })

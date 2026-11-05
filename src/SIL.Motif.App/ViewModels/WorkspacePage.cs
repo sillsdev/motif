@@ -111,11 +111,20 @@ public sealed partial class PageViewModel : ObservableObject
 
     /// <summary>The count <see cref="Model"/> keeps beside the label, or null when it has none.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Badge), nameof(HasBadge), nameof(ChangesTip), nameof(WarningsTip))]
+    [NotifyPropertyChangedFor(nameof(Badge), nameof(HasBadge), nameof(ChangesTip), nameof(WarningsTip), nameof(BadgeTip))]
     private int? _badgeCount;
 
     /// <summary>The count as the sidebar shows it, or empty when there is none.</summary>
     public string Badge => BadgeCount?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
+
+    /// <summary>The meaning of the sidebar count.</summary>
+    public string BadgeTip => BadgeCount is not { } count ? Title : Page switch
+    {
+        WorkspacePage.Proposals => PluralText.Format(MotifAppStrings.ProposalsWaitingBadgePattern, count),
+        WorkspacePage.Warnings => WarningsTip,
+        WorkspacePage.Review => ChangesTip,
+        _ => $"{Title}: {Badge}",
+    };
 
     /// <summary>The status bar's changes sentence, with its count inside the localized pattern.</summary>
     public string ChangesTip => PluralText.Format(MotifAppStrings.StatusChangesPattern, BadgeCount ?? 0);

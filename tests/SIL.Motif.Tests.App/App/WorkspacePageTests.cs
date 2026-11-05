@@ -239,6 +239,10 @@ public sealed class WorkspacePageTests
 
         var warnings = workspace.PageOf(WorkspacePage.Warnings);
         Assert.Equal("2", warnings.Badge);
+        Assert.Equal("2 warnings", warnings.BadgeTip);
+        var proposals = workspace.PageOf(WorkspacePage.Proposals);
+        proposals.BadgeCount = 2;
+        Assert.Equal("2 Proposals waiting for you", proposals.BadgeTip);
         Assert.True(warnings.HasBadge);
         Assert.Empty(fake.AssessRequests);
     }

@@ -43,7 +43,8 @@
                   <views:CopyableTextBlock Classes="pageLabel" Text="{Binding Title}"
                                            AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarPageLabel}"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                  <Border Classes="pageBadge" IsVisible="{Binding HasBadge}">
+                  <Border Classes="pageBadge" IsVisible="{Binding HasBadge}" ToolTip.Tip="{Binding BadgeTip}"
+                          AutomationProperties.Name="{Binding BadgeTip}" views:ClearTipPlacement.IsEnabled="True">
                     <views:CopyableTextBlock Text="{Binding Badge}" />
                   </Border>
                   <Border Classes="proposalDelta" IsVisible="{Binding HasDeltaBadge}"
@@ -94,7 +95,7 @@
                     ColumnSpacing="{DynamicResource Component.Notice.ActionGap}">
                 <views:CopyableTextBlock Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
                                          AutomationProperties.Name="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
-                                         VerticalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                         VerticalAlignment="Center" TextWrapping="Wrap" />
                 <StackPanel x:Name="TechDemoNoticeActions" Grid.Column="1" Orientation="Horizontal"
                             Spacing="{DynamicResource Intent.Space.Section}" VerticalAlignment="Center">
                   <Button Content="{x:Static app:MotifAppStrings.TechDemoNoticeGotIt}" Command="{Binding TechDemoNotice.GotItCommand}"
