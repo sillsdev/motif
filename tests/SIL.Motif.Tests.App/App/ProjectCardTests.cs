@@ -46,7 +46,10 @@ public sealed class ProjectCardTests
 
                 window.Width = 700;
                 PageScreenshots.Settle(window);
-                Assert.False(detail.IsEffectivelyVisible, "Narrow, the chip keeps its dot and name alone.");
+                Assert.False(detail.IsEffectivelyVisible, "Narrow, the chip hides the longer detail.");
+                var compactStatus = Assert.IsType<TextBlock>(window.FindInWindowOrWorkspace<TextBlock>("ProjectChipCompactStatus"));
+                Assert.True(compactStatus.IsEffectivelyVisible);
+                Assert.Equal(workspace.FreshnessLabel, compactStatus.Text);
                 Assert.Contains(workspace.FreshnessLabel, AutomationProperties.GetName(chip), StringComparison.Ordinal);
             }
             finally

@@ -61,12 +61,20 @@
     <Setter Property="Margin" Value="{DynamicResource Component.TopBar.SeparatorMargin}" />
     <Setter Property="Background" Value="{DynamicResource Intent.Border}" />
   </Style>
-  <!-- Narrow: the menus sit behind a ≡ (the menu bar's one item), the separator goes, and the chip keeps its name alone. -->
+  <!-- Narrow: the menus sit behind ≡, and the chip keeps the project name and its status. -->
   <Style Selector="Border.topBar.narrow Border.topBarSeparator">
     <Setter Property="IsVisible" Value="False" />
   </Style>
   <Style Selector="Border.topBar.narrow TextBlock.chipDetail">
     <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="TextBlock.chipCompactStatus">
+    <Setter Property="IsVisible" Value="False" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Border.topBar.narrow TextBlock.chipCompactStatus">
+    <Setter Property="IsVisible" Value="True" />
   </Style>
   <Style Selector="Button.projectChip">
     <Setter Property="Padding" Value="{DynamicResource Component.TopBar.ChipPadding}" />

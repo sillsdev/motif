@@ -102,6 +102,9 @@
                        Classes.busy="{Binding FreshnessIsBusy}" Classes.refused="{Binding HasRefreshRefusal}" />
               <TextBlock DockPanel.Dock="Right" Classes="chipCaret" VerticalAlignment="Center"
                          Text="{x:Static app:MotifAppStrings.ProjectChipCaret}" />
+              <TextBlock x:Name="ProjectChipCompactStatus" DockPanel.Dock="Right" Classes="chipCompactStatus"
+                         Margin="{DynamicResource Intent.Gap.BeforeRelated}" VerticalAlignment="Center"
+                         Text="{Binding ProjectChipStatusText}" TextTrimming="CharacterEllipsis" />
               <TextBlock x:Name="ProjectNameLabel" DockPanel.Dock="Left" Classes="projectName" VerticalAlignment="Center"
                          Text="{Binding ProjectName}" TextTrimming="CharacterEllipsis" />
               <TextBlock x:Name="ProjectChipDetail" Classes="chipDetail" VerticalAlignment="Center"

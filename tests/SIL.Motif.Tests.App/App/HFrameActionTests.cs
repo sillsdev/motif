@@ -231,7 +231,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal(full["Baseline of ".Length..], workspace.FreshnessDetail);
                 var narrowChip = window.FindInWindowOrWorkspace<Button>("ProjectChip")!;
                 Assert.False(window.FindInWindowOrWorkspace<TextBlock>("ProjectChipDetail")!.IsEffectivelyVisible,
-                    "Narrow, the chip keeps its name and dot alone.");
+                    "Narrow, the chip hides the longer detail.");
                 Assert.Contains(workspace.FreshnessLabel, AutomationProperties.GetName(narrowChip), StringComparison.Ordinal);
                 var card = ProjectCardAccess.Open(window);
                 Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
