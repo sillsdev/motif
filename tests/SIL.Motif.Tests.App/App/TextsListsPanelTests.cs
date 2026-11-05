@@ -120,6 +120,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
 
                 Assert.True(compare.Words.Single().PresentationState.IsChecked);
                 Assert.Equal(WindowCopy.AiHandoffForThisWord, lists.HandOffCheckedWordsLabel);
+                Assert.True(lists.HasCheckedWordsForHandoff);
             }
             finally
             {

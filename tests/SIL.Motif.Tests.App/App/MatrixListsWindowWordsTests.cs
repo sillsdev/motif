@@ -363,7 +363,7 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             {
                 var listButtons = window.GetLogicalDescendants().OfType<Button>().ToArray();
                 Assert.Single(listButtons, button => Equals(button.Content, lists.HandOffListLabel));
-                Assert.Single(listButtons, button => Equals(button.Content, WindowCopy.AiHandoff));
+                Assert.False(Assert.Single(listButtons, button => Equals(button.Content, WindowCopy.AiHandoff)).IsVisible);
                 Assert.DoesNotContain(listButtons, button => button.CommandParameter is string);
                 return true;
             });

@@ -446,15 +446,12 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             return await stage.Hover(null, () => stage.RowBody("Words in the selected list"), "the first Lists word row");
         })
         { Height = 1100 };
-        yield return new("lists", "disabled-hover", async stage =>
+        yield return new("lists", "handoff-hover", async stage =>
         {
             await stage.ChooseList();
             var button = stage.Visible<Button>(candidate =>
-                AutomationProperties.GetAutomationId(candidate) == SIL.Motif.App.AutomationIds.HandOffCheckedWords).Single();
-            InteractiveStateCaptureCases.RequireAvailability(
-                stage.CurrentState, button.IsEffectivelyEnabled, expectedEnabled: false);
-            return "Disabled button. " +
-                await stage.Hover(null, () => button, "Tick words first", requireTooltip: true);
+                AutomationProperties.GetAutomationId(candidate) == SIL.Motif.App.AutomationIds.HandOffList).Single();
+            return await stage.Hover(null, () => button, "AI Handoff for this list");
         });
 
         // Try a Word.
@@ -653,7 +650,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 border.Classes.Contains("overviewTableRow") && border.DataContext is OverviewSlowWord);
             await stage.Until(() => new[] { "mwalimu", "hawajafika" }.All(word =>
                 Rows().Any(row => ((OverviewSlowWord)row.DataContext!).Word == word)), "the slowest-word rows");
-            foreach (var (word, time) in new[] { ("mwalimu", "700 ms"), ("hawajafika", "48 ms") })
+            foreach (var (word, time) in new[] { ("mwalimu", "2,870 parser work"), ("hawajafika", "447 parser work") })
             {
                 var row = Assert.Single(Rows(), candidate => ((OverviewSlowWord)candidate.DataContext!).Word == word);
                 Assert.Contains(row.GetVisualDescendants().OfType<TextBlock>(), text =>

@@ -9344,7 +9344,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Heading of the card holding the Advanced AI mode setting.</comment>
   </data>
   <data name="MotifApp.AdvancedAiModeExplanation" xml:space="preserve">
-    <value>When this is on, connected assistants can read Known projects and draft Proposals through Motif. They cannot Apply a Proposal. Restart open assistant sessions after changing this setting.</value>
+    <value>When this is on, connected assistants can read Known projects and draft Proposals through Motif. Known projects are FieldWorks projects Motif has used on this computer. Assistants cannot Apply a Proposal. Restart open assistant sessions after changing this setting.</value>
     <comment>Explanatory sentence under the Advanced AI mode heading.</comment>
   </data>
   <data name="MotifApp.TurnOnAdvancedAiMode" xml:space="preserve">

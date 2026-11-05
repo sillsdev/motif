@@ -261,6 +261,9 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public bool HandOffCheckedWordsUnavailable => HandOffCheckedWordsDisabledReason.Length > 0;
 
+    /// <summary>Whether the list contains ticked words that can be named separately from the whole list.</summary>
+    public bool HasCheckedWordsForHandoff => SelectedList is { } list && Compare.CheckedWordsInCells(list.Cells).Count > 0;
+
     public string HandOffCheckedWordsHelpText => SelectedList is not { } list
         ? WindowCopy.ChooseAWordListFirst
         : !list.HasWords ? WindowCopy.NoWordsInListToTick
@@ -294,6 +297,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsUnavailable))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsHelpText))]
     [NotifyPropertyChangedFor(nameof(HandOffCheckedWordsLabel))]
+    [NotifyPropertyChangedFor(nameof(HasCheckedWordsForHandoff))]
     private TextsListDefinitionViewModel? _selectedList;
 
     public IRelayCommand<TextsListDefinitionViewModel> SelectListCommand { get; }
@@ -402,6 +406,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
         OnPropertyChanged(nameof(HandOffCheckedWordsUnavailable));
         OnPropertyChanged(nameof(HandOffCheckedWordsHelpText));
         OnPropertyChanged(nameof(HandOffCheckedWordsLabel));
+        OnPropertyChanged(nameof(HasCheckedWordsForHandoff));
     }
 
     private void OnListPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
