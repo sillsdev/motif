@@ -37,10 +37,40 @@ try {
     Set-Content (Join-Path $short 'a.trx') '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><ResultSummary outcome="Completed"><Counters total="316" executed="313" /></ResultSummary></TestRun>'
     Assert-True (@(Get-MotifShardAbortReasons -ResultsDirectory $short).Count -eq 1) 'A short TRX was not detected.'
 
+    # Skipped rows count as results even when the summary's notExecuted counter is zero.
+    $skipped = Join-Path $root 'skipped'
+    New-Item -ItemType Directory -Path $skipped -Force | Out-Null
+    Set-Content (Join-Path $skipped 'a.trx') @'
+<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Results>
+    <UnitTestResult outcome="Passed" />
+    <UnitTestResult outcome="Passed" />
+    <UnitTestResult outcome="NotExecuted" />
+  </Results>
+  <ResultSummary outcome="Completed"><Counters total="3" executed="2" notExecuted="0" /></ResultSummary>
+</TestRun>
+'@
+    $none = @(Get-MotifShardAbortReasons -ResultsDirectory $skipped)
+    Assert-True ($none.Count -eq 0) "A complete TRX with skipped rows was flagged: $($none -join ' | ')"
+
+    $shortWithSkipped = Join-Path $root 'short-with-skipped'
+    New-Item -ItemType Directory -Path $shortWithSkipped -Force | Out-Null
+    Set-Content (Join-Path $shortWithSkipped 'a.trx') @'
+<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Results>
+    <UnitTestResult outcome="Passed" />
+    <UnitTestResult outcome="NotExecuted" />
+  </Results>
+  <ResultSummary outcome="Completed"><Counters total="3" executed="2" notExecuted="0" /></ResultSummary>
+</TestRun>
+'@
+    Assert-True (@(Get-MotifShardAbortReasons -ResultsDirectory $shortWithSkipped).Count -eq 1) `
+        'A missing result row was hidden by skipped rows or summary counters.'
+
     # A clean shard (the Blame "all tests finished" note, complete sequence/TRX) has no reasons.
     $clean = Join-Path $root 'clean'
     New-Item -ItemType Directory -Path $clean -Force | Out-Null
-    Set-Content (Join-Path $clean 'a.trx') '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><ResultSummary outcome="Completed"><Counters total="316" executed="316" /></ResultSummary></TestRun>'
+    Set-Content (Join-Path $clean 'a.trx') '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"><Results><UnitTestResult outcome="Passed" /></Results><ResultSummary outcome="Completed"><Counters total="1" executed="1" /></ResultSummary></TestRun>'
     Set-Content (Join-Path $clean 'Sequence_2.xml') '<TestSequence><Test Name="A" Completed="True" /></TestSequence>'
     $cleanLog = Join-Path $root 'clean.log'
     Set-Content $cleanLog "Data collector 'Blame' message: All tests finished running, Sequence file will not be generated."

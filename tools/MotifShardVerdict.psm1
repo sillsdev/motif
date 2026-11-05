@@ -35,10 +35,10 @@ function Get-MotifShardAbortReasons {
             $summary = $trxDocument.SelectSingleNode("//*[local-name()='ResultSummary']")
             if ($summary -and $summary.GetAttribute('outcome') -eq 'Aborted') { $reasons.Add("TRX $($trx.Name) is marked Aborted") }
             $counters = $trxDocument.SelectSingleNode("//*[local-name()='ResultSummary']/*[local-name()='Counters']")
-            if ($counters -and $counters.GetAttribute('total') -and $counters.GetAttribute('executed')) {
+            if ($counters -and $counters.GetAttribute('total')) {
                 $total = [int] $counters.GetAttribute('total')
-                $executed = [int] $counters.GetAttribute('executed')
-                if ($executed -lt $total) { $reasons.Add("TRX $($trx.Name) is short: $executed of $total tests executed") }
+                $recorded = $trxDocument.SelectNodes("//*[local-name()='Results']/*[local-name()='UnitTestResult']").Count
+                if ($recorded -lt $total) { $reasons.Add("TRX $($trx.Name) is short: $recorded of $total test results recorded") }
             }
         }
     }
