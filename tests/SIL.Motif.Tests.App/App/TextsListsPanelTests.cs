@@ -154,8 +154,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
 
                 var checkedWords = panel.GetVisualDescendants().OfType<Button>()
                     .Single(button => ReferenceEquals(button.Command, lists.HandOffCheckedWordsCommand));
-                Assert.Equal(lists.HandOffCheckedWordsHelpText, ToolTip.GetTip(checkedWords));
-                Assert.True(ToolTip.GetShowOnDisabled(checkedWords));
+                Assert.False(checkedWords.IsEffectivelyVisible);
             }
             finally
             {
@@ -194,7 +193,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 var controls = panel.FindControl<Control>("ListControls")!;
                 var shown = controls.GetVisualDescendants().OfType<Control>()
                     .Where(control => control is Button or ComboBox && control.IsEffectivelyVisible).ToArray();
-                Assert.Equal(4, shown.Length);
+                Assert.Equal(3, shown.Length);
                 var middles = shown.Select(control =>
                     control.TranslatePoint(new Point(0, control.Bounds.Height / 2), controls)!.Value.Y).ToArray();
                 Assert.All(middles, middle => Assert.InRange(middle, middles[0] - 1, middles[0] + 1));

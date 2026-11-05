@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class TextsListsHandoffAvailabilityTests
 {
     [Fact]
-    public void EmptyAndUntickedListsGiveTheirHandoffReasonOnTheButton_NotAsANoteBesideIt()
+    public void EmptyAndUntickedListsHideTheSelectedWordHandoff()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -42,7 +42,8 @@ public sealed class TextsListsHandoffAvailabilityTests
                 Assert.NotEmpty(lists.HandOffCheckedWordsHelpText);
                 Assert.Equal(lists.HandOffCheckedWordsHelpText,
                     AutomationProperties.GetHelpText(checkedWordsButton));
-                Assert.Equal(lists.HandOffCheckedWordsHelpText, ToolTip.GetTip(checkedWordsButton));
+                Assert.False(checkedWordsButton.IsEffectivelyVisible);
+                Assert.Null(ToolTip.GetTip(checkedWordsButton));
                 Assert.Equal(lists.HandOffListHelpText, ToolTip.GetTip(wholeListButton));
                 Assert.Equal(lists.HandOffListHelpText, AutomationProperties.GetHelpText(wholeListButton));
                 Assert.Empty(VisibleReasons(window, lists.HandOffListDisabledReason,
@@ -64,7 +65,7 @@ public sealed class TextsListsHandoffAvailabilityTests
                 Assert.Empty(lists.HandOffListDisabledReason);
                 Assert.NotEmpty(lists.HandOffCheckedWordsDisabledReason);
                 Assert.Equal(lists.HandOffCheckedWordsDisabledReason, AutomationProperties.GetHelpText(checkedWordsButton));
-                Assert.Equal(lists.HandOffCheckedWordsDisabledReason, ToolTip.GetTip(checkedWordsButton));
+                Assert.False(checkedWordsButton.IsEffectivelyVisible);
                 Assert.Empty(VisibleReasons(window, lists.HandOffCheckedWordsDisabledReason));
             }
             finally

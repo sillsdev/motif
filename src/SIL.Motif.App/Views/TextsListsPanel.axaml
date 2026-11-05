@@ -79,8 +79,7 @@
                 Command="{Binding Lists.HandOffCheckedWordsCommand}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandOffCheckedWords}"
                 AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForTickedWordsInThisList}"
-                AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}"
-                ToolTip.Tip="{Binding Lists.HandOffCheckedWordsHelpText}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
+                AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}" />
         <Button Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandOffList}"
                 AutomationProperties.Name="{Binding Lists.HandOffListLabel}"
