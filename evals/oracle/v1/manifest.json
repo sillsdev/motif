@@ -121,7 +121,7 @@
     },
     {
       "path": "docs/adr/0059-measuring-agents-fairly.md",
-      "sha256": "8e2d14aff9c138a5991db08745415b48f7e0421b0334aeac488d5d99be5c16e5"
+      "sha256": "cb32189bf093e72ff85bd7882e45fe9756ddeefe18918d75fc51f8a4e6860e02"
     },
     {
       "path": "docs/references/README.md",
@@ -301,11 +301,11 @@
     },
     {
       "path": "evals/test-grammars.lock.json",
-      "sha256": "77a32da7b61857734b15ac618bf1ebf08954406a5a42d8166291eed498d65bbe"
+      "sha256": "5881bb7618451ffab2f267f6ff07813072e256aae2945174d5b163c6e47a9ee8"
     },
     {
       "path": "pangloss-release.json",
-      "sha256": "4c56cee190c456d412a1dc2a42d3decafa9c20d9faab9a52e21d951bd5f8292b"
+      "sha256": "97db801f1d870dab8e5a59e72153f5c744a5e96bef4c466fabd21a84c1a4db7b"
     },
     {
       "path": "plugin/references/crosswalk.md",
