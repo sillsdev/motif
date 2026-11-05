@@ -14,17 +14,17 @@
               RowSpacing="{DynamicResource Intent.Space.Compact}">
           <WrapPanel x:Name="TextsHeaderTabs">
             <Button Content="{x:Static app:MotifAppStrings.Matrix}" Classes="tab" Classes.active="{Binding ShowMatrix}"
-                  Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
+                  Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.Matrix}" AutomationProperties.Name="{x:Static app:MotifAppStrings.MatrixTabAccessibleName}" />
             <Button Content="{x:Static app:MotifAppStrings.AnalyzeTexts}" Classes="tab" Classes.active="{Binding ShowAnalyzeTexts}"
-                  Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
+                  Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.AnalyzeTexts}" AutomationProperties.Name="{x:Static app:MotifAppStrings.AnalyzeTextsTabAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.AnalyzeTextsTab}" />
             <Button Content="{x:Static app:MotifAppStrings.Lists}" Classes="tab" Classes.active="{Binding ShowLists}"
-                  Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
+                  Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.Lists}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ListsTabAccessibleName}" />
             <Button Content="{x:Static app:MotifAppStrings.WhatChanged}" Classes="tab" Classes.active="{Binding ShowWhatChanged}"
-                  Theme="{DynamicResource BorderlessButton}" Command="{Binding ShowTabCommand}"
+                  Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.WhatChanged}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatChangedTabAccessibleName}" />
           </WrapPanel>
           <StackPanel x:Name="TextsHeaderActions" Grid.Column="1" Orientation="Horizontal"

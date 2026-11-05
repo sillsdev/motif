@@ -38,6 +38,32 @@ public sealed class AnalyzeTextsLayoutTests
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
 
     [Fact]
+    public void TextsTabsShowTheSelectedTabWithAnUnderline()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenAnalyzeTexts(seedReaderToken: false);
+            try
+            {
+                var model = workspace.PageModel<TextsPageModel>();
+                var tabs = window.PageView<TextsPage>().FindControl<WrapPanel>("TextsHeaderTabs")!;
+                foreach (var tab in Enum.GetValues<TextsTab>())
+                {
+                    model.ShowTabCommand.Execute(tab);
+                    PageScreenshots.Settle(window);
+                    var selected = Assert.Single(tabs.Children.OfType<Button>(), button => button.Classes.Contains("active"));
+                    Assert.Equal(tab, selected.CommandParameter);
+                    var face = Assert.Single(selected.GetVisualDescendants().OfType<ContentPresenter>(),
+                        presenter => presenter.Name == "PART_ContentPresenter");
+                    Assert.True(face.BorderThickness.Bottom > 0);
+                    Assert.True(face.BorderBrush is ISolidColorBrush brush && brush.Color.A > 0);
+                }
+            }
+            finally { window.Close(); await workspace.DisposeAsync(); }
+        }, Deadline);
+    }
+
+    [Fact]
     public void ChooseTextsFromParsedReaderOpensConfiguration()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
