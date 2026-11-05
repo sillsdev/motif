@@ -10,31 +10,38 @@ namespace SIL.Motif.Runner.Composers;
 /// <summary>Reads a regular rewrite rule back into the intent form that authored it, so it can be checked and edited.</summary>
 public static class PhonologicalRuleReader
 {
-    /// <summary>
-    /// The rule as an authoring intent, or null when it is not a regular rule with one right-hand side or holds a
-    /// context the intent cannot express.
-    /// </summary>
+    /// <summary>The complete rule intent, or null when its contexts or applicability cannot be represented.</summary>
     public static AuthorPhonologicalRuleIntent? Read(IPhSegmentRule rule)
     {
         ArgumentNullException.ThrowIfNull(rule);
-        if (rule is not IPhRegularRule { RightHandSidesOS.Count: 1 } regular) return null;
-        if (rule.Direction is < 0 or > 2 || rule.StrucDescOS.Count > 8 || regular.RightHandSidesOS[0].StrucChangeOS.Count > 8)
-            return null;
-        var rhs = regular.RightHandSidesOS[0];
+        if (rule is not IPhRegularRule regular || regular.RightHandSidesOS.Count == 0) return null;
+        if (rule.Direction is < 0 or > 2 || rule.StrucDescOS.Count > 8) return null;
         var input = rule.StrucDescOS.Select(Item).ToArray();
-        var output = rhs.StrucChangeOS.Select(Item).ToArray();
-        if (input.Any(item => item is null) || output.Any(item => item is null)) return null;
-        var left = Contexts(rhs.LeftContextOA);
-        var right = Contexts(rhs.RightContextOA);
-        if (left is null || right is null) return null;
+        if (input.Any(item => item is null)) return null;
+        var outcomes = new List<PhonologicalRuleOutcome>();
+        foreach (var rhs in regular.RightHandSidesOS)
+        {
+            var output = rhs.StrucChangeOS.Select(Item).ToArray();
+            var left = Contexts(rhs.LeftContextOA);
+            var right = Contexts(rhs.RightContextOA);
+            if (output.Length > 8 || output.Any(i => i is null) || left is null || right is null ||
+                rhs.ReqRuleFeatsRC.Concat(rhs.ExclRuleFeatsRC).Any(w => w.ItemRA is null)) return null;
+            outcomes.Add(new(output!, left, right,
+                rhs.ReqRuleFeatsRC.Select(w => Id(w.ItemRA)).Distinct().OrderBy(i => i.Value, StringComparer.Ordinal).ToArray(),
+                rhs.ExclRuleFeatsRC.Select(w => Id(w.ItemRA)).Distinct().OrderBy(i => i.Value, StringComparer.Ordinal).ToArray(),
+                rhs.InputPOSesRC.Select(Id).OrderBy(i => i.Value, StringComparer.Ordinal).ToArray()));
+        }
         var direction = rule.Direction switch
         {
             1 => PhonologicalRuleDirection.RightToLeftIterative,
             2 => PhonologicalRuleDirection.Simultaneous,
             _ => PhonologicalRuleDirection.LeftToRightIterative,
         };
-        return new AuthorPhonologicalRuleIntent(rule.Name.BestAnalysisAlternative.Text ?? string.Empty, direction,
-            input!, output!, left, right);
+        var first = outcomes[0];
+        var explicitOutcomes = outcomes.Count > 1 || first.RequiredFeatures!.Count + first.ExcludedFeatures!.Count + first.InputCategories!.Count > 0;
+        return new(rule.Name.BestAnalysisAlternative.Text ?? string.Empty, direction, input!,
+            explicitOutcomes ? [] : first.Output, explicitOutcomes ? [] : first.Left,
+            explicitOutcomes ? [] : first.Right, RightHandSides: explicitOutcomes ? outcomes : null);
     }
 
     /// <summary>The wire form of one rule item list, as the authoring tools accept it.</summary>
@@ -78,15 +85,32 @@ public static class PhonologicalRuleReader
     }).ToArray());
 
     /// <summary>The wire form of the whole rule, without placement.</summary>
-    public static JsonObject ToJson(AuthorPhonologicalRuleIntent intent) => new()
+    public static JsonObject ToJson(AuthorPhonologicalRuleIntent intent)
     {
-        ["name"] = intent.Name,
-        ["direction"] = DirectionText(intent.Direction),
-        ["input"] = ItemsJson(intent.Input),
-        ["output"] = ItemsJson(intent.Output),
-        ["left"] = ContextsJson(intent.Left),
-        ["right"] = ContextsJson(intent.Right),
-    };
+        var result = new JsonObject
+        {
+            ["name"] = intent.Name, ["direction"] = DirectionText(intent.Direction), ["input"] = ItemsJson(intent.Input),
+        };
+        if (intent.RightHandSides is not null) result["rightHandSides"] = OutcomesJson(intent.RightHandSides);
+        else
+        {
+            result["output"] = ItemsJson(intent.Output);
+            result["left"] = ContextsJson(intent.Left);
+            result["right"] = ContextsJson(intent.Right);
+        }
+        return result;
+    }
+
+    /// <summary>The ordered outcome sequence, with applicability sets sorted by identity.</summary>
+    public static JsonArray OutcomesJson(IEnumerable<PhonologicalRuleOutcome> outcomes) => new(outcomes.Select(o => (JsonNode)new JsonObject
+    {
+        ["output"] = ItemsJson(o.Output), ["left"] = ContextsJson(o.Left), ["right"] = ContextsJson(o.Right),
+        ["requiredFeatures"] = Ids(o.RequiredFeatures), ["excludedFeatures"] = Ids(o.ExcludedFeatures),
+        ["inputCategories"] = Ids(o.InputCategories),
+    }).ToArray());
+
+    private static JsonArray Ids(IReadOnlyList<CanonicalId>? ids) => new((ids ?? [])
+        .Select(id => id.Value).Order(StringComparer.Ordinal).Select(id => (JsonNode)JsonValue.Create(id)!).ToArray());
 
     internal static string DirectionText(PhonologicalRuleDirection direction) => direction switch
     {

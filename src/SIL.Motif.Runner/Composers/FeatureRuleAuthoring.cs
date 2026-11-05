@@ -12,10 +12,15 @@ internal static class FeatureRuleAuthoring
 {
     internal static void Validate(LcmCache cache, AuthorPhonologicalRuleIntent intent)
     {
-        var uses = intent.Input.Concat(intent.Output).SelectMany(i => i.Variables ?? [])
-            .Concat(intent.Left.Concat(intent.Right).SelectMany(i => i.Variables ?? [])).ToArray();
-        var visible = intent.Input.Concat(intent.Output).SelectMany(i => i.Variables ?? [])
-            .Concat(Visible(intent.Left)).Concat(Visible(intent.Right)).Select(v => v.Variable).ToHashSet(StringComparer.Ordinal);
+        var outputs = intent.Outcomes.SelectMany(o => o.Output).ToArray();
+        var contexts = intent.Outcomes.SelectMany(o => o.Left.Concat(o.Right)).ToArray();
+        var uses = intent.Input.Concat(outputs).SelectMany(i => i.Variables ?? [])
+            .Concat(contexts.SelectMany(i => i.Variables ?? [])).ToArray();
+        if (uses.Select(v => v.Variable).Distinct(StringComparer.Ordinal).Count() > 24)
+            throw new InvalidOperationException("FieldWorks HCLoader can name at most 24 alpha variables across one rule's Input and right-hand sides.");
+        var visible = intent.Input.Concat(outputs).SelectMany(i => i.Variables ?? [])
+            .Concat(intent.Outcomes.SelectMany(o => Visible(o.Left).Concat(Visible(o.Right))))
+            .Select(v => v.Variable).ToHashSet(StringComparer.Ordinal);
         foreach (var group in uses.GroupBy(v => v.Variable, StringComparer.Ordinal))
         {
             if (string.IsNullOrWhiteSpace(group.Key) || group.Any(v => v.Polarity is not ("+" or "-")))
@@ -28,11 +33,11 @@ internal static class FeatureRuleAuthoring
         }
         foreach (var item in intent.Input)
             if (item.Change is not null) throw new InvalidOperationException("A feature change is allowed only in rule Output.");
-        for (var index = 0; index < intent.Output.Count; index++)
+        foreach (var outcome in intent.Outcomes)
+        foreach (var item in outcome.Output)
         {
-            var item = intent.Output[index];
             if (item.Change is not { } change) continue;
-            if (intent.Input.Count != intent.Output.Count)
+            if (intent.Input.Count != outcome.Output.Count)
                 throw new InvalidOperationException("A feature change needs an aligned matched segment: Input and Output must have equal lengths.");
             var duplicate = change.GroupBy(v => v.Feature.ToGuid()).FirstOrDefault(group => group.Count() > 1);
             if (duplicate is not null)
@@ -42,8 +47,8 @@ internal static class FeatureRuleAuthoring
                 throw new InvalidOperationException("A feature change needs a feature value or an alpha variable.");
             foreach (var value in change) RequireFeature(cache, value.Feature);
         }
-        foreach (var item in intent.Input.Concat(intent.Output)) ValidateItem(item.NaturalClass, item.Change, item.Variables);
-        foreach (var context in intent.Left.Concat(intent.Right)) ValidateItem(context.NaturalClass, null, context.Variables);
+        foreach (var item in intent.Input.Concat(outputs)) ValidateItem(item.NaturalClass, item.Change, item.Variables);
+        foreach (var context in contexts) ValidateItem(context.NaturalClass, null, context.Variables);
 
         static IEnumerable<PhonologicalRuleVariable> Visible(IReadOnlyList<EnvironmentContext> contexts) =>
             contexts.Where(c => contexts.Count == 1 || c.Minimum is null).SelectMany(c => c.Variables ?? []);

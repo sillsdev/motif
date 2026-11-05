@@ -152,8 +152,10 @@ with left and right contexts. The two sequences may have different lengths; empt
 Output means deletion. These sequence shapes are proven through FieldWorks' HermitCrab and PanGloss. An Output
 segment-list natural class produces any member of that class. A context item may be optional or repeated, and a context
 may name a word or morpheme boundary. A rule can be edited in place, reordered, switched off (disabled) or deleted;
-its order is meaning, because a later rule sees the output of the earlier ones. Multiple right-hand sides are read
-with their actual count and no editable intent; editing them is deferred. An aligned feature-class Output changes
+its order is meaning, because a later rule sees the output of the earlier ones. A rule has one or more authored right-hand sides, each with its own Output, contexts, required/excluded rule features
+and input categories. They are ordered cases: the first applicable one wins, rather than freely alternating. An Output
+segment-list class can supply lexical alternatives in one environment. Complete expected-current guards protect outcome
+sequence replacement for adding, removing or reordering cases; existing longer sequences read back without truncation. An aligned feature-class Output changes
 only its specified features; Output `change` bundles express this explicitly. Alpha variables share a closed feature across Input, Output and contexts through positive or negative
 constraints, including single or all-negative references to any declared closed phonological feature with values,
 without requiring its use on phonemes. They read back with stored identities so edits preserve sharing; replacing

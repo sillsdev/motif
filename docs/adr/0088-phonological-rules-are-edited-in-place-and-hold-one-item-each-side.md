@@ -5,13 +5,14 @@ Output each hold up to eight ordered phoneme or natural-class items, and their l
 means insertion; an empty Output means deletion. Contexts may hold optional or repeated items and word or morpheme
 boundaries.
 
-**Status:** accepted; amended 2026-11-05 for sequence rules, feature changes and alpha read-back. The ADR number and filename are
+**Status:** accepted; amended 2026-11-05 for sequence rules, feature changes, alpha read-back and ordered right-hand sides. The ADR number and filename are
 retained so existing citations continue to resolve; the title and decision below state the amended behavior.
 
 ## Decision
 
 1. **Edit in place.** `compose-edit-phonological-rule` replaces only the named parts (name, direction, input,
-   output, left, right). The rule keeps its identity, place in the order and features. An `expected` guard names the
+   output, left, right, rightHandSides). The rule keeps its identity and place in the order; individual-part edits
+   preserve applicability, while a guarded outcome-sequence replacement supplies each case's applicability explicitly. An `expected` guard names the
    current value of each part being changed; a mismatch stages nothing. Contexts are replaced by deleting the old
    ones and creating the new ones in the same Proposal.
 2. **Order, disable, delete.** `compose-order-phonological-rules` plans the fewest moves with
@@ -32,18 +33,18 @@ retained so existing citations continue to resolve; the title and decision below
    rules with a boundary on a project that held two `+` markers. It refuses a marker used by anything but a boundary
    context.
 6. **Representable edit intents only.** A detailed rule read returns its actual right-hand-side count and an intent
-   suitable for an edit guard only when the rule has exactly one right-hand side and every context is representable.
+   suitable for an edit guard when every right-hand side and context is representable.
    Positive and negative alpha references, including those inside sequences and iterations, read back with their
    shared constraint identities. A malformed constraint or unrepresentable context yields no editable intent.
-   The edit guard refuses before constructing operations when the expected parts differ. Rules with multiple right-hand sides are read with `intent: null` and refused for editing until a
-   later slice adds subrule authoring and guards; no right-hand side is silently selected or discarded.
+   The edit guard refuses before constructing operations when the expected parts differ. Every right-hand side
+   is retained in order, including its Output, contexts, required/excluded rule features and input categories.
 
 ## Consequences
 
 - A rule chain (class to nasal, archiphoneme deleted before a nasal, archiphoneme to the velar nasal elsewhere) is
   authored in any order and then reordered. Segment natural classes also work in featureless grammars with
   PanGloss 0.15.2.
-- Rule features and inflection classes still go through `compose-edit-phonological-rule-features`.
+- Rule features and inflection classes belong to each right-hand side. The single-outcome feature command remains a shorthand; complete outcome-sequence edits supply the sets per case.
 
 ## Amendment, 2026-11-05: sequence rules and safe read-back
 
@@ -55,8 +56,8 @@ extended gate also proves natural classes in sequences, left and right environme
 multiple right-hand sides. HCLoader loops over every Input, Output and right-hand-side item without a one-item cap.
 
 The eight-item limit is the Motif authoring bound, matching contexts; it is not a FieldWorks loader ceiling.
-Multiple right-hand sides are proven in FieldWorks and PanGloss but need a separate subrule intent and edit-guard
-design. Alpha authoring and read-back follow the further amendment below.
+Multiple right-hand sides are proven in FieldWorks and PanGloss with separate environments. Their authoring and
+edit guards follow the further amendment below, as do feature changes and alpha read-back.
 
 ## Amendment, 2026-11-05: feature changes and alpha variables
 
@@ -80,7 +81,7 @@ design. Alpha authoring and read-back follow the further amendment below.
    Sharing and polarity survive, while the recreated constraint has a new stored identity. Other context deletions
    depend on Input deletions, preserving constraints retained by Output or environments. The final combined
    intent is validated before any operation identities are minted.
-   Multiple right-hand sides, nested iterations and malformed alpha constraints still refuse editable read-back.
+   Nested iterations and malformed alpha constraints still refuse editable read-back.
 10. **Refuse variables the pinned FieldWorks loader cannot discover.** LibLCM's `PhRegularRule.CollectVars`
    visits simple natural-class members of a sequence but omits iteration members. HCLoader builds its variable
    dictionary exclusively from `rule.FeatureConstraints`, then indexes it for each context reference. Authoring
@@ -94,8 +95,7 @@ The director's `solb3-hc-gate.md` records FieldWorks GenerateHCConfig and hc.dll
 preserve place, alpha copies place across a morpheme boundary, and binary MinusConstr expresses dissimilation.
 PanGloss 0.15.2's default engine agrees on consonant-initial stems. Its unspecified-feature environment difference
 is tracked as PanGloss #180 and is not compensated for in Motif. Alpha on Input loads through FieldWorks and runs
-on PanGloss, but hc.dll parsing parity is unproven because the oracle hangs. Metathesis and authoring multiple
-right-hand sides remain outside this intent.
+on PanGloss, but hc.dll parsing parity is unproven because the oracle hangs. Metathesis remains outside this intent.
 
 
 The loader policy follows the local FieldWorks source: `PhonologicalFeatureChooserDlg.UpdateFeatureConstraints`
@@ -104,3 +104,38 @@ creates either polarity independently, `HCLoader.LoadRewriteRule` builds variabl
 `LoadFeatureSystem` loads all declared closed features independently of phoneme usage.
 `RegRuleFormulaControl.SetContextOccurrence` and `RuleFormulaControl.CurrentContext` allow variables on repeated
 items, but LibLCM's sequence collector omits them; no editor-only registration repairs that omission.
+
+## Amendment, 2026-11-05: ordered right-hand sides and lexical alternatives
+
+11. **Complete per-case intent.** `rightHandSides` contains one or more ordered objects with `output`, `left`,
+    `right`, `requiredFeatures`, `excludedFeatures` and optional `inputCategories`. Input, direction and name stay
+    rule-wide. Each case requires Output; missing contexts or applicability sets mean empty. Feature ids refer to
+    the same exception features or inflection classes as the existing feature composer. Input categories preserve
+    FieldWorks' InputPOSes restrictions, including category descendants. The nonempty sequence has no case-count
+    ceiling in authoring, read-back or replacement.
+12. **Expected-current sequence replacement.** An edit replaces the complete sequence to add, remove or reorder
+    cases, guarded by `expected.rightHandSides`. The guard checks every case in order and its applicability sets
+    by identity. The deletion payload retains the complete RHS/context graph digest, and Apply binds that
+    graph in its pre-mutation footprint so later content drift refuses. A complete unrestricted single-outcome
+    `output`, `left`, `right` expectation can guard conversion to the sequence form. The rule keeps its identity, order and disabled flag; its RHS objects are recreated
+    in one Proposal. Alpha scope spans the whole rule; one lowering shares constraint identities across outcomes
+    and preserves stored constraints, recreating those collected when their last referrers are replaced Input.
+    RHS-only constraints remain reusable; after replacement, old constraints with no remaining referrers are
+    collected. Constraints still used by this rule, another rule or a process are kept.
+13. **Preserve FieldWorks priority; alternatives use an Output class.** Multiple right-hand sides are ordered
+    cases, not free variation. FieldWorks HCLoader loads them in order; Machine's `RewriteRuleSpec.MatchSubrule`
+    returns on the first applicable environment. The default PanGloss 0.15.2 engine likewise gives ara, not ala,
+    from ada with overlapping d → r then d → l cases. Deleting the first enables the second. Two overlapping
+    cases therefore cannot provide the proposed optional-outcome proof. An Output segment-list class {r,l}
+    supplies both alternatives within one case, under lexical rule-feature restrictions; the same representation
+    can retain an original segment alongside its changed counterpart. No optional flag or dialect/register
+    abstraction is invented. The requested overlapping-RHS semantics require a separate engine/model decision.
+14. **Respect the loader's variable-name bound.** FieldWorks HCLoader names alpha constraints with a fixed
+    24-element Greek-name table. The combined Input and all outcomes therefore admit at most 24 distinct
+    variables. Validation refuses a larger set before minting operations; 24 is allowed. This is a loader bound,
+    independent of the number of right-hand sides.
+15. **Compatibility without ambiguity.** The existing `output`, `left`, `right` authoring shorthand still creates
+    one case. It cannot be mixed with `rightHandSides`, and is ambiguous for editing a multi-case rule. Detailed
+    reads keep that shorthand for an unrestricted single case; otherwise they return the complete sequence.
+    Single-case feature edits remain available, while multiple-case features are edited through the guarded
+    sequence. No outcome is silently selected or discarded.

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
@@ -67,7 +66,8 @@ public static class EditPhonologicalRuleFeaturesComposer
         var rule = LexicalFormAuthoring.Resolve<IPhSegmentRule>(cache, ruleId, ConstructName);
         if (rule is not IPhRegularRule regular || regular.RightHandSidesOS.Count != 1)
             throw new InvalidOperationException(
-                $"'{ConstructName}': '{ruleId.Value}' is not a regular rewrite rule with exactly one right-hand side.");
+                $"'{ConstructName}': '{ruleId.Value}' must have one right-hand side for this shorthand. " +
+                "For multiple outcomes use compose-edit-phonological-rule with rightHandSides and expected.rightHandSides.");
         var rhs = regular.RightHandSidesOS[0];
         var rhsId = CanonicalId.FromGuid(rhs.Guid);
 
@@ -81,56 +81,11 @@ public static class EditPhonologicalRuleFeaturesComposer
             throw new InvalidOperationException($"'{ConstructName}': a feature cannot be both required and excluded.");
 
         var builder = new SoundSystemAuthoring.Builder(mintId, Rationale);
-        var wrappers = (cache.LangProject.PhonologicalDataOA?.PhonRuleFeatsOA?.PossibilitiesOS ?? Enumerable.Empty<ICmPossibility>())
-            .OfType<IPhPhonRuleFeat>().Where(w => w.ItemRA is not null)
-            .GroupBy(w => w.ItemRA!.Guid).ToDictionary(g => g.Key, g => CanonicalId.FromGuid(g.First().Guid));
-        var newOperations = new Dictionary<CanonicalId, OperationEnvelope[]>();
-        CanonicalId Wrapper(ICmObject item)
-        {
-            if (wrappers.TryGetValue(item.Guid, out var existing)) return existing;
-            var list = cache.LangProject.PhonologicalDataOA?.PhonRuleFeatsOA ??
-                throw new InvalidOperationException(
-                    $"'{ConstructName}': the project has no Phonological Rule Features list. Open Grammar, Phonology, " +
-                    "Rules in FieldWorks once, save, and reload the project.");
-            var start = builder.Operations.Count;
-            var wrapperId = builder.Create(CmPossibilityListPossibilitiesOperationKinds.Create,
-                CanonicalId.FromGuid(list.Guid), new { @class = "PhPhonRuleFeat" });
-            var ws = cache.DefaultAnalWs;
-            var label = (item as ICmPossibility)?.Name.get_String(ws)?.Text ?? item.ShortName;
-            var text = label.Normalize(NormalizationForm.FormD);
-            builder.Text(CmPossibilityNameOperationKinds.SetName, wrapperId, cache, ws, text);
-            builder.Text(CmPossibilityAbbreviationOperationKinds.SetAbbreviation, wrapperId, cache, ws, text);
-            builder.Add(PhPhonRuleFeatItemOperationKinds.SetItem, wrapperId, new { @ref = CanonicalId.FromGuid(item.Guid).Value });
-            wrappers[item.Guid] = wrapperId;
-            newOperations[wrapperId] = builder.Operations.Skip(start).ToArray();
-            return wrapperId;
-        }
-
-        Apply(required, rhs.ReqRuleFeatsRC, PhSegRuleRHSReqRuleFeatsOperationKinds.AddRefReqRuleFeats,
-            PhSegRuleRHSReqRuleFeatsOperationKinds.RemoveRefReqRuleFeats);
-        Apply(excluded, rhs.ExclRuleFeatsRC, PhSegRuleRHSExclRuleFeatsOperationKinds.AddRefExclRuleFeats,
-            PhSegRuleRHSExclRuleFeatsOperationKinds.RemoveRefExclRuleFeats);
+        new RuleOutcomeFeatures(cache, builder).Apply(rhsId, required, excluded, rhs);
         return builder.Operations;
-
-        void Apply(IReadOnlyList<ICmObject>? wanted, IEnumerable<IPhPhonRuleFeat> current, string addKind, string removeKind)
-        {
-            if (wanted is null) return;
-            var wantedIds = wanted.Select(item => item.Guid).ToHashSet();
-            var currentItems = current.ToArray();
-            foreach (var wrapper in currentItems.Where(w => w.ItemRA is null || !wantedIds.Contains(w.ItemRA.Guid))
-                         .OrderBy(w => w.Guid))
-                builder.Add(removeKind, rhsId, new { member = CanonicalId.FromGuid(wrapper.Guid).Value });
-            var haveIds = currentItems.Where(w => w.ItemRA is not null).Select(w => w.ItemRA!.Guid).ToHashSet();
-            foreach (var item in wanted.Where(item => !haveIds.Contains(item.Guid)))
-            {
-                var wrapperId = Wrapper(item);
-                builder.Add(addKind, rhsId, new { member = wrapperId.Value },
-                    requires: newOperations.GetValueOrDefault(wrapperId));
-            }
-        }
     }
 
-    private static IReadOnlyList<ICmObject>? Items(LcmCache cache, IReadOnlyList<CanonicalId>? ids, string field)
+    internal static IReadOnlyList<ICmObject>? Items(LcmCache cache, IReadOnlyList<CanonicalId>? ids, string field)
     {
         if (ids is null) return null;
         var normalized = ids.Select(LexicalFormAuthoring.Normalize).ToArray();

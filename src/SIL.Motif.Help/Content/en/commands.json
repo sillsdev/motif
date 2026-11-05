@@ -213,7 +213,7 @@
   },
   "compose-author-phonological-rule": {
     "title": "Author a phonological rule",
-    "description": "Stages one regular phonological rule in a Draft, with up to eight phonemes or natural classes in each Input and Output sequence and declared context and rule placement. Empty Input or Output means insertion or deletion; Output feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.",
+    "description": "Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.",
     "source": "Hand-written from the regular rewrite-rule composer contract and command behavior.",
     "goals": [
       "Add a vowel harmony rule",
@@ -223,8 +223,8 @@
     ],
     "guides": [
       "nasal-assimilation",
-      "feature-rules",
-      "conditioned-allomorphs"
+      "phonological-rules",
+      "feature-rules"
     ],
     "redirect": "Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs)."
   },
@@ -1079,7 +1079,7 @@
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
-      "rule": "Id of an existing regular rewrite rule with one right-hand side.",
+      "rule": "Id of an existing regular rule with one right-hand side; for several, use compose-edit-phonological-rule with rightHandSides.",
       "requiredFeatures": "Exact set of exception feature or inflection class ids a stem must all carry; an empty list clears it.",
       "excludedFeatures": "Exact set of ids a stem must carry none of; an empty list clears it."
     },
@@ -1879,17 +1879,18 @@
   },
   "compose-edit-phonological-rule": {
     "title": "Edit a sound rule",
-    "description": "Changes the name, direction, Input, Output or contexts of one existing regular phonological rule in place, keeping its identity, order and features. Input and Output each accept up to eight items, including Output feature changes and shared alpha variables. Motif stages a Draft for a person to review and Apply.",
+    "description": "Changes one existing regular phonological rule in place, keeping its identity and position. Replace its ordered rightHandSides under an expected-current guard to add, remove or reorder outcomes with their own Output, contexts and rule features; feature changes and rule-wide alpha variables are preserved. Motif stages a Draft for a person to review and Apply.",
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",
-      "rule": "Id of an existing regular rewrite rule with one right-hand side.",
+      "rule": "Id of an existing regular rewrite rule.",
       "name": "New rule name.",
       "direction": "New direction.",
       "input": "New Input: up to eight phoneme or natural-class items in order; empty means insertion.",
       "output": "New Output: up to eight items in order; empty means deletion. Feature changes preserve the matched segment's other features; alpha variables share feature values.",
       "left": "New left context; an empty list clears it.",
       "right": "New right context; an empty list clears it.",
+      "rightHandSides": "One or more complete ordered outcomes: output, left, right, requiredFeatures, excludedFeatures and optional inputCategories. Replaces the sequence under expected.rightHandSides (or complete output/left/right for an unrestricted single outcome). Use instead of output/left/right.",
       "expected": "Current values of the parts being changed; a mismatch refuses the edit."
     },
     "goals": [
@@ -1899,7 +1900,8 @@
     ],
     "guides": [
       "nasal-assimilation",
-      "feature-rules"
+      "feature-rules",
+      "phonological-rules"
     ],
     "redirect": "For a rule that exists. A new rule is compose-author-phonological-rule; features are compose-edit-phonological-rule-features."
   },

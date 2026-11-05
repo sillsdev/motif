@@ -359,7 +359,7 @@ internal static class AgentTools
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorPhonologicalRule(
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "direction", "input",
-                    "output", "left", "right", "placement"))),
+                    "output", "left", "right", "placement", "rightHandSides"))),
                 r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize."))) { Requests = [typeof(ComposeAuthorPhonologicalRuleRequest)] },
 
         new("motif_add_affix_slot",
@@ -1067,16 +1067,30 @@ internal static class AgentTools
         };
         contextProperties["minimum"] = Schema.Integer("Fewest repeats of a phoneme or natural class; with maximum.", 0, 100);
         contextProperties["maximum"] = Schema.Integer("Most repeats of a phoneme or natural class, or -1 for no limit.", -1, 100);
-        return Schema.Object(("draft", Schema.String("Draft name."), true),
+        var outcomes = Schema.Array("One or more ordered outcomes, each with its own Output, contexts and applicability. Use instead of output/left/right.",
+            Schema.Object(("output", outputItems.DeepClone().AsObject(), true),
+                ("left", contexts.DeepClone().AsObject(), false), ("right", contexts.DeepClone().AsObject(), false),
+                ("requiredFeatures", Schema.Array("Exception feature or inflection class ids all required for this outcome.", Schema.String("Feature id.")), false),
+                ("excludedFeatures", Schema.Array("Exception feature or inflection class ids none of which may occur for this outcome.", Schema.String("Feature id.")), false),
+                ("inputCategories", Schema.Array("Input category ids; an empty list admits every category.", Schema.String("Category id.")), false)));
+        outcomes["minItems"] = 1;
+        var schema = Schema.Object(("draft", Schema.String("Draft name."), true),
             ("name", Schema.String("Rule name."), true),
             ("direction", Schema.String("Rule scan direction or application mode.",
                 "left-to-right", "right-to-left", "simultaneous"), true),
             ("input", changedItems.DeepClone().AsObject(), true),
-            ("output", outputItems, true),
+            ("output", outputItems, false),
+            ("rightHandSides", outcomes, false),
             ("left", contexts.DeepClone().AsObject(), false),
             ("right", contexts.DeepClone().AsObject(), false),
             ("placement", Schema.Object(("after", Schema.String("Adjacent existing rule before the insertion gap."), false),
                 ("before", Schema.String("Adjacent existing rule after the insertion gap."), false)), false));
+        schema["oneOf"] = new JsonArray(
+            new JsonObject { ["required"] = new JsonArray("output"), ["not"] = new JsonObject { ["required"] = new JsonArray("rightHandSides") } },
+            new JsonObject { ["required"] = new JsonArray("rightHandSides"), ["not"] = new JsonObject
+                { ["anyOf"] = new JsonArray(new JsonObject { ["required"] = new JsonArray("output") },
+                    new JsonObject { ["required"] = new JsonArray("left") }, new JsonObject { ["required"] = new JsonArray("right") }) } });
+        return schema;
     }
 
     private static (string Verb, JsonObject Schema)[] StepIntentSchemas(IReadOnlyList<AgentTool> tools, bool forCompose)
@@ -1242,7 +1256,8 @@ internal static class AgentTools
             ["additionalProperties"] = false,
         };
         if (required.Count > 0) intent["required"] = required;
-        if (canonicalToolSchema["allOf"] is JsonArray constraints) intent["allOf"] = constraints.DeepClone();
+        foreach (var keyword in new[] { "allOf", "oneOf", "anyOf", "not" })
+            if (canonicalToolSchema[keyword] is { } constraint) intent[keyword] = constraint.DeepClone();
         return (verb, intent);
     }
 

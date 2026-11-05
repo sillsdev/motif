@@ -35,6 +35,12 @@ internal static class PhonologicalRuleShapes
         Field.Number("maximum"),
         Field.Nested("variables", Variable, many: true));
 
+    public static IntentShape Outcome { get; } = IntentShape.Of(
+        Field.Nested("output", OutputItem, many: true, required: true),
+        Field.Nested("left", Context, many: true), Field.Nested("right", Context, many: true),
+        Field.Ids("requiredFeatures", IdRole.Reference), Field.Ids("excludedFeatures", IdRole.Reference),
+        Field.Ids("inputCategories", IdRole.Reference));
+
     public static IntentField[] Parts() =>
     [
         Field.Text("name"),
@@ -43,6 +49,7 @@ internal static class PhonologicalRuleShapes
         Field.Nested("output", OutputItem, many: true),
         Field.Nested("left", Context, many: true),
         Field.Nested("right", Context, many: true),
+        Field.Nested("rightHandSides", Outcome, many: true),
     ];
 }
 
@@ -61,7 +68,8 @@ internal sealed class EditPhonologicalRuleDefinition : ComposerDefinition<EditPh
     /// <inheritdoc />
     public override IntentShape Shape { get; } = IntentShape.Of(
         [Field.Id("rule", IdRole.Target, required: true), .. PhonologicalRuleShapes.Parts(),
-         Field.Nested("expected", IntentShape.Of(PhonologicalRuleShapes.Parts()))]);
+         Field.Nested("expected", IntentShape.Of(PhonologicalRuleShapes.Parts()))])
+        .AtMostOne("rightHandSides", "output").AtMostOne("rightHandSides", "left").AtMostOne("rightHandSides", "right");
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =

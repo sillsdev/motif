@@ -18,7 +18,8 @@ public sealed record PhonologicalRuleParts(
     IReadOnlyList<PhonologicalRuleItem>? Input = null,
     IReadOnlyList<PhonologicalRuleItem>? Output = null,
     IReadOnlyList<EnvironmentContext>? Left = null,
-    IReadOnlyList<EnvironmentContext>? Right = null);
+    IReadOnlyList<EnvironmentContext>? Right = null,
+    IReadOnlyList<PhonologicalRuleOutcome>? RightHandSides = null);
 
 /// <summary>Replaces parts of one existing regular rewrite rule in place, keeping its identity and position.</summary>
 /// <param name="Rule">The rule to edit.</param>
@@ -31,13 +32,13 @@ public sealed record EditPhonologicalRuleIntent(CanonicalId Rule, PhonologicalRu
 public static class EditPhonologicalRuleIntentParser
 {
     private const string ConstructName = "EditPhonologicalRule";
-    private static readonly string[] PartNames = ["name", "direction", "input", "output", "left", "right"];
+    private static readonly string[] PartNames = ["name", "direction", "input", "output", "left", "right", "rightHandSides"];
 
     /// <summary>Reads the rule, the replacement parts and the optional expectation.</summary>
     public static EditPhonologicalRuleIntent Parse(JsonElement authored)
     {
         SoundSystemIntentParsing.Object(authored, ConstructName, "rule", "name", "direction", "input", "output",
-            "left", "right", "expected");
+            "left", "right", "rightHandSides", "expected");
         var change = Parts(authored, ConstructName);
         if (change == new PhonologicalRuleParts())
             throw new ContractParseException($"'{ConstructName}': give at least one of {string.Join(", ", PartNames)}.");
@@ -58,14 +59,15 @@ public static class EditPhonologicalRuleIntentParser
             element.TryGetProperty("input", out _) ? AuthorPhonologicalRuleIntentParser.ParseItems(element, "input") : null,
             element.TryGetProperty("output", out _) ? AuthorPhonologicalRuleIntentParser.ParseItems(element, "output") : null,
             element.TryGetProperty("left", out _) ? AuthorPhonologicalRuleIntentParser.ParseContexts(element, "left") : null,
-            element.TryGetProperty("right", out _) ? AuthorPhonologicalRuleIntentParser.ParseContexts(element, "right") : null);
+            element.TryGetProperty("right", out _) ? AuthorPhonologicalRuleIntentParser.ParseContexts(element, "right") : null,
+            element.TryGetProperty("rightHandSides", out _) ? AuthorPhonologicalRuleIntentParser.ParseOutcomes(element) : null);
     }
 }
 
 /// <summary>
 /// Lowers an <see cref="EditPhonologicalRuleIntent"/>: a name or direction write, and for each replaced part the
-/// deletion of the old contexts followed by the creation of the new ones. The right-hand side, and with it the rule's
-/// required and excluded features, stays.
+/// deletion of old contexts followed by creation of new ones. Replacing the right-hand-side sequence replaces its
+/// contexts and applicability sets under an expected-current guard; other edits preserve those sets.
 /// </summary>
 public static class EditPhonologicalRuleComposer
 {
@@ -80,15 +82,26 @@ public static class EditPhonologicalRuleComposer
         ArgumentNullException.ThrowIfNull(intent);
         var ruleId = LexicalFormAuthoring.Normalize(intent.Rule);
         var rule = LexicalFormAuthoring.Resolve<IPhSegmentRule>(cache, ruleId, ConstructName);
-        if (rule is not IPhRegularRule { RightHandSidesOS.Count: 1 } regular || rule.Owner is not IPhPhonData data)
+        if (rule is not IPhRegularRule regular || regular.RightHandSidesOS.Count == 0 || rule.Owner is not IPhPhonData data)
             throw new InvalidOperationException(
-                $"'{ConstructName}': '{ruleId.Value}' is not a regular rewrite rule with exactly one right-hand side.");
+                $"'{ConstructName}': '{ruleId.Value}' is not a regular rewrite rule with at least one right-hand side.");
         var rhs = regular.RightHandSidesOS[0];
         var current = PhonologicalRuleReader.Read(rule) ?? throw new InvalidOperationException(
             $"'{ConstructName}': '{ruleId.Value}' holds a context that Motif cannot read back, so it cannot be edited here.");
         if (intent.Expected is { } expected) CheckExpected(ruleId, current, expected);
 
         var change = intent.Change;
+        if (change.RightHandSides is not null)
+        {
+            if (change.Output is not null || change.Left is not null || change.Right is not null)
+                throw new InvalidOperationException("Use rightHandSides or the single-outcome output/left/right shorthand, not both.");
+            if (intent.Expected?.RightHandSides is null && !(current.RightHandSides is null &&
+                intent.Expected is { Output: not null, Left: not null, Right: not null }))
+                throw new InvalidOperationException("Replacing rightHandSides requires expected.rightHandSides from a detailed rule read; a single-outcome read may instead guard output, left and right together.");
+            return PhonologicalRuleOutcomeEditor.Build(cache, regular, current, change, mintId);
+        }
+        if (regular.RightHandSidesOS.Count > 1 && (change.Output is not null || change.Left is not null || change.Right is not null))
+            throw new InvalidOperationException("A rule with multiple outcomes needs rightHandSides and expected.rightHandSides; output/left/right is ambiguous.");
         if (change.Name is not null) SoundSystemAuthoring.RequireName(change.Name);
         if (change.Input is not null) AuthorPhonologicalRuleComposer.RequireItemCount(change.Input, "input");
         if (change.Output is not null) AuthorPhonologicalRuleComposer.RequireItemCount(change.Output, "output");
@@ -102,10 +115,14 @@ public static class EditPhonologicalRuleComposer
         var right = change.Right is null ? null
             : AuthorPhonologicalRuleComposer.ResolveContexts(cache, change.Right, isLeft: false, null);
 
+        var finalOutcomes = current.Outcomes.Select((o, i) => i == 0 ? o with
+        {
+            Output = change.Output ?? o.Output, Left = change.Left ?? o.Left, Right = change.Right ?? o.Right,
+        } : o).ToArray();
         FeatureRuleAuthoring.Validate(cache, new(current.Name, change.Direction ?? current.Direction,
-            change.Input ?? current.Input, change.Output ?? current.Output, change.Left ?? current.Left, change.Right ?? current.Right));
-        var currentVariables = current.Input.Concat(current.Output).SelectMany(i => i.Variables ?? [])
-            .Concat(current.Left.Concat(current.Right).SelectMany(c => c.Variables ?? []))
+            change.Input ?? current.Input, [], [], [], RightHandSides: finalOutcomes));
+        var currentVariables = current.Input.Concat(current.Outcomes.SelectMany(o => o.Output)).SelectMany(i => i.Variables ?? [])
+            .Concat(current.Outcomes.SelectMany(o => o.Left.Concat(o.Right)).SelectMany(c => c.Variables ?? []))
             .Select(v => v.Variable).ToHashSet(StringComparer.Ordinal);
         var variables = data.FeatConstraintsOS.Where(c => currentVariables.Contains(PhonologicalRuleReader.VariableName(c)))
             .ToDictionary(PhonologicalRuleReader.VariableName);
@@ -172,6 +189,12 @@ public static class EditPhonologicalRuleComposer
     private static void CheckExpected(CanonicalId rule, AuthorPhonologicalRuleIntent current, PhonologicalRuleParts expected)
     {
         var actual = PhonologicalRuleReader.ToJson(current);
+        actual["rightHandSides"] = PhonologicalRuleReader.OutcomesJson(current.Outcomes);
+        actual["output"] = PhonologicalRuleReader.ItemsJson(current.Outcomes[0].Output);
+        actual["left"] = PhonologicalRuleReader.ContextsJson(current.Outcomes[0].Left);
+        actual["right"] = PhonologicalRuleReader.ContextsJson(current.Outcomes[0].Right);
+        if (current.Outcomes.Count > 1 && (expected.Output is not null || expected.Left is not null || expected.Right is not null))
+            throw new InvalidOperationException("An expected output/left/right shorthand cannot guard a rule with multiple outcomes; read rightHandSides.");
         var stale = new List<string>();
         Compare("name", expected.Name is null ? null : JsonValue.Create(expected.Name));
         Compare("direction", expected.Direction is null ? null
@@ -180,6 +203,15 @@ public static class EditPhonologicalRuleComposer
         Compare("output", expected.Output is null ? null : PhonologicalRuleReader.ItemsJson(expected.Output.Select(NormalizeItem)));
         Compare("left", expected.Left is null ? null : PhonologicalRuleReader.ContextsJson(expected.Left.Select(NormalizeContext)));
         Compare("right", expected.Right is null ? null : PhonologicalRuleReader.ContextsJson(expected.Right.Select(NormalizeContext)));
+        Compare("rightHandSides", expected.RightHandSides is null ? null : PhonologicalRuleReader.OutcomesJson(
+            expected.RightHandSides.Select(o => o with
+            {
+                Output = o.Output.Select(NormalizeItem).ToArray(), Left = o.Left.Select(NormalizeContext).ToArray(),
+                Right = o.Right.Select(NormalizeContext).ToArray(),
+                RequiredFeatures = o.RequiredFeatures?.Select(LexicalFormAuthoring.Normalize).ToArray(),
+                ExcludedFeatures = o.ExcludedFeatures?.Select(LexicalFormAuthoring.Normalize).ToArray(),
+                InputCategories = o.InputCategories?.Select(LexicalFormAuthoring.Normalize).ToArray(),
+            })));
         if (stale.Count > 0)
             throw new InvalidOperationException(
                 $"'{ConstructName}': '{rule.Value}' no longer matches the expectation for {string.Join(", ", stale)}. " +

@@ -610,7 +610,7 @@
   },
   {
     "name": "motif_add_phonological_rule",
-    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or feature-rules or conditioned-allomorphs; check best practice. Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs). Stages one regular phonological rule in a Draft, with up to eight phonemes or natural classes in each Input and Output sequence and declared context and rule placement. Empty Input or Output means insertion or deletion; Output feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a phonological rule. Research first: motif_guide topic nasal-assimilation or phonological-rules or feature-rules; check best practice. Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs). Stages one regular phonological rule in a Draft, with one or more ordered right-hand sides, each with its own Output, contexts and rule features, and up to eight items in each Input and Output sequence. Output classes allow lexical alternatives; overlapping right-hand sides use the first applicable case, while feature changes preserve other features and alpha variables express agreement or disagreement. Only a person can Apply.\nCommand: compose-author-phonological-rule. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -750,6 +750,269 @@
           },
           "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
           "maxItems": 8
+        },
+        "rightHandSides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "output": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "phoneme": {
+                      "type": "string",
+                      "description": "Phoneme id in the first phoneme set."
+                    },
+                    "naturalClass": {
+                      "type": "string",
+                      "description": "Natural class id owned by this project\u0027s phonological data."
+                    },
+                    "variables": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "variable": {
+                            "type": "string",
+                            "description": "Variable name; reads return the stored constraint identity."
+                          },
+                          "feature": {
+                            "type": "string",
+                            "description": "Closed phonological feature id."
+                          },
+                          "polarity": {
+                            "type": "string",
+                            "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                            "enum": [
+                              "\u002B",
+                              "-"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "variable",
+                          "feature"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Alpha references; use one variable name for one feature throughout the rule."
+                    },
+                    "change": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "feature": {
+                            "type": "string",
+                            "description": "Closed phonological feature id."
+                          },
+                          "value": {
+                            "type": "string",
+                            "description": "Value id belonging to that feature."
+                          }
+                        },
+                        "required": [
+                          "feature",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Feature values to set on the matched segment, preserving its other features; Output only."
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
+                "maxItems": 8
+              },
+              "left": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "phoneme": {
+                      "type": "string",
+                      "description": "Phoneme id in the first phoneme set."
+                    },
+                    "naturalClass": {
+                      "type": "string",
+                      "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+                    },
+                    "boundary": {
+                      "type": "string",
+                      "description": "Word edge or declared morpheme boundary.",
+                      "enum": [
+                        "word",
+                        "morpheme"
+                      ]
+                    },
+                    "boundaryMarker": {
+                      "type": "string",
+                      "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                    },
+                    "variables": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "variable": {
+                            "type": "string",
+                            "description": "Variable name; reads return the stored constraint identity."
+                          },
+                          "feature": {
+                            "type": "string",
+                            "description": "Closed phonological feature id."
+                          },
+                          "polarity": {
+                            "type": "string",
+                            "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                            "enum": [
+                              "\u002B",
+                              "-"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "variable",
+                          "feature"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Alpha references; use one variable name for one feature throughout the rule."
+                    },
+                    "optional": {
+                      "type": "boolean",
+                      "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+                    },
+                    "minimum": {
+                      "type": "integer",
+                      "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "maximum": {
+                      "type": "integer",
+                      "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                      "minimum": -1,
+                      "maximum": 100
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+                "maxItems": 8
+              },
+              "right": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "phoneme": {
+                      "type": "string",
+                      "description": "Phoneme id in the first phoneme set."
+                    },
+                    "naturalClass": {
+                      "type": "string",
+                      "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+                    },
+                    "boundary": {
+                      "type": "string",
+                      "description": "Word edge or declared morpheme boundary.",
+                      "enum": [
+                        "word",
+                        "morpheme"
+                      ]
+                    },
+                    "boundaryMarker": {
+                      "type": "string",
+                      "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                    },
+                    "variables": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "variable": {
+                            "type": "string",
+                            "description": "Variable name; reads return the stored constraint identity."
+                          },
+                          "feature": {
+                            "type": "string",
+                            "description": "Closed phonological feature id."
+                          },
+                          "polarity": {
+                            "type": "string",
+                            "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                            "enum": [
+                              "\u002B",
+                              "-"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "variable",
+                          "feature"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Alpha references; use one variable name for one feature throughout the rule."
+                    },
+                    "optional": {
+                      "type": "boolean",
+                      "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+                    },
+                    "minimum": {
+                      "type": "integer",
+                      "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    "maximum": {
+                      "type": "integer",
+                      "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                      "minimum": -1,
+                      "maximum": 100
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+                "maxItems": 8
+              },
+              "requiredFeatures": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "Feature id."
+                },
+                "description": "Exception feature or inflection class ids all required for this outcome."
+              },
+              "excludedFeatures": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "Feature id."
+                },
+                "description": "Exception feature or inflection class ids none of which may occur for this outcome."
+              },
+              "inputCategories": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "Category id."
+                },
+                "description": "Input category ids; an empty list admits every category."
+              }
+            },
+            "required": [
+              "output"
+            ],
+            "additionalProperties": false
+          },
+          "description": "One or more ordered outcomes, each with its own Output, contexts and applicability. Use instead of output/left/right.",
+          "minItems": 1
         },
         "left": {
           "type": "array",
@@ -929,10 +1192,45 @@
         "name",
         "direction",
         "input",
-        "output",
         "project"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "output"
+          ],
+          "not": {
+            "required": [
+              "rightHandSides"
+            ]
+          }
+        },
+        {
+          "required": [
+            "rightHandSides"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "output"
+                ]
+              },
+              {
+                "required": [
+                  "left"
+                ]
+              },
+              {
+                "required": [
+                  "right"
+                ]
+              }
+            ]
+          }
+        }
+      ]
     },
     "readOnlyHint": false,
     "destructiveHint": false,
@@ -2243,6 +2541,269 @@
                         "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
                         "maxItems": 8
                       },
+                      "rightHandSides": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "output": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "phoneme": {
+                                    "type": "string",
+                                    "description": "Phoneme id in the first phoneme set."
+                                  },
+                                  "naturalClass": {
+                                    "type": "string",
+                                    "description": "Natural class id owned by this project\u0027s phonological data."
+                                  },
+                                  "variables": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "variable": {
+                                          "type": "string",
+                                          "description": "Variable name; reads return the stored constraint identity."
+                                        },
+                                        "feature": {
+                                          "type": "string",
+                                          "description": "Closed phonological feature id."
+                                        },
+                                        "polarity": {
+                                          "type": "string",
+                                          "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                                          "enum": [
+                                            "\u002B",
+                                            "-"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "variable",
+                                        "feature"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Alpha references; use one variable name for one feature throughout the rule."
+                                  },
+                                  "change": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "feature": {
+                                          "type": "string",
+                                          "description": "Closed phonological feature id."
+                                        },
+                                        "value": {
+                                          "type": "string",
+                                          "description": "Value id belonging to that feature."
+                                        }
+                                      },
+                                      "required": [
+                                        "feature",
+                                        "value"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Feature values to set on the matched segment, preserving its other features; Output only."
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "description": "Up to eight ordered phoneme or natural-class items; empty means insertion or deletion.",
+                              "maxItems": 8
+                            },
+                            "left": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "phoneme": {
+                                    "type": "string",
+                                    "description": "Phoneme id in the first phoneme set."
+                                  },
+                                  "naturalClass": {
+                                    "type": "string",
+                                    "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+                                  },
+                                  "boundary": {
+                                    "type": "string",
+                                    "description": "Word edge or declared morpheme boundary.",
+                                    "enum": [
+                                      "word",
+                                      "morpheme"
+                                    ]
+                                  },
+                                  "boundaryMarker": {
+                                    "type": "string",
+                                    "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                                  },
+                                  "variables": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "variable": {
+                                          "type": "string",
+                                          "description": "Variable name; reads return the stored constraint identity."
+                                        },
+                                        "feature": {
+                                          "type": "string",
+                                          "description": "Closed phonological feature id."
+                                        },
+                                        "polarity": {
+                                          "type": "string",
+                                          "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                                          "enum": [
+                                            "\u002B",
+                                            "-"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "variable",
+                                        "feature"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Alpha references; use one variable name for one feature throughout the rule."
+                                  },
+                                  "optional": {
+                                    "type": "boolean",
+                                    "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+                                  },
+                                  "minimum": {
+                                    "type": "integer",
+                                    "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  },
+                                  "maximum": {
+                                    "type": "integer",
+                                    "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                                    "minimum": -1,
+                                    "maximum": 100
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+                              "maxItems": 8
+                            },
+                            "right": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "phoneme": {
+                                    "type": "string",
+                                    "description": "Phoneme id in the first phoneme set."
+                                  },
+                                  "naturalClass": {
+                                    "type": "string",
+                                    "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+                                  },
+                                  "boundary": {
+                                    "type": "string",
+                                    "description": "Word edge or declared morpheme boundary.",
+                                    "enum": [
+                                      "word",
+                                      "morpheme"
+                                    ]
+                                  },
+                                  "boundaryMarker": {
+                                    "type": "string",
+                                    "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                                  },
+                                  "variables": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "variable": {
+                                          "type": "string",
+                                          "description": "Variable name; reads return the stored constraint identity."
+                                        },
+                                        "feature": {
+                                          "type": "string",
+                                          "description": "Closed phonological feature id."
+                                        },
+                                        "polarity": {
+                                          "type": "string",
+                                          "description": "Agreement (\u002B) or disagreement (-); defaults to \u002B.",
+                                          "enum": [
+                                            "\u002B",
+                                            "-"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "variable",
+                                        "feature"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Alpha references; use one variable name for one feature throughout the rule."
+                                  },
+                                  "optional": {
+                                    "type": "boolean",
+                                    "description": "A phoneme or natural class that may be absent (zero or one time). Use instead of minimum and maximum."
+                                  },
+                                  "minimum": {
+                                    "type": "integer",
+                                    "description": "Fewest repeats of a phoneme or natural class; with maximum.",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  },
+                                  "maximum": {
+                                    "type": "integer",
+                                    "description": "Most repeats of a phoneme or natural class, or -1 for no limit.",
+                                    "minimum": -1,
+                                    "maximum": 100
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+                              "maxItems": 8
+                            },
+                            "requiredFeatures": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "description": "Feature id."
+                              },
+                              "description": "Exception feature or inflection class ids all required for this outcome."
+                            },
+                            "excludedFeatures": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "description": "Feature id."
+                              },
+                              "description": "Exception feature or inflection class ids none of which may occur for this outcome."
+                            },
+                            "inputCategories": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "description": "Category id."
+                              },
+                              "description": "Input category ids; an empty list admits every category."
+                            }
+                          },
+                          "required": [
+                            "output"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "One or more ordered outcomes, each with its own Output, contexts and applicability. Use instead of output/left/right.",
+                        "minItems": 1
+                      },
                       "left": {
                         "type": "array",
                         "items": {
@@ -2416,8 +2977,43 @@
                     "required": [
                       "name",
                       "direction",
-                      "input",
-                      "output"
+                      "input"
+                    ],
+                    "oneOf": [
+                      {
+                        "required": [
+                          "output"
+                        ],
+                        "not": {
+                          "required": [
+                            "rightHandSides"
+                          ]
+                        }
+                      },
+                      {
+                        "required": [
+                          "rightHandSides"
+                        ],
+                        "not": {
+                          "anyOf": [
+                            {
+                              "required": [
+                                "output"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "left"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "right"
+                              ]
+                            }
+                          ]
+                        }
+                      }
                     ]
                   },
                   "citation": {
@@ -5699,7 +6295,7 @@
                     "properties": {
                       "rule": {
                         "type": "string",
-                        "description": "Id of an existing regular rewrite rule with one right-hand side."
+                        "description": "Id of an existing regular rule with one right-hand side; for several, use compose-edit-phonological-rule with rightHandSides."
                       },
                       "requiredFeatures": {
                         "type": "array",
@@ -5761,7 +6357,7 @@
                     "properties": {
                       "rule": {
                         "type": "string",
-                        "description": "Id of an existing regular rewrite rule with one right-hand side."
+                        "description": "Id of an existing regular rewrite rule."
                       },
                       "name": {
                         "type": "string",
@@ -6003,6 +6599,219 @@
                         },
                         "description": "New right context; an empty list clears it."
                       },
+                      "rightHandSides": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "output": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "phoneme": {
+                                    "type": "string"
+                                  },
+                                  "naturalClass": {
+                                    "type": "string"
+                                  },
+                                  "change": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "feature": {
+                                          "type": "string"
+                                        },
+                                        "value": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "feature",
+                                        "value"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "variables": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "variable": {
+                                          "type": "string"
+                                        },
+                                        "feature": {
+                                          "type": "string"
+                                        },
+                                        "polarity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "\u002B",
+                                            "-"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "variable",
+                                        "feature"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "left": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "phoneme": {
+                                    "type": "string"
+                                  },
+                                  "naturalClass": {
+                                    "type": "string"
+                                  },
+                                  "boundary": {
+                                    "type": "string",
+                                    "enum": [
+                                      "word",
+                                      "morpheme"
+                                    ]
+                                  },
+                                  "boundaryMarker": {
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "type": "boolean",
+                                    "const": true
+                                  },
+                                  "minimum": {
+                                    "type": "number"
+                                  },
+                                  "maximum": {
+                                    "type": "number"
+                                  },
+                                  "variables": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "variable": {
+                                          "type": "string"
+                                        },
+                                        "feature": {
+                                          "type": "string"
+                                        },
+                                        "polarity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "\u002B",
+                                            "-"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "variable",
+                                        "feature"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "right": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "phoneme": {
+                                    "type": "string"
+                                  },
+                                  "naturalClass": {
+                                    "type": "string"
+                                  },
+                                  "boundary": {
+                                    "type": "string",
+                                    "enum": [
+                                      "word",
+                                      "morpheme"
+                                    ]
+                                  },
+                                  "boundaryMarker": {
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "type": "boolean",
+                                    "const": true
+                                  },
+                                  "minimum": {
+                                    "type": "number"
+                                  },
+                                  "maximum": {
+                                    "type": "number"
+                                  },
+                                  "variables": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "variable": {
+                                          "type": "string"
+                                        },
+                                        "feature": {
+                                          "type": "string"
+                                        },
+                                        "polarity": {
+                                          "type": "string",
+                                          "enum": [
+                                            "\u002B",
+                                            "-"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "variable",
+                                        "feature"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "requiredFeatures": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "excludedFeatures": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "inputCategories": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "output"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "One or more complete ordered outcomes: output, left, right, requiredFeatures, excludedFeatures and optional inputCategories. Replaces the sequence under expected.rightHandSides (or complete output/left/right for an unrestricted single outcome). Use instead of output/left/right."
+                      },
                       "expected": {
                         "type": "object",
                         "properties": {
@@ -6239,6 +7048,218 @@
                               },
                               "additionalProperties": false
                             }
+                          },
+                          "rightHandSides": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "output": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "phoneme": {
+                                        "type": "string"
+                                      },
+                                      "naturalClass": {
+                                        "type": "string"
+                                      },
+                                      "change": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "feature": {
+                                              "type": "string"
+                                            },
+                                            "value": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "feature",
+                                            "value"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "variables": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "variable": {
+                                              "type": "string"
+                                            },
+                                            "feature": {
+                                              "type": "string"
+                                            },
+                                            "polarity": {
+                                              "type": "string",
+                                              "enum": [
+                                                "\u002B",
+                                                "-"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "variable",
+                                            "feature"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "left": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "phoneme": {
+                                        "type": "string"
+                                      },
+                                      "naturalClass": {
+                                        "type": "string"
+                                      },
+                                      "boundary": {
+                                        "type": "string",
+                                        "enum": [
+                                          "word",
+                                          "morpheme"
+                                        ]
+                                      },
+                                      "boundaryMarker": {
+                                        "type": "string"
+                                      },
+                                      "optional": {
+                                        "type": "boolean",
+                                        "const": true
+                                      },
+                                      "minimum": {
+                                        "type": "number"
+                                      },
+                                      "maximum": {
+                                        "type": "number"
+                                      },
+                                      "variables": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "variable": {
+                                              "type": "string"
+                                            },
+                                            "feature": {
+                                              "type": "string"
+                                            },
+                                            "polarity": {
+                                              "type": "string",
+                                              "enum": [
+                                                "\u002B",
+                                                "-"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "variable",
+                                            "feature"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "right": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "phoneme": {
+                                        "type": "string"
+                                      },
+                                      "naturalClass": {
+                                        "type": "string"
+                                      },
+                                      "boundary": {
+                                        "type": "string",
+                                        "enum": [
+                                          "word",
+                                          "morpheme"
+                                        ]
+                                      },
+                                      "boundaryMarker": {
+                                        "type": "string"
+                                      },
+                                      "optional": {
+                                        "type": "boolean",
+                                        "const": true
+                                      },
+                                      "minimum": {
+                                        "type": "number"
+                                      },
+                                      "maximum": {
+                                        "type": "number"
+                                      },
+                                      "variables": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "variable": {
+                                              "type": "string"
+                                            },
+                                            "feature": {
+                                              "type": "string"
+                                            },
+                                            "polarity": {
+                                              "type": "string",
+                                              "enum": [
+                                                "\u002B",
+                                                "-"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "variable",
+                                            "feature"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "requiredFeatures": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "excludedFeatures": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "inputCategories": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "output"
+                              ],
+                              "additionalProperties": false
+                            }
                           }
                         },
                         "additionalProperties": false,
@@ -6248,6 +7269,32 @@
                     "additionalProperties": false,
                     "required": [
                       "rule"
+                    ],
+                    "allOf": [
+                      {
+                        "not": {
+                          "required": [
+                            "rightHandSides",
+                            "output"
+                          ]
+                        }
+                      },
+                      {
+                        "not": {
+                          "required": [
+                            "rightHandSides",
+                            "left"
+                          ]
+                        }
+                      },
+                      {
+                        "not": {
+                          "required": [
+                            "rightHandSides",
+                            "right"
+                          ]
+                        }
+                      }
                     ]
                   },
                   "citation": {
@@ -8958,7 +10005,7 @@
         },
         "rule": {
           "type": "string",
-          "description": "Id of an existing regular rewrite rule with one right-hand side."
+          "description": "Id of an existing regular rule with one right-hand side; for several, use compose-edit-phonological-rule with rightHandSides."
         },
         "requiredFeatures": {
           "type": "array",

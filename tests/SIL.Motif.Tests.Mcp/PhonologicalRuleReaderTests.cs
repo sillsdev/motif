@@ -46,7 +46,7 @@ public sealed class PhonologicalRuleReaderTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void MultipleRightHandSidesAreIdentifiedWithoutAnEditableIntent()
+    public void MultipleRightHandSidesSupplyAllOutcomesAndAGuardForEditing()
     {
         using var cache = pristine.NewScratch();
         var rule = Rule(cache);
@@ -54,10 +54,17 @@ public sealed class PhonologicalRuleReaderTests(PristineProjectFixture pristine)
             rule.RightHandSidesOS.Add(cache.ServiceLocator.GetInstance<IPhSegRuleRHSFactory>().Create()));
         var detail = GrammarReader.Read(cache, "phonological_rules", "Sequence", detailed: true)["items"]![0]!.AsObject();
         Assert.True(detail.ContainsKey("intent"));
-        Assert.Null(detail["intent"]);
+        var intent = Assert.IsType<System.Text.Json.Nodes.JsonObject>(detail["intent"]);
         Assert.Equal(2, detail["rightHandSideCount"]!.GetValue<int>());
-        Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleComposer.Build(cache,
-            new(CanonicalId.FromGuid(rule.Guid), new(Name: "Renamed"))));
+        var outcomes = intent["rightHandSides"]!.AsArray();
+        Assert.Equal(2, outcomes.Count);
+        Assert.Equal(2, outcomes[0]!["output"]!.AsArray().Count);
+        Assert.Empty(outcomes[1]!["output"]!.AsArray());
+        var edit = EditPhonologicalRuleIntentParser.Parse(JsonSerializer.SerializeToElement(new
+        {
+            rule = CanonicalId.FromGuid(rule.Guid).Value, name = "Renamed", expected = intent,
+        }));
+        Assert.NotEmpty(EditPhonologicalRuleComposer.Build(cache, edit));
     }
 
     [Theory]

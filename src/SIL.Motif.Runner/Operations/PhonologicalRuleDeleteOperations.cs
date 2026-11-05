@@ -12,13 +12,16 @@ using SIL.Motif.Model.Snapshot;
 namespace SIL.Motif.Runner.Operations;
 
 /// <summary>
-/// Names the operations that take a phonological rule, or one context a rule owns, out of the project. Both target
-/// the object itself and both refuse a payload other than an empty object.
+/// Names the operations that remove a phonological rule, right-hand side or directly owned context.
+/// Each targets the object itself; right-hand-side deletion also guards its complete current contents.
 /// </summary>
 public static class PhonologicalRuleDeleteOperationKinds
 {
     /// <summary>Deletes one rule with everything it owns, and the pooled contexts only it used.</summary>
     public const string DeletePhonRules = "grammar/phPhonData/deletePhonRules";
+
+    /// <summary>Deletes one right-hand side and its contexts so an ordered outcome sequence can be replaced.</summary>
+    public const string DeleteRightHandSides = "grammar/phRegularRule/deleteRightHandSides";
 
     /// <summary>Deletes one context a rule owns directly, so the rule's side can be written again.</summary>
     public const string DeleteContexts = "grammar/phSegmentRule/deleteContexts";
@@ -28,6 +31,13 @@ public static class PhonologicalRuleDeleteOperationKinds
     internal static void Register()
     {
         OperationKindRegistry.Register(DeletePhonRules);
+        OperationKindRegistry.Register(DeleteRightHandSides);
+        OperationHandlerRegistry.Register(DeleteRightHandSides, new PhonologicalRuleOutcomeDeleteHandler());
+        OperationSlotRegistry.RegisterEntityDeletion(DeleteRightHandSides);
+        OperationKindRegistry.Register(PhonologicalRuleConstraintCollectionHandler.Kind);
+        OperationHandlerRegistry.Register(PhonologicalRuleConstraintCollectionHandler.Kind, new PhonologicalRuleConstraintCollectionHandler());
+        OperationSlotRegistry.RegisterMany(PhonologicalRuleConstraintCollectionHandler.Kind, operation =>
+            PhonologicalRuleConstraintCollectionHandler.Constraints(operation).Select(id => new OperationSlot(id, null)).ToArray());
         OperationKindRegistry.Register(DeleteContexts);
         OperationHandlerRegistry.Register(DeletePhonRules, new PhonologicalRuleDeleteHandler(DeletePhonRules));
         OperationHandlerRegistry.Register(DeleteContexts, new PhonologicalRuleDeleteHandler(DeleteContexts));

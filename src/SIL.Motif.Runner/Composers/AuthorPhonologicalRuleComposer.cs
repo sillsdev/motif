@@ -21,24 +21,24 @@ public static class AuthorPhonologicalRuleComposer
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
         SoundSystemAuthoring.RequireName(intent.Name);
+        _ = DirectionValue(intent.Direction);
         if (intent.Input is null || intent.Output is null || intent.Left is null || intent.Right is null)
             throw new InvalidOperationException("Rule input, output, left context and right context must be supplied; a context with no items is empty.");
         RequireItemCount(intent.Input, "input");
-        RequireItemCount(intent.Output, "output");
-        RequireContextLength(intent.Left, "left");
-        RequireContextLength(intent.Right, "right");
+        if (intent.RightHandSides is not null && (intent.Output.Count + intent.Left.Count + intent.Right.Count != 0))
+            throw new InvalidOperationException("Use rightHandSides or the single-outcome output/left/right shorthand, not both.");
+        RequireOutcomes(cache, intent.Outcomes);
 
         FeatureRuleAuthoring.Validate(cache, intent);
         var data = cache.LangProject.PhonologicalDataOA;
-        ValidateBoundaryMarkers(cache, intent.Left, intent.Right);
+
         ValidatePlacement(data, intent.Placement);
         var input = intent.Input.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
-        var output = intent.Output.Select(item => ResolveRuleItem(cache, item, plannedNaturalClass)).ToArray();
-        var left = ResolveContexts(cache, intent.Left, isLeft: true, plannedNaturalClass);
-        var right = ResolveContexts(cache, intent.Right, isLeft: false, plannedNaturalClass);
+        var outcomes = intent.Outcomes.Select(o => ResolveOutcome(cache, o, plannedNaturalClass)).ToArray();
 
         var builder = new SoundSystemAuthoring.Builder(mintId);
-        var boundaryOperations = EnsureBoundaries(cache, builder, left, right);
+        var boundaryOperations = EnsureBoundaries(cache, builder,
+            outcomes.SelectMany(o => o.Left).ToArray(), outcomes.SelectMany(o => o.Right).ToArray());
 
         var dataId = SoundSystemAuthoring.Id(data);
         var ruleId = builder.Create(PhPhonDataPhonRulesOperationKinds.Create, dataId,
@@ -49,8 +49,19 @@ public static class AuthorPhonologicalRuleComposer
         builder.Add(PhSegmentRuleDirectionOperationKinds.SetDirection, ruleId,
             new { value = DirectionValue(intent.Direction) });
 
-        var rhsId = builder.Create(PhRegularRuleRightHandSidesOperationKinds.Create, ruleId);
-        AddStructure(cache, builder, dataId, ruleId, rhsId, input, output, left, right);
+        var lowering = new FeatureRuleAuthoring.Lowering(cache, builder, dataId, null);
+        var features = new RuleOutcomeFeatures(cache, builder);
+        CanonicalId? previous = null;
+        foreach (var outcome in outcomes)
+        {
+            var rhsId = builder.Create(PhRegularRuleRightHandSidesOperationKinds.Create, ruleId,
+                placement: previous is { } prior ? new Placement(prior, null) : null);
+            AddStructure(cache, builder, dataId, ruleId, rhsId, previous is null ? input : null,
+                outcome.Output, outcome.Left, outcome.Right, lowering: lowering);
+            features.Apply(rhsId, outcome.Required, outcome.Excluded);
+            AddCategories(builder, rhsId, outcome.Categories);
+            previous = rhsId;
+        }
 
         var toEnable = builder.Operations.ToArray();
         var enable = builder.Add(PhSegmentRuleDisabledOperationKinds.SetDisabled, ruleId, new { value = false });
@@ -71,14 +82,55 @@ public static class AuthorPhonologicalRuleComposer
         return builder.Operations;
     }
 
+    internal static void RequireOutcomes(LcmCache cache, IReadOnlyList<PhonologicalRuleOutcome> outcomes)
+    {
+        if (outcomes.Count < 1)
+            throw new InvalidOperationException("A rewrite rule needs at least one rightHandSide.");
+        foreach (var outcome in outcomes)
+        {
+            ArgumentNullException.ThrowIfNull(outcome);
+            RequireItemCount(outcome.Output, "output");
+            RequireContextLength(outcome.Left, "left");
+            RequireContextLength(outcome.Right, "right");
+            ValidateBoundaryMarkers(cache, outcome.Left, outcome.Right);
+            RuleOutcomeFeatures.Validate(cache, outcome.RequiredFeatures, outcome.ExcludedFeatures);
+            _ = Categories(cache, outcome.InputCategories);
+        }
+    }
+
+    internal sealed record ResolvedOutcome(IReadOnlyList<ResolvedContext> Output, IReadOnlyList<ResolvedContext> Left,
+        IReadOnlyList<ResolvedContext> Right, IReadOnlyList<ICmObject> Required, IReadOnlyList<ICmObject> Excluded, IReadOnlyList<CanonicalId> Categories);
+
+    internal static ResolvedOutcome ResolveOutcome(LcmCache cache, PhonologicalRuleOutcome outcome, CanonicalId? planned = null) => new(
+        outcome.Output.Select(i => ResolveRuleItem(cache, i, planned)).ToArray(),
+        ResolveContexts(cache, outcome.Left, true, planned), ResolveContexts(cache, outcome.Right, false, planned),
+        RuleOutcomeFeatures.Items(cache, outcome.RequiredFeatures ?? [], "requiredFeatures"),
+        RuleOutcomeFeatures.Items(cache, outcome.ExcludedFeatures ?? [], "excludedFeatures"), Categories(cache, outcome.InputCategories));
+
+    private static CanonicalId[] Categories(LcmCache cache, IReadOnlyList<CanonicalId>? ids)
+    {
+        var values = (ids ?? []).Select(LexicalFormAuthoring.Normalize).ToArray();
+        if (values.Select(id => id.ToGuid()).Distinct().Count() != values.Length)
+            throw new InvalidOperationException("An outcome's inputCategories must not repeat an identity.");
+        foreach (var id in values) _ = ReferenceFieldLowering.Resolve<IPartOfSpeech>(cache, id, "rule input category");
+        return values;
+    }
+
+    internal static void AddCategories(SoundSystemAuthoring.Builder builder, CanonicalId rhsId, IReadOnlyList<CanonicalId> categories)
+    {
+        foreach (var id in categories)
+            builder.Add(PhSegRuleRHSInputPOSesOperationKinds.AddRefInputPOSes, rhsId, new { member = id.Value });
+    }
+
     /// <summary>Creates each part that is given under a rule whose same part is empty.</summary>
     internal static void AddStructure(LcmCache cache, SoundSystemAuthoring.Builder builder, CanonicalId dataId, CanonicalId ruleId,
         CanonicalId rhsId, IReadOnlyList<ResolvedContext>? input, IReadOnlyList<ResolvedContext>? output,
         IReadOnlyList<ResolvedContext>? left, IReadOnlyList<ResolvedContext>? right,
         IReadOnlyList<OperationEnvelope>? after = null,
-        IReadOnlyDictionary<string, IPhFeatureConstraint>? existingVariables = null)
+        IReadOnlyDictionary<string, IPhFeatureConstraint>? existingVariables = null,
+        FeatureRuleAuthoring.Lowering? lowering = null)
     {
-        var lowering = new FeatureRuleAuthoring.Lowering(cache, builder, dataId, existingVariables);
+        lowering ??= new FeatureRuleAuthoring.Lowering(cache, builder, dataId, existingVariables);
         input = lowering.Prepare(input);
         output = lowering.Prepare(output);
         left = lowering.Prepare(left);

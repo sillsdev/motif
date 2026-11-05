@@ -288,6 +288,9 @@ public static partial class ProposalCommands
             case "compose-author-environment":
             case "compose-author-phonological-rule":
                 ResolveContextNaturalClassNames(cache, intent, "left", "right");
+                if (intent["rightHandSides"] is JsonArray outcomes)
+                    foreach (var outcome in outcomes.OfType<JsonObject>())
+                        ResolveContextNaturalClassNames(cache, outcome, "left", "right");
                 break;
             case "compose-edit-natural-class":
                 ResolveReference(cache, intent, "target", NaturalClassReference);
