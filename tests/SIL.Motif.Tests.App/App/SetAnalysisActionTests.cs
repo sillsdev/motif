@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -71,6 +72,9 @@ public sealed class SetAnalysisActionTests
             try
             {
                 var card = await SurfaceAsync(workspace, window, "review", "Sungura");
+                var actions = card.GetVisualDescendants().OfType<Button>().Where(button => button.IsEffectivelyVisible).ToArray();
+                Assert.Single(actions, button => Equals(button.Content, MotifAppStrings.TryAWord));
+                Assert.Single(actions, button => Equals(button.Content, MotifAppStrings.MarkAsUnread));
                 Assert.NotNull(PartButton(card, "fix"));
                 var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
                 Assert.Single(fake.PendingPutRequests);

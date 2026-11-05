@@ -261,6 +261,16 @@
                               CommandParameter="{Binding BoundPrimaryAction}" IsVisible="{Binding HasPrimaryAction}"
                               AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
                       <views:WordDispositionButtons />
+                      <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.TryAWord}"
+                              Command="{Binding TryWordForTokenCommand}" CommandParameter="{Binding Form}"
+                              IsVisible="{Binding $parent[word:WordCard].Header, Converter={x:Static conv:ObjectConverters.IsNull}}" />
+                      <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.MarkAsUnread}"
+                              Command="{Binding Actions.MarkTokenUnreadCommand}" CommandParameter="{Binding}"
+                              IsVisible="{Binding $parent[word:WordCard].Header, Converter={x:Static conv:ObjectConverters.IsNull}}"
+                              AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkThisOccurrenceAsUnreadAccessibleName}"
+                              AutomationProperties.HelpText="{Binding MarkUnreadDisabledReason}"
+                              ToolTip.Tip="{Binding MarkUnreadDisabledReason}" ToolTip.ShowOnDisabled="True"
+                              views:ClearTipPlacement.IsEnabled="True" />
                       <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.CheckAgain}" Command="{Binding Actions.RecheckChangesCommand}"
                               IsVisible="{Binding Marking.IsUncertain}"
                               AutomationProperties.Name="{x:Static app:MotifAppStrings.CheckThisUncertainChangeAgainAccessibleName}" />

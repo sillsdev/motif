@@ -308,6 +308,10 @@ public sealed class AnalyzeTextsLayoutTests
                     border => border.Classes.Contains("wordPresentationCardHeader"));
                 Assert.Contains(header.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Try a Word"));
                 Assert.Contains(header.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Mark as Unread"));
+                Assert.Single(card.GetVisualDescendants().OfType<Button>(), button =>
+                    button.IsEffectivelyVisible && Equals(button.Content, "Try a Word"));
+                Assert.Single(card.GetVisualDescendants().OfType<Button>(), button =>
+                    button.IsEffectivelyVisible && Equals(button.Content, "Mark as Unread"));
                 Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == MotifAppStrings.ReaderMarkLegend);
                 var wordLink = Assert.Single(header.GetVisualDescendants().OfType<HyperlinkButton>());

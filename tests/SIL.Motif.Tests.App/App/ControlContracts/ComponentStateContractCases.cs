@@ -855,7 +855,15 @@ internal static class TooltipOwners
                 AutomationProperties.GetName(control) == "Open alikula in Word Analyses"),
         new("mark unread without a text occurrence", "Views/ResultsInTextPanel.axaml", "{Binding MarkUnreadDisabledReason}",
             TooltipScene.WordCardWithoutOccurrence,
-            control => control is Button && Name(control) == "Mark this occurrence as unread"),
+            control => control is Button && Name(control) == "Mark this occurrence as unread" &&
+                control.FindAncestorOfType<WordCard>()?.Header is not null),
+        new("mark unread on a shared word card", "Controls/WordPresentation/WordCard.axaml", "{Binding MarkUnreadDisabledReason}",
+            TooltipScene.WordCardWithoutOccurrence,
+            control => control is Button && Name(control) == "Mark this occurrence as unread" &&
+                control.FindAncestorOfType<WordCard>() is { Header: null })
+        {
+            Pending = "the sample's word without an occurrence opens in Analyze Texts, whose header owns this action",
+        },
         new("morpheme form that is its link", "Controls/WordPresentation/MorphemePanel.cs", "morph.FormLinkTip", TooltipScene.Matrix,
             control => control is HyperlinkButton && control.Classes.Contains("morphemePanelFormLink"))
         {
