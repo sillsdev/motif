@@ -108,12 +108,12 @@ public static partial class ProposalCommands
             DraftComposers["compose-edit-allomorph-condition"]);
 
     /// <summary>
-    /// Stages a new Text, and a wordform for each token that has none, in a Draft. A token reuses the wordform
-    /// whose form is exactly that NFD string in the writing system; nothing is matched by similarity.
+    /// Stages a Text with LibLCM segment and word boundaries, reusing exact NFD wordforms or declaring their creation.
     /// </summary>
     /// <remarks>
-    /// Closed input is <c>{ "title", "ws", "paragraphs": [ { "segments": [ ["token", ...], ... ] } ] }</c>. The
-    /// <see cref="ComposedOperationsResponse.CreatedObjects"/> list names every created wordform and the Text.
+    /// Input has title, ws, optional analysisWs and paragraphs of segments. A segment is a token array or an object
+    /// with text and optional freeTranslation, literalTranslation and notes. Annotations must match one FieldWorks segment.
+    /// <see cref="ComposedOperationsResponse.CreatedObjects"/> names every created wordform and the Text.
     /// </remarks>
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorText(ComposeAuthorTextRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,

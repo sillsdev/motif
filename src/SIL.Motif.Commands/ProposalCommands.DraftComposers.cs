@@ -1,3 +1,4 @@
+using SIL.Motif.Host.LcmUtils;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Commands.Catalog;
@@ -133,7 +134,7 @@ public static partial class ProposalCommands
             ReplacePrevious: (input, operation) => ReplacesTarget(input, operation,
                 LexEntryAlternateFormsOperationKinds.MoveAlternateForms)),
         new("compose-author-text", "AuthorText", ["texts-and-analyses"], (cache, input, _) =>
-            AuthorTextComposer.Build(cache, AuthorTextIntentParser.Parse(input))),
+            AuthorTextDraftBuilder.Build(cache, AuthorTextIntentParser.Parse(input))),
         new("compose-edit-analysis-decision", "EditAnalysisDecision", ["texts-and-analyses"], (cache, input, _) =>
             EditAnalysisDecisionComposer.Build(cache, EditAnalysisDecisionIntentParser.Parse(input))),
     };

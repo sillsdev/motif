@@ -678,15 +678,16 @@ internal static class AgentTools
                 ("draft", Schema.String("The draft name from motif_start_proposal."), true),
                 ("title", Schema.String("The Text's title, in NFD."), true),
                 ("ws", Schema.String("Writing system tag of the title, the paragraphs and every wordform form."), true),
-                ("paragraphs", Schema.Array("Paragraphs in order, each a list of segments of word tokens.",
-                    Schema.Object(("segments", Schema.Array("Segments in order; each is the NFD word tokens of one segment.",
-                        Schema.StringArray("Word tokens, each one exact NFD form without spaces.")), true))), true)),
+                ("analysisWs", Schema.String("Analysis writing system for Free Translation, Literal Translation and Notes; omitted uses the project's default."), false),
+                ("paragraphs", Schema.Array("Paragraphs in order; LibLCM determines segment and word boundaries from their text.",
+                    Schema.Object(("segments", Schema.Array("Baseline pieces in reading order. Annotated pieces must each be exactly one FieldWorks segment.",
+                        TextSegmentSchema()), true))), true)),
             false,
             false,
             false,
             true,
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorText(new(
-                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("title", "ws", "paragraphs"))),
+                c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("title", "ws", "analysisWs", "paragraphs"))),
                 r => $"Draft now has {r.OperationCount} changes. Created ids are listed in createdObjects. Run motif_dry_run, revise, then Finalize; only a person can Apply."))) { Requests = [typeof(ComposeAuthorTextRequest)] },
         new("motif_decide_analysis",
             string.Empty,
@@ -1624,6 +1625,17 @@ internal static class AgentTools
             ["jobs"] = jobs,
         }, "Continue from the Proposals above, or start a new one with motif_start_proposal.");
     }
+
+    private static JsonObject TextSegmentSchema() => new()
+    {
+        ["oneOf"] = new JsonArray(
+            Schema.StringArray("Legacy whitespace tokens in NFD; punctuation is retained in the baseline and parsed by LibLCM."),
+            Schema.Object(
+                ("text", Schema.String("Baseline text in NFD, including punctuation."), true),
+                ("freeTranslation", Schema.String("Free Translation in analysisWs, in NFD."), false),
+                ("literalTranslation", Schema.String("Literal Translation in analysisWs, in NFD."), false),
+                ("notes", Schema.StringArray("Notes in analysisWs, in NFD, in reading order."), false))),
+    };
 
     private static JsonObject JudgmentSubject() => new()
     {

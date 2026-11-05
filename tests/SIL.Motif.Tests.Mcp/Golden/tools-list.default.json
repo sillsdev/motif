@@ -4137,6 +4137,10 @@
                         "type": "string",
                         "description": "Writing system tag of the title, the paragraphs and every wordform form."
                       },
+                      "analysisWs": {
+                        "type": "string",
+                        "description": "Analysis writing system for Free Translation, Literal Translation and Notes; omitted uses the project\u0027s default."
+                      },
                       "paragraphs": {
                         "type": "array",
                         "items": {
@@ -4145,13 +4149,45 @@
                             "segments": {
                               "type": "array",
                               "items": {
-                                "type": "array",
-                                "items": {
-                                  "type": "string"
-                                },
-                                "description": "Word tokens, each one exact NFD form without spaces."
+                                "oneOf": [
+                                  {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "description": "Legacy whitespace tokens in NFD; punctuation is retained in the baseline and parsed by LibLCM."
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "text": {
+                                        "type": "string",
+                                        "description": "Baseline text in NFD, including punctuation."
+                                      },
+                                      "freeTranslation": {
+                                        "type": "string",
+                                        "description": "Free Translation in analysisWs, in NFD."
+                                      },
+                                      "literalTranslation": {
+                                        "type": "string",
+                                        "description": "Literal Translation in analysisWs, in NFD."
+                                      },
+                                      "notes": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        },
+                                        "description": "Notes in analysisWs, in NFD, in reading order."
+                                      }
+                                    },
+                                    "required": [
+                                      "text"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
                               },
-                              "description": "Segments in order; each is the NFD word tokens of one segment."
+                              "description": "Baseline pieces in reading order. Annotated pieces must each be exactly one FieldWorks segment."
                             }
                           },
                           "required": [
@@ -4159,7 +4195,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "description": "Paragraphs in order, each a list of segments of word tokens."
+                        "description": "Paragraphs in order; LibLCM determines segment and word boundaries from their text."
                       }
                     },
                     "additionalProperties": false,

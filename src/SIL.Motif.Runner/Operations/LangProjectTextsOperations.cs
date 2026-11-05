@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
+using SIL.LCModel.DomainServices;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
@@ -19,8 +19,9 @@ namespace SIL.Motif.Runner.Operations;
 /// <remarks>
 /// The closed <c>after</c> payload names every created identity and binds every occurrence to an existing
 /// wordform by identity: <c>{ "name": { "ws", "text" }, "contents": id, "paragraphs": [ { "id", "ws", "segments":
-/// [ { "id", "words": [wordformId, ...] } ] } ] }</c>. Paragraph text is the segments' wordform forms in that
-/// writing system joined by single spaces. Nothing is tokenised or matched by form, and a wordform that is missing
+/// [ { "id", "words": [wordformId, ...] } ] } ] }</c>. Legacy paragraphs join wordform forms by spaces.
+/// A paragraph with text supplies segment beginOffset values and is parsed by LibLCM; annotations use analysisWs.
+/// Wordform bindings remain explicit, and a wordform that is missing
 /// or has no form in the paragraph's writing system is a conflict that fails the create. The effect records the Text's identity,
 /// name, counts and a digest of its structure, never the other Texts.
 /// </remarks>
@@ -37,85 +38,6 @@ public static class LangProjectTextsOperationKinds
         OperationSlotRegistry.RegisterOwningCreate(Create, SnapshotFields.LangProjectTexts, false);
     }
 #pragma warning restore CA2255
-}
-
-/// <summary>One occurrence-bearing segment of a created paragraph.</summary>
-public sealed record TextCreateSegment(CanonicalId Id, IReadOnlyList<CanonicalId> Words);
-
-/// <summary>One created paragraph and its segments.</summary>
-public sealed record TextCreateParagraph(CanonicalId Id, string WritingSystem, IReadOnlyList<TextCreateSegment> Segments);
-
-/// <summary>The parsed, closed payload of <see cref="LangProjectTextsOperationKinds.Create"/>.</summary>
-public sealed record TextCreatePayload(
-    string NameWritingSystem, string NameText, CanonicalId Contents, IReadOnlyList<TextCreateParagraph> Paragraphs);
-
-/// <summary>Parses the closed payload of <see cref="LangProjectTextsOperationKinds.Create"/>.</summary>
-public static class LangProjectTextsCreatePayload
-{
-    public const int MaxParagraphs = 1000;
-    public const int MaxWordsPerSegment = 500;
-    public const int MaxWords = 20000;
-
-    public static TextCreatePayload Parse(JsonElement after)
-    {
-        var kind = LangProjectTextsOperationKinds.Create;
-        ClosedPayloadParsing.RequireObject(after, kind);
-        ClosedPayloadParsing.RejectUnknownProperties(after, ["name", "contents", "paragraphs"], kind);
-        var name = Required(after, "name", JsonValueKind.Object);
-        ClosedPayloadParsing.RequireObject(name, kind);
-        ClosedPayloadParsing.RejectUnknownProperties(name, ["ws", "text"], kind);
-        var nameWs = ClosedPayloadParsing.GetRequiredString(name, "ws", kind);
-        var nameText = ClosedPayloadParsing.GetRequiredString(name, "text", kind);
-        if (string.IsNullOrWhiteSpace(nameWs) || string.IsNullOrWhiteSpace(nameText) || nameText != nameText.Trim() ||
-            !nameText.IsNormalized(NormalizationForm.FormD))
-            throw Refuse("'after.name' needs a writing system and a nonblank NFD title.");
-        var contents = ClosedPayloadParsing.GetRequiredCanonicalId(after, "contents", kind);
-        var seen = new HashSet<CanonicalId>(CanonicalId.ByGuid) { contents };
-        var paragraphs = new List<TextCreateParagraph>();
-        var words = 0;
-        var array = Required(after, "paragraphs", JsonValueKind.Array);
-        foreach (var item in array.EnumerateArray())
-        {
-            ClosedPayloadParsing.RequireObject(item, kind);
-            ClosedPayloadParsing.RejectUnknownProperties(item, ["id", "ws", "segments"], kind);
-            var paragraphId = Unique(ClosedPayloadParsing.GetRequiredCanonicalId(item, "id", kind), seen);
-            var ws = ClosedPayloadParsing.GetRequiredString(item, "ws", kind);
-            if (string.IsNullOrWhiteSpace(ws)) throw Refuse("each paragraph needs a writing system.");
-            var segments = new List<TextCreateSegment>();
-            foreach (var segmentItem in Required(item, "segments", JsonValueKind.Array).EnumerateArray())
-            {
-                ClosedPayloadParsing.RequireObject(segmentItem, kind);
-                ClosedPayloadParsing.RejectUnknownProperties(segmentItem, ["id", "words"], kind);
-                var segmentId = Unique(ClosedPayloadParsing.GetRequiredCanonicalId(segmentItem, "id", kind), seen);
-                var ids = new List<CanonicalId>();
-                foreach (var word in Required(segmentItem, "words", JsonValueKind.Array).EnumerateArray())
-                {
-                    if (word.ValueKind != JsonValueKind.String || !CanonicalId.TryParse(word.GetString()!, out var id))
-                        throw Refuse("every word is a wordform identity.");
-                    ids.Add(id);
-                }
-                if (ids.Count == 0 || ids.Count > MaxWordsPerSegment)
-                    throw Refuse($"each segment holds 1 to {MaxWordsPerSegment} words.");
-                words += ids.Count;
-                segments.Add(new TextCreateSegment(segmentId, ids));
-            }
-            if (segments.Count == 0) throw Refuse("each paragraph holds at least one segment.");
-            paragraphs.Add(new TextCreateParagraph(paragraphId, ws, segments));
-        }
-        if (paragraphs.Count == 0 || paragraphs.Count > MaxParagraphs || words > MaxWords)
-            throw Refuse($"a text holds 1 to {MaxParagraphs} paragraphs and at most {MaxWords} words.");
-        return new TextCreatePayload(nameWs, nameText, contents, paragraphs);
-    }
-
-    private static JsonElement Required(JsonElement parent, string name, JsonValueKind kind) =>
-        parent.TryGetProperty(name, out var value) && value.ValueKind == kind ? value
-            : throw Refuse($"'{name}' is required and must be a{(kind == JsonValueKind.Array ? "n array" : "n object")}.");
-
-    private static CanonicalId Unique(CanonicalId id, HashSet<CanonicalId> seen) =>
-        seen.Add(id) ? id : throw Refuse($"identity '{id.Value}' is used twice.");
-
-    private static ContractParseException Refuse(string message) =>
-        new($"'{LangProjectTextsOperationKinds.Create}' operation 'after': {message}");
 }
 
 internal sealed class CreateTextHandler : IOperationHandler
@@ -136,6 +58,9 @@ internal sealed class CreateTextHandler : IOperationHandler
         foreach (var (created, expectedClass) in Identities(entityId, payload))
             CreateIdentity.RequireFresh(cache, created, Kind, expectedClass);
         var nameWs = Handle(cache, payload.NameWritingSystem);
+        var analysisWs = payload.AnalysisWritingSystem is { } analysisTag ? Handle(cache, analysisTag) : cache.DefaultAnalWs;
+        if (!cache.ServiceLocator.WritingSystems.AnalysisWritingSystems.Any(system => system.Handle == analysisWs))
+            throw new InvalidOperationException($"'{Kind}': annotations need a project analysis writing system.");
         var resolved = payload.Paragraphs.Select(paragraph => (paragraph, ws: Handle(cache, paragraph.WritingSystem))).ToArray();
         var wordforms = new Dictionary<CanonicalId, IWfiWordform>(CanonicalId.ByGuid);
         foreach (var (paragraph, ws) in resolved)
@@ -152,6 +77,11 @@ internal sealed class CreateTextHandler : IOperationHandler
         text.ContentsOA = services.GetInstance<IStTextFactory>().Create(payload.Contents.ToGuid());
         foreach (var (paragraph, ws) in resolved)
         {
+            if (paragraph.Text is not null)
+            {
+                CreateParsedParagraph(cache, text.ContentsOA, paragraph, ws, analysisWs, wordforms);
+                continue;
+            }
             var forms = paragraph.Segments.Select(segment => segment.Words.Select(word =>
                     Form(wordforms[word], ws, paragraph.WritingSystem, word)).ToArray()).ToArray();
             var created = services.GetInstance<IStTxtParaFactory>().Create(paragraph.Id.ToGuid());
@@ -165,6 +95,7 @@ internal sealed class CreateTextHandler : IOperationHandler
                     paragraph.Segments[index].Id.ToGuid());
                 offset += string.Join(" ", forms[index]).Length + 1;
                 foreach (var word in paragraph.Segments[index].Words) segment.AnalysesRS.Add(wordforms[word]);
+                Annotate(cache, segment, paragraph.Segments[index], analysisWs);
             }
             created.ParseIsCurrent = true;
         }
@@ -183,7 +114,64 @@ internal sealed class CreateTextHandler : IOperationHandler
     private static IEnumerable<(CanonicalId Id, string ExpectedClass)> Identities(CanonicalId entityId,
         TextCreatePayload payload) =>
         new[] { (entityId, "Text"), (payload.Contents, "StText") }.Concat(payload.Paragraphs.SelectMany(paragraph =>
-            new[] { (paragraph.Id, "StTxtPara") }.Concat(paragraph.Segments.Select(segment => (segment.Id, "Segment")))));
+            new[] { (paragraph.Id, "StTxtPara") }.Concat(paragraph.Segments.SelectMany(segment =>
+                new[] { (segment.Id, "Segment") }.Concat(segment.Notes.Select(note => (note.Id, "Note")))))));
+
+    private static void CreateParsedParagraph(LcmCache cache, IStText contents, TextCreateParagraph payload, int ws,
+        int analysisWs, IReadOnlyDictionary<CanonicalId, IWfiWordform> wordforms)
+    {
+        var baseline = TsStringUtils.MakeString(payload.Text!, ws);
+        var boundaries = baseline.GetSegments(cache.WritingSystemFactory);
+        if (boundaries.Count != payload.Segments.Count)
+            throw new InvalidOperationException($"'{Kind}': FieldWorks segment boundaries changed; compose the text again.");
+        for (var index = 0; index < boundaries.Count; index++)
+        {
+            var planned = payload.Segments[index];
+            if (boundaries[index].IchMin != planned.BeginOffset)
+                throw new InvalidOperationException($"'{Kind}': FieldWorks segment boundaries changed; compose the text again.");
+            foreach (var word in planned.Words) _ = Form(wordforms[word], ws, payload.WritingSystem, word);
+        }
+        var para = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create(payload.Id.ToGuid());
+        contents.ParagraphsOS.Add(para);
+        para.Contents = baseline;
+        while (para.SegmentsOS.Count > 0) para.SegmentsOS.RemoveAt(para.SegmentsOS.Count - 1);
+        foreach (var planned in payload.Segments)
+            cache.ServiceLocator.GetInstance<ISegmentFactory>().Create(para, planned.BeginOffset!.Value, cache, planned.Id.ToGuid());
+        using (var parser = new ParagraphParser(cache)) parser.ForceParse(para);
+        for (var index = 0; index < payload.Segments.Count; index++)
+        {
+            var planned = payload.Segments[index];
+            var segment = para.SegmentsOS[index];
+            if (segment.Guid != planned.Id.ToGuid())
+                throw new InvalidOperationException($"'{Kind}': FieldWorks did not preserve the planned segment identity.");
+            var word = 0;
+            for (var occurrence = 0; occurrence < segment.AnalysesRS.Count; occurrence++)
+                if (segment.AnalysesRS[occurrence].Wordform is not null)
+                {
+                    if (word >= planned.Words.Count)
+                        throw new InvalidOperationException($"'{Kind}': FieldWorks returned a different word count.");
+                    var expected = wordforms[planned.Words[word++]];
+                    if (segment.AnalysesRS[occurrence].Wordform.Guid != expected.Guid)
+                        throw new InvalidOperationException($"'{Kind}': FieldWorks word bindings changed; compose the text again.");
+                    if (!ReferenceEquals(segment.AnalysesRS[occurrence], expected)) segment.AnalysesRS[occurrence] = expected;
+                }
+            if (word != planned.Words.Count)
+                throw new InvalidOperationException($"'{Kind}': FieldWorks returned a different word count.");
+            Annotate(cache, segment, planned, analysisWs);
+        }
+    }
+
+    private static void Annotate(LcmCache cache, ISegment segment, TextCreateSegment payload, int ws)
+    {
+        if (payload.FreeTranslation is { } free) segment.FreeTranslation.set_String(ws, TsStringUtils.MakeString(free, ws));
+        if (payload.LiteralTranslation is { } literal) segment.LiteralTranslation.set_String(ws, TsStringUtils.MakeString(literal, ws));
+        foreach (var item in payload.Notes)
+        {
+            var note = cache.ServiceLocator.GetInstance<INoteFactory>().Create(item.Id.ToGuid());
+            segment.NotesOS.Add(note);
+            note.Content.set_String(ws, TsStringUtils.MakeString(item.Text, ws));
+        }
+    }
 
     private static string Form(IWfiWordform wordform, int ws, string tag, CanonicalId id)
     {

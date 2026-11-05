@@ -1,3 +1,4 @@
+using SIL.Motif.Host.LcmUtils;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
@@ -39,7 +40,7 @@ public sealed class AuthorTextAndAnalysisDecisionComposerTests : IDisposable
     [Fact]
     public void AuthoredText_CreatesOnlyMissingWordformsDeclaresThemAndReadsBack()
     {
-        var operations = AuthorTextComposer.Build(_cache, Parse(
+        var operations = AuthorTextDraftBuilder.Build(_cache, Parse(
             $$"""{"title":"Hadithi","ws":"{{_ws}}","paragraphs":[{"segments":[["sita","kitu"],["kitu","Sita"]]}]}"""));
 
         var creates = operations.Where(op => op.Kind == LangProjectWordformsOperationKinds.Create).ToArray();
@@ -53,7 +54,7 @@ public sealed class AuthorTextAndAnalysisDecisionComposerTests : IDisposable
         var text = _cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(createText.EntityId!.Value.ToGuid());
         var paragraph = Assert.Single(text.ContentsOA!.ParagraphsOS.OfType<IStTxtPara>());
         Assert.Equal("sita kitu kitu Sita", paragraph.Contents.Text);
-        Assert.Equal(2, paragraph.SegmentsOS.Count);
+        Assert.Single(paragraph.SegmentsOS);
         var read = InterlinearTextReader.ReadWordforms(text).Select(pair => pair.Wordform).ToArray();
         Assert.Equal(_sita.ToGuid(), read[0].Guid);
         Assert.Equal("kitu", read[1].Form.get_String(_cache.DefaultVernWs).Text);
@@ -66,9 +67,44 @@ public sealed class AuthorTextAndAnalysisDecisionComposerTests : IDisposable
     }
 
     [Fact]
+    public void AuthoredText_UsesFieldWorksWordBoundariesAndKeepsPunctuation()
+    {
+        var operations = AuthorTextDraftBuilder.Build(_cache, Parse(
+            $$"""{"title":"T","ws":"{{_ws}}","paragraphs":[{"segments":[["(nakapaluwas)","mag-ágaw","ug,","?"]]}]}"""));
+        var forms = operations.Where(op => op.Kind == LangProjectWordformsOperationKinds.Create)
+            .Select(op => op.After!.Value.GetProperty("text").GetString()).ToArray();
+
+        Assert.DoesNotContain("(nakapaluwas)", forms);
+        Assert.DoesNotContain("ug,", forms);
+        Assert.DoesNotContain("?", forms);
+        Assert.Contains("nakapaluwas", forms);
+        Assert.Contains("ug", forms);
+        Apply(operations);
+        var text = _cache.ServiceLocator.GetInstance<ITextRepository>()
+            .GetObject(operations.Last().EntityId!.Value.ToGuid());
+        Assert.Equal("(nakapaluwas) mag-ágaw ug, ?", ((IStTxtPara)text.ContentsOA.ParagraphsOS[0]).Contents.Text);
+        Assert.Contains(text.ContentsOA.ParagraphsOS.OfType<IStTxtPara>().SelectMany(p => p.SegmentsOS)
+            .SelectMany(s => s.AnalysesRS), analysis => analysis is IPunctuationForm);
+    }
+
+    [Fact]
+    public void AuthoredText_AcceptsFreeTranslationLiteralTranslationAndNotes()
+    {
+        var operations = AuthorTextDraftBuilder.Build(_cache, Parse(
+            $$"""{"title":"T","ws":"{{_ws}}","paragraphs":[{"segments":[{"text":"sita?","freeTranslation":"six?","literalTranslation":"six","notes":["A question.","Check this."]}]}]}"""));
+        Apply(operations);
+        var text = _cache.ServiceLocator.GetInstance<ITextRepository>()
+            .GetObject(operations.Last().EntityId!.Value.ToGuid());
+        var segment = Assert.Single(((IStTxtPara)text.ContentsOA.ParagraphsOS[0]).SegmentsOS);
+        Assert.Equal("six?", segment.FreeTranslation.get_String(_cache.DefaultAnalWs).Text);
+        Assert.Equal("six", segment.LiteralTranslation.get_String(_cache.DefaultAnalWs).Text);
+        Assert.Equal(["A question.", "Check this."], segment.NotesOS.Select(n => n.Content.get_String(_cache.DefaultAnalWs).Text));
+    }
+
+    [Fact]
     public void AuthoredText_WithOnlyKnownWordsCreatesJustTheText()
     {
-        var operations = AuthorTextComposer.Build(_cache, Parse(
+        var operations = AuthorTextDraftBuilder.Build(_cache, Parse(
             $$"""{"title":"Moja","ws":"{{_ws}}","paragraphs":[{"segments":[["sita"]]}]}"""));
 
         var only = Assert.Single(operations);
@@ -79,7 +115,7 @@ public sealed class AuthorTextAndAnalysisDecisionComposerTests : IDisposable
     [Fact]
     public void AuthoredText_RefusesAnUnknownWritingSystem()
     {
-        var failure = Assert.Throws<InvalidOperationException>(() => AuthorTextComposer.Build(_cache, Parse(
+        var failure = Assert.Throws<InvalidOperationException>(() => AuthorTextDraftBuilder.Build(_cache, Parse(
             """{"title":"T","ws":"zzz-nope","paragraphs":[{"segments":[["a"]]}]}""")));
         Assert.Contains("not known", failure.Message, StringComparison.Ordinal);
     }
@@ -235,7 +271,7 @@ public sealed class AuthorTextAndAnalysisDecisionParserTests
 
         Assert.Equal(("T", "swh"), (intent.Title, intent.WritingSystem));
         Assert.Equal(2, intent.Paragraphs.Count);
-        Assert.Equal(["a", "b"], intent.Paragraphs[0].Segments[0]);
+        Assert.Equal("a b", intent.Paragraphs[0].Segments[0].Text);
     }
 
     [Theory]
@@ -253,6 +289,17 @@ public sealed class AuthorTextAndAnalysisDecisionParserTests
     [InlineData("{\"title\":\"T\",\"ws\":\"swh\",\"paragraphs\":[{\"segments\":[[\"\\u00e9\"]]}]}")]
     public void AuthorText_RefusesAnythingOutsideTheClosedShape(string json) =>
         Assert.Throws<ContractParseException>(() => AuthorTextIntentParser.Parse(Json(json)));
+
+    [Theory]
+    [InlineData("""{"text":"one.","notes":[1]}""")]
+    [InlineData("""{"text":"one.","freeTranslation":null}""")]
+    [InlineData("""{"text":"one.","literalTranslation":{}}""")]
+    [InlineData("""{"text":"one.","notes":"note"}""")]
+    [InlineData("""{"text":"one.","text":"two."}""")]
+    [InlineData("""{"text":"one.","extra":1}""")]
+    public void AuthorText_RefusesMalformedOrRepeatedAnnotationProperties(string segment) =>
+        Assert.Throws<ContractParseException>(() => AuthorTextIntentParser.Parse(Json(
+            "{\"title\":\"T\",\"ws\":\"swh\",\"paragraphs\":[{\"segments\":[" + segment + "]}]}")));
 
     [Theory]
     [InlineData("""{"decision":"approve","analysis":"x"}""", "approve")]

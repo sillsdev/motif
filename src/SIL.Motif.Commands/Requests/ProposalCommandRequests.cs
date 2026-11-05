@@ -204,13 +204,14 @@ public sealed record ComposeEditAllomorphConditionRequest(
 public sealed record ComposeOrderAllomorphsRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);
 
-/// <summary>Requests a new Text, with the wordforms its tokens still need, staged in a Draft.</summary>
+/// <summary>Requests a Text with FieldWorks segmentation, wordforms and optional segment annotations in a Draft.</summary>
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="IntentJson">
-/// Closed <c>{title, ws, paragraphs:[{segments:[[token,...],...]}]}</c> input. Every token is one NFD form without
-/// spaces; a token whose exact form already is a wordform in <c>ws</c> reuses it, and any other token creates one.
+/// Closed input has title, ws, optional analysisWs and paragraphs of segments. Each segment is a legacy token array
+/// or an object with text and optional freeTranslation, literalTranslation and notes. LibLCM determines boundaries;
+/// annotations must align with one segment and use the analysis writing system. All authored strings use NFD.
 /// </param>
 public sealed record ComposeAuthorTextRequest(
     string FwDataPath, string ProductVersion, string DraftName, string IntentJson);

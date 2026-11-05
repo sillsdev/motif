@@ -40,7 +40,7 @@ internal static class LookupReferences
     {
         "form", "gloss", "glosses", "text", "name", "names", "abbreviation", "citation", "description", "note",
         "notes", "label", "rationale", "spelling", "representation", "representations", "respell", "comment",
-        "title", "definition", "pattern", "expectedText",
+        "title", "definition", "pattern", "expectedText", "freeTranslation", "literalTranslation",
     };
 
     internal static bool IsTextField(string name) => TextFields.Contains(name);

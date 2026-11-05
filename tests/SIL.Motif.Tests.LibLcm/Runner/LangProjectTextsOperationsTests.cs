@@ -278,26 +278,22 @@ public sealed class LangProjectTextsOperationsTests : IDisposable
     }
 
     [Fact]
-    public void CreateTextPayload_EnforcesTheDeclaredLimits()
+    public void CreateTextPayload_AcceptsTextsBeyondTheFormerMotifLimits()
     {
         object Segment(int words) => new { id = CanonicalId.Mint().Value, words = Enumerable.Repeat(_sita.Value, words).ToArray() };
-        object Paragraph(params object[] segments) => new { id = CanonicalId.Mint().Value, ws = _ws, segments };
-        JsonElement Doc(params object[] paragraphs) => Json(new
+        var after = Json(new
         {
-            name = new { ws = _ws, text = "T" }, contents = CanonicalId.Mint().Value, paragraphs,
+            name = new { ws = _ws, text = "T" }, contents = CanonicalId.Mint().Value,
+            paragraphs = Enumerable.Range(0, 1001).Select(_ => new
+            {
+                id = CanonicalId.Mint().Value, ws = _ws, segments = new[] { Segment(501) },
+            }).ToArray(),
         });
 
-        _ = LangProjectTextsCreatePayload.Parse(Doc(Paragraph(Segment(LangProjectTextsCreatePayload.MaxWordsPerSegment))));
-        _ = LangProjectTextsCreatePayload.Parse(Doc(Enumerable.Range(0, LangProjectTextsCreatePayload.MaxParagraphs)
-            .Select(_ => Paragraph(Segment(1))).ToArray()));
-        _ = LangProjectTextsCreatePayload.Parse(Doc(Enumerable.Range(0, 40).Select(_ => Paragraph(Segment(500))).ToArray()));
+        var parsed = LangProjectTextsCreatePayload.Parse(after);
 
-        Assert.Throws<ContractParseException>(() => LangProjectTextsCreatePayload.Parse(
-            Doc(Paragraph(Segment(LangProjectTextsCreatePayload.MaxWordsPerSegment + 1)))));
-        Assert.Throws<ContractParseException>(() => LangProjectTextsCreatePayload.Parse(
-            Doc(Enumerable.Range(0, LangProjectTextsCreatePayload.MaxParagraphs + 1).Select(_ => Paragraph(Segment(1))).ToArray())));
-        Assert.Throws<ContractParseException>(() => LangProjectTextsCreatePayload.Parse(
-            Doc(Enumerable.Range(0, 41).Select(_ => Paragraph(Segment(500))).ToArray())));
+        Assert.Equal(1001, parsed.Paragraphs.Count);
+        Assert.Equal(501501, parsed.Paragraphs.Sum(p => p.Segments.Sum(s => s.Words.Count)));
     }
 
     [Theory]

@@ -196,20 +196,26 @@ before and after, and no operation of the family reads or writes spelling status
 records for one target in one Proposal conflict.
 
 A Text is created whole by `texts/langProject/createTexts`, which targets the project root with the closed payload
-`{ "name": { "ws", "text" }, "contents": <id>, "paragraphs": [ { "id", "ws", "segments": [ { "id", "words": [<wordformId>, ...] } ] } ] }`.
-The payload authors every identity it creates (the Text's `entityId`, its contents, each paragraph and each
-segment); the Text's identity is unique across them. Each word is an existing wordform's identity, so every
-occurrence is bound by identity and nothing is tokenised or matched by form. A paragraph's text is its segments'
-wordform forms in the paragraph's writing system, joined by single spaces; a wordform that does not exist or has no form
-in that writing system fails the create. A wordform created in the same Proposal must be named in the text create's
-`dependsOn`, directly or through other declared dependencies, whatever the array order: an undeclared dependency is a
-contract error before any operation runs, because order is never inferred from position. The create fails for any created identity that already exists, accepts no placement and no storage-GUID
-override, and holds at most 1,000 paragraphs, 500 words per segment and 20,000 words. Its effect records the Text's
-`ref`, `name:<ws>`, `paragraphs`, `segments`, `words` and a `structure` digest of every identity and binding, never other
-Texts. Each segment begins at the offset of its first word and keeps the single separating space that follows it, so a segment's
-baseline text is its words joined by spaces plus that space (none for a paragraph's last segment). A later Baseline lists one line per
-segment, numbered from 1 across the Text, and a word's occurrence index is its zero-based position within its segment;
-glosses, translations, punctuation, analyses and the other Text fields remain out of scope.
+`{ "name": { "ws", "text" }, "contents": <id>, "analysisWs": <tag>, "paragraphs": [ { "id", "ws", "text": <baseline>, "segments": [ { "id", "beginOffset": 0, "words": [<wordformId>, ...], "freeTranslation": <text>, "literalTranslation": <text>, "notes": [ { "id", "text" } ] } ] } ] }`.
+The payload authors every created identity: the Text's `entityId`, its contents, paragraphs, segments and Notes.
+Every word occurrence binds an existing wordform by identity. A paragraph with `text` uses LibLCM's paragraph parser,
+including the writing system's word-forming characters; its segment offsets and wordform forms must match that
+parser. Punctuation remains in the baseline and in Punctuation Forms, never wordforms. A punctuation-only paragraph
+has no word bindings. Free Translation, Literal Translation and ordered Notes are optional and use the project's
+analysis writing system named by `analysisWs`. Annotation-bearing payloads require that tag.
+
+Legacy paragraphs omit `text` and `beginOffset` and join their segments' wordform forms with single spaces, retaining
+the declared segment boundaries. Each legacy segment needs a word. For either shape, a wordform that does not exist
+or has no form in the paragraph's writing system fails the create. A wordform created in the same Proposal must be
+named in the text create's `dependsOn`, directly or through declared dependencies, whatever the array order: an
+undeclared dependency is a contract error before any operation runs. The create refuses existing creation identities,
+placement and storage-GUID overrides. Motif imposes no paragraph, segment or word-count limit.
+
+The compact effect records the Text's `ref`, `name:<ws>`, `paragraphs`, `segments`, `words` and a length-framed SHA-256
+`structure` digest, streamed in reading order. The digest includes baseline, segment offsets, wordform bindings,
+punctuation forms, translations and Note identities/content, without materializing a full occurrence map. It never
+reads other Texts. A later Baseline lists one line per segment, numbered from 1 across the Text; a word's occurrence
+index follows its position among the segment's analyses, including punctuation positions.
 
 Dictionary entries are unowned in LibLCM: the lexicon lists them through a virtual `Entries` property the
 model does not carry as a field. `lexical/lexDb/createEntries` therefore targets the project's lexicon with

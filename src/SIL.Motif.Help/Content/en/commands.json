@@ -1160,10 +1160,10 @@
   },
   "compose-author-text": {
     "title": "Author a text",
-    "description": "Stages a new Text from a title and paragraphs of segments of word tokens in a Draft, creating a wordform for each token that has none. A token reuses a wordform only when its exact NFD form already exists in the writing system. Only a person can Apply.",
+    "description": "Stages a Text with Free Translation, Literal Translation and Notes in a Draft. FieldWorks writing system rules determine its segments, words and punctuation; missing exact NFD wordforms are created. Only a person can Apply.",
     "source": "Authored from the typed command contract.",
     "goals": [
-      "Enter a short text to analyse",
+      "Enter a text to analyse",
       "Add an interlinear text paragraph by paragraph",
       "Create a text from segments of words"
     ]

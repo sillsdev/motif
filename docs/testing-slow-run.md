@@ -66,6 +66,20 @@ $env:MOTIF_SLOW_SCALE = '1'
 success. Add a new slow test to that list as well as marking it with `[SlowScaleFact]` and
 `[Trait("Category", "SlowScale")]`.
 
+## Corpus text authoring measurement
+
+`AuthorTextScaleTests.DraftDryRunAndApplyATwoHundredFiftyTwoThousandWordText` is a separate, hand-only
+measurement. It skips unless `MOTIF_TEXT_SCALE=1`; neither `MOTIF_SLOW_SCALE` nor the scheduled slow run enables it.
+It generates 252,000 words in 36,000 sentences and 2,000 paragraphs at runtime, with Free Translation and Notes,
+stages a real Draft, then runs Dry Run on a file copy and Apply. Its `TEXT_SCALE` output records stage times,
+allocated bytes, retained managed heap, working set before and after, cumulative process peak working set,
+and serialized input, Draft and Proposal sizes. It asserts counts and effects, not machine-dependent timing.
+
+```powershell
+$env:MOTIF_TEXT_SCALE = '1'
+./test.ps1 -All -Project SIL.Motif.Tests.Commands -Filter 'FullyQualifiedName~AuthorTextScaleTests'
+```
+
 ## Landing
 
 The workflow has not yet run on GitHub: it was validated by parsing only, and the same filtered commands were run

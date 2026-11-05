@@ -95,6 +95,26 @@ public sealed class AuthorTextDraftTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void TranslationProseThatStartsWithLookupIsStoredAsText()
+    {
+        var (path, ws, _, _) = Prepare();
+        const string draft = "translation-prose";
+        Assert.True(ProposalCommands.New(new(path, Version, draft, "Translation prose")).Succeeded);
+        var result = ProposalCommands.ComposeAuthorText(new(path, Version, draft, JsonSerializer.Serialize(new
+        {
+            title = "T", ws, paragraphs = new[] { new { segments = new[]
+            {
+                new { text = "sita.", freeTranslation = "lookup:entry:ordinary prose", literalTranslation = "lookup:sense:ordinary prose" },
+            } } },
+        })));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var after = ReadDraft(path, draft).Operations.Single(op => op.Kind == LangProjectTextsOperationKinds.Create).After!;
+        var segment = after["paragraphs"][0].GetProperty("segments")[0];
+        Assert.Equal("lookup:entry:ordinary prose", segment.GetProperty("freeTranslation").GetString());
+        Assert.Equal("lookup:sense:ordinary prose", segment.GetProperty("literalTranslation").GetString());
+    }
+
+    [Fact]
     public void RefusedTextIntentsLeaveTheDraftUnchanged()
     {
         var (path, ws, _, _) = Prepare();
