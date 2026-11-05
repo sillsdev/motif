@@ -316,7 +316,7 @@
     <Setter Property="Padding" Value="{DynamicResource Component.Settings.RowInset}" />
   </Style>
   <Style Selector=":is(UserControl).settingsPageView Border.settingsHeader">
-    <Setter Property="Padding" Value="{DynamicResource Component.Settings.RowInset}" />
+    <Setter Property="Padding" Value="{DynamicResource Component.Settings.PageInset}" />
     <Setter Property="Margin" Value="{DynamicResource Intent.Inset.None}" />
   </Style>
   <Style Selector=":is(UserControl).settingsPageView Border.settingsRow, :is(UserControl).settingsPageView Border.settingsShortcutRow">

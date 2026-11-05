@@ -124,6 +124,13 @@ public sealed class SettingsPageTests
                 Assert.Same(settings, page.DataContext);
                 Assert.Same(settings, page.Navigation.DataContext);
                 var display = page.FindControl<StackPanel>("SettingsDisplaySection")!;
+                var pageTitle = Assert.Single(page.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Classes.Contains("settingsHeaderTitle"));
+                var displayTitle = Assert.Single(display.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Classes.Contains("settingsGroupHeading"));
+                var titleLeft = pageTitle.TranslatePoint(default, page)!.Value.X;
+                var displayLeft = displayTitle.TranslatePoint(default, page)!.Value.X;
+                Assert.Equal(displayLeft, titleLeft, 1);
                 var reset = display.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Reset theme to match the operating system");
                 Assert.False(reset.IsEnabled);
