@@ -163,8 +163,6 @@
       </Grid>
 
       <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
-        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ReaderMarkLegend}"
-                                 TextWrapping="Wrap" IsVisible="{Binding InText.HasResults}" />
         <views:RefusalBlock DataContext="{Binding InText.ReadStateRefusal}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ObjectTimingDetailText}" TextWrapping="Wrap"
                                  IsVisible="{Binding InText.ObjectTimingDetailText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
