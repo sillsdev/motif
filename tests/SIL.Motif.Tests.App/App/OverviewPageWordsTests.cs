@@ -538,7 +538,7 @@ public sealed class OverviewPageWordsTests
         var warningPage = new GrammarWarningsViewModel();
         warningPage.Load(findings);
 
-        Assert.Equal("Touch your words · 3 words", warningPage.TouchYourWordsText);
+        Assert.Equal("Show warnings that name my words · 3 words", warningPage.TouchYourWordsText);
         Assert.Equal("3 of your words use what a warning names", page.WarningsYourWordsText);
         Assert.False(Assert.Single(warningPage.Rows.Cast<GrammarWarningRowViewModel>()).HasDistinctPanGlossTitle);
 

@@ -113,10 +113,11 @@
 
         <Grid Grid.Row="1" RowDefinitions="Auto,*" controls:DenseTable.IsWidthHost="True">
           <Border Classes="denseTableColumnHeader">
-            <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}" controls:DenseTable.Columns="Narrow 2* 2* Narrow Actions"
+            <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}" controls:DenseTable.Columns="{Binding Grammar.Warnings.TableColumns}"
                   controls:DenseTable.CompactColumns="0 * 0 0 Actions">
               <Border controls:DenseTable.Secondary="True">
-                <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Severity}" VerticalAlignment="Center" />
+                <views:CopyableTextBlock Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.Severity}" VerticalAlignment="Center"
+                                         IsVisible="{Binding Grammar.Warnings.HasMultipleSeverities}" />
               </Border>
               <views:CopyableTextBlock Grid.Column="1" Classes="denseTableHeading" Text="{x:Static app:MotifAppStrings.WarningsItemColumnHeading}" VerticalAlignment="Center" />
               <Border Grid.Column="2" controls:DenseTable.Secondary="True">
@@ -150,23 +151,25 @@
               <DataTemplate DataType="vm:GrammarWarningRowViewModel" x:DataType="vm:GrammarWarningRowViewModel">
                 <Grid>
                 <Border Classes="denseTableRow" Classes.goneWithProposal="{Binding IsGoneWithProposal}">
-                  <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}" controls:DenseTable.Columns="Narrow 2* 2* Narrow Actions"
+                  <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}" controls:DenseTable.Columns="{Binding $parent[views:GrammarPanel].Grammar.Warnings.TableColumns}"
                         controls:DenseTable.CompactColumns="0 * 0 0 Actions">
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
                                 VerticalAlignment="Center" controls:DenseTable.Secondary="True">
+                      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}"
+                                  IsVisible="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HasMultipleSeverities}">
                       <views:MarkChip Mark="{Binding SeverityMark}" Compact="True" />
                       <TextBlock Classes="denseTableCell" Text="{Binding SeverityLabel}" />
+                      </StackPanel>
                     </StackPanel>
                     <DockPanel Grid.Column="1" VerticalAlignment="Center">
                       <TextBlock DockPanel.Dock="Left" Classes="proposalMark" Text="{Binding ProposalMarkText}"
                                  IsVisible="{Binding HasProposalMark}" VerticalAlignment="Center" />
                       <views:CopyableTextBlock Classes="denseTableCell denseTableItem"
-                                                Text="{Binding TableItemText}" TextWrapping="NoWrap"
-                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                                Text="{Binding TableItemText}" TextWrapping="Wrap" VerticalAlignment="Center" />
                     </DockPanel>
                     <Border Grid.Column="2" controls:DenseTable.Secondary="True">
                       <views:CopyableTextBlock Classes="denseTableCell" Text="{Binding TableProblemText}"
-                                              TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                              TextWrapping="Wrap"
                                               VerticalAlignment="Center" />
                     </Border>
                     <Border Grid.Column="3" controls:DenseTable.Secondary="True">

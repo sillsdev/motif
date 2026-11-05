@@ -313,7 +313,7 @@ public sealed class GrammarWarningsViewModelTests
         table.Load([first, second]);
 
         Assert.Equal(3, WarningWordsQuery.Touched(table.Findings)!.Words);
-        Assert.Equal("Touch your words · 3 words", table.TouchYourWordsText);
+        Assert.Equal("Show warnings that name my words · 3 words", table.TouchYourWordsText);
     }
 
     [Fact]

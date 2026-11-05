@@ -169,6 +169,13 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
     public bool HasReportedWarnings => Reported(GrammarDiagnosticLevel.Warning);
     public bool HasReportedInformation => Reported(GrammarDiagnosticLevel.Information);
 
+    /// <summary>Whether severity distinguishes findings in the current report.</summary>
+    public bool HasMultipleSeverities => (HasReportedErrors ? 1 : 0) + (HasReportedWarnings ? 1 : 0) +
+        (HasReportedInformation ? 1 : 0) > 1;
+
+    /// <summary>The shared table tracks, omitting the severity column when it cannot distinguish rows.</summary>
+    public string TableColumns => HasMultipleSeverities ? "Narrow 2* 2* Narrow Actions" : "0 2* 2* Narrow Actions";
+
     public int ErrorCount => VisibleFindings()
         .Where(row => row.Level == GrammarDiagnosticLevel.Error).Sum(row => row.RepeatCount);
     public int WarningCount => VisibleFindings()
@@ -360,6 +367,8 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         OnPropertyChanged(nameof(HasReportedErrors));
         OnPropertyChanged(nameof(HasReportedWarnings));
         OnPropertyChanged(nameof(HasReportedInformation));
+        OnPropertyChanged(nameof(HasMultipleSeverities));
+        OnPropertyChanged(nameof(TableColumns));
         OnPropertyChanged(nameof(ErrorCount));
         OnPropertyChanged(nameof(WarningCount));
         OnPropertyChanged(nameof(InformationCount));

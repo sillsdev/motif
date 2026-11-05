@@ -5270,19 +5270,19 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Warnings page summary when filters hide some findings; {0} is how many are shown and {1} how many there are.</comment>
   </data>
   <data name="MotifApp.WarningsTouchYourWordsFormat" xml:space="preserve">
-    <value>Touch your words · {0}</value>
+    <value>Show warnings that name my words · {0}</value>
     <comment>Warnings sort option with how many words the findings touch; {0} is the count of words; the dot is a separator.</comment>
   </data>
   <data name="MotifApp.WarningsTouchYourWords" xml:space="preserve">
-    <value>Touch your words</value>
+    <value>Show warnings that name my words</value>
     <comment>Warnings sort option: findings that touch words in the chosen texts.</comment>
   </data>
   <data name="MotifApp.WarningsSortMostWords" xml:space="preserve">
-    <value>Sort: most of your words first</value>
+    <value>Sort: most of your words first ▾</value>
     <comment>Label of the Warnings sort control when findings that touch most of your words come first.</comment>
   </data>
   <data name="MotifApp.WarningsSortReportOrder" xml:space="preserve">
-    <value>Sort: report order</value>
+    <value>Sort: report order ▾</value>
     <comment>Label of the Warnings sort control when findings are in the order PanGloss reported them.</comment>
   </data>
   <data name="MotifApp.WarningsAreaEnvironments" xml:space="preserve">
