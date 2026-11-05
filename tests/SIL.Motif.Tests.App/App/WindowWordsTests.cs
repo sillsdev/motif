@@ -123,11 +123,14 @@ public sealed partial class WindowWordsTests
                 var setup = workspace.Context.Setup!;
                 PageScreenshots.Settle(window);
                 Assert.True(setup.IsOpen, "first-run setup did not open");
+                Assert.EndsWith(".fwdata", setup.ProjectName);
                 foreach (var text in workspace.Selection.Texts) text.IsChecked = true;
                 shown.AddRange(Steps(window, setup, "first run"));
                 await setup.FinishCommand.ExecuteAsync(null);
                 setup.OpenForConfiguration();
                 Assert.True(setup.IsEditingExistingSelection, setup.ShownRefusal?.Sentence ?? "setup did not save");
+                setup.Step = 2;
+                Assert.Equal("Next: Use This Selection", setup.NextButtonText);
                 shown.AddRange(Steps(window, setup, "editing"));
                 Assert.Equal("This will be the project default. Parse all words will use it next time.",
                     setup.FinishDescription);

@@ -1319,6 +1319,8 @@ public static class MotifAppStrings
     public static string SetupNextLimits => Text("MotifApp.SetupNextLimits");
 
     public static string SetupNextFirstRun => Text("MotifApp.SetupNextFirstRun");
+    public static string SetupNextUseSelection => Text("MotifApp.SetupNextUseSelection");
+    public static string TryWordStaleBaseline => Text("MotifApp.TryWordStaleBaseline");
 
     public static string SetupNextTexts => Text("MotifApp.SetupNextTexts");
 

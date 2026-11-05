@@ -99,7 +99,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     [NotifyPropertyChangedFor(nameof(StepCaption))]
     private string? _projectPath;
 
-    public string ProjectName => ProjectPath is null ? string.Empty : Path.GetFileNameWithoutExtension(ProjectPath);
+    public string ProjectName => ProjectPath is null ? string.Empty : Path.GetFileName(ProjectPath);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsProjectStep))]
@@ -123,7 +123,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     public string NextButtonText => Step switch
     {
         1 => MotifAppStrings.SetupNextLimits,
-        2 => MotifAppStrings.SetupNextFirstRun,
+        2 => IsEditingExistingSelection ? MotifAppStrings.SetupNextUseSelection : MotifAppStrings.SetupNextFirstRun,
         _ => MotifAppStrings.SetupNextTexts,
     };
 
@@ -260,6 +260,7 @@ public sealed partial class SetupViewModel : ObservableObject, IProjectStatePart
     }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NextButtonText))]
     [NotifyPropertyChangedFor(nameof(FinishButtonText))]
     [NotifyPropertyChangedFor(nameof(FinishTitle))]
     [NotifyPropertyChangedFor(nameof(FinishDescription))]

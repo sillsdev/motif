@@ -2567,6 +2567,14 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Next: First Run</value>
     <comment>Setup button that goes to the first run step.</comment>
   </data>
+  <data name="MotifApp.SetupNextUseSelection" xml:space="preserve">
+    <value>Next: Use This Selection</value>
+    <comment>Setup button that goes to the confirmation step when editing a selection.</comment>
+  </data>
+  <data name="MotifApp.TryWordStaleBaseline" xml:space="preserve">
+    <value>FieldWorks edits since then are not in this trace.</value>
+    <comment>Shown when the FieldWorks project has been saved since the trace's Baseline was captured.</comment>
+  </data>
   <data name="MotifApp.SetupNextTexts" xml:space="preserve">
     <value>Next: Texts</value>
     <comment>Setup button that goes to the texts step.</comment>

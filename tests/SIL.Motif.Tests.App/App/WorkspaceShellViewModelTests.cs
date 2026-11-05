@@ -275,6 +275,9 @@ public sealed class WorkspaceShellViewModelTests
         Assert.Equal(SIL.Motif.App.MotifAppStrings.UseThisSelection, workspace.Context.Setup.FinishButtonText);
         Assert.Equal("Use this Selection as the project default", workspace.Context.Setup.FinishTitle);
         Assert.DoesNotContain("Save", workspace.Context.Setup.FinishDescription);
+        Assert.EndsWith(".fwdata", workspace.Context.Setup.ProjectName);
+        workspace.Context.Setup.Step = 2;
+        Assert.Equal("Next: Use This Selection", workspace.Context.Setup.NextButtonText);
     }
 
     [Fact]
