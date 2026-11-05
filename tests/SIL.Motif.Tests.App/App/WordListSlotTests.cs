@@ -249,7 +249,7 @@ public sealed class WordListSlotTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
-    // The producer morphology tracks hold their minimum, grow toward their preferred width and stop at their maximum.
+    // Producer morphology tracks hold their minimum, grow toward their preferred width, stop at their maximum.
     [Theory]
     [InlineData(WordListColumn.FieldWorks)]
     [InlineData(WordListColumn.PanGloss)]

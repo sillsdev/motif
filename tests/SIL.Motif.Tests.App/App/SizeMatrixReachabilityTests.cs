@@ -149,7 +149,7 @@ public sealed class SizeMatrixReachabilityTests(ITestOutputHelper output)
         }, TimeSpan.FromMinutes(2));
     }
 
-    // A real gated Assessment run keeps Cancel live; Cancel stays whole and inside the notice and window at 150% zoom.
+    // A gated Assessment run keeps Cancel live and whole, inside the notice and window, at 150% zoom.
     [Theory]
     [InlineData("thin", 150)]
     [InlineData("half", 150)]
