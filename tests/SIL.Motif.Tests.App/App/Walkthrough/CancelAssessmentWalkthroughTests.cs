@@ -209,20 +209,20 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                     .Order(StringComparer.Ordinal),
                 setupInvocation.Selection.ResolvedWords.Order(StringComparer.Ordinal));
 
-            var existingParserIds = PanglossProcesses.Snapshot(parserPath);
+            var batchProcessIdPath = Path.Combine(project.ManagedRoot, "cancelled-assessment-batch-process-id");
             FakeParser.BehaveBesideExecutable(parserPath, new
             {
                 subcommands = new Dictionary<string, object>
                 {
-                    ["batch"] = new { startedPath = batchStarted, holdUntilPath = releaseBatch },
+                    ["batch"] = new { startedPath = batchStarted, holdUntilPath = releaseBatch, processIdPath = batchProcessIdPath },
                 },
             });
             WalkthroughSteps.StartSlowAssessment(walkthrough, deadline,
                 [SeededProject.FirstForm, SeededProject.SecondForm]);
             walkthrough.WaitUntil(
-                () => File.Exists(batchStarted) &&
-                    PanglossProcesses.Snapshot(parserPath).Except(existingParserIds).Any(),
-                WalkthroughSteps.Remaining(deadline), "the fake PanGloss process did not reach its held batch");
+                () => File.Exists(batchStarted) && PanglossProcesses.TryReadProcessId(batchProcessIdPath, out _),
+                WalkthroughSteps.Remaining(deadline), "the fake PanGloss process did not reach its held batch",
+                () => PanglossProcesses.Describe(parserPath) + ";");
             InteractiveControlSweep.AssertScene(walkthrough, "Assessment running",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
@@ -240,7 +240,8 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                 InteractiveControlFamily.FocusableSurface,
                 InteractiveControlFamily.Container,
                 InteractiveControlFamily.Collection);
-            var processId = Assert.Single(PanglossProcesses.Snapshot(parserPath).Except(existingParserIds));
+            Assert.True(PanglossProcesses.TryReadProcessId(batchProcessIdPath, out var processId));
+            Assert.True(PanglossProcesses.AnyAlive(parserPath, [processId]), PanglossProcesses.Describe(parserPath));
 
             try
             {

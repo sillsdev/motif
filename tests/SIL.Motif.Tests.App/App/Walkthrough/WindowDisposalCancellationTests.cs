@@ -18,6 +18,7 @@ public sealed class WindowDisposalCancellationTests(PristineProjectFixture prist
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var startedPath = Path.Combine(project.ManagedRoot, "disposed-assessment-started");
         var releasePath = Path.Combine(project.ManagedRoot, "disposed-assessment-release");
+        var processIdPath = Path.Combine(project.ManagedRoot, "disposed-assessment-process-id");
         var runner = new InProcessRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parserPath));
         var deadline = WalkthroughSteps.DeadlineIn(60);
         Exception? failure = null;
@@ -38,14 +39,17 @@ public sealed class WindowDisposalCancellationTests(PristineProjectFixture prist
                     FakeParser.BehaveBesideExecutable(parserPath, new
                     {
                         startedPath,
+                        processIdPath,
                         holdUntilPath = releasePath,
                         holdTimeoutMs = 120_000,
                     });
                     walkthrough.Click("Parse all words in the Selection");
                     walkthrough.WaitUntil(
-                        () => File.Exists(startedPath) && workspace.Assess.State == RunState.Running,
-                        WalkthroughSteps.Remaining(deadline), "the parser did not start before window disposal");
-                    processId = Assert.Single(PanglossProcesses.Snapshot(parserPath));
+                        () => File.Exists(startedPath) && workspace.Assess.State == RunState.Running &&
+                            PanglossProcesses.TryReadProcessId(processIdPath, out _),
+                        WalkthroughSteps.Remaining(deadline), "the parser did not start before window disposal",
+                        () => PanglossProcesses.Describe(parserPath) + ";");
+                    Assert.True(PanglossProcesses.TryReadProcessId(processIdPath, out processId));
                     Assert.True(PanglossProcesses.AnyAlive(parserPath, [processId]));
                 }
                 finally

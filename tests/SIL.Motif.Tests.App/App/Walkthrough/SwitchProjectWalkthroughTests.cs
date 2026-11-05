@@ -17,7 +17,8 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
         using var firstProject = await SlowParserWalkthroughProject.CreateAsync();
         using var secondProject = new WalkthroughProject(pristine);
         var parserPath = PanglossProcesses.CopyExecutable(firstProject.ManagedRoot);
-        var deadline = WalkthroughSteps.DeadlineIn(1800);
+        // Scaled like the blame hang limit (10 minutes), so a stuck wait fails by name first.
+        var deadline = WalkthroughSteps.DeadlineIn(420);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -35,28 +36,28 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 Assert.False(walkthrough.ProjectSwitchEnabled);
                 Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
                 Assert.True(walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
-                // PanGloss may not have spawned yet: cancel only once a new process is tracked.
-                walkthrough.WaitUntil(() =>
-                {
-                    PanglossProcesses.TrackNew(parserPath, existing, appeared);
-                    return appeared.Count > 0;
-                }, WalkthroughSteps.Remaining(deadline), "the PanGloss process did not start before the Assessment was cancelled");
+                // Cancel at once: the real parser can finish this run before a wait here would return.
+                PanglossProcesses.TrackNew(parserPath, existing, appeared);
                 walkthrough.Workspace.Assess.CancelCommand.Execute(null);
             });
-            Assert.NotEmpty(appeared);
             Assert.Equal(firstProject.Words.Count, walkthrough.Workspace.Selection.PastedWordEntries.Count);
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(parserPath, existing, appeared);
-                return walkthrough.Workspace.Assess.State == RunState.Cancelling ||
-                    walkthrough.Workspace.Assess.State == RunState.Cancelled;
-            }, WalkthroughSteps.Remaining(deadline), "the Assessment cancellation was not requested");
+                var state = walkthrough.Workspace.Assess.State;
+                if (state is RunState.Completed or RunState.Refused)
+                    throw new Xunit.Sdk.XunitException(
+                        $"The Assessment ended ({state}) instead of being cancelled; " + PanglossProcesses.Describe(parserPath));
+                return state == RunState.Cancelling || state == RunState.Cancelled;
+            }, WalkthroughSteps.Remaining(deadline), "the Assessment cancellation was not requested",
+                () => PanglossProcesses.Describe(parserPath) + ";");
             walkthrough.WaitUntil(() =>
             {
                 PanglossProcesses.TrackNew(parserPath, existing, appeared);
                 return walkthrough.Workspace.Assess.State == RunState.Cancelled &&
                     !PanglossProcesses.AnyAlive(parserPath, appeared);
-            }, WalkthroughSteps.Remaining(deadline), "the first Assessment did not cancel");
+            }, WalkthroughSteps.Remaining(deadline), "the first Assessment did not cancel",
+                () => $"tracked pids [{string.Join(",", appeared)}], " + PanglossProcesses.Describe(parserPath) + ";");
             Assert.True(walkthrough.ProjectSwitchEnabled);
 
             walkthrough.ProjectPath = secondProject.FwDataPath;

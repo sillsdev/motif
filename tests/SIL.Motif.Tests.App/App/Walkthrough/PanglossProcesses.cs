@@ -82,6 +82,44 @@ internal static class PanglossProcesses
             if (!existing.Contains(id)) appeared.Add(id);
     }
 
+    /// <summary>What a failed wait says about the parser: its image name, the pids found at the copy, and every pid by that name.</summary>
+    internal static string Describe(string executablePath)
+    {
+        var name = Path.GetFileNameWithoutExtension(executablePath);
+        string byName;
+        try
+        {
+            var sameName = Process.GetProcessesByName(name);
+            byName = string.Join(",", sameName.Select(process =>
+            {
+                using (process) return process.Id;
+            }));
+        }
+        catch (Exception exception) when (exception is Win32Exception or InvalidOperationException or UnauthorizedAccessException)
+        {
+            byName = "unreadable: " + exception.Message;
+        }
+
+        return $"parser image '{name}' at '{executablePath}': pids at that path [{string.Join(",", Snapshot(executablePath))}], " +
+            $"pids with that image name [{byName}]";
+    }
+
+    /// <summary>The pid a fake parser wrote at spawn to <paramref name="processIdPath"/>, once it has written all of it.</summary>
+    internal static bool TryReadProcessId(string processIdPath, out int processId)
+    {
+        processId = 0;
+        try
+        {
+            return File.Exists(processIdPath) &&
+                int.TryParse(File.ReadAllText(processIdPath), System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out processId);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
     internal static bool AnyAlive(string executablePath, IEnumerable<int> ids) =>
         Snapshot(executablePath).Intersect(ids).Any();
 
