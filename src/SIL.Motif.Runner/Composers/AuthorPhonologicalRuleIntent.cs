@@ -28,8 +28,8 @@ public sealed record PhonologicalRuleItem(CanonicalId? Phoneme = null, Canonical
 /// <summary>One regular rewrite rule with typed input, output, contexts and declared rule placement.</summary>
 /// <param name="Name">The rule name stored in the project's default analysis writing system.</param>
 /// <param name="Direction">The closed direction value to author.</param>
-/// <param name="Input">Zero or one phoneme or natural-class items; an empty list means insertion.</param>
-/// <param name="Output">Zero or one phoneme or natural-class items; an empty list means deletion.</param>
+/// <param name="Input">Up to eight phoneme or natural-class items in order; an empty list means insertion.</param>
+/// <param name="Output">Up to eight phoneme or natural-class items in order; an empty list means deletion.</param>
 /// <param name="Left">Contexts in order; an item may be optional or repeated.</param>
 /// <param name="Right">Contexts in order; an item may be optional or repeated.</param>
 /// <param name="Placement">The neighboring rule identities that define the insertion gap.</param>
@@ -75,8 +75,8 @@ public static class AuthorPhonologicalRuleIntentParser
                 item.TryGetProperty("phoneme", out _) ? SoundSystemIntentParsing.Id(item, "phoneme") : null,
                 item.TryGetProperty("naturalClass", out _) ? SoundSystemIntentParsing.Id(item, "naturalClass") : null);
         }).ToArray();
-        if (items.Length > 1)
-            throw new ContractParseException($"A simple rewrite rule supports at most one {name} item.");
+        if (items.Length > MaximumSequenceMembers)
+            throw new ContractParseException($"A rewrite rule supports at most {MaximumSequenceMembers} {name} items.");
         return items;
     }
 

@@ -12,7 +12,7 @@ namespace SIL.Motif.Runner.Composers;
 /// <summary>Builds the operations for one complete regular rewrite rule.</summary>
 public static class AuthorPhonologicalRuleComposer
 {
-    private const int MaximumItems = 1;
+    private const int MaximumItems = 8;
 
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, AuthorPhonologicalRuleIntent intent,
         Func<CanonicalId>? mintId = null, CanonicalId? plannedNaturalClass = null,
@@ -370,7 +370,7 @@ public static class AuthorPhonologicalRuleComposer
     internal static void RequireItemCount(IReadOnlyCollection<PhonologicalRuleItem> items, string side)
     {
         if (items.Count > MaximumItems)
-            throw new InvalidOperationException($"A rewrite rule supports at most one {side} item; Black (2025, fn 66) warns more will not do what you hope.");
+            throw new InvalidOperationException($"A rewrite rule supports at most {MaximumItems} {side} items.");
     }
 
     internal sealed record ResolvedContext(string ClassName, CanonicalId Reference, int? Minimum = null, int? Maximum = null);

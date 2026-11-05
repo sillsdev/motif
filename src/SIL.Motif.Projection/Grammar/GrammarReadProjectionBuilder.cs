@@ -1,15 +1,38 @@
 using System.Text;
+using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Composers;
 
 namespace SIL.Motif.Projection.Grammar;
 
 /// <summary>Projects a bounded page of authored grammar objects from an open project.</summary>
 public static class GrammarReadProjectionBuilder
 {
+    /// <summary>
+    /// Reads a phonological rule's kind and disabled flag. Detailed reads include the authoring intent for an edit
+    /// guard, or null when the rule has a shape the composer cannot express, and the number of right-hand sides.
+    /// </summary>
+    public static JsonObject ReadPhonologicalRule(IPhSegmentRule rule, bool detailed)
+    {
+        ArgumentNullException.ThrowIfNull(rule);
+        var facts = new JsonObject
+        {
+            ["ruleKind"] = rule.ClassName,
+            ["disabled"] = rule.Disabled,
+        };
+        if (detailed)
+        {
+            facts["rightHandSideCount"] = (rule as IPhRegularRule)?.RightHandSidesOS.Count;
+            facts["intent"] = PhonologicalRuleReader.Read(rule) is { } intent
+                ? PhonologicalRuleReader.ToJson(intent) : null;
+        }
+        return facts;
+    }
+
     /// <summary>Builds the matching object page for <paramref name="request"/>.</summary>
     public static GrammarReadResponse Build(LcmCache cache, GrammarReadRequest request)
     {

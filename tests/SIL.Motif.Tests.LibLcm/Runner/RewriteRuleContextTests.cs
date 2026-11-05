@@ -115,17 +115,17 @@ public sealed class RewriteRuleContextTests(PristineProjectFixture pristine)
     [Theory]
     [InlineData("input")]
     [InlineData("output")]
-    public void RuleIntentParser_RejectsMoreThanOneChangedItem(string field)
+    public void RuleIntentParser_RejectsMoreThanEightChangedItems(string field)
     {
-        var twoItems = $$"""[{"phoneme":"{{CanonicalId.Mint().Value}}"},{"phoneme":"{{CanonicalId.Mint().Value}}"}]""";
-        var input = field == "input" ? twoItems : "[]";
-        var output = field == "output" ? twoItems : "[]";
-        using var document = JsonDocument.Parse($$"""
-            {"name":"n to m","direction":"left-to-right","input":{{input}},"output":{{output}},
-             "left":[{"boundary":"word"}],"right":[{"boundary":"word"}]}
-            """);
+        var items = Enumerable.Range(0, 9).Select(_ => new { phoneme = CanonicalId.Mint().Value }).ToArray();
+        var authored = JsonSerializer.SerializeToElement(new
+        {
+            name = "n to m", direction = "left-to-right",
+            input = field == "input" ? items : [], output = field == "output" ? items : [],
+            left = new[] { new { boundary = "word" } }, right = new[] { new { boundary = "word" } },
+        });
 
-        Assert.Throws<ContractParseException>(() => AuthorPhonologicalRuleIntentParser.Parse(document.RootElement));
+        Assert.Throws<ContractParseException>(() => AuthorPhonologicalRuleIntentParser.Parse(authored));
     }
 
     [Theory]

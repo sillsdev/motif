@@ -1,7 +1,9 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
@@ -45,12 +47,57 @@ public sealed class PhonologicalRuleEditorTests(PristineProjectFixture pristine)
     private static JsonElement Json(object value) => JsonSerializer.SerializeToElement(value);
 
     [Fact]
-    public void ARuleWithTwoInputOrOutputItemsIsRefused()
+    public void EightInputAndOutputItemsRoundTripThroughAuthoringAndEditing()
     {
         using var cache = Project();
-        var ex = Assert.Throws<InvalidOperationException>(() => AddRule(cache, "ta becomes ku",
-            [Seg(cache, "t"), Seg(cache, "a")], [Seg(cache, "k")], [], []));
-        Assert.Contains("at most one", ex.Message);
+        var input = Letters.Select(letter => Seg(cache, letter)).ToArray();
+        var output = input.Reverse().ToArray();
+        var rule = AddRule(cache, "sequence", input, output, [], []);
+        var read = PhonologicalRuleReader.Read(Get<IPhSegmentRule>(cache, rule))!;
+        var wire = PhonologicalRuleReader.ToJson(read);
+        var authored = AuthorPhonologicalRuleIntentParser.Parse(Json(wire));
+        Assert.Equal(input, authored.Input);
+        Assert.Equal(output, authored.Output);
+
+        var edit = EditPhonologicalRuleIntentParser.Parse(Json(new
+        {
+            rule = rule.Value,
+            input = wire["output"], output = wire["input"], expected = wire,
+        }));
+        ApplyOps(cache, EditPhonologicalRuleComposer.Build(cache, edit));
+        read = PhonologicalRuleReader.Read(Get<IPhSegmentRule>(cache, rule))!;
+        Assert.Equal(output, read.Input);
+        Assert.Equal(input, read.Output);
+        var stale = Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleComposer.Build(cache, edit));
+        Assert.Contains("input, output", stale.Message);
+    }
+
+    [Theory]
+    [InlineData("input")]
+    [InlineData("output")]
+    public void NineItemsAreRefusedByAuthorAndEditBeforeAnyChange(string side)
+    {
+        using var cache = Project();
+        var rule = AddRule(cache, "r", [Seg(cache, "n")], [Seg(cache, "m")], [], []);
+        var tooMany = Enumerable.Repeat(Seg(cache, "t"), 9).ToArray();
+        var before = PhonologicalRuleReader.ToJson(PhonologicalRuleReader.Read(Get<IPhSegmentRule>(cache, rule))!)
+            .ToJsonString();
+        var authored = new AuthorPhonologicalRuleIntent("too long", PhonologicalRuleDirection.Simultaneous,
+            side == "input" ? tooMany : [], side == "output" ? tooMany : [], [], [], new Placement(rule, null));
+        var authorError = Assert.Throws<InvalidOperationException>(() => AuthorPhonologicalRuleComposer.Build(cache, authored));
+        Assert.Contains($"at most 8 {side} items", authorError.Message);
+        Assert.Throws<ContractParseException>(() => AuthorPhonologicalRuleIntentParser.Parse(Json(PhonologicalRuleReader.ToJson(authored))));
+        var change = side == "input" ? new PhonologicalRuleParts(Input: tooMany) : new PhonologicalRuleParts(Output: tooMany);
+        var editError = Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleComposer.Build(cache, new(rule, change)));
+        Assert.Contains($"at most 8 {side} items", editError.Message);
+        var wire = new JsonObject
+        {
+            ["rule"] = rule.Value, [side] = PhonologicalRuleReader.ItemsJson(tooMany),
+        };
+        Assert.Throws<ContractParseException>(() => EditPhonologicalRuleIntentParser.Parse(Json(wire)));
+        Assert.Equal(before, PhonologicalRuleReader.ToJson(PhonologicalRuleReader.Read(Get<IPhSegmentRule>(cache, rule))!)
+            .ToJsonString());
+        Assert.Single(cache.LangProject.PhonologicalDataOA.PhonRulesOS);
     }
 
     [Fact]

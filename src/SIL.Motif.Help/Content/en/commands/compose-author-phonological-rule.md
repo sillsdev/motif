@@ -1,12 +1,20 @@
 # Author a sound rule
 
-Use this command to stage one simple regular rewrite rule in a Draft. Each of `input` and `output` is an array with zero or one item; each item names an existing `phoneme` or `naturalClass`. An empty `input` means insertion, and an empty `output` means deletion.
+Use this command to stage one regular phonological rule in a Draft. FieldWorks' Input and Output are the `input` and `output` arrays, each with up to eight items in order; each item names an existing `phoneme` or `naturalClass`. An empty `input` means insertion, and an empty `output` means deletion. A natural class in the input matches any member of that class. A natural class in the output produces any member of the class; it does not keep whichever segment matched the input.
 
 Before composing a rule, read the encoding guide for the phenomenon: `motif help guide:encoding/nasal-assimilation --full` for a nasal sound change, or `motif help` for the other guides.
 
 ```sh
 motif compose-author-phonological-rule --project language.fwdata --draft nasal-rule --intent '{"name":"n becomes m before a labial","direction":"left-to-right","input":[{"phoneme":"<n-id>"}],"output":[{"phoneme":"<m-id>"}],"left":[{"boundary":"word"}],"right":[{"naturalClass":"<labial-class-id>"},{"boundary":"word"}],"placement":{"after":"<neighbor-rule-id>"}}'
 ```
+
+For example, the Input sequence n t can become the Output sequence m d:
+
+```sh
+motif compose-author-phonological-rule --project language.fwdata --draft sequence-rule --intent '{"name":"nt becomes md","direction":"simultaneous","input":[{"phoneme":"<n-id>"},{"phoneme":"<t-id>"}],"output":[{"phoneme":"<m-id>"},{"phoneme":"<d-id>"}]}'
+```
+
+The two sides may have different lengths: n k to n shortens the matched sequence, and t to n k lengthens it. This composer creates one right-hand side per rule.
 
 `direction` is `left-to-right`, `right-to-left` or `simultaneous`. `left` and `right` each contain up to eight items in linguistic order, and either may be left out or empty: a rule with no left context applies wherever its right context and input match, a rule with no right context likewise, as FieldWorks allows. An item names one phoneme, natural class, `word` or `morpheme` boundary, or `boundaryMarker` id. An explicit `boundaryMarker` keeps its authored identity; use `boundary: "word"` or `boundary: "morpheme"` to name a standard boundary. In the first phoneme set, `#` and `+` must use FieldWorks' standard word and morpheme marker identities. If a code is stored only under another identity, or the rule names a marker with the wrong identity, the command refuses; repair the project in FieldWorks by re-pointing references to the standard marker, removing the stray marker, then saving and reloading. A spare duplicate "+" or "#" beside a standard marker that already holds the code does not block the rule, which always uses the standard marker. A word boundary must be at the outer edge. `placement` names the adjacent rule before the insertion gap (`after`), the adjacent rule after it (`before`), or both for an interior gap; the first rule needs no placement. The command refuses stale or nonadjacent anchors, classes that are empty or outside this project's phonological data, alpha variables, metathesis, and allomorph environments.
 

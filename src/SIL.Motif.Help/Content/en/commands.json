@@ -213,7 +213,7 @@
   },
   "compose-author-phonological-rule": {
     "title": "Author a phonological rule",
-    "description": "Stages one simple rewrite rule in a Draft, using existing phonemes and natural classes with explicit context and rule placement. Empty input or output means insertion or deletion; unsupported alpha variables and metathesis are refused. Only a person can Apply.",
+    "description": "Stages one regular phonological rule in a Draft, with up to eight phonemes or natural classes in each Input and Output sequence and declared context and rule placement. Empty Input or Output means insertion or deletion; a natural class in the Output produces any member of that class. Only a person can Apply.",
     "source": "Hand-written from the regular rewrite-rule composer contract and command behavior.",
     "goals": [
       "Add a vowel harmony rule",
@@ -1876,15 +1876,15 @@
   },
   "compose-edit-phonological-rule": {
     "title": "Edit a sound rule",
-    "description": "Changes the name, direction, input, output or contexts of one existing regular rewrite rule in place, keeping its identity, order and features. Context items may be optional or repeated. Motif stages a Draft for a person to review and Apply.",
+    "description": "Changes the name, direction, Input, Output or contexts of one existing regular phonological rule in place, keeping its identity, order and features. Input and Output each accept up to eight phoneme or natural-class items; a natural class in the Output produces any member of that class. Motif stages a Draft for a person to review and Apply.",
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",
       "rule": "Id of an existing regular rewrite rule with one right-hand side.",
       "name": "New rule name.",
       "direction": "New direction.",
-      "input": "New input: zero or one phoneme or natural-class item.",
-      "output": "New output: zero or one item; empty means deletion.",
+      "input": "New Input: up to eight phoneme or natural-class items in order; empty means insertion.",
+      "output": "New Output: up to eight items in order; empty means deletion. A natural class produces any member.",
       "left": "New left context; an empty list clears it.",
       "right": "New right context; an empty list clears it.",
       "expected": "Current values of the parts being changed; a mismatch refuses the edit."

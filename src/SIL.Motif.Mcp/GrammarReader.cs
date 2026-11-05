@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Projection;
+using SIL.Motif.Projection.Grammar;
 
 namespace SIL.Motif.Mcp;
 
@@ -57,11 +58,7 @@ internal static class GrammarReader
                 ["pattern"] = environment.StringRepresentation?.Text,
             })),
         "phonological_rules" => cache.LangProject.PhonologicalDataOA.PhonRulesOS.Select(rule =>
-            Item(cache, rule, rule.Name, null, new()
-            {
-                ["ruleKind"] = rule.ClassName,
-                ["disabled"] = (rule as IPhSegmentRule)?.Disabled,
-            })),
+            Item(cache, rule, rule.Name, null, GrammarReadProjectionBuilder.ReadPhonologicalRule(rule, detailed))),
         "features" => cache.LangProject.MsFeatureSystemOA.FeaturesOC.Select(feature =>
             Item(cache, feature, feature.Name, feature.Abbreviation, FeatureFacts(feature))),
         "phonological_features" => cache.LangProject.PhFeatureSystemOA.FeaturesOC.Select(feature =>
