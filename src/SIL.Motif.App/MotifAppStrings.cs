@@ -3398,6 +3398,8 @@ public static class MotifAppStrings
 
     public static string ProjectCardOpenAnotherAccessibleName => Text("MotifApp.ProjectCardOpenAnotherAccessibleName");
 
+    public static string TechDemoNoticeText => Text("MotifApp.TechDemoNoticeText");
+
     public static string TechDemoNoticeGotIt => Text("MotifApp.TechDemoNoticeGotIt");
 
     public static string TechDemoNoticeGotItAccessibleName => Text("MotifApp.TechDemoNoticeGotItAccessibleName");

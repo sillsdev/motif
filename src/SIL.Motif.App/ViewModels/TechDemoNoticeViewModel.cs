@@ -8,8 +8,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class TechDemoNoticeViewModel : ObservableObject
 {
     /// <summary>The first-run notice shown before a person applies changes.</summary>
-    public const string NoticeText =
-        "Tech demo: only Apply writes; back up FieldWorks.";
+    public static string NoticeText => MotifAppStrings.TechDemoNoticeText;
 
     private readonly ITechDemoNoticePreferences _preferences;
 

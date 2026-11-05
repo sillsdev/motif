@@ -6733,6 +6733,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Open another project</value>
     <comment>Accessible name of the Open Another Project button on the project card.</comment>
   </data>
+  <data name="MotifApp.TechDemoNoticeText" xml:space="preserve">
+    <value>Tech demo: only Apply writes; back up FieldWorks.</value>
+    <comment>First-run notice about applying changes and backing up the FieldWorks project.</comment>
+  </data>
   <data name="MotifApp.TechDemoNoticeGotIt" xml:space="preserve">
     <value>_Got It</value>
     <comment>Button that acknowledges the first-run tech demo notice.</comment>

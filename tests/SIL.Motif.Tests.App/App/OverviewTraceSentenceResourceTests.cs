@@ -273,6 +273,7 @@ public sealed class OverviewTraceSentenceResourceTests
         { "TraceEvidenceEnvironmentFormat", "Evidence environment: {0}" },
         { "TraceSubruleFormat", "Subrule: {0}" },
         { "TraceContextualFailureNotRecorded", "Contextual failure not recorded" },
+        { "TechDemoNoticeText", "Tech demo: only Apply writes; back up FieldWorks." },
         { "TraceStepApplied", "applied" },
     };
 
