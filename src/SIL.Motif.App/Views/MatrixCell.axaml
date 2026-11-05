@@ -21,6 +21,7 @@
       <StackPanel VerticalAlignment="Center">
         <TextBlock Classes="matrixCellCount" Text="{Binding CountNumberText}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixCellCount}" />
         <StackPanel x:Name="CellDetails" Classes="matrixCellDetails">
+          <StackPanel x:Name="CellValues" IsVisible="{Binding !IsEmpty}">
           <TextBlock Classes="matrixCellUnit" Text="{Binding CountUnitText}" />
           <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
             <TextBlock Classes="matrixCellPlaces" Text="{Binding PlacesText}" IsVisible="{Binding ShowsPlaces}"
@@ -31,6 +32,7 @@
           </Grid>
           <views:MarkChip Mark="{Binding RefusalMark}" Text="{Binding RefusalBadgeText}" Compact="True"
                           WrapText="True" IsVisible="{Binding HasRefusals}" HorizontalAlignment="Stretch" />
+          </StackPanel>
         </StackPanel>
       </StackPanel>
     </DockPanel>

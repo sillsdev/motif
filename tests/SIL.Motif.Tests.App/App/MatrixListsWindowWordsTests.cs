@@ -151,13 +151,17 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         avalonia.Invoke(() =>
         {
             var compare = Compare(EveryKindOfWord);
-            var labels = WithWindow(new ComparePanel(compare), window => window.GetLogicalDescendants()
-                .OfType<MatrixCell>().Where(cell => cell.DataContext is CompareCellViewModel
-                    { Row: WordProjectStatus.NotPresent, Column: CompareColumnKind.Match })
-                .SelectMany(cell => cell.GetLogicalDescendants().OfType<TextBlock>())
-                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text ?? string.Empty).ToArray());
+            var labels = WithWindow(new ComparePanel(compare), window =>
+            {
+                var cell = Assert.Single(window.GetLogicalDescendants().OfType<MatrixCell>(), cell =>
+                    cell.DataContext is CompareCellViewModel
+                        { Row: WordProjectStatus.NotPresent, Column: CompareColumnKind.Match });
+                Assert.False(cell.FindControl<StackPanel>("CellValues")!.IsVisible);
+                return cell.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(text => text.IsEffectivelyVisible).Select(text => text.Text ?? string.Empty).ToArray();
+            });
 
-            Assert.Equal(new[] { "0", "words", "0 places" }, labels);
+            Assert.Equal(new[] { "0" }, labels);
         });
     }
 

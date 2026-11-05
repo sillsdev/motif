@@ -128,7 +128,7 @@
   <Style Selector="Border.matrixCell.none :is(TextBlock)">
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
   </Style>
-  <!-- Empty cells drop their family's tint, while their word and place zeros remain readable. -->
+  <!-- Empty cells drop their family's tint and keep the zero readable. -->
   <Style Selector="Border.matrixCell.empty">
     <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
