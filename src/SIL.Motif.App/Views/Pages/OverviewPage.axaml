@@ -133,9 +133,8 @@
                 <Border Classes="hoverReveal">
                   <Button Classes="overviewLookFirstRow" Command="{Binding OpenCommand}"
                           AutomationProperties.Name="{Binding LinkText}">
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-                      <TextBlock Classes="overviewLookFirstNumber" Text="{Binding Number}" />
-                      <StackPanel Grid.Column="1" Classes="overviewLookFirstWords">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                      <StackPanel Classes="overviewLookFirstWords">
                         <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
                         <TextBlock Classes="overviewMuted" Text="{Binding Detail}" TextWrapping="Wrap"
                                    IsVisible="{Binding Detail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -156,7 +155,7 @@
                           </ItemsControl.ItemTemplate>
                         </ItemsControl>
                       </StackPanel>
-                      <TextBlock Grid.Column="2" Classes="overviewLookFirstAction" Text="{Binding LinkText}"
+                      <TextBlock Grid.Column="1" Classes="overviewLookFirstAction" Text="{Binding LinkText}"
                                  VerticalAlignment="Center" />
                     </Grid>
                   </Button>
@@ -281,7 +280,6 @@
             <TextBlock Classes="overviewTileDetail" Text="{Binding SpeedMain}" TextWrapping="Wrap" AutomationProperties.AutomationId="{x:Static app:AutomationIds.OverviewSpeed}" />
             <StackPanel Classes="overviewTileContent" IsVisible="{Binding ShowTodayDetail}">
               <TextBlock Classes="overviewMuted" Text="{Binding SpeedMedian}" TextWrapping="Wrap" />
-              <TextBlock Classes="overviewMuted" Text="{Binding SpeedElapsed}" TextWrapping="Wrap" IsVisible="{Binding SpeedElapsed, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <TextBlock Classes="overviewMuted" Text="{Binding SpeedDetails}" TextWrapping="Wrap" IsVisible="{Binding SpeedDetails, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <views:ProgressiveItemsControl x:Name="OverviewTimingRows" Grid.IsSharedSizeScope="True" FullItemsSource="{Binding TimingKindShares}" AutomationProperties.Name="{x:Static app:MotifAppStrings.OverviewTimeByKindAccessibleName}">
                 <ItemsControl.ItemTemplate>

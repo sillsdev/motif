@@ -30,8 +30,6 @@ internal static class ProposalNumberText
             MotifAppStrings.ProposalWorkNotComparable),
         Number("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved,
             side: Side(trial.WarningCount, Count)),
-        Number("Time on this computer", Show(trial.WordTimeMs, Time), trial.WordTimeMs.Moved,
-            side: Side(trial.WordTimeMs, Time)),
     ];
 
     // A blank number keeps its meaning in a tooltip and an accessible name, never in visible text.
@@ -89,11 +87,6 @@ internal static class ProposalNumberText
 
     private static string Percent(double? value) =>
         value is { } percent ? percent.ToString("0.#", CultureInfo.CurrentCulture) + "%" : string.Empty;
-
-    private static string Time(double? milliseconds) => milliseconds is { } ms
-        ? ms >= 1000 ? (ms / 1000).ToString("0.#", CultureInfo.CurrentCulture) + " s"
-            : ms.ToString("0", CultureInfo.CurrentCulture) + " ms"
-        : string.Empty;
 
     private static string Count(int? value) => value is { } count ? count.ToString(CultureInfo.CurrentCulture) : string.Empty;
 }

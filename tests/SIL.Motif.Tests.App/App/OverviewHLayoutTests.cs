@@ -39,6 +39,10 @@ public sealed class OverviewHLayoutTests
                 var presenter = Assert.Single(page.GetVisualDescendants().OfType<ScrollContentPresenter>());
                 var rows = page.FindControl<ItemsControl>("OverviewPageLookFirstRowsItems")!;
                 Assert.NotEmpty(workspace.PageModel<OverviewPageModel>().LookFirstRows);
+                Assert.DoesNotContain(rows.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Classes.Contains("overviewLookFirstNumber"));
+                Assert.DoesNotContain(page.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text?.StartsWith("Took ") == true);
                 var rowsBottom = rows.TranslatePoint(new Point(0, rows.Bounds.Height), presenter)!.Value.Y;
                 Assert.InRange(rowsBottom, 0, presenter.Bounds.Height);
                 var heading = page.GetVisualDescendants().OfType<TextBlock>()

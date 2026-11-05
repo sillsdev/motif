@@ -418,7 +418,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("60% → 64.5%", card.Numbers[0].Value);
         Assert.True(card.Numbers[0].Moved);
         Assert.Equal("10 of 12 → 9 of 12", card.Numbers[1].Value);
-        Assert.Equal(["Coverage", "Approved kept", "Work", "Warnings", "Time on this computer"], card.Numbers.Select(n => n.Label));
+        Assert.Equal(["Coverage", "Approved kept", "Work", "Warnings"], card.Numbers.Select(n => n.Label));
         Assert.Equal("1 lost", card.LostChip);
         Assert.Null(card.FitChip);
         Assert.Equal("also changes words in Other", card.AlsoChip);
@@ -443,8 +443,7 @@ public sealed class ProposalsPageModelTests
         Assert.True(compared.Work.Moved);
         Assert.Equal("About 20% more parser work than the Baseline", compared.TableWorkText);
         Assert.DoesNotContain("1,000", compared.TableWorkText);
-        Assert.Equal("Time on this computer", compared.Numbers[^1].Label);
-        Assert.Equal("2.5 s → 2.6 s", compared.Numbers[^1].Value);
+        Assert.DoesNotContain(compared.Numbers, number => number.Label == "Time on this computer");
         Assert.Equal(string.Empty, unavailable.Work!.Value);
         Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, unavailable.Work.Note);
         Assert.False(unavailable.Work.Moved);
@@ -466,8 +465,7 @@ public sealed class ProposalsPageModelTests
 
         Assert.Equal(string.Empty, card.TableCoverageText);
         Assert.Equal(string.Empty, card.TableWarningsText);
-        Assert.Equal(string.Empty, card.Numbers[^1].Value);
-        Assert.All(new[] { card.Coverage!, card.Warnings!, card.Numbers[^1] },
+        Assert.All(new[] { card.Coverage!, card.Warnings! },
             number => Assert.Equal(MotifAppStrings.TextsWordNotMeasured, number.Note));
         Assert.Null(card.ApprovedKept!.Note);
     }
