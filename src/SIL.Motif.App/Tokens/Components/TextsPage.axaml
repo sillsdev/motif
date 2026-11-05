@@ -9,6 +9,7 @@
     <StaticResource x:Key="Component.TextsPage.ShortLabelMargin" ResourceKey="Primitive.Inset.6_0_6_0" />
     <StaticResource x:Key="Component.TextsPage.CompareControlMargin" ResourceKey="Primitive.Inset.0_0_2_0" />
     <StaticResource x:Key="Component.TextsPage.LineMargin" ResourceKey="Primitive.Inset.0_4_0_4" />
+    <StaticResource x:Key="Component.TextsPage.LineSummaryMargin" ResourceKey="Primitive.Inset.0_0_20_0" />
     <StaticResource x:Key="Component.TextsPage.CardIndent" ResourceKey="Primitive.Inset.66_6_0_2" />
     <StaticResource x:Key="Component.TextsPage.CountIndent" ResourceKey="Primitive.Inset.26_0_0_4" />
     <StaticResource x:Key="Component.TextsPage.EmptyStateMargin" ResourceKey="Primitive.Inset.0_8_0_8" />

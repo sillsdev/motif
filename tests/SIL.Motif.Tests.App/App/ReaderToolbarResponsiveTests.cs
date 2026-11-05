@@ -120,6 +120,38 @@ public sealed class ReaderToolbarResponsiveTests
     }
 
     [Fact]
+    public void LineSummariesClearTheReaderScrollbar()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await AnalyzeTextsLayoutTests.OpenAnalyzeTexts();
+            try
+            {
+                var panel = AnalyzeTextsLayoutTests.Panel(window);
+                var scroll = Assert.IsType<ScrollViewer>(panel.FindControl<ScrollViewer>("TextScrollViewer"));
+                PageScreenshots.Settle(window);
+                var headings = scroll.GetVisualDescendants().OfType<Grid>()
+                    .Where(grid => grid.IsEffectivelyVisible && grid.Classes.Contains("lineHead")).ToArray();
+                Assert.NotEmpty(headings);
+                foreach (var heading in headings)
+                {
+                    var summary = heading.Children.OfType<TextBlock>().Last();
+                    summary.Text = "· 1 needs a look";
+                    PageScreenshots.Settle(window);
+                    var right = summary.TranslatePoint(new Point(summary.Bounds.Width, 0), scroll)!.Value.X;
+                    Assert.True(right <= scroll.Bounds.Width - 8,
+                        $"The line summary ends at {right:0.#} in a {scroll.Bounds.Width:0.#}-pixel reader.");
+                }
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(4));
+    }
+
+    [Fact]
     public void SearchPickerReadAndSelectReceivePointerInputAtNarrowSizes()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

@@ -199,6 +199,7 @@
                                          controls:WritingSystemText.Id="{Binding SentenceWritingSystem}"
                                          controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
                 <views:CopyableTextBlock Grid.Column="2" Classes="lineSentence" Text="{Binding NeedsALookSummary}"
+                                         Margin="{DynamicResource Component.TextsPage.LineSummaryMargin}"
                                          TextWrapping="Wrap"
                                          controls:WritingSystemText.WindowText="True" />
               </Grid>
