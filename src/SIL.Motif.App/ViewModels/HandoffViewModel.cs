@@ -102,8 +102,14 @@ public sealed partial class HandoffViewModel : CommandRunViewModel<HandoffComman
     /// <summary>The sentence the AI Handoff page shows when the files are stale.</summary>
     public string OutOfDateText => LatestAssessmentAt is { } assessed && WrittenAt is { } written
         ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.HandoffOutOfDateFormat,
-            WindowTimeText.Format(assessed, _timeProvider), WindowTimeText.Format(written, _timeProvider))
+            HandoffTime(assessed, written), HandoffTime(written, assessed))
         : string.Empty;
+
+    private string HandoffTime(DateTimeOffset value, DateTimeOffset other) =>
+        TimeZoneInfo.ConvertTime(value, _timeProvider.LocalTimeZone).Date !=
+        TimeZoneInfo.ConvertTime(other, _timeProvider.LocalTimeZone).Date
+            ? WindowTimeText.FormatWithDate(value, _timeProvider)
+            : WindowTimeText.Format(value, _timeProvider);
 
     /// <summary>Where the completed run wrote the folder, or <c>null</c> before a run has completed.</summary>
     [ObservableProperty]

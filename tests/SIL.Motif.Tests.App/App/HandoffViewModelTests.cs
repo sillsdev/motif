@@ -76,6 +76,25 @@ public sealed class HandoffViewModelTests
     }
 
     [Fact]
+    public async Task HandoffDatesBothTimesWhenTheFilesAndParseAreOnDifferentDays()
+    {
+        using var culture = new CultureScope(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+        var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero), TimeZoneInfo.Utc);
+        var fake = new FakeCommandClient();
+        var handoff = new HandoffViewModel(fake, new SelectionViewModel(fake) { AllWordforms = true },
+            new FakeFolderPicker(OutputDirectory), new FakeDragSource(), clock)
+        { ProjectPath = ProjectPath, InvocationId = "invocation/one" };
+        fake.HandoffCompletesWith(NewResponse(OutputDirectory, "handoff.md"));
+        await handoff.RunCommand.ExecuteAsync(null);
+        clock.Advance(TimeSpan.FromDays(1));
+        handoff.LatestAssessmentAt = clock.GetLocalNow();
+
+        var text = handoff.OutOfDateText.Replace('\u202f', ' ');
+        Assert.Contains("Thu 5 Mar, 10:30 AM", text);
+        Assert.Contains("Wed 4 Mar, 10:30 AM", text);
+    }
+
+    [Fact]
     public async Task FilesWrittenBeforeTheLatestAssessmentSayTheyAreOutOfDate()
     {
         var (fake, _, handoff) = NewViewModel();
