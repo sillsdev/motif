@@ -94,7 +94,7 @@
                   chrome:WindowDecorationProperties.ElementRole="User"
                   AutomationProperties.Name="{Binding ProjectChipAccessibleName}"
                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectChip}"
-                  ToolTip.Tip="{Binding ProjectPathTooltip}">
+                  ToolTip.Tip="{Binding ProjectPathTooltip}" views:ClearTipPlacement.IsEnabled="True">
             <DockPanel>
               <Ellipse DockPanel.Dock="Left" Classes="freshDot" IsVisible="{Binding HasFreshness}"
                        Classes.current="{Binding FreshnessIsCurrent}" Classes.stale="{Binding FreshnessIsStale}"

@@ -26,7 +26,7 @@ public sealed class TooltipPlacementTests
 {
     private static readonly HashSet<string> RequiredOwnersAtEachWidth = new(StringComparer.Ordinal)
     {
-        "refresh", "project chip", "word cell", "drag all files", "question to copy", "Apply to FieldWorks project", "ticked words to AI Handoff",
+        "refresh", "project chip", "word cell", "drag all files", "question to copy", "ticked words to AI Handoff",
         "Parse stopped words again", "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
         "mark unread without a text occurrence", "FieldWorks link on a morpheme", "FieldWorks link in a finding",
         "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column", "completion in detailed statistics",
@@ -38,7 +38,6 @@ public sealed class TooltipPlacementTests
     {
         ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
         ["pending change in a Matrix cell"] = "the compact Matrix leaves no clear side; the tip overlaps the next cell",
-        ["status parse progress"] = "the tip rises over the clipped sliver of Review's Back button above the status bar",
         ["show Inspector"] = "the notice's Got It sits left of the strip and the first word row fills the side below it",
         ["tech demo promise"] = "Overview's full-width Open in Matrix footer sits above the status bar on every side",
     };
@@ -105,12 +104,6 @@ public sealed class TooltipPlacementTests
                                     "statistics word" or "statistics heat value")
                                     Assert.True(ClearTipPlacement.GetIsEnabled(control),
                                         $"{where}: the tooltip must use measured clear placement.");
-                                if (owner.Key == "Apply to FieldWorks project")
-                                {
-                                    Assert.False(control.IsEnabled, $"{where}: Apply must be disabled without an applicable change.");
-                                    Assert.False(string.IsNullOrWhiteSpace(ToolTip.GetTip(control)?.ToString()),
-                                        $"{where}: the disabled Apply control must explain why it is unavailable.");
-                                }
                                 if (await Hover(scenes, control) is not { } tip)
                                 {
                                     var blocked = string.Join(", ", control.GetVisualAncestors().OfType<Control>()
@@ -127,9 +120,6 @@ public sealed class TooltipPlacementTests
                                     continue;
                                 }
                                 placed++;
-                                if (owner.Key == "Apply to FieldWorks project")
-                                    Assert.True(tip.MaxWidth <= 280,
-                                        $"{where}: the Apply tooltip must stay within the Review side rail.");
                                 var covered = Covered(scenes.Window, control, tip).ToList();
                                 var drawnReaderMark = owner.Key == "disapproved mark on a strip" &&
                                     control.GetVisualAncestors().OfType<WordStripToken>()

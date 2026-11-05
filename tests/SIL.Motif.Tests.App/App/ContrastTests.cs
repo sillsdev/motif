@@ -581,7 +581,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                             ? DisabledByAutomationId(listsWindow, SIL.Motif.App.AutomationIds.HandOffList, failures) : null;
                         var owners = new[] { apply, ticked, whole }.OfType<Button>().ToList();
                         var reasons = new List<(string What, TextBlock Text)>();
-                        foreach (var owner in owners)
+                        foreach (var owner in owners.Where(owner => ToolTip.GetTip(owner) is not null))
                             reasons.AddRange(ControlContracts.TooltipScenes.OpenTipTexts(owner)
                                 .Select(text => ($"the tooltip on {AutomationProperties.GetName(owner)}", text)));
                         reasons.AddRange(Shown(listsWindow, lists.HandOffCheckedWordsDisabledReason, lists.HandOffListDisabledReason)
@@ -616,7 +616,8 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         var button = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(candidate => AutomationProperties.GetName(candidate) == name);
         if (button is null) failures.Add($"'{name}' is not shown");
         else if (button.IsEffectivelyEnabled) failures.Add($"'{name}' is enabled, so it shows no reason");
-        else if (ToolTip.GetTip(button) is not string { Length: > 0 }) failures.Add($"'{name}' is disabled with no reason in its tooltip");
+        else if (AutomationProperties.GetHelpText(button) is not { Length: > 0 })
+            failures.Add($"'{name}' is disabled with no accessible reason");
         return button is { IsEffectivelyEnabled: false } ? button : null;
     }
 
