@@ -64,7 +64,8 @@ public sealed class RetireBoundaryMarkerComposerTests(PristineProjectFixture pri
         Assert.Contains("conflicting boundary markers", Refusal(() => AuthorPhonologicalRuleComposer.Build(cache, onStray)));
 
         var operations = MergeBoundaryMarkersComposer.Build(cache, new(Id(stray)));
-        SoundSystemComposerTests.Execute(cache, operations);
+        // This intermediate fixture state needs direct handler setup.
+        SoundSystemComposerTests.ExecuteHandlers(cache, operations);
 
         Assert.Equal(LangProjectTags.kguidPhRuleMorphBdry, context.FeatureStructureRA!.Guid);
         Assert.DoesNotContain(FirstSet(cache).BoundaryMarkersOC, item => item.Guid == stray.Guid);

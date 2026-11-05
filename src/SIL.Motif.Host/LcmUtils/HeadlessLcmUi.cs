@@ -1,5 +1,6 @@
 // Adapted from languageforge-lexbox's FwDataMiniLcmBridge/LcmUtils/LcmUi.cs (SIL Global, MIT License).
 
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using SIL.LCModel;
 
@@ -8,10 +9,20 @@ namespace SIL.Motif.Host.LcmUtils;
 /// <summary>
 /// Non-interactive <see cref="ILcmUI"/> for a headless host. There is no user to prompt, so
 /// destructive/ambiguous decisions fail loudly (<see cref="NotImplementedException"/>) rather than
-/// silently guessing, while informational callbacks just write to the console.
+/// silently guessing. Errors remain available to the caller after background work completes.
 /// </summary>
 public class HeadlessLcmUi(ISynchronizeInvoke synchronizeInvoke) : ILcmUI
 {
+    private readonly ConcurrentQueue<Exception> _reportedErrors = new();
+
+    /// <summary>Rejects reported LibLCM errors, pinned by `ABackendWriteFailureDoesNotReturnASuccessfulSave`.</summary>
+    internal void ThrowReportedErrors()
+    {
+        if (_reportedErrors.TryPeek(out var error))
+            throw new IOException("LibLCM reported an error; the project cannot be treated as saved. " +
+                "Discard this cache and reload the saved project. " + error.Message, error);
+    }
+
     public void DisplayCircularRefBreakerReport(string msg, string caption)
     {
         Console.WriteLine(msg);
@@ -53,11 +64,13 @@ public class HeadlessLcmUi(ISynchronizeInvoke synchronizeInvoke) : ILcmUI
 
     public void DisplayMessage(MessageType type, string message, string caption, string helpTopic)
     {
+        if (type == MessageType.Error) _reportedErrors.Enqueue(new IOException(caption + ": " + message));
         Console.WriteLine("{0}: {1}", type, message);
     }
 
     public void ReportException(Exception error, bool isLethal)
     {
+        _reportedErrors.Enqueue(error);
         Console.WriteLine("Got exception: {0}: {1}\n{2}", error.GetType(), error.Message, error);
     }
 

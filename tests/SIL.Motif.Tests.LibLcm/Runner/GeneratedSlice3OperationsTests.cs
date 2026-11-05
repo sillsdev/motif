@@ -82,6 +82,22 @@ public sealed class GeneratedSlice3OperationsTests : IDisposable
     }
 
     [Fact]
+    public void ClearingASlotNamePersistsIdenticallyInTheTrialCandidateAndApply()
+    {
+        var slot = CreateInflAffixSlot();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            slot.Name.set_String(_cache.DefaultAnalWs, "slot name"));
+        var ws = _cache.WritingSystemFactory.GetStrFromWs(_cache.DefaultAnalWs);
+        var proposal = BuildProposal(MoInflAffixSlotNameOperationKinds.ClearName,
+            CanonicalId.FromGuid(slot.Guid), new { ws });
+
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "motif-tests");
+
+        Assert.True(string.IsNullOrEmpty(slot.Name.get_String(_cache.DefaultAnalWs).Text));
+    }
+
+    [Fact]
     public void SetThenClear_MoStemMsaPartOfSpeech_RelAtomic_RoundTripsThroughDryRunAndApply()
     {
         var msa = FindAnyStemMsa();

@@ -7,6 +7,7 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.AppliedLog;
@@ -34,6 +35,78 @@ public sealed class EditAdhocProhibitionComposerTests : IDisposable
     public void Dispose()
     {
         if (!_cache.IsDisposed) _cache.Dispose();
+    }
+
+    [Fact]
+    public void TrialCandidatePersistsBothDisabledFlipsExactlyAsApply()
+    {
+        var allomorph = CreateAllomorphRule(disabled: true);
+        var morpheme = CreateMorphemeRule(disabled: true);
+        var proposal = new Proposal(new Dictionary<string, string> { ["grammar"] = "1.0" },
+            CanonicalId.Mint(), null, [
+                .. EditAdhocProhibitionComposer.Build(_cache, new(Id(allomorph), true, false)),
+                .. EditAdhocProhibitionComposer.Build(_cache, new(Id(morpheme), true, false))]);
+        var loader = new FwDataProjectLoader();
+        loader.Save(_cache);
+        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "motif-trial-flags", Guid.NewGuid().ToString("N"));
+        try
+        {
+            string candidatePath;
+            BoundDryRunAnchor anchor;
+            using (var scratch = DryRunScratch.Adopt(
+                new ScratchCacheFactory().CreateFromFileCopy(_cache.ProjectId.Path, root), "Trial flag regression"))
+            {
+                anchor = ProposalDryRunner.Run(scratch, proposal).Anchor;
+                Assert.False(scratch.PeekCache().ServiceLocator.GetInstance<IMoAlloAdhocProhibRepository>()
+                    .GetObject(allomorph.Guid).Disabled);
+                Assert.False(scratch.PeekCache().ServiceLocator.GetInstance<IMoMorphAdhocProhibRepository>()
+                    .GetObject(morpheme.Guid).Disabled);
+                loader.Save(scratch.PeekCache());
+                candidatePath = scratch.PeekCache().ProjectId.Path;
+            }
+            ProposalApplier.Apply(_cache, proposal, anchor, "motif-tests");
+            loader.Save(_cache);
+            using var candidate = loader.LoadScratchCache(candidatePath);
+            Assert.Equal(allomorph.Disabled, candidate.ServiceLocator.GetInstance<IMoAlloAdhocProhibRepository>()
+                .GetObject(allomorph.Guid).Disabled);
+            Assert.Equal(morpheme.Disabled, candidate.ServiceLocator.GetInstance<IMoMorphAdhocProhibRepository>()
+                .GetObject(morpheme.Guid).Disabled);
+        }
+        finally
+        {
+            System.IO.Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ParityRejectsALostDisabledWriteForEitherProhibitionKind(bool loseMorphemeWrite)
+    {
+        var allomorph = CreateAllomorphRule(disabled: true);
+        var morpheme = CreateMorphemeRule(disabled: true);
+        var proposal = new Proposal(new Dictionary<string, string> { ["grammar"] = "1.0" },
+            CanonicalId.Mint(), null, [
+                .. EditAdhocProhibitionComposer.Build(_cache, new(Id(allomorph), true, false)),
+                .. EditAdhocProhibitionComposer.Build(_cache, new(Id(morpheme), true, false))]);
+        new FwDataProjectLoader().Save(_cache);
+        var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "motif-parity-rejection", Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var scratch = DryRunScratch.Adopt(
+                new ScratchCacheFactory().CreateFromFileCopy(_cache.ProjectId.Path, root), "lost candidate write");
+            var dryRun = ProposalDryRunner.Run(scratch, proposal);
+            var target = loseMorphemeWrite ? morpheme.Guid : allomorph.Guid;
+            var cache = scratch.PeekCache();
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<IMoAdhocProhibRepository>().GetObject(target).Disabled = true);
+
+            var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() =>
+                TrialCandidateParity.Verify(_cache, cache, proposal, dryRun, root));
+
+            Assert.Contains(target.ToString(), failure.Message, StringComparison.Ordinal);
+        }
+        finally { System.IO.Directory.Delete(root, recursive: true); }
     }
 
     [Fact]

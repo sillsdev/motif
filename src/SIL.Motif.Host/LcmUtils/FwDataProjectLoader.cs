@@ -491,7 +491,8 @@ public class FwDataProjectLoader
     /// projects itself (the Change Set contract's Application Receipt semantics):
     /// <c>SIL.Motif.Runner.Apply.ProposalApplier.Apply</c> commits its unit of work but never calls
     /// this — it is the host's job, called only after every unit of work has closed (never while a
-    /// task is open — ADR 0005 decision 3; ADR 0006 decision 4).
+    /// task is open — ADR 0005 decision 3; ADR 0006 decision 4). The save guarantee is pinned by
+    /// `ABackendWriteFailureDoesNotReturnASuccessfulSave`.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -518,6 +519,13 @@ public class FwDataProjectLoader
     /// and <c>ProjectBackupService</c> (<c>:61</c>). So this is the documented sequence, not an invention.
     /// </para>
     /// <para>
+    /// Waiting does not establish success: the XML backend reports write failures through
+    /// <see cref="ILcmUI.DisplayMessage"/> and lets its background thread finish normally. The headless
+    /// UI retains errors so this method rejects the failed save and subsequent saves of that cache,
+    /// pinned by `ABackendWriteFailureDoesNotReturnASuccessfulSave`. The caller must discard the
+    /// cache and reload rather than treating unchanged disk bytes as the committed candidate.
+    /// </para>
+    /// <para>
     /// <b>The one wart:</b> that barrier is not on Motif's side of the fence. It is declared on the
     /// <c>internal</c> <c>IDataStorer</c>, so the only reachable route is the public
     /// <c>ILcmServiceLocator.DataSetup</c> property — which returns the very same backend-provider
@@ -534,8 +542,11 @@ public class FwDataProjectLoader
     {
         if (cache is null) throw new ArgumentNullException(nameof(cache));
 
+        var ui = cache.ServiceLocator.GetInstance<ILcmUI>() as HeadlessLcmUi;
+        ui?.ThrowReportedErrors();
         cache.ActionHandlerAccessor.Commit();
         WaitForPendingWritesToReachDisk(cache);
+        ui?.ThrowReportedErrors();
     }
 
     private static MethodInfo? _completeAllCommits;

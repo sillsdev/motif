@@ -42,6 +42,25 @@ public sealed class SaveIsSynchronousTests : IDisposable
     }
 
     [Fact]
+    public void ABackendWriteFailureDoesNotReturnASuccessfulSave()
+    {
+        var entry = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            entry.Comment.set_String(_cache.DefaultAnalWs, TsStringUtils.MakeString("unsaved", _cache.DefaultAnalWs)));
+        var backup = Path.ChangeExtension(_fwDataPath, "bak");
+        if (File.Exists(backup)) File.Delete(backup);
+        Directory.CreateDirectory(backup);
+        var savedBytes = File.ReadAllBytes(_fwDataPath);
+
+        var failure = Record.Exception(() => _loader.Save(_cache));
+
+        Assert.Equal(savedBytes, File.ReadAllBytes(_fwDataPath));
+        Assert.IsType<IOException>(failure);
+        Directory.Delete(backup);
+        Assert.Throws<IOException>(() => _loader.Save(_cache));
+    }
+
+    [Fact]
     public void AfterSaveReturns_AFreshCopyOfTheFileAlreadyContainsTheChange()
     {
         var entry = _cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_seed.FirstEntryId);

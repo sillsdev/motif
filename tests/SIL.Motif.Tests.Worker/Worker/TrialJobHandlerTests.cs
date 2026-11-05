@@ -113,6 +113,125 @@ public sealed class TrialJobHandlerTests : IDisposable
         try { Directory.Delete(_root, recursive: true); } catch { /* best-effort */ }
     }
 
+    internal async Task AssertProhibitionTrialParityAsync()
+    {
+        var (proposalId, json, targets) = PrepareDisabledProhibitions();
+        _proposals.CreateDraft("working", proposalId, json);
+        var source = Directory.GetFiles(_publishedRoot, "*.fwdata", SearchOption.AllDirectories).Single();
+        using var invoker = new PanGlossInvoker();
+        var baseline = Assert.IsType<PanGlossOutcome.Completed>(await invoker.RunAsync(
+            new PanGlossRequest.Batch(source, ["pabago", "bago"], null) { CollectAnalyses = true },
+            "prohibition baseline", CancellationToken.None));
+        Assert.All(ParseMorphEvidence.Read(baseline.MorphologyOutput!, ["pabago", "bago"]),
+            word => Assert.Single(word.Analyses));
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new PanGlossAssessor(new TrialParserPaths(_root), invoker);
+        var handler = BuildHandler(lanes, assessor, grammarHealth: (path, name, wait, token) =>
+            TrialGrammarCheck.RunAsync(invoker, "prohibition Trial", StoredAnalysisComparison.Budget,
+                path, name, token, wait));
+
+        var job = RunAndFinish(handler, CreateTrialJob(json, ["pabago", "bago"]));
+
+        Assert.True(job.Status == JobStatus.Completed, job.Status + ": " + job.ResultJson);
+        var record = _assessments.Get(_assessments.ListByProposal(proposalId).First().AssessmentId);
+        var invocation = Assert.IsType<BatchInvocationEvidence>(record.Invocation);
+        using (var candidate = new FwDataProjectLoader().LoadScratchCache(invocation.SourcePath))
+            foreach (var target in targets)
+                Assert.False(candidate.ServiceLocator.GetInstance<IMoAdhocProhibRepository>().GetObject(target).Disabled);
+        var candidateWords = record.Words!.ToDictionary(word => word.Word,
+            word => Assert.IsType<ParseWordEvidence>(word.Morphology));
+        Assert.Empty(candidateWords["pabago"].Analyses);
+        Assert.Single(candidateWords["bago"].Analyses);
+        Assert.Equal("draft", _proposals.Get(proposalId).Status);
+        using (var applied = new FwDataProjectLoader().LoadScratchCache(source))
+        {
+            var proposal = ProposalJsonParser.Parse(json);
+            var dryRun = ScratchDryRun.Of(applied, proposal);
+            SIL.Motif.Runner.Apply.ProposalApplier.Apply(applied, proposal, dryRun.Anchor, "motif-tests");
+            new FwDataProjectLoader().Save(applied);
+            foreach (var target in targets)
+                Assert.False(applied.ServiceLocator.GetInstance<IMoAdhocProhibRepository>().GetObject(target).Disabled);
+        }
+        var afterApply = Assert.IsType<PanGlossOutcome.Completed>(await invoker.RunAsync(
+            new PanGlossRequest.Batch(source, ["pabago", "bago"], null) { CollectAnalyses = true },
+            "applied prohibitions", CancellationToken.None));
+        foreach (var word in ParseMorphEvidence.Read(afterApply.MorphologyOutput!, ["pabago", "bago"]))
+            Assert.Equal(JsonSerializer.Serialize(candidateWords[word.Word].Analyses),
+                JsonSerializer.Serialize(word.Analyses));
+    }
+
+    private (CanonicalId ProposalId, string Json, Guid[] Targets) PrepareDisabledProhibitions()
+    {
+        var source = Directory.GetFiles(_publishedRoot, "*.fwdata", SearchOption.AllDirectories).Single();
+        using var cache = new FwDataProjectLoader().LoadScratchCache(source);
+        var (prefix, stem) = ProhibitionParserProject.Seed(cache);
+        var allomorph = cache.ServiceLocator.GetInstance<IMoAlloAdhocProhibFactory>().Create();
+        var morpheme = cache.ServiceLocator.GetInstance<IMoMorphAdhocProhibFactory>().Create();
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var rules = cache.LangProject.MorphologicalDataOA.AdhocCoProhibitionsOC;
+            rules.Add(allomorph);
+            allomorph.FirstAllomorphRA = prefix.LexemeFormOA;
+            allomorph.RestOfAllosRS.Add(stem.LexemeFormOA);
+            allomorph.Adjacency = 0;
+            allomorph.Disabled = true;
+            rules.Add(morpheme);
+            morpheme.FirstMorphemeRA = prefix.MorphoSyntaxAnalysesOC.Single();
+            morpheme.RestOfMorphsRS.Add(stem.MorphoSyntaxAnalysesOC.Single());
+            morpheme.Adjacency = 0;
+            morpheme.Disabled = true;
+        });
+        var operations = new IMoAdhocProhib[] { allomorph, morpheme }.SelectMany(rule =>
+            SIL.Motif.Runner.Composers.EditAdhocProhibitionComposer.Build(cache,
+                new(CanonicalId.FromGuid(rule.Guid), true, false))).ToArray();
+        var proposalId = CanonicalId.Mint();
+        var json = JsonSerializer.Serialize(new
+        {
+            contractVersions = new { grammar = "1.0" }, proposalId = proposalId.Value,
+            operations = operations.Select(operation => new
+            {
+                operationId = operation.OperationId.Value, kind = operation.Kind,
+                target = operation.Target!.Value.Value, after = operation.After,
+            }).ToArray(),
+        });
+        new FwDataProjectLoader().Save(cache);
+        return (proposalId, json, [allomorph.Guid, morpheme.Guid]);
+    }
+
+    private sealed class TrialParserPaths(string root) : IAssessorCachePathResolver
+    {
+        public string DirectoryFor(string id)
+        {
+            var parent = Path.Combine(root, "parser-assessments");
+            Directory.CreateDirectory(parent);
+            return Path.Combine(parent, id);
+        }
+    }
+
+    [Fact]
+    public void AFailedCandidateWriteKeepsTheDryRunAndPublishesNoAssessment()
+    {
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var (proposalId, json, targets) = PrepareDisabledProhibitions();
+        SaveCommittedProposal(proposalId, json);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            prepareForAssessment: (cache, token) =>
+            {
+                foreach (var target in targets)
+                    Assert.False(cache!.ServiceLocator.GetInstance<IMoAdhocProhibRepository>().GetObject(target).Disabled);
+                var backup = Path.ChangeExtension(cache!.ProjectId.Path, "bak");
+                if (File.Exists(backup)) File.Delete(backup);
+                Directory.CreateDirectory(backup);
+                return DefaultPrepareForAssessment(cache, token);
+            });
+
+        var job = RunAndFinish(handler, CreateTrialJob(json));
+
+        Assert.True(job.DryRunPublished);
+        Assert.Equal(JobStatus.CompletedWithAssessmentFailure, job.Status);
+        Assert.Empty(_assessments.ListByProposal(proposalId));
+    }
+
     [Fact]
     public void BudgetStopIsTerminalAndDoesNotPublishCandidateAssessments()
     {

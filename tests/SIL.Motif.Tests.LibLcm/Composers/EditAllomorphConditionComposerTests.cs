@@ -71,7 +71,7 @@ public sealed class EditAllomorphConditionComposerTests : IDisposable
         Assert.Equal(2, operations.Count(operation =>
             operation.Kind == MoStemAllomorphPhoneEnvOperationKinds.AddRefPhoneEnv));
         Assert.All(operations, operation => Assert.Equal(Id(_stem), operation.Target));
-        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => Apply(operations));
+        Apply(operations);
 
         Assert.Equal(new[] { Id(_secondEnvironment), Id(_thirdEnvironment) }.OrderBy(id => id.Value),
             _stem.PhoneEnvRC.Select(item => Id(item)).OrderBy(id => id.Value));
@@ -96,9 +96,31 @@ public sealed class EditAllomorphConditionComposerTests : IDisposable
 
         Assert.Equal(MoAffixAllomorphPositionOperationKinds.MovePosition, operation.Kind);
         Assert.Equal(Id(affix), operation.Target);
-        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => Apply([operation]));
+        Apply([operation]);
         Assert.Equal([_secondEnvironment.Guid, _firstEnvironment.Guid], affix.PositionRS.Select(item => item.Guid));
         Assert.Equal([_thirdEnvironment.Guid], affix.PhoneEnvRC.Select(item => item.Guid));
+    }
+
+    [Theory]
+    [InlineData(AllomorphConditionField.PhoneEnv)]
+    [InlineData(AllomorphConditionField.Position)]
+    public void ReplacingAnAffixConditionPersistsTheSameCandidateAsApply(AllomorphConditionField field)
+    {
+        var affix = CreateAffixAlternate();
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            if (field == AllomorphConditionField.PhoneEnv) affix.PhoneEnvRC.Add(_firstEnvironment);
+            else affix.PositionRS.Add(_firstEnvironment);
+        });
+        var operations = EditAllomorphConditionComposer.Build(_cache,
+            new(Id(affix), field, [Id(_firstEnvironment)], [Id(_secondEnvironment)]));
+
+        Apply(operations);
+
+        var environments = field == AllomorphConditionField.PhoneEnv
+            ? affix.PhoneEnvRC.Select(environment => environment.Guid)
+            : affix.PositionRS.Select(environment => environment.Guid);
+        Assert.Equal([_secondEnvironment.Guid], environments);
     }
 
     [Fact]
@@ -240,7 +262,7 @@ public sealed class EditAllomorphConditionComposerTests : IDisposable
 
         Assert.Equal(LexEntryAlternateFormsOperationKinds.MoveAlternateForms, operation.Kind);
         Assert.Equal(Id(_entry), operation.Target);
-        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () => Apply([operation]));
+        Apply([operation]);
         Assert.Equal(requested.Select(id => id.ToGuid()), _entry.AlternateFormsOS.Select(form => form.Guid));
 
         var lexemeError = Assert.Throws<InvalidOperationException>(() => OrderAllomorphsComposer.Build(_cache,
@@ -298,9 +320,14 @@ public sealed class EditAllomorphConditionComposerTests : IDisposable
 
     private void Apply(IEnumerable<OperationEnvelope> operations)
     {
-        foreach (var operation in operations)
-            OperationHandlerRegistry.Resolve(operation.Kind, "allomorph composer tests")
-                .ApplyAndCaptureEffect(_cache, operation, []);
+        var proposal = AffixTestSupport.Proposal(operations.ToArray());
+        _ = ScratchDryRun.Of(_cache, proposal);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            foreach (var operation in proposal.Operations)
+                OperationHandlerRegistry.Resolve(operation.Kind, "allomorph composer tests")
+                    .ApplyAndCaptureEffect(_cache, operation, []);
+        });
     }
 
     private static CanonicalId Id(ICmObject value) => CanonicalId.FromGuid(value.Guid);

@@ -384,7 +384,18 @@ public sealed class SoundSystemComposerTests(PristineProjectFixture pristine)
         return created.EntityId!.Value;
     }
 
-    internal static void Execute(LcmCache cache, IReadOnlyList<OperationEnvelope> operations) =>
+    internal static void Execute(LcmCache cache, IReadOnlyList<OperationEnvelope> operations)
+    {
+        if (operations.Count > 0)
+        {
+            var proposal = new Proposal(operations.Select(operation => operation.Kind.Split('/')[0])
+                .Distinct().ToDictionary(group => group, _ => "1.0"), CanonicalId.Mint(), null, operations);
+            _ = ScratchDryRun.Of(cache, proposal);
+        }
+        ExecuteHandlers(cache, operations);
+    }
+
+    internal static void ExecuteHandlers(LcmCache cache, IReadOnlyList<OperationEnvelope> operations) =>
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
             foreach (var operation in operations)

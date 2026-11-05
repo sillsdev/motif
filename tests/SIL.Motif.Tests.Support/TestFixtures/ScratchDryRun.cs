@@ -74,6 +74,8 @@ internal static class ScratchDryRun
             proposal,
             Array.Empty<Proposal>(),
             appliedProposalIds);
-        return ProposalDryRunner.Run(scratch, plan);
+        var dryRun = ProposalDryRunner.Run(scratch, plan);
+        TrialCandidateParity.Verify(projectCache, scratch.PeekCache(), proposal, dryRun, scratchRoot);
+        return dryRun;
     }
 }
