@@ -54,8 +54,12 @@ public enum PreferenceWriteState
 /// <summary>The saved outer window size in DIPs and optional native-pixel position.</summary>
 public sealed record WindowPlacement(double Width, double Height, int? X, int? Y);
 
-/// <summary>The sort and filter a person left on one view of one project; null parts mean the view's default.</summary>
-public sealed record ViewState(string? SortColumn, bool SortDescending, string? Filter);
+/// <summary>
+/// The sort, filter and selected row a person left on one view of one project; null parts mean the view's default.
+/// <paramref name="SelectedKey"/> is the view's stable row identity, never a row index. Files older than format 3
+/// have none and load as no selection.
+/// </summary>
+public sealed record ViewState(string? SortColumn, bool SortDescending, string? Filter, string? SelectedKey = null);
 
 /// <summary>The complete user preference snapshot shared by the Motif window.</summary>
 public sealed record UserPreferences(
@@ -133,8 +137,11 @@ public interface IUserPreferencesStore
 /// <summary>The validated file-backed store shared by all App presentation preferences.</summary>
 public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposable
 {
-    /// <summary>The format written on every save. Format 1 files are read and upgraded in memory.</summary>
-    public const int LatestFormatVersion = 2;
+    /// <summary>
+    /// The format written on every save. Format 1 and 2 files are read and upgraded in memory; format 3 added the
+    /// optional selected row to each saved view.
+    /// </summary>
+    public const int LatestFormatVersion = 3;
 
     private const int CurrentFormatVersion = LatestFormatVersion;
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMilliseconds(750);
@@ -489,8 +496,8 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
             if (!HasExactShape(json, out var version)) return RefusedRead();
             var preferences = JsonSerializer.Deserialize<UserPreferences>(json, JsonOptions);
             if (preferences is null) return RefusedRead();
-            // A format 1 file keeps every preference; it is upgraded here and written as format 2 on the next save.
-            if (version == 1) preferences = preferences with { FormatVersion = LatestFormatVersion };
+            // An older file keeps every preference; it is upgraded here and written as the latest format on the next save.
+            if (version < LatestFormatVersion) preferences = preferences with { FormatVersion = LatestFormatVersion };
             return (Validate(preferences), PreferenceState.Ready, null);
         }
         catch (Exception exception) when (exception is JsonException or InvalidDataException or ArgumentException)
@@ -539,7 +546,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         if (!document.RootElement.TryGetProperty(nameof(UserPreferences.FormatVersion), out var versionElement) ||
             !versionElement.TryGetInt32(out version)) return false;
         // An unknown (for example newer) version has no known shape: it is refused, never rewritten.
-        var required = version switch { 1 => FormatOneProperties, LatestFormatVersion => RequiredProperties, _ => null };
+        var required = version switch { 1 => FormatOneProperties, 2 or LatestFormatVersion => RequiredProperties, _ => null };
         if (required is null) return false;
         var names = document.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
         return names.Length == required.Length && required.All(name => names.Contains(name, StringComparer.Ordinal));

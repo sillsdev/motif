@@ -326,7 +326,7 @@ public sealed partial class ReviewPageModel : PageModel
     {
         using var span = MotifTrace.Begin("review.rebuild-entries");
         MotifTrace.Count("review-rebuild");
-        var previousKey = Current?.Key;
+        var previousKey = Current?.Key ?? _filterMemory?.SavedSelection;
         var reviewed = (_review?.Entries ?? []).ToArray();
         var words = reviewed.OfType<WordChangeEntry>()
             .ToDictionary(entry => entry.Change.ChangeId, entry => (ReviewEntry)entry, StringComparer.Ordinal);
@@ -419,13 +419,14 @@ public sealed partial class ReviewPageModel : PageModel
         AfterMove();
     }
 
-    private void AfterMove()
+    private void AfterMove(bool remember = true)
     {
         _walked = true;
         EnsureVisibleCurrent();
         MarkCurrent();
         OnPropertyChanged(nameof(Current));
         RaiseWalkState();
+        if (remember) _filterMemory?.SelectionChanged(Current?.Key);
     }
 
     internal async Task KeepAsync(ReviewEntryViewModel? entry)

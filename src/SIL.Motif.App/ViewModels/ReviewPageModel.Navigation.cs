@@ -14,6 +14,16 @@ public sealed partial class ReviewPageModel
         {
             var index = Array.IndexOf(FilterNames, saved);
             SelectedFilterIndex = index < 0 ? 0 : index;
+        }, restoreSelection: key =>
+        {
+            // The change is remembered by its entry key (a Proposal change id); one that is gone keeps the first entry.
+            var index = key is null ? -1 : _entries.ToList().FindIndex(entry => entry.Key == key);
+            if (index < 0 || !MatchesFilter(_entries[index])) return;
+            _currentIndex = index;
+            _walked = true;
+            MarkCurrent();
+            OnPropertyChanged(nameof(Current));
+            RaiseWalkState();
         });
     private IReadOnlyList<object>? _tableEntries;
 
@@ -47,7 +57,7 @@ public sealed partial class ReviewPageModel
             ArgumentOutOfRangeException.ThrowIfGreaterThan(value, 3);
             if (!SetProperty(ref _selectedFilterIndex, value)) return;
             EnsureVisibleCurrent();
-            AfterMove();
+            AfterMove(remember: false);
             InvalidateVisibleEntries();
             _filterMemory?.Changed();
         }

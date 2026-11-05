@@ -242,6 +242,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         _selectedWarning = value as GrammarWarningRowViewModel;
         SelectedDetails.Clear();
         if (_selectedWarning is not null) SelectedDetails.Add(_selectedWarning);
+        if (_selectedWarning?.FindingIdentity is { } identity) _sortMemory?.SelectionChanged(identity);
     }
 
     [ObservableProperty]
@@ -274,7 +275,21 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
 
     internal void UseViewMemory(ProjectViewMemory memory) => _sortMemory = new(memory, "Warnings",
         () => MostYourWordsFirst ? null : ReportOrderName,
-        saved => MostYourWordsFirst = !string.Equals(saved, ReportOrderName, StringComparison.Ordinal), isSort: true);
+        saved => MostYourWordsFirst = !string.Equals(saved, ReportOrderName, StringComparison.Ordinal), isSort: true,
+        restoreSelection: _ => { _restoreSelection = true; RestoreSelectedFinding(); });
+
+    // The selected finding is remembered by its finding identity, which survives a refresh and a reopen.
+    private bool _restoreSelection;
+
+    private void RestoreSelectedFinding()
+    {
+        if (!_restoreSelection || _all.Count == 0) return;
+        _restoreSelection = false;
+        if (_sortMemory?.SavedSelection is not { } identity) return;
+        // A finding that is no longer reported selects nothing.
+        SelectedTableEntry = TableEntries.OfType<GrammarWarningRowViewModel>()
+            .FirstOrDefault(row => row.FindingIdentity == identity && !row.IsGone);
+    }
 
     private const string ReportOrderName = "ReportOrder";
 
@@ -406,6 +421,7 @@ public sealed partial class GrammarWarningsViewModel : ObservableObject
         }
         else if (SelectedTableEntry is not null && !TableEntries.Contains(SelectedTableEntry))
             SelectedTableEntry = null;
+        RestoreSelectedFinding();
     }
 
     // Edits the shown entries in place, so a row both views share keeps its place, its selection and its scroll.

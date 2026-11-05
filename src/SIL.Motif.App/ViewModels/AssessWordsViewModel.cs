@@ -207,7 +207,7 @@ public sealed partial class AssessWordsViewModel : ObservableObject
                 { OccurrenceCount = occurrenceCounts(_all[index].Word), PlacesFromWordList = placesFromWordList };
         _byWord.Clear();
         foreach (var facts in _all) _byWord.TryAdd(facts.Word, facts);
-        SelectedRow = selected is not null ? Find(selected) : null;
+        SelectAutomatically(selected is not null ? Find(selected) : null);
         Refresh();
     }
 
@@ -217,7 +217,40 @@ public sealed partial class AssessWordsViewModel : ObservableObject
     internal void UseViewMemory(ProjectViewMemory memory) => _filterMemory = new(memory, "AssessWords",
         () => SelectedFilter == ResultsWordFilter.All ? null : SelectedFilter.ToString(),
         saved => SelectedFilter = saved is not null && Enum.GetNames<ResultsWordFilter>().Contains(saved, StringComparer.Ordinal)
-            ? Enum.Parse<ResultsWordFilter>(saved) : ResultsWordFilter.All);
+            ? Enum.Parse<ResultsWordFilter>(saved) : ResultsWordFilter.All,
+        restoreSelection: _ => ApplySavedSelection());
+
+    // The key is writing system, U+001F, then form; an older form-only key has no separator and matches by form.
+    private const char KeySeparator = '\u001f';
+    private bool _automaticSelection;
+
+    private static string KeyOf(AssessWordRowViewModel row) => row.Source.WordWritingSystem + KeySeparator + row.Word;
+
+    private static bool IsRow(AssessmentWordResult word, string key) => key.Contains(KeySeparator)
+        ? word.WordWritingSystem + KeySeparator + word.Word == key
+        : word.Word == key;
+
+    private static bool IsRow(AssessWordRowViewModel row, string key) => IsRow(row.Source, key);
+
+    // Only the person's own choice is remembered; the first-row default and filter fallbacks are not.
+    partial void OnSelectedRowChanged(AssessWordRowViewModel? value)
+    {
+        if (!_automaticSelection && value is not null) _filterMemory?.SelectionChanged(KeyOf(value));
+    }
+
+    private void SelectAutomatically(AssessWordRowViewModel? row)
+    {
+        _automaticSelection = true;
+        try { SelectedRow = row; }
+        finally { _automaticSelection = false; }
+    }
+
+    // Selects the remembered row; one that is no longer listed selects nothing.
+    private void ApplySavedSelection()
+    {
+        if (_filterMemory?.SavedSelection is not { } key || _all.Count == 0) return;
+        SelectAutomatically(Rows.FirstOrDefault(row => IsRow(row, key)));
+    }
 
     internal void SetProjectPath(string? path) => _filterMemory?.Open(path);
 
@@ -242,7 +275,12 @@ public sealed partial class AssessWordsViewModel : ObservableObject
         Rows = Project(matches);
         OnPropertyChanged(nameof(Rows));
         ShownCount = matches.Length;
-        if (SelectedRow is null || !matches.Contains(SelectedRow.Facts)) SelectedRow = Rows.FirstOrDefault();
+        if (SelectedRow is not null && matches.Contains(SelectedRow.Facts)) return;
+        // A remembered word that is gone from the list selects nothing; otherwise the first row is the default.
+        var saved = _filterMemory?.SavedSelection;
+        if (saved is not null && !_all.Any(facts => IsRow(facts.Source, saved)))
+            SelectAutomatically(null);
+        else SelectAutomatically((saved is null ? null : Rows.FirstOrDefault(row => IsRow(row, saved))) ?? Rows.FirstOrDefault());
     }
 
     private bool Matches(AssessmentRowFacts row) =>
