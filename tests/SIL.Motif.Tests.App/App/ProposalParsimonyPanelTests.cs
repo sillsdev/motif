@@ -50,6 +50,34 @@ public sealed class ProposalParsimonyPanelTests
         root.GetVisualDescendants().OfType<TextBlock>().Where(block => block.IsEffectivelyVisible)
             .Select(block => block.Text ?? string.Empty);
 
+    [Fact]
+    public void ProposalWorkLabelAndValueBothFitInTheInspector()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, _) = await OpenAsync(choose: Selected);
+            try
+            {
+                var label = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text == "Work" &&
+                        text.Parent is Grid { Classes: var classes } && classes.Contains("inspectorFact"));
+                var row = Assert.IsType<Grid>(label.Parent);
+                var value = Assert.Single(row.Children.OfType<TextBlock>(), text => text != label);
+                var fullLabel = new TextBlock
+                {
+                    Text = label.Text, FontFamily = label.FontFamily, FontSize = label.FontSize,
+                    FontWeight = label.FontWeight,
+                };
+                fullLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                Assert.True(label.Bounds.Width >= fullLabel.DesiredSize.Width - 1,
+                    $"Work label has {label.Bounds.Width} pixels for {fullLabel.DesiredSize.Width} pixels of text.");
+                Assert.True(Box(label, window).Right <= Box(value, window).Left + 1);
+                Assert.Equal(Avalonia.Media.TextWrapping.Wrap, value.TextWrapping);
+            }
+            finally { Close(workspace, window); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     public static TheoryData<string, string> States => new()
     {
         { "Not Set Up", "not-set-up" }, { "Not Yet Run", "not-yet-run" }, { "Queued", "queued" },

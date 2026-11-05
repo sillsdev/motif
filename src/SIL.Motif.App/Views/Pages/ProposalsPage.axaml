@@ -90,10 +90,10 @@
                   <ItemsControl x:Name="ProposalsNumberItems" ItemsSource="{Binding SelectedProposal.Numbers}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:ProposalNumber">
-                        <Grid Classes="inspectorFact" ColumnDefinitions="*,Auto">
+                        <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
                           <views:CopyableTextBlock Text="{Binding Label}" />
                           <views:CopyableTextBlock Grid.Column="1" Classes="proposalNumber"
-                                                   Classes.moved="{Binding Moved}" Text="{Binding Value}"
+                                                   Classes.moved="{Binding Moved}" Text="{Binding Value}" TextWrapping="Wrap"
                                                    ToolTip.Tip="{Binding Note}" AutomationProperties.Name="{Binding Note}" />
                         </Grid>
                       </DataTemplate>
