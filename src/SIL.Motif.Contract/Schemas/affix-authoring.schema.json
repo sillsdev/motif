@@ -24,6 +24,12 @@
     },
     {
       "$ref": "#/$defs/DerivMsFeaturesPayload"
+    },
+    {
+      "$ref": "#/$defs/AuthorAllomorphRequiredFeatures"
+    },
+    {
+      "$ref": "#/$defs/MsEnvFeaturesPayload"
     }
   ],
   "$defs": {
@@ -338,6 +344,26 @@
       "description": "Empty payload for grammar/moInflAffMsa/createInflFeats; target and nonzero entityId are required in the envelope. Placement and storage overrides are refused.",
       "properties": {},
       "required": []
+    },
+    "AuthorAllomorphRequiredFeatures": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allomorph": {
+          "$ref": "#/$defs/CanonicalId"
+        }
+      },
+      "required": [
+        "allomorph"
+      ],
+      "description": "Creates an empty Required Features structure on an exact MoAffixAllomorph with an empty MsEnvFeatures owning slot, without restricting its entry MSA kind."
+    },
+    "MsEnvFeaturesPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "description": "Empty payload for grammar/moAffixAllomorph/createMsEnvFeatures; target and fresh entityId required. Placement and storage overrides refused."
     }
   }
 }

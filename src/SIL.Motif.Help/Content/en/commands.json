@@ -1305,6 +1305,21 @@
     ],
     "redirect": "Use when one form serves two categories. Changing the one analysis an entry has from one affix kind to another: compose-change-affix-kind. A brand-new entry: compose-author-lexical-entry."
   },
+  "compose-author-allomorph-required-features": {
+    "title": "Add Required Features",
+    "description": "Stages Required Features on an ordinary affix allomorph in a Draft. Populate the returned structure with feature values to select the form by the stem's grammatical features, including on derivational affixes. Only a person can Apply.",
+    "source": "FieldWorks MorphologyParts.xml: MoAffixAllomorph-Detail-MsEnvFeatures and MoAffixAllomorph-Detail-MsEnvFeaturesForLexemeForm.",
+    "fields": {
+      "draft": "Draft name.",
+      "allomorph": "Ordinary affix allomorph id with no existing Required Features structure. May be earlier-staged."
+    },
+    "goals": [
+      "Choose an affix form by the stem's grammatical features",
+      "Give a derivational allomorph Required Features"
+    ],
+    "guides": ["conditioned-allomorphs"],
+    "redirect": "Use for one form's Required Features; whole-affix requirements use compose-author-feature-structure."
+  },
   "compose-author-feature-value": {
     "title": "Author a feature value",
     "description": "Stages a closed feature specification in an existing or earlier-staged structure, with value omitted when unchosen. Inflectional affix requirements use current morphosyntactic definitions, and any supplied value must belong to the exact feature. Only a person can Apply.",

@@ -109,6 +109,19 @@ public static class InflectionSnapshots
                 }
             }
         }
+        foreach (var form in cache.ServiceLocator.GetInstance<IMoAffixAllomorphRepository>().AllInstances())
+        {
+            if (form.MsEnvFeaturesOA is not { } structure) continue;
+            Add(form, MoAffixAllomorphMsEnvFeaturesSnapshotter.Snapshot(cache, form));
+            Add(structure, Snapshot(cache, structure));
+            foreach (var spec in structure.FeatureSpecsOC)
+            {
+                if (spec is IFsClosedValue closed)
+                    Add(spec, FsFeatureSpecificationRelationsSnapshotter.Snapshot(cache, spec),
+                        FsClosedValueRelationsSnapshotter.Snapshot(cache, closed));
+                else Add(spec, FsFeatureSpecificationRelationsSnapshotter.Snapshot(cache, spec));
+            }
+        }
         return result;
 
         void Class(IMoInflClass item)

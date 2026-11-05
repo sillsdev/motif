@@ -9,6 +9,7 @@ internal static class ComposerDefinitions
         new AuthorAffixProcessDefinition(),
         new AuthorAffixProcessAllomorphDefinition(),
         new AuthorFeatureValueDefinition(),
+        new AuthorAllomorphRequiredFeaturesDefinition(),
         new RemoveFeatureValueDefinition(),
         new DeleteEmptySenseDefinition(),
         new MoveSenseToEntryDefinition(),

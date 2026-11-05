@@ -12,6 +12,7 @@ internal static class InflFeatsSemanticValidator
     private static readonly HashSet<string> RequirementKinds = new(StringComparer.Ordinal)
     {
         MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats,
+        MoAffixAllomorphMsEnvFeaturesOperationKinds.CreateMsEnvFeatures,
         MoDerivAffMsaMsFeaturesOperationKinds.CreateFromMsFeatures,
         MoDerivAffMsaMsFeaturesOperationKinds.CreateToMsFeatures,
         MoInflAffMsaPartOfSpeechOperationKinds.SetPartOfSpeech,
@@ -34,6 +35,11 @@ internal static class InflFeatsSemanticValidator
             RequireDerivationalOwner(derivational, structure);
         }
         else if (structure.Owner is IMoInflAffMsa msa) RequireOwner(cache, msa, structure);
+        else if (structure.Owner is IMoAffixAllomorph allomorph)
+        {
+            if (allomorph.MsEnvFeaturesOA?.Guid != structure.Guid)
+                throw new InvalidOperationException("Required Features must occupy their allomorph's MsEnvFeatures slot.");
+        }
         else return;
         var system = cache.LangProject.MsFeatureSystemOA ??
             throw new InvalidOperationException("InflFeats requires the current morphosyntactic feature system.");
@@ -51,6 +57,7 @@ internal static class InflFeatsSemanticValidator
             .OfType<SIL.Motif.Contract.Ids.CanonicalId>().Select(id => id.ToGuid()).ToHashSet();
         if (addressed.Count == 0) return;
         ValidateDerivational(cache, addressed);
+        ValidateAllomorphs(cache, addressed);
         foreach (var msa in cache.ServiceLocator.GetInstance<IMoInflAffMsaRepository>().AllInstances())
         {
             if (msa.InflFeatsOA is not { } structure) continue;
@@ -146,6 +153,46 @@ internal static class InflFeatsSemanticValidator
                 if (closed.ValueRA is { } value && (value.Guid == Guid.Empty ||
                     value.Owner?.Guid != feature.Guid || !feature.ValuesOC.Contains(value)))
                     throw new InvalidOperationException("A derivational feature value must belong to its exact closed feature.");
+            }
+        }
+    }
+
+    private static void ValidateAllomorphs(LcmCache cache, HashSet<Guid> addressed)
+    {
+        foreach (var form in cache.ServiceLocator.GetInstance<IMoAffixAllomorphRepository>().AllInstances())
+        {
+            if (form.MsEnvFeaturesOA is not { } structure) continue;
+            var graph = new List<ICmObject> { form, structure };
+            if (structure.TypeRA is { } type) graph.Add(type);
+            foreach (var spec in structure.FeatureSpecsOC)
+            {
+                graph.Add(spec);
+                if (spec.FeatureRA is { } feature) graph.Add(feature);
+                if (spec is IFsClosedValue closed && closed.ValueRA is { } value) graph.Add(value);
+            }
+            if (!graph.Any(item => addressed.Contains(item.Guid))) continue;
+            if (structure.TypeRA is { } declaredType &&
+                !cache.LangProject.MsFeatureSystemOA.TypesOC.Contains(declaredType))
+                throw new InvalidOperationException("Required Features type must belong to the current morphosyntactic feature system.");
+            var features = new HashSet<Guid>();
+            foreach (var spec in structure.FeatureSpecsOC)
+            {
+                if (spec is IFsComplexValue) continue;
+                if (spec is not IFsClosedValue closed)
+                    throw new InvalidOperationException("Required Features specifications must be closed values.");
+                if (closed.FeatureRA is null)
+                {
+                    if (closed.ValueRA is not null)
+                        throw new InvalidOperationException("A Required Features value requires its feature reference.");
+                    continue;
+                }
+                if (closed.FeatureRA is not IFsClosedFeature feature)
+                    throw new InvalidOperationException("Required Features require a closed feature.");
+                RequireSelection(cache, structure, feature);
+                if (!features.Add(feature.Guid))
+                    throw new InvalidOperationException("A feature may occur only once in Required Features.");
+                if (closed.ValueRA is { } value && !feature.ValuesOC.Contains(value))
+                    throw new InvalidOperationException("A Required Features value must belong to its exact closed feature.");
             }
         }
     }

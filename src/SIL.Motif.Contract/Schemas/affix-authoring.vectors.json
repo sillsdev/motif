@@ -395,6 +395,50 @@
       "shape": "InflFeatsPayload",
       "input": [],
       "valid": false
+    },
+    {
+      "shape": "AuthorAllomorphRequiredFeatures",
+      "input": {
+        "allomorph": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "valid": true
+    },
+    {
+      "shape": "AuthorAllomorphRequiredFeatures",
+      "input": {},
+      "valid": false
+    },
+    {
+      "shape": "AuthorAllomorphRequiredFeatures",
+      "input": {
+        "allomorph": "bad"
+      },
+      "valid": false
+    },
+    {
+      "shape": "AuthorAllomorphRequiredFeatures",
+      "input": {
+        "allomorph": "AAAAAAAAAAAAAAAAAAAAAQ",
+        "msa": "AAAAAAAAAAAAAAAAAAAAAg"
+      },
+      "valid": false
+    },
+    {
+      "shape": "MsEnvFeaturesPayload",
+      "input": {},
+      "valid": true
+    },
+    {
+      "shape": "MsEnvFeaturesPayload",
+      "input": {
+        "ref": "AAAAAAAAAAAAAAAAAAAAAQ"
+      },
+      "valid": false
+    },
+    {
+      "shape": "MsEnvFeaturesPayload",
+      "input": [],
+      "valid": false
     }
   ]
 }

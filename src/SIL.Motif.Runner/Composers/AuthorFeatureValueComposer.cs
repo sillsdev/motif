@@ -10,6 +10,7 @@ using SIL.LCModel;
 namespace SIL.Motif.Runner.Composers;
 
 /// <summary>
+/// Adds a closed selection to a feature structure, including an allomorph's Required Features.
 /// Lowers one <see cref="AuthorFeatureValueIntent"/> into the two closed-schema Layer-0 operations
 /// that realize it -- the grammar counterpart to <see cref="AuthorLexemeFormComposer"/>'s multi-operation
 /// shape. One authored construct becomes <c>grammar/fsFeatStruc/createFeatureSpecs</c>, then

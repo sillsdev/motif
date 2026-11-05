@@ -698,6 +698,49 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         AssertDraftStateUnchanged(before, ReadDraftState(project.FwDataPath, "feature-value"));
     }
 
+    [Fact]
+    public async Task AddAllomorphRequiredFeaturesToolStagesItsOwningCreateAndValuesWithoutApplying()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var (_, feature, value) = SeedFeatureStructureWithClosedFeature(project);
+        string form;
+        var loader = new FwDataProjectLoader();
+        using (var cache = loader.LoadCache(project.FwDataPath))
+        {
+            var category = CanonicalId.FromGuid(cache.LangProject.PartsOfSpeechOA.PossibilitiesOS.First().Guid);
+            var operations = SIL.Motif.Runner.Composers.AuthorLexicalEntryComposer.Build(cache, new("pa",
+                cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
+                CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix), "synthetic",
+                cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs),
+                new(SIL.Motif.Runner.Composers.LexicalEntryMsaKind.Derivational, category, category)));
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                foreach (var operation in operations)
+                    SIL.Motif.Runner.Operations.OperationHandlerRegistry.Resolve(operation.Kind, "allomorph tool fixture")
+                        .ApplyAndCaptureEffect(cache, operation, []);
+            });
+            form = operations.Single(operation => operation.Kind == SIL.Motif.Runner.Operations.LexEntryLexemeFormOperationKinds.CreateLexemeForm)
+                .EntityId!.Value.Value;
+            loader.Save(cache);
+        }
+        var bytes = File.ReadAllBytes(project.FwDataPath);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "required-features"),
+            ("label", "Select prefix forms"), ("rationale", "Select by the stem's features."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        var added = await session.CallAsync("motif_add_allomorph_required_features", ("draft", "required-features"),
+            ("allomorph", form));
+        Assert.True(added.GetProperty("ok").GetBoolean(), added.ToString());
+        var structure = Assert.Single(added.GetProperty("result").GetProperty("createdObjects").EnumerateArray())
+            .GetProperty("id").GetString();
+        var selected = await session.CallAsync("motif_add_feature_value", ("draft", "required-features"),
+            ("featStruc", structure), ("feature", feature), ("value", value));
+        Assert.True(selected.GetProperty("ok").GetBoolean(), selected.ToString());
+        AssertDraftComposers(project.FwDataPath, "required-features", proposalId,
+            ["AuthorAllomorphRequiredFeatures", "AuthorFeatureValue"]);
+        Assert.Equal(bytes, File.ReadAllBytes(project.FwDataPath));
+    }
+
     private (string FeatStruc, string Feature, string Value) SeedFeatureStructureWithClosedFeature(
         WalkthroughProject project)
     {

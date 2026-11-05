@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.Composers;
 /// <summary>
 /// What the real parser does with the conditions an allomorph of a derivational affix carries beside its entry's
 /// own: the stem features the allomorph requires (MsEnvFeatures) and the inflection classes it lists. The gates are
-/// set straight on LibLCM objects, because Motif has no composer for them; the language is synthetic and
+/// authored through Motif for required features; the language is synthetic and
 /// Swahili-shaped (one derivational prefix whose two forms go with transitive and intransitive stems).
 /// </summary>
 [Collection(LcmCacheParallelCollections.Group3)]
@@ -69,16 +69,12 @@ public sealed class RealParserAllomorphGateTests(PristineProjectFixture pristine
             (IFsClosedFeature)Get<ICmObject>(cache, feature), transitive, intransitive);
     }
 
-    private static void Require(LcmCache cache, IMoAffixAllomorph form, IFsClosedFeature feature, IFsSymFeatVal value) =>
-        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
-        {
-            var structure = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create();
-            form.MsEnvFeaturesOA = structure;
-            var spec = cache.ServiceLocator.GetInstance<IFsClosedValueFactory>().Create();
-            structure.FeatureSpecsOC.Add(spec);
-            spec.FeatureRA = feature;
-            spec.ValueRA = value;
-        });
+    private static void Require(LcmCache cache, IMoAffixAllomorph form, IFsClosedFeature feature, IFsSymFeatVal value)
+    {
+        var structure = Created(ApplyOps(cache, AuthorAllomorphRequiredFeaturesComposer.Build(cache, new(Id(form)))),
+            MoAffixAllomorphMsEnvFeaturesOperationKinds.CreateMsEnvFeatures);
+        ApplyOps(cache, AuthorFeatureValueComposer.Build(cache, new(structure, Id(feature), Id(value))));
+    }
 
     [RealParserFact]
     public async Task AnAllomorphOfADerivationalAffixIsChosenByTheStemFeaturesItRequires()

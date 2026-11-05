@@ -3746,6 +3746,54 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-author-allomorph-required-features"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-allomorph-required-features.",
+                    "properties": {
+                      "allomorph": {
+                        "type": "string",
+                        "description": "Ordinary affix allomorph id with no existing Required Features structure. May be earlier-staged."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "allomorph"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-remove-feature-value"
                     ]
                   },
@@ -7124,6 +7172,36 @@
         "draft",
         "featStruc",
         "feature",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_add_allomorph_required_features",
+    "description": "Add Required Features. Research first: motif_guide topic conditioned-allomorphs; check best practice. Use for one form\u0027s Required Features; whole-affix requirements use compose-author-feature-structure. Stages Required Features on an ordinary affix allomorph in a Draft. Populate the returned structure with feature values to select the form by the stem\u0027s grammatical features, including on derivational affixes. Only a person can Apply.\nCommand: compose-author-allomorph-required-features. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "allomorph": {
+          "type": "string",
+          "description": "Ordinary affix allomorph id with no existing Required Features structure. May be earlier-staged."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "allomorph",
         "project"
       ],
       "additionalProperties": false

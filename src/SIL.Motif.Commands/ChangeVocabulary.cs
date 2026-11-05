@@ -128,6 +128,7 @@ public static class ChangeVocabulary
             ["AuthorAffixTemplate"] = ("Add affix template", "Add an affix template"),
             ["AuthorFeatureValue"] = ("Add feature value", "Add a feature value"),
             ["RemoveFeatureValue"] = ("Remove feature value", "Remove a feature value"),
+            ["AuthorAllomorphRequiredFeatures"] = ("Add Required Features", "Add Required Features to an allomorph"),
             ["AuthorFeatureStructure"] = ("Add feature structure", "Add a feature structure"),
             ["AuthorLexemeForm"] = ("Add lexeme form", "Add a lexeme form"),
             ["ChangeAffixKind"] = ("Change affix kind", "Change an affix between inflectional, derivational and unclassified"),

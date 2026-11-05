@@ -96,6 +96,9 @@
       "tool": "motif_edit_phonological_rule_features"
     },
     {
+      "tool": "motif_add_allomorph_required_features"
+    },
+    {
       "tool": "motif_add_feature_value"
     },
     {

@@ -39,6 +39,8 @@ public sealed class AffixAuthoringContractTests
                     case "AuthorLexicalEntry": _ = AuthorLexicalEntryIntentParser.Parse(input); break;
                     case "AuthorAlternateForm": _ = AuthorAlternateFormIntentParser.Parse(input); break;
                     case "AuthorFeatureStructure": _ = AuthorFeatureStructureIntentParser.Parse(input); break;
+                    case "AuthorAllomorphRequiredFeatures": _ = AuthorAllomorphRequiredFeaturesIntentParser.Parse(input); break;
+                    case "MsEnvFeaturesPayload": MoAffixAllomorphMsEnvFeaturesPayload.Parse(input, MoAffixAllomorphMsEnvFeaturesOperationKinds.CreateMsEnvFeatures); break;
                     case "AuthorFeatureValue": _ = AuthorFeatureValueIntentParser.Parse(input); break;
                     case "DerivMsFeaturesPayload": MoDerivAffMsaMsFeaturesPayload.Parse(input, MoDerivAffMsaMsFeaturesOperationKinds.CreateToMsFeatures); break;
                     case "InflFeatsPayload": MoInflAffMsaInflFeatsPayload.Parse(input, MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats); break;
@@ -189,6 +191,7 @@ public sealed class AffixAuthoringContractTests
 
     [Theory]
     [InlineData("LexEntry", "AlternateForms", "MoForm", "Seq", "feeding", "lexical/lexEntry/createAlternateForms")]
+    [InlineData("MoAffixAllomorph", "MsEnvFeatures", "FsFeatStruc", "Atomic", "unordered", "grammar/moAffixAllomorph/createMsEnvFeatures")]
     [InlineData("MoInflAffMsa", "InflFeats", "FsFeatStruc", "Atomic", "unordered", "grammar/moInflAffMsa/createInflFeats")]
     [InlineData("MoDerivAffMsa", "FromMsFeatures", "FsFeatStruc", "Atomic", "unordered", "grammar/moDerivAffMsa/createFromMsFeatures")]
     [InlineData("MoDerivAffMsa", "ToMsFeatures", "FsFeatStruc", "Atomic", "unordered", "grammar/moDerivAffMsa/createToMsFeatures")]

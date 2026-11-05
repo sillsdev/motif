@@ -1336,3 +1336,9 @@ The whole entry, its grammatical info, sense and process graph form one atomic P
 
 The [affix-process contract](affix-process-contract.md) specifies the closed authoring shape, typed
 construction operations, bounds, prerequisite footprint, read-back, rollback and refusal behavior.
+
+`AuthorAllomorphRequiredFeatures` has closed input `{allomorph}` and creates an empty
+`MoAffixAllomorph.MsEnvFeatures` (FieldWorks **Required Features**) without replacing an occupied slot.
+`grammar/moAffixAllomorph/createMsEnvFeatures` takes `{}` with an exact target and fresh entityId;
+placement and storage overrides are refused. `AuthorFeatureValue` populates that structure with closed
+morphosyntactic selections and exact feature-owned values, including on derivational affixes.

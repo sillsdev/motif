@@ -120,8 +120,53 @@ public sealed class FeatureAuthoringDraftTests(PristineProjectFixture pristine)
         Assert.Equal(bytes, File.ReadAllBytes(setup.Path));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AllomorphRequiredFeaturesStageAgainstExistingOrEarlierStagedFormsWithoutChangingTheProject(bool staged)
+    {
+        var setup = Prepare();
+        const string draft = "allomorph-features";
+        Assert.True(ProposalCommands.New(new(setup.Path, Version, draft, "Select prefix forms by stem features")).Succeeded);
+        var form = setup.Allomorph;
+        if (staged)
+        {
+            var entry = ProposalCommands.ComposeAuthorLexicalEntry(new(setup.Path, Version, draft,
+                JsonSerializer.Serialize(new
+                {
+                    form = "ka", formWs = setup.Vern,
+                    morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix).Value,
+                    gloss = "synthetic", analysisWs = setup.Anal,
+                    msa = new { kind = "derivational", category = setup.Category, toCategory = setup.Category },
+                })));
+            Assert.True(entry.Succeeded, entry.Refusal?.Message);
+            form = Assert.Single(entry.Value!.CreatedObjects,
+                created => created.Kind == LexEntryLexemeFormOperationKinds.CreateLexemeForm).Id;
+        }
+        var bytes = File.ReadAllBytes(setup.Path);
+        var structure = ProposalCommands.ComposeIntent(new(setup.Path, Version, draft,
+            "compose-author-allomorph-required-features", JsonSerializer.Serialize(new { allomorph = form })));
+        Assert.True(structure.Succeeded, structure.Refusal?.Message);
+        var created = Assert.Single(structure.Value!.CreatedObjects);
+        Assert.Equal(MoAffixAllomorphMsEnvFeaturesOperationKinds.CreateMsEnvFeatures, created.Kind);
+        var selection = ProposalCommands.ComposeIntent(new(setup.Path, Version, draft, "compose-author-feature-value",
+            JsonSerializer.Serialize(new { featStruc = created.Id, feature = setup.Feature, value = setup.Value })));
+        Assert.True(selection.Succeeded, selection.Refusal?.Message);
+        var authored = ReadDraft(setup.Path, draft);
+        var structureCreate = authored.Operations.Single(operation => operation.EntityId == created.Id);
+        var specCreate = authored.Operations.Single(operation => operation.Kind == FsFeatStrucFeatureSpecsOperationKinds.CreateFeatureSpecs);
+        Assert.Equal(form, structureCreate.Target);
+        Assert.Contains(structureCreate.OperationId, specCreate.DependsOn);
+        var before = authored.Operations.Select(operation => operation.OperationId).ToArray();
+        var occupied = ProposalCommands.ComposeIntent(new(setup.Path, Version, draft,
+            "compose-author-allomorph-required-features", JsonSerializer.Serialize(new { allomorph = form })));
+        Assert.False(occupied.Succeeded);
+        Assert.Equal(before, ReadDraft(setup.Path, draft).Operations.Select(operation => operation.OperationId));
+        Assert.Equal(bytes, File.ReadAllBytes(setup.Path));
+    }
+
     private sealed record Fixture(string Path, string StemMsa, string InflMsa, string Feature, string Value,
-        string Category, string Vern, string Anal);
+        string Category, string Vern, string Anal, string Allomorph);
 
     private Fixture Prepare()
     {
@@ -136,9 +181,13 @@ public sealed class FeatureAuthoringDraftTests(PristineProjectFixture pristine)
             target: infl, after: JsonSerializer.SerializeToElement(new { @ref = category.Value }));
         var anal = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
         var featureOps = AuthorInflectionFeatureComposer.Build(cache, new("synthetic-nc", anal, [new("seven")]));
+        var lexicalOps = AuthorLexicalEntryComposer.Build(cache, new("pa",
+            cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs),
+            CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphPrefix), "synthetic", anal,
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, category, category)));
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
-            foreach (var operation in new[] { create, partOfSpeech }.Concat(featureOps))
+            foreach (var operation in new[] { create, partOfSpeech }.Concat(featureOps).Concat(lexicalOps))
                 OperationHandlerRegistry.Resolve(operation.Kind, "feature command fixture")
                     .ApplyAndCaptureEffect(cache, operation, []);
         });
@@ -148,7 +197,8 @@ public sealed class FeatureAuthoringDraftTests(PristineProjectFixture pristine)
                 .GetObject(seed.FirstSenseId).MorphoSyntaxAnalysisRA.Guid).Value, infl.Value,
             featureOps.Single(operation => operation.Kind == FsFeatureSystemFeaturesOperationKinds.Create).EntityId!.Value.Value,
             featureOps.Single(operation => operation.Kind == FsClosedFeatureValuesOperationKinds.Create).EntityId!.Value.Value,
-            category.Value, cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs), anal);
+            category.Value, cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs), anal,
+            lexicalOps.Single(operation => operation.Kind == LexEntryLexemeFormOperationKinds.CreateLexemeForm).EntityId!.Value.Value);
     }
 
     private static string StageMsa(Fixture setup, string draft, bool inflectional)

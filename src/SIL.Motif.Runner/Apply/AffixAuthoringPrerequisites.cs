@@ -42,6 +42,7 @@ internal static class AffixAuthoringPrerequisites
         FsFeatureSystemFeaturesOperationKinds.Create,
         FsClosedFeatureValuesOperationKinds.Create,
         MoInflAffMsaInflFeatsOperationKinds.CreateInflFeats,
+        MoAffixAllomorphMsEnvFeaturesOperationKinds.CreateMsEnvFeatures,
         MoStemMsaMsFeaturesOperationKinds.CreateMsFeatures,
         MoDerivAffMsaMsFeaturesOperationKinds.CreateFromMsFeatures,
         MoDerivAffMsaMsFeaturesOperationKinds.CreateToMsFeatures,
@@ -93,7 +94,9 @@ internal static class AffixAuthoringPrerequisites
                 else if (owner is IMoAffixForm form && form.Owner is ILexEntry formEntry)
                 {
                     Include(formEntry.Guid);
-                    var entryFields = snapshots[formEntry.Guid].AlternativesFields.ToDictionary(field => field.Key, field => field.Value);
+                    var entryFields = snapshots.TryGetValue(formEntry.Guid, out var entrySnapshot)
+                        ? entrySnapshot.AlternativesFields.ToDictionary(field => field.Key, field => field.Value)
+                        : new Dictionary<string, IReadOnlyDictionary<string, string>>();
                     var membership = LexiconOwningSnapshots.Snapshot(cache, formEntry);
                     entryFields[SnapshotFields.LexEntryMorphoSyntaxAnalyses] =
                         membership.AlternativesFields.GetValueOrDefault(
@@ -205,6 +208,12 @@ internal static class AffixAuthoringPrerequisites
                     }
                     if (specification.FeatureRA is { } selectedFeature) Include(selectedFeature.Guid);
                     if (specification.Owner is { } specificationOwner) Include(specificationOwner.Guid);
+                    break;
+                case IMoAffixAllomorph allomorph:
+                    fields[SnapshotFields.MoAffixAllomorphMsEnvFeatures] = ReferenceFieldSnapshotting.ReadAlternatives(allomorph.MsEnvFeaturesOA);
+                    AddProjectField("morphosyntacticFeatureSystem", ReferenceFieldSnapshotting.ReadAlternatives(cache.LangProject.MsFeatureSystemOA));
+                    if (allomorph.Owner is { } formOwner) Include(formOwner.Guid);
+                    if (allomorph.MsEnvFeaturesOA is { } requiredFeatures) Include(requiredFeatures.Guid);
                     break;
                 case IMoInflAffMsa inflectional:
                     AddProjectField("morphosyntacticFeatureSystem", ReferenceFieldSnapshotting.ReadAlternatives(cache.LangProject.MsFeatureSystemOA));
