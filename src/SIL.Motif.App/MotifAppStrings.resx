@@ -2580,8 +2580,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Shown for a word that did not parse and has no grammar warning naming it.</comment>
   </data>
   <data name="MotifApp.ReaderMarkLegend" xml:space="preserve">
-    <value>A Approved · D Disapproved · U Unknown · = Same · ≠ Different · ∅ No parse · ◖ Stopped</value>
-    <comment>Key for the FieldWorks opinion letters and parser outcome symbols in the text reader.</comment>
+    <value>A Approved · D Disapproved · U Unknown · = Same · ≠ Different · ∅ No parse · ◖ Stopped · ✓ Built in a trace</value>
+    <comment>Key for FieldWorks opinions, parser outcomes and the built mark in a trace.</comment>
   </data>
   <data name="MotifApp.ProposalsWaitingBadgePattern" xml:space="preserve">
     <value>{0, plural, one {# Proposal waiting for you} other {# Proposals waiting for you}}</value>
