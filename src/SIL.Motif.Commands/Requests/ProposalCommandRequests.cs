@@ -543,3 +543,8 @@ public sealed record EvidenceListRequest(
 /// <param name="Limit">The most records in the page, 1 to 500.</param>
 public sealed record EvidenceExportRequest(
     string FwDataPath, string ProductVersion, string? Tier = null, string? After = null, int Limit = 500);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="NamePrefix">When set, only Drafts whose name starts with it are considered.</param>
+public sealed record DiscardEmptyDraftsRequest(string FwDataPath, string ProductVersion, string? NamePrefix = null);

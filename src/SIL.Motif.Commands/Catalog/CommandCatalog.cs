@@ -132,6 +132,7 @@ public static class CommandCatalog
         new CommandDescriptor("label", typeof(LabelRequest), typeof(DraftFieldChangedResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("finalize", typeof(FinalizeRequest), typeof(ProposalFinalizedResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("discard-draft", typeof(DiscardDraftRequest), typeof(DraftDiscardedResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("discard-empty-drafts", typeof(DiscardEmptyDraftsRequest), typeof(EmptyDraftsDiscardedResponse), CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("reopen", typeof(ReopenRequest), typeof(ReopenedResponse), CommandSurface.Developer, AgentClass.Draft),
         new CommandDescriptor("duplicate", typeof(DuplicateRequest), typeof(DuplicatedResponse), CommandSurface.Developer, AgentClass.Draft),
         new CommandDescriptor(

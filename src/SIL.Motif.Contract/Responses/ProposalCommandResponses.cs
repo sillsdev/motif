@@ -154,3 +154,9 @@ public sealed record ProposalPictureChangedResponse(string ProposalId, long Pict
 /// <param name="DataBase64">The bytes of the asked-for picture, Base64; null when none was asked for.</param>
 public sealed record ProposalPicturesResponse(
     string ProposalId, IReadOnlyList<PictureView> Pictures, string? DataBase64 = null);
+
+/// <summary>An empty Draft that stayed because it could not be discarded, with the reason.</summary>
+public sealed record EmptyDraftKept(string DraftName, string Code, string Reason);
+
+/// <summary>The never-finalized empty Drafts removed from the store, and any that stayed.</summary>
+public sealed record EmptyDraftsDiscardedResponse(IReadOnlyList<string> Discarded, IReadOnlyList<EmptyDraftKept> Kept);

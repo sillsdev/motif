@@ -157,7 +157,7 @@ public static class ProposalLifecycleCommand
             : ProposalCommands.Withdraw(rejectRequest);
     }
 
-    private static bool IsNeverFinalizedEmptyDraft(ProposalRecord record)
+    internal static bool IsNeverFinalizedEmptyDraft(ProposalRecord record)
     {
         if (record.IntentDigest is not null || record.ProposalJson is null) return false;
         try

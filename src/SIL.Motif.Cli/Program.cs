@@ -540,6 +540,15 @@ try
                 successAsJson: false);
             break;
 
+        case "discard-empty-drafts":
+            if (!flags.TryGetValue("project", out var emptyDraftsProject))
+                return Usage("Usage: motif discard-empty-drafts --project <fwdata> [--prefix <text>]", asJson);
+            result = RenderProposal(
+                ProposalCommands.DiscardEmptyDrafts(
+                    new DiscardEmptyDraftsRequest(emptyDraftsProject, CliProductVersion(), flags.GetValueOrDefault("prefix"))),
+                successAsJson: false);
+            break;
+
         case "reopen" when flags.ContainsKey("proposal"):
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var reopenProposalProject) ||
                 string.IsNullOrWhiteSpace(flags["proposal"]))

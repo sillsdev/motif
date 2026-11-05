@@ -63,6 +63,7 @@ public static class ProposalCommandRenderer
             ProposalPicturesResponse r => RenderPictures(r),
             ProposalFinalizedResponse r => RenderProposalFinalized(r),
             DraftDiscardedResponse r => RenderDraftDiscarded(r),
+            EmptyDraftsDiscardedResponse r => RenderEmptyDraftsDiscarded(r),
             ReopenedResponse r => RenderReopened(r),
             DuplicatedResponse r => RenderDuplicated(r),
             OperationsRemovedResponse r => RenderOperationsRemoved(r),
@@ -304,6 +305,17 @@ public static class ProposalCommandRenderer
             sb.AppendLine(
                 "  (it was reopened from a finalized Proposal, which remains at its prior committed revision)");
         }
+        return sb.ToString();
+    }
+
+    private static string RenderEmptyDraftsDiscarded(EmptyDraftsDiscardedResponse r)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(r.Discarded.Count == 0
+            ? "No empty drafts to discard."
+            : $"Discarded {r.Discarded.Count} empty draft(s): {string.Join(", ", r.Discarded)}.");
+        foreach (var kept in r.Kept)
+            sb.AppendLine($"  kept '{kept.DraftName}' ({kept.Code}): {kept.Reason}");
         return sb.ToString();
     }
 

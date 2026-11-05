@@ -1625,6 +1625,14 @@
     ],
     "redirect": "Start one small Proposal per grammar question, then try it before anything else (guide workflow)."
   },
+  "discard-empty-drafts": {
+    "title": "Discard empty drafts",
+    "description": "Removes every Draft that was never finalized and holds no changes, such as the ones a failed compose leaves after a new. A Draft with changes, the pending changes and any Draft that was finalized or reopened are left alone, and one that cannot be discarded is listed with the reason.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "prefix": "Optional text; only Drafts whose name starts with it are considered."
+    }
+  },
   "finalize": {
     "title": "Finalize a Proposal",
     "description": "Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.",

@@ -190,6 +190,9 @@ public static class CliVerbCatalog
             "Commands", "discard-draft", "discard-draft",
             new[] { "discard-draft --project <fwdata> --draft <name> [--revision <r>]" }),
         new CliVerbDescriptor(
+            "Commands", "discard-empty-drafts", "discard-empty-drafts",
+            new[] { "discard-empty-drafts --project <fwdata> [--prefix <text>]" }),
+        new CliVerbDescriptor(
             "Commands", "reopen", "reopen", new[] { "reopen --project <fwdata> --draft <name> <proposalId>" }),
         new CliVerbDescriptor(
             "Commands", "duplicate", "duplicate",
