@@ -87,7 +87,8 @@
     </DataTemplate>
     <DataTemplate x:Key="WordCardAnalysisTemplate" x:DataType="word:WordCardAnalysis">
       <StackPanel>
-        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ReaderMarkLegend}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ReaderMarkLegend}" TextWrapping="Wrap"
+                                 IsVisible="{Binding $parent[word:WordCard].HandlesTextReaderShortcuts}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding NotParsedText}"
                                  IsVisible="{Binding NotParsedText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                  TextWrapping="Wrap" />

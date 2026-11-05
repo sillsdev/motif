@@ -8,12 +8,19 @@
     <StaticResource x:Key="Component.Notice.Padding" ResourceKey="Intent.Inset.Notice" />
     <StaticResource x:Key="Component.Notice.Radius" ResourceKey="Intent.Radius.Control" />
     <StaticResource x:Key="Component.Notice.ActionGap" ResourceKey="Intent.Space.Section" />
+    <StaticResource x:Key="Component.Notice.TechDemoPadding" ResourceKey="Primitive.Inset.6_0_6_0" />
     <StaticResource x:Key="Component.Notice.QuietPadding" ResourceKey="Primitive.Inset.0_8_0_8" />
   </Styles.Resources>
   <Style Selector="Border.notice">
     <Setter Property="Background" Value="{DynamicResource Intent.Warning.Fill}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Component.Notice.Radius}" />
     <Setter Property="Padding" Value="{DynamicResource Component.Notice.Padding}" />
+  </Style>
+  <Style Selector="Border.notice.techDemoNotice">
+    <Setter Property="Padding" Value="{DynamicResource Component.Notice.TechDemoPadding}" />
+  </Style>
+  <Style Selector=":is(TextBlock).techDemoNoticeText">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
   </Style>
   <!-- Semi's default button label is too light on the notice's tint; a solid primary button keeps its own. -->
   <Style Selector="Border.notice Button:not(.Primary)">

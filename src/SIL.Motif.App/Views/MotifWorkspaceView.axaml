@@ -90,10 +90,10 @@
         <Grid RowDefinitions="Auto,Auto,*">
           <ScrollViewer x:Name="TechDemoNoticeViewport" HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Auto">
-            <Border x:Name="TechDemoNotice" IsVisible="{Binding ShowsTechDemoNotice}" Classes="notice">
+            <Border x:Name="TechDemoNotice" IsVisible="{Binding ShowsTechDemoNotice}" Classes="notice techDemoNotice">
               <Grid x:Name="TechDemoNoticeLayout" ColumnDefinitions="*,Auto"
                     ColumnSpacing="{DynamicResource Component.Notice.ActionGap}">
-                <views:CopyableTextBlock Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
+                <views:CopyableTextBlock Classes="techDemoNoticeText" Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
                                          AutomationProperties.Name="{x:Static vm:TechDemoNoticeViewModel.NoticeText}"
                                          VerticalAlignment="Center" TextWrapping="Wrap" />
                 <StackPanel x:Name="TechDemoNoticeActions" Grid.Column="1" Orientation="Horizontal"
