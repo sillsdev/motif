@@ -174,7 +174,7 @@ public sealed class PhonologicalRuleOrderConformanceTests(PristineProjectFixture
     [InlineData("malformed-placement", 1, "label '@bad!' is malformed")]
     [InlineData("duplicate-placement", 1, "duplicate property 'after'")]
     [InlineData("duplicate-placement-object", 1, "duplicate property 'placement'")]
-    [InlineData("phoneme-alias", 1, "is not a valid canonical id")]
+    [InlineData("phoneme-alias", 1, "is not a PhPhoneme")]
     [InlineData("missing-placement", 1, "requires declared placement")]
     public void BatchLabelsRejectInvalidShapesAndReferencesWithoutChangingTheDraftOrProject(
         string scenario, int failingIndex, string expectedMessage)

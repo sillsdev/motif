@@ -394,7 +394,7 @@
   },
   {
     "name": "motif_add_phoneme",
-    "description": "Author a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Add a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs). Stages a phoneme with explicitly authored name and representations in a Draft. Use its created identity in later natural classes or phonological rules. Only a person can Apply.\nCommand: compose-author-phoneme. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
+    "description": "Author a phoneme. Research first: motif_guide topic nasal-assimilation or conditioned-allomorphs; check best practice. Add a phoneme for a real contrast, not only to record a surface variant, unless a rule needs it as an output segment (guides nasal-assimilation, conditioned-allomorphs). Stages a phoneme with literal representations, including symbols such as parentheses and slash, and optional explicit feature values. Put case spellings of the same sound on that phoneme; use its created identity in natural classes or phonological rules. Only a person can Apply.\nCommand: compose-author-phoneme. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nIntentJson: The closed semantic intent JSON accepted by this composer.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -5114,7 +5114,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "description": "Nonempty list of values, each an object with a name and an optional abbreviation."
+                        "description": "Nonempty list of values, each an object with a name and an optional abbreviation; select one later in a batch with @label:values:NAME."
                       }
                     },
                     "additionalProperties": false,
@@ -5163,7 +5163,7 @@
                     "properties": {
                       "feature": {
                         "type": "string",
-                        "description": "Id of the existing phonological feature."
+                        "description": "Id of a saved or earlier staged phonological feature, @label in a batch, or lookup:phonological-feature:NAME."
                       },
                       "name": {
                         "type": "string",
@@ -8535,7 +8535,7 @@
             ],
             "additionalProperties": false
           },
-          "description": "Nonempty list of values, each an object with a name and an optional abbreviation."
+          "description": "Nonempty list of values, each an object with a name and an optional abbreviation; select one later in a batch with @label:values:NAME."
         },
         "project": {
           "type": "string",
@@ -8566,7 +8566,7 @@
         },
         "feature": {
           "type": "string",
-          "description": "Id of the existing phonological feature."
+          "description": "Id of a saved or earlier staged phonological feature, @label in a batch, or lookup:phonological-feature:NAME."
         },
         "name": {
           "type": "string",

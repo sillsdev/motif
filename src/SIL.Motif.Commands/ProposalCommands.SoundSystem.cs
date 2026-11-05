@@ -512,10 +512,13 @@ public static partial class ProposalCommands
                     var step = steps[index];
                     try
                     {
-                        var labeled = step.Authored is { } unlabeled && declaredLabels.Count > 0 &&
-                            step.Verb != PhonologicalRuleComposerVerb
-                            ? ResolveBatchLabelReferences(unlabeled, labelObjects, labelRoots, labelRoles, declaredLabels, index)
+                        var placementResolved = step.Authored is { } ruleInput && step.ResolvePlacementLabels &&
+                            step.Verb == PhonologicalRuleComposerVerb
+                            ? ResolveRulePlacementLabels(ruleInput, availableLabels, declaredLabels, index)
                             : step.Authored;
+                        var labeled = placementResolved is { } unlabeled && declaredLabels.Count > 0
+                            ? ResolveBatchLabelReferences(cache, unlabeled, labelObjects, labelRoots, labelRoles, declaredLabels, index)
+                            : placementResolved;
                         var looked = labeled is { } toLook ? LookupReferences.Resolve(cache, toLook) : labeled;
                         var normalized = looked is { } raw && step.Verb is { } verb
                             ? ResolveSoundObjectNames(cache, verb, raw)
@@ -620,8 +623,12 @@ public static partial class ProposalCommands
                             var roots = createdHere.Where(operation => operation.Target is not { } under ||
                                 createdHere.All(other => other.EntityId!.Value != under)).Select(operation => operation.EntityId!.Value)
                                 .Distinct().ToArray();
-                            if (labeledEntity is { } entityId) availableLabels.Add(label, entityId);
-                            if (roots.Length == 1) labelRoots.Add(label, roots[0]);
+                            if (labeledEntity is { } entityId)
+                            {
+                                availableLabels.Add(label, entityId);
+                                labelRoots.Add(label, entityId);
+                            }
+                            else if (roots.Length == 1) labelRoots.Add(label, roots[0]);
                             labelRoles.Add(label, AlternateFormRoles(added));
                             labelObjects.Add(label, CreatedObjectsForOperations(added.Select(operation =>
                                 new OperationSummary(operation.OperationId.Value, operation.Kind, operation.EntityId?.Value))

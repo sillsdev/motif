@@ -88,7 +88,7 @@ public sealed class EditPhonemeComposerTests(PristineProjectFixture pristine)
         Assert.StartsWith(EditPhonemeComposer.Duplicate, Refusal(() => EditPhonemeComposer.Build(cache, new(n, ["ng"], []))));
         Assert.StartsWith(EditPhonemeComposer.Duplicate, Refusal(() => EditPhonemeComposer.Build(cache, new(n, ["ts", "ts"], []))));
         Assert.StartsWith(EditPhonemeComposer.Duplicate, Refusal(() => EditPhonemeComposer.Build(cache, new(n, ["n"], []))));
-        Assert.StartsWith(EditPhonemeComposer.Invalid, Refusal(() => EditPhonemeComposer.Build(cache, new(n, ["n g"], []))));
+        Assert.StartsWith(EditPhonemeComposer.Invalid, Refusal(() => EditPhonemeComposer.Build(cache, new(n, ["∅"], []))));
         Assert.StartsWith(EditPhonemeComposer.Invalid, Refusal(() => EditPhonemeComposer.Build(cache, new(n, [""], []))));
         Assert.StartsWith(EditPhonemeComposer.NotFound, Refusal(() => EditPhonemeComposer.Build(cache, new(t, [], [new("x", "ts")]))));
     }
@@ -136,6 +136,132 @@ public sealed class EditPhonemeComposerTests(PristineProjectFixture pristine)
                 TsStringUtils.MakeString(text, cache.DefaultVernWs)));
 
     [Fact]
+    public void ADottedCircleOnlyCodeIsNotARepresentationToMerge()
+    {
+        using var cache = pristine.NewScratch();
+        var source = Phoneme(cache, "display only", "d");
+        var target = Phoneme(cache, "target", "t");
+        StoreCode(cache, source, "\u25CC");
+
+        Assert.StartsWith(MergePhonemeComposer.NothingToMove,
+            Refusal(() => MergePhonemeComposer.Build(cache, new(source, target))));
+    }
+
+    [Theory]
+    [InlineData("edit")]
+    [InlineData("split")]
+    [InlineData("merge")]
+    public void DottedCircleOnlyCodesDoNotBlockCompositionOrRelatedObjectReporting(string composer)
+    {
+        using var cache = pristine.NewScratch();
+        var displayOnly = Phoneme(cache, "display only", "d");
+        StoreCode(cache, displayOnly, "\u25CC");
+        var source = Phoneme(cache, "source", "s", "z");
+        StoreCode(cache, source, "\u25CC");
+        var target = Phoneme(cache, "target", "t");
+        var a = Phoneme(cache, "a", "a");
+        SoundSystemComposerTests.Execute(cache, AuthorEnvironmentComposer.Build(cache,
+            new("after a", [new(Phoneme: a)], [])));
+
+        switch (composer)
+        {
+            case "edit":
+                Assert.Empty(EditPhonemeComposer.ReadAffectedUsers(cache, new(source, ["s"], [])));
+                SoundSystemComposerTests.Execute(cache, EditPhonemeComposer.Build(cache, new(source, [], [new("z", "s")])));
+                Assert.Equal(["\u25CC", "s"], Codes(cache, source));
+                break;
+            case "split":
+                Assert.Empty(SplitPhonemeComposer.ReadAffectedUsers(cache, new(source, "z", "split")));
+                SoundSystemComposerTests.Execute(cache, SplitPhonemeComposer.Build(cache, new(source, "z", "split")));
+                Assert.Equal(["\u25CC"], Codes(cache, source));
+                break;
+            case "merge":
+                Assert.Empty(MergePhonemeComposer.ReadAffectedUsers(cache, new(source, target)));
+                SoundSystemComposerTests.Execute(cache, MergePhonemeComposer.Build(cache, new(source, target)));
+                Assert.Equal(["t", "z"], Codes(cache, target));
+                break;
+        }
+        Assert.Empty(EditPhonemeComposer.ReadAffectedUsers(cache, new(displayOnly, ["d"], [])));
+    }
+
+    [Fact]
+    public void RespellsALiteralSlashDespiteAnUnrelatedWordInitialEnvironment()
+    {
+        using var cache = pristine.NewScratch();
+        var slash = Phoneme(cache, "literal slash", "/");
+        SoundSystemComposerTests.Execute(cache, AuthorEnvironmentComposer.Build(cache,
+            new("word initial", [new(Boundary: "word")], [])));
+
+        var users = EditPhonemeComposer.ReadAffectedUsers(cache, new(slash, [], [new("/", "!")]));
+        SoundSystemComposerTests.Execute(cache, EditPhonemeComposer.Build(cache, new(slash, [], [new("/", "!")])));
+
+        Assert.Empty(users);
+        Assert.Equal(["!"], Codes(cache, slash));
+        Assert.Equal("/ # _", cache.LangProject.PhonologicalDataOA.EnvironmentsOS[0].StringRepresentation.Text);
+    }
+
+    [Theory]
+    [InlineData("/ / _")]
+    [InlineData("/ _ /")]
+    [InlineData("/ (/) _")]
+    [InlineData("//_")]
+    public void ARealLiteralSlashInAnEnvironmentSegmentStillProtectsItsPhoneme(string text)
+    {
+        using var cache = pristine.NewScratch();
+        var slash = Phoneme(cache, "literal slash", "/", "s");
+        var target = Phoneme(cache, "target", "t");
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var environment = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+            environment.Name.set_String(cache.DefaultAnalWs, "after literal slash");
+            environment.StringRepresentation = TsStringUtils.MakeString(text, cache.DefaultVernWs);
+        });
+
+        Assert.StartsWith(EditPhonemeComposer.Referenced,
+            Refusal(() => EditPhonemeComposer.Build(cache, new(slash, [], [new("/", "!")]))));
+        Assert.StartsWith(EditPhonemeComposer.Referenced,
+            Refusal(() => SplitPhonemeComposer.Build(cache, new(slash, "/", "split"))));
+        Assert.StartsWith(MergePhonemeComposer.Referenced,
+            Refusal(() => MergePhonemeComposer.Build(cache, new(slash, target))));
+        Assert.Equal("after literal slash", Assert.Single(EditPhonemeComposer.ReadAffectedUsers(cache, new(slash, ["!"], []))).Name);
+        Assert.Equal("after literal slash", Assert.Single(SplitPhonemeComposer.ReadAffectedUsers(cache, new(slash, "/", "split"))).Name);
+        Assert.Equal("after literal slash", Assert.Single(MergePhonemeComposer.ReadAffectedUsers(cache, new(slash, target))).Name);
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("_")]
+    [InlineData("#")]
+    [InlineData("(")]
+    [InlineData(")")]
+    [InlineData("a(b")]
+    [InlineData("a#")]
+    public void EnvironmentNotationDoesNotReferenceLiteralPhonemesOrConsumeAcrossSegmentRuns(string spelling)
+    {
+        using var cache = pristine.NewScratch();
+        var source = Phoneme(cache, "literal", spelling, "s");
+        var target = Phoneme(cache, "target", "t");
+        Phoneme(cache, "a", "a");
+        Phoneme(cache, "b", "b");
+        SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var environment = cache.ServiceLocator.GetInstance<IPhEnvironmentFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.EnvironmentsOS.Add(environment);
+            environment.Name.set_String(cache.DefaultAnalWs, "optional b");
+            environment.StringRepresentation = TsStringUtils.MakeString("/ # a(b) _ a#", cache.DefaultVernWs);
+        });
+
+        Assert.Empty(EditPhonemeComposer.ReadAffectedUsers(cache, new(source, ["!"], [])));
+        Assert.Empty(SplitPhonemeComposer.ReadAffectedUsers(cache, new(source, spelling, "split")));
+        Assert.Empty(MergePhonemeComposer.ReadAffectedUsers(cache, new(source, target)));
+        Assert.NotEmpty(SplitPhonemeComposer.Build(cache, new(source, spelling, "split")));
+        Assert.NotEmpty(MergePhonemeComposer.Build(cache, new(source, target)));
+        SoundSystemComposerTests.Execute(cache, EditPhonemeComposer.Build(cache, new(source, [], [new(spelling, "!")])));
+        Assert.Equal(["!", "s"], Codes(cache, source));
+    }
+
+    [Fact]
     public void RespellsAStoredCodeWithTrailingWhitespaceUsingItsExactSpelling()
     {
         using var cache = pristine.NewScratch();
@@ -148,20 +274,16 @@ public sealed class EditPhonemeComposerTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void StillRefusesARespellToAValueWithWhitespace()
+    public void WhitespaceInALiteralRepresentationIsPreserved()
     {
         using var cache = pristine.NewScratch();
-        var glottal = Phoneme(cache, "glottal stop", "g");
-        StoreCode(cache, glottal, "- ");
-
-        Assert.StartsWith(EditPhonemeComposer.Invalid,
-            Refusal(() => EditPhonemeComposer.Build(cache, new(glottal, [], [new("- ", "- ")]))));
-        Assert.StartsWith(EditPhonemeComposer.Invalid,
-            Refusal(() => EditPhonemeComposer.Build(cache, new(glottal, [], [new("- ", "a b")]))));
+        var phone = Phoneme(cache, "letter", "g");
+        SoundSystemComposerTests.Execute(cache, EditPhonemeComposer.Build(cache, new(phone, [], [new("g", "a b")])));
+        Assert.Equal(["a b"], Codes(cache, phone));
     }
 
     [Fact]
-    public void RuleComposerRefusalOnAStoredCodeWithWhitespaceNamesTheRepair()
+    public void TextualEnvironmentRefusalOnAStoredCodeWithWhitespaceNamesTheClassRoute()
     {
         using var cache = pristine.NewScratch();
         var glottal = Phoneme(cache, "glottal stop", "g");
@@ -171,9 +293,8 @@ public sealed class EditPhonemeComposerTests(PristineProjectFixture pristine)
         var message = Refusal(() => AuthorEnvironmentComposer.Build(cache,
             new("after glottal", [new(Phoneme: glottal)], [new(Phoneme: a)])));
 
-        Assert.Contains("phoneme-code-malformed", message);
-        Assert.Contains("'- '", message);
-        Assert.Contains("compose-edit-phoneme", message);
+        Assert.Contains("environment syntax", message);
+        Assert.Contains("singleton natural class", message);
     }
 
     [Fact]

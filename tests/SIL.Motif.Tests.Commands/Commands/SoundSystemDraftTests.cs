@@ -20,6 +20,34 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class SoundSystemDraftTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public void AddPhonologicalFeatureValueAcceptsItsDocumentedFeatureField()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        const string version = "0.1.0";
+        const string draft = "extend-phonological-feature";
+        Assert.True(ProposalCommands.New(new(path, version, draft, "Extend a phonological feature")).Succeeded);
+        var feature = ProposalCommands.ComposeIntent(new(path, version, draft, "compose-author-phonological-feature",
+            """{"name":"voice","values":[{"name":"minus","abbreviation":"-"}]}"""));
+        Assert.True(feature.Succeeded, feature.Refusal?.Message);
+        var featureId = Assert.Single(feature.Value!.CreatedObjects,
+            item => item.Kind == FsFeatureSystemFeaturesOperationKinds.Create).Id;
+        var added = ProposalCommands.ComposeIntent(new(path, version, draft, "compose-add-phonological-feature-value",
+            JsonSerializer.Serialize(new { feature = featureId, name = "plus", abbreviation = "+" })));
+        Assert.True(added.Succeeded, added.Refusal?.Message);
+        using var scratch = DryRunScratch.Adopt(new SIL.Motif.Host.LcmUtils.FwDataProjectLoader().LoadScratchCache(path),
+            "Extended feature read-back");
+        ProposalDryRunner.Run(scratch, ReadDraftProposal(path, draft));
+        var stored = scratch.PeekCache().ServiceLocator.GetInstance<IFsClosedFeatureRepository>()
+            .GetObject(CanonicalId.Parse(featureId).ToGuid());
+        Assert.Equal(new[] { "minus", "plus" }, stored.ValuesOC.Select(value =>
+            value.Name.get_String(scratch.PeekCache().DefaultAnalWs).Text));
+        Assert.Equal("+", stored.ValuesOC.Single(value => value.Name.get_String(scratch.PeekCache().DefaultAnalWs).Text == "plus")
+            .Abbreviation.get_String(scratch.PeekCache().DefaultAnalWs).Text);
+    }
+
+    [Fact]
     public void FeatureValueSelectsAValueOnAStructureCreatedInTheSameDraft()
     {
         using var cache = pristine.NewScratch();

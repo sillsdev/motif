@@ -45,7 +45,9 @@ public static class AddPhonologicalFeatureValueIntentParser
     public static AddPhonologicalFeatureValueIntent Parse(JsonElement input)
     {
         SoundSystemIntentParsing.Object(input, "AddPhonologicalFeatureValue", "feature", "name", "abbreviation");
-        return new(SoundSystemIntentParsing.Id(input, "feature"), AuthorPhonologicalFeatureIntentParser.Option(input));
+        return new(SoundSystemIntentParsing.Id(input, "feature"),
+            new(SoundSystemIntentParsing.Text(input, "name"),
+                input.TryGetProperty("abbreviation", out _) ? SoundSystemIntentParsing.Text(input, "abbreviation") : null));
     }
 }
 

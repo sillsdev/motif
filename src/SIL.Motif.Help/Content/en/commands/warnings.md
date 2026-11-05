@@ -28,6 +28,8 @@ Motif findings also include `grammar.derived-stem-keeps-from-class` for a deriva
 
 Motif findings also include `grammar.template-has-no-slots` for an affix template with no slot, which the parser cannot use. Each finding names the template and its part of speech and says to add a slot.
 
+Motif findings also include `grammar.phoneme-case-alias-missing` when a featured lowercase phoneme lacks titlecase or uppercase spellings on the same phoneme. It names the missing aliases and points to [Edit a phoneme](cmd:compose-edit-phoneme), so implicit featureless capitals do not admit unintended analyses.
+
 Motif findings also include `grammar.phoneme-spelling-ambiguous` for a phoneme whose spelling is other phonemes' spellings joined (`ng` beside `n` and `g`), which the parser always reads as the longest spelling, and `grammar.allomorph-environment-ignored-by-parser` for a form whose environment the parser cannot read and so drops, leaving the form unrestricted by it. Each finding names the phoneme or form and says what to change.
 
 Motif findings also include `grammar.allomorph-repeats-environment-material` for a form that already spells the material its environment asks of its neighbour (`batan-ung` before `ng`); it is a second look, not a refusal.

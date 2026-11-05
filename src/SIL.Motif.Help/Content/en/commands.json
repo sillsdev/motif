@@ -1364,7 +1364,7 @@
   },
   "compose-author-phoneme": {
     "title": "Author a phoneme",
-    "description": "Stages a phoneme with explicitly authored name and representations in a Draft. Use its created identity in later natural classes or phonological rules. Only a person can Apply.",
+    "description": "Stages a phoneme with literal representations, including symbols such as parentheses and slash, and optional explicit feature values. Put case spellings of the same sound on that phoneme; use its created identity in natural classes or phonological rules. Only a person can Apply.",
     "source": "Authored from the typed command contract.",
     "goals": [
       "Add a missing consonant to the sound inventory",
@@ -1406,7 +1406,7 @@
       "draft": "Draft name.",
       "name": "Feature name.",
       "abbreviation": "Optional feature abbreviation, unique among phonological features.",
-      "values": "Nonempty list of values, each an object with a name and an optional abbreviation."
+      "values": "Nonempty list of values, each an object with a name and an optional abbreviation; select one later in a batch with @label:values:NAME."
     },
     "goals": [
       "Define a place feature with labial, coronal and velar values",
@@ -1425,7 +1425,7 @@
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
-      "feature": "Id of the existing phonological feature.",
+      "feature": "Id of a saved or earlier staged phonological feature, @label in a batch, or lookup:phonological-feature:NAME.",
       "name": "Value name.",
       "abbreviation": "Optional value abbreviation, unique within the feature."
     },

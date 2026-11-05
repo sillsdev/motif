@@ -338,6 +338,55 @@ public sealed class GrammarCheckQueryTests : IDisposable
     }
 
     [Fact]
+    public void FeaturedLowercasePhonemesNeedBothTitlecaseAndUppercaseAliasesOnTheSamePhone()
+    {
+        var fwDataPath = _pristine.CopyProjectFile();
+        var loader = new FwDataProjectLoader();
+        Guid ngId;
+        using (var cache = loader.LoadCache(fwDataPath))
+        {
+            var phones = AddPhonemes(cache, "c", "ng", "a", "á", "/", "x");
+            ngId = phones["ng"].Guid;
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var feature = cache.ServiceLocator.GetInstance<IFsClosedFeatureFactory>().Create();
+                cache.LangProject.PhFeatureSystemOA.FeaturesOC.Add(feature);
+                var value = cache.ServiceLocator.GetInstance<IFsSymFeatValFactory>().Create();
+                feature.ValuesOC.Add(value);
+                foreach (var phone in phones.Values.Where(phone => phone != phones["x"]))
+                {
+                    phone.FeaturesOA = cache.ServiceLocator.GetInstance<IFsFeatStrucFactory>().Create();
+                    var spec = cache.ServiceLocator.GetInstance<IFsClosedValueFactory>().Create();
+                    phone.FeaturesOA.FeatureSpecsOC.Add(spec);
+                    spec.FeatureRA = feature;
+                    spec.ValueRA = value;
+                }
+                foreach (var (lower, alias) in new[] { ("c", "C"), ("ng", "Ng"), ("a", "A") })
+                {
+                    var code = cache.ServiceLocator.GetInstance<IPhCodeFactory>().Create();
+                    phones[lower].CodesOS.Add(code);
+                    code.Representation.set_String(cache.DefaultVernWs, alias);
+                }
+            });
+            loader.Save(cache);
+        }
+        Capture(fwDataPath);
+        var check = Check(fwDataPath);
+        var warnings = check.Findings.Where(item => item.Code == GrammarFindingCodes.PhonemeCaseAliasMissing).ToArray();
+        Assert.Equal(2, warnings.Length);
+        var ng = Assert.Single(warnings, item => item.Subject.Single().ObjectId == CanonicalId.FromGuid(ngId).Value);
+        Assert.Contains("'NG'", ng.Description);
+        Assert.DoesNotContain("'Ng'", ng.Description);
+        Assert.Contains(warnings, item => item.Description.Contains("A\u0301", StringComparison.Ordinal));
+        Assert.All(warnings, warning =>
+        {
+            Assert.Equal(GrammarDiagnosticLevel.Warning, warning.Severity);
+            Assert.Contains("compose-edit-phoneme", warning.Guidance);
+            Assert.Contains("no phonological features", warning.Explanation);
+        });
+    }
+
+    [Fact]
     public void APhonemeSpelledAsTwoOtherPhonemesIsAWarningButAnUnambiguousDigraphIsNot()
     {
         var fwDataPath = _pristine.CopyProjectFile();

@@ -26,8 +26,10 @@ public static class AuthorPhonemeComposer
             throw new InvalidOperationException("A phoneme's representations must be distinct after normalization.");
         var set = cache.LangProject.PhonologicalDataOA.PhonemeSetsOS.FirstOrDefault();
         var ws = cache.DefaultVernWs;
-        var existingCodes = (set is null ? Array.Empty<IPhTerminalUnit>() : set.PhonemesOC.Cast<IPhTerminalUnit>().Concat(set.BoundaryMarkersOC))
-            .SelectMany(p => p.CodesOS).Select(c => c.Representation.get_String(ws)?.Text?.Normalize(NormalizationForm.FormD));
+        var existingCodes = (set is null ? Array.Empty<IPhTerminalUnit>() : set.PhonemesOC.Cast<IPhTerminalUnit>()
+                .Concat(set.BoundaryMarkersOC.Where(marker => marker.Guid != LangProjectTags.kguidPhRuleWordBdry)))
+            .SelectMany(p => p.CodesOS).Select(c => c.Representation.get_String(ws)?.Text?
+                .Replace("\u25CC", string.Empty).Normalize(NormalizationForm.FormD));
         if (existingCodes.Any(c => c is not null && codes.Contains(c, StringComparer.Ordinal)))
             throw new InvalidOperationException("A grapheme representation already belongs to a phoneme or boundary in the first set.");
         SoundSystemAuthoring.ValidateFeatures(cache, intent.Features);
@@ -159,7 +161,7 @@ public static class AuthorEnvironmentComposer
                 var phoneme = SoundSystemAuthoring.RequirePhoneme(cache, phonemeId);
                 var code = phoneme.CodesOS.Select(c => c.Representation.get_String(cache.DefaultVernWs)?.Text)
                     .FirstOrDefault(c => !string.IsNullOrWhiteSpace(c));
-                tokens.Add(SoundSystemAuthoring.RequireLiteral(code!));
+                tokens.Add(SoundSystemAuthoring.RequireEnvironmentLiteral(code!));
             }
             else if (context.NaturalClass is { } classId)
             {
@@ -190,7 +192,7 @@ public static class AuthorEnvironmentComposer
                     .FirstOrDefault(item => !string.IsNullOrWhiteSpace(item));
                 if (code is null)
                     throw new InvalidOperationException("A context boundary marker needs a usable vernacular code.");
-                tokens.Add(SoundSystemAuthoring.RequireLiteral(code));
+                tokens.Add(SoundSystemAuthoring.RequireEnvironmentLiteral(code));
             }
             else
             {
@@ -249,9 +251,21 @@ internal static class SoundSystemAuthoring
 
     internal static string RequireLiteral(string text)
     {
-        if (string.IsNullOrWhiteSpace(text) || text.Any(c => char.IsWhiteSpace(c) || "[]()#_/*+|\\".Contains(c)))
-            throw new InvalidOperationException("A grapheme must be nonempty and contain no whitespace or environment syntax characters.");
-        return text.Normalize(NormalizationForm.FormD);
+        var loaded = text?.Replace("\u25CC", string.Empty);
+        if (string.IsNullOrEmpty(loaded))
+            throw new InvalidOperationException("A grapheme must be nonempty after the parser removes dotted circles.");
+        if (loaded is "+" or "." or "^0" or "*0" or "&0" or "∅")
+            throw new InvalidOperationException("The parser reserves this representation for a boundary or null segment.");
+        return loaded.Normalize(NormalizationForm.FormD);
+    }
+
+    internal static string RequireEnvironmentLiteral(string text)
+    {
+        if (text.Any(c => char.IsWhiteSpace(c) || "[]()#_/*+|\\".Contains(c)))
+            throw new InvalidOperationException(
+                "This representation collides with textual environment syntax; use a singleton natural class " +
+                "in an allomorph environment, or a phoneme context in a phonological rule.");
+        return RequireLiteral(text);
     }
 
     internal static void RequireAbbreviation(string text)
@@ -265,7 +279,7 @@ internal static class SoundSystemAuthoring
         var phoneme = ReferenceFieldLowering.Resolve<IPhPhoneme>(cache, id, "sound-system composer");
         if (!FirstSet(cache).PhonemesOC.Contains(phoneme))
             throw new InvalidOperationException("A phoneme must belong to the parser's first phoneme set.");
-        if (!phoneme.CodesOS.Any(c => !string.IsNullOrWhiteSpace(c.Representation.get_String(cache.DefaultVernWs)?.Text)))
+        if (!phoneme.CodesOS.Any(c => !string.IsNullOrEmpty(c.Representation.get_String(cache.DefaultVernWs)?.Text)))
             throw new InvalidOperationException("A phoneme needs a usable vernacular code before it can be referenced.");
         foreach (var code in phoneme.CodesOS)
         {

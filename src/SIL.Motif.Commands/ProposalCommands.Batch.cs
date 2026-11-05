@@ -1,8 +1,9 @@
 using SIL.Motif.Projection;
 using SIL.Motif.Host.Store;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Globalization;
+using System.Text;
+using SIL.LCModel;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -279,54 +280,68 @@ public static partial class ProposalCommands
     }
 
     /// <summary>Replaces each declared <c>@label</c> string with an earlier intent's created id.</summary>
-    private static JsonElement ResolveBatchLabelReferences(JsonElement authored,
+    private static JsonElement ResolveBatchLabelReferences(LcmCache cache, JsonElement authored,
         IReadOnlyDictionary<string, IReadOnlyList<CreatedObject>> created,
         IReadOnlyDictionary<string, CanonicalId> principals,
         IReadOnlyDictionary<string, IReadOnlyList<(string Role, string Id)>> roles,
         IReadOnlyDictionary<string, int> declared, int intentIndex)
     {
-        var node = JsonNode.Parse(authored.GetRawText());
+        using var buffer = new MemoryStream();
         var changed = false;
-        node = Walk(node);
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            Walk(authored, writer);
+            writer.Flush();
+        }
         if (!changed) return authored;
-        using var document = JsonDocument.Parse(node!.ToJsonString());
+        using var document = JsonDocument.Parse(buffer.ToArray());
         return document.RootElement.Clone();
 
-        JsonNode? Walk(JsonNode? current)
+        void Walk(JsonElement current, Utf8JsonWriter writer, bool textual = false)
         {
-            switch (current)
+            switch (current.ValueKind)
             {
-                case JsonObject obj:
-                    foreach (var key in obj.Select(pair => pair.Key).ToArray())
-                        if (Walk(obj[key]) is { } replaced && !ReferenceEquals(replaced, obj[key])) obj[key] = replaced;
-                    return obj;
-                case JsonArray array:
-                    for (var i = 0; i < array.Count; i++)
-                        if (Walk(array[i]) is { } replaced && !ReferenceEquals(replaced, array[i])) array[i] = replaced;
-                    return array;
-                case JsonValue value when value.TryGetValue<string>(out var text) &&
+                case JsonValueKind.Object:
+                    writer.WriteStartObject();
+                    foreach (var property in current.EnumerateObject())
+                    {
+                        writer.WritePropertyName(property.Name);
+                        Walk(property.Value, writer, textual || LookupReferences.IsTextField(property.Name));
+                    }
+                    writer.WriteEndObject();
+                    break;
+                case JsonValueKind.Array:
+                    writer.WriteStartArray();
+                    foreach (var item in current.EnumerateArray()) Walk(item, writer, textual);
+                    writer.WriteEndArray();
+                    break;
+                case JsonValueKind.String when !textual && current.GetString() is { } text &&
                     text.StartsWith('@') && ParseBatchReference(text) is { } reference &&
                     declared.ContainsKey(reference.Label):
                     changed = true;
-                    return JsonValue.Create(ResolveBatchReference(text, reference, created, principals, roles, declared, intentIndex));
+                    writer.WriteStringValue(ResolveBatchReference(cache, text, reference, created, principals, roles,
+                        declared, intentIndex));
+                    break;
                 default:
-                    return current;
+                    current.WriteTo(writer);
+                    break;
             }
         }
     }
 
-    private static (string Label, string? Kind)? ParseBatchReference(string text)
+    private static (string Label, string? Kind, string? Name)? ParseBatchReference(string text)
     {
         var match = BatchReference.Match(text);
         if (!match.Success) return null;
-        return (match.Groups["label"].Value, match.Groups["kind"].Success ? match.Groups["kind"].Value : null);
+        return (match.Groups["label"].Value, match.Groups["kind"].Success ? match.Groups["kind"].Value : null,
+            match.Groups["name"].Success ? match.Groups["name"].Value : null);
     }
 
     private static readonly System.Text.RegularExpressions.Regex BatchReference = new(
-        "^@(?<label>[A-Za-z][A-Za-z0-9_-]{0,20})(?::(?<kind>[A-Za-z]+))?$",
+        "^@(?<label>[A-Za-z][A-Za-z0-9_-]{0,20})(?::(?<kind>[A-Za-z]+)(?::(?<name>.+))?)?$",
         System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
-    private static string ResolveBatchReference(string text, (string Label, string? Kind) reference,
+    private static string ResolveBatchReference(LcmCache cache, string text, (string Label, string? Kind, string? Name) reference,
         IReadOnlyDictionary<string, IReadOnlyList<CreatedObject>> created,
         IReadOnlyDictionary<string, CanonicalId> principals,
         IReadOnlyDictionary<string, IReadOnlyList<(string Role, string Id)>> roles,
@@ -348,16 +363,25 @@ public static partial class ProposalCommands
                 $"Name one with '@{label}:<kind>'.");
         }
         // A role such as prefix picks one of several objects of one kind.
-        if (roles.TryGetValue(label, out var named) &&
+        if (reference.Name is null && roles.TryGetValue(label, out var named) &&
             named.Where(item => string.Equals(item.Role, reference.Kind, StringComparison.OrdinalIgnoreCase)).ToArray() is { Length: 1 } byRole)
             return byRole[0].Id;
         var matches = objects.DistinctBy(item => item.Id)
             .Where(item => CreatedKindMatches(item.Kind, reference.Kind)).ToArray();
+        if (reference.Name is { } name)
+        {
+            if (!string.Equals(reference.Kind, "values", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"'{text}': a named selector requires ':values:<value name>'.");
+            matches = matches.Where(item =>
+                cache.ServiceLocator.ObjectRepository.GetObject(CanonicalId.Parse(item.Id).ToGuid()) is IFsSymFeatVal value &&
+                value.Name.get_String(cache.DefaultAnalWs)?.Text?.Normalize(NormalizationForm.FormD) ==
+                    name.Normalize(NormalizationForm.FormD)).ToArray();
+        }
         if (matches.Length == 1) return matches[0].Id;
         throw new InvalidOperationException(matches.Length == 0
             ? $"'{text}' matches nothing: intent {declared[label]} created {DescribeCreated(objects)}."
             : $"'{text}' matches {matches.Length} objects ({DescribeCreated(matches)}), so it is ambiguous; " +
-              "use a separate entry with its own label for the one you mean.");
+              $"name a feature value with '@{label}:values:<value name>', or use a separate labelled entry.");
     }
 
     private static string CreatedKindName(string kind)

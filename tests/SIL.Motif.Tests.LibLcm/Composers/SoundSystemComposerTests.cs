@@ -101,13 +101,66 @@ public sealed class SoundSystemComposerTests(PristineProjectFixture pristine)
         Assert.Empty(SoundSystemSnapshots.Compare(snapshot, SoundSystemSnapshots.Read(reopened)));
     }
 
+    [Theory]
+    [InlineData("(")]
+    [InlineData(")")]
+    [InlineData("/")]
+    [InlineData("[")]
+    [InlineData("]")]
+    [InlineData("_")]
+    [InlineData("#")]
+    [InlineData("*")]
+    [InlineData("|")]
+    [InlineData("\\")]
+    [InlineData("n g")]
+    public void LiteralSymbolsStoreDistinctFeaturesAndWorkInClassesAndRuleContexts(string representation)
+    {
+        using var cache = pristine.NewScratch();
+        var featureOperations = AuthorPhonologicalFeatureComposer.Build(cache,
+            new("identity", [new("literal"), new("letter")]));
+        Execute(cache, featureOperations);
+        var feature = featureOperations[0].EntityId!.Value;
+        var values = featureOperations.Where(operation => operation.Kind == FsClosedFeatureValuesOperationKinds.Create)
+            .Select(operation => operation.EntityId!.Value).ToArray();
+        var all = new List<OperationEnvelope>();
+        var literal = Compose(cache, all, () => AuthorPhonemeComposer.Build(cache,
+            new("literal", [representation])));
+        Execute(cache, EditPhonemeFeaturesComposer.Build(cache, new(literal, [new(feature, values[0])], [])));
+        var letter = Compose(cache, all, () => AuthorPhonemeComposer.Build(cache,
+            new("letter", ["c", "C"], [new(feature, values[1])])));
+        var naturalClass = Compose(cache, all, () => AuthorNaturalClassComposer.Build(cache,
+            new("literal class", "LIT", [literal])));
+        Execute(cache, AuthorEnvironmentComposer.Build(cache,
+            new("after literal class", [new(NaturalClass: naturalClass)], [])));
+        Execute(cache, AuthorPhonologicalRuleComposer.Build(cache,
+            new("literal to letter", PhonologicalRuleDirection.LeftToRightIterative,
+                [new(Phoneme: literal)], [new(Phoneme: letter)], [], [])));
+        var stored = cache.ServiceLocator.GetInstance<IPhPhonemeRepository>().GetObject(literal.ToGuid());
+        Assert.Equal(representation, Assert.Single(stored.CodesOS).Representation.get_String(cache.DefaultVernWs).Text);
+        var spec = Assert.IsAssignableFrom<IFsClosedValue>(Assert.Single(stored.FeaturesOA.FeatureSpecsOC));
+        Assert.Equal(values[0].ToGuid(), spec.ValueRA.Guid);
+        Assert.Equal(feature.ToGuid(), spec.FeatureRA.Guid);
+        var loader = new SIL.Motif.Host.LcmUtils.FwDataProjectLoader();
+        loader.Save(cache);
+        using var readBack = loader.LoadScratchCache(cache.ProjectId.Path);
+        var reloaded = readBack.ServiceLocator.GetInstance<IPhPhonemeRepository>().GetObject(literal.ToGuid());
+        Assert.Equal(representation, Assert.Single(reloaded.CodesOS).Representation.get_String(readBack.DefaultVernWs).Text);
+        var reloadedClass = readBack.ServiceLocator.GetInstance<IPhNCSegmentsRepository>().GetObject(naturalClass.ToGuid());
+        Assert.Equal(literal.ToGuid(), Assert.Single(reloadedClass.SegmentsRC).Guid);
+        Assert.Equal(values[0].ToGuid(), Assert.IsAssignableFrom<IFsClosedValue>(
+            Assert.Single(reloaded.FeaturesOA.FeatureSpecsOC)).ValueRA.Guid);
+        var environmentRefusal = Assert.Throws<InvalidOperationException>(() => AuthorEnvironmentComposer.Build(cache,
+            new("direct literal", [new(Phoneme: literal)], [])));
+        Assert.Contains("natural class", environmentRefusal.Message);
+    }
+
     [Fact]
     public void InvalidInputsRefuseBeforeMutatingTheProject()
     {
         using var cache = pristine.NewScratch();
         var before = SoundSystemSnapshots.Read(cache);
         Assert.Throws<InvalidOperationException>(() => AuthorPhonemeComposer.Build(cache, new("bad", [])));
-        Assert.Throws<InvalidOperationException>(() => AuthorPhonemeComposer.Build(cache, new("bad", ["***"])));
+        Assert.Throws<InvalidOperationException>(() => AuthorPhonemeComposer.Build(cache, new("bad", ["."])));
         Assert.Throws<InvalidOperationException>(() => AuthorPhonemeComposer.Build(cache, new("bad", ["á", "a\u0301"])));
         Assert.Throws<InvalidOperationException>(() => AuthorNaturalClassComposer.Build(cache, new("bad", "V", [], [])));
         Assert.Throws<InvalidOperationException>(() => AuthorNaturalClassComposer.Build(cache, new("bad", "V")));

@@ -21,6 +21,9 @@ public static class GrammarFindingCodes
     /// <summary>A phoneme spelling that other phonemes' spellings add up to, which the parser reads as the longest one.</summary>
     public const string PhonemeSpellingAmbiguous = "grammar.phoneme-spelling-ambiguous";
 
+    /// <summary>A featured lowercase phoneme missing an explicit titlecase or uppercase representation.</summary>
+    public const string PhonemeCaseAliasMissing = "grammar.phoneme-case-alias-missing";
+
     /// <summary>A phoneme that no form, wordform, rule, natural class or environment uses.</summary>
     public const string PhonemeNeverUsed = "grammar.phoneme-never-used";
 

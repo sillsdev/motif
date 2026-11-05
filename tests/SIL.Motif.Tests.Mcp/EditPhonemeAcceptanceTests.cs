@@ -91,7 +91,7 @@ public sealed class EditPhonemeAcceptanceTests(PristineProjectFixture pristine)
         var refusals = new (string? Name, Dictionary<string, object?> Intent)[]
         {
             ("phoneme-edit-empty", Intent(target)),
-            ("phoneme-representation-invalid", Intent(target, ["n g"])),
+            ("phoneme-representation-invalid", Intent(target, ["∅"])),
             ("phoneme-representation-duplicate", Intent(target, ["n"])),
             ("phoneme-representation-not-found", Intent(target, respell: [("x", "ts")])),
             ("phoneme-representation-referenced", Intent(target, respell: [("n", "ts")])),

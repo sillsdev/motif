@@ -29,7 +29,24 @@ Phonological-rule entries may add an `as` label and a later rule may use `@label
 ]}
 ```
 
-Any entry may add an `as` label, and a later entry may write `@label` as a whole value anywhere in its intent in place of an ID that the labelled entry created. Phonological-rule entries are the exception: a rule entry resolves `@label` only in `placement.after` and `placement.before`, so give it IDs elsewhere. A phoneme entry labelled `ph`, for instance, lets a later natural class list `"members": ["@ph"]`. Without a kind `@label` means the one object the entry created that nothing else it created sits under (the new entry of an entry composer, the new phoneme); if the entry created several unrelated objects, or you want a dependent one, name the kind: `@label:msa` (or `@label:morphosyntaxanalyses`), `@label:senses`, `@label:codes`, the last word of the operation kind without `create`. A step that creates alternate forms also names each one by its morph type, `@label:prefix`, `@label:suffix`, `@label:infix`, `@label:proclitic`, `@label:enclitic` or `@label:stem`, which tells the two parts of a circumfix apart. A reference that matches nothing, more than one object (the refusal names them), a label declared later, or an entry that created nothing is refused, and the refusal names the objects the entry did create.
+Any entry may add an `as` label, and a later entry may write `@label` as a whole value anywhere in its intent in place of an ID that the labelled entry created. A phoneme entry labelled `ph`, for instance, lets a later natural class list `"members": ["@ph"]`. Without a kind `@label` means the one object the entry created that nothing else it created sits under (the new entry of an entry composer, the new phoneme); if the entry created several unrelated objects, or you want a dependent one, name the kind: `@label:msa` (or `@label:morphosyntaxanalyses`), `@label:senses`, `@label:codes`, the last word of the operation kind without `create`. A step that creates alternate forms also names each one by its morph type, `@label:prefix`, `@label:suffix`, `@label:infix`, `@label:proclitic`, `@label:enclitic` or `@label:stem`, which tells the two parts of a circumfix apart. A reference that matches nothing, more than one object (the refusal names them), a label declared later, or an entry that created nothing is refused, and the refusal names the objects the entry did create.
+
+Select one of several values created with a phonological feature by its exact value name in the default analysis writing system: `@identity:values:slash`. Names are case-sensitive and canonically equivalent Unicode spellings match. Bare `@identity:values` refuses when there is more than one value. The selector searches only values created by that labelled entry; a value added by another entry uses that entry's own label. Rule input, output and feature contexts accept the same references as other intents.
+
+```json
+{"intents": [
+  {"verb": "compose-author-phonological-feature", "as": "identity",
+   "intent": {"name": "identity", "values": [{"name": "letter"}, {"name": "slash"}]}},
+  {"verb": "compose-author-phoneme", "as": "slash",
+   "intent": {"name": "literal slash", "representations": ["/"],
+     "features": [{"feature": "@identity", "value": "@identity:values:slash"}]}},
+  {"verb": "compose-author-phoneme",
+   "intent": {"name": "letter c", "representations": ["c", "C"],
+     "features": [{"feature": "@identity", "value": "@identity:values:letter"}]}}
+]}
+```
+
+For subsequent calls in the same Draft, or for saved features, use `lookup:phonological-feature:identity` and `lookup:phonological-feature-value:identity|slash`. Each feature or value matches an exact name or abbreviation in the default analysis writing system. Zero or several matches refuse; use a canonical ID to disambiguate. Lookup runs after earlier staged edits, and both lookup forms work in feature specs and rules.
 
 Labels must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters). They are case-sensitive and unique within the file. Motif resolves them to canonical IDs before composing and declaring dependencies. They are not saved as intent data. Only a whole value that starts with `@` and names a declared label is replaced, so the plain text `ph` is never touched; the text `@home`, naming no declared label, is left as written; names, citations, and IDs in other fields keep their normal meaning.
 

@@ -8,6 +8,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -267,6 +268,78 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
         Assert.Equal(before, ReadDraft(path, "bad-citation").Operations.Count);
     }
 
+    [Fact]
+    public void NamedCreatedValuesBindPhonemesAndRulesInOneDraft()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "named-values");
+        var result = ProposalCommands.ComposeBatch(new(path, Version, "named-values", """
+            {"intents":[
+              {"verb":"compose-author-phonological-feature","as":"identity","intent":
+                {"name":"identity","values":[{"name":"letter"},{"name":"slash"},{"name":"accent"}]}},
+              {"verb":"compose-add-phonological-feature-value","as":"extra","intent":
+                {"feature":"@identity","name":"parenthesis"}},
+              {"verb":"compose-author-phoneme","as":"slash","intent":
+                {"name":"slash","representations":["/"],"features":[{"feature":"@identity","value":"@identity:values:slash"}]}},
+              {"verb":"compose-author-phoneme","as":"letter","intent":
+                {"name":"letter c","representations":["c","C"],"features":[{"feature":"lookup:phonological-feature:identity","value":"lookup:phonological-feature-value:identity|letter"}]}},
+              {"verb":"compose-author-phoneme","intent":
+                {"name":"parenthesis","representations":["("],"features":[{"feature":"@identity","value":"@extra"}]}},
+              {"verb":"compose-author-natural-class","intent":
+                {"name":"literal slash","abbreviation":"SLASH","features":[{"feature":"@identity","value":"@identity:values:slash"}]}},
+              {"verb":"compose-author-phonological-rule","intent":
+                {"name":"slash becomes c","direction":"left-to-right","input":[{"phoneme":"@slash"}],"output":[{"phoneme":"@letter"}],"left":[],"right":[]}}
+            ]}
+            """));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var draft = ReadDraft(path, "named-values");
+        var proposal = ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft));
+        ProposalOperationSlotValidator.Validate(proposal);
+        using var scratch = DryRunScratch.Adopt(new SIL.Motif.Host.LcmUtils.FwDataProjectLoader().LoadScratchCache(path),
+            "Named value read-back");
+        ProposalDryRunner.Run(scratch, proposal);
+        var staged = scratch.PeekCache();
+        var feature = Assert.IsAssignableFrom<IFsClosedFeature>(Assert.Single(staged.LangProject.PhFeatureSystemOA.FeaturesOC));
+        Assert.Equal(4, feature.ValuesOC.Count);
+        var phonemes = staged.LangProject.PhonologicalDataOA.PhonemeSetsOS[0].PhonemesOC;
+        foreach (var (representation, expectedValue) in new[] { ("/", "slash"), ("c", "letter"), ("(", "parenthesis") })
+        {
+            var phoneme = Assert.Single(phonemes, item => item.CodesOS.Any(code =>
+                code.Representation.get_String(staged.DefaultVernWs).Text == representation));
+            var spec = Assert.IsAssignableFrom<IFsClosedValue>(Assert.Single(phoneme.FeaturesOA.FeatureSpecsOC));
+            Assert.Equal(feature.Guid, spec.FeatureRA.Guid);
+            Assert.Equal(expectedValue, spec.ValueRA.Name.get_String(staged.DefaultAnalWs).Text);
+        }
+        Assert.DoesNotContain("@identity", JsonSerializer.Serialize(draft.ComposerProvenance));
+        Assert.DoesNotContain("lookup:", JsonSerializer.Serialize(draft.ComposerProvenance));
+    }
+
+    [Theory]
+    [InlineData("@identity:values", "ambiguous")]
+    [InlineData("@identity:values:missing", "matches nothing")]
+    [InlineData("lookup:phonological-feature-value:identity|missing", "matches nothing")]
+    public void AnUnresolvedFeatureValueRefusesTheWholeBatch(string reference, string reason)
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "bad-value");
+        var before = ReadDraft(path, "bad-value").Operations.Count;
+        var result = ProposalCommands.ComposeBatch(new(path, Version, "bad-value", $$$"""
+            {"intents":[
+              {"verb":"compose-author-phonological-feature","as":"identity","intent":
+                {"name":"identity","values":[{"name":"one"},{"name":"two"}]}},
+              {"verb":"compose-author-phoneme","intent":{"name":"c","representations":["c"],
+                "features":[{"feature":"@identity","value":"{{{reference}}}"}]}}
+            ]}
+            """));
+        Assert.False(result.Succeeded);
+        Assert.Contains(reason, result.Refusal!.Message);
+        Assert.Equal(before, ReadDraft(path, "bad-value").Operations.Count);
+    }
+
     private const string LabelledPhoneme =
         "{'verb': 'compose-author-phoneme', 'as': 'ph', 'intent': {'name': 'o', 'representations': ['o']}}";
 
@@ -320,6 +393,26 @@ public sealed class ComposeBatchTests(PristineProjectFixture pristine)
         Assert.Contains(intent, refused.Refusal!.Message);
         Assert.Contains(reason, refused.Refusal.Message);
         Assert.Equal(before, ReadDraft(path, "unresolved").Operations.Count);
+    }
+
+    [Fact]
+    public void LiteralRepresentationsAndNamesDoNotBecomeReferences()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        StartDraft(path, "literal-references");
+        var result = ProposalCommands.ComposeBatch(new(path, Version, "literal-references", """
+            {"intents":[
+              {"verb":"compose-author-phoneme","as":"ph","intent":{"name":"o","representations":["o"]}},
+              {"verb":"compose-author-phoneme","intent":{"name":"@ph","representations":["@ph","lookup:phoneme:a"]}}
+            ]}
+            """));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var recorded = ReadDraft(path, "literal-references").ComposerProvenance.Last().GetProperty("input");
+        Assert.Equal("@ph", recorded.GetProperty("name").GetString());
+        Assert.Equal(new[] { "@ph", "lookup:phoneme:a" },
+            recorded.GetProperty("representations").EnumerateArray().Select(item => item.GetString()));
     }
 
     [Fact]

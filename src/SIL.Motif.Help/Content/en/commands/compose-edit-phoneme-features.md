@@ -8,3 +8,5 @@ motif compose-edit-phoneme-features --project language.fwdata --draft features \
 ```
 
 The features come from [Author a phonological feature](cmd:compose-author-phonological-feature). To give a new phoneme its features at the start, put `features` in [Author a phoneme](cmd:compose-author-phoneme) instead. A phoneme that carries no features is matched by a natural class defined by segments, never by a class defined by features. An archiphoneme is a phoneme like any other, so it can take features too (guide archiphonemes).
+
+Features and values created earlier in the same Draft are available. In a [batch](cmd:compose-batch), a particular value from a multi-value feature can be named as `@identity:values:slash`; across calls use `lookup:phonological-feature:identity` and `lookup:phonological-feature-value:identity|slash`. No positional value selection is inferred.

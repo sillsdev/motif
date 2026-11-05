@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
@@ -23,7 +22,7 @@ public static class EditPhonemeComposer
     /// <summary>Refusal name: the target is not a phoneme of the first phoneme set.</summary>
     public const string NotInInventory = "phoneme-not-in-inventory";
 
-    /// <summary>Refusal name: a new spelling is blank or holds whitespace or environment syntax.</summary>
+    /// <summary>Refusal name: a new spelling is empty or reserved by the parser for a boundary or null segment.</summary>
     public const string Invalid = "phoneme-representation-invalid";
 
     /// <summary>Refusal name: a spelling already belongs to a phoneme or boundary, or is given twice.</summary>
@@ -44,9 +43,12 @@ public static class EditPhonemeComposer
             throw new InvalidOperationException($"{Empty}: name at least one representation to add or respell.");
         var phoneme = Resolve(cache, intent.Target);
         var ws = cache.DefaultVernWs;
-        var own = phoneme.CodesOS.ToDictionary(code => Spelling(cache, code) ?? string.Empty, code => code, StringComparer.Ordinal);
+        var own = phoneme.CodesOS.Select(code => (Code: code, Spelling: Spelling(cache, code)))
+            .Where(item => item.Spelling is not null)
+            .ToDictionary(item => item.Spelling!, item => item.Code, StringComparer.Ordinal);
         var added = intent.Add.Select(Literal).ToArray();
-        var respelled = intent.Respell.Select(r => (From: r.From.Normalize(NormalizationForm.FormD), To: Literal(r.To))).ToArray();
+        var respelled = intent.Respell.Select(r => (From: r.From.Replace("\u25CC", string.Empty)
+            .Normalize(NormalizationForm.FormD), To: Literal(r.To))).ToArray();
 
         var incoming = added.Concat(respelled.Select(r => r.To)).ToArray();
         if (incoming.Distinct(StringComparer.Ordinal).Count() != incoming.Length ||
@@ -54,7 +56,8 @@ public static class EditPhonemeComposer
             throw new InvalidOperationException($"{Duplicate}: a representation is named twice in one edit.");
         var inventory = SoundSystemAuthoring.FirstSet(cache);
         var owners = new Dictionary<string, IPhTerminalUnit>(StringComparer.Ordinal);
-        foreach (var unit in inventory.PhonemesOC.Cast<IPhTerminalUnit>().Concat(inventory.BoundaryMarkersOC))
+        foreach (var unit in inventory.PhonemesOC.Cast<IPhTerminalUnit>().Concat(inventory.BoundaryMarkersOC
+                     .Where(marker => marker.Guid != LangProjectTags.kguidPhRuleWordBdry)))
             foreach (var code in unit.CodesOS)
                 if (Spelling(cache, code) is { } spelling) owners.TryAdd(spelling, unit);
         foreach (var spelling in incoming.Where(owners.ContainsKey))
@@ -126,9 +129,12 @@ public static class EditPhonemeComposer
         catch (InvalidOperationException exception) { throw new InvalidOperationException($"{Invalid}: {exception.Message}"); }
     }
 
-    internal static string? Spelling(LcmCache cache, IPhCode code) =>
-        code.Representation.get_String(cache.DefaultVernWs)?.Text is { Length: > 0 } text
-            ? text.Normalize(NormalizationForm.FormD) : null;
+    internal static string? Spelling(LcmCache cache, IPhCode code)
+    {
+        var spelling = code.Representation.get_String(cache.DefaultVernWs)?.Text
+            ?.Replace("\u25CC", string.Empty).Normalize(NormalizationForm.FormD);
+        return string.IsNullOrEmpty(spelling) ? null : spelling;
+    }
 
     internal static IEnumerable<ComposedRelatedObject> ReadEnvironmentsWriting(LcmCache cache, string spelling)
     {
@@ -142,15 +148,46 @@ public static class EditPhonemeComposer
                 Named(environment.Name.BestAnalysisAlternative.Text, environment.Guid)));
     }
 
-    // Reads an environment string as the longest project codes found left to right, skipping [class] references.
+    // Notation takes precedence over literal codes so a code cannot consume a delimiter or an optional group.
     private static IEnumerable<string> Tokenise(string? environment, IReadOnlyList<string> codes)
     {
-        var text = Regex.Replace(environment?.Normalize(NormalizationForm.FormD) ?? string.Empty, @"\[[^\]]*\]", " ");
-        for (var at = 0; at < text.Length;)
+        var text = environment?.Normalize(NormalizationForm.FormD).Trim() ?? string.Empty;
+        if (text.StartsWith('/')) text = text[1..];
+        foreach (var context in text.Split('_').Take(2))
+            foreach (var segment in SegmentRuns(context.Trim()))
+                for (var at = 0; at < segment.Length;)
+                {
+                    var code = codes.FirstOrDefault(candidate => candidate.Length > 0 &&
+                        string.CompareOrdinal(segment, at, candidate, 0, candidate.Length) == 0);
+                    if (code is null) at++;
+                    else { yield return code; at += code.Length; }
+                }
+    }
+
+    private static IEnumerable<string> SegmentRuns(string context)
+    {
+        for (var at = 0; at < context.Length;)
         {
-            var code = codes.FirstOrDefault(candidate => string.CompareOrdinal(text, at, candidate, 0, candidate.Length) == 0);
-            if (code is null) at++;
-            else { yield return code; at += code.Length; }
+            if (context[at] == '#' || char.IsWhiteSpace(context[at])) at++;
+            else if (context[at] == '[')
+            {
+                var end = context.IndexOf(']', at + 1);
+                at = end < 0 ? context.Length : end + 1;
+            }
+            else if (context[at] == '(')
+            {
+                var end = context.IndexOf(')', at + 1);
+                if (end < 0) { at++; continue; }
+                foreach (var segment in SegmentRuns(context[(at + 1)..end].Trim())) yield return segment;
+                at = end + 1;
+            }
+            else
+            {
+                var start = at++;
+                while (at < context.Length && context[at] is not ('#' or '[' or '(') &&
+                       !char.IsWhiteSpace(context[at])) at++;
+                yield return context[start..at];
+            }
         }
     }
 

@@ -16,7 +16,10 @@ namespace SIL.Motif.Commands;
 /// <remarks>
 /// <para>
 /// The forms are <c>lookup:entry:FORM</c>, <c>lookup:sense:FORM|GLOSS</c>, <c>lookup:msa:FORM|GLOSS</c> (the
-/// grammatical info the sense uses), <c>lookup:phoneme:GRAPHEME</c> and <c>lookup:category:NAME</c>. <c>FORM</c> is
+/// grammatical info the sense uses), <c>lookup:phoneme:GRAPHEME</c>, <c>lookup:category:NAME</c>,
+/// <c>lookup:phonological-feature:NAME</c> and <c>lookup:phonological-feature-value:FEATURE|VALUE</c>.
+/// Phonological features and values match their exact names or abbreviations in the default analysis writing system.
+/// <c>FORM</c> is
 /// the lexeme form in the first vernacular writing system, written with or without the affix hyphen (<c>ika-</c> finds
 /// the prefix, <c>ika</c> finds any entry of that form); <c>GLOSS</c> is a gloss in the first analysis writing system and
 /// separates homographs. A name that matches nothing, or more than one object, is refused with the candidates' ids.
@@ -36,8 +39,11 @@ internal static class LookupReferences
     private static readonly HashSet<string> TextFields = new(StringComparer.Ordinal)
     {
         "form", "gloss", "glosses", "text", "name", "names", "abbreviation", "citation", "description", "note",
-        "notes", "label", "rationale", "spelling", "representation", "comment", "title", "definition", "pattern",
+        "notes", "label", "rationale", "spelling", "representation", "representations", "respell", "comment",
+        "title", "definition", "pattern",
     };
+
+    internal static bool IsTextField(string name) => TextFields.Contains(name);
 
     /// <summary>Replaces each <c>lookup:</c> string in <paramref name="authored"/> with an id, or returns it unchanged.</summary>
     public static JsonElement Resolve(LcmCache cache, JsonElement authored)
@@ -79,7 +85,7 @@ internal static class LookupReferences
         var colon = body.IndexOf(':');
         if (colon <= 0)
             throw new InvalidOperationException(
-                $"'{reference}' is not a lookup reference; write lookup:<kind>:<name> with kind entry, sense, msa, phoneme or category.");
+                $"'{reference}' is not a lookup reference; write lookup:<kind>:<name>.");
         var kind = body[..colon];
         var name = body[(colon + 1)..];
         if (string.IsNullOrWhiteSpace(name))
@@ -93,8 +99,11 @@ internal static class LookupReferences
                 .Where(msa => msa is not null).DistinctBy(msa => msa!.Guid).Select(msa => (ICmObject)msa!), Describe),
             "phoneme" => One(reference, Phonemes(cache, name).Select(phoneme => (ICmObject)phoneme), Describe),
             "category" => One(reference, Categories(cache, name).Select(category => (ICmObject)category), Describe),
+            "phonological-feature" => One(reference, PhonologicalFeatures(cache, name), Describe),
+            "phonological-feature-value" => One(reference, PhonologicalValues(cache, form, gloss), Describe),
             _ => throw new InvalidOperationException(
-                $"'{reference}': lookup kind '{kind}' is not one of entry, sense, msa, phoneme or category."),
+                $"'{reference}': lookup kind '{kind}' is not one of entry, sense, msa, phoneme, category, " +
+                "phonological-feature or phonological-feature-value."),
         };
     }
 
@@ -142,6 +151,22 @@ internal static class LookupReferences
             string.Equals(Nfd(category.Abbreviation.BestAnalysisAlternative?.Text ?? ""), wanted, StringComparison.OrdinalIgnoreCase));
     }
 
+    private static IEnumerable<IFsClosedFeature> PhonologicalFeatures(LcmCache cache, string name) =>
+        cache.LangProject.PhFeatureSystemOA.FeaturesOC.OfType<IFsClosedFeature>()
+            .Where(feature => Named(cache, feature.Name, feature.Abbreviation, name));
+
+    private static IEnumerable<IFsSymFeatVal> PhonologicalValues(LcmCache cache, string featureName, string? valueName)
+    {
+        if (string.IsNullOrWhiteSpace(featureName) || string.IsNullOrWhiteSpace(valueName))
+            throw new InvalidOperationException("A phonological feature value lookup needs FEATURE|VALUE.");
+        return PhonologicalFeatures(cache, featureName).SelectMany(feature => feature.ValuesOC)
+            .Where(value => Named(cache, value.Name, value.Abbreviation, valueName));
+    }
+
+    private static bool Named(LcmCache cache, IMultiUnicode name, IMultiUnicode abbreviation, string wanted) =>
+        Nfd(name.get_String(cache.DefaultAnalWs)?.Text ?? "") == Nfd(wanted) ||
+        Nfd(abbreviation.get_String(cache.DefaultAnalWs)?.Text ?? "") == Nfd(wanted);
+
     private static IEnumerable<IPartOfSpeech> Flatten(IEnumerable<ICmPossibility> items)
     {
         foreach (var item in items)
@@ -156,7 +181,7 @@ internal static class LookupReferences
         var distinct = found.DistinctBy(item => item.Guid).ToArray();
         if (distinct.Length == 1) return CanonicalId.FromGuid(distinct[0].Guid).Value;
         var detail = distinct.Length == 0 ? "matches nothing in the project"
-            : $"matches {distinct.Length} objects ({string.Join("; ", distinct.Take(8).Select(describe))}); add |gloss to pick one";
+            : $"matches {distinct.Length} objects ({string.Join("; ", distinct.Take(8).Select(describe))}); use a canonical ID to pick one";
         throw new InvalidOperationException($"Lookup '{reference}' {detail}.");
     }
 

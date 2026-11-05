@@ -420,7 +420,7 @@ Alpha variables, metathesis, empty or foreign natural classes, and allomorph `Ph
 are outside this operation set.
 
 `compose-batch` also accepts a file-local `as` label on phonological-rule entries. A later rule may
-use `@label` only in `placement.after` or `placement.before`; Motif resolves that reference to the
+use `@label` in `placement.after` or `placement.before`; Motif resolves that reference to the
 earlier `createPhonRules` canonical entity ID before composing the intent and declaring dependencies.
 The label is authoring syntax, not stored semantic data. Labels are case-sensitive and unique within
 one batch, and must match `[A-Za-z][A-Za-z0-9_-]{0,20}` (1–21 ASCII characters). A valid canonical ID
@@ -429,7 +429,9 @@ matching uses the ID's GUID, so different valid prefixes still refer to the same
 placement adjacency and operation-slot rules still apply.
 
 Every other `compose-batch` and `compose` entry may carry an `as` label too, and a later entry may write
-`@label` or `@label:kind` as a whole string value anywhere in its intent, except that a `compose-author-phonological-rule` entry resolves `@label` only in `placement.after` and `placement.before`. Motif resolves it
+`@label` or `@label:kind` as a whole string value anywhere in its intent, including rule input, output
+and feature contexts. `@label:values:NAME` selects a particular created feature value by its exact name
+in the default analysis writing system, normalized to NFD. Motif resolves it
 to the canonical ID of an object the labelled entry created before composing: `@label` is the one object
 the entry created that nothing else it created sits under, `kind` is the last word of a creating operation
 kind without `create` (`msa` also names `MorphoSyntaxAnalyses`). A label that matches nothing, several objects, a later entry, or an entry that created nothing is

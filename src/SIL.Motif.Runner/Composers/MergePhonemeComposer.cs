@@ -109,7 +109,7 @@ public static class MergePhonemeComposer
     {
         var inventory = SoundSystemAuthoring.FirstSet(cache);
         foreach (var unit in inventory.PhonemesOC.Cast<IPhTerminalUnit>().Concat(inventory.BoundaryMarkersOC)
-                     .Where(unit => unit.Guid != source.Guid))
+                     .Where(unit => unit.Guid != source.Guid && unit.Guid != LangProjectTags.kguidPhRuleWordBdry))
             foreach (var spelling in unit.CodesOS.Select(code => EditPhonemeComposer.Spelling(cache, code)).OfType<string>()
                          .Where(moved.Contains))
             {
