@@ -4,6 +4,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Apply;
 using SIL.Motif.Runner.Composers;
+using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -97,30 +98,79 @@ public sealed class MergeLexicalEntriesTests : IDisposable
     }
 
     [Fact]
-    public void AStemAndAPrefixAreRefusedNamingBothEntries()
+    public void AStemCanMergeIntoAPrefixAndKeepBothForms()
     {
         var stem = AddStem(_cache, "tal", _category);
-        var prefix = AddInflectionalPrefix(_cache, "tal", _category);
-        var refused = Assert.Throws<InvalidOperationException>(() =>
-            MergeLexicalEntriesComposer.Build(_cache, new MergeLexicalEntriesIntent(stem.Entry, prefix.Entry)));
-        Assert.Contains("lexeme form", refused.Message, StringComparison.Ordinal);
-        Assert.Contains(stem.Entry.Value, refused.Message, StringComparison.Ordinal);
-        Assert.Contains(prefix.Entry.Value, refused.Message, StringComparison.Ordinal);
+        var prefix = AddInflectionalPrefix(_cache, "tala", _category);
+
+        ApplyOps(_cache, MergeLexicalEntriesComposer.Build(_cache, new(stem.Entry, prefix.Entry)));
+
+        Assert.False(Exists(_cache, stem.Entry));
+        var survivor = Get<ILexEntry>(_cache, prefix.Entry);
+        Assert.Equal(prefix.Form.ToGuid(), survivor.LexemeFormOA.Guid);
+        Assert.Equal(stem.Form.ToGuid(), Assert.Single(survivor.AlternateFormsOS).Guid);
+        Assert.Equal("tal", survivor.AlternateFormsOS[0].Form.VernacularDefaultWritingSystem.Text);
+        Assert.Equal("tala", survivor.LexemeFormOA.Form.VernacularDefaultWritingSystem.Text);
     }
 
     [Fact]
-    public void TwoStemsOfDifferentMorphTypesAreRefusedNamingTheTypes()
+    public void StemsWithDifferentMorphTypesCanMergeAndKeepBothForms()
     {
-        var free = AddStem(_cache, "tal", _category);
-        var bound = AddStem(_cache, "tala", _category);
+        var free = AddStem(_cache, "bukid", _category);
+        var bound = AddStem(_cache, "bulan", _category);
         NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
             Get<ILexEntry>(_cache, bound.Entry).LexemeFormOA.MorphTypeRA = _cache.ServiceLocator
                 .GetInstance<IMoMorphTypeRepository>().GetObject(MoMorphTypeTags.kguidMorphBoundStem));
-        var refused = Assert.Throws<InvalidOperationException>(() =>
-            MergeLexicalEntriesComposer.Build(_cache, new MergeLexicalEntriesIntent(free.Entry, bound.Entry)));
-        Assert.Contains("morph type", refused.Message, StringComparison.Ordinal);
-        Assert.Contains("tal", refused.Message, StringComparison.Ordinal);
-        Assert.Contains("tala", refused.Message, StringComparison.Ordinal);
+
+        ApplyOps(_cache, MergeLexicalEntriesComposer.Build(_cache, new(free.Entry, bound.Entry)));
+
+        Assert.False(Exists(_cache, free.Entry));
+        var survivor = Get<ILexEntry>(_cache, bound.Entry);
+        Assert.Equal(bound.Form.ToGuid(), survivor.LexemeFormOA.Guid);
+        Assert.Equal(MoMorphTypeTags.kguidMorphBoundStem, survivor.LexemeFormOA.MorphTypeRA.Guid);
+        Assert.Equal(free.Form.ToGuid(), Assert.Single(survivor.AlternateFormsOS).Guid);
+        Assert.Equal(MoMorphTypeTags.kguidMorphStem, survivor.AlternateFormsOS[0].MorphTypeRA.Guid);
+    }
+
+    [Fact]
+    public void EditingEntryTextAfterTheDryRunRefusesTheMerge()
+    {
+        var merged = AddStem(_cache, "bukid", _category);
+        var survivor = AddStem(_cache, "bulan", _category);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            Get<ILexEntry>(_cache, merged.Entry).Comment.set_String(_cache.DefaultAnalWs, "Source note");
+            Get<ILexEntry>(_cache, survivor.Entry).Comment.set_String(_cache.DefaultAnalWs, "Reviewed survivor note");
+        });
+        var proposal = Proposal(MergeLexicalEntriesComposer.Build(_cache, new(merged.Entry, survivor.Entry)));
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            Get<ILexEntry>(_cache, survivor.Entry).Comment.set_String(_cache.DefaultAnalWs, "New survivor note"));
+
+        var refusal = Assert.Throws<PreconditionRefusal>(() =>
+            ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "merge-entry-tests"));
+
+        Assert.Equal(PreconditionKind.FootprintDrift, refusal.Kind);
+        Assert.True(Exists(_cache, merged.Entry));
+        Assert.Equal("New survivor note", Get<ILexEntry>(_cache, survivor.Entry).Comment.AnalysisDefaultWritingSystem.Text);
+    }
+
+    [Fact]
+    public void DifferentEntryNotesAreJoinedWithoutLosingEitherText()
+    {
+        var merged = AddStem(_cache, "bukid", _category);
+        var survivor = AddStem(_cache, "bulan", _category);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            Get<ILexEntry>(_cache, merged.Entry).Comment.set_String(_cache.DefaultAnalWs, "Source note");
+            Get<ILexEntry>(_cache, survivor.Entry).Comment.set_String(_cache.DefaultAnalWs, "Survivor note");
+        });
+
+        ApplyOps(_cache, MergeLexicalEntriesComposer.Build(_cache, new(merged.Entry, survivor.Entry)));
+
+        var text = Get<ILexEntry>(_cache, survivor.Entry).Comment.AnalysisDefaultWritingSystem.Text;
+        Assert.Contains("Source note", text, StringComparison.Ordinal);
+        Assert.Contains("Survivor note", text, StringComparison.Ordinal);
     }
 
     [Fact]

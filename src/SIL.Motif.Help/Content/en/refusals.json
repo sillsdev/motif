@@ -231,6 +231,10 @@
     "why": "The Proposal's Trial results are still pinned, kept as current evidence, or cited by another Proposal's report, so it was not deleted and nothing changed. Release the pin or report that keeps them, then delete it again.",
     "source": "Hand-written for Proposal Difference retention."
   },
+  "draft.authored-content": {
+    "why": "This Draft has a Rationale or Comments, so empty-draft cleanup keeps it. Keep the authored discussion, or discard this specific Draft deliberately with discard-draft.",
+    "source": "Authored from the empty-draft cleanup contract."
+  },
   "draft.evidence-retained": {
     "why": "The Draft's Trial results are still pinned, kept as current evidence, or cited by another Proposal's report, so it was not discarded and nothing changed. Release what keeps them, then discard it again.",
     "source": "Hand-written for Proposal Difference retention."

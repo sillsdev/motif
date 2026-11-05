@@ -1,6 +1,10 @@
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
+using SIL.LCModel.Core.Cellar;
+using SIL.LCModel.Core.KernelInterfaces;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
@@ -53,36 +57,16 @@ public sealed record LexEntryMergePayload(CanonicalId Lexicon, CanonicalId Into)
     }
 }
 
-/// <summary>
-/// Decides whether two entries may be merged. LibLCM's merge moves the senses, analyses and alternate forms of the
-/// merged entry onto the survivor and repoints every reference to the merged entry, but it cannot join two entries
-/// whose lexeme forms are different kinds of form: the merged entry's lexeme form would then be dropped. Such a
-/// pair is refused naming both entries and the difference.
-/// </summary>
+/// <summary>Entry identity checks and the before-state bound to an entry merge.</summary>
 internal static class LexEntryMerging
 {
     private const string Kind = LexEntryMergeOperationKinds.Merge;
 
-    /// <summary>Throws, naming both entries, when the pair cannot be merged without losing a form.</summary>
     internal static void Inspect(ILexEntry merged, ILexEntry survivor)
     {
         if (merged.Guid == survivor.Guid)
             throw new InvalidOperationException(
                 $"'{Kind}' refuses {Name(merged)}: an entry cannot be merged into itself.");
-        var from = merged.LexemeFormOA;
-        var into = survivor.LexemeFormOA;
-        if (from is null || into is null) return;
-        if (from.ClassID != into.ClassID)
-            throw new InvalidOperationException(
-                $"'{Kind}' refuses to merge {Name(merged)} into {Name(survivor)}: the lexeme form of the first is a " +
-                $"{from.ClassName} and that of the second is a {into.ClassName}, so one would be lost. Make them the same " +
-                "kind of form first, or keep both entries.");
-        if (from.MorphTypeRA?.Guid != into.MorphTypeRA?.Guid)
-            throw new InvalidOperationException(
-                $"'{Kind}' refuses to merge {Name(merged)} into {Name(survivor)}: the morph type of the first is " +
-                $"'{from.MorphTypeRA?.Name.BestAnalysisAlternative?.Text}' and that of the second is " +
-                $"'{into.MorphTypeRA?.Name.BestAnalysisAlternative?.Text}'. Merge entries of one morph type, or change " +
-                "the morph type first.");
     }
 
     internal static string Name(ILexEntry entry) =>
@@ -95,11 +79,13 @@ internal static class LexEntryMerging
         return JsonSerializer.SerializeToElement(new
         {
             mergedEntry = preview,
+            mergedText = TextFields(merged),
             intoEntry = new
             {
                 id = CanonicalId.FromGuid(survivor.Guid).Value,
                 headword = survivor.HeadWord?.Text,
                 senses = survivor.AllSenses.Count(),
+                text = TextFields(survivor),
             },
             outcome = "one entry: the merged entry's senses, analyses and alternate forms are added to the surviving entry, " +
                 "its lexeme form joins the surviving one or becomes an alternate form when the text differs, every reference to " +
@@ -107,6 +93,48 @@ internal static class LexEntryMerging
             reversal = "createEntries with the merged entry's id, then recreate its forms, senses and analyses from the " +
                 "ids and content listed here and repoint the references",
         });
+    }
+
+    private static SortedDictionary<string, SortedDictionary<string, string>> TextFields(ILexEntry entry)
+    {
+        var cache = entry.Cache;
+        var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
+        var data = cache.DomainDataByFlid;
+        var fields = new SortedDictionary<string, SortedDictionary<string, string>>(StringComparer.Ordinal);
+        // Custom entry text must drift too, so the fields come from LibLCM's live metadata.
+        foreach (var flid in metadata.GetFields(entry.ClassID, true, (int)CellarPropertyTypeFilter.All))
+        {
+            if (((IFwMetaDataCache)metadata).get_IsVirtual(flid)) continue;
+            var values = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            var type = (CellarPropertyType)metadata.GetFieldType(flid);
+            switch (type)
+            {
+                case CellarPropertyType.Unicode:
+                    if (data.get_UnicodeProp(entry.Hvo, flid) is { Length: > 0 } unicode)
+                        values[""] = unicode.Normalize(NormalizationForm.FormD);
+                    break;
+                case CellarPropertyType.String:
+                    if (data.get_StringProp(entry.Hvo, flid)?.get_NormalizedForm(FwNormalizationMode.knmNFSC)?.Text
+                        is { Length: > 0 } text)
+                        values[""] = text;
+                    break;
+                case CellarPropertyType.MultiString:
+                case CellarPropertyType.MultiUnicode:
+                    var alternatives = data.get_MultiStringProp(entry.Hvo, flid);
+                    for (var index = 0; index < alternatives.StringCount; index++)
+                    {
+                        var value = alternatives.GetStringFromIndex(index, out var ws);
+                        var normalized = type == CellarPropertyType.MultiUnicode
+                            ? value?.Text?.Normalize(NormalizationForm.FormD)
+                            : value?.get_NormalizedForm(FwNormalizationMode.knmNFSC)?.Text;
+                        if (!string.IsNullOrEmpty(normalized))
+                            values[RemovalPreview.WritingSystemName(cache, ws)] = normalized;
+                    }
+                    break;
+            }
+            if (values.Count != 0) fields[metadata.GetFieldName(flid)] = values;
+        }
+        return fields;
     }
 }
 
@@ -131,7 +159,7 @@ internal sealed class LexEntryMergeHandler : IOperationHandler
         touchedTargets.Add(id);
         touchedTargets.Add(CanonicalId.FromGuid(survivor.Guid));
         touchedTargets.AddRange(merged.AllOwnedObjects.Select(item => CanonicalId.FromGuid(item.Guid)));
-        // FieldWorks passes true, so no text in either entry is lost: differing strings are joined.
+        // Keep differing notes together, pinned by `DifferentEntryNotesAreJoinedWithoutLosingEitherText`.
         survivor.MergeObject(merged, true);
         return new ExpectedEffect(lexicon, SnapshotFields.LexDbEntries, before, Membership(cache, id), preview);
     }

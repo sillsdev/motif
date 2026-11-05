@@ -475,6 +475,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.AdhocProhibitionDuplicate, FailureReason.Refused),
         Spec(RefusalCodes.AdhocProhibitionSelf, FailureReason.Refused),
         Spec(RefusalCodes.AdhocProhibitionNoMorphologyData, FailureReason.Refused),
+        Spec(RefusalCodes.DraftAuthoredContent, FailureReason.Refused),
         Spec(RefusalCodes.DraftEvidenceRetained, FailureReason.Refused),
         Spec(RefusalCodes.DraftNameCollision, FailureReason.Refused),
         Spec(RefusalCodes.DraftNotFound, FailureReason.NotFound),

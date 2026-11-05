@@ -202,6 +202,10 @@ public sealed record ProposalRevisionRecord(
 public sealed class DraftChangedException(string draftName)
     : InvalidOperationException($"Draft '{draftName}' changed. Reload it and try again.");
 
+/// <summary>A Draft has authored discussion that automatic cleanup must preserve.</summary>
+internal sealed class DraftAuthoredContentException()
+    : InvalidOperationException("This Draft has a Rationale or Comments; its authored content is kept.");
+
 /// <summary>A Proposal's identity and label, read without its revision content.</summary>
 public sealed record ProposalListing(CanonicalId ProposalId, string? Label);
 
@@ -1049,10 +1053,11 @@ public sealed class ProposalRepository : IProposalRepository
     /// Called inside the transaction for a never-finalized Draft, before its evidence goes, so the caller can remove
     /// records the store does not link to the Proposal (its Trial jobs).
     /// </param>
+    /// <param name="emptyDraftId">When supplied, requires this never-finalized Draft with no authored discussion.</param>
     /// <exception cref="ProposalRetainedByExampleSetException">A phonology Example Set cites the Draft.</exception>
     /// <exception cref="ProposalEvidenceRetainedException">A result of the Draft is pinned or retained.</exception>
     internal bool DiscardDraft(string draftName, string? expectedJson,
-        Action<SqliteConnection, SqliteTransaction, CanonicalId>? beforeEvidenceRemoved)
+        Action<SqliteConnection, SqliteTransaction, CanonicalId>? beforeEvidenceRemoved, CanonicalId? emptyDraftId = null)
     {
         if (string.IsNullOrWhiteSpace(draftName)) throw new ArgumentException("A draft name is required.", nameof(draftName));
         using var connection = _database.OpenConnection();
@@ -1070,6 +1075,25 @@ public sealed class ProposalRepository : IProposalRepository
                 throw new DraftChangedException(draftName);
             wasReopened = !reader.IsDBNull(0);
             proposalId = CanonicalId.Parse(reader.GetString(2));
+        }
+        if (emptyDraftId is { } expectedId)
+        {
+            if (wasReopened || proposalId != expectedId || expectedJson is null)
+                throw new DraftChangedException(draftName);
+            using var discussion = connection.CreateCommand();
+            discussion.Transaction = transaction;
+            discussion.CommandText = """
+                SELECT Role, Rationale,
+                    EXISTS (SELECT 1 FROM ProposalComments WHERE ProposalId = $id),
+                    EXISTS (SELECT 1 FROM ProposalRationaleRevisions WHERE ProposalId = $id)
+                FROM Proposals WHERE ProposalId = $id;
+                """;
+            discussion.Parameters.AddWithValue("$id", proposalId.Value);
+            using var reader = discussion.ExecuteReader();
+            if (!reader.Read() || (!reader.IsDBNull(0) && reader.GetString(0) == ProposalRoles.PendingChanges))
+                throw new DraftChangedException(draftName);
+            if (!reader.IsDBNull(1) || reader.GetBoolean(2) || reader.GetBoolean(3))
+                throw new DraftAuthoredContentException();
         }
         if (!wasReopened)
         {
@@ -1102,13 +1126,13 @@ public sealed class ProposalRepository : IProposalRepository
 
     private const string DraftSelectSql =
         "SELECT ProposalId, Status, Label, Rationale, SupersededBy, AnchorJson, ArchivedUtc, DraftName, DraftJson, Role, " +
-        "RationaleIntentDigest, RationaleUpdatedUtc " +
+        "RationaleIntentDigest, RationaleUpdatedUtc, CurrentIntentDigest " +
         "FROM Proposals";
 
     private static ProposalRecord ReadDraftRecord(SqliteDataReader reader)
     {
         var proposalId = CanonicalId.Parse(reader.GetString(0));
-        return new ProposalRecord(proposalId, null, reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetString(1),
+        return new ProposalRecord(proposalId, Text(reader, 12), reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetString(1),
             reader.IsDBNull(2) ? null : reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3),
             reader.IsDBNull(4) ? null : reader.GetString(4), null,
             reader.IsDBNull(5) ? null : reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetString(6),

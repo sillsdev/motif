@@ -24,8 +24,7 @@ public static class MergeLexicalEntriesIntentParser
 }
 
 /// <summary>
-/// Lowers an entry merge to one <see cref="LexEntryMergeOperationKinds.Merge"/>. A pair whose lexeme forms are
-/// different kinds of form, or of different morph types, is refused naming both entries.
+/// Lowers an entry merge to one <see cref="LexEntryMergeOperationKinds.Merge"/>, refusing a self-merge or a non-entry.
 /// </summary>
 public static class MergeLexicalEntriesComposer
 {

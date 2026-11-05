@@ -171,6 +171,36 @@ public sealed class DiscardDraftTests : IDisposable
         Assert.Equal(0, recreated.ExitCode);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Review agent")]
+    public async Task ArgvEmptyDraftCleanupKeepsAuthoredRationaleAndComments(string? authorLabel)
+    {
+        var created = Run($"new --project \"{Project}\" --draft planned-work --label \"Plan the merge\"");
+        Assert.Equal(0, created.ExitCode);
+        using var database = ProjectMotifDatabase.Open(Project);
+        var repository = new ProposalRepository(database);
+        var id = repository.GetDraft("planned-work").ProposalId;
+        Assert.Equal(0, Run($"proposal rationale {id.Value} --project \"{Project}\" --text \"Keep the plan.\"").ExitCode);
+        var author = authorLabel is null ? "" : $" --author \"{authorLabel}\"";
+        Assert.Equal(0, Run($"proposal comment add {id.Value} --project \"{Project}\" " +
+            $"--text \"Keep the citations.\" --person Alex{author}").ExitCode);
+        var start = CliProcess.CreateStartInfo(_root, parserPath: null, developerCommands: true,
+            "discard-empty-drafts", "--project", Project);
+
+        var result = await CliProcess.RunAsync(start);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Empty(result.Error);
+        Assert.Contains("No empty drafts to discard.", result.Output, StringComparison.Ordinal);
+        Assert.Contains($"kept 'planned-work' ({RefusalCodes.DraftAuthoredContent})", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Rationale or Comments", result.Output, StringComparison.Ordinal);
+        Assert.Equal("Keep the plan.", repository.GetDraft("planned-work").Rationale);
+        var keptComment = Assert.Single(new ProposalDiscussionRepository(database).ListComments(id));
+        Assert.Equal("Keep the citations.", keptComment.Text);
+        Assert.Equal(new DiscussionAuthor(authorLabel, "Alex"), keptComment.Author);
+    }
+
     [Fact]
     public void ArgvDiscardDraftOfAnUnknownNameRefusesWithNotFoundExitCode()
     {

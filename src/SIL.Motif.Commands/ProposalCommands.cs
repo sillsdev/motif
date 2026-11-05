@@ -717,7 +717,10 @@ public static partial class ProposalCommands
     /// reopened from exactly at its prior committed revision
     /// (<see cref="ProposalRepository.DiscardDraft(string, string?)"/>).
     /// </summary>
-    public static CommandOutcome<DraftDiscardedResponse> DiscardDraft(DiscardDraftRequest request)
+    public static CommandOutcome<DraftDiscardedResponse> DiscardDraft(DiscardDraftRequest request) =>
+        DiscardDraft(request, emptyDraftId: null);
+
+    private static CommandOutcome<DraftDiscardedResponse> DiscardDraft(DiscardDraftRequest request, CanonicalId? emptyDraftId)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
@@ -730,7 +733,7 @@ public static partial class ProposalCommands
                     return CommandOutcome<DraftDiscardedResponse>.Refused(DraftRevisionConflict(request.DraftName));
                 var removedTrials = new List<string>();
                 var wasReopened = repository.DiscardDraft(request.DraftName, draft.ProposalJson,
-                    DraftDiscardTrials.Remover(database, project, removedTrials));
+                    DraftDiscardTrials.Remover(database, project, removedTrials), emptyDraftId);
                 if (!wasReopened) Review.ReviewMarks.ClearAll(database, draft.ProposalId.Value);
                 TrialScratchRetention.DeleteJobs(removedTrials);
 
@@ -744,6 +747,11 @@ public static partial class ProposalCommands
             catch (DraftChangedException)
             {
                 return CommandOutcome<DraftDiscardedResponse>.Refused(DraftRevisionConflict(request.DraftName));
+            }
+            catch (DraftAuthoredContentException exception)
+            {
+                return CommandOutcome<DraftDiscardedResponse>.Refused(new Refusal(RefusalCodes.DraftAuthoredContent,
+                    FailureReason.Refused, exception.Message, Fact(("draftName", request.DraftName))));
             }
             catch (DraftTrialRunningException)
             {

@@ -2,6 +2,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -52,5 +53,128 @@ public sealed class DiscardEmptyDraftsTests(PristineProjectFixture pristine)
         var outcome = ProposalCommands.DiscardEmptyDrafts(new DiscardEmptyDraftsRequest(path, Version));
         Assert.True(outcome.Succeeded);
         Assert.Empty(outcome.Value!.Discarded);
+    }
+
+    [Theory]
+    [InlineData(true, false, null)]
+    [InlineData(false, true, null)]
+    [InlineData(true, true, null)]
+    [InlineData(false, true, "Review agent")]
+    [InlineData(true, true, "Review agent")]
+    public void AuthoredRationaleAndCommentsAreKeptAndReported(bool rationale, bool comment, string? authorLabel)
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        var created = ProposalCommands.New(new(path, Version, "planned-work", "Plan the merge"));
+        Assert.True(created.Succeeded);
+        var id = created.Value!.ProposalId;
+        if (rationale)
+            Assert.True(ProposalTexts.SetRationale(new(path, Version, id, "Keep the plan before composing.")).Succeeded);
+        if (comment)
+            Assert.True(ProposalComments.Add(new(path, Version, id, "Keep the source citations.", "Alex", authorLabel))
+                .Succeeded);
+
+        var outcome = ProposalCommands.DiscardEmptyDrafts(new(path, Version));
+
+        Assert.True(outcome.Succeeded);
+        Assert.Empty(outcome.Value!.Discarded);
+        var kept = Assert.Single(outcome.Value.Kept);
+        Assert.Equal("planned-work", kept.DraftName);
+        Assert.Equal("draft.authored-content", kept.Code);
+        Assert.Contains("Rationale or Comments", kept.Reason, StringComparison.Ordinal);
+        using var database = ProjectMotifDatabase.Open(path);
+        var record = new ProposalRepository(database).GetDraft("planned-work");
+        Assert.Equal(id, record.ProposalId.Value);
+        Assert.Equal(rationale ? "Keep the plan before composing." : null, record.Rationale);
+        var comments = new ProposalDiscussionRepository(database).ListComments(record.ProposalId);
+        if (comment)
+        {
+            var keptComment = Assert.Single(comments);
+            Assert.Equal("Keep the source citations.", keptComment.Text);
+            Assert.Equal(new DiscussionAuthor(authorLabel, "Alex"), keptComment.Author);
+        }
+        else Assert.Empty(comments);
+    }
+
+    [Fact]
+    public void AnEmptyReopenedDraftIsUntouched()
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        var created = ProposalCommands.New(new(path, Version, "reopened", "Revise the entry"));
+        Assert.True(created.Succeeded);
+        var id = created.Value!.ProposalId;
+        Assert.True(ProposalTexts.SetRationale(new(path, Version, id, "Revise the entry.")).Succeeded);
+        var added = ProposalCommands.AddSetGloss(new(path, Version, "reopened", CanonicalId.Mint().Value, "en", "gloss"));
+        Assert.True(added.Succeeded);
+        Assert.True(ProposalCommands.Finalize(new(path, Version, "reopened")).Succeeded);
+        Assert.True(ProposalCommands.Withdraw(new(path, Version, id)).Succeeded);
+        Assert.True(ProposalCommands.Reopen(new(path, Version, "reopened", id)).Succeeded);
+        Assert.True(ProposalCommands.RemoveOperations(new(path, Version, "reopened", [added.Value!.OperationId], false)).Succeeded);
+        using var database = ProjectMotifDatabase.Open(path);
+        var repository = new ProposalRepository(database);
+        var before = repository.GetDraft("reopened");
+
+        var outcome = ProposalCommands.DiscardEmptyDrafts(new(path, Version));
+
+        Assert.True(outcome.Succeeded);
+        Assert.Empty(outcome.Value!.Discarded);
+        Assert.Empty(outcome.Value.Kept);
+        Assert.NotNull(before.IntentDigest);
+        Assert.Equal(before, repository.GetDraft("reopened"));
+        Assert.NotNull(Assert.Single(repository.ListDrafts()).IntentDigest);
+        Assert.Throws<DraftChangedException>(() => repository.DiscardDraft("reopened", before.ProposalJson,
+            beforeEvidenceRemoved: null, emptyDraftId: before.ProposalId));
+        Assert.Equal(before, repository.GetDraft("reopened"));
+    }
+
+    [Theory]
+    [InlineData(true, null)]
+    [InlineData(false, null)]
+    [InlineData(false, "Review agent")]
+    public void DiscussionWrittenAfterListingIsProtectedInsideTheDiscardTransaction(bool rationale, string? authorLabel)
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        Assert.True(ProposalCommands.New(new(path, Version, "writing", null)).Succeeded);
+        using var database = ProjectMotifDatabase.Open(path);
+        var repository = new ProposalRepository(database);
+        var listed = repository.GetDraft("writing");
+        if (rationale)
+            Assert.True(ProposalTexts.SetRationale(new(path, Version, listed.ProposalId.Value, "New rationale.")).Succeeded);
+        else
+            Assert.True(ProposalComments.Add(new(path, Version, listed.ProposalId.Value, "New comment.", "Alex", authorLabel))
+                .Succeeded);
+
+        Assert.Throws<DraftAuthoredContentException>(() => repository.DiscardDraft("writing", listed.ProposalJson,
+            beforeEvidenceRemoved: null, emptyDraftId: listed.ProposalId));
+
+        Assert.True(repository.DraftNameExists("writing"));
+        Assert.Equal(listed.ProposalJson, repository.GetDraft("writing").ProposalJson);
+        if (rationale) Assert.Equal("New rationale.", repository.GetDraft("writing").Rationale);
+        else
+        {
+            var keptComment = Assert.Single(new ProposalDiscussionRepository(database).ListComments(listed.ProposalId));
+            Assert.Equal("New comment.", keptComment.Text);
+            Assert.Equal(new DiscussionAuthor(authorLabel, "Alex"), keptComment.Author);
+        }
+    }
+
+    [Fact]
+    public void AnOperationSavedAfterListingPreventsDiscard()
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        Assert.True(ProposalCommands.New(new(path, Version, "composing", null)).Succeeded);
+        using var database = ProjectMotifDatabase.Open(path);
+        var repository = new ProposalRepository(database);
+        var listed = repository.GetDraft("composing");
+        Assert.True(ProposalCommands.AddSetGloss(new(path, Version, "composing", CanonicalId.Mint().Value, "en", "gloss"))
+            .Succeeded);
+
+        Assert.Throws<DraftChangedException>(() => repository.DiscardDraft("composing", listed.ProposalJson,
+            beforeEvidenceRemoved: null, emptyDraftId: listed.ProposalId));
+
+        Assert.Single(ProposalCommands.DeserializeDraft(repository.GetDraft("composing").ProposalJson!).Operations);
     }
 }

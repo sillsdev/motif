@@ -814,7 +814,7 @@
   },
   "compose-merge-lexical-entries": {
     "title": "Merge entries",
-    "description": "Merges one entry into another so the two become one entry, as Merge Entry does in FieldWorks: the merged entry's senses, grammatical info and alternate forms move to the entry that stays, its lexeme form joins the other's or becomes an alternate form, and every reference to it points at the entry that stays; Motif stages a Draft for a person to review and Apply. It refuses an entry merged into itself and two entries whose lexeme forms are different kinds of form or of different morph types.",
+    "description": "Merges one entry into another so the two become one entry, as Merge Entry does in FieldWorks: the merged entry's senses, grammatical info and alternate forms move to the entry that stays, its lexeme form joins the other's or becomes an alternate form, and every reference to it points at the entry that stays; Motif stages a Draft for a person to review and Apply. It refuses an entry merged into itself or an id that is not an entry.",
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",
@@ -1627,7 +1627,7 @@
   },
   "discard-empty-drafts": {
     "title": "Discard empty drafts",
-    "description": "Removes every Draft that was never finalized and holds no changes, such as the ones a failed compose leaves after a new. A Draft with changes, the pending changes and any Draft that was finalized or reopened are left alone, and one that cannot be discarded is listed with the reason.",
+    "description": "Removes every Draft that was never finalized and holds no changes, such as the ones a failed compose leaves after a new. A Draft with changes, the pending changes and any Draft that was finalized or reopened are left alone. A Draft with a Rationale or Comments, or one that cannot be discarded, is kept and listed with the reason.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "prefix": "Optional text; only Drafts whose name starts with it are considered."

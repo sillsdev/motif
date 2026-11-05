@@ -604,9 +604,10 @@ membership entry `ref` goes, with a preview of the headword, forms, senses and a
 the project's lexicon, which a different value makes stale, and the entry that survives. It runs LibLCM's own
 `MergeObject(entry, true)` on the survivor, which is what FieldWorks' Merge Entry runs: senses, analyses and alternate
 forms move to the survivor, a differing lexeme form becomes an alternate form, every reference to the merged entry is
-repointed, and equal forms and analyses become one. The operation refuses an entry merged into itself and a pair whose
-lexeme forms are different kinds of form or of different morph types (LibLCM would drop one), naming both entries. The
-effect is `lexical/lexDb/entries` on the lexicon, whose membership entry `ref` of the merged entry goes, with a
+repointed, and equal forms and analyses become one. The operation refuses an entry merged into itself and ids that
+are not entries; different lexeme-form classes and morph types are allowed. Both entries' stored text fields, including
+custom fields and every writing-system alternative, participate in the footprint so changed text requires a fresh Dry Run.
+The effect is `lexical/lexDb/entries` on the lexicon, whose membership entry `ref` of the merged entry goes, with a
 preview of what the merged entry held and the entry it joins. The composer is `compose-merge-lexical-entries`.
 
 `lexical/lexEntry/removeAlternateForm` targets one `LexEntry` and has the closed `after` shape
