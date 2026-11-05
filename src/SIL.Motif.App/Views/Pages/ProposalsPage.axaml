@@ -62,6 +62,8 @@
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding SelectedProposal.DetailsStatusText}"
                                          TextWrapping="Wrap" />
               </Grid>
+              <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedProposal.DetailsStatusSentence}"
+                                       IsVisible="{Binding SelectedProposal.HasDetailsStatusSentence}" TextWrapping="Wrap" />
               <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
                 <TextBlock Classes="inspectorFactLabel" Text="{x:Static app:MotifAppStrings.BuiltBy}" />
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding SelectedProposal.AuthorText}"
@@ -72,6 +74,7 @@
                   <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ItsChanges}" />
                   <views:CopyableTextBlock Text="{Binding SelectedProposal.ChangeCountText}" />
                   <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedProposal.KindsText}"
+                                           IsVisible="{Binding SelectedProposal.KindsText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                            TextWrapping="Wrap" />
                   <views:CopyableTextBlock Classes="inspectorMeaning problem"
                                            Text="{Binding SelectedProposal.LostChip}"
@@ -255,8 +258,8 @@
                         Classes.look="{Binding TableStatusIsLook}"
                         Classes.problem="{Binding TableStatusIsProblem}"
                         IsVisible="{Binding HasTableStatus}">
-                  <TextBlock Text="{Binding TableStatusText}" TextWrapping="NoWrap"
-                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding TableStatusText}" TextWrapping="Wrap"
+                             ToolTip.Tip="{Binding TableStatusText}" />
                 </Border>
                 <Border Grid.Column="3" controls:DenseTable.Secondary="True">
                   <TextBlock Classes="denseTableCell proposalNumber" Classes.moved="{Binding ApprovedKept.Moved}"

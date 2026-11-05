@@ -226,7 +226,7 @@ public sealed class ProposalCardViewModel : ObservableObject
 
     public bool HasTableStatus => TableStatusText.Length > 0;
 
-    public bool TableStatusIsLook => TableStatusText is "Ready" or "Applied";
+    public bool TableStatusIsLook => TableStatusText is "Applied";
 
     public bool TableStatusIsProblem => TableStatusText is "Needs another try" or "Did not finish";
 
@@ -234,7 +234,7 @@ public sealed class ProposalCardViewModel : ObservableObject
     public bool CanDelete => !Card.IsDraft && Card.Status is "rejected" or "superseded" or "withdrawn";
 
     /// <summary>What the Proposal changes in one line, such as "2 rules · 1 allomorph · 3 parses approved".</summary>
-    public string KindsText => KindsIn(Card.ChangeKinds);
+    public string KindsText => KindsIn(Card.ChangeKinds) is { } kinds && kinds != ChangeCountText ? kinds : string.Empty;
 
     /// <summary>The card's numbers in order, the time on this computer last, or empty when the Proposal was never tried.</summary>
     public IReadOnlyList<ProposalNumber> Numbers { get; } = [];
@@ -328,6 +328,12 @@ public sealed class ProposalCardViewModel : ObservableObject
 
     /// <summary>The status shown beside the Proposal details.</summary>
     public string DetailsStatusText => Card.IsPendingDraft ? "Not applied yet" : StatusWord;
+
+    /// <summary>Explains a Ready Proposal's status and any reason its numbers need another try.</summary>
+    public string DetailsStatusSentence => StatusWord != "Ready" ? string.Empty :
+        Standing.Kind == TrialStandingKind.Current ? MotifAppStrings.ProposalReadyExplanation : Words.Sentence;
+
+    public bool HasDetailsStatusSentence => DetailsStatusSentence.Length > 0;
 
     /// <summary>The number of changes listed for this Proposal.</summary>
     public string ChangeCountText
@@ -864,7 +870,7 @@ public sealed partial class ProposalsPageModel : PageModel
             return;
         }
         PicturesLoading = Pictures.LoadAsync(path, value.ProposalId, !value.Card.IsDraft && !PicturesFrozen(value.Card.Status));
-        Parsimony.SetParserWork(value.Card.Trial?.Work);
+        Parsimony.SetTrial(value.Card.Trial);
         ParsimonyWatching = Parsimony.Watch(path, value.ProposalId);
         // The same Proposal chosen again, as when the list was re-read, only refreshes what its card offers.
         if (value.ProposalId == _differenceProposalId && path == _differenceProject)

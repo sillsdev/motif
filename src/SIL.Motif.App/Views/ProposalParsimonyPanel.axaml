@@ -23,7 +23,7 @@
                                Text="{Binding Note}" IsVisible="{Binding HasNote}" />
       <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" IsVisible="{Binding ShowsStatus}">
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" IsVisible="{Binding HasReadText}">
-          <TextBlock Classes="inspectorFactLabel" Text="{Binding ReadTitle}" />
+          <TextBlock Classes="muted" Text="{Binding ReadTitle}" />
           <views:CopyableTextBlock x:Name="ParsimonyRead" TextWrapping="Wrap" Text="{Binding ReadText}"
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyRead}" />
         </StackPanel>

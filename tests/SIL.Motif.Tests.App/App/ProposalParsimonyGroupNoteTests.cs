@@ -10,6 +10,18 @@ public sealed class ProposalParsimonyGroupNoteTests
     private const string Project = "/tmp/parsimony-group-note.fwdata";
 
     [Fact]
+    public void UnreadableFindingsDoNotClaimThatThereAreNone()
+    {
+        var group = new ProposalParsimonyGroupViewModel("Grammar Group", "Ready", "", [])
+        {
+            HasFindingsRead = true,
+            FindingsNote = "The Findings could not be read. The counts above still stand.",
+        };
+
+        Assert.Equal("Findings", group.FindingsHeader);
+    }
+
+    [Fact]
     public async Task AGroupWhoseMeasuresAllComputedSaysNoFindingsAreNewOrChanged()
     {
         var note = await NoteAsync(Group(ParsimonyMeasureStatus.Computed));

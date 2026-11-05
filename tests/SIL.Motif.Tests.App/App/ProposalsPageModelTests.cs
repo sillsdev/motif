@@ -354,6 +354,45 @@ public sealed class ProposalsPageModelTests
                 new("parse-approved", 3, "3 parses approved")]));
     }
 
+    [Fact]
+    public void AGenericKindCountDoesNotRepeatTheChangeCount()
+    {
+        var card = new ProposalCardViewModel(Card("p/closed", "Closed", ProposalGroup.SetAside,
+            kinds: [new("rule", 5, "5 changes")]));
+
+        Assert.Equal("5 changes", card.ChangeCountText);
+        Assert.Equal(string.Empty, card.KindsText);
+    }
+
+    [Fact]
+    public void ReadyIsNotPresentedAsAWarning()
+    {
+        var card = new ProposalCardViewModel(Card("p/ready", "Ready", ProposalGroup.WaitingForYou,
+            standing: TrialStanding.Current));
+
+        Assert.Equal("Ready", card.TableStatusText);
+        Assert.False(card.TableStatusIsLook);
+        Assert.Equal("This Proposal is ready for review.", card.DetailsStatusSentence);
+    }
+
+    [Fact]
+    public async Task AClosedProposalWithTrialNumbersDoesNotSayNoTrialFinished()
+    {
+        var card = Card("p/closed", "Closed", ProposalGroup.SetAside,
+            trial: Summary(TrialFreshness.Current), standing: TrialStanding.Current) with { Status = "rejected" };
+        var fake = new FakeCommandClient();
+        fake.ProposalStandingsCompleteWith(Standings(card));
+        fake.ProposalParsimonyStatusIs(ProposalParsimonyStatusFixtures.NotYetRun(card.ProposalId));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+
+        await context.OpenProjectAsync(ProjectPath);
+        await page.ParsimonyWatching;
+
+        Assert.True(page.SelectedProposal!.HasNumbers);
+        Assert.DoesNotContain("No Trial has finished yet", page.Parsimony.Sentence);
+    }
+
     [Theory]
     [InlineData(5.0, null)]
     [InlineData(5.1, "This Trial makes parsing about 6% more work than the Baseline.")]

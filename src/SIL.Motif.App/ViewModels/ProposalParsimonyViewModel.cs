@@ -45,6 +45,7 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
     private CancellationTokenSource? _cancellation;
     private Task _watching = Task.CompletedTask;
     private string? _projectPath;
+    private bool _hasTrial;
     private int _generation;
 
     /// <summary>Creates the model.</summary>
@@ -169,12 +170,21 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
     /// <param name="work">The Trial's parser work against the Baseline, or null when the Proposal has no Trial.</param>
     public void SetParserWork(TrialWork? work) => ParserWork = ProposalParsimonyText.ParserWork(work);
 
+    /// <summary>Sets the selected Proposal's Trial, including whether its numbers came from a finished try.</summary>
+    public void SetTrial(TrialSummary? trial)
+    {
+        _hasTrial = trial is not null;
+        SetParserWork(trial?.Work);
+        if (Status is { } status) Sentence = SentenceFor(status);
+    }
+
     /// <summary>Stops watching and hides the section, as when the Proposal is closed.</summary>
     public void Stop()
     {
         EndWatch();
         DiscardFindings();
         _projectPath = null;
+        _hasTrial = false;
         ProposalId = null;
         Status = null;
         IsVisible = false;
@@ -259,7 +269,7 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
         Status = status;
         ShownRefusal = null;
         StateLabel = ProposalParsimonyText.StateLabel(status.State);
-        Sentence = ProposalParsimonyText.Sentence(status);
+        Sentence = SentenceFor(status);
         Note = ProposalParsimonyText.Note(status);
         ReadText = ReadOf(status);
         WallTime = ProposalParsimonyText.WallTime(status);
@@ -269,6 +279,12 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
         IsVisible = true;
         IsLoading = false;
     }
+
+    private string SentenceFor(ProposalParsimonyStatus status) =>
+        _hasTrial && status.State == ProposalParsimonyState.NotYetRun &&
+        status.StateReason?.Code != ProposalParsimonyText.NotQueuedCode
+            ? MotifAppStrings.ProposalParsimonyNotAvailableYet
+            : ProposalParsimonyText.Sentence(status);
 
     // A group is read only when it is Ready and measured; the key names the stored Reports it would read.
     private static string? FindingsKey(ProposalParsimonyStatus status) => status.State != ProposalParsimonyState.Ready

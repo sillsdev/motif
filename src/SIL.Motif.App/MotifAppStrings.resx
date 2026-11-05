@@ -1148,6 +1148,18 @@
     <value>Parse Selection: {0}</value>
     <comment>Status bar label followed by the words and Texts chosen for parsing. {0} is the selection summary.</comment>
   </data>
+  <data name="MotifApp.ProposalParsimonyFindingsHeader" xml:space="preserve">
+    <value>Findings</value>
+    <comment>Heading for Findings when the accompanying note explains why none are listed.</comment>
+  </data>
+  <data name="MotifApp.ProposalReadyExplanation" xml:space="preserve">
+    <value>This Proposal is ready for review.</value>
+    <comment>Explanation of the Ready status in the Proposal inspector.</comment>
+  </data>
+  <data name="MotifApp.ProposalParsimonyNotAvailableYet" xml:space="preserve">
+    <value>Parsimony advice is not available for this Proposal yet.</value>
+    <comment>Parsimony has not run, while a previous Trial's numbers are shown.</comment>
+  </data>
   <data name="MotifApp.NoPicturesYet" xml:space="preserve">
     <value>No pictures yet.</value>
     <comment>Window text.</comment>

@@ -15,6 +15,54 @@ namespace SIL.Motif.Tests.App;
 public sealed class ProposalsNarrowFrameTests
 {
     [Theory]
+    [InlineData(720, 100)]
+    [InlineData(1440, 150)]
+    public void ChoosingAnotherProposalMovesTheVisibleSelection(int width, int zoom)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            ProposalsCaptureFixture.Configure(fake);
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            var settings = SettingsTestAccess.Model(window);
+            var previousZoom = settings.ZoomPercent;
+            try
+            {
+                settings.ZoomPercent = zoom;
+                window.Width = width;
+                workspace.CurrentPage = WorkspacePage.Proposals;
+                PageScreenshots.Settle(window);
+                var page = window.PageView<ProposalsPage>();
+                var model = workspace.PageModel<ProposalsPageModel>();
+                var list = page.FindControl<ListBox>("ProposalsRowsItems")!;
+                var first = model.SelectedProposal!;
+                var second = model.Rows.OfType<ProposalCardViewModel>()
+                    .Single(card => card.ProposalId == "proposal/reduplicated-forms");
+                var firstRow = Assert.IsType<ListBoxItem>(list.ContainerFromItem(first));
+                var secondRow = Assert.IsType<ListBoxItem>(list.ContainerFromItem(second));
+
+                HeadlessClick.Click(window, secondRow, "Choose another Proposal");
+                PageScreenshots.Settle(window);
+
+                Assert.Same(second, model.SelectedProposal);
+                Assert.True(secondRow.IsSelected);
+                Assert.False(firstRow.IsSelected);
+                Assert.True(secondRow.IsEffectivelyVisible);
+                var status = Assert.Single(secondRow.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.Text == "Needs another try");
+                Assert.Equal(Avalonia.Media.TextWrapping.Wrap, status.TextWrapping);
+                Assert.Equal("Needs another try", ToolTip.GetTip(status));
+            }
+            finally
+            {
+                settings.ZoomPercent = previousZoom;
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void AutomaticAndOpenedInspectorKeepTheComposedFrameUsable(bool dark)

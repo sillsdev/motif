@@ -726,6 +726,12 @@ public static class MotifAppStrings
     public static string RemovePicture => Text("MotifApp.RemovePicture");
 
     public static string ParseSelectionSummaryFormat => Text("MotifApp.ParseSelectionSummaryFormat");
+
+    public static string ProposalParsimonyFindingsHeader => Text("MotifApp.ProposalParsimonyFindingsHeader");
+
+    public static string ProposalReadyExplanation => Text("MotifApp.ProposalReadyExplanation");
+
+    public static string ProposalParsimonyNotAvailableYet => Text("MotifApp.ProposalParsimonyNotAvailableYet");
     public static string NoPicturesYet => Text("MotifApp.NoPicturesYet");
     public static string PictureNotRead => Text("MotifApp.PictureNotRead");
     public static string PictureNotSupported => Text("MotifApp.PictureNotSupported");

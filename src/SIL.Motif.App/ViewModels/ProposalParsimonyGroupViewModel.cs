@@ -69,7 +69,9 @@ public sealed record ProposalParsimonyGroupViewModel(
     public bool HasFindingsRead { get; init; }
 
     /// <summary>The Findings fold's header, with the count in a plural sentence.</summary>
-    public string FindingsHeader => PluralText.Format(MotifAppStrings.ProposalParsimonyFindingsHeaderPattern, Findings.Count + FindingsMore);
+    public string FindingsHeader => Findings.Count + FindingsMore == 0 && HasFindingsNote
+        ? MotifAppStrings.ProposalParsimonyFindingsHeader
+        : PluralText.Format(MotifAppStrings.ProposalParsimonyFindingsHeaderPattern, Findings.Count + FindingsMore);
 
     /// <summary>Whether the group has a note about its Findings.</summary>
     public bool HasFindingsNote => FindingsNote.Length > 0;
