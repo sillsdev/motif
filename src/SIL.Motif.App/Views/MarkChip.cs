@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -127,6 +128,7 @@ public sealed class MarkChip : Border
         }
         Child = row;
         AutomationProperties.SetName(this, Text is { Length: > 0 } label ? label : Mark?.Word ?? string.Empty);
+        SetValue(ToolTip.TipProperty, Mark?.Word, BindingPriority.Style);
     }
 
     /// <summary>

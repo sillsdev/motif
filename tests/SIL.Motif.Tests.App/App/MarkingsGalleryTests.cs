@@ -31,6 +31,7 @@ public sealed class MarkingsGalleryTests
             Assert.Equal("U", Assert.IsType<TextBlock>(mark.Child).Text);
             Assert.Contains("unknown", mark.Classes);
             Assert.Equal("Unknown", AutomationProperties.GetName(mark));
+            Assert.Equal("Unknown", ToolTip.GetTip(mark));
         });
     }
 

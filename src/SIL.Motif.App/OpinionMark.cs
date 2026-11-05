@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
+using Avalonia.Data;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Controls;
@@ -68,6 +69,7 @@ public sealed class OpinionMark : Border
         if (Kind is not { } kind)
         {
             AutomationProperties.SetName(this, string.Empty);
+            SetValue(ToolTip.TipProperty, null, BindingPriority.Style);
             return;
         }
 
@@ -80,6 +82,7 @@ public sealed class OpinionMark : Border
             ? LetterBlock(value)
             : new Grid { Children = { new Rectangle { Classes = { "opinionDash" } } } };
         AutomationProperties.SetName(this, name);
+        SetValue(ToolTip.TipProperty, name, BindingPriority.Style);
     }
 
     private static TextBlock LetterBlock(char letter)
