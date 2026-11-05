@@ -49,6 +49,9 @@ public sealed class MorphemePanel : Decorator
     public static readonly StyledProperty<bool> CompactLinksProperty =
         AvaloniaProperty.Register<MorphemePanel, bool>(nameof(CompactLinks));
 
+    public static readonly StyledProperty<bool> InlineLinksProperty =
+        AvaloniaProperty.Register<MorphemePanel, bool>(nameof(InlineLinks));
+
     public static readonly StyledProperty<bool> FormLinksProperty =
         AvaloniaProperty.Register<MorphemePanel, bool>(nameof(FormLinks));
 
@@ -101,6 +104,7 @@ public sealed class MorphemePanel : Decorator
         RevealLinksProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         ShowLinksProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         CompactLinksProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
+        InlineLinksProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         FormLinksProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         MaxVisibleMorphsProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
         LeadingMarkProperty.Changed.AddClassHandler<MorphemePanel>((panel, _) => panel.InvalidateParts());
@@ -197,6 +201,13 @@ public sealed class MorphemePanel : Decorator
     {
         get => GetValue(CompactLinksProperty);
         set => SetValue(CompactLinksProperty, value);
+    }
+
+    /// <summary>Whether a morpheme's link sits beside its gloss instead of on a line of its own.</summary>
+    public bool InlineLinks
+    {
+        get => GetValue(InlineLinksProperty);
+        set => SetValue(InlineLinksProperty, value);
     }
 
     /// <summary>Whether a linked form itself opens FieldWorks instead of showing a separate link below it.</summary>
@@ -389,6 +400,12 @@ public sealed class MorphemePanel : Decorator
         return text;
     }
 
+    private static void AnchorTip(HyperlinkButton link, Control part)
+    {
+        ClearTipPlacement.SetIsEnabled(link, true);
+        ClearTipPlacement.SetAnchor(link, part);
+    }
+
     private Control PartFor(ParserReadingMorphViewModel morph, int index, bool last)
     {
         var formIsLink = FormLinks && morph.HasLink;
@@ -419,7 +436,17 @@ public sealed class MorphemePanel : Decorator
         else
             gloss.TextWrapping = TextWrapping.Wrap;
         SetLanguageText(gloss, morph.GlossWritingSystem);
-        part.Children.Add(gloss);
+        var link = ShowLinks && morph.HasLink && !formIsLink ? Link(morph, RevealLinks, CompactLinks) : null;
+        if (InlineLinks && link is not null)
+        {
+            var line = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 4 };
+            Grid.SetColumn(link, 1);
+            AnchorTip(link, part);
+            line.Children.Add(gloss);
+            line.Children.Add(link);
+            part.Children.Add(line);
+        }
+        else part.Children.Add(gloss);
         if (ShowCategory && morph.Category is { Length: > 0 })
         {
             var category = new CopyableTextBlock
@@ -427,12 +454,9 @@ public sealed class MorphemePanel : Decorator
             SetLanguageText(category, morph.CategoryWritingSystem);
             part.Children.Add(category);
         }
-        if (ShowLinks && morph.HasLink && !formIsLink) part.Children.Add(Link(morph, RevealLinks, CompactLinks));
-        foreach (var link in part.Children.OfType<HyperlinkButton>())
-        {
-            ClearTipPlacement.SetIsEnabled(link, true);
-            ClearTipPlacement.SetAnchor(link, part);
-        }
+        if (link is not null && !InlineLinks) part.Children.Add(link);
+        foreach (var anchored in part.Children.OfType<HyperlinkButton>())
+            AnchorTip(anchored, part);
         if (last) part.Classes.Add("morphemePanelPartLast");
         if (RevealLinks && morph.HasLink) part.Classes.Add("hoverReveal");
         if (morph.InspectSubject is not { } reference) return part;

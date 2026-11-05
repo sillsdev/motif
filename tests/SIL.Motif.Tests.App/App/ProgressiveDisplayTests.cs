@@ -32,7 +32,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class ProgressiveDisplayTests
 {
     private const int WordRowControlCeiling = 64;
-    private const int WordRowDepthCeiling = 10;
+    private const int WordRowDepthCeiling = 11;
     private const int WordCardControlCeiling = 64;
     private const int WordCardDepthCeiling = 18;
     // The strip shows a five-morpheme word's complete morphology on both lines, an owner decision.

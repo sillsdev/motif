@@ -88,6 +88,33 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void InlineLinksSitBesideAWrappingGlossAndYieldToFormLinks()
+    {
+        avalonia.Invoke(() =>
+        {
+            var morph = new ParserReadingMorphViewModel(new ParserReadingMorph("كِتَاب",
+                "first.second.third.fourth.fifth.sixth", "n", null, false, EntryLink) { FormWritingSystem = "ar" });
+            var panel = new MorphemePanel { Morphs = [morph], RevealLinks = true, CompactLinks = true, InlineLinks = true };
+            panel.FlowDirection = FlowDirection.RightToLeft;
+            panel.Measure(new Size(120, double.PositiveInfinity));
+            var part = Assert.Single(Assert.IsType<WrapPanel>(panel.Child).Children.OfType<StackPanel>());
+            var line = Assert.IsType<Grid>(part.Children[1]);
+            var gloss = Assert.IsType<CopyableTextBlock>(line.Children[0]);
+            var link = Assert.IsType<HyperlinkButton>(line.Children[1]);
+            Assert.Equal(1, Grid.GetColumn(link));
+            Assert.Equal(TextWrapping.Wrap, gloss.TextWrapping);
+            Assert.True(gloss.DesiredSize.Height > link.DesiredSize.Height * 1.5, "A long gloss wraps instead of widening the cell.");
+            Assert.True(part.DesiredSize.Width <= 120);
+
+            panel.FormLinks = true;
+            panel.Measure(Size.Infinity);
+            part = Assert.Single(Assert.IsType<WrapPanel>(panel.Child).Children.OfType<StackPanel>());
+            Assert.IsType<CopyableTextBlock>(part.Children[1]);
+            Assert.Single(part.Children.OfType<HyperlinkButton>());
+        });
+    }
+
+    [Fact]
     public void NamedMarkKeepsItsGlyphAndWordsSelectableWithOneAccessibleName()
     {
         avalonia.Invoke(() =>

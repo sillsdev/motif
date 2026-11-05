@@ -8,10 +8,6 @@ internal static partial class LayoutInvariantWorkList
     /// </summary>
     internal static IReadOnlyList<LayoutException> QuickEntries { get; } =
     [
-        new(new("Texts/lists-ticked", "640x600", 150, "light"), "unreachable-control",
-            new("WordRow", null, "motif-word-row-lists-hawajafika-row", "hawajafika · Approved · PanGloss: No parse · Lost", "", "border"),
-            null, "Texts lists", "hawajafika · Approved · PanGloss: No parse · Lost has no hit target or scroll route at 640x600 150%.",
-            "no-visible-hit-target-or-scroll-route", 1),
     ];
 
     /// <summary>The quick tier's findings when the words, texts and Review change are Arabic script.</summary>
