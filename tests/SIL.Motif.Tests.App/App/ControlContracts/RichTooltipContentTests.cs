@@ -38,6 +38,9 @@ public sealed partial class TooltipOwnerManifestTests
     [GeneratedRegex(@"ToolTip\.SetTip\(\s*\w+\s*,\s*(.+?)\);")]
     private static partial Regex CodeTip();
 
+    [GeneratedRegex(@"SetValue\(ToolTip\.TipProperty,\s*(?!null\b)([^,]+),\s*BindingPriority\.Style\)")]
+    private static partial Regex StyledCodeTip();
+
     [GeneratedRegex(@"^\{x:Static\s+app:MotifAppStrings\.(\w+)\}$")]
     private static partial Regex LocalizedStaticTip();
 
@@ -63,6 +66,8 @@ public sealed partial class TooltipOwnerManifestTests
                 var text = File.ReadAllText(file);
                 var tips = file.EndsWith(".cs", StringComparison.Ordinal)
                     ? CodeTip().Matches(text).Select(match => match.Groups[1].Value)
+                        .Concat(StyledCodeTip().Matches(text).Select(match => match.Groups[1].Value.Trim())
+                            .Where(tip => tip != "null"))
                     : MarkupTip().Matches(text).Select(match => match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value);
                 return tips.Select(tip => $"{source}: {ResolveStaticText(tip)}");
             })

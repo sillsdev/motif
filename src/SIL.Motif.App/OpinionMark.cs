@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Data;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 
 namespace SIL.Motif.App.Controls;
 
@@ -32,6 +33,7 @@ public sealed class OpinionMark : Border
     public OpinionMark()
     {
         Classes.Add("opinionMark");
+        ClearTipPlacement.SetIsEnabled(this, true);
         RefreshMark();
     }
 

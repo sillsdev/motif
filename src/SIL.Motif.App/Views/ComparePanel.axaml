@@ -260,7 +260,7 @@
               <SplitButton Content="{x:Static app:MotifAppStrings.ParseAgain}" Command="{Binding Compare.RerunCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixParseAgain}"
                            IsVisible="{Binding Compare.CanRerun}" Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                            ToolTip.Tip="{x:Static app:MotifAppStrings.CompareParseAgainTip}"
-                           views:ClearTipPlacement.IsEnabled="True"
+                           views:ClearTipPlacement.IsEnabled="True" views:ClearTipPlacement.Anchor="{ReflectionBinding $parent[WrapPanel]}"
                            AutomationProperties.Name="{x:Static app:MotifAppStrings.CompareParseAgainAccessibleName}">
                 <SplitButton.Flyout>
                   <Flyout Placement="BottomEdgeAlignedRight">

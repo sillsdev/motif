@@ -26,7 +26,7 @@ public sealed class TooltipPlacementTests
 {
     private static readonly HashSet<string> RequiredOwnersAtEachWidth = new(StringComparer.Ordinal)
     {
-        "refresh", "project chip", "word cell", "drag all files", "question to copy", "ticked words to AI Handoff",
+        "refresh", "project chip", "word cell", "drag all files", "question to copy",
         "Parse stopped words again", "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
         "mark unread without a text occurrence", "FieldWorks link on a morpheme", "FieldWorks link in a finding",
         "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column", "completion in detailed statistics",

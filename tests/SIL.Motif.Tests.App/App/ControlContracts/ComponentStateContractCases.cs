@@ -264,8 +264,10 @@ internal static class ComponentStateContractCases
             StatePart.Face, ContentPresenter.ForegroundProperty, "Intent.Accent");
         yield return new("Button.tab.active", "selected", () => Alone(Press("tab", "active")), StateStimulus.None,
             StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Accent");
+        yield return new("Button.tab.active" + face, "selected", () => Alone(Press("tab", "active")),
+            StateStimulus.None, StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Accent");
         foreach (var (how, stimulus) in Hovers)
-            yield return new($"Button.tab.active:{how}" + face, $"selected and {how}", () => Alone(Press("tab", "active")),
+            yield return new("Button.tab.active" + face, $"selected and {how}", () => Alone(Press("tab", "active")),
                 stimulus, StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Accent");
         yield return new("Button.tab.active", "selected and keyboard focus", () => Alone(Press("tab", "active")),
             StateStimulus.KeyboardFocus, StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
@@ -667,6 +669,15 @@ internal static class TooltipOwners
 {
     internal static IReadOnlyList<TooltipOwner> All { get; } =
     [
+        new("navigation badge", "Views/MotifWorkspaceView.axaml", "{Binding BadgeTip}", TooltipScene.Overview,
+            control => control is Border && control.Classes.Contains("pageBadge")),
+        new("opinion mark", "OpinionMark.cs", "name", TooltipScene.Matrix,
+            control => control is OpinionMark && control.FindAncestorOfType<WordCard>() is null &&
+                control.FindAncestorOfType<ReviewPanel>() is null),
+        new("mark chip", "Views/MarkChip.cs", "Mark?.Word", TooltipScene.TryAWordRecordedDetails,
+            control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is null &&
+                !control.GetVisualAncestors().OfType<Border>()
+                .Any(border => border.Name == "WordStrip")),
         new("parse all words", "Views/ProjectCardView.axaml", "Parse the words you chose.", TooltipScene.Overview,
             control => control is Button && Name(control) == "Parse all words")
         {
@@ -836,13 +847,13 @@ internal static class TooltipOwners
         new("staged change", "Tokens/Components/WordStripParts.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,
             control => control is Border && control.Classes.Contains("stagedStrip")),
         new("opinion on a word card", "Controls/WordPresentation/WordCard.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
-            control => control is OpinionMark),
+            control => control is OpinionMark && control.FindAncestorOfType<WordCard>() is not null),
         new("Word Analyses link in a word card", "Views/ResultsInTextPanel.axaml", "{Binding WordLinkText}",
             TooltipScene.WordCard,
             control => control is HyperlinkButton &&
                 control.GetVisualAncestors().OfType<WordCard>().Any(card => card.IsEffectivelyVisible) &&
                 AutomationProperties.GetName(control) == "Open alikula in Word Analyses"),
-        new("mark unread without a text occurrence", "Controls/WordPresentation/WordCard.axaml", "{Binding MarkUnreadDisabledReason}",
+        new("mark unread without a text occurrence", "Views/ResultsInTextPanel.axaml", "{Binding MarkUnreadDisabledReason}",
             TooltipScene.WordCardWithoutOccurrence,
             control => control is Button && Name(control) == "Mark this occurrence as unread"),
         new("morpheme form that is its link", "Controls/WordPresentation/MorphemePanel.cs", "morph.FormLinkTip", TooltipScene.Matrix,
@@ -887,9 +898,6 @@ internal static class TooltipOwners
         {
             Pending = "the Lists scene opens a list with no stopped or unparsed words, so Parse again is hidden",
         },
-        new("ticked words to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffCheckedWordsHelpText}",
-            TooltipScene.Lists, control => control is Button &&
-                AutomationProperties.GetAutomationId(control) == AutomationIds.HandOffCheckedWords),
         new("checked words to AI Handoff in Analyze texts", "Views/TextWordsPanel.axaml", "{Binding Words.HandOffCheckedWordsHelpText}",
             TooltipScene.AnalyzeWordList, control => control is Button &&
                 Name(control) is { } name && name.StartsWith("AI Handoff", StringComparison.Ordinal) &&

@@ -44,6 +44,7 @@ public sealed class MarkChip : Border
     public MarkChip()
     {
         Classes.Add("markChip");
+        ClearTipPlacement.SetIsEnabled(this, true);
         Rebuild();
     }
 
