@@ -106,7 +106,7 @@ var usageArguments = args.Length > 0
     : (new Dictionary<string, string>(StringComparer.Ordinal), new List<string>(),
         (IReadOnlyList<string>)Array.Empty<string>());
 var resolvedUsageCommand = args.Length > 0
-    ? ResolveCommandName(usageVerb, usageArguments.Item1, usageArguments.Item2)
+    ? CliCommandNames.Resolve(usageVerb, usageArguments.Item1, usageArguments.Item2)
     : usageVerb;
 var usageCommand = resolvedUsageCommand == "help" ||
     CommandCatalog.All.Any(command => command.Name == resolvedUsageCommand)
@@ -143,7 +143,7 @@ try
     var (flags, positionals, forwardedArguments) = ParseArgs(rest);
     namedProject = flags.TryGetValue("project", out var flaggedProject) ? flaggedProject
         : verb == "open" && positionals.Count == 1 ? positionals[0] : null;
-    var commandName = ResolveCommandName(verb, flags, positionals);
+    var commandName = CliCommandNames.Resolve(verb, flags, positionals);
     var command = CommandCatalog.All.FirstOrDefault(item => item.Name == commandName);
     if (command is not null && !commandPolicy.IsAvailable(command))
         return RefuseUnavailableCommand(commandName, flags.ContainsKey("json"), error, command);
@@ -1501,6 +1501,9 @@ try
                 if (positionals.Count < 3 || positionals[1] is not ("add" or "edit" or "delete") ||
                     !flags.TryGetValue("project", out var commentProject))
                     return Usage(commentUsage, asJson);
+                if (positionals[1] != "add" && (flags.ContainsKey("author") || flags.ContainsKey("person")))
+                    return Usage("Only 'proposal comment add' takes --author or --person; an edit or delete is " +
+                        "the person's own. " + commentUsage, asJson);
                 var wantsText = positionals[1] != "delete";
                 var textSources = new[] { "text", "file" }.Count(flags.ContainsKey);
                 if (wantsText ? textSources != 1 : textSources != 0) return Usage(commentUsage, asJson);
@@ -1596,6 +1599,9 @@ try
                 }
                 else textBody = flags.GetValueOrDefault("text") ?? "";
                 var rationaleAuthor = flags.GetValueOrDefault("author");
+                if (rationaleAuthor is null && flags.ContainsKey("person"))
+                    return Usage("--person names who is speaking for the --author; give --author as well. " + textUsage,
+                        asJson);
                 result = RenderCommand(ProposalTexts.SetRationale(new SetRationaleRequest(
                     textProject, CliProductVersion(), positionals[1], textBody, rationaleAuthor,
                     rationaleAuthor is null ? null : flags.GetValueOrDefault("person") ?? Environment.UserName)));
@@ -2633,64 +2639,6 @@ static InspectorSubject? InspectSubjectFrom(IReadOnlyDictionary<string, string> 
             ? new InspectorSubject(InspectorSubjectKind.Warning) { WarningCode = code, ObjectId = rest.FirstOrDefault() }
             : null,
     };
-}
-
-static string ResolveCommandName(string verb, IReadOnlyDictionary<string, string> flags,
-    IReadOnlyList<string> positionals)
-{
-    if (verb == "proposal" && positionals.Count >= 2 && positionals[0] == "picture" &&
-        positionals[1] is "add" or "remove" or "show")
-        return "proposal picture " + positionals[1];
-    if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note")
-        return "proposal " + positionals[0];
-    if (verb == "parsimony")
-    {
-        if (positionals.SequenceEqual(new[] { "expectations" })) return "parsimony expectations";
-        if (positionals.Count == 2 && positionals[0] == "negative" && positionals[1] == "confirm")
-            return "parsimony negative confirm";
-        if (positionals.Count == 2 && positionals[0] == "negative" && positionals[1] == "retract")
-            return "parsimony negative retract";
-        if (positionals.Count == 2 && positionals[0] == "revise") return "parsimony revise";
-        if (positionals.Count == 2 && positionals[0] == "retract") return "parsimony retract";
-        if (positionals.FirstOrDefault() == "show") return "parsimony show";
-        if (positionals.FirstOrDefault() == "latest") return "parsimony latest";
-        if (positionals.FirstOrDefault() == "retirement-review") return "parsimony retirement-review";
-        if (positionals.FirstOrDefault() == "measures") return "parsimony measures";
-        if (positionals.FirstOrDefault() == "view") return "parsimony view";
-        if (positionals.FirstOrDefault() == "record-types") return "parsimony record-types";
-        if (positionals.FirstOrDefault() == "dispose") return "parsimony dispose";
-        if (flags.ContainsKey("group") && !flags.ContainsKey("dry-run")) return "parsimony --group";
-        if (flags.ContainsKey("wait"))
-            return flags.GetValueOrDefault("measure") == ParsimonyAdmission.AllMeasures && !flags.ContainsKey("dry-run")
-                ? "parsimony --measure all --wait" : "parsimony --wait";
-        return "parsimony";
-    }
-    if (verb == "apply" && flags.ContainsKey("all-pending"))
-        return "apply --all-pending";
-    if (verb == "delete") return "delete --proposal";
-    if (verb is "reject" or "reopen" && flags.ContainsKey("proposal")) return verb + " --proposal";
-    if (verb == "apply" && flags.ContainsKey("proposal"))
-        return "apply --proposal";
-    if (verb == "trial" && flags.ContainsKey("pending"))
-        return "trial --pending";
-    if (verb == "phonology-examples" && positionals.FirstOrDefault() is "save" or "list" or "show" or "check" or "results")
-        return verb + " " + positionals[0];
-    if (verb == "project" && positionals.SequenceEqual(new[] { "tag" }) && flags.ContainsKey("set"))
-        return "project tag --set";
-    if (verb is "config" or "baseline" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference" or "evidence")
-    {
-        var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;
-        if (CommandCatalog.All.Any(command => command.Name == candidate)) return candidate;
-        return verb;
-    }
-
-    if (verb == "report" && flags.ContainsKey("list-kinds"))
-        return "report --list-kinds";
-    if (verb == "trace" && flags.ContainsKey("load"))
-        return "trace --load";
-    if (verb is "dry-run" or "trial" && flags.ContainsKey("wait"))
-        return verb + " --wait";
-    return verb;
 }
 
 static IReadOnlyList<string> CliUsageArgumentShapes(

@@ -10,11 +10,15 @@ public static class PictureSniffer
     public const int MaxSide = 20000;
 
     /// <summary>The media type and size of a picture, or null when the bytes are not a readable PNG or JPEG.</summary>
-    public static (string MediaType, int Width, int Height)? Read(ReadOnlySpan<byte> bytes)
-    {
-        var found = IsPng(bytes) ? ReadPng(bytes) : IsJpeg(bytes) ? ReadJpeg(bytes) : null;
-        return found is { Width: > 0 and <= MaxSide, Height: > 0 and <= MaxSide } ? found : null;
-    }
+    public static (string MediaType, int Width, int Height)? Read(ReadOnlySpan<byte> bytes) =>
+        ReadDeclared(bytes) is { Width: > 0 and <= MaxSide, Height: > 0 and <= MaxSide } found ? found : null;
+
+    /// <summary>
+    /// The media type and size a PNG or JPEG header declares, whatever the size, or null when the bytes are neither.
+    /// A caller that decodes the picture uses it to refuse a huge one before allocating for it.
+    /// </summary>
+    public static (string MediaType, int Width, int Height)? ReadDeclared(ReadOnlySpan<byte> bytes) =>
+        IsPng(bytes) ? ReadPng(bytes) : IsJpeg(bytes) ? ReadJpeg(bytes) : null;
 
     private static bool IsPng(ReadOnlySpan<byte> b) =>
         b.Length >= 24 && b[..8].SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }) &&

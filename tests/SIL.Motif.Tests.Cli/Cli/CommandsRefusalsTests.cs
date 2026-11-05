@@ -190,6 +190,26 @@ public sealed class CommandsRefusalsTests : IDisposable
     }
 
     [Fact]
+    public void AuthorAndPersonFlagsAreRefusedWhereTheyWouldBeIgnored()
+    {
+        New("d", null);
+        var proposalId = ReadDraft("d").ProposalId;
+        var project = $"--project \"{_fwDataPath}\"";
+        Assert.Equal(0, RunCli($"proposal comment add {proposalId} {project} --text \"One.\"").ExitCode);
+
+        var person = RunCli($"proposal rationale {proposalId} {project} --text x --person John");
+        var edit = RunCli($"proposal comment edit {proposalId} 1 {project} --text y --author Bot");
+        var delete = RunCli($"proposal comment delete {proposalId} 1 {project} --person John");
+
+        foreach (var refused in new[] { person, edit, delete })
+        {
+            Assert.NotEqual(0, refused.ExitCode);
+            Assert.Contains("--person", refused.Error + refused.Output, StringComparison.Ordinal);
+        }
+        Assert.Contains("One.", RunCli($"show {proposalId} {project}").Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ARationaleCannotBeClearedAndTheFlagIsRefusedInsteadOfIgnored()
     {
         New("d", null);

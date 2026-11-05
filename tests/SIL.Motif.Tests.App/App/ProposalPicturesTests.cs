@@ -80,6 +80,137 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
+    // A PNG header that declares a huge size over almost no bytes, made at run time.
+    private static byte[] DeclaringPng(uint width, uint height)
+    {
+        var png = Noise(40, 30, jpeg: false);
+        foreach (var (at, value) in new[] { (16, width), (20, height) })
+            for (var i = 0; i < 4; i++) png[at + i] = (byte)(value >> (24 - 8 * i));
+        return png;
+    }
+
+    [Fact]
+    public void APictureDeclaringMoreThanAHundredMegapixelsIsRefusedBeforeItIsDecoded()
+    {
+        avalonia.Invoke(() =>
+        {
+            var huge = DeclaringPng(15000, 15000);
+            Assert.True(huge.Length < 10_000);
+
+            Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(huge).Status);
+            // Over the sniffer's side limit too, and a JPEG that declares the same.
+            Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(DeclaringPng(60000, 60000)).Status);
+            var jpeg = Noise(40, 30, jpeg: true);
+            var frame = Array.IndexOf(jpeg, (byte)0xC0, 2);
+            while (jpeg[frame - 1] != 0xFF) frame = Array.IndexOf(jpeg, (byte)0xC0, frame + 1);
+            jpeg[frame + 4] = jpeg[frame + 6] = 0x3A; // 0x3Axx rows and columns: about 218 megapixels
+            Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(jpeg).Status);
+        });
+    }
+
+    // Puts an EXIF segment holding only an orientation tag right after the JPEG's start marker.
+    private static byte[] WithOrientation(byte[] jpeg, int orientation, bool littleEndian)
+    {
+        byte[] Pair(int v) => littleEndian ? [(byte)v, (byte)(v >> 8)] : [(byte)(v >> 8), (byte)v];
+        var segment = new List<byte> { 0xFF, 0xE1, 0, 34 };
+        segment.AddRange("Exif\0\0"u8.ToArray());
+        segment.AddRange(littleEndian ? "II"u8.ToArray() : "MM"u8.ToArray());
+        segment.AddRange(Pair(42));
+        segment.AddRange(littleEndian ? new byte[] { 8, 0, 0, 0 } : new byte[] { 0, 0, 0, 8 });
+        segment.AddRange(Pair(1));
+        segment.AddRange(Pair(0x0112));
+        segment.AddRange(Pair(3));
+        segment.AddRange(littleEndian ? new byte[] { 1, 0, 0, 0 } : new byte[] { 0, 0, 0, 1 });
+        segment.AddRange(Pair(orientation));
+        segment.AddRange(new byte[] { 0, 0 });
+        segment.AddRange(new byte[4]);
+        return [.. jpeg[..2], .. segment, .. jpeg[2..]];
+    }
+
+    // A wide picture, red on the left half and blue on the right, as a JPEG.
+    private static byte[] RedAndBlue(int width, int height)
+    {
+        using var bitmap = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96), PixelFormat.Bgra8888,
+            AlphaFormat.Opaque);
+        using (var frame = bitmap.Lock())
+        {
+            var row = new byte[frame.RowBytes];
+            for (var x = 0; x < width; x++)
+            {
+                row[x * 4 + (x < width / 2 ? 2 : 0)] = 255; // BGRA: red or blue
+                row[x * 4 + 3] = 255;
+            }
+            for (var y = 0; y < height; y++)
+                System.Runtime.InteropServices.Marshal.Copy(row, 0, frame.Address + y * frame.RowBytes, row.Length);
+        }
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, new JpegBitmapEncoderOptions { Quality = 95 });
+        return stream.ToArray();
+    }
+
+    // Samples the turned picture: the red half was the left of the wide original, the blue half the right.
+    private static (bool Tall, bool StartIsRed, bool EndIsRed) Turned(byte[] bytes)
+    {
+        using var result = new Bitmap(new MemoryStream(bytes));
+        using var copy = new WriteableBitmap(result.PixelSize, new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Opaque);
+        using var frame = copy.Lock();
+        result.CopyPixels(new PixelRect(result.PixelSize), frame.Address, frame.RowBytes * result.PixelSize.Height, frame.RowBytes);
+        bool Red(int x, int y) => System.Runtime.InteropServices.Marshal.ReadByte(frame.Address, y * frame.RowBytes + x * 4 + 2) > 200;
+        var (w, h) = (result.PixelSize.Width, result.PixelSize.Height);
+        return h > w ? (true, Red(w / 2, 20), Red(w / 2, h - 20)) : (false, Red(20, h / 2), Red(w - 20, h / 2));
+    }
+
+    [Theory]
+    [InlineData(6, true, true, true, false)]
+    [InlineData(6, false, true, true, false)]
+    [InlineData(3, true, false, false, true)]
+    [InlineData(8, true, true, false, true)]
+    public void AScaledJpegIsTurnedUprightByItsExifOrientation(int orientation, bool littleEndian, bool tall,
+        bool startIsRed, bool endIsRed)
+    {
+        avalonia.Invoke(() =>
+        {
+            var photo = WithOrientation(RedAndBlue(2400, 1200), orientation, littleEndian);
+            Assert.Equal(orientation, PictureScaler.ExifOrientation(photo));
+
+            var scaled = PictureScaler.Scale(photo);
+
+            Assert.Equal(PictureIntakeStatus.Ready, scaled.Status);
+            Assert.Equal((tall, startIsRed, endIsRed), Turned(scaled.Bytes!));
+            Assert.Equal(1, PictureScaler.ExifOrientation(scaled.Bytes!));
+        });
+    }
+
+    [Fact]
+    public void ASmallTaggedJpegIsReEncodedUprightWithTheTagDropped()
+    {
+        avalonia.Invoke(() =>
+        {
+            var small = WithOrientation(RedAndBlue(400, 200), 6, littleEndian: true);
+
+            var scaled = PictureScaler.Scale(small);
+
+            Assert.Equal(PictureIntakeStatus.Ready, scaled.Status);
+            Assert.NotEqual(small, scaled.Bytes);
+            Assert.Equal(1, PictureScaler.ExifOrientation(scaled.Bytes!));
+            Assert.Equal((true, true, false), Turned(scaled.Bytes!));
+        });
+    }
+
+    [Fact]
+    public void AJpegWithoutAnOrientationTagKeepsItsShape()
+    {
+        avalonia.Invoke(() =>
+        {
+            var plain = RedAndBlue(2400, 1200);
+            Assert.Equal(1, PictureScaler.ExifOrientation(plain));
+
+            var size = PictureSniffer.Read(PictureScaler.Scale(plain).Bytes!)!.Value;
+
+            Assert.True(size.Width > size.Height);
+        });
+    }
+
     [Fact]
     public async Task AddingAReadyPictureStoresItAndShowsItAndRemovingItClearsIt()
     {

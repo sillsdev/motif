@@ -191,6 +191,12 @@ internal sealed record AgentTool(
 {
     public IReadOnlyList<Type> Requests { get; init; } = [];
 
+    /// <summary>
+    /// For a tool whose arguments are named differently from its request's fields: the request field to the argument
+    /// that supplies it, or <see langword="null"/> for a field Motif fills in itself. Null leaves every field as is.
+    /// </summary>
+    public IReadOnlyDictionary<string, string?>? FieldNames { get; init; }
+
     /// <summary>The composer verb a typed composer tool is, or <see langword="null"/> for any other tool.</summary>
     public string? ComposerVerb { get; init; }
 

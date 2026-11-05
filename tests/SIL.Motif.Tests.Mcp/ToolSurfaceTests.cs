@@ -461,11 +461,18 @@ public sealed class ToolSurfaceTests
         {
             var commands = CommandCatalog.All.Where(command => tool.Requests.Contains(command.RequestType))
                 .GroupBy(command => command.RequestType).Select(group => group.First());
-            Assert.Equal(CatalogTools.Describe(commands), tool.Description);
+            Assert.Equal(CatalogTools.Describe(commands, tool.FieldNames), tool.Description);
             foreach (var command in commands)
                 foreach (var field in command.RequestType.GetProperties().Where(field =>
                              field.Name is not ("ProjectPath" or "FwDataPath" or "ProductVersion")))
-                    Assert.Contains(field.Name + ": ", tool.Description);
+                {
+                    var shown = tool.FieldNames is null ? field.Name
+                        : tool.FieldNames.TryGetValue(field.Name, out var named) ? named : field.Name;
+                    if (shown is not null) Assert.Contains(shown + ": ", tool.Description);
+                    // What the description lists is what the input schema takes.
+                    if (tool.FieldNames is not null && shown is not null)
+                        Assert.True(tool.InputSchema["properties"]!.AsObject().ContainsKey(shown), shown);
+                }
         }
     }
 

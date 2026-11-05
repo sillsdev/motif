@@ -41,7 +41,7 @@ internal static class CatalogTools
             if (commands.Select(command => command.RequestType).Distinct().Count() != adapter.Requests.Distinct().Count())
                 throw new InvalidOperationException($"Tool '{adapter.Name}' mixes eligible and unavailable commands.");
             foreach (var command in commands) served.Add(command.RequestType);
-            var description = commands.Length == 0 ? ReadDescription(adapter.Name) : Describe(commands);
+            var description = commands.Length == 0 ? ReadDescription(adapter.Name) : Describe(commands, adapter.FieldNames);
             tools.Add(Prepare(adapter with { Description = description, Requests = commands.Select(c => c.RequestType).Distinct().ToArray() }));
         }
         foreach (var command in eligible.Where(command => !served.Contains(command.RequestType)))
@@ -73,18 +73,26 @@ internal static class CatalogTools
 
     private static string GuidePrefix(HelpEntry entry) => entry.McpCallout is { } line ? line + " " : string.Empty;
 
-    internal static string Describe(IEnumerable<CommandDescriptor> commands) => string.Join("\n", commands.Select(command =>
+    internal static string Describe(IEnumerable<CommandDescriptor> commands,
+        IReadOnlyDictionary<string, string?>? fieldNames = null) => string.Join("\n", commands.Select(command =>
     {
         var entry = Help.Find(HelpEntryKind.Command, command.Name)
             ?? throw new InvalidOperationException($"Command '{command.Name}' needs shared Help text.");
         var fields = command.RequestType.GetProperties().Where(property => !IsContext(property.Name))
-            .Select(property => FieldDoc(command.RequestType, property)).Where(value => value.Length > 0);
+            .Select(property => FieldDoc(command.RequestType, property, fieldNames)).Where(value => value.Length > 0);
         return entry.Title + ". " + GuidePrefix(entry) + entry.Description + "\nCommand: " + command.Name + ". " +
             "Agent class: " + command.Agent + ".\n" + string.Join("\n", fields);
     }));
 
-    private static string FieldDoc(Type type, PropertyInfo property)
+    private static string FieldDoc(Type type, PropertyInfo property, IReadOnlyDictionary<string, string?>? fieldNames = null)
     {
+        var shownAs = property.Name;
+        if (fieldNames is not null)
+        {
+            if (!fieldNames.TryGetValue(property.Name, out var argument)) argument = property.Name;
+            if (argument is null) return string.Empty;
+            shownAs = argument;
+        }
         var document = FieldDocs.GetOrAdd(type.Assembly, LoadFieldDocs);
         var member = document.Descendants("member").FirstOrDefault(element =>
             (string?)element.Attribute("name") == "T:" + type.FullName);
@@ -92,7 +100,7 @@ internal static class CatalogTools
             (string?)element.Attribute("name") == property.Name)?.Value;
         text ??= document.Descendants("member").FirstOrDefault(element =>
             (string?)element.Attribute("name") == "P:" + type.FullName + "." + property.Name)?.Element("summary")?.Value;
-        return text is null ? string.Empty : property.Name + ": " + Regex.Replace(text.Trim(), @"\s+", " ");
+        return text is null ? string.Empty : shownAs + ": " + Regex.Replace(text.Trim(), @"\s+", " ");
     }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<Assembly, XDocument> FieldDocs = new();

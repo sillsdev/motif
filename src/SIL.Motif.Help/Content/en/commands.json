@@ -1518,7 +1518,7 @@
   },
   "show": {
     "title": "Show a Proposal",
-    "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, note and operations. It does not change the FieldWorks project.",
+    "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations. It does not change the FieldWorks project.",
     "source": "Authored from the typed command contract."
   },
   "parsimony --dry-run": {

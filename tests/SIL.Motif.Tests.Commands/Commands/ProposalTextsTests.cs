@@ -102,7 +102,7 @@ public sealed class ProposalTextsTests(PristineProjectFixture pristine)
         var shown = Show(path, id);
         Assert.True(shown.CommentsChanged);
         Assert.Equal("Please reconsider the second gloss.", Assert.Single(shown.Comments!).Markdown);
-                Assert.True(Standing(path, id).HasNote);
+        Assert.True(Standing(path, id).HasNote);
 
         var answered = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Reconsidered."));
         Assert.False(answered.Value!.CommentsChanged);

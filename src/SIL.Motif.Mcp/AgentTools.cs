@@ -906,7 +906,13 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalComments.Add(new AddCommentRequest(
                 c.ProjectPath, c.ProductVersion, a.Required("proposal"), a.Required("comment"), Environment.UserName,
                 a.Required("author"))),
-                r => "The Comment is on the Proposal. You cannot edit or delete it; add another to correct it."))) { Requests = [typeof(AddCommentRequest)] },
+                r => "The Comment is on the Proposal. You cannot edit or delete it; add another to correct it."))) {
+            Requests = [typeof(AddCommentRequest)],
+            FieldNames = new Dictionary<string, string?>
+            {
+                ["ProposalId"] = "proposal", ["Text"] = "comment", ["AuthorLabel"] = "author", ["PersonName"] = null,
+            },
+        },
 
         new("motif_proposals",
             string.Empty,
