@@ -206,6 +206,18 @@ public sealed class WalkthroughWindow : IDisposable
         WaitUntil(() => !Workspace.IsProjectOpening && Workspace.Context.EvidencePublication.IsCompleted &&
             !Workspace.RefreshCommand.IsRunning, timeout, why);
 
+    /// <summary>
+    /// Waits until the window's own in-process runner has drained what the Capture queued (the Baseline prebuild).
+    /// A drain keeps the store open, so a test that bumps or deletes the store must wait for it first.
+    /// </summary>
+    public void WaitUntilRunnerIsIdle(TimeSpan timeout, string why)
+    {
+        if (_ownedRunner is null) return;
+        var idle = _ownedRunner.WhenIdleAsync();
+        WaitUntil(() => idle.IsCompleted, timeout, why);
+        idle.GetAwaiter().GetResult();
+    }
+
     private void WaitUntilProjectOpened(TimeSpan timeout, string why) =>
         WaitUntil(() => !Workspace.IsProjectOpening && Workspace.Context.EvidencePublication.IsCompleted &&
             (Workspace.Baseline.HasBaseline || Workspace.Baseline.ShownRefusal is not null ||

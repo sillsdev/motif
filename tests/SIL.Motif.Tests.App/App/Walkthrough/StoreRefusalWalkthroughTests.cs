@@ -24,7 +24,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
         using var project = new WalkthroughProject(pristine);
         var storePath = StorePath(project.FwDataPath);
         var projectBytes = File.ReadAllBytes(project.FwDataPath);
-        var deadline = WalkthroughSteps.DeadlineIn(90);
+        var deadline = WalkthroughSteps.DeadlineIn(180);
 
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -33,6 +33,9 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
             walkthrough.WaitUntilProjectIsQuiet(
                 WalkthroughSteps.Remaining(deadline), "the captured project was still being read");
 
+            // The runner the Capture woke holds the store open until it drains, and deleting needs exclusive use.
+            walkthrough.WaitUntilRunnerIsIdle(
+                WalkthroughSteps.Remaining(deadline), "the Baseline prebuild was still holding the store open");
             Assert.True(File.Exists(storePath));
             WithStore(storePath, command =>
             {
