@@ -78,7 +78,8 @@ public static class PhonologicalRuleReader
     private static PhonologicalRuleItem? Item(IPhPhonContext context) => context switch
     {
         IPhSimpleContextSeg { FeatureStructureRA: { } phoneme } => new(Phoneme: Id(phoneme)),
-        IPhSimpleContextNC { FeatureStructureRA: { } naturalClass } => new(NaturalClass: Id(naturalClass)),
+        IPhSimpleContextNC { FeatureStructureRA: { } naturalClass, PlusConstrRS.Count: 0, MinusConstrRS.Count: 0 }
+            => new(NaturalClass: Id(naturalClass)),
         _ => null,
     };
 
@@ -96,7 +97,8 @@ public static class PhonologicalRuleReader
     private static EnvironmentContext? Context(IPhPhonContext context) => context switch
     {
         IPhSimpleContextSeg { FeatureStructureRA: { } phoneme } => new(Phoneme: Id(phoneme)),
-        IPhSimpleContextNC { FeatureStructureRA: { } naturalClass } => new(NaturalClass: Id(naturalClass)),
+        IPhSimpleContextNC { FeatureStructureRA: { } naturalClass, PlusConstrRS.Count: 0, MinusConstrRS.Count: 0 }
+            => new(NaturalClass: Id(naturalClass)),
         IPhSimpleContextBdry { FeatureStructureRA: { } marker } => marker.Guid == LangProjectTags.kguidPhRuleWordBdry
             ? new(Boundary: "word")
             : marker.Guid == LangProjectTags.kguidPhRuleMorphBdry ? new(Boundary: "morpheme")

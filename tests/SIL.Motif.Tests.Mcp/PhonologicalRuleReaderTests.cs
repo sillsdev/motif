@@ -60,6 +60,128 @@ public sealed class PhonologicalRuleReaderTests(PristineProjectFixture pristine)
             new(CanonicalId.FromGuid(rule.Guid), new(Name: "Renamed"))));
     }
 
+    [Theory]
+    [InlineData("input", true)]
+    [InlineData("input", false)]
+    [InlineData("output", true)]
+    [InlineData("output", false)]
+    [InlineData("left", true)]
+    [InlineData("left", false)]
+    [InlineData("right", true)]
+    [InlineData("right", false)]
+    [InlineData("left-sequence", true)]
+    [InlineData("left-sequence", false)]
+    [InlineData("right-sequence", true)]
+    [InlineData("right-sequence", false)]
+    [InlineData("left-iteration", true)]
+    [InlineData("left-iteration", false)]
+    [InlineData("right-iteration", true)]
+    [InlineData("right-iteration", false)]
+    [InlineData("left-sequence-iteration", true)]
+    [InlineData("left-sequence-iteration", false)]
+    [InlineData("right-sequence-iteration", true)]
+    [InlineData("right-sequence-iteration", false)]
+    public void AlphaConstraintsMakeTheIntentUnrepresentableAndRefuseEditsWithoutRemovingReferences(
+        string location, bool positive)
+    {
+        using var cache = pristine.NewScratch();
+        var rule = Rule(cache);
+        var context = AddNaturalClassContext(cache, rule, location);
+        var before = GrammarReader.Read(cache, "phonological_rules", "Sequence", detailed: true)["items"]![0]!;
+        var wire = Assert.IsType<System.Text.Json.Nodes.JsonObject>(before["intent"]);
+        var edit = EditPhonologicalRuleIntentParser.Parse(JsonSerializer.SerializeToElement(new
+        {
+            rule = CanonicalId.FromGuid(rule.Guid).Value,
+            input = wire["input"], output = wire["output"], left = wire["left"], right = wire["right"], expected = wire,
+        }));
+        IPhFeatureConstraint constraint = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var feature = services.GetInstance<IFsClosedFeatureFactory>().Create();
+            cache.LangProject.PhFeatureSystemOA.FeaturesOC.Add(feature);
+            constraint = services.GetInstance<IPhFeatureConstraintFactory>().Create();
+            cache.LangProject.PhonologicalDataOA.FeatConstraintsOS.Add(constraint);
+            constraint.FeatureRA = feature;
+            if (positive) context.PlusConstrRS.Add(constraint);
+            else context.MinusConstrRS.Add(constraint);
+        });
+        var contextId = context.Guid;
+        var plus = context.PlusConstrRS.Select(item => item.Guid).ToArray();
+        var minus = context.MinusConstrRS.Select(item => item.Guid).ToArray();
+
+        var detail = GrammarReader.Read(cache, "phonological_rules", "Sequence", detailed: true)["items"]![0]!.AsObject();
+        Assert.Equal(1, detail["rightHandSideCount"]!.GetValue<int>());
+        Assert.True(detail.ContainsKey("intent"));
+        Assert.Null(detail["intent"]);
+        var minted = 0;
+        var refused = Assert.Throws<InvalidOperationException>(() => EditPhonologicalRuleComposer.Build(cache, edit,
+            mintId: () => { minted++; return CanonicalId.Mint(); }));
+        Assert.Contains("cannot read back", refused.Message);
+        Assert.Equal(0, minted);
+        Assert.True(context.IsValidObject);
+        Assert.Equal(contextId, context.Guid);
+        Assert.True(constraint.IsValidObject);
+        Assert.Equal(plus, context.PlusConstrRS.Select(item => item.Guid));
+        Assert.Equal(minus, context.MinusConstrRS.Select(item => item.Guid));
+        Assert.Equal(constraint.Guid, Assert.Single(cache.LangProject.PhonologicalDataOA.FeatConstraintsOS).Guid);
+    }
+
+    private static IPhSimpleContextNC AddNaturalClassContext(LcmCache cache, IPhRegularRule rule, string location)
+    {
+        IPhSimpleContextNC context = null!;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var services = cache.ServiceLocator;
+            var data = cache.LangProject.PhonologicalDataOA;
+            var naturalClass = services.GetInstance<IPhNCSegmentsFactory>().Create();
+            data.NaturalClassesOS.Add(naturalClass);
+            naturalClass.SegmentsRC.Add(data.PhonemeSetsOS[0].PhonemesOC.First());
+            context = services.GetInstance<IPhSimpleContextNCFactory>().Create();
+            var rhs = rule.RightHandSidesOS.Single();
+            if (location == "input") rule.StrucDescOS.Add(context);
+            else if (location == "output") rhs.StrucChangeOS.Add(context);
+            else
+            {
+                IPhSequenceContext? sequence = null;
+                if (location.Contains("sequence", StringComparison.Ordinal))
+                {
+                    sequence = services.GetInstance<IPhSequenceContextFactory>().Create();
+                    OwnEnvironment(sequence);
+                    var preceding = services.GetInstance<IPhSimpleContextSegFactory>().Create();
+                    data.ContextsOS.Add(preceding);
+                    preceding.FeatureStructureRA = data.PhonemeSetsOS[0].PhonemesOC.First();
+                    sequence.MembersRS.Add(preceding);
+                }
+                if (location.Contains("iteration", StringComparison.Ordinal))
+                {
+                    var iteration = services.GetInstance<IPhIterationContextFactory>().Create();
+                    if (sequence is null) OwnEnvironment(iteration);
+                    else data.ContextsOS.Add(iteration);
+                    data.ContextsOS.Add(context);
+                    iteration.Minimum = 0;
+                    iteration.Maximum = 1;
+                    iteration.MemberRA = context;
+                    sequence?.MembersRS.Add(iteration);
+                }
+                else if (sequence is null) OwnEnvironment(context);
+                else
+                {
+                    data.ContextsOS.Add(context);
+                    sequence.MembersRS.Add(context);
+                }
+
+                void OwnEnvironment(IPhPhonContext root)
+                {
+                    if (location.StartsWith("left", StringComparison.Ordinal)) rhs.LeftContextOA = root;
+                    else rhs.RightContextOA = root;
+                }
+            }
+            context.FeatureStructureRA = naturalClass;
+        });
+        return context;
+    }
+
     private static IPhRegularRule Rule(LcmCache cache)
     {
         IPhRegularRule rule = null!;
