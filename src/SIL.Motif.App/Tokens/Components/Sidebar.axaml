@@ -73,7 +73,7 @@
     <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.MarkerStart}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Clear}" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
   </Style>
   <Style Selector="ListBox.sidebar.collapsed ListBoxItem:selected">
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Accent}" />

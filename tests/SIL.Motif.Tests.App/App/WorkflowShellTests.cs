@@ -296,6 +296,13 @@ public sealed class WorkflowShellTests
                 var reviewBadge = Entry(entries, WorkspacePage.Review).GetVisualDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("pageBadge"));
                 Assert.True(reviewBadge.IsEffectivelyVisible);
+                var reviewEntry = Entry(entries, WorkspacePage.Review);
+                var icon = reviewEntry.GetVisualDescendants().OfType<Viewbox>()
+                    .Single(view => view.Classes.Contains("pageIcon"));
+                var iconBounds = new Rect(icon.TranslatePoint(default, reviewEntry)!.Value, icon.Bounds.Size);
+                var badgeBounds = new Rect(reviewBadge.TranslatePoint(default, reviewEntry)!.Value, reviewBadge.Bounds.Size);
+                Assert.False(iconBounds.Intersects(badgeBounds), $"Icon {iconBounds} overlaps badge {badgeBounds}.");
+                Assert.True(badgeBounds.Right <= reviewEntry.Bounds.Width, "The badge extends beyond its navigation item.");
 
                 Click(window, Entry(entries, WorkspacePage.Review));
                 Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);

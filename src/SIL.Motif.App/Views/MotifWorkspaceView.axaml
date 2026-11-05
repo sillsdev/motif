@@ -32,7 +32,7 @@
             </ListBox.Styles>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:PageViewModel">
-                <Grid ColumnDefinitions="*">
+                <Grid ColumnDefinitions="*,Auto,Auto">
                   <Viewbox Classes="pageIcon" VerticalAlignment="Center">
                     <Canvas Width="{DynamicResource Component.Sidebar.IconCanvasSize}"
                             Height="{DynamicResource Component.Sidebar.IconCanvasSize}">
@@ -43,11 +43,11 @@
                   <views:CopyableTextBlock Classes="pageLabel" Text="{Binding Title}"
                                            AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarPageLabel}"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                  <Border Classes="pageBadge" IsVisible="{Binding HasBadge}" ToolTip.Tip="{Binding BadgeTip}"
+                  <Border Grid.Column="1" Classes="pageBadge" IsVisible="{Binding HasBadge}" ToolTip.Tip="{Binding BadgeTip}"
                           AutomationProperties.Name="{Binding BadgeTip}" views:ClearTipPlacement.IsEnabled="True">
                     <views:CopyableTextBlock Text="{Binding Badge}" />
                   </Border>
-                  <Border Classes="proposalDelta" IsVisible="{Binding HasDeltaBadge}"
+                  <Border Grid.Column="2" Classes="proposalDelta" IsVisible="{Binding HasDeltaBadge}"
                           AutomationProperties.Name="{Binding DeltaBadgeName}">
                     <views:CopyableTextBlock Text="{Binding DeltaBadge}" />
                   </Border>
