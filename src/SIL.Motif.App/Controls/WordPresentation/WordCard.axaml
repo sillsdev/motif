@@ -176,7 +176,7 @@
                 <Border Classes="wordPresentationCardSection hoverReveal" IsVisible="{Binding HasWhySection}">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                     <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{Binding WarningSectionHeading}" />
-                    <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.WordCardNoStoredWarning}"
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding NoNamedWarningText}"
                                              TextWrapping="Wrap" IsVisible="{Binding HasNoNamedWarning}" />
                     <views:ProgressiveItemsControl x:Name="WordCardNamedWarningDetailsItems"
                                                    FullItemsSource="{Binding NamedWarningDetails}"
@@ -259,13 +259,6 @@
                               CommandParameter="{Binding BoundPrimaryAction}" IsVisible="{Binding HasPrimaryAction}"
                               AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
                       <views:WordDispositionButtons />
-                      <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.TryAWord}" Command="{Binding TryWordForTokenCommand}" CommandParameter="{Binding Form}" />
-                      <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.MarkAsUnread}"
-                              Command="{Binding Actions.MarkTokenUnreadCommand}" CommandParameter="{Binding}"
-                              AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkThisOccurrenceAsUnreadAccessibleName}"
-                              AutomationProperties.HelpText="{Binding MarkUnreadDisabledReason}"
-                              ToolTip.Tip="{Binding MarkUnreadDisabledReason}" ToolTip.ShowOnDisabled="True"
-                              views:ClearTipPlacement.IsEnabled="True" />
                       <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.CheckAgain}" Command="{Binding Actions.RecheckChangesCommand}"
                               IsVisible="{Binding Marking.IsUncertain}"
                               AutomationProperties.Name="{x:Static app:MotifAppStrings.CheckThisUncertainChangeAgainAccessibleName}" />

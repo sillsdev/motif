@@ -36,7 +36,8 @@ public sealed class ReaderWarningNoteScreenshots
                 settings.ZoomPercent = 150;
                 PageScreenshots.Settle(window);
                 note = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "No stored warning names this word.");
+                    text.IsEffectivelyVisible && text.Text is "No stored warning names this word." or
+                        "No grammar warning names this word. Try a Word shows where it stops.");
                 originalWrapping = note.TextWrapping;
                 note.BringIntoView();
                 PageScreenshots.Settle(window);
@@ -58,7 +59,7 @@ public sealed class ReaderWarningNoteScreenshots
                 AssertInsideWindow(window, note);
                 Save(window, dark, "baseline-reproduced");
                 var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => LayoutAssertions.AssertCurrent(window));
-                Assert.Contains("No stored warning names this word.", failure.Message);
+                Assert.Contains(note.Text!, failure.Message);
                 Assert.Contains("horizontal", failure.Message);
             }
             finally

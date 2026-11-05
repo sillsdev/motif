@@ -163,6 +163,8 @@
       </Grid>
 
       <StackPanel Grid.Row="1" Spacing="{DynamicResource Intent.Space.Snug}">
+        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ReaderMarkLegend}"
+                                 TextWrapping="Wrap" IsVisible="{Binding InText.HasResults}" />
         <views:RefusalBlock DataContext="{Binding InText.ReadStateRefusal}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding InText.ObjectTimingDetailText}" TextWrapping="Wrap"
                                  IsVisible="{Binding InText.ObjectTimingDetailText, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
@@ -252,9 +254,18 @@
                               <views:CopyableTextBlock Classes="muted" VerticalAlignment="Center"
                                                        Text="{x:Static app:MotifAppStrings.InspectorKeyHint}" TextWrapping="Wrap"
                                                        Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
+                              <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.TryAWord}"
+                                      Command="{Binding TryWordForTokenCommand}" CommandParameter="{Binding Form}" />
+                              <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.MarkAsUnread}"
+                                      Command="{Binding Actions.MarkTokenUnreadCommand}" CommandParameter="{Binding}"
+                                      AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkThisOccurrenceAsUnreadAccessibleName}"
+                                      AutomationProperties.HelpText="{Binding MarkUnreadDisabledReason}"
+                                      ToolTip.Tip="{Binding MarkUnreadDisabledReason}" ToolTip.ShowOnDisabled="True"
+                                      views:ClearTipPlacement.IsEnabled="True" />
                             </WrapPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                              <HyperlinkButton Classes="revealControl revealLink revealOnHover"
+                              <HyperlinkButton Classes="revealOnHover wordCardWordLink"
+                                               FontSize="{DynamicResource Intent.Type.Body}"
                                                NavigateUri="{Binding WordLink}" IsVisible="{Binding HasWordLink}"
                                                VerticalAlignment="Center" AutomationProperties.Name="{Binding WordLinkName}"
                                                ToolTip.Tip="{Binding WordLinkText}">

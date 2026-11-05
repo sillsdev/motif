@@ -2575,6 +2575,18 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>FieldWorks edits since then are not in this trace.</value>
     <comment>Shown when the FieldWorks project has been saved since the trace's Baseline was captured.</comment>
   </data>
+  <data name="MotifApp.WordCardNoParseWarning" xml:space="preserve">
+    <value>No grammar warning names this word. Try a Word shows where it stops.</value>
+    <comment>Shown for a word that did not parse and has no grammar warning naming it.</comment>
+  </data>
+  <data name="MotifApp.ReaderMarkLegend" xml:space="preserve">
+    <value>A Approved · D Disapproved · U Unknown · = Same · ≠ Different · ∅ No parse · ◖ Stopped</value>
+    <comment>Key for the FieldWorks opinion letters and parser outcome symbols in the text reader.</comment>
+  </data>
+  <data name="MotifApp.ProposalsWaitingBadgePattern" xml:space="preserve">
+    <value>{0, plural, one {# Proposal waiting for you} other {# Proposals waiting for you}}</value>
+    <comment>Sidebar tooltip explaining the number of Proposals in the Waiting for You group.</comment>
+  </data>
   <data name="MotifApp.SetupNextTexts" xml:space="preserve">
     <value>Next: Texts</value>
     <comment>Setup button that goes to the texts step.</comment>

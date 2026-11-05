@@ -370,6 +370,8 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     public bool HasNamedWarning => NamedWarnings.Count > 0;
     /// <summary>Whether the card has no exact finding naming this word.</summary>
     public bool HasNoNamedWarning => !HasNamedWarning;
+    public string NoNamedWarningText => IsPanGlossNone
+        ? MotifAppStrings.WordCardNoParseWarning : MotifAppStrings.WordCardNoStoredWarning;
     /// <summary>Whether exact or candidate warning evidence names this word.</summary>
     public bool HasWarningEvidence => HasNamedWarning || MembershipCandidateWarnings.Count > 0 ||
         SpellingCandidateWarnings.Count > 0;
@@ -842,7 +844,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
         foreach (var name in new[]
                  {
                      nameof(Marking), nameof(ShowUnread), nameof(IsPanGlossSame), nameof(IsPanGlossDifferent),
-                     nameof(IsPanGlossExtra), nameof(IsPanGlossNone), nameof(IsPanGlossCapped), nameof(PanGlossSummary),
+                     nameof(IsPanGlossExtra), nameof(IsPanGlossNone), nameof(NoNamedWarningText), nameof(IsPanGlossCapped), nameof(PanGlossSummary),
                      nameof(PanGlossNote), nameof(ShowsPanGlossReading), nameof(ShowsPanGlossNote),
                      nameof(HasMorePanGlossReadings), nameof(HasPrimaryAction), nameof(PrimaryActionLabel), nameof(BoundPrimaryAction),
                      nameof(TooltipSummary), nameof(HoverSummary), nameof(Disposition),

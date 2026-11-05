@@ -304,6 +304,12 @@ public sealed class AnalyzeTextsLayoutTests
                 var panel = Panel(window);
                 var card = OpenCard(window);
                 var open = Assert.IsType<ResultsTokenViewModel>(card.DataContext);
+                var header = Assert.Single(card.GetVisualDescendants().OfType<Border>(),
+                    border => border.Classes.Contains("wordPresentationCardHeader"));
+                Assert.Contains(header.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Try a Word"));
+                Assert.Contains(header.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Mark as Unread"));
+                var wordLink = Assert.Single(header.GetVisualDescendants().OfType<HyperlinkButton>());
+                Assert.True(wordLink.FontSize >= 13, $"Word Analyses link font size: {wordLink.FontSize}");
                 Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Popup>(), popup => popup.IsOpen);
 
                 var cardBounds = BoundsIn(card, panel);
