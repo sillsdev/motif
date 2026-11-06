@@ -864,7 +864,7 @@ internal static class TooltipOwners
         {
             Pending = "current word presentations keep morpheme forms selectable and show their FieldWorks link separately",
         },
-        new("FieldWorks link on a morpheme", "Controls/WordPresentation/MorphemePanel.cs", "EditMorphemeInFieldWorksFormat", TooltipScene.WordCard,
+        new("FieldWorks link on a morpheme", "Controls/WordPresentation/MorphemePanel.cs", "name", TooltipScene.WordCard,
             control => control is HyperlinkButton && control.Classes.Contains("morphemePanelLink")),
         new("morpheme that opens the inspector", "Controls/WordPresentation/MorphemePanel.cs", "$\"Show {morph.Form} in the inspector\"",
             TooltipScene.WordCard, control => control is StackPanel && control.Classes.Contains("morphemePanelInspectable")),

@@ -43,6 +43,7 @@ public sealed class TextsHeaderResponsiveTests
                 AssertInside(window, summary);
                 AssertInside(window, clear);
                 Assert.True(summary.Bounds.Height > 0 && summary.Bounds.Width > 0);
+                Assert.Equal(Avalonia.Media.TextWrapping.Wrap, summary.TextWrapping);
                 HeadlessClick.Click(window, clear, "Clear the chosen matrix cells");
                 PageScreenshots.Settle(window);
                 Assert.DoesNotContain(page.Assess.Compare.Cells, cell => cell.IsSelected);

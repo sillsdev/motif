@@ -95,7 +95,13 @@ public sealed class ProposalReviewScreenshots
                     AutomationProperties.GetAutomationId(button) == AutomationIds.ApplyChanges);
                 var decline = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetAutomationId(button) == AutomationIds.DeclineProposal);
-                Assert.True(apply.IsEffectivelyVisible && decline.IsEffectivelyVisible);
+                foreach (var action in new[] { apply, decline })
+                {
+                    Assert.True(action.IsEffectivelyVisible);
+                    Assert.DoesNotContain(viewport, action.GetVisualAncestors());
+                    var box = new Rect(action.Bounds.Size).TransformToAABB(action.TransformToVisual(window)!.Value);
+                    Assert.True(box.Top >= 0 && box.Bottom <= window.ClientSize.Height + 1, $"Action outside window: {box}.");
+                }
                 Assert.DoesNotContain(viewport.GetVisualDescendants().OfType<TextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == TrialStandingWords.NotTried.Sentence);
                 Assert.Contains(viewport.GetVisualDescendants().OfType<TextBlock>(), text =>
