@@ -197,7 +197,10 @@ per-rule timing, correctness against manual analysis, the difference between two
 analysis, which words now complete. A Trial summary is a measurement like any other. Immutable once written, so it
 has no lifecycle of its own — the Job that produced it has the states, and *current* is a pointer the
 project holds rather than a state the Assessment carries. Motif stores Assessments and compares them; it
-never renders a verdict from one.
+never renders a verdict from one. A Proposal review report presents this evidence at summary, failures and
+full levels. Its red flags state observed regressions, not a verdict; their absence means only "not bad",
+never "good". Incomplete evidence is labelled Incomplete, not Failed
+([ADR 0091](docs/adr/0091-proposal-review-report-three-levels-and-red-flags-no-verdict.md)).
 _Avoid_: parse report, evaluation, score, verdict, PanGloss run
 
 **Assessor**:
