@@ -49,7 +49,7 @@ internal sealed class ParsimonyStages(Action<JobStageProgress> publish, int step
     private readonly object _gate = new();
 
     /// <summary>Steps of a fresh Baseline build that runs <paramref name="measures"/> measures.</summary>
-    public static int FreshSteps(int measures) => 8 + measures;
+    public static int FreshSteps(int measures) => 7 + measures;
 
     /// <summary>Steps of a Report written onto an existing bundle that runs <paramref name="measures"/> measures.</summary>
     public static int ReuseSteps(int measures) => 2;

@@ -176,7 +176,8 @@ public sealed class FakePanGlossSurfaceTests
             new PanGlossRequest.Stats("project.fwdata", "cache.sqlite", ["--group", "word", "--format", "jsonl"]),
             new PanGlossRequest.Facts("snapshot.json", "{}", "facts-artifact"),
             new PanGlossRequest.Import("project.fwdata", "grammar.json"),
-            new PanGlossRequest.GrammarHealth("project.fwdata", "project"),
+            new PanGlossRequest.GrammarHealth("project.fwdata", "project")
+                { SnapshotPath = "grammar.json", FactsContextJson = "{}", FactsLight = true },
             new PanGlossRequest.Trace("project.fwdata", "motifa")
                 { ParserWorkLimit = SIL.Motif.Contract.Assess.ParserWorkLimit.Default },
         ];
@@ -213,7 +214,8 @@ public sealed class FakePanGlossSurfaceTests
                                 ? name is "--trace" or "--trace-format" or "--trace-details" or "--work-cap"
                                 : request.Subcommand == "facts"
                                     ? name is "--out" or "--context" or "--stats" or "--stats-manifest" or "--json" or "--light"
-                                    : request.Subcommand == "grammar-health" && name is "--fw-project" or "--stored-analyses")
+                                    : request.Subcommand == "grammar-health" && name is "--fw-project" or "--stored-analyses" or
+                                        "--fst" or "--snapshot-out" or "--facts-out" or "--facts-context" or "--facts-light")
                     .OrderBy(name => name, StringComparer.Ordinal),
                 pinnedFlags.EnumerateObject().Select(flag => flag.Name).OrderBy(name => name, StringComparer.Ordinal));
             foreach (var pinnedFlag in pinnedFlags.EnumerateObject())

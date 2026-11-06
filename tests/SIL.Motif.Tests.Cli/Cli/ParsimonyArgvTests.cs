@@ -127,7 +127,7 @@ public sealed class ParsimonyArgvTests : IDisposable
         var supported = SIL.Motif.Host.Parsimony.ParsimonyAdmission.SupportedMeasureIds();
         Assert.Equal(supported, set!.Reports.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
         Assert.All(set.Reports, report => Assert.Equal(set.BundleId, report.Inputs.BundleId));
-        Assert.Equal(new[] { "describe", "import", "facts" }, FakeParser.Invocations(parserPath));
+        Assert.Equal(new[] { "describe", "grammar-health" }, FakeParser.Invocations(parserPath));
         var shown = await CliProcess.RunAsync(StartWithParser(_preferencePath, null,
             "parsimony", "show", "--project", project, set.Reports[^1].ReportId, "--json"));
         Assert.Equal(0, shown.ExitCode);
@@ -185,7 +185,7 @@ public sealed class ParsimonyArgvTests : IDisposable
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
         Assert.Equal(response.ReportId, named!.ReportId);
         Assert.Equal(response.Inputs.BundleId, named.BundleId);
-        Assert.Equal(new[] { "describe", "import", "facts" }, FakeParser.Invocations(parserPath));
+        Assert.Equal(new[] { "describe", "grammar-health" }, FakeParser.Invocations(parserPath));
 
         var activeView = StartWithParser(_preferencePath, Path.Combine(_root, "parser-not-installed"),
             "parsimony", "view", "parsimony-active-findings", "--project", project, "--bundle",
@@ -202,7 +202,7 @@ public sealed class ParsimonyArgvTests : IDisposable
         Assert.Equal(1, view.Returned);
         Assert.True(view.Truncated);
         Assert.NotNull(view.NextCursor);
-        Assert.Equal(new[] { "describe", "import", "facts" }, FakeParser.Invocations(parserPath));
+        Assert.Equal(new[] { "describe", "grammar-health" }, FakeParser.Invocations(parserPath));
 
         var show = StartWithParser(_preferencePath, Path.Combine(_root, "parser-now-absent"),
             "parsimony", "show", "--project", project, response.ReportId, "--json");
@@ -217,7 +217,7 @@ public sealed class ParsimonyArgvTests : IDisposable
         Assert.Equal(response.Text, stored.Text);
         Assert.Equal(response.Findings.Select(finding => finding.FindingId),
             stored.Findings.Select(finding => finding.FindingId));
-        Assert.Equal(new[] { "describe", "import", "facts" }, FakeParser.Invocations(parserPath));
+        Assert.Equal(new[] { "describe", "grammar-health" }, FakeParser.Invocations(parserPath));
 
         var parserCaseView = StartWithParser(_preferencePath, Path.Combine(_root, "parser-now-absent"),
             "parsimony", "view", "parser-cases", "--project", project, "--bundle",
@@ -232,7 +232,7 @@ public sealed class ParsimonyArgvTests : IDisposable
         Assert.Equal("parser-cases", parserCases!.View);
         Assert.Equal(ParsimonyMeasureStatus.NotAvailable, parserCases.Status);
         Assert.Empty(parserCases.Rows);
-        Assert.Equal(new[] { "describe", "import", "facts" }, FakeParser.Invocations(parserPath));
+        Assert.Equal(new[] { "describe", "grammar-health" }, FakeParser.Invocations(parserPath));
     }
 
     [Fact]

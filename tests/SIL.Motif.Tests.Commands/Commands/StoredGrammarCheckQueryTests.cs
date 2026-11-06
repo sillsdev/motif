@@ -388,7 +388,8 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
 
     private const string ReportWithOneFinding = """
         {
-          "schema_version": 4,
+          "schema_version": 5,
+          "fst_checked": false, "fst_check_error": null,
           "fieldworks_project": {
             "name": null,
             "source": null
@@ -397,13 +398,13 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
             {
               "code": "hc-undeclared-segment",
               "group_name": "Undeclared segment",
-              "level": "info",
+              "blocks_fst": false, "fst_reason": null, "level": "info",
               "count": 1
             }
           ],
           "diagnostics": [
             {
-              "level": "info",
+              "blocks_fst": false, "fst_reason": null, "level": "info",
               "code": "hc-undeclared-segment",
               "group_name": "Undeclared segment",
               "origin": "check",
@@ -424,7 +425,8 @@ public sealed class StoredGrammarCheckQueryTests : IDisposable
 
     private const string EmptyReport = """
         {
-          "schema_version": 4,
+          "schema_version": 5,
+          "fst_checked": false, "fst_check_error": null,
           "fieldworks_project": {
             "name": null,
             "source": null

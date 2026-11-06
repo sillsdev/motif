@@ -500,13 +500,6 @@ public sealed class ParsimonyCandidateEvidenceBuilder
     {
         var snapshotPath = Path.Combine(outputDirectory, "grammar-snapshot.json");
         Directory.CreateDirectory(outputDirectory);
-        var importPhase = stages.Enter("import", inputName);
-        var importWait = claim.ObserveParserWait(importPhase);
-        var imported = await timer.TimeAsync("import", inputName, () => _invoker.RunAsync(
-            new PanGlossRequest.Import(projectPath, snapshotPath) { OnAdmissionWait = importWait.Observe },
-            "parsimony-candidate-import", cancellationToken)).ConfigureAwait(false);
-        if (imported is not PanGlossOutcome.Completed)
-            throw new PanGlossInvocationException(CategoryOf(imported), imported.Message);
         var contextJson = JsonSerializer.Serialize(new
         {
             format = "pangloss-facts-context",
@@ -515,11 +508,15 @@ public sealed class ParsimonyCandidateEvidenceBuilder
             inputKind = candidate ? "proposal-dry-run" : "baseline",
             dryRunDigest = candidate ? dryRunEffectDigest : null,
         }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        var factsDirectory = Path.Combine(outputDirectory, "facts-output");
         var factsPhase = stages.Enter("facts", inputName);
         var factsWait = claim.ObserveParserWait(factsPhase);
         var outcome = await timer.TimeAsync("facts", inputName, () => _invoker.RunAsync(
-            new PanGlossRequest.Facts(snapshotPath, contextJson, factsDirectory, Light: true) { OnAdmissionWait = factsWait.Observe },
+            new PanGlossRequest.GrammarHealth(projectPath, Path.GetFileNameWithoutExtension(projectPath),
+                Contract.Requests.StoredAnalysisComparison.Off)
+            {
+                SnapshotPath = snapshotPath, FactsContextJson = contextJson, FactsLight = true,
+                OnAdmissionWait = factsWait.Observe,
+            },
             "parsimony-candidate-facts", cancellationToken)).ConfigureAwait(false);
         if (outcome is not PanGlossOutcome.Completed completed || completed.Facts is null)
             throw new PanGlossInvocationException(CategoryOf(outcome), outcome.Message);

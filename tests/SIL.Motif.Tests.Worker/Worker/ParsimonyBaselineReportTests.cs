@@ -109,8 +109,8 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         _ = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
 
         Assert.NotNull(invoker.FactsRequest);
-        Assert.Null(invoker.FactsRequest!.ArtifactDirectory);
-        Assert.True(invoker.FactsRequest.Light);
+        Assert.NotNull(invoker.FactsRequest!.SnapshotPath);
+        Assert.True(invoker.FactsRequest.FactsLight);
     }
 
     [Fact]
@@ -297,7 +297,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Equal(liveDigest, Sha256Of(_project.FullFwDataPath));
         Assert.False(File.Exists(fwDataPath + ".lock"));
         Assert.False(File.Exists(_project.FullFwDataPath + ".lock"));
-        Assert.Equal(new[] { "describe", "import", "facts" }, FakeParser.Invocations(parserPath));
+        Assert.Equal(new[] { "describe", "grammar-health" }, FakeParser.Invocations(parserPath));
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
-    public async Task ReplacingTheParserBetweenImportAndFactsRefuses()
+    public async Task ReplacingTheParserWhileProducingFactsRefuses()
     {
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
@@ -331,7 +331,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
 
         var outcome = await handler.RunAsync(Claim(job.JobId), CancellationToken.None);
 
-        Assert.True(invoker.ReplacedBeforeFacts);
+        Assert.True(invoker.ReplacedWhileProducingFacts);
         Assert.Equal(JobStatus.Failed, outcome!.Status);
         Assert.Equal(JobFailureCategory.Infrastructure, outcome.Category);
         Assert.Contains("parser executable changed during the invocation", outcome.ResultJson, StringComparison.Ordinal);
@@ -339,21 +339,24 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Empty(Directory.EnumerateFiles(workerRoot, "grammar-facts.sqlite", SearchOption.AllDirectories));
     }
 
-    /// <summary>Replaces the parser's bytes between Import and Facts, as an operator would.</summary>
+    /// <summary>Replaces the parser's bytes while producing facts, as an operator would.</summary>
     private sealed class ParserReplacingInvoker(SIL.Motif.Host.PanGloss.IPanGlossInvoker inner, string parserPath)
         : SIL.Motif.Host.PanGloss.IPanGlossInvoker
     {
-        public bool ReplacedBeforeFacts { get; private set; }
+        public bool ReplacedWhileProducingFacts { get; private set; }
 
         public Task<SIL.Motif.Host.PanGloss.PanGlossOutcome> RunAsync(SIL.Motif.Host.PanGloss.PanGlossRequest request,
             string label, CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
         {
-            if (request is SIL.Motif.Host.PanGloss.PanGlossRequest.Facts)
+            if (request is SIL.Motif.Host.PanGloss.PanGlossRequest.GrammarHealth)
             {
                 // A trailing byte leaves the apphost runnable while changing its digest.
-                using var stream = new FileStream(parserPath, FileMode.Append, FileAccess.Write);
-                stream.WriteByte(0);
-                ReplacedBeforeFacts = true;
+                var replacement = parserPath + ".replacement";
+                File.Copy(parserPath, replacement);
+                using (var stream = new FileStream(replacement, FileMode.Append, FileAccess.Write))
+                    stream.WriteByte(0);
+                File.Move(replacement, parserPath, overwrite: true);
+                ReplacedWhileProducingFacts = true;
             }
             return inner.RunAsync(request, label, cancellationToken, wallClockCap);
         }
@@ -1236,7 +1239,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
             TimeSpan? wallClockCap = null)
         {
             var outcome = await inner.RunAsync(request, label, cancellationToken, wallClockCap).ConfigureAwait(false);
-            if (request is not SIL.Motif.Host.PanGloss.PanGlossRequest.Facts ||
+            if (request is not SIL.Motif.Host.PanGloss.PanGlossRequest.GrammarHealth ||
                 outcome is not SIL.Motif.Host.PanGloss.PanGlossOutcome.Completed completed ||
                 completed.Facts is not { } facts)
                 return outcome;
@@ -3113,10 +3116,10 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var outcome = await handler.RunAsync(claim, CancellationToken.None);
 
         Assert.Equal(JobStatus.Completed, outcome!.Status);
-        Assert.Equal(["copy", "import", "facts", "evidence", "validate", "measure", "freeze", "render", "publish"],
+        Assert.Equal(["copy", "facts", "evidence", "validate", "measure", "freeze", "render", "publish"],
             seen.Select(item => item.Stage));
-        Assert.Equal(Enumerable.Range(1, 9), seen.Select(item => item.Step));
-        Assert.All(seen, item => Assert.Equal(9, item.Steps));
+        Assert.Equal(Enumerable.Range(1, 8), seen.Select(item => item.Step));
+        Assert.All(seen, item => Assert.Equal(8, item.Steps));
         Assert.Equal("P-adhoc-duplicate", seen.Single(item => item.Stage == "measure").Detail);
         var stored = JsonSerializer.Deserialize<JobStageProgress>(_jobs.Get(job.JobId)!.ProgressJson!,
             SIL.Motif.Contract.MotifJson.CreateOptions());
@@ -3124,7 +3127,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
     }
 
     [Fact]
-    public async Task ParsimonyWaitingForImportCapacityPublishesStageWithoutAdvancingSteps()
+    public async Task ParsimonyWaitingForFactsCapacityPublishesStageWithoutAdvancingSteps()
     {
         await PublishBaselineAsync(_pristine);
         var parserPath = FactsParser(_pristine.Seed);
@@ -3139,7 +3142,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var waitStarted = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         queue.SlotWaitStarted = label =>
         {
-            if (label == "parsimony-import") waitStarted.TrySetResult(label);
+            if (label == "parsimony-grammar-facts") waitStarted.TrySetResult(label);
         };
         using var invoker = new PanGlossInvoker(parserPath, queue);
         var importStageStarted = new TaskCompletionSource<JobStageProgress>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -3147,7 +3150,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var handler = ObservedHandler(parserPath, invoker, progress =>
         {
             observed.Add(progress);
-            if (progress.Stage == "import") importStageStarted.TrySetResult(progress);
+            if (progress.Stage == "facts") importStageStarted.TrySetResult(progress);
         });
         var job = CreateJob("P-adhoc-duplicate");
         var claim = Claim(job.JobId);
@@ -3158,18 +3161,18 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         {
             pending = handler.RunAsync(claim, cancellation.Token);
             var importStage = await importStageStarted.Task.WaitAsync(TimeSpan.FromSeconds(60));
-            Assert.Equal("import", importStage.Stage);
-            Assert.Equal("parsimony-import", await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(60)));
+            Assert.Equal("facts", importStage.Stage);
+            Assert.Equal("parsimony-grammar-facts", await waitStarted.Task.WaitAsync(TimeSpan.FromSeconds(60)));
 
             var waiting = await WaitForStageProgressAsync(job.JobId, "waiting-for-parser-slot");
 
             Assert.True(waiting is not null,
                 "SlotWaitStarted confirmed a failed parser-slot acquisition, but the Parsimony row did not publish a durable waiting stage.");
             Assert.Equal("waiting-for-parser-slot", waiting!.Stage);
-            Assert.Contains("import", waiting.Detail, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("facts", waiting.Detail, StringComparison.OrdinalIgnoreCase);
             Assert.Equal(importStage.Step, waiting.Step);
             Assert.Equal(importStage.Steps, waiting.Steps);
-            Assert.DoesNotContain(observed, progress => progress.Stage == "facts");
+            Assert.DoesNotContain(observed, progress => progress.Stage == "evidence");
             Assert.Empty(FakeParser.Invocations(parserPath));
         }
         finally
@@ -3278,8 +3281,8 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         Assert.Equal(supported, stored.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
         Assert.Single(stored.Select(report => report.Inputs.BundleId).Distinct());
         Assert.Equal(supported.Count, seen.Count(item => item.Stage == "measure"));
-        Assert.Equal(8 + supported.Count, seen.Count);
-        Assert.All(seen, item => Assert.Equal(8 + supported.Count, item.Steps));
+        Assert.Equal(7 + supported.Count, seen.Count);
+        Assert.All(seen, item => Assert.Equal(7 + supported.Count, item.Steps));
     }
 
     [Fact]
@@ -6058,19 +6061,12 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
 
     private sealed class FactsRequestCaptureInvoker : IPanGlossInvoker
     {
-        public PanGlossRequest.Facts? FactsRequest { get; private set; }
+        public PanGlossRequest.GrammarHealth? FactsRequest { get; private set; }
 
         public Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
             CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
         {
-            if (request is PanGlossRequest.Import import)
-            {
-                File.WriteAllText(import.GrammarJsonPath, "{}");
-                return Task.FromResult<PanGlossOutcome>(
-                    new PanGlossOutcome.Completed(string.Empty, string.Empty, TimeSpan.Zero));
-            }
-
-            if (request is PanGlossRequest.Facts facts)
+            if (request is PanGlossRequest.GrammarHealth facts)
             {
                 FactsRequest = facts;
                 return Task.FromResult<PanGlossOutcome>(new PanGlossOutcome.Unavailable("Captured facts request."));

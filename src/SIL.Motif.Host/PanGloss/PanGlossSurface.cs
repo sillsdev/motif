@@ -16,7 +16,7 @@ internal sealed record PanGlossCapabilities(
 {
     internal string? ValidateRequest(PanGlossRequest request)
     {
-        if (request is PanGlossRequest.Facts && !FactsContractSupported)
+        if ((request is PanGlossRequest.Facts or PanGlossRequest.GrammarHealth { FactsContextJson: not null }) && !FactsContractSupported)
             return "the description does not declare the supported grammar-facts and context identity.";
         var startInfo = new ProcessStartInfo();
         request.AddArguments(startInfo, "scratch");

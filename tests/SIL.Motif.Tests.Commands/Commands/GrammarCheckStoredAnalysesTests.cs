@@ -99,7 +99,7 @@ public sealed class GrammarCheckStoredAnalysesTests : IDisposable
     private static FakeInvoker Answering()
     {
         var report = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
-            "schema-v4-producer.json"));
+            "schema-v5-producer.json"));
         return new FakeInvoker { Respond = _ => new PanGlossOutcome.Completed(report, string.Empty, TimeSpan.Zero) };
     }
 }

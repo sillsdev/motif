@@ -216,12 +216,28 @@ try {
         throw 'PanGloss interface probe returned an empty word or duplicate project paths.'
     }
 
-    $health = Invoke-PanGloss @('grammar-health', $grammar, '--fw-project', 'interface smoke')
+    $snapshot = Join-Path $ProbeRoot 'grammar-snapshot.json'
+    $facts = Join-Path $ProbeRoot 'grammar-facts.sqlite'
+    $factsContext = Join-Path $ProbeRoot 'facts-context.json'
+    $context = @{ format = 'pangloss-facts-context'; version = $interfaces.facts.contextVersion;
+        baselineToken = @{ bundleDigest = 'sha256:' + ('a' * 64) }; inputKind = 'baseline'; dryRunDigest = $null }
+    [System.IO.File]::WriteAllText($factsContext, ($context | ConvertTo-Json -Depth 5), [System.Text.UTF8Encoding]::new($false))
+    $health = Invoke-PanGloss @('grammar-health', $grammar, '--fw-project', 'interface smoke',
+        '--stored-analyses', 'off', '--snapshot-out', $snapshot,
+        '--facts-out', $facts, '--facts-context', $factsContext, '--facts-light')
     if ($health.ExitCode -ne 0 -and [string]::IsNullOrWhiteSpace($health.StandardOutput)) {
         throw "PanGloss interface mismatch: grammar-health expected a JSON report, actual exit $($health.ExitCode). $($health.StandardError.Trim())"
     }
     $healthReport = Read-Json $health.StandardOutput 'grammar-health'
     Assert-Interface 'grammar-health schema_version' $interfaces.grammarHealthSchemaVersion $healthReport.schema_version
+    Assert-Interface 'grammar-health fst_checked without --fst' $false $healthReport.fst_checked
+    Assert-Interface 'grammar-health fst_check_error without --fst' $null $healthReport.fst_check_error
+    foreach ($artifact in @($snapshot, $facts)) {
+        if (-not (Test-Path -LiteralPath $artifact -PathType Leaf) -or (Get-Item -LiteralPath $artifact).Length -eq 0) {
+            throw "PanGloss interface mismatch: grammar-health did not write requested artifact '$artifact'."
+        }
+    }
+
 
     $trace = Invoke-PanGloss @('parse', $grammar, $word, '--trace', '--trace-format', 'json', '--trace-details')
     if ($trace.ExitCode -ne 0) {
@@ -270,7 +286,7 @@ try {
         Copy-Item -LiteralPath $assemblyPath -Destination $sqliteProbe
     }
     $reader = @'
-param([string] $Directory, [string] $Cache)
+param([string] $Directory, [string] $Cache, [string] $Facts)
 $ErrorActionPreference = 'Stop'
 foreach ($name in @('SQLitePCLRaw.core', 'SQLitePCLRaw.provider.e_sqlite3', 'SQLitePCLRaw.batteries_v2', 'Microsoft.Data.Sqlite')) {
     [void] [System.Reflection.Assembly]::LoadFrom((Join-Path $Directory "$name.dll"))
@@ -287,19 +303,28 @@ try {
     [Console]::Out.Write($schema + ',' + [string] $command.ExecuteScalar())
 }
 finally { $connection.Dispose() }
+$factsConnection = [Activator]::CreateInstance($type, @("Data Source=$Facts;Mode=ReadOnly;Pooling=False"))
+try {
+    $factsConnection.Open()
+    $command = $factsConnection.CreateCommand()
+    $command.CommandText = 'PRAGMA user_version'
+    [Console]::Out.Write(',' + [string] $command.ExecuteScalar())
+}
+finally { $factsConnection.Dispose() }
 '@
     $readerPath = Join-Path $sqliteProbe 'read-stats-version.ps1'
     [System.IO.File]::WriteAllText($readerPath, $reader, [System.Text.UTF8Encoding]::new($false))
     $pwsh = (Get-Process -Id $PID).Path
     $statsReader = Invoke-ChildProcess $pwsh @(
         '-NoProfile', '-NonInteractive', '-File', $readerPath,
-        '-Directory', $sqliteProbe, '-Cache', $statsCache) 'stats-cache reader'
+        '-Directory', $sqliteProbe, '-Cache', $statsCache, '-Facts', $facts) 'stats-cache reader'
     if ($statsReader.ExitCode -ne 0) {
         throw "PanGloss interface check could not read the stats cache version; the reader exited $($statsReader.ExitCode). $($statsReader.StandardError.Trim())"
     }
     $statsVersions = $statsReader.StandardOutput.Trim().Split(',')
     Assert-Interface 'stats cache schema_version' $interfaces.statsCacheVersion $statsVersions[0]
     Assert-Interface 'stats counter_semantics' $interfaces.statsCounterSemanticsVersion $statsVersions[1]
+    Assert-Interface 'grammar-health facts schema' $interfaces.facts.schemaVersion $statsVersions[2]
 
     $compile = Invoke-PanGloss @(
         'parse', $brokenGrammar, $word, '--trace', '--trace-format', 'json', '--trace-details')

@@ -38,6 +38,56 @@ internal static class GrammarFactsReader
         }
     }
 
+    internal static GrammarFactsArtifact ReadProduced(string path, string snapshotPath)
+    {
+        if (!File.Exists(path)) throw new InvalidDataException("PanGloss did not write the requested facts database.");
+        try
+        {
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = ParsimonySqlitePath.DataSource(path), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+            }.ToString());
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT application_id, schema_version, format, source_sha256, model_fingerprint,
+                       baseline_key, input_kind, dry_run_digest, compile_status
+                FROM artifact_meta WHERE singleton = 1;
+                """;
+            using var reader = command.ExecuteReader();
+            if (!reader.Read()) throw new InvalidDataException("The facts database has no metadata row.");
+            var metadata = new
+            {
+                applicationId = reader.GetInt32(0), schemaVersion = reader.GetInt32(1), format = reader.GetString(2),
+                sourceSha256 = reader.GetString(3), modelFingerprint = reader.GetString(4), baselineKey = reader.GetString(5),
+                inputKind = reader.GetString(6), dryRunDigest = reader.IsDBNull(7) ? null : reader.GetString(7),
+                compileStatus = reader.GetString(8), outputBytes = new FileInfo(path).Length, outputSha256 = DigestFile(path),
+                sections = ReadProducedSections(connection),
+            };
+            return Read(path, JsonSerializer.Serialize(metadata), snapshotPath);
+        }
+        catch (Exception exception) when (exception is SqliteException or InvalidOperationException or
+            FormatException or OverflowException or ArgumentException)
+        {
+            throw new InvalidDataException("The PanGloss facts database is invalid.", exception);
+        }
+    }
+
+    private static object[] ReadProducedSections(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT section, status, source_scope, reason_code FROM artifact_section ORDER BY section";
+        using var reader = command.ExecuteReader();
+        var rows = new List<object>();
+        while (reader.Read())
+            rows.Add(new
+            {
+                section = reader.GetString(0), status = reader.GetString(1), sourceScope = reader.GetString(2),
+                reasonCode = reader.IsDBNull(3) ? null : reader.GetString(3),
+            });
+        return rows.ToArray();
+    }
+
     internal static GrammarFactsArtifact Read(string path, string output, string snapshotPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);

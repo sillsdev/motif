@@ -20,9 +20,10 @@ public static class GrammarHealthReportReader
             .Select(row =>
             {
                 var item = row ?? throw new JsonException("A summary row is incomplete or invalid.");
-                return new GrammarWarningSummary(item.Code!, item.GroupName, item.Level, item.Count);
+                return new GrammarWarningSummary(item.Code!, item.GroupName, item.Level, item.Count)
+                { BlocksFst = item.BlocksFst, FstReason = item.FstReason };
             }).ToArray();
-        return new GrammarCheckResponse(findings, HasBaseline: true) { Summary = summary, Locale = locale };
+        return new GrammarCheckResponse(findings, HasBaseline: true) { Summary = summary, Locale = locale, FstChecked = report.FstChecked, FstCheckError = report.FstCheckError };
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
@@ -48,10 +49,13 @@ public static class GrammarHealthReportReader
         if ((fieldWorksProject.Name is { } name && string.IsNullOrWhiteSpace(name)) ||
             (fieldWorksProject.Name is null) != (fieldWorksProject.Source is null))
             throw new JsonException("The FieldWorks project fields are invalid.");
+        if (report.FstChecked && report.FstCheckError is not null)
+            throw new JsonException("A completed FST inspection cannot have a check error.");
         foreach (var row in summary)
         {
             if (row is null || string.IsNullOrWhiteSpace(row.Code) ||
-                string.IsNullOrWhiteSpace(row.GroupName) || row.Count < 0)
+                string.IsNullOrWhiteSpace(row.GroupName) || row.Count < 0 ||
+                row.BlocksFst != (row.FstReason is not null) || row.FstReason is not null && string.IsNullOrWhiteSpace(row.FstReason))
                 throw new JsonException("A summary row is incomplete or invalid.");
         }
         foreach (var diagnostic in diagnostics)
@@ -59,7 +63,8 @@ public static class GrammarHealthReportReader
             if (diagnostic is null || string.IsNullOrWhiteSpace(diagnostic.Code) ||
                 string.IsNullOrWhiteSpace(diagnostic.GroupName) ||
                 string.IsNullOrWhiteSpace(diagnostic.Description) || string.IsNullOrWhiteSpace(diagnostic.Title) ||
-                diagnostic.Subjects is null || diagnostic.FieldWorksPlaces is null)
+                diagnostic.Subjects is null || diagnostic.FieldWorksPlaces is null ||
+                diagnostic.BlocksFst != (diagnostic.FstReason is not null) || diagnostic.FstReason is not null && string.IsNullOrWhiteSpace(diagnostic.FstReason))
                 throw new JsonException("A diagnostic is incomplete.");
             if (diagnostic.HelpPath is { } helpPath &&
                 helpPath != $"docs/diagnostics/{diagnostic.Code}.md")
@@ -99,6 +104,12 @@ public static class GrammarHealthReportReader
                     throw new JsonException("An unavailable FieldWorks link has no reason.");
             }
         }
+        var diagnosticsByCode = diagnostics.Select(diagnostic => diagnostic!)
+            .ToLookup(diagnostic => diagnostic.Code!, StringComparer.Ordinal);
+        foreach (var row in summary.Select(row => row!))
+            if (diagnosticsByCode[row.Code!].Any(diagnostic =>
+                row.BlocksFst != diagnostic.BlocksFst || row.FstReason != diagnostic.FstReason))
+                throw new JsonException("A summary row's FST label contradicts its diagnostic.");
         return report;
     }
 
@@ -135,6 +146,7 @@ public static class GrammarHealthReportReader
             Scope = finding.Scope,
             FieldWorksPlaces = finding.FieldWorksPlaces!.Select(place => place!).ToArray(),
             Origin = finding.Origin,
+            BlocksFst = finding.BlocksFst, FstReason = finding.FstReason,
         };
     }
 
@@ -181,6 +193,10 @@ public static class GrammarHealthReportReader
     {
         public GrammarHealthReportJson() { }
 
+        [JsonPropertyName("fst_checked")]
+        public required bool FstChecked { get; init; }
+        [JsonPropertyName("fst_check_error")]
+        public required string? FstCheckError { get; init; }
         [JsonPropertyName("fieldworks_project")]
         public required FieldWorksProjectJson? FieldWorksProject { get; init; }
         public required string? Locale { get; init; }
@@ -200,6 +216,11 @@ public static class GrammarHealthReportReader
     {
         public GrammarHealthSummaryJson() { }
 
+        [JsonPropertyName("blocks_fst")]
+        public required bool BlocksFst { get; init; }
+        [JsonPropertyName("fst_reason")]
+        public required string? FstReason { get; init; }
+
         public required string? Code { get; init; }
         [JsonPropertyName("group_name")]
         public required string? GroupName { get; init; }
@@ -210,6 +231,11 @@ public static class GrammarHealthReportReader
     private sealed record GrammarHealthDiagnosticJson
     {
         public GrammarHealthDiagnosticJson() { }
+
+        [JsonPropertyName("blocks_fst")]
+        public required bool BlocksFst { get; init; }
+        [JsonPropertyName("fst_reason")]
+        public required string? FstReason { get; init; }
 
         public required GrammarDiagnosticLevel Level { get; init; }
         public required string? Code { get; init; }

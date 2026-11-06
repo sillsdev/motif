@@ -234,7 +234,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         var failed = Assert.IsType<JobOutcome>(outcome);
         Assert.Equal(JobStatus.Failed, failed.Status);
         Assert.Contains("PanGloss changed during the comparison", failed.ResultJson, StringComparison.Ordinal);
-        Assert.Contains("facts", FakeParser.Invocations(parserPath));
+        Assert.Contains("grammar-health", FakeParser.Invocations(parserPath));
     }
 
     [Fact]
@@ -399,7 +399,8 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         });
         var invocations = FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate)
             .Where(command => command != "describe").ToArray();
-        Assert.Equal(baselineStored ? 2 : 4, invocations.Length);
+        Assert.Equal(baselineStored ? new[] { "grammar-health" } : new[] { "grammar-health", "grammar-health" },
+            invocations);
     }
 
     [Fact]
@@ -466,7 +467,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         var completed = Assert.IsType<JobOutcome>(outcome);
         Assert.True(completed.Status == JobStatus.Completed, completed.ResultJson);
         claim.Transition(completed.Status, completed.Category, completed.ResultJson);
-        Assert.Equal(["import", "facts"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate));
+        Assert.Equal(["grammar-health"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate));
         var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
             SIL.Motif.Contract.MotifJson.CreateOptions())!;
         Assert.Equal(group.Skip(1), response.MoreMeasures!.Select(item => item.MeasureId));
@@ -503,7 +504,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         var serial = Assert.IsType<JobOutcome>(serialOutcome);
         Assert.True(serial.Status == JobStatus.Completed, serial.ResultJson);
         serialClaim.Transition(serial.Status, serial.Category, serial.ResultJson);
-        Assert.Equal(["import", "facts", "import", "facts"], CandidateCommands(parserPath));
+        Assert.Equal(["grammar-health", "grammar-health"], CandidateCommands(parserPath));
 
         static string Normal(string answer) => System.Text.RegularExpressions.Regex.Replace(answer,
             "parsimony-bundle-[0-9a-f]{32}", "bundle");
@@ -519,7 +520,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         var completed = Assert.IsType<JobOutcome>(outcome);
         Assert.True(completed.Status == JobStatus.Completed, completed.ResultJson);
         claim.Transition(completed.Status, completed.Category, completed.ResultJson);
-        Assert.Equal(["import", "facts"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate));
+        Assert.Equal(["grammar-health"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate));
         var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
             SIL.Motif.Contract.MotifJson.CreateOptions())!;
         Assert.Equal("baseline", response.Before.Inputs.InputKind);
@@ -556,7 +557,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         Assert.True(second.Status == JobStatus.Completed, second.ResultJson);
         secondClaim.Transition(second.Status, second.Category, second.ResultJson);
 
-        Assert.Equal(["import", "facts"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate)
+        Assert.Equal(["grammar-health"], FakeParser.Invocations(parserPath).Skip(_invocationsBeforeCandidate)
             .Where(command => command != "describe"));
         Assert.Equal(Answer(first.ResultJson!), Answer(second.ResultJson!));
     }
@@ -777,7 +778,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
     }
 
     private static void AssertBothSidesBuilt(IEnumerable<string> commands) =>
-        Assert.Equal(["facts", "facts", "import", "import"], commands.Order(StringComparer.Ordinal));
+        Assert.Equal(["grammar-health", "grammar-health"], commands.Order(StringComparer.Ordinal));
 
     private string[] CandidateCommands(string parserPath) => [.. FakeParser.Invocations(parserPath)
         .Skip(_invocationsBeforeCandidate).Where(command => command != "describe")];
@@ -814,7 +815,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         await RunBaselineReportAsync(invoker, parserPath,
             new ParsimonyScopeBinding(ParsimonyEvidenceScopeKind.ProjectApproved, null), null);
 
-        Assert.Equal(["import", "facts"], FakeParser.Invocations(parserPath).Skip(before)
+        Assert.Equal(["grammar-health"], FakeParser.Invocations(parserPath).Skip(before)
             .Where(command => command != "describe"));
     }
 
@@ -912,9 +913,9 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         public Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
             CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
         {
-            if (request is PanGlossRequest.Facts facts)
+            if (request is PanGlossRequest.GrammarHealth facts)
             {
-                var baseline = facts.ContextJson.Contains("\"inputKind\":\"baseline\"", StringComparison.Ordinal);
+                var baseline = facts.FactsContextJson!.Contains("\"inputKind\":\"baseline\"", StringComparison.Ordinal);
                 if (failure == "baseline-refused" && baseline || failure == "candidate-refused" && !baseline)
                     return Task.FromResult<PanGlossOutcome>(new PanGlossOutcome.Refused(1, "boom", "", "boom"));
                 if (failure == "baseline-cancelled" && baseline)
@@ -924,7 +925,7 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         }
     }
 
-    /// <summary>Appends a byte to the parser before the candidate facts run, as a replacement would.</summary>
+    /// <summary>Atomic replacement preserves any running executable inode.</summary>
     private sealed class ParserReplacingInvoker(PanGlossInvoker inner, string parserPath) : IPanGlossInvoker
     {
         private int _factsRuns;
@@ -932,10 +933,13 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         public Task<PanGlossOutcome> RunAsync(PanGlossRequest request, string label,
             CancellationToken cancellationToken, TimeSpan? wallClockCap = null)
         {
-            if (request is PanGlossRequest.Facts && ++_factsRuns == 2)
+            if (request is PanGlossRequest.GrammarHealth && ++_factsRuns == 2)
             {
-                using var stream = new FileStream(parserPath, FileMode.Append, FileAccess.Write);
-                stream.WriteByte(0);
+                var replacement = parserPath + ".replacement";
+                File.Copy(parserPath, replacement);
+                using (var stream = new FileStream(replacement, FileMode.Append, FileAccess.Write))
+                    stream.WriteByte(0);
+                File.Move(replacement, parserPath, overwrite: true);
             }
             return inner.RunAsync(request, label, cancellationToken, wallClockCap);
         }

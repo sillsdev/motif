@@ -208,7 +208,7 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
         var reportPath = Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
-            "schema-v4-stored-analysis-no-longer-parses.json");
+            "schema-v5-stored-analysis-no-longer-parses.json");
         var report = File.ReadAllText(reportPath);
 
         var checkedNow = GrammarCheckQuery.Query(new GrammarCheckRequest(project), new FakeInvoker
@@ -245,7 +245,7 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project), _root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
         var report = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
-            "schema-v4-stored-analysis-budget.json"));
+            "schema-v5-stored-analysis-budget.json"));
 
         var checkedNow = GrammarCheckQuery.Query(new GrammarCheckRequest(project), new FakeInvoker
         {
@@ -294,7 +294,8 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
 
     private const string Report = """
         {
-          "schema_version": 4,
+          "schema_version": 5,
+          "fst_checked": false, "fst_check_error": null,
           "fieldworks_project": {
             "name": null,
             "source": null
@@ -303,31 +304,31 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
             {
               "code": "hc-invalid-feature-system",
               "group_name": "Invalid feature system",
-              "level": "error",
+              "blocks_fst": false, "fst_reason": null, "level": "error",
               "count": 1
             },
             {
               "code": "hc-unused-rule",
               "group_name": "Unused rule",
-              "level": "warning",
+              "blocks_fst": false, "fst_reason": null, "level": "warning",
               "count": 1
             },
             {
               "code": "hc-undeclared-segment",
               "group_name": "Undeclared segment",
-              "level": "info",
+              "blocks_fst": false, "fst_reason": null, "level": "info",
               "count": 1
             },
             {
               "code": "fwdata.no-usable-allomorphs",
               "group_name": "No usable entry allomorphs",
-              "level": "error",
+              "blocks_fst": false, "fst_reason": null, "level": "error",
               "count": 1
             }
           ],
           "diagnostics": [
             {
-              "level": "error",
+              "blocks_fst": false, "fst_reason": null, "level": "error",
               "code": "hc-invalid-feature-system",
               "group_name": "Invalid feature system",
               "origin": "check",
@@ -342,7 +343,7 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
               "scope": "project_settings"
             },
             {
-              "level": "warning",
+              "blocks_fst": false, "fst_reason": null, "level": "warning",
               "code": "hc-unused-rule",
               "group_name": "Unused rule",
               "origin": "check",
@@ -357,7 +358,7 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
               "scope": "project_settings"
             },
             {
-              "level": "info",
+              "blocks_fst": false, "fst_reason": null, "level": "info",
               "code": "hc-undeclared-segment",
               "group_name": "Undeclared segment",
               "origin": "check",
@@ -372,7 +373,7 @@ public sealed class WarningsCommandTests(PristineProjectFixture pristine) : IDis
               "scope": "project_settings"
             },
             {
-              "level": "error",
+              "blocks_fst": false, "fst_reason": null, "level": "error",
               "code": "fwdata.no-usable-allomorphs",
               "group_name": "No usable entry allomorphs",
               "origin": "import",

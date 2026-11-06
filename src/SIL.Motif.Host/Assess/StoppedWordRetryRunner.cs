@@ -49,6 +49,7 @@ internal static class StoppedWordRetryRunner
                 first.PerWordParserWorkLimit, retryDirectory)
             {
                 CollectAnalyses = true,
+                ImportedSnapshot = first.ImportedSnapshot,
                 AllowMissingStatsCache = true,
                 OnAdmissionWait = onAdmissionWait,
                 ThreadCount = 1,

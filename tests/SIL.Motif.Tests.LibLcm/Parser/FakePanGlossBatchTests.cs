@@ -73,7 +73,7 @@ public sealed class FakePanGlossBatchTests : IDisposable
     }
 
     [Fact]
-    public void GrammarHealth_DefaultReportMatchesPanGlossV3Shape()
+    public void GrammarHealth_DefaultReportMatchesPanGlossV5Shape()
     {
         var grammar = Path.Combine(_root, "grammar.fwdata");
         var reportPath = Path.Combine(_root, "report.json");
@@ -84,7 +84,9 @@ public sealed class FakePanGlossBatchTests : IDisposable
         Assert.True(result.ExitCode == 0, result.FailureDetails);
         using var report = JsonDocument.Parse(File.ReadAllText(reportPath));
         var root = report.RootElement;
-        Assert.Equal(4, root.GetProperty("schema_version").GetInt32());
+        Assert.Equal(5, root.GetProperty("schema_version").GetInt32());
+        Assert.False(root.GetProperty("fst_checked").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("fst_check_error").ValueKind);
         var project = root.GetProperty("fieldworks_project");
         Assert.Equal("grammar", project.GetProperty("name").GetString());
         Assert.Equal("fwdata_path", project.GetProperty("source").GetString());

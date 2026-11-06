@@ -6,9 +6,24 @@ using Xunit;
 
 namespace SIL.Motif.Tests.PanGloss;
 
-/// <summary>Checks the warning report captured from the released PanGloss executable.</summary>
+/// <summary>Checks release captures and explicitly derived navigation fixtures.</summary>
 public sealed class GrammarHealthReleaseTests
 {
+    [Fact]
+    public void ReleasedSchemaFiveReportsThatOptionalFstInspectionWasNotRequested()
+    {
+        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
+            "pangloss-v0.16.0-producer.json"));
+        var response = GrammarHealthReportReader.ReadResponse(raw);
+        Assert.False(response.FstChecked);
+        Assert.Null(response.FstCheckError);
+        var finding = Assert.Single(response.Findings);
+        Assert.Equal("provisional.letter", finding.Code);
+        Assert.False(finding.BlocksFst);
+        Assert.Null(finding.FstReason);
+        Assert.Single(response.Summary);
+    }
+
     [Fact]
     public void ReleasedReportPreservesFindingTitlesAndSubjectIdentities()
     {
@@ -20,7 +35,7 @@ public sealed class GrammarHealthReleaseTests
         var unknown = Assert.Single(response.Findings, finding => finding.Code == "fwdata.unknown-morph-type-guid");
         Assert.Equal("Unknown morph type reference", unknown.Title);
         Assert.Equal("docs/diagnostics/fwdata.unknown-morph-type-guid.md", unknown.HelpPath);
-        Assert.Contains("/v0.15.2/", unknown.HelpUrl);
+        Assert.Contains("/v0.16.0/", unknown.HelpUrl);
         var authored = Assert.Single(unknown.Subject, subject => subject.Status == GrammarSubjectStatus.Object);
         Assert.Equal("xxx", authored.Title);
         Assert.Equal("00000000-0000-0000-0000-000000000044", authored.SubjectGuid);
@@ -135,8 +150,8 @@ public sealed class GrammarHealthReleaseTests
     }
 
     [Theory]
-    [InlineData(3)]
-    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(4)]
     public void AnUnsupportedReportNamesItsSchemaVersion(int version)
     {
         var report = JsonNode.Parse(CapturedReport())!;
@@ -149,6 +164,83 @@ public sealed class GrammarHealthReleaseTests
         Assert.Contains($"version {version}", exception.Message);
     }
 
+    [Fact]
+    public void FstBlockingLabelsAndIncompleteInspectionRemainVisible()
+    {
+        var report = JsonNode.Parse(CapturedReport())!;
+        report["fst_check_error"] = "The optional FST inspection did not complete.";
+        report["diagnostics"]![0]!["blocks_fst"] = true;
+        report["diagnostics"]![0]!["fst_reason"] = "retained construct cannot be emitted";
+        report["summary"]![0]!["blocks_fst"] = true;
+        report["summary"]![0]!["fst_reason"] = "retained construct cannot be emitted";
+
+        var response = GrammarHealthReportReader.ReadResponse(report.ToJsonString());
+
+        Assert.False(response.FstChecked);
+        Assert.Equal(report["fst_check_error"]!.GetValue<string>(), response.FstCheckError);
+        Assert.True(response.Findings[0].BlocksFst);
+        Assert.Equal("retained construct cannot be emitted", response.Findings[0].FstReason);
+        Assert.True(response.Summary[0].BlocksFst);
+        Assert.Equal(response.Findings[0].FstReason, response.Summary[0].FstReason);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ProducerCaptureWithContradictoryFstLabelsIsRefused(bool differentReasons)
+    {
+        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
+            "pangloss-v0.16.0-producer.json"));
+        Assert.Single(GrammarHealthReportReader.ReadResponse(raw).Findings);
+        var report = JsonNode.Parse(raw)!;
+        report["diagnostics"]![0]!["blocks_fst"] = true;
+        report["diagnostics"]![0]!["fst_reason"] = "diagnostic reason";
+        if (differentReasons)
+        {
+            report["summary"]![0]!["blocks_fst"] = true;
+            report["summary"]![0]!["fst_reason"] = "summary reason";
+        }
+
+        Assert.Throws<JsonException>(() => GrammarHealthReportReader.ReadResponse(report.ToJsonString()));
+    }
+
+    [Fact]
+    public void SummaryFstLabelMustAgreeWithEveryDiagnosticOfItsCode()
+    {
+        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
+            "pangloss-v0.16.0-producer.json"));
+        var report = JsonNode.Parse(raw)!;
+        var second = report["diagnostics"]![0]!.DeepClone();
+        second["blocks_fst"] = true;
+        second["fst_reason"] = "another reason";
+        report["diagnostics"]!.AsArray().Add(second);
+        report["summary"]![0]!["count"] = 2;
+
+        Assert.Throws<JsonException>(() => GrammarHealthReportReader.ReadResponse(report.ToJsonString()));
+    }
+
+    [Theory]
+    [InlineData("diagnostics", "blocks_fst")]
+    [InlineData("diagnostics", "fst_reason")]
+    [InlineData("summary", "blocks_fst")]
+    [InlineData("summary", "fst_reason")]
+    public void SchemaFiveRequiresEveryRowsFstLabel(string rows, string field)
+    {
+        var report = JsonNode.Parse(CapturedReport())!;
+        report[rows]![0]!.AsObject().Remove(field);
+
+        Assert.Throws<JsonException>(() => GrammarHealthReportReader.ReadResponse(report.ToJsonString()));
+    }
+
+    [Fact]
+    public void ACompletedFstInspectionCannotAlsoHaveACheckError()
+    {
+        var report = JsonNode.Parse(CapturedReport())!;
+        report["fst_checked"] = true;
+        report["fst_check_error"] = "incomplete";
+        Assert.Throws<JsonException>(() => GrammarHealthReportReader.ReadResponse(report.ToJsonString()));
+    }
+
     private static string CapturedReport() => File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-        "TestFixtures", "GrammarHealth", "pangloss-v0.10.0-producer.json"));
+        "TestFixtures", "GrammarHealth", "schema-v5-navigation.json"));
 }

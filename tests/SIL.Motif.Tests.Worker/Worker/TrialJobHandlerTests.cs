@@ -553,8 +553,8 @@ public sealed class TrialJobHandlerTests : IDisposable
         await loop.RunUntilIdleAsync(CancellationToken.None);
 
         Assert.Equal(JobStatus.Completed, _jobs.Get(job.JobId)!.Status);
-        // The Baseline's own grammar check runs too, with the same choice, when none is stored.
-        Assert.Equal(["off", "off"], FakeParser.StoredAnalysesRequested(parserPath));
+        // Baseline and candidate facts each request another check with stored analyses off.
+        Assert.Equal(["off", "off", "off", "off"], FakeParser.StoredAnalysesRequested(parserPath));
         Assert.Contains("grammar-health", FakeParser.Invocations(parserPath));
     }
 
@@ -620,14 +620,15 @@ public sealed class TrialJobHandlerTests : IDisposable
 
     private const string ReportWithAWholeToolPlace = """
         {
-          "schema_version": 4,
+          "schema_version": 5,
+          "fst_checked": false, "fst_check_error": null,
           "fieldworks_project": { "name": null, "source": null },
           "summary": [
-            { "code": "grammar.cooccurrence.target-unreachable", "group_name": "Unused ad hoc rule omitted", "level": "info", "count": 1 }
+            { "code": "grammar.cooccurrence.target-unreachable", "group_name": "Unused ad hoc rule omitted", "blocks_fst": false, "fst_reason": null, "level": "info", "count": 1 }
           ],
           "diagnostics": [
             {
-              "level": "info",
+              "blocks_fst": false, "fst_reason": null, "level": "info",
               "code": "grammar.cooccurrence.target-unreachable",
               "group_name": "Unused ad hoc rule omitted",
               "origin": "check",

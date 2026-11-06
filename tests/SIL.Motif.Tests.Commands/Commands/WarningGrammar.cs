@@ -101,7 +101,7 @@ internal sealed record WarningGrammar(
         (IMoStemAllomorph)services.GetInstance<ILexEntryRepository>().GetObject(entry).LexemeFormOA;
 }
 
-/// <summary>A grammar-health report, schema 4, whose findings each name the given subjects.</summary>
+/// <summary>A grammar-health report, schema 5, whose findings each name the given subjects.</summary>
 internal static class GrammarHealthReports
 {
     /// <summary>One named object: its FieldWorks class, its title, and its GUID, if PanGloss recorded one.</summary>
@@ -109,15 +109,15 @@ internal static class GrammarHealthReports
 
     public static string With(params (string Code, Subject[] Subjects)[] findings) => JsonSerializer.Serialize(new
     {
-        schema_version = 4, locale = "en",
+        schema_version = 5, fst_checked = false, fst_check_error = (string?)null, locale = "en",
         fieldworks_project = new { name = (string?)null, source = (string?)null },
         summary = findings.GroupBy(finding => finding.Code).Select(group => new
         {
-            code = group.Key, group_name = group.Key, level = "warning", count = group.Count(),
+            code = group.Key, group_name = group.Key, blocks_fst = false, fst_reason = (string?)null, level = "warning", count = group.Count(),
         }),
         diagnostics = findings.Select(finding => new
         {
-            level = "warning", code = finding.Code, group_name = finding.Code, origin = "check",
+            blocks_fst = false, fst_reason = (string?)null, level = "warning", code = finding.Code, group_name = finding.Code, origin = "check",
             description = finding.Code + " described", guidance = (string?)null,
                     title = finding.Code, explanation = finding.Code + " described", help_path = (string?)null, help_body = (string?)null,
                     fieldworks_places = Array.Empty<object>(), scope = finding.Subjects.Length == 0 ? "project_settings" : "object",

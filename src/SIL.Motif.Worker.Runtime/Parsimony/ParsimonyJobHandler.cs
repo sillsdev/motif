@@ -129,15 +129,6 @@ public sealed class ParsimonyJobHandler
 
             var snapshotPath = Path.Combine(working, "grammar-snapshot.json");
             var parserIdentity = _pipeline.ParserIdentity();
-            var importPhase = Enter("import");
-            var importWait = claimed.ObserveParserWait(importPhase);
-            var imported = await _invoker.RunAsync(new PanGlossRequest.Import(privateProjectPath, snapshotPath)
-                {
-                    OnAdmissionWait = importWait.Observe,
-                }, "parsimony-import", cancellationToken).ConfigureAwait(false);
-            if (imported is not PanGlossOutcome.Completed)
-                return Failure(CategoryOf(imported), imported.Message);
-
             var tokenJson = EvidenceBundlePipeline.TokenJson(baseline.Token);
             var contextJson = JsonSerializer.Serialize(new
             {
@@ -150,16 +141,18 @@ public sealed class ParsimonyJobHandler
             var factsPhase = Enter("facts");
             var factsWait = claimed.ObserveParserWait(factsPhase);
             var factsOutcome = await _invoker.RunAsync(
-                new PanGlossRequest.Facts(snapshotPath, contextJson, Light: true)
+                new PanGlossRequest.GrammarHealth(privateProjectPath, Path.GetFileNameWithoutExtension(privateProjectPath),
+                    Contract.Requests.StoredAnalysisComparison.Off)
                 {
+                    SnapshotPath = snapshotPath, FactsContextJson = contextJson, FactsLight = true,
                     OnAdmissionWait = factsWait.Observe,
                 },
-                "parsimony-facts", cancellationToken).ConfigureAwait(false);
+                "parsimony-grammar-facts", cancellationToken).ConfigureAwait(false);
             if (factsOutcome is not PanGlossOutcome.Completed completed || completed.Facts is null)
                 return Failure(CategoryOf(factsOutcome), factsOutcome.Message);
             var facts = completed.Facts;
             using var factsLease = completed.FactsArtifactLease;
-            // Evidence must name one parser, pinned by `ReplacingTheParserBetweenImportAndFactsRefuses`.
+            // Evidence must name one parser, pinned by `ReplacingTheParserWhileProducingFactsRefuses`.
             if (_pipeline.ParserIdentity(fresh: true) != parserIdentity)
                 return Failure(JobFailureCategory.Infrastructure,
                     "The parser executable changed during the invocation.");

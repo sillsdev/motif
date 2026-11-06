@@ -28,10 +28,25 @@ public sealed class TrialGrammarCheckTests
         Assert.Equal("scratch.fwdata", health.GrammarPath);
     }
 
+    [Fact]
+    public async Task ATrialRequestsTheSnapshotForItsFollowingAssessmentInTheSameCheck()
+    {
+        var invoker = Answering();
+
+        var response = await TrialGrammarCheck.RunAsync(invoker, "trial-grammar:test", StoredAnalysisComparison.All,
+            "scratch.fwdata", "Scratch", CancellationToken.None, snapshotPath: "snapshot.json");
+
+        Assert.NotNull(response);
+        var health = Assert.IsType<PanGlossRequest.GrammarHealth>(Assert.Single(invoker.Requests).Request);
+        Assert.Equal("snapshot.json", health.SnapshotPath);
+        Assert.Equal(StoredAnalysisComparison.All, health.StoredAnalyses);
+        Assert.Null(health.FactsContextJson);
+    }
+
     private static FakeInvoker Answering()
     {
         var report = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
-            "schema-v4-producer.json"));
+            "schema-v5-producer.json"));
         return new FakeInvoker { Respond = _ => new PanGlossOutcome.Completed(report, string.Empty, TimeSpan.Zero) };
     }
 }

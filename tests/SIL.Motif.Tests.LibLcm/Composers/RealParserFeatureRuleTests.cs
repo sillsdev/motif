@@ -18,6 +18,42 @@ namespace SIL.Motif.Tests.Composers;
 public sealed class RealParserFeatureRuleTests(PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [RealParserFact]
+    public async Task AnUnspecifiedFeatureDoesNotMatchAMinusEnvironmentDuringSynthesis()
+    {
+        using var cache = pristine.NewScratch();
+        var f = new FeaturedSegments(cache);
+        var operations = AuthorPhonologicalFeatureComposer.Build(cache,
+            new("front", [new("plus", "+"), new("minus", "-")]));
+        ApplyOps(cache, operations);
+        var feature = operations[0].EntityId!.Value;
+        var minus = operations.Where(op => op.Kind == FsClosedFeatureValuesOperationKinds.Create).Last().EntityId!.Value;
+        ApplyOps(cache, EditPhonemeFeaturesComposer.Build(cache,
+            new(f.Phones["t"], [new(feature, minus)], [])));
+        var restricted = Created(ApplyOps(cache, AuthorNaturalClassComposer.Build(cache,
+            new("minus front", "MF", Features: [new(feature, minus)]))), PhPhonDataNaturalClassesOperationKinds.Create);
+        var category = AddCategory(cache, "Word");
+        AddStem(cache, "ta", category);
+        AddStem(cache, "ata", category);
+        ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("N",
+            Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "nasal", Anal(cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Unclassified, category))));
+        ApplyOps(cache, AuthorPhonologicalRuleComposer.Build(cache,
+            new("nasal before minus front", PhonologicalRuleDirection.Simultaneous,
+                [new(Phoneme: f.Phones["N"])], [new(Phoneme: f.Phones["m"])], [],
+                [new(Boundary: "morpheme"), new(NaturalClass: restricted)])));
+        new FwDataProjectLoader().Save(cache);
+        using var invoker = new PanGlossInvoker();
+        var tracer = new PanGlossTracer(invoker);
+        foreach (var (word, expected) in new[] { ("mta", true), ("Nta", false), ("Nata", true), ("mata", false) })
+        {
+            var result = Assert.IsType<PanGlossTraceOutcome.Completed>(await tracer.TraceAsync(
+                cache.ProjectId.Path, word, CancellationToken.None));
+            Assert.True(result.Details!.SearchCompleted, word);
+            Assert.Equal(expected, result.Document!.Analyses.Count > 0);
+        }
+    }
+
+    [RealParserFact]
     public async Task AlphaPlaceAssimilationAcrossAMorphemeBoundaryPreservesMannerAndRejectsTheWrongNasal()
     {
         using var cache = pristine.NewScratch();

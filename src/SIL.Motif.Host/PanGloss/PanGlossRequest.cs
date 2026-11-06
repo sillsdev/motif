@@ -89,6 +89,9 @@ public abstract record PanGlossRequest
     {
         public bool CollectAnalyses { get; init; }
 
+        /// <summary>A snapshot produced from this run's project, bound to both files' exact bytes.</summary>
+        public PanGlossImportedSnapshot? ImportedSnapshot { get; init; }
+
         /// <summary>Optional provenance manifest binding the statistics cache to its exact grammar input bytes.</summary>
         public string? StatsManifestPath { get; init; }
 
@@ -118,6 +121,8 @@ public abstract record PanGlossRequest
                 throw new ArgumentOutOfRangeException(nameof(PerWordLimit), "A per-word limit must be positive.");
             if (!File.Exists(ProjectFilePath))
                 throw new FileNotFoundException("The project file the parser must read does not exist.", ProjectFilePath);
+            if (ImportedSnapshot is { } snapshot && !snapshot.Matches(ProjectFilePath))
+                throw new InvalidDataException("The imported snapshot or its project changed.");
         }
 
         internal override Task PrepareAsync(string scratch, CancellationToken cancellationToken) =>
@@ -126,7 +131,7 @@ public abstract record PanGlossRequest
         internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
         {
             startInfo.ArgumentList.Add("batch");
-            startInfo.ArgumentList.Add(ProjectFilePath);
+            startInfo.ArgumentList.Add(ImportedSnapshot?.Path ?? ProjectFilePath);
             startInfo.ArgumentList.Add(Path.Combine(scratch, "words.txt"));
             startInfo.ArgumentList.Add(Path.Combine(scratch, "out.tsv"));
             if (PerWordLimit is { } timeLimit)
@@ -300,6 +305,15 @@ public abstract record PanGlossRequest
     public sealed record GrammarHealth(string GrammarPath, string FieldWorksProjectName,
         StoredAnalysisComparison StoredAnalyses = StoredAnalysisComparison.Budget) : PanGlossRequest
     {
+        /// <summary>The current run's snapshot output, or null when only a report is needed.</summary>
+        public string? SnapshotPath { get; init; }
+
+        /// <summary>The frozen facts context; requires a snapshot output and retains the facts under a lease.</summary>
+        public string? FactsContextJson { get; init; }
+
+        /// <summary>Whether facts omit the sections no Parsimony measure reads.</summary>
+        public bool FactsLight { get; init; }
+
         public override string Subcommand => "grammar-health";
         internal override bool AcceptsNonzeroExit(string standardOutput) => true;
 
@@ -309,9 +323,20 @@ public abstract record PanGlossRequest
             if (string.IsNullOrWhiteSpace(FieldWorksProjectName))
                 throw new ArgumentException("Required.", nameof(FieldWorksProjectName));
             if (!Enum.IsDefined(StoredAnalyses)) throw new ArgumentException("Unknown mode.", nameof(StoredAnalyses));
+            if (FactsContextJson is not null && SnapshotPath is null)
+                throw new ArgumentException("Grammar facts require a snapshot output.", nameof(SnapshotPath));
+            if (FactsLight && FactsContextJson is null)
+                throw new ArgumentException("Light facts require a facts context.", nameof(FactsLight));
+            if (SnapshotPath is not null && (string.IsNullOrWhiteSpace(SnapshotPath) ||
+                Path.GetExtension(GrammarPath).ToLowerInvariant() is not (".fwdata" or ".fwbackup")))
+                throw new ArgumentException("Snapshot output requires a FieldWorks project input.", nameof(SnapshotPath));
             if (!File.Exists(GrammarPath))
                 throw new FileNotFoundException("The grammar the parser must read does not exist.", GrammarPath);
         }
+
+        internal override Task PrepareAsync(string scratch, CancellationToken cancellationToken) =>
+            FactsContextJson is null ? Task.CompletedTask :
+                File.WriteAllTextAsync(Path.Combine(scratch, "facts-context.json"), FactsContextJson, cancellationToken);
 
         internal override void AddArguments(ProcessStartInfo startInfo, string scratch)
         {
@@ -326,16 +351,47 @@ public abstract record PanGlossRequest
                 StoredAnalysisComparison.All => "all",
                 _ => "off",
             });
+            if (SnapshotPath is not null)
+            {
+                startInfo.ArgumentList.Add("--snapshot-out");
+                startInfo.ArgumentList.Add(Path.GetFullPath(SnapshotPath));
+            }
+            if (FactsContextJson is not null)
+            {
+                startInfo.ArgumentList.Add("--facts-out");
+                startInfo.ArgumentList.Add(Path.Combine(scratch, "grammar-facts.sqlite"));
+                startInfo.ArgumentList.Add("--facts-context");
+                startInfo.ArgumentList.Add(Path.Combine(scratch, "facts-context.json"));
+                if (FactsLight) startInfo.ArgumentList.Add("--facts-light");
+            }
         }
 
         internal override PanGlossOutcome Finish(string scratch, string standardOutput, string standardError,
             TimeSpan elapsed, out BatchInvocationEvidence.BatchFileDigests? batchFileDigests)
         {
             batchFileDigests = null;
-            return string.IsNullOrWhiteSpace(standardOutput)
-                ? new PanGlossOutcome.Incomplete(
-                    "pangloss grammar-health exited 0 but wrote no findings to standard output.", standardError)
-                : new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+            if (string.IsNullOrWhiteSpace(standardOutput))
+                return new PanGlossOutcome.Incomplete(
+                    "pangloss grammar-health exited 0 but wrote no findings to standard output.", standardError);
+            if (SnapshotPath is not null && !File.Exists(SnapshotPath))
+                return new PanGlossOutcome.Incomplete("pangloss grammar-health wrote no requested snapshot.", standardError);
+            var completed = new PanGlossOutcome.Completed(standardOutput, standardError, elapsed);
+            if (FactsContextJson is null) return completed;
+            try
+            {
+                var artifact = GrammarFactsReader.ReadProduced(Path.Combine(scratch, "grammar-facts.sqlite"), SnapshotPath!);
+                return completed with
+                {
+                    FactsArtifact = artifact,
+                    Facts = new PanGlossFactsArtifact(artifact.Path, artifact.SchemaVersion,
+                        artifact.SourceSha256, artifact.ModelFingerprint, artifact.OutputBytes, artifact.OutputSha256),
+                };
+            }
+            catch (InvalidDataException exception)
+            {
+                return new PanGlossOutcome.Incomplete(
+                    $"pangloss grammar-health wrote invalid facts: {exception.Message}", standardError);
+            }
         }
     }
 

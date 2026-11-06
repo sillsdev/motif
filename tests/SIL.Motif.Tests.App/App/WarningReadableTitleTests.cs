@@ -122,7 +122,7 @@ public sealed class WarningReadableTitleTests
     private static GrammarWarning ReadCapturedFinding()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
-            "schema-v4-producer.json");
+            "schema-v5-producer.json");
         var report = JsonNode.Parse(File.ReadAllText(path))!;
         report["diagnostics"]![0]!["description"] = $"Item \"{SubjectGuid}\" needs attention.";
         return GrammarHealthReportReader.ReadResponse(report.ToJsonString()).Findings[0];

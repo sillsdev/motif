@@ -721,7 +721,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         }
         Capture(fwDataPath);
         var report = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "schema-v4-producer.json")))!;
+            "TestFixtures", "GrammarHealth", "schema-v5-producer.json")))!;
         var diagnostic = report["diagnostics"]![0]!;
         diagnostic["subjects"] = System.Text.Json.Nodes.JsonNode.Parse($$$"""
             [{"status":"object","guid":"{{{guid}}}","kind":"Unknown",
@@ -794,7 +794,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var raw = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "schema-v4-producer.json")))!.AsObject();
+            "TestFixtures", "GrammarHealth", "schema-v5-producer.json")))!.AsObject();
         var finding = raw["diagnostics"]![1]!;
         var subject = finding["subjects"]![1]!;
         if (defect == "locale") raw.Remove("locale");
@@ -814,7 +814,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
-        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth", "schema-v4-producer.json"));
+        var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth", "schema-v5-producer.json"));
         var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(raw, string.Empty, TimeSpan.Zero),
@@ -841,7 +841,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var raw = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestFixtures", "GrammarHealth",
-            "pangloss-v0.6.2-seeded.json"));
+            "schema-v5-seeded.json"));
         using var document = JsonDocument.Parse(raw);
         var diagnostics = document.RootElement.GetProperty("diagnostics").EnumerateArray().ToArray();
         Assert.True(diagnostics.Select(item => item.GetProperty("code").GetString()).Distinct().Count() >= 3);
@@ -1029,7 +1029,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var fixturePath = Path.Combine(RepoPaths.FindRepoRoot(), "tests", "SIL.Motif.Tests.Support",
-            "TestFixtures", "GrammarHealth", "schema-v4-error.json");
+            "TestFixtures", "GrammarHealth", "schema-v5-error.json");
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(File.ReadAllText(fixturePath), string.Empty, TimeSpan.Zero),
@@ -1051,17 +1051,17 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Capture(fwDataPath);
         var report = JsonSerializer.Serialize(new
         {
-            schema_version = 4, locale = "en",
+            schema_version = 5, fst_checked = false, fst_check_error = (string?)null, locale = "en",
             fieldworks_project = new { name = "Synthetic", source = "argument" },
             summary = new[]
             {
-                new { code = "grammar.msa.no-allomorphs", group_name = "No usable entry allomorphs", level = "error", count = 1 },
+                new { code = "grammar.msa.no-allomorphs", group_name = "No usable entry allomorphs", blocks_fst = false, fst_reason = (string?)null, level = "error", count = 1 },
             },
             diagnostics = new[]
             {
                 new
                 {
-                    level = "error", code = "grammar.msa.no-allomorphs",
+                    blocks_fst = false, fst_reason = (string?)null, level = "error", code = "grammar.msa.no-allomorphs",
                     group_name = "No usable entry allomorphs", origin = "import",
                     description = "Lexical entry 'kat' has no usable allomorphs.",
                     guidance = "Add or correct an allomorph for the named lexical entry.",
@@ -1111,7 +1111,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var fwDataPath = _pristine.CopyProjectFile();
         Capture(fwDataPath);
         var report = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "pangloss-v0.10.0-producer.json")))!.AsObject();
+            "TestFixtures", "GrammarHealth", "schema-v5-navigation.json")))!.AsObject();
         report.Remove("locale");
         var outcome = GrammarCheckQuery.Query(new GrammarCheckRequest(fwDataPath), new FakeInvoker
         {
@@ -1121,7 +1121,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.False(outcome.Succeeded);
         Assert.Equal("grammarcheck.malformed-findings", outcome.Refusal!.Code);
         Assert.Equal(PanGlossInterfaceVersions.SourceTag, outcome.Refusal.Facts["parserSourceTag"]);
-        Assert.Equal("4", outcome.Refusal.Facts["expectedSchemaVersion"]);
+        Assert.Equal("5", outcome.Refusal.Facts["expectedSchemaVersion"]);
         Assert.Contains("locale", outcome.Refusal.Facts["parseError"], StringComparison.OrdinalIgnoreCase);
         Assert.Contains(outcome.Refusal.Facts["parseError"], outcome.Refusal.Message, StringComparison.Ordinal);
     }
@@ -1134,7 +1134,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
         var invoker = new FakeInvoker
         {
             Respond = _ => new PanGlossOutcome.Completed(
-                "{\"schema_version\":4,\"summary\":[],\"findings\":[]}",
+                "{\"schema_version\":5,\"summary\":[],\"findings\":[]}",
                 string.Empty, TimeSpan.Zero),
         };
 
@@ -1148,7 +1148,8 @@ public sealed class GrammarCheckQueryTests : IDisposable
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    [InlineData(5)]
+    [InlineData(4)]
+    [InlineData(6)]
     public void AnUnsupportedSchemaVersionNamesTheVersionAndUpdateRequirement(int schemaVersion)
     {
         var fwDataPath = _pristine.CopyProjectFile();
@@ -1164,13 +1165,13 @@ public sealed class GrammarCheckQueryTests : IDisposable
         Assert.False(outcome.Succeeded);
         Assert.Equal("grammarcheck.unsupported-schema", outcome.Refusal!.Code);
         Assert.Contains($"version {schemaVersion}", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("version 4", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("version 5", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("update PanGloss and Motif", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Theory]
     [InlineData("[]")]
-    [InlineData("{\"schema_version\":4,\"fieldworks_project\":{\"name\":null,\"source\":null},\"summary\":[],\"findings\":[]}")]
+    [InlineData("{\"schema_version\":5,\"fieldworks_project\":{\"name\":null,\"source\":null},\"summary\":[],\"findings\":[]}")]
     public void AReportWithoutTheReportObjectAndDiagnosticsEnvelopeIsMalformed(string report)
     {
         var fwDataPath = _pristine.CopyProjectFile();
@@ -1227,18 +1228,18 @@ public sealed class GrammarCheckQueryTests : IDisposable
 
     private static string Report(string entryGuid, string openGuid) => JsonSerializer.Serialize(new
     {
-        schema_version = 4, locale = "en",
+        schema_version = 5, fst_checked = false, fst_check_error = (string?)null, locale = "en",
         fieldworks_project = new { name = "Synthetic", source = "argument" },
         summary = new[]
         {
-            new { code = "hc-partial-morpheme", group_name = "Partial morpheme analysis", level = "warning", count = 1 },
-            new { code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features", level = "info", count = 1 },
+            new { code = "hc-partial-morpheme", group_name = "Partial morpheme analysis", blocks_fst = false, fst_reason = (string?)null, level = "warning", count = 1 },
+            new { code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features", blocks_fst = false, fst_reason = (string?)null, level = "info", count = 1 },
         },
         diagnostics = new object[]
         {
             new
             {
-                level = "warning",
+                blocks_fst = false, fst_reason = (string?)null, level = "warning",
                 code = "hc-partial-morpheme",
                 group_name = "Partial morpheme analysis",
                 origin = "import",
@@ -1269,7 +1270,7 @@ public sealed class GrammarCheckQueryTests : IDisposable
             },
             new
             {
-                level = "info", code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features",
+                blocks_fst = false, fst_reason = (string?)null, level = "info", code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features",
                 origin = "check", description = "Two phonemes share the same feature values.", guidance = (string?)null,
                     title = "Duplicate segment features", explanation = "Two phonemes share the same feature values.", help_path = (string?)null, help_body = (string?)null,
                     fieldworks_places = Array.Empty<object>(), scope = "project_settings",

@@ -1,0 +1,39 @@
+{
+  "schema_version": 5,
+  "fieldworks_project": {
+    "name": "Sena 3",
+    "source": "argument"
+  },
+  "summary": [
+    {
+      "code": "hc-invalid-feature-system",
+      "group_name": "Invalid feature system",
+      "level": "error",
+      "count": 1,
+      "blocks_fst": false,
+      "fst_reason": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "level": "error",
+      "code": "hc-invalid-feature-system",
+      "group_name": "Invalid feature system",
+      "origin": "check",
+      "description": "A feature system could not be loaded.",
+      "guidance": "Repair the feature system in FieldWorks.",
+      "subjects": [],
+      "title": "Invalid feature system",
+      "explanation": "A feature system could not be loaded.",
+      "help_path": null,
+      "help_body": null,
+      "fieldworks_places": [],
+      "scope": "project_settings",
+      "blocks_fst": false,
+      "fst_reason": null
+    }
+  ],
+  "locale": "en",
+  "fst_checked": false,
+  "fst_check_error": null
+}

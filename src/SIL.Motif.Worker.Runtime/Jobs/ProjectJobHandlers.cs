@@ -202,6 +202,9 @@ public static class ProjectJobHandlers
                 return Task.FromResult(directory);
             }, options.Root, (grammarPath, projectName, onAdmissionWait, cancellationToken) =>
                 TrialGrammarCheck.RunAsync(invoker, "trial-grammar:" + ProjectWorkspaceKey.Compute(project),
-                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait));
+                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait),
+            grammarHealthWithSnapshot: (grammarPath, projectName, snapshotPath, onAdmissionWait, cancellationToken) =>
+                TrialGrammarCheck.RunAsync(invoker, "trial-grammar:" + ProjectWorkspaceKey.Compute(project),
+                    defaultChecks.StoredAnalyses, grammarPath, projectName, cancellationToken, onAdmissionWait, snapshotPath));
     }
 }

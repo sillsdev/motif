@@ -305,7 +305,7 @@
     },
     {
       "path": "pangloss-release.json",
-      "sha256": "97db801f1d870dab8e5a59e72153f5c744a5e96bef4c466fabd21a84c1a4db7b"
+      "sha256": "b933e27f67d503ffcc8362a7394242d4a7f4b0961bb0130a6cdeca101397dc75"
     },
     {
       "path": "plugin/references/crosswalk.md",

@@ -8,6 +8,12 @@ namespace SIL.Motif.Contract.Responses;
 /// <param name="HasBaseline">False when the project has no Baseline yet, so there was no grammar to read.</param>
 public sealed record GrammarCheckResponse(IReadOnlyList<GrammarWarning> Findings, bool HasBaseline)
 {
+    /// <summary>Whether optional FST capability inspection completed.</summary>
+    public bool FstChecked { get; init; }
+
+    /// <summary>The producer's reason FST inspection did not complete, when supplied.</summary>
+    public string? FstCheckError { get; init; }
+
     /// <summary>Completeness of per-word object timing detail used by this result.</summary>
     public ObjectTimingDetail? ObjectTimingDetail { get; init; }
 

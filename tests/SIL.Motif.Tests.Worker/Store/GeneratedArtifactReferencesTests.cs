@@ -595,7 +595,11 @@ public sealed class GeneratedArtifactReferencesTests : IDisposable
             Provenance = new GrammarCheckProvenance(provenanceToken, Digest('1'), null,
                 DateTimeOffset.Parse("2026-01-01T00:00:00Z"), null, null),
         };
-        var noProvenance = new GrammarCheckResponse([], true);
+        var noProvenance = new GrammarCheckResponse([], true)
+        {
+            FstChecked = false,
+            FstCheckError = "FST inspection did not complete.",
+        };
         using (var connection = database.OpenConnection())
         using (var transaction = connection.BeginTransaction())
         {

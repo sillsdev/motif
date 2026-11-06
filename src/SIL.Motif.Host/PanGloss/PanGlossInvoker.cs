@@ -155,7 +155,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         CancellationToken cancellationToken, Action<PanGlossChildProcess>? onStarted = null)
     {
         var scratch = Path.Combine(Path.GetTempPath(), "SIL.Motif.PanGloss", Guid.NewGuid().ToString("N"));
-        var retained = request is PanGlossRequest.Batch { ArtifactDirectory: not null } or PanGlossRequest.Facts;
+        var retained = request is PanGlossRequest.Batch { ArtifactDirectory: not null } or PanGlossRequest.Facts or PanGlossRequest.GrammarHealth { FactsContextJson: not null };
         var created = false;
         var published = false;
         string? sourceDigest = null;
@@ -177,12 +177,25 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 {
                     var stagedSource = Path.Combine(scratch, "source" + Path.GetExtension(batch.ProjectFilePath));
                     File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false);
-                    request = batch with { ProjectFilePath = stagedSource };
+                    var importedSnapshot = batch.ImportedSnapshot;
+                    if (importedSnapshot is not null)
+                    {
+                        if (!importedSnapshot.Matches(stagedSource))
+                            return new PanGlossOutcome.Incomplete("The imported snapshot's project changed before staging.", string.Empty);
+                        var stagedSnapshot = Path.Combine(scratch, "grammar-snapshot.json");
+                        File.Copy(importedSnapshot.Path, stagedSnapshot, overwrite: false);
+                        importedSnapshot = importedSnapshot with { Path = stagedSnapshot };
+                        if (!importedSnapshot.Matches(stagedSource))
+                            return new PanGlossOutcome.Incomplete("The imported snapshot changed while staging.", string.Empty);
+                    }
+                    request = batch with { ProjectFilePath = stagedSource, ImportedSnapshot = importedSnapshot };
                     sourceDigest = BatchInvocationEvidence.DigestFile(stagedSource);
                     executableDigest = BatchInvocationEvidence.DigestFile(executable);
                 }
                 if (retained && request is PanGlossRequest.Facts facts)
                     sourceDigest = BatchInvocationEvidence.DigestFile(facts.SnapshotPath);
+                if (request is PanGlossRequest.GrammarHealth { SnapshotPath: not null } health)
+                    sourceDigest = BatchInvocationEvidence.DigestFile(health.GrammarPath);
                 if (request is PanGlossRequest.PhonologyExamples phonology)
                     request = await PhonologyInvocationInputs.PrepareAsync(phonology, scratch, executable, cancellationToken)
                         .ConfigureAwait(false);
@@ -282,8 +295,20 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     return new PanGlossOutcome.Refused(process.ExitCode, standardError, standardOutput,
                         $"pangloss {request.Subcommand} exited {process.ExitCode}; {outcome.Message}" +
                         (string.IsNullOrWhiteSpace(standardError) ? string.Empty : Environment.NewLine + standardError.Trim()));
+                if (request is PanGlossRequest.GrammarHealth { SnapshotPath: not null } healthRequest &&
+                    sourceDigest != BatchInvocationEvidence.DigestFile(healthRequest.GrammarPath))
+                    return new PanGlossOutcome.Incomplete("The project changed while grammar-health was running.", standardError);
                 if (!retained || outcome is not PanGlossOutcome.Completed completed)
                     return outcome;
+                if (request is PanGlossRequest.GrammarHealth { FactsContextJson: not null } healthFacts)
+                {
+                    if (completed.FactsArtifact is not { } artifact ||
+                        artifact.SourceSha256 != BatchInvocationEvidence.DigestFile(healthFacts.SnapshotPath!))
+                        return new PanGlossOutcome.Incomplete("The grammar-health snapshot changed while facts were read.", standardError);
+                    published = true;
+                    var lease = new Assess.AssessmentArtifactLease(scratch);
+                    return completed with { ArtifactLease = lease, FactsArtifactLease = lease };
+                }
                 if (request is PanGlossRequest.Facts factsRequest)
                 {
                     var factsArtifact = completed.FactsArtifact;
@@ -296,6 +321,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     return completed with { ArtifactLease = lease, FactsArtifactLease = lease };
                 }
                 var capturedBatch = (PanGlossRequest.Batch)request;
+                if (capturedBatch.ImportedSnapshot is { } batchSnapshot && !batchSnapshot.Matches(capturedBatch.ProjectFilePath))
+                    return new PanGlossOutcome.Incomplete("The imported snapshot changed during the batch.", standardError);
                 if (sourceDigest != BatchInvocationEvidence.DigestFile(capturedBatch.ProjectFilePath) ||
                     executableDigest != BatchInvocationEvidence.DigestFile(executable) ||
                     wordsDigest != BatchInvocationEvidence.DigestFile(Path.Combine(scratch, "words.txt")))

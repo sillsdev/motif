@@ -77,7 +77,9 @@ internal static class Program
             [new("--project", true), new("--work-cap", true), new("--word-timeout-ms", true),
                 new("--guess", false)], RunServe),
         new("grammar-health", ["grammar", "out.json?"],
-            [new("--fw-project", true), new("--stored-analyses", true)], RunGrammarHealth),
+            [new("--fw-project", true), new("--stored-analyses", true), new("--fst", false),
+                new("--snapshot-out", true), new("--facts-out", true), new("--facts-context", true),
+                new("--facts-light", false)], RunGrammarHealth),
     ];
 
     private static int Main(string[] args)
@@ -763,6 +765,23 @@ internal static class Program
             return behaviour.ExitCode == 0 ? 1 : behaviour.ExitCode;
         }
 
+        var snapshotIndex = Array.IndexOf(args, "--snapshot-out");
+        var factsIndex = Array.IndexOf(args, "--facts-out");
+        var contextIndex = Array.IndexOf(args, "--facts-context");
+        if (snapshotIndex >= 0)
+        {
+            var snapshotPath = args[snapshotIndex + 1];
+            File.WriteAllText(snapshotPath, FactsSnapshotJson());
+            if (factsIndex >= 0 && contextIndex >= 0)
+            {
+                var factsBehaviour = Behaviour.Read(directory, "facts");
+                if (factsBehaviour.Mode == "fail") return 1;
+                if (factsBehaviour.Mode != "noReport")
+                    _ = FactsArtifact.Write(snapshotPath, args[contextIndex + 1], args[factsIndex + 1],
+                        factsBehaviour.Mode, Path.Combine(AppContext.BaseDirectory, "_fake-pangloss-facts.json"),
+                        args.Contains("--facts-light"));
+            }
+        }
         var isFwData = Path.GetExtension(grammarPath).Equals(".fwdata", StringComparison.OrdinalIgnoreCase);
         var projectArgumentIndex = Array.IndexOf(args, "--fw-project");
         var explicitProjectName = projectArgumentIndex >= 0 && projectArgumentIndex + 1 < args.Length
@@ -784,19 +803,19 @@ internal static class Program
             };
         var json = behaviour.GrammarHealthReportJson ?? JsonSerializer.Serialize(new
         {
-            schema_version = 4, locale = "en",
+            schema_version = 5, fst_checked = false, fst_check_error = (string?)null, locale = "en",
             fieldworks_project = new { name = projectName, source = projectSource },
             summary = new[]
             {
-                new { code = "fwdata.empty-representation", group_name = "Empty item representation", level = "warning", count = 1 },
-                new { code = "fwdata.only-first-used", group_name = "Only first list item is used", level = "info", count = 1 },
-                new { code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features", level = "warning", count = 1 },
+                new { code = "fwdata.empty-representation", group_name = "Empty item representation", blocks_fst = false, fst_reason = (string?)null, level = "warning", count = 1 },
+                new { code = "fwdata.only-first-used", group_name = "Only first list item is used", blocks_fst = false, fst_reason = (string?)null, level = "info", count = 1 },
+                new { code = "hc-duplicate-feature-bundle", group_name = "Duplicate segment features", blocks_fst = false, fst_reason = (string?)null, level = "warning", count = 1 },
             },
             diagnostics = new object[]
             {
                 new
                 {
-                    level = "warning",
+                    blocks_fst = false, fst_reason = (string?)null, level = "warning",
                     code = "fwdata.empty-representation",
                     group_name = "Empty item representation",
                     origin = "import",
@@ -820,7 +839,7 @@ internal static class Program
                 },
                 new
                 {
-                    level = "info",
+                    blocks_fst = false, fst_reason = (string?)null, level = "info",
                     code = "fwdata.only-first-used",
                     group_name = "Only first list item is used",
                     origin = "import",
@@ -832,7 +851,7 @@ internal static class Program
                 },
                 new
                 {
-                    level = "warning",
+                    blocks_fst = false, fst_reason = (string?)null, level = "warning",
                     code = "hc-duplicate-feature-bundle",
                     group_name = "Duplicate segment features",
                     origin = "check",

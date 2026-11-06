@@ -98,6 +98,7 @@ internal sealed class TrialJobHandler
     private readonly Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> _runDryRun;
     private readonly Func<LcmCache?, CancellationToken, Task<string>> _prepareForAssessment;
     private readonly Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? _grammarHealth;
+    private readonly Func<string, string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? _grammarHealthWithSnapshot;
     private readonly Func<bool> _retainScratch;
 
     /// <param name="baselines">This project's published-Baseline store.</param>
@@ -126,7 +127,8 @@ internal sealed class TrialJobHandler
         Func<DryRunScratch?, PrerequisiteExecutionPlan, CancellationToken, Task<DryRunModel>> runDryRun,
         Func<LcmCache?, CancellationToken, Task<string>> prepareForAssessment, string workerRoot,
         Func<string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealth = null,
-        Func<bool>? retainScratch = null)
+        Func<bool>? retainScratch = null,
+        Func<string, string, string, Action<bool>?, CancellationToken, Task<GrammarCheckResponse?>>? grammarHealthWithSnapshot = null)
     {
         _baselines = baselines ?? throw new ArgumentNullException(nameof(baselines));
         ArgumentNullException.ThrowIfNull(proposals);
@@ -140,6 +142,7 @@ internal sealed class TrialJobHandler
         _runDryRun = runDryRun ?? throw new ArgumentNullException(nameof(runDryRun));
         _prepareForAssessment = prepareForAssessment ?? throw new ArgumentNullException(nameof(prepareForAssessment));
         _grammarHealth = grammarHealth;
+        _grammarHealthWithSnapshot = grammarHealthWithSnapshot;
         _retainScratch = retainScratch ?? (() => TrialScratchRetention.RetainRequested);
     }
 
@@ -257,13 +260,23 @@ internal sealed class TrialJobHandler
         try
         {
             string? grammarCheckWarning = null;
+            PanGlossImportedSnapshot? importedSnapshot = null;
             DroppedGrammar droppedGrammar;
             if (_grammarHealth is not null)
             {
                 var grammarPhase = new JobStageProgress("grammar-health", 1, 2, "grammar-health");
                 claim.PublishStageProgress(grammarPhase);
                 var grammarWait = claim.ObserveParserWait(grammarPhase);
-                var (grammarCheck, dropped) = await DroppedGrammarCheck.CheckAsync(_grammarHealth, claim.Database,
+                var snapshotPath = Path.Combine(scratchRoot, "grammar-snapshot.json");
+                async Task<GrammarCheckResponse?> Check(string path, string name, Action<bool>? wait, CancellationToken token)
+                {
+                    if (_grammarHealthWithSnapshot is null || path != candidate.GrammarPath || assessor is not PanGlossAssessor)
+                        return await _grammarHealth(path, name, wait, token).ConfigureAwait(false);
+                    var response = await _grammarHealthWithSnapshot(path, name, snapshotPath, wait, token).ConfigureAwait(false);
+                    if (response is not null) importedSnapshot = PanGlossImportedSnapshot.Capture(path, snapshotPath);
+                    return response;
+                }
+                var (grammarCheck, dropped) = await DroppedGrammarCheck.CheckAsync(Check, claim.Database,
                     baseline.Token, baseline.FwDataPath, candidate.GrammarPath, project.FieldWorksProjectIdentity,
                     proposal, grammarWait.Observe, StageTimeout, cancellationToken).ConfigureAwait(false);
                 droppedGrammar = dropped;
@@ -285,14 +298,16 @@ internal sealed class TrialJobHandler
             var batchPhase = new JobStageProgress("batch", _grammarHealth is null ? 1 : 2,
                 _grammarHealth is null ? 1 : 2, "assessment");
             var batchWait = claim.ObserveParserWait(batchPhase);
-            var produced = await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory,
-                    wordProgress =>
-                    {
-                        Interlocked.Exchange(ref progress.Done, wordProgress.Completed);
-                        claim.PublishTrialProgress(wordProgress with { PerWordLimitMs = limitMs });
-                    },
-                    batchWait.Observe, cancellationToken)
-                .ConfigureAwait(false);
+            void WordProgress(TrialWordProgress wordProgress)
+            {
+                Interlocked.Exchange(ref progress.Done, wordProgress.Completed);
+                claim.PublishTrialProgress(wordProgress with { PerWordLimitMs = limitMs });
+            }
+            var produced = assessor is PanGlossAssessor panGloss
+                ? await panGloss.ProduceAsync(candidate.Scope, candidate.ExportedDirectory, WordProgress,
+                    batchWait.Observe, cancellationToken, importedSnapshot).ConfigureAwait(false)
+                : await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory, WordProgress,
+                    batchWait.Observe, cancellationToken).ConfigureAwait(false);
             var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
             var published = false;
             var preserveArtifacts = false;

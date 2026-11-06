@@ -920,12 +920,14 @@ internal static class GeneratedArtifactReferences
             {
                 var json = GrammarCheckStorage.Decompress(reader.GetFieldValue<byte[]>(2));
                 RequireObjectShape(json, "Grammar Check response", "Findings", "HasBaseline", "Locale",
-                    "CheckedLexemeCount", "CheckedRuleCount", "Advisories", "Summary", "Provenance", "ObjectTimingDetail");
+                    "CheckedLexemeCount", "CheckedRuleCount", "Advisories", "Summary", "Provenance", "ObjectTimingDetail",
+                    "FstChecked", "FstCheckError");
                 using var document = JsonDocument.Parse(json);
                 var root = document.RootElement;
                 RequireObjectShape(root, "Grammar Check response",
                     ["Findings", "HasBaseline", "Locale", "CheckedLexemeCount", "CheckedRuleCount", "Advisories",
-                        "Summary", "Provenance", "ObjectTimingDetail"], ["Findings", "HasBaseline"]);
+                        "Summary", "Provenance", "ObjectTimingDetail", "FstChecked", "FstCheckError"],
+                    ["Findings", "HasBaseline"]);
                 var valid = ValidateNullableObjectArray(root, "Findings") &&
                     ValidateOptionalObjectArray(root, "Advisories") && ValidateOptionalObjectArray(root, "Summary");
                 foreach (var provenance in Properties(root, "Provenance"))

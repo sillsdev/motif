@@ -18,6 +18,12 @@ public sealed record GrammarWarning(
     IReadOnlyList<GrammarWarningPart> Problem,
     string Text)
 {
+    /// <summary>Whether the retained construct prevents FST emission.</summary>
+    public bool BlocksFst { get; init; }
+
+    /// <summary>The producer's reason that the retained construct prevents FST emission.</summary>
+    public string? FstReason { get; init; }
+
     /// <summary>The report's human-readable name for this diagnostic code.</summary>
     public string? Group { get; init; }
 
@@ -96,6 +102,12 @@ public sealed record GrammarWarning(
 /// <param name="Count">How many diagnostics of this kind the report contains.</param>
 public sealed record GrammarWarningSummary(string Code, string? GroupName, GrammarDiagnosticLevel Level, int Count)
 {
+    /// <summary>Whether this diagnostic kind prevents FST emission.</summary>
+    public bool BlocksFst { get; init; }
+
+    /// <summary>The producer's FST retention reason for this diagnostic kind.</summary>
+    public string? FstReason { get; init; }
+
     /// <summary>
     /// How many of the Selection's words exactly use something this kind's findings name, each counted once;
     /// membership and spelling candidates are excluded. <see langword="null"/> when not known, as for the parser's

@@ -1,0 +1,65 @@
+{
+  "schema_version": 5,
+  "fst_checked": false,
+  "fst_check_error": null,
+  "locale": "en",
+  "fieldworks_project": {
+    "name": "MotifTestProj",
+    "source": "fwdata_path"
+  },
+  "summary": [
+    {
+      "code": "provisional.letter",
+      "group_name": "Provisional letter or boundary definition",
+      "level": "info",
+      "count": 1,
+      "blocks_fst": false,
+      "fst_reason": null
+    }
+  ],
+  "diagnostics": [
+    {
+      "level": "info",
+      "blocks_fst": false,
+      "fst_reason": null,
+      "code": "provisional.letter",
+      "group_name": "Provisional letter or boundary definition",
+      "origin": "import",
+      "description": "The letter 'b' isn't defined in this project's phonology. PanGloss is treating it as a letter of its own that belongs to no natural class that names letters or requires a feature value. An unconstrained class still matches it. Define it as a phoneme in FieldWorks to replace this provisional definition.",
+      "guidance": "Define the named letter in Grammar > Phonemes > In Orthography as, or the named boundary in Grammar > Boundary Markers, to replace its provisional definition.",
+      "title": "Provisional letter or boundary definition",
+      "explanation": "A used letter or boundary has no authored definition. PanGloss supplies a provisional definition and reports its assumption.",
+      "help_path": "docs/diagnostics/provisional.letter.md",
+      "help_body": "# Modelling a grammar the parser can use\n\nA FieldWorks project can contain analyses that the parser cannot fully use. Check what the parser imported, then compare its behavior with words whose analyses you know. A clean project save does not show that every form, environment, feature, and rule made it into the grammar.\n\n## Start with a word and its analysis\n\nFor a word such as *walked*, check that the lexicon contains the expected stem *walk*, that its grammatical analysis has the category needed by the affix, and that the past-tense affix has a usable form. A gloss such as “move on foot” helps people recognize the entry, but the gloss does not make a missing stem or affix parse. If the entry or analysis is absent, adding a phonological rule will not supply it.\n\n## Sounds and spellings\n\nThe parser reads sounds from the first phoneme set. A phoneme or boundary marker without a usable spelling cannot be found in a word. If two spellings normalize to the same sequence, the parser keeps the earlier item, so check the diagnostic for both items before changing either one.\n\nNatural classes can fail in different ways. An explicit segment-list class is skipped when one listed phoneme cannot be resolved. A feature-defined class can remain available while unresolved or unsupported constraints are omitted. Check both the inventory and the named class before changing a well-formed analysis.\n\n## Allomorphs and environments\n\nAn allomorph needs a usable form for the role it plays. An empty prefix or suffix form cannot load as an affix rule, and an infix without a position environment cannot load through that path. A malformed environment expression may be ignored as a restriction; an unresolved named environment is an import error. In a circumfix, an environment can prevent one pairing of halves from loading without excluding every pairing.\n\nWhen alternatives meet the parser's disjunctive-ordering conditions, the first listed allomorph can block a later one. Environments, syntactic constraints, and free fluctuation also affect selection. Inspect a parse trace and the allomorph conditions before reordering forms.\n\n## Categories, slots, and features\n\nA stem without a grammatical category may not accept affixes that require one. An unclassified affix has neither inflectional nor derivational classification and can attach too freely. An inflectional affix that belongs to no template slot is not loaded through a slot. A template is available only when it has a slot containing a loaded affix rule; an empty slot or unusable affix can leave a template with nothing to build.\n\nIn Grammar > Category Edit, inspect the category's Affix Templates and Affix Slots; in Lexicon > Lexicon Edit, check the affix's Grammatical Info. and Slots. A partial affix can still be retained when it belongs to no slot.\n\nFeature values and inflection classes are linked by references, not by matching names. If a feature or class reference cannot be resolved, use the diagnostic to find the owner and field. Keep valid linguistic data when the parser lacks support for it, and report that limitation.\n\n## Measure one change\n\nAfter a source change, import the project again and check the words expected to change along with a few that should remain the same. A parse trace can show which stem, allomorph, environment, and rule steps were used. Change one cause at a time so the next result is useful evidence.\n",
+      "fieldworks_places": [
+        {
+          "tool": "phonemeEdit",
+          "field": "In Orthography as"
+        }
+      ],
+      "scope": "object",
+      "subjects": [
+        {
+          "kind": "PhPhoneme",
+          "status": "object",
+          "field": null,
+          "source_class": null,
+          "title": "b",
+          "subtitle": null,
+          "guid": null,
+          "internal_id": null,
+          "opens_in": {
+            "tool": "phonemeEdit",
+            "guid": "c0e3a8d9-a17e-464a-9623-9593f264f87b"
+          },
+          "fieldworks": {
+            "status": "available",
+            "guid": "c0e3a8d9-a17e-464a-9623-9593f264f87b",
+            "tool": "phonemeEdit",
+            "url": "silfw://localhost/link?database%3DMotifTestProj%26tool%3DphonemeEdit%26guid%3Dc0e3a8d9-a17e-464a-9623-9593f264f87b%26tag%3D"
+          }
+        }
+      ]
+    }
+  ]
+}
