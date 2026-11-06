@@ -26,7 +26,7 @@ public static class AssessmentMaterial
                 Attempts = word.Morphology?.Attempts,
                 Passes = word.Passes,
                 ParserWork = word.ParserWork,
-                IsIncomplete = word.Outcome is WordOutcome.Capped or WordOutcome.TimedOut ||
+                IsIncomplete = word.Outcome is WordOutcome.Capped or WordOutcome.MemoryCapped or WordOutcome.TimedOut ||
                     word.Morphology is { Capped: true } or { TimedOut: true },
             })
             .ToArray(), null, null),

@@ -210,7 +210,7 @@ public sealed partial class TimingPageModel
             if (!read.Succeeded) return (null, true);
             if (read.Value is not { } response) return (null, false);
             return (new ProposalTiming(response.Work, response.ParserWorkAggregates, response.Aggregates,
-                response.Words.Count(word => word.Completion == TimingCompletion.WorkLimit),
+                response.Words.Count(word => word.Completion is TimingCompletion.WorkLimit or TimingCompletion.MemoryLimit),
                 WordSetDigest.Of(response.Words.Select(word => word.Word))), false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { return null; }

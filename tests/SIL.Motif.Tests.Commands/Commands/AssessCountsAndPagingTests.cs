@@ -15,7 +15,7 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class AssessCountsAndPagingTests
 {
     private static AssessmentWordResult Word(string word, string outcome, params string?[][] readings) =>
-        new(word, outcome, outcome is "timed-out" or "capped", "Search completed", 1, null)
+        new(word, outcome, outcome is "timed-out" or "capped" or "memory-capped", "Search completed", 1, null)
         {
             Morphology = new ParseWordEvidence("s", 0, word, 1, false, false, false,
                 readings.Select(reading => new ParseAnalysis(reading.Select(guess =>
@@ -33,6 +33,7 @@ public sealed class AssessCountsAndPagingTests
         Word("zzz", "no-analysis"),
         Word("slow", "timed-out"),
         Word("big", "capped"),
+        Word("memory", "memory-capped"),
         Word("bad", "skipped"),
     ];
 
@@ -41,7 +42,7 @@ public sealed class AssessCountsAndPagingTests
     {
         var counts = AssessmentCounts.Of(Fixture());
 
-        Assert.Equal(new AssessmentCounts(7, 3, 1, 1, 1, 1, Accepted: 2, GuessOnly: 1), counts);
+        Assert.Equal(new AssessmentCounts(8, 3, 1, 1, 2, 1, Accepted: 2, GuessOnly: 1), counts);
     }
 
     [Fact]
@@ -52,6 +53,7 @@ public sealed class AssessCountsAndPagingTests
             new AssessedWord("finished", "no-analysis", []),
             new AssessedWord("time", "timed-out", []),
             new AssessedWord("cap", "capped", []),
+            new AssessedWord("memory", "memory-capped", []),
             new AssessedWord("invalid", "skipped", []),
         };
         var responseRows = recorded.Select(word => Word(word.Word, word.Outcome));
@@ -59,7 +61,8 @@ public sealed class AssessCountsAndPagingTests
 
         Assert.Equal(expected, AssessSummary.Counts(recorded));
         Assert.Equal(1, expected.TimedOut);
-        Assert.Equal(1, expected.Capped);
+        Assert.Equal(2, expected.Capped);
+        Assert.Equal(expected.Words, expected.Analysed + expected.NoAnalysis + expected.TimedOut + expected.Capped + expected.Skipped);
         Assert.Equal(1, expected.Skipped);
     }
 
@@ -72,6 +75,9 @@ public sealed class AssessCountsAndPagingTests
 
         Assert.Equal(2, json["counts"]!["accepted"]!.GetValue<int>());
         Assert.Equal(1, json["counts"]!["guessOnly"]!.GetValue<int>());
+        Assert.Equal(2, json["counts"]!["capped"]!.GetValue<int>());
+        var page = AssessSummary.Page(response, 0, 25, false);
+        Assert.Equal(2, page["counts"]!["capped"]!.GetValue<int>());
     }
 
     private static AssessCommandResponse Big(int count) => new(null!, null!, ["a-1"], "")

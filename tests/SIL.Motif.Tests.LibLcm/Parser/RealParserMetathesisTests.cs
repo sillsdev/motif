@@ -31,7 +31,7 @@ public sealed class RealParserMetathesisTests(PristineProjectFixture pristine)
     }
 
     [RealParserFact]
-    public async Task AMiddleContextIsOmittedDuringAnalysisAsInFieldWorks()
+    public async Task AMiddleContextIsPreservedDuringAnalysis()
     {
         using var cache = pristine.NewScratch();
         RealParserProject.PrepareForParsing(cache, "t", "i", "k", "a", "p");
@@ -42,7 +42,7 @@ public sealed class RealParserMetathesisTests(PristineProjectFixture pristine)
         new FwDataProjectLoader().Save(cache);
         using var invoker = new PanGlossInvoker();
         var tracer = new PanGlossTracer(invoker);
-        Assert.False(await HasAnalysis(tracer, cache, "kita"));
+        Assert.True(await HasAnalysis(tracer, cache, "kita"));
         Assert.True(await HasAnalysis(tracer, cache, "pika"));
     }
 

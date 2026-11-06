@@ -155,6 +155,8 @@ public static class Readiness
             ? "the Assessment holds no approved-morphology evidence for them; measure them again"
             : word.Morphology.InvalidShape
                 ? "not a single parseable word (a line with spaces is the usual cause); put one word per line with no spaces in the Trial's word list"
+                : word.Outcome == "memory-capped"
+                    ? "the parser reached its memory limit for the word before finishing; review the word and grammar, then rerun the Trial"
                 : word.Morphology.Capped || word.Morphology.TimedOut
                     ? "the parser stopped at its work or time limit before finishing; raise the limit or rerun the Trial when the machine is quieter"
                     : "an approved reading lacks a lexicon Form or MSA identity, or the parser reported its result unavailable; check the approved analysis";

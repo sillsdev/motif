@@ -60,7 +60,7 @@ internal static class Program
     [
         new("phonology-examples", ["grammar", "request.json", "out.json?"], [], RunPhonologyExamples),
         new("batch", ["grammar", "words.txt", "out.tsv"],
-            [new("--word-timeout-ms", true), new("--work-cap", true), new("--threads", true),
+            [new("--word-timeout-ms", true), new("--work-cap", true), new("--capture-cap-mib", true), new("--threads", true),
                 new("--stats", false), new("--work-columns", false),
                 new("--cache", true), new("--analyses", true), new("--stats-manifest", true)], RunBatch),
         new("facts", ["snapshot.json"],
@@ -94,6 +94,11 @@ internal static class Program
             Console.Out.Write(text);
             Console.Error.Write(text);
             return 0;
+        }
+        if (args is ["--help"])
+        {
+            Console.Error.WriteLine("usage: pangloss grammar-health <grammar> [--fst-strategy surface-enum|factored|auto]");
+            return 1;
         }
         if (args is ["--version"])
         {
@@ -389,6 +394,7 @@ internal static class Program
             var status = known?.Outcome switch
             {
                 "capped" => "CAP",
+                "memory-capped" => "MEMCAP",
                 "timed-out" => "TIMEOUT",
                 _ => "ok",
             };
@@ -690,7 +696,7 @@ internal static class Program
                 behaviour.TraceCapped, behaviour.TraceTimedOut, behaviour.TraceAnalyses);
             var counts = (behaviour.ServeParserWork is { } work ? ",\"workSteps\":" + work.ToString(CultureInfo.InvariantCulture) : "");
             output.WriteLine("{\"id\":" + JsonSerializer.Serialize(id) + ",\"type\":\"result\",\"exitCode\":" +
-                behaviour.ServeExitCode.ToString(CultureInfo.InvariantCulture) + counts + ",\"status\":\"future-status\",\"result\":" + envelope + "}");
+                behaviour.ServeExitCode.ToString(CultureInfo.InvariantCulture) + counts + ",\"status\":" + JsonSerializer.Serialize(behaviour.ServeStatus ?? "future-status") + ",\"result\":" + envelope + "}");
         }
         GC.KeepAlive(hog);
         return 0;
@@ -948,7 +954,7 @@ internal static class Program
                 elapsed_ns = 3_000_000,
                 attempts = word.Attempts ?? 0,
                 passes = word.Passes ?? 0,
-                capped = word.Outcome == "capped",
+                capped = word.Outcome is "capped" or "memory-capped",
                 timed_out = word.Outcome == "timed-out",
             }));
         }
@@ -976,7 +982,7 @@ internal static class Program
             {
                 schema = "fieldworks-parse-analysis/v1", index, word, elapsedMs = known?.ElapsedMs ?? 3,
                 attempts = known?.Attempts,
-                capped = known?.Outcome == "capped", timedOut = known?.Outcome == "timed-out", invalidShape = false,
+                capped = known?.Outcome is "capped" or "memory-capped", timedOut = known?.Outcome == "timed-out", invalidShape = false,
                 analyses = known?.Analyses ?? [],
                 unavailable = hasFindings && known?.Analyses is not { Count: > 0 }
                     ? new[] { "Fake result has no authored source identity." } : Array.Empty<string>(),
@@ -1026,6 +1032,7 @@ internal static class Program
         public string? ServeArgvLog { get; init; }
         public int ServeExitCode { get; init; }
         public long? ServeParserWork { get; init; }
+        public string? ServeStatus { get; init; }
         public int ServeAllocateBytes { get; init; }
 
         internal static Behaviour Read(string? directory, string? subcommand = null)

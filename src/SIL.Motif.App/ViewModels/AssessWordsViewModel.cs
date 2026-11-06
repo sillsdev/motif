@@ -330,6 +330,7 @@ public sealed class AssessWordRowViewModel
             "no-analysis" => "No parse",
             "timed-out" => TimingCompletion.TimeSafetyNet,
             "capped" => TimingCompletion.WorkLimit,
+            "memory-capped" => TimingCompletion.MemoryLimit,
             "skipped" => ParserRefusals.Title,
             var other => other,
         };
@@ -419,6 +420,7 @@ public sealed class AssessWordRowViewModel
     public string NoReadingsText => Result switch
     {
         TimingCompletion.TimeSafetyNet => "No analyses: the parser stopped at the time safety net before it could finish.",
+        TimingCompletion.MemoryLimit => "No analyses: the parser reached its memory limit for the word.",
         TimingCompletion.WorkLimit => "No analyses: the parser stopped at the work limit before it could finish.",
         ParserRefusals.Title => Comparison.Detail,
         _ => "No analyses: the parser found no way to build this word.",

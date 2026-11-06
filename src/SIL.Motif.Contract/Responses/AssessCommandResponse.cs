@@ -146,6 +146,9 @@ public static class StopLimit
     /// <summary>The deterministic analysis-attempt or search-work cap stopped the word.</summary>
     public const string Work = "work-limit";
 
+    /// <summary>The parser reached its memory limit for the word.</summary>
+    public const string Memory = "memory-limit";
+
     /// <summary>The per-word wall-clock safety net stopped the word; it depends on this computer's speed.</summary>
     public const string Time = "time-safety-net";
 
@@ -158,6 +161,7 @@ public static class StopLimit
     /// </summary>
     public static string? From(string outcome, ParseWordEvidence? morphology)
     {
+        if (outcome == "memory-capped") return Memory;
         var work = outcome == "capped" || morphology is { Capped: true };
         var time = outcome == "timed-out" || morphology is { TimedOut: true };
         return work && time ? Both : work ? Work : time ? Time : null;

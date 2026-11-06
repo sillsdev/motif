@@ -25,6 +25,7 @@ internal sealed record AssessmentRowFacts(AssessmentWordResult Source, int? Occu
         "no-analysis" => "No parse",
         "timed-out" => TimingCompletion.TimeSafetyNet,
         "capped" => TimingCompletion.WorkLimit,
+        "memory-capped" => TimingCompletion.MemoryLimit,
         "skipped" => ParserRefusals.Title,
         var outcome => outcome,
     };

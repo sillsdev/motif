@@ -46,6 +46,9 @@ public abstract record WarmParseResult
     /// </summary>
     public sealed record Completed(string Json, int ExitCode, TimeSpan Elapsed) : WarmParseResult
     {
+        /// <summary>The parser status from the serve envelope, when supplied.</summary>
+        public string? Status { get; init; }
+
         /// <summary>The total parser work reported by the result envelope, if present.</summary>
         public long? ParserWork { get; init; }
     }
@@ -544,6 +547,8 @@ public sealed class WarmPanGlossPool : IDisposable
                         return new WarmParseResult.Completed(result.GetRawText(), exitCode, clock.Elapsed)
                         {
                             ParserWork = ReadOptionalCount(root, "workSteps"),
+                            Status = root.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.String
+                                ? status.GetString() : null,
                         };
                     }
                     var code = root.TryGetProperty("code", out var c) ? c.GetString() ?? "error" : "error";

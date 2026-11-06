@@ -312,7 +312,7 @@ public static class HandoffWriter
                 ## parse-results.json
 
                 One record per Selection word, each carrying its own `word` field: the outcome PanGloss
-                reported (`analysed`, `no-analysis`, `capped`, `timed-out`, or `skipped`) and how long the
+                reported (`analysed`, `no-analysis`, `capped`, `memory-capped`, `timed-out`, or `skipped`) and how long the
                 batch pass took. A one-word Handoff also links its raw trace file and summary from that
                 word's record. Its completion follows the raw diagnostic: `complete`, `incomplete`, `not-run` for
                 invalid shape, or `unknown` when no completion fact was recorded. See

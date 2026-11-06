@@ -50,8 +50,8 @@ public sealed class StatsRowViewModel
     /// <summary>The parser work PanGloss recorded for a word, or null for a grammar object or an uncounted word.</summary>
     public double? ParserWork { get; }
     public bool IsIncomplete { get; }
-    /// <summary>Whether the parser's work limit stopped this word's search.</summary>
-    public bool StoppedAtWorkLimit => _capped;
+    /// <summary>Whether a work or memory limit stopped this word's search.</summary>
+    public bool StoppedAtParserLimit => _capped;
     /// <summary>Whether the time safety net stopped this word's search.</summary>
     public bool StoppedAtTimeSafetyNet => _timedOut;
     /// <summary>Whether this statistics invocation's parse finished for the word.</summary>

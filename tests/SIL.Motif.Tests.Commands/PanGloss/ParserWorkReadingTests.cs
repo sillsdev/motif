@@ -59,6 +59,21 @@ public sealed class ParserWorkReadingTests : IDisposable
     }
 
     [Fact]
+    public void MemoryCappedBatchRowsAreIncompleteAndRetainTheirReason()
+    {
+        var row = Assert.Single(BatchTsvParser.Parse("0\tword\t8\tMEMCAP\t-\n"));
+        Assert.Equal(WordOutcome.MemoryCapped, row.Outcome);
+        Assert.Equal("memory-capped", row.Outcome.ToStoredOutcome());
+        Assert.True(StoredWordOutcomeNames.TryParseStoredOutcome("memory-capped", out var restored));
+        Assert.Equal(row.Outcome, restored);
+        var batch = new BatchAnalysis([row], null, "project", []);
+        Assert.Equal(1, batch.Capped);
+        Assert.Equal(1, batch.Incomplete);
+        Assert.Equal(0, batch.Adjudicated);
+        Assert.Equal(StopLimit.Memory, StopLimit.From("memory-capped", null));
+    }
+
+    [Fact]
     public void HeaderlessWorkColumnsAndWatchdogRowsAreRead()
     {
         var rows = BatchTsvParser.Parse("0\tword\t3\tok\tsig\t345\n1\tother\t8\tTIMEOUT\t-\n");
@@ -119,13 +134,14 @@ public sealed class ParserWorkReadingTests : IDisposable
 
     [Theory]
     [InlineData("capped", StopLimit.Work)]
+    [InlineData("memory-capped", StopLimit.Memory)]
     [InlineData("timed-out", StopLimit.Time)]
     [InlineData("analysed", null)]
     [InlineData("no-analysis", null)]
     [InlineData("skipped", null)]
     public void AStoppedWordNamesTheLimitThatStoppedItInItsJson(string outcome, string? expected)
     {
-        var row = new AssessmentWordResult(outcome, outcome, outcome is "capped" or "timed-out", "x", 5, "sig")
+        var row = new AssessmentWordResult(outcome, outcome, outcome is "capped" or "memory-capped" or "timed-out", "x", 5, "sig")
             { ParserWork = 42 };
 
         using var json = System.Text.Json.JsonDocument.Parse(

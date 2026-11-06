@@ -65,6 +65,9 @@ public static class UnparsedKind
     /// <summary>The search stopped at the work limit.</summary>
     public const string WorkLimit = StopLimit.Work;
 
+    /// <summary>The parser reached its memory limit for the word.</summary>
+    public const string MemoryLimit = StopLimit.Memory;
+
     /// <summary>The search stopped at the time safety net.</summary>
     public const string TimeLimit = StopLimit.Time;
 

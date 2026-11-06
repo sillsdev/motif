@@ -206,7 +206,7 @@ public sealed class PanGlossAssessor : IAssessor
                     var expectedOutcome = item.InvalidShape ? WordOutcome.Skipped : item.TimedOut ? WordOutcome.TimedOut
                         : item.Capped ? WordOutcome.Capped : item.Analyses.Count + item.Unavailable.Count > 0
                             ? WordOutcome.Analysed : WordOutcome.NoAnalysis;
-                    if (row.ElapsedMs != item.ElapsedMs || row.Outcome != expectedOutcome)
+                    if (row.ElapsedMs != item.ElapsedMs || row.Outcome != expectedOutcome && !(row.Outcome == WordOutcome.MemoryCapped && expectedOutcome == WordOutcome.Capped))
                         throw new InvalidDataException("TSV and morphology evidence describe different search outcomes.");
                     var origin = lowercaseOrigin.GetValueOrDefault(row.Word);
                     if (retried is null || !retried.RetriedIndices.Contains(row.Index))

@@ -113,6 +113,18 @@ public sealed class FakePanGlossSurfaceTests
     }
 
     [Fact]
+    public void FakeHelpListsTheReleasedFstStrategies()
+    {
+        var start = new ProcessStartInfo(FakeParser.ExecutablePath);
+        start.ArgumentList.Add("--help");
+        var result = ToolProcess.Run(start);
+        Assert.Equal(1, result.ExitCode);
+        Assert.Contains("surface-enum", result.Error);
+        Assert.Contains("factored", result.Error);
+        Assert.Contains("auto", result.Error);
+    }
+
+    [Fact]
     public async Task FakeDescriptionNamesExactlyItsDispatchCommands()
     {
         using var description = await Describe(FakeParser.ExecutablePath);
@@ -209,7 +221,7 @@ public sealed class FakePanGlossSurfaceTests
             Assert.Equal(flags.Keys.Where(name => request.Subcommand == "stats"
                         ? name is "--cache" or "--group" or "--format"
                         : request.Subcommand == "batch"
-                            ? name is "--word-timeout-ms" or "--work-cap" or "--threads" or "--analyses" or "--stats" or "--cache" or "--stats-manifest"
+                            ? name is "--word-timeout-ms" or "--work-cap" or "--capture-cap-mib" or "--threads" or "--analyses" or "--stats" or "--cache" or "--stats-manifest"
                             : request.Subcommand == "parse"
                                 ? name is "--trace" or "--trace-format" or "--trace-details" or "--work-cap"
                                 : request.Subcommand == "facts"

@@ -164,14 +164,14 @@ def load_assessment(path: str = "parse-results.json") -> list:
 # parse-results.json
 # ---------------------------------------------------------------------------------------------
 
-OUTCOMES = ("analysed", "no-analysis", "capped", "timed-out", "refused")
+OUTCOMES = ("analysed", "no-analysis", "capped", "memory-capped", "timed-out", "refused")
 """Every value assessment-format.md defines for a word record's ``outcome`` field."""
 
 
 def words_by_outcome(records: list, outcome: str) -> list:
     """Every word record with the given ``outcome``.
 
-    ``capped`` and ``timed-out`` mean the search was cut short, not exhausted: neither one is
+    ``capped``, ``memory-capped`` and ``timed-out`` mean the search was cut short, not exhausted: none is
     evidence that a word does not parse, only that PanGloss did not finish looking.
     """
     if outcome not in OUTCOMES:

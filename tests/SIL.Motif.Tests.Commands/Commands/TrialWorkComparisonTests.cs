@@ -74,14 +74,14 @@ public sealed class TrialWorkComparisonTests
             Word("a", 1) with { Outcome = "capped" },
             Word("b", 1) with { Outcome = "timed-out" },
             Word("c", 1) with { Morphology = new ParseWordEvidence("s", 0, "c", 0, true, true, false, [], []) },
-            Word("d", 1),
+            Word("d", 1) with { Outcome = "memory-capped" },
         };
 
         var result = TrialWorkComparison.Compare(before, after);
 
-        Assert.Equal(["a", "c"], result.WorkLimitWords);
+        Assert.Equal(["a", "c", "d"], result.WorkLimitWords);
         Assert.Equal(["b"], result.TimeSafetyNetWords);
-        Assert.Equal((2, 1), (result.WorkLimitStops, result.TimeSafetyNetStops));
+        Assert.Equal((3, 1), (result.WorkLimitStops, result.TimeSafetyNetStops));
         Assert.Null(result.PercentChange);
     }
 

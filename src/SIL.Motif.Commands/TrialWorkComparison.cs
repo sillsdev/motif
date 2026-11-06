@@ -26,7 +26,7 @@ public static class TrialWorkComparison
     {
         var before = baseline.ToDictionary(word => word.Word, StringComparer.Ordinal);
         var stops = trial.Select(word => (word.Word, Limit: StopLimit.From(word.Outcome, word.Morphology))).ToArray();
-        var workWords = stops.Where(stop => stop.Limit is StopLimit.Work or StopLimit.Both).Select(stop => stop.Word).ToArray();
+        var workWords = stops.Where(stop => stop.Limit is StopLimit.Work or StopLimit.Memory or StopLimit.Both).Select(stop => stop.Word).ToArray();
         var timeWords = stops.Where(stop => stop.Limit is StopLimit.Time).Select(stop => stop.Word).ToArray();
         var workStops = workWords.Length;
         var timeStops = timeWords.Length;

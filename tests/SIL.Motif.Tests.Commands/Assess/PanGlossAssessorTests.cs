@@ -285,13 +285,14 @@ public sealed class PanGlossAssessorTests : IDisposable
                 new { word = "runaway", outcome = "timed-out", elapsedMs = 700 },
                 new { word = "slow", outcome = "timed-out", recoversAtTimeoutMs = 5000 },
                 new { word = "capped", outcome = "capped" },
+                new { word = "memory", outcome = "memory-capped" },
             },
         });
         using var invoker = RealFakeInvoker(parser);
         var assessor = new PanGlossAssessor(_paths, invoker);
 
         var produced = await assessor.ProduceAsync(
-            new AssessmentScope.Words(["runaway", "slow", "capped"], [AssessmentKind.ParseTime],
+            new AssessmentScope.Words(["runaway", "slow", "capped", "memory"], [AssessmentKind.ParseTime],
                 TimeSpan.FromMilliseconds(700), 123), _candidate, CancellationToken.None);
 
         var evidence = Assert.IsType<BatchInvocationEvidence>(produced.Single().Invocation);
@@ -301,6 +302,9 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.True(analysis.Words[0].Morphology!.TimedOut);
         Assert.Equal(WordOutcome.Analysed, analysis.Words[1].Outcome);
         Assert.Equal(WordOutcome.Capped, analysis.Words[2].Outcome);
+        Assert.Equal(WordOutcome.MemoryCapped, analysis.Words[3].Outcome);
+        Assert.True(analysis.Words[3].Morphology!.Capped);
+        Assert.Equal(2, analysis.Capped);
         var retry = Assert.IsType<StoppedWordRetry>(evidence.StoppedWordRetry);
         Assert.Equal((2, 2, 1, 1), (retry.Stopped, retry.Retried, retry.Recovered, retry.StillStopped));
         Assert.Contains("0\trunaway\t700\t700\tstill-stopped", retry.Words);

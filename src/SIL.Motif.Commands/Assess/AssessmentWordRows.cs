@@ -23,13 +23,14 @@ internal static class AssessmentWordRows
     /// <param name="outcome">The word's stored outcome, such as <c>capped</c> or <c>analysed</c>.</param>
     /// <param name="morphology">The parser's evidence for the word, when it returned any.</param>
     internal static bool IsIncomplete(string outcome, ParseWordEvidence? morphology) =>
-        outcome is "capped" or "timed-out" || morphology is { Capped: true } or { TimedOut: true };
+        outcome is "capped" or "memory-capped" or "timed-out" || morphology is { Capped: true } or { TimedOut: true };
 
     /// <summary>The sentence a person reads for how one word's search ended.</summary>
     /// <param name="outcome">The word's stored outcome, such as <c>capped</c> or <c>analysed</c>.</param>
     /// <param name="morphology">The parser's evidence for the word, when it returned any.</param>
     internal static string CompletionStatus(string outcome, ParseWordEvidence? morphology) => outcome switch
     {
+        "memory-capped" => "INCOMPLETE — the parser reached its memory limit for the word",
         _ when StopLimit.From(outcome, morphology) == StopLimit.Both =>
             "INCOMPLETE — parsing did not finish (work limit and time safety net)",
         "capped" => ParserWorkLimited,

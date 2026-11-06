@@ -102,7 +102,7 @@ public sealed class PanGlossTracerTests
         var incomplete = Assert.IsType<PanGlossTraceOutcome.Incomplete>(outcome);
         Assert.NotNull(incomplete.Tree);
         Assert.False(incomplete.Summary!.Completed);
-        Assert.Contains("work limit", incomplete.Reason, StringComparison.Ordinal);
+        Assert.Contains("work or memory limit", incomplete.Reason, StringComparison.Ordinal);
     }
 
     [Fact]

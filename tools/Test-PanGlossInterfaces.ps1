@@ -147,6 +147,14 @@ $versionMatch = [regex]::Match($versionResult.StandardOutput.Trim(), '^pangloss\
 $actualVersion = if ($versionMatch.Success) { $versionMatch.Groups[1].Value } else { $null }
 Assert-Interface 'parser version' $expectedParserVersion $actualVersion
 
+$helpResult = Invoke-PanGloss @('--help')
+Assert-Interface '--help exit' 1 $helpResult.ExitCode
+foreach ($strategy in $interfaces.fstStrategies) {
+    if (-not $helpResult.StandardError.Contains([string] $strategy)) {
+        throw "PanGloss --help does not list FST strategy $strategy."
+    }
+}
+
 $descriptionResult = Invoke-PanGloss @('--describe')
 if ($descriptionResult.ExitCode -ne 0) {
     throw "PanGloss interface mismatch: --describe expected exit 0, actual $($descriptionResult.ExitCode). $($descriptionResult.StandardError.Trim())"

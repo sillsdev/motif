@@ -169,6 +169,7 @@ public static class TimingCommand
                     ? TimingAggregation.ParserWorkByObject(objectRows, selectedWords) : totalsWork,
                 Work = TimingAggregation.SummarizeWork(selectedWords.Select(TimingAggregation.WorkOf)),
                 Words = selectedWords.Select(word => new TimingWordRow(word.Word, word.ElapsedMs,
+                    word.Outcome == WordOutcome.MemoryCapped.ToStoredOutcome() ? TimingCompletion.MemoryLimit :
                     IsParserWorkLimited(word) ? TimingCompletion.WorkLimit :
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? TimingCompletion.TimeSafetyNet :
                     ParserRefusals.Of(word.Morphology, word.Outcome) is not null ? TimingCompletion.Refused : TimingCompletion.Finished)
@@ -245,7 +246,8 @@ public static class TimingCommand
         word.ReadingGrades, word.MissedApprovedCount ?? 0) { AnalysisComparison = word.AnalysisComparison });
 
     private static bool IsParserWorkLimited(AssessedWord word) =>
-        word.Outcome == WordOutcome.Capped.ToStoredOutcome() || word.Morphology?.Capped == true;
+        word.Outcome == WordOutcome.Capped.ToStoredOutcome() || word.Outcome == WordOutcome.MemoryCapped.ToStoredOutcome() ||
+        word.Morphology?.Capped == true;
 
     private static HashSet<string> NormalizeWords(IEnumerable<string> words) => words
         .Where(word => !string.IsNullOrWhiteSpace(word))

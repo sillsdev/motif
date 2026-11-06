@@ -196,7 +196,7 @@ public sealed partial class TimingPageModel : PageModel
 
     /// <summary>How many of the chosen words stopped at the work limit.</summary>
     public string HeadlineStopped => ProposalHeadline(KindTiming?.Words
-        .Count(word => word.Completion == TimingCompletion.WorkLimit).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
+        .Count(word => word.Completion is TimingCompletion.WorkLimit or TimingCompletion.MemoryLimit).ToString("N0", System.Globalization.CultureInfo.CurrentCulture)
         ?? string.Empty, ProposalStopped, work: false);
 
     /// <summary>The caption under the stopped-word count.</summary>
@@ -207,10 +207,12 @@ public sealed partial class TimingPageModel : PageModel
         MotifAppStrings.TimingAllWordsButtonFormat, (KindTiming?.WordCount ?? 0).ToString("N0", CultureInfo.CurrentCulture));
 
     /// <summary>Whether the selected group has a word stopped at either recorded limit.</summary>
-    public bool HasStoppedWords => HasParserWorkLimitedWords || HasTimeLimitedWords;
+    public bool HasStoppedWords => HasParserWorkLimitedWords || HasTimeLimitedWords || HasMemoryLimitedWords;
 
     /// <summary>What the selected words' recorded stop reason means for the controls on this page.</summary>
-    public string StoppedWordsAdviceText => (HasParserWorkLimitedWords, HasTimeLimitedWords) switch
+    public string StoppedWordsAdviceText => HasMemoryLimitedWords
+        ? MotifAppStrings.ProgressStoppedAtMemoryLimit
+        : (HasParserWorkLimitedWords, HasTimeLimitedWords) switch
     {
         (true, true) => MotifAppStrings.TimingAdviceBothLimits,
         (true, false) => MotifAppStrings.TimingAdviceSearchLimit,
@@ -221,13 +223,16 @@ public sealed partial class TimingPageModel : PageModel
     private bool HasParserWorkLimitedWords => KindTiming?.Words.Any(word =>
         word.Completion == TimingCompletion.WorkLimit) == true;
 
+    private bool HasMemoryLimitedWords => KindTiming?.Words.Any(word =>
+        word.Completion == TimingCompletion.MemoryLimit) == true;
+
     private bool HasTimeLimitedWords => KindTiming?.Words.Any(word =>
         word.Completion == TimingCompletion.TimeSafetyNet) == true;
 
     /// <summary>The stopped-words filter's label, counting the words stopped at the work limit.</summary>
     public string StoppedWordsButtonText => string.Format(CultureInfo.CurrentCulture,
         MotifAppStrings.TimingStoppedButtonFormat, KindTiming?.Words.Count(word =>
-        word.Completion == TimingCompletion.WorkLimit).ToString("N0", CultureInfo.CurrentCulture) ?? "0");
+        word.Completion is TimingCompletion.WorkLimit or TimingCompletion.MemoryLimit).ToString("N0", CultureInfo.CurrentCulture) ?? "0");
 
     /// <summary>Whether these totals include separately recorded re-run measurements.</summary>
     public string RerunMeasurementsText => CurrentTimingOverrides is { Count: > 0 } overrides
@@ -389,6 +394,7 @@ public sealed partial class TimingPageModel : PageModel
         listed.TimeText = timeText;
         listed.Note = KindTiming?.Words.FirstOrDefault(row => row.Word == word)?.Completion switch
         {
+            TimingCompletion.MemoryLimit => MotifAppStrings.ProgressStoppedAtMemoryLimit,
             TimingCompletion.WorkLimit => MotifAppStrings.TimingStoppedAtSearchLimit,
             TimingCompletion.TimeSafetyNet => MotifAppStrings.TimingStoppedAtTimeLimit,
             _ => null,

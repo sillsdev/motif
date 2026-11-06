@@ -384,7 +384,7 @@ internal static class OverviewLookFirstBuilder
     {
         var lost = words.Where(word => Place(word) is
             { Standing: ProjectStanding.Approved, Column: CompareColumnKind.NoParse }).ToArray();
-        var stopped = words.Where(word => word.Outcome == "capped" || word.Morphology?.Capped == true).ToArray();
+        var stopped = words.Where(word => word.Outcome != "memory-capped" && (word.Outcome == "capped" || word.Morphology?.Capped == true)).ToArray();
         var stoppedNames = stopped.Select(word => word.Word).ToHashSet(StringComparer.Ordinal);
         var stoppedTimes = measuredWords.Where(word => stoppedNames.Contains(word.Word))
             .Select(TimingAggregation.WordTimeMs).Where(time => time is not null).Select(time => time!.Value).ToArray();

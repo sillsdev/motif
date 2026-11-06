@@ -103,7 +103,7 @@ public sealed class CatalogTextRenderingTests
         var json = CommandTextRenderer.Render(outcome, asJson: true).Output;
 
         Assert.Contains("3 word(s); 2 analysed (1 accepted, 1 guess-only); 1 no-analysis", text, StringComparison.Ordinal);
-        Assert.Contains("0 stopped at the work limit; 0 stopped at the time safety net; 0 skipped", text, StringComparison.Ordinal);
+        Assert.Contains("0 stopped at a parser limit; 0 stopped at the time safety net; 0 skipped", text, StringComparison.Ordinal);
         Assert.Contains("\"guessOnly\": 1", json, StringComparison.Ordinal);
     }
 
@@ -413,8 +413,8 @@ public sealed class CatalogTextRenderingTests
         Assert.Contains("Warning: parser work increased by more than 5% over the Baseline.", output, StringComparison.Ordinal);
         Assert.Contains("  mwalimu: 100 to 150 parser work (1.50x, 50% more work)", output, StringComparison.Ordinal);
         Assert.Contains("  kitabu: 200 to 220 parser work (1.10x, 10% more work)", output, StringComparison.Ordinal);
-        Assert.Contains("Stopped: 1 at the work limit; 2 at the time safety net.", output, StringComparison.Ordinal);
-        Assert.Contains("  Work limit: hawajafika", output, StringComparison.Ordinal);
+        Assert.Contains("Stopped: 1 at a parser limit; 2 at the time safety net.", output, StringComparison.Ordinal);
+        Assert.Contains("  Parser limit: hawajafika", output, StringComparison.Ordinal);
         Assert.Contains("  Time safety net: a, b", output, StringComparison.Ordinal);
         Assert.Contains("Time on this computer: 4,200 ms in the Baseline, 4,500 ms in the Trial", output, StringComparison.Ordinal);
         Assert.True(output.IndexOf("parser work", StringComparison.Ordinal) < output.IndexOf("Time on this computer", StringComparison.Ordinal));

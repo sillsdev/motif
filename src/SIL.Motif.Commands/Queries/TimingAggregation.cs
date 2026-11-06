@@ -69,7 +69,7 @@ public static class TimingAggregation
             : durations[Math.Max(0, (int)Math.Ceiling(durations.Length * 0.95) - 1)];
         var slowest = SelectSlowestWords(materialized, top)
             .Select(word => new SlowWordTiming(word.Word, WordTimeMs(word)!.Value) { ParserWork = WorkOf(word) }).ToArray();
-        var parserWorkLimited = materialized.Count(word => word.Outcome == "capped" || word.Morphology?.Capped == true);
+        var parserWorkLimited = materialized.Count(word => word.Outcome != "memory-capped" && (word.Outcome == "capped" || word.Morphology?.Capped == true));
         return new OverviewTiming(median, percentile95, slowest, parserWorkLimited)
         {
             MeasuredWordCount = durations.Length,

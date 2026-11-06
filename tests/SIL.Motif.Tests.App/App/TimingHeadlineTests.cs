@@ -47,7 +47,7 @@ public sealed class TimingHeadlineTests
         Assert.Equal("for all 9 words", timing.HeadlineTotalCaption);
         Assert.Equal("90 parser work", timing.HeadlineMedian);
         Assert.Equal("1", timing.HeadlineStopped);
-        Assert.Equal("stopped at the work limit", timing.HeadlineStoppedCaption);
+        Assert.Equal("stopped at a parser limit", timing.HeadlineStoppedCaption);
         Assert.True(timing.IsAllSelected);
         Assert.Equal((decimal)ParserWorkLimit.DefaultWork, timing.RerunSteps);
         Assert.True(timing.HasStoppedWords);
@@ -73,6 +73,25 @@ public sealed class TimingHeadlineTests
 
         Assert.True(timing.HasStoppedWords);
         Assert.Equal("Stopped at the time safety net · Increase Seconds per word.", timing.StoppedWordsAdviceText);
+    }
+
+    [Fact]
+    public async Task MemoryLimitedWordsDoNotRecommendRaisingTheWorkLimit()
+    {
+        var (fake, context) = NewContext();
+        var timing = new TimingPageModel(context);
+        fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
+            Response(request) with
+            {
+                Words = NineWords.Select(word => new TimingWordRow(word.Word, word.Ms,
+                    word.Word == "mwalimu" ? TimingCompletion.MemoryLimit : word.Completion)).ToArray(),
+            })));
+        await context.OpenProjectAsync(ProjectPath);
+        context.PublishEvidence(new WorkspaceEvidence(Assessment(), DateTimeOffset.Now, WasRerun: false));
+        await context.EvidencePublication;
+        Assert.True(timing.HasStoppedWords);
+        Assert.Equal("1", timing.HeadlineStopped);
+        Assert.Equal("The parser reached its memory limit for the word", timing.StoppedWordsAdviceText);
     }
 
     [Fact]

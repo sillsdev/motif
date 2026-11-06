@@ -189,7 +189,7 @@ public static class CompareSemantics
 
     /// <summary>Whether the search stopped at a limit, including when it returned partial readings.</summary>
     public static bool StoppedAtLimit(string outcome, bool isIncomplete, ParseWordEvidence? morphology) =>
-        isIncomplete || outcome is "timed-out" or "capped" ||
+        isIncomplete || outcome is "timed-out" or "capped" or "memory-capped" ||
         morphology is { Capped: true } or { TimedOut: true };
 
     /// <summary>Ranks a named Matrix problem using the command's single rule table.</summary>

@@ -103,7 +103,7 @@ public sealed class RealParserTraceTests
             Assert.True(stopped.Details!.Capped, stopped.Reason);
             Assert.False(stopped.Summary!.Completed);
             Assert.Equal("WordAnalysis", stopped.Tree!.Type);
-            Assert.Contains("work limit", stopped.Reason, StringComparison.Ordinal);
+            Assert.Contains("work or memory limit", stopped.Reason, StringComparison.Ordinal);
         }
         finally
         {

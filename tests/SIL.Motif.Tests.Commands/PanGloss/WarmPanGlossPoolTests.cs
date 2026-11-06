@@ -81,6 +81,22 @@ public sealed class WarmPanGlossPoolTests : IDisposable
     }
 
     [Fact]
+    public async Task MemoryLimitStatusSurvivesTheResidentTrace()
+    {
+        var (grammar, _, _) = Project("memory", new { ServeStatus = "MEMCAP", TraceCapped = true });
+        using var pool = Pool();
+        var answer = Assert.IsType<WarmParseResult.Completed>(
+            await pool.TryWordAsync(grammar, "t1", grammar, "motifa", true, CancellationToken.None));
+        Assert.Equal("MEMCAP", answer.Status);
+        using var cold = new PanGlossInvoker(FakeParser.ExecutablePath);
+        using var tracer = new WarmFirstTracer(pool, new PanGlossTracer(cold));
+        var trace = Assert.IsType<PanGlossTraceOutcome.Incomplete>(
+            await tracer.TraceAsync(grammar, "t1", grammar, "motifa", CancellationToken.None));
+        Assert.Contains("parser reached its memory limit for the word", trace.Reason);
+        Assert.True(trace.Details!.Capped);
+    }
+
+    [Fact]
     public async Task AWarmAnswerIsByteForByteTheColdAnswer()
     {
         var (grammar, _, _) = Project("equal");

@@ -72,6 +72,9 @@ public static class TimingCompletion
     /// <summary>The parser stopped at its analysis-attempt or derived search-work limit.</summary>
     public const string WorkLimit = "Work limit";
 
+    /// <summary>The parser reached its memory limit for the word.</summary>
+    public const string MemoryLimit = "Memory limit";
+
     /// <summary>The parser stopped at the per-word time safety net, which depends on how fast this computer is.</summary>
     public const string TimeSafetyNet = "Time safety net";
 
@@ -85,7 +88,7 @@ public static class TimingCompletion
 /// <summary>One selected word's stored time and the reason its search stopped.</summary>
 /// <param name="Word">The word form.</param>
 /// <param name="ElapsedMs">The stored whole-millisecond parse time, when present.</param>
-/// <param name="Completion">Why the search stopped: the work limit, the time safety net, a refusal, or a finished search.</param>
+/// <param name="Completion">Why the search stopped: the work limit, the memory limit, the time safety net, a refusal, or a finished search.</param>
 public sealed record TimingWordRow(string Word, int? ElapsedMs, string Completion)
 {
     /// <summary>The exact parse duration in nanoseconds, when recorded; it takes precedence over <see cref="ElapsedMs"/>.</summary>

@@ -143,12 +143,12 @@ public sealed partial class StatisticsViewModel : ObservableObject
             var stopped = ScopeRows.Where(row => row.IsIncomplete).ToArray();
             if (stopped.Length == 0)
                 return MotifAppStrings.StatsNoWordStopped;
-            var workLimit = stopped.Any(row => row.StoppedAtWorkLimit);
+            var workLimit = stopped.Any(row => row.StoppedAtParserLimit);
             var timeSafetyNet = stopped.Any(row => row.StoppedAtTimeSafetyNet);
             return (workLimit, timeSafetyNet) switch
             {
-                (true, true) => MotifAppStrings.TimingAdviceBothLimits,
-                (true, false) => MotifAppStrings.TimingAdviceSearchLimit,
+                (true, true) => MotifAppStrings.StatsAdviceParserAndTimeLimits,
+                (true, false) => MotifAppStrings.StatsAdviceParserLimit,
                 (false, true) => MotifAppStrings.TimingAdviceTimeLimit,
                 _ => MotifAppStrings.StatsEachSearchStopped,
             };

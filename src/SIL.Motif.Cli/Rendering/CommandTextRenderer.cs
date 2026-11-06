@@ -140,8 +140,8 @@ public static class CommandTextRenderer
         foreach (var word in work.IncreasedWords)
             text.AppendLine($"  {word.Word}: {word.BaselineWork:N0} to {word.TrialWork:N0} parser work " +
                 $"({word.Ratio:0.00}x, {word.PercentMore:0.#}% more work)");
-        text.AppendLine($"Stopped: {work.WorkLimitStops} at the work limit; {work.TimeSafetyNetStops} at the time safety net.");
-        if (work.WorkLimitWords.Count > 0) text.AppendLine("  Work limit: " + string.Join(", ", work.WorkLimitWords));
+        text.AppendLine($"Stopped: {work.WorkLimitStops} at a parser limit; {work.TimeSafetyNetStops} at the time safety net.");
+        if (work.WorkLimitWords.Count > 0) text.AppendLine("  Parser limit: " + string.Join(", ", work.WorkLimitWords));
         if (work.TimeSafetyNetWords.Count > 0) text.AppendLine("  Time safety net: " + string.Join(", ", work.TimeSafetyNetWords));
         if (work.BaselineTimeMs is { } baselineMs && work.TrialTimeMs is { } trialMs)
             text.AppendLine($"Time on this computer: {baselineMs:N0} ms in the Baseline, {trialMs:N0} ms in the Trial " +
@@ -745,7 +745,7 @@ public static class CommandTextRenderer
     private static string CountsLine(AssessmentCounts counts) =>
         $"  Counts: {counts.Words} word(s); {counts.Analysed} analysed " +
         $"({counts.Accepted} accepted, {counts.GuessOnly} guess-only); {counts.NoAnalysis} no-analysis; " +
-        $"{counts.Capped} stopped at the work limit; {counts.TimedOut} stopped at the time safety net; {counts.Skipped} skipped";
+        $"{counts.Capped} stopped at a parser limit; {counts.TimedOut} stopped at the time safety net; {counts.Skipped} skipped";
 
     private static string RenderAssessed(AssessCommandResponse response)
     {

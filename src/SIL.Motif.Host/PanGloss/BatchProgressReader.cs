@@ -127,7 +127,7 @@ internal sealed class BatchProgressReader(IReadOnlyList<string> words)
                     _slowestIndex = index;
                 }
                 var status = cells[PanGlossInterfaceVersions.BatchTsvStatusColumn];
-                if (status is "TIMEOUT" or "CAP")
+                if (status is "TIMEOUT" or "MEMCAP" or "CAP")
                     _stoppedWords[index] = new StoppedParseWord(words[index], status, elapsed) { ParserWork = work };
                 _sawRow = true;
             }

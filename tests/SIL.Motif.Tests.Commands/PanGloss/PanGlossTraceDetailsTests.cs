@@ -17,22 +17,22 @@ public sealed class PanGlossTraceDetailsTests
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var reason = Details(capped: true, timedOut: false, parserWork: 9_000).LimitStopReason;
 
-        Assert.Equal("The parser stopped at the work limit after 9,000 parser work.", reason);
+        Assert.Equal("The parser stopped at a work or memory limit after 9,000 parser work.", reason);
     }
 
     [Fact]
     public void AWorkLimitStopWithoutAWorkCountNamesNoCount() =>
-        Assert.Equal("The parser stopped at the work limit.",
+        Assert.Equal("The parser stopped at a work or memory limit.",
             Details(capped: true, timedOut: false, parserWork: null).LimitStopReason);
 
     [Fact]
     public void AZeroWorkCountIsNotPrintedAsMeasuredWork() =>
-        Assert.Equal("The parser stopped at the work limit.",
+        Assert.Equal("The parser stopped at a work or memory limit.",
             Details(capped: true, timedOut: false, parserWork: 0).LimitStopReason);
 
     [Fact]
     public void BothLimitsFiringIsSaidRatherThanNamingOnlyTheWorkLimit() =>
-        Assert.Equal("The parser stopped at the work limit, and the time safety net, " +
+        Assert.Equal("The parser stopped at a work or memory limit, and the time safety net, " +
             "which depends on how fast this computer is, also fired.",
             Details(capped: true, timedOut: true, parserWork: null).LimitStopReason);
 

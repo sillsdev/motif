@@ -281,9 +281,9 @@ public sealed class StatisticsViewModelTests
     }
 
     [Theory]
-    [InlineData(true, false, "work limit")]
+    [InlineData(true, false, "work or memory limit")]
     [InlineData(false, true, "time safety net")]
-    [InlineData(true, true, "work limit and time safety net")]
+    [InlineData(true, true, "work or memory limit and time safety net")]
     public async Task PartialFindingsRemainIncompleteAndLaterWordsCanComplete(bool capped, bool timedOut, string reason)
     {
         var (fake, statistics) = NewViewModel();
@@ -297,10 +297,9 @@ public sealed class StatisticsViewModelTests
         Assert.Equal("Search completed", statistics.Rows[1].CompletionStatus);
         Assert.Equal(reason switch
         {
-            "work limit" => "Stopped at the work limit · Raise the parser work limit under More.",
+            "work or memory limit" => "The parser reached a work or memory limit before finishing.",
             "time safety net" => "Stopped at the time safety net · Increase Seconds per word.",
-            _ => "Stopped at the work limit and at the time safety net · Raise the parser work limit under More " +
-                "or increase Seconds per word.",
+            _ => "The parser reached a work or memory limit, and the time safety net also stopped a search.",
         }, statistics.IncompleteDetail);
     }
 
@@ -340,7 +339,9 @@ public sealed class StatisticsViewModelTests
         await statistics.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal("Stopped 1", statistics.IncompleteHeadline);
-        Assert.Contains("Stopped at the work limit", statistics.IncompleteDetail, StringComparison.Ordinal);
+        Assert.Equal("The parser reached a work or memory limit before finishing.", statistics.IncompleteDetail);
+        Assert.Equal("Work or memory limit", statistics.Rows[0].CompletionShort);
+        Assert.DoesNotContain("Raise", statistics.IncompleteDetail, StringComparison.Ordinal);
     }
 
     [Fact]

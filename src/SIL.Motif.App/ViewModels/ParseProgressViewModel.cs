@@ -75,7 +75,9 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
             ? _progress?.PerWordLimitMs is { } limit
                 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedTimedOutAfterFormat, PluralText.Format(MotifAppStrings.ProgressStoppedWordsPattern, group.Count()), (limit / 1000.0).ToString("0.#", System.Globalization.CultureInfo.CurrentCulture), group.Last().Word)
                 : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedTimedOutFormat, PluralText.Format(MotifAppStrings.ProgressStoppedWordsPattern, group.Count()), group.Last().Word)
-            : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedSearchLimitFormat, PluralText.Format(MotifAppStrings.ProgressStoppedWordsPattern, group.Count()), group.Last().Word)));
+            : group.Key == "MEMCAP"
+                ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedMemoryLimitFormat, PluralText.Format(MotifAppStrings.ProgressStoppedWordsPattern, group.Count()), group.Last().Word)
+                : string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedSearchLimitFormat, PluralText.Format(MotifAppStrings.ProgressStoppedWordsPattern, group.Count()), group.Last().Word)));
     public string StalledText => IsStalled
         ? _progress?.PerWordLimitMs is null
             ? MotifAppStrings.ProgressStalledNoLimit
@@ -166,5 +168,5 @@ public sealed class ParseProgressViewModel(TimeProvider clock) : ObservableObjec
 
 public sealed record StoppedParseWordViewModel(StoppedParseWord Word)
 {
-    public string Text => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedWordFormat, Word.Word, Word.Reason == "TIMEOUT" ? MotifAppStrings.ProgressTimedOut : MotifAppStrings.ProgressStoppedAtSearchLimit, ParseProgressViewModel.WorkText(Word.ParserWork));
+    public string Text => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ProgressStoppedWordFormat, Word.Word, Word.Reason == "TIMEOUT" ? MotifAppStrings.ProgressTimedOut : Word.Reason == "MEMCAP" ? MotifAppStrings.ProgressStoppedAtMemoryLimit : MotifAppStrings.ProgressStoppedAtSearchLimit, ParseProgressViewModel.WorkText(Word.ParserWork));
 }

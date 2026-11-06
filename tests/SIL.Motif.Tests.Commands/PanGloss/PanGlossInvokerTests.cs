@@ -75,6 +75,15 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public void MemoryCappedWordIsReportedAsStoppedInProgress()
+    {
+        var path = Path.Combine(_root, "memory-progress.tsv");
+        var reader = new BatchProgressReader(["word"]);
+        File.WriteAllText(path, "0\tword\t12\tMEMCAP\t-\n");
+        Assert.Equal([new StoppedParseWord("word", "MEMCAP", 12)], reader.Read(path)?.StoppedWords);
+    }
+
+    [Fact]
     public void ProgressReadsParserWorkByNameWhenTheBatchHasAHeader()
     {
         var path = Path.Combine(_root, "headed-progress.tsv");

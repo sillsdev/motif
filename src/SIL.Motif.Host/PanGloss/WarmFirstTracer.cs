@@ -37,6 +37,8 @@ public sealed class WarmFirstTracer(WarmPanGlossPool pool, IPanGlossTracer cold,
                 return new PanGlossTraceOutcome.Cancelled(word);
             case WarmParseResult.Completed completed:
                 var interpreted = PanGlossTracer.Interpret(word, completed.ExitCode, completed.Json, completed.Elapsed);
+                if (completed.Status == "MEMCAP" && interpreted is PanGlossTraceOutcome.Incomplete incomplete)
+                    interpreted = incomplete with { Reason = "The parser reached its memory limit for the word. This trace is not the whole search." };
                 // A reply Motif cannot read is the resident parser's fault, not the word's: the cold path decides.
                 if (interpreted is not PanGlossTraceOutcome.Malformed)
                     return interpreted with { ParserWork = completed.ParserWork };

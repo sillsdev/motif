@@ -121,7 +121,7 @@ public sealed class CorrectnessReportProducer : IReportProducer
         foreach (var (word, result) in rows)
         {
             var limits = string.Join(" and ", new[]
-                { word.Morphology!.Capped ? "work limit" : null, word.Morphology.TimedOut ? "time safety net" : null }
+                { word.Morphology!.Capped ? word.Outcome == "memory-capped" ? "parser reached its memory limit for the word" : "work limit" : null, word.Morphology.TimedOut ? "time safety net" : null }
                 .OfType<string>());
             var completion = word.Morphology!.Capped || word.Morphology.TimedOut
                 ? $"INCOMPLETE — parsing did not finish ({limits})"

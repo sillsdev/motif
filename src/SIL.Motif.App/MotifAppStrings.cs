@@ -2414,6 +2414,8 @@ public static class MotifAppStrings
 
     public static string HandoffCopyPathAccessibleNameFormat => Text("MotifApp.HandoffCopyPathAccessibleNameFormat");
 
+    public static string StatsAdviceParserLimit => Text("MotifApp.StatsAdviceParserLimit");
+    public static string StatsAdviceParserAndTimeLimits => Text("MotifApp.StatsAdviceParserAndTimeLimits");
     public static string StatsIncompleteBoth => Text("MotifApp.StatsIncompleteBoth");
 
     public static string StatsIncompleteSearch => Text("MotifApp.StatsIncompleteSearch");
@@ -2834,6 +2836,8 @@ public static class MotifAppStrings
 
     public static string ProgressStoppedTimedOutFormat => Text("MotifApp.ProgressStoppedTimedOutFormat");
 
+    public static string ProgressStoppedMemoryLimitFormat => Text("MotifApp.ProgressStoppedMemoryLimitFormat");
+    public static string ProgressStoppedAtMemoryLimit => Text("MotifApp.ProgressStoppedAtMemoryLimit");
     public static string ProgressStoppedSearchLimitFormat => Text("MotifApp.ProgressStoppedSearchLimitFormat");
 
     public static string ProgressStalledNoLimit => Text("MotifApp.ProgressStalledNoLimit");

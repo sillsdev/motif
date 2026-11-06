@@ -215,6 +215,20 @@ public sealed class ReportProducerTests
     }
 
     [Fact]
+    public void CorrectnessReportNamesTheMemoryLimit()
+    {
+        var assessment = Build("Correctness", ("motifa", true));
+        var word = assessment.Words[0];
+        assessment = assessment with
+        {
+            Words = [word with { Outcome = "memory-capped", Morphology = word.Morphology! with { Capped = true } }],
+        };
+        var rendered = new CorrectnessReportProducer().Produce(assessment, new ReportQuery(), NoAssessorRegistered);
+        Assert.Contains("parser reached its memory limit for the word", rendered.Text);
+        Assert.Equal(0, rendered.CompletedSearches);
+    }
+
+    [Fact]
     public void Coverage_OverAnEmptyAdjudicatedSet_DoesNotOverclaimAPercentage()
     {
         var words = new[]

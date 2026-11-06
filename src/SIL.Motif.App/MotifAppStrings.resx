@@ -4080,8 +4080,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Caption under the total parser work when every word of a chosen group recorded parser work; {0} is how many.</comment>
   </data>
   <data name="MotifApp.TimingStoppedCaption" xml:space="preserve">
-    <value>stopped at the work limit</value>
-    <comment>Caption under the count of words that stopped at the parser work limit.</comment>
+    <value>stopped at a parser limit</value>
+    <comment>Caption under the count of words that stopped at a parser limit.</comment>
   </data>
   <data name="MotifApp.TimingDetailLimitedFormat" xml:space="preserve">
     <value>Object timing detail kept for the {0} costliest words.</value>
@@ -4749,13 +4749,21 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Copy path for {0}</value>
     <comment>Accessible name of the button that copies a file path; {0} is the file path.</comment>
   </data>
+  <data name="MotifApp.StatsAdviceParserLimit" xml:space="preserve">
+    <value>The parser reached a work or memory limit before finishing.</value>
+    <comment>Statistics only records that a parser limit stopped the search, not which limit.</comment>
+  </data>
+  <data name="MotifApp.StatsAdviceParserAndTimeLimits" xml:space="preserve">
+    <value>The parser reached a work or memory limit, and the time safety net also stopped a search.</value>
+    <comment>Statistics reports both an unspecified parser limit and the time safety net.</comment>
+  </data>
   <data name="MotifApp.StatsIncompleteBoth" xml:space="preserve">
-    <value>INCOMPLETE — parsing did not finish (work limit and time safety net)</value>
-    <comment>Completion status of a word whose parse stopped at both the work limit and the time safety net.</comment>
+    <value>INCOMPLETE — parsing did not finish (work or memory limit and time safety net)</value>
+    <comment>Completion status of a word whose parse stopped at a work or memory limit and the time safety net.</comment>
   </data>
   <data name="MotifApp.StatsIncompleteSearch" xml:space="preserve">
-    <value>INCOMPLETE — parsing did not finish (work limit)</value>
-    <comment>Completion status of a word whose parse stopped at the work limit.</comment>
+    <value>INCOMPLETE — parsing did not finish (work or memory limit)</value>
+    <comment>Completion status of a word whose parse stopped at a work or memory limit.</comment>
   </data>
   <data name="MotifApp.StatsIncompleteTime" xml:space="preserve">
     <value>INCOMPLETE — parsing did not finish (time safety net)</value>
@@ -4778,12 +4786,12 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Short completion in the statistics table: no result.</comment>
   </data>
   <data name="MotifApp.StatsSearchAndTimeLimits" xml:space="preserve">
-    <value>Work limit and time safety net</value>
-    <comment>Short completion in the statistics table: the parse stopped at both the work limit and the time safety net.</comment>
+    <value>Work or memory limit and time safety net</value>
+    <comment>Short completion in the statistics table: the parse stopped at a work or memory limit and the time safety net.</comment>
   </data>
   <data name="MotifApp.StatsSearchLimit" xml:space="preserve">
-    <value>Work limit</value>
-    <comment>Short completion in the statistics table: the parse stopped at the work limit.</comment>
+    <value>Work or memory limit</value>
+    <comment>Short completion in the statistics table: the parse stopped at a work or memory limit.</comment>
   </data>
   <data name="MotifApp.StatsTimeLimit" xml:space="preserve">
     <value>Time safety net</value>
@@ -5580,6 +5588,14 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.ProgressStoppedTimedOutFormat" xml:space="preserve">
     <value>{0} stopped at the time safety net ({1})</value>
     <comment>Parse progress: words that stopped at the time safety net; {0} is how many words and {1} the last such word.</comment>
+  </data>
+  <data name="MotifApp.ProgressStoppedMemoryLimitFormat" xml:space="preserve">
+    <value>{0} reached the parser memory limit ({1})</value>
+    <comment>Words whose parser reached the memory limit; {0} is the count and {1} the last word.</comment>
+  </data>
+  <data name="MotifApp.ProgressStoppedAtMemoryLimit" xml:space="preserve">
+    <value>The parser reached its memory limit for the word</value>
+    <comment>Why a word stopped: the parser reached its memory limit.</comment>
   </data>
   <data name="MotifApp.ProgressStoppedSearchLimitFormat" xml:space="preserve">
     <value>{0} stopped at the work limit ({1})</value>

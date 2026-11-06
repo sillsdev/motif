@@ -35,8 +35,8 @@ public sealed record PanGlossTraceDetails(
     /// </summary>
     public string? LimitStopReason => (Capped, TimedOut) switch
     {
-        (true, false) => $"The parser stopped at the work limit{ParserWorkClause}.",
-        (true, true) => $"The parser stopped at the work limit{ParserWorkClause}, " +
+        (true, false) => $"The parser stopped at a work or memory limit{ParserWorkClause}.",
+        (true, true) => $"The parser stopped at a work or memory limit{ParserWorkClause}, " +
             "and the time safety net, which depends on how fast this computer is, also fired.",
         (false, true) => "The parser stopped at the time safety net, which depends on how fast this computer is.",
         _ => null,

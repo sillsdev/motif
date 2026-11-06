@@ -38,9 +38,11 @@ public sealed class ParseProgressViewModelTests
     public void AStoppedWordShowsItsParserWorkAndNeverItsTime()
     {
         var capped = new StoppedParseWordViewModel(new SIL.Motif.Contract.Jobs.StoppedParseWord("kitabu", "CAP", 54000) { ParserWork = 12_000 });
+        var memoryCapped = new StoppedParseWordViewModel(new SIL.Motif.Contract.Jobs.StoppedParseWord("neno", "MEMCAP", 12));
         var timedOut = new StoppedParseWordViewModel(new SIL.Motif.Contract.Jobs.StoppedParseWord("mtoto", "TIMEOUT", 700));
 
         Assert.Equal("kitabu · Stopped at the work limit · 12,000 parser work", capped.Text);
+        Assert.Equal("neno · The parser reached its memory limit for the word · parser work not recorded", memoryCapped.Text);
         Assert.Equal("mtoto · Stopped at the time safety net · parser work not recorded", timedOut.Text);
     }
 

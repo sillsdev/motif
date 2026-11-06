@@ -29,6 +29,18 @@ public sealed class ReadinessTests
     }
 
     [Fact]
+    public void AMemoryStoppedWordNamesTheMemoryLimitInTheReadinessReason()
+    {
+        var candidate = Build("candidate", ("alpha", true));
+        var word = candidate.Words[0];
+        candidate = candidate with { Words = [word with { Outcome = "memory-capped", Morphology = word.Morphology! with { Capped = true } }] };
+        var reason = Assert.Single(Readiness.Assess(candidate, null, null, "same", false));
+        Assert.Contains("parser reached its memory limit for the word", reason);
+        Assert.DoesNotContain("raise the limit", reason);
+        Assert.DoesNotContain("machine is quieter", reason);
+    }
+
+    [Fact]
     public void ACapitalisedWordThatCouldNotBeReadAsWrittenIsCoveredByItsCompleteLowercaseRow()
     {
         var candidate = Build("candidate", ("Alpha", true), ("alpha", true));

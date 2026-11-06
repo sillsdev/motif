@@ -93,6 +93,7 @@ internal static class OverviewMeasuresTextRenderer
     private static string Reason(OverviewUnparsedGroup group) => group.Kind switch
     {
         UnparsedKind.Refused => $"{group.Words:N0} refused ({group.Code ?? "no code"})",
+        UnparsedKind.MemoryLimit => $"{group.Words:N0} reached the parser memory limit",
         UnparsedKind.WorkLimit => $"{group.Words:N0} stopped at the work limit",
         UnparsedKind.TimeLimit => $"{group.Words:N0} stopped at the time limit",
         UnparsedKind.BothLimits => $"{group.Words:N0} stopped at the work and time limits",

@@ -18,7 +18,7 @@ namespace SIL.Motif.Tests.Composers;
 public sealed class RealParserFeatureRuleTests(PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [RealParserFact]
-    public async Task AnUnspecifiedFeatureDoesNotMatchAMinusEnvironmentDuringSynthesis()
+    public async Task AnUnspecifiedFeatureMatchesAMinusEnvironmentDuringSynthesis()
     {
         using var cache = pristine.NewScratch();
         var f = new FeaturedSegments(cache);
@@ -44,7 +44,7 @@ public sealed class RealParserFeatureRuleTests(PristineProjectFixture pristine, 
         new FwDataProjectLoader().Save(cache);
         using var invoker = new PanGlossInvoker();
         var tracer = new PanGlossTracer(invoker);
-        foreach (var (word, expected) in new[] { ("mta", true), ("Nta", false), ("Nata", true), ("mata", false) })
+        foreach (var (word, expected) in new[] { ("mta", true), ("Nta", false), ("Nata", false), ("mata", true) })
         {
             var result = Assert.IsType<PanGlossTraceOutcome.Completed>(await tracer.TraceAsync(
                 cache.ProjectId.Path, word, CancellationToken.None));

@@ -22,6 +22,9 @@ public enum WordOutcome
     /// <summary>The analysis-attempt or derived search-work limit was reached; findings remain partial evidence.</summary>
     Capped,
 
+    /// <summary>The parser reached its memory limit for the word; findings remain partial evidence.</summary>
+    MemoryCapped,
+
     /// <summary>The parser declined to attempt the word — not an analysis result at all.</summary>
     Skipped,
 }
@@ -42,6 +45,7 @@ public static class StoredWordOutcomeNames
         WordOutcome.NoAnalysis => "no-analysis",
         WordOutcome.TimedOut => "timed-out",
         WordOutcome.Capped => "capped",
+        WordOutcome.MemoryCapped => "memory-capped",
         WordOutcome.Skipped => "skipped",
         _ => throw new ArgumentOutOfRangeException(nameof(outcome)),
     };
@@ -55,6 +59,7 @@ public static class StoredWordOutcomeNames
             case "no-analysis": outcome = WordOutcome.NoAnalysis; return true;
             case "timed-out": outcome = WordOutcome.TimedOut; return true;
             case "capped": outcome = WordOutcome.Capped; return true;
+            case "memory-capped": outcome = WordOutcome.MemoryCapped; return true;
             case "skipped": outcome = WordOutcome.Skipped; return true;
             default: outcome = default; return false;
         }
@@ -120,7 +125,7 @@ public sealed record BatchAnalysis(
     public int Analysed => Words.Count(w => w.Outcome == WordOutcome.Analysed);
     public int NoAnalysis => Words.Count(w => w.Outcome == WordOutcome.NoAnalysis);
     public int TimedOut => Words.Count(w => w.Outcome == WordOutcome.TimedOut);
-    public int Capped => Words.Count(w => w.Outcome == WordOutcome.Capped);
+    public int Capped => Words.Count(w => w.Outcome is WordOutcome.Capped or WordOutcome.MemoryCapped);
     public int Skipped => Words.Count(w => w.Outcome == WordOutcome.Skipped);
     public int Incomplete => TimedOut + Capped;
 
@@ -203,6 +208,7 @@ public static class BatchTsvParser
         "ok" => signature == "-" ? WordOutcome.NoAnalysis : WordOutcome.Analysed,
         "TIMEOUT" => WordOutcome.TimedOut,
         "CAP" => WordOutcome.Capped,
+        "MEMCAP" => WordOutcome.MemoryCapped,
         "SKIPPED" => WordOutcome.Skipped,
         "none" or "NONE" or "no-analysis" => WordOutcome.NoAnalysis,
         _ => throw new InvalidOperationException(

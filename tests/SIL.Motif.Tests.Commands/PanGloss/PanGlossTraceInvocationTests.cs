@@ -76,7 +76,7 @@ public sealed class PanGlossTraceInvocationTests : IDisposable
         Assert.NotNull(incomplete.Tree);
         Assert.False(incomplete.Summary!.Completed);
         Assert.True(incomplete.Details!.Capped);
-        Assert.Contains("stopped at the work limit", incomplete.Reason, StringComparison.Ordinal);
+        Assert.Contains("stopped at a work or memory limit", incomplete.Reason, StringComparison.Ordinal);
     }
 
     [Fact]

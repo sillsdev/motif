@@ -61,7 +61,7 @@ public static class ProjectHistoryQuery
         foreach (var word in words)
         {
             if (!word.Outcome.TryParseStoredOutcome(out var outcome)) continue;
-            if (outcome is WordOutcome.Capped or WordOutcome.TimedOut) incomplete++;
+            if (outcome is WordOutcome.Capped or WordOutcome.MemoryCapped or WordOutcome.TimedOut) incomplete++;
             else if (outcome == WordOutcome.Skipped) skipped++;
             else complete++;
         }

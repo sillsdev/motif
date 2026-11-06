@@ -355,7 +355,7 @@ public static class PendingChanges
                         ("word", form), ("assessmentId", request.AssessmentId));
                 var word = matching[0];
                 if (!word.Outcome.TryParseStoredOutcome(out var outcome) || word.IsIncomplete ||
-                    outcome is WordOutcome.Capped or WordOutcome.TimedOut or WordOutcome.Skipped ||
+                    outcome is WordOutcome.Capped or WordOutcome.MemoryCapped or WordOutcome.TimedOut or WordOutcome.Skipped ||
                     word.Morphology is not { } morphology || morphology.Capped || morphology.TimedOut ||
                     morphology.InvalidShape || morphology.Unavailable.Count > 0)
                     return Refuse("change.assessment-incomplete",

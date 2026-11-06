@@ -84,7 +84,7 @@ internal static class StoppedWordRetryRunner
             File.WriteAllText(evidence.TsvPath, merged.Value.Tsv, utf8);
             File.WriteAllText(evidence.AnalysesPath, merged.Value.Analyses, utf8);
 
-            var recovered = retryRows.Count(row => row.Outcome != WordOutcome.TimedOut);
+            var recovered = retryRows.Count(row => row.Outcome is not (WordOutcome.TimedOut or WordOutcome.Capped or WordOutcome.MemoryCapped));
             var lines = stopped.Select(row =>
             {
                 var position = Array.IndexOf(chosen, row);
@@ -95,7 +95,7 @@ internal static class StoppedWordRetryRunner
                 return string.Join('\t', row.Index.ToString(CultureInfo.InvariantCulture), row.Word,
                     row.ElapsedMs.ToString(CultureInfo.InvariantCulture),
                     again.ElapsedMs.ToString(CultureInfo.InvariantCulture),
-                    again.Outcome == WordOutcome.TimedOut ? "still-stopped" : "recovered");
+                    again.Outcome is WordOutcome.TimedOut or WordOutcome.Capped or WordOutcome.MemoryCapped ? "still-stopped" : "recovered");
             });
             var record = new StoppedWordRetry((int)retryLimit.TotalMilliseconds, stopped.Length, chosen.Length,
                 recovered, chosen.Length - recovered, retry.InvocationId, evidence.TsvSha256,

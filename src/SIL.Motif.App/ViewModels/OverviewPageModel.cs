@@ -469,12 +469,13 @@ public sealed partial class OverviewPageModel : PageModel
 
     private static bool IsStopped(OverviewUnparsedGroup group) => IsStopped(group.Kind);
 
-    private static bool IsStopped(string kind) => kind is UnparsedKind.WorkLimit or UnparsedKind.TimeLimit
+    private static bool IsStopped(string kind) => kind is UnparsedKind.WorkLimit or UnparsedKind.MemoryLimit or UnparsedKind.TimeLimit
         or UnparsedKind.BothLimits or UnparsedKind.Stopped;
 
     private static string UnparsedReasonText(OverviewUnparsedGroup group) => group.Kind switch
     {
         UnparsedKind.Refused => PluralText.Format(MotifAppStrings.OverviewUnparsedRefusedPattern, group.Words),
+        UnparsedKind.MemoryLimit => $"{group.Words:N0} reached the parser memory limit",
         UnparsedKind.WorkLimit => PluralText.Format(MotifAppStrings.OverviewUnparsedWorkLimitPattern, group.Words),
         UnparsedKind.TimeLimit => PluralText.Format(MotifAppStrings.OverviewUnparsedTimeLimitPattern, group.Words),
         UnparsedKind.BothLimits => PluralText.Format(MotifAppStrings.OverviewUnparsedBothLimitsPattern, group.Words),

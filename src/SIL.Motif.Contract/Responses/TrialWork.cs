@@ -20,8 +20,8 @@ public sealed record TrialWork(
     public bool WorkIncreaseWarning => PercentChange is > 5;
 
     /// <summary>
-    /// Trial words stopped by the work or parser work limit, which stops the same words on every computer. A word where
-    /// the time safety net also fired is listed here, because the limit alone would have stopped it.
+    /// Trial words stopped by the work or memory limit. A word where the time safety net also fired is listed here,
+    /// because a parser limit alone would have stopped it.
     /// </summary>
     public IReadOnlyList<string> WorkLimitWords { get; init; } = [];
     /// <summary>Trial words stopped only by the time safety net, which depends on how fast this computer is.</summary>

@@ -179,7 +179,7 @@ internal static class TrialResults
     private static bool Unfinished(AssessedWord word) => word.IsIncomplete || word.Morphology is
         { Capped: true } or { TimedOut: true } or { InvalidShape: true } ||
         word.Morphology?.Refusal is not null || word.Morphology?.Unavailable.Count > 0 ||
-        word.Outcome is "timeout" or "capped" or "incomplete" or "skipped" or "invalid";
+        word.Outcome is "timeout" or "capped" or "memory-capped" or "timed-out" or "incomplete" or "skipped" or "invalid";
     private static bool Changed(AssessedWord before, AssessedWord after) => before.Outcome != after.Outcome ||
         !before.Analyses.Select(item => item.IdentityDigest).ToHashSet().SetEquals(after.Analyses.Select(item => item.IdentityDigest)) ||
         !new HashSet<string>((before.Morphology?.Analyses ?? []).Select(item => JsonSerializer.Serialize(item, Json)))
