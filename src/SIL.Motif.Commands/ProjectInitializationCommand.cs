@@ -172,8 +172,9 @@ public static class ProjectInitializationCommand
         Exception? writeFailure = null;
         try
         {
+            FwDataProjectLoader.RequireProjectPath(cache, projectPath);
             HumanJudgmentFieldDefinition.CreateDefinition(cache);
-            loader.Save(cache);
+            loader.Save(cache, projectPath);
         }
         catch (Exception exception)
         {

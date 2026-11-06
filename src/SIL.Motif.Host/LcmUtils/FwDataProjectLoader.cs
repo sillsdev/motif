@@ -3,6 +3,7 @@
 using SIL.Motif.Projection;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
@@ -16,8 +17,7 @@ namespace SIL.Motif.Host.LcmUtils;
 /// <summary>
 /// Opens an existing FieldWorks <c>.fwdata</c> project headlessly: performs the required ICU/SLDR
 /// native initialization once per process, then loads the project via
-/// <see cref="LcmCache.CreateCacheFromLocalProjectFile"/> with a non-interactive
-/// <see cref="ILcmUI"/> and progress shim.
+/// an exclusive XML backend with a non-interactive <see cref="ILcmUI"/> and progress shim.
 /// </summary>
 public class FwDataProjectLoader
 {
@@ -256,7 +256,7 @@ public class FwDataProjectLoader
     }
 
     /// <summary>
-    /// Opens an existing <c>.fwdata</c> project.
+    /// Opens an existing <c>.fwdata</c> project under its exclusive file lock, including when project sharing is enabled.
     /// </summary>
     /// <param name="fwDataFilePath">
     /// Full path to the project's .fwdata file. Expected layout is
@@ -314,13 +314,9 @@ public class FwDataProjectLoader
                 throw new KeyNotFoundException("The writing system qaa-x-test was not found in this manager.");
             if (HoldsProjectFileForTest(fwDataFilePath))
                 throw new IOException("Injected sharing violation.", unchecked((int)0x80070020));
-            return LcmCache.CreateCacheFromLocalProjectFile(
-                fwDataFilePath,
-                null,
-                new HeadlessLcmUi(progress.SynchronizeInvoke),
-                lcmDirectories,
-                new LcmSettings(),
-                progress);
+            var cache = ExclusiveXmlCache.Open(Path.GetFullPath(fwDataFilePath), lcmDirectories, progress);
+            OpenedProjects.Add(cache, new OpenedProject(Path.GetFullPath(fwDataFilePath)));
+            return cache;
         }
         catch (KeyNotFoundException failure) when (ProjectWritingSystemsUnavailableException.FromLoadFailure(
             failure, fwDataFilePath, SharedWritingSystemRepositoryPath()) is { } explained)
@@ -393,6 +389,7 @@ public class FwDataProjectLoader
                 Replace(writingSystems.VernacularWritingSystems, writingSystems.CurrentVernacularWritingSystems, vernacular);
                 Replace(writingSystems.AnalysisWritingSystems, writingSystems.CurrentAnalysisWritingSystems, analysis);
             });
+            OpenedProjects.Add(cache, new OpenedProject(fullPath));
             return cache;
         }
         catch
@@ -542,11 +539,51 @@ public class FwDataProjectLoader
     {
         if (cache is null) throw new ArgumentNullException(nameof(cache));
 
+        if (OpenedProjects.TryGetValue(cache, out var opened)) RequireProjectPath(cache, opened.Path);
+        else if (!string.IsNullOrWhiteSpace(cache.ProjectId.Path)) RequireProjectPath(cache, cache.ProjectId.Path);
+
         var ui = cache.ServiceLocator.GetInstance<ILcmUI>() as HeadlessLcmUi;
         ui?.ThrowReportedErrors();
         cache.ActionHandlerAccessor.Commit();
         WaitForPendingWritesToReachDisk(cache);
         ui?.ThrowReportedErrors();
+    }
+
+    private sealed record OpenedProject(string Path);
+
+    private static readonly ConditionalWeakTable<LcmCache, OpenedProject> OpenedProjects = new();
+
+    /// <summary>Saves only when the cache belongs to the exact project file requested by the caller.</summary>
+    public void Save(LcmCache cache, string requestedFwDataPath)
+    {
+        RequireProjectPath(cache, requestedFwDataPath);
+        Save(cache);
+    }
+
+    /// <summary>
+    /// Refuses a cache whose backing path differs from the request or which can exchange changes through a
+    /// shared commit log. Call before changing project data or saving writing systems as well as before saving.
+    /// </summary>
+    /// <remarks>
+    /// Pinned by `SaveRefusesADifferentRequestedPathBeforeCommitting` and
+    /// `SaveRefusesANameSharedBackendEvenWhenItsReportedPathMatches`.
+    /// </remarks>
+    public static void RequireProjectPath(LcmCache cache, string requestedFwDataPath)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentException.ThrowIfNullOrWhiteSpace(requestedFwDataPath);
+        var requested = Path.GetFullPath(requestedFwDataPath);
+        var actual = cache.ProjectId.Path;
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (string.IsNullOrWhiteSpace(actual) || !string.Equals(requested, Path.GetFullPath(actual), comparison))
+            throw new InvalidOperationException(
+                $"Refusing to write project '{actual}': the request targets '{requested}'.");
+        if (OpenedProjects.TryGetValue(cache, out var opened) && !string.Equals(requested, opened.Path, comparison))
+            throw new InvalidOperationException(
+                $"Refusing to redirect a cache opened from '{opened.Path}' to '{requested}'.");
+        if (cache.ServiceLocator.DataSetup.GetType().FullName != "SIL.LCModel.Infrastructure.Impl.XMLBackendProvider")
+            throw new InvalidOperationException(
+                $"Refusing to write '{requested}' through a shared or unsupported backend. An exclusive XML cache is required.");
     }
 
     private static MethodInfo? _completeAllCommits;

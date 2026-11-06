@@ -1852,6 +1852,7 @@ public static partial class ProposalCommands
             cache = loader.LoadCache(project.FullFwDataPath);
             try
             {
+                FwDataProjectLoader.RequireProjectPath(cache, project.FullFwDataPath);
                 if (record.Status != ManifestStatus.Applied)
                 {
                     var currentBaseline = new BaselineRepository(database)
@@ -1894,7 +1895,7 @@ public static partial class ProposalCommands
                 // The core never saves; the host does, only after the unit of work has closed.
                 if (!receipt.AlreadyApplied)
                 {
-                    try { loader.Save(cache); }
+                    try { loader.Save(cache, project.FullFwDataPath); }
                     catch (Exception ex)
                     {
                         throw new NeedsReconciliationException(

@@ -1,3 +1,4 @@
+using SIL.LCModel;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.Corpus;
@@ -11,8 +12,46 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class ProjectWordFormingCommandTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-word-forming-" + Guid.NewGuid().ToString("N"));
+    private readonly PristineProjectFixture _pristine;
 
-    public ProjectWordFormingCommandTests() => Directory.CreateDirectory(_root);
+    public ProjectWordFormingCommandTests(PristineProjectFixture pristine)
+    {
+        _pristine = pristine;
+        Directory.CreateDirectory(_root);
+    }
+
+    [Fact]
+    public void ALoaderReturningAnotherSameNamedProjectIsRefusedBeforeChangingWritingSystems()
+    {
+        var wrong = _pristine.NewScratch();
+        var requested = _pristine.CopyProjectFile();
+        var wrongPath = wrong.ProjectId.Path;
+        var bytesBefore = File.ReadAllBytes(wrongPath);
+        var writingSystems = Path.Combine(Path.GetDirectoryName(wrongPath)!, "WritingSystemStore");
+        var definitionsBefore = Directory.GetFiles(writingSystems)
+            .ToDictionary(path => path, File.ReadAllBytes);
+        var loader = new WrongProjectLoader(wrong);
+
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            ProjectWordFormingCommand.Add(new ProjectWordFormingRequest(requested, "0123456789"), loader));
+
+        Assert.Contains(requested, failure.Message);
+        Assert.Contains(wrongPath, failure.Message);
+        Assert.Equal(0, loader.Saves);
+        Assert.Equal(bytesBefore, File.ReadAllBytes(wrongPath));
+        foreach (var (path, before) in definitionsBefore) Assert.Equal(before, File.ReadAllBytes(path));
+    }
+
+    private sealed class WrongProjectLoader(LcmCache cache) : FwDataProjectLoader
+    {
+        internal int Saves { get; private set; }
+        public override LcmCache LoadCache(string fwDataFilePath, string? templatesFolder = null) => cache;
+        public override void Save(LcmCache value)
+        {
+            Saves++;
+            base.Save(value);
+        }
+    }
 
     [Fact]
     public void DeclaringTheHyphenAndDigitsKeepsAnOrdinalWrittenWithANumeralInOneToken()

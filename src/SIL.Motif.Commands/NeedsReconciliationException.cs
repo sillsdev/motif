@@ -10,7 +10,7 @@ public enum ReconciliationBoundary
 {
     /// <summary>
     /// The unit of work committed, but persisting it to the project file did not confirm completion
-    /// (see <see cref="SIL.Motif.Host.LcmUtils.FwDataProjectLoader.Save"/>'s remarks on its background
+    /// (see <see cref="SIL.Motif.Host.LcmUtils.FwDataProjectLoader.Save(SIL.LCModel.LcmCache)"/>'s remarks on its background
     /// commit thread) -- the file's on-disk state is not guaranteed intact.
     /// </summary>
     Save,

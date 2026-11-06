@@ -64,12 +64,13 @@ public static class ProjectWordFormingCommand
         }
         using (cache)
         {
+            FwDataProjectLoader.RequireProjectPath(cache, path);
             var vernacular = cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem;
             var added = AddTo(vernacular, characters);
             if (added.Count > 0)
             {
                 cache.ServiceLocator.WritingSystemManager.Save();
-                loader.Save(cache);
+                loader.Save(cache, path);
             }
             var all = vernacular.CharacterSets.TryGet("main", out var main) ? main.Characters.ToArray() : [];
             return CommandOutcome<ProjectWordFormingResponse>.Success(

@@ -101,6 +101,7 @@ public static class ProjectCreateCommand
         {
             using (var cache = loader.CreateBlankProject(fwDataPath, vernacularTag, analysisTag))
             {
+                FwDataProjectLoader.RequireProjectPath(cache, fwDataPath);
                 NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
                 {
                     ConfigureVernacular(cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem,
@@ -108,7 +109,7 @@ public static class ProjectCreateCommand
                     SeedBoundaryMarkers(cache);
                 });
                 cache.ServiceLocator.WritingSystemManager.Save();
-                loader.Save(cache);
+                loader.Save(cache, fwDataPath);
             }
             return Verify(loader, fwDataPath, request.Name);
         }

@@ -13,10 +13,15 @@ namespace SIL.Motif.Host.LcmUtils;
 public sealed class FileProjectId : IProjectIdentifier
 {
     /// <param name="fwDataPath">The <c>.fwdata</c> file, inside a folder of the same name.</param>
-    public FileProjectId(string fwDataPath)
+    public FileProjectId(string fwDataPath) : this(fwDataPath, BackendProviderType.kXML)
+    {
+    }
+
+    internal FileProjectId(string fwDataPath, BackendProviderType type)
     {
         Path = System.IO.Path.GetFullPath(fwDataPath);
         Name = System.IO.Path.GetFileNameWithoutExtension(Path);
+        Type = type;
     }
 
     /// <inheritdoc />
@@ -38,5 +43,5 @@ public sealed class FileProjectId : IProjectIdentifier
     public string ProjectFolder => System.IO.Path.GetDirectoryName(Path)!;
 
     /// <inheritdoc />
-    public BackendProviderType Type => BackendProviderType.kXML;
+    public BackendProviderType Type { get; }
 }
