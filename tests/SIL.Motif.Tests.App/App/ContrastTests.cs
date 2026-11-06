@@ -745,9 +745,10 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         avalonia.Invoke(() => Assert.True(Ratio(Color.Parse("#696969"), Resolve("Intent.Selected.Fill", ThemeVariant.Light)) < Text));
     }
 
-    // Known gap: muted text on a word card header misses AA on the #D7E6FF fill.
-    [Fact]
-    public void MutedTextOnTheWordCardHeaderStillFallsShortOfAa()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MutedTextOnTheWordCardHeaderMeetsAa(bool dark)
     {
         avalonia.Invoke(() =>
         {
@@ -755,14 +756,14 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
             var window = new MotifTestWindow
             {
                 Content = new Border { Classes = { "wordPresentationCardHeader" }, Child = text },
-                RequestedThemeVariant = ThemeVariant.Light, Width = 300, Height = 100,
+                RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light, Width = 300, Height = 100,
             };
             try
             {
                 window.Show();
                 window.UpdateLayout();
                 var ratio = Effective(text);
-                Assert.True(ratio is >= Part and < Text, $"muted on the card header: {ratio:F2}:1; if this now passes, drop the follow-up in the map");
+                Assert.True(ratio >= Text, $"muted on the card header: {ratio:F2}:1");
             }
             finally
             {

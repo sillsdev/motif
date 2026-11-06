@@ -105,13 +105,8 @@ Adopted in this slice (each passes contrast, each pinned): selected row, field b
    TextMuted and Text are Semi roles. A label-only Intent key needs a first consumer (the token gate rejects unused
    keys) and a Dark value, so it waits for the field and form pages. On white it is 5.49:1, so it suits labels off a
    selected row.
-2. Muted text on the selected row: `Intent.TextMuted` (Semi Text2) is drawn on `Intent.Selected.Fill`. Traced in the
-   word card header (`wordPresentationCardHeader`: location, pending status and "Esc closes" in the `muted` class, and
-   the close button), which sits on the fill; the Inspector breadcrumb strip, the selected Settings rail entry and
-   segment, an open word strip and the chosen timing row share the fill and use muted classes for captions and glosses.
-   Ratio about 3.7:1, under 4.5:1 (was about 4.1:1 on #E8F1FF, which also missed). Pinned as a known gap by
-   `MutedTextOnTheWordCardHeaderStillFallsShortOfAa`. TextMuted is a Semi role and is never overridden, so the fix is a
-   Motif-owned muted-on-selected key, or a lighter selected fill; owner decision.
+2. Muted text on the word-card selected header uses `Intent.TextMutedOnSelected`: Light `#666666` and Dark
+   `#A0B0C8` on the existing selected fill. Both meet 4.5:1, pinned by `MutedTextOnTheWordCardHeaderMeetsAa`.
 3. Semi-role colours (Intent.Border rules): FieldWorks' LightGray rule (#D3D3D3, decorative) needs a
    Motif-owned card theme, since a Semi key is never overridden app-wide. TextBox frames now use Intent.Input.Border.
 4. Dialog padding and menu density (8 against 10, 8,4 against 8,3): only if Motif's views are hosted beside FieldWorks

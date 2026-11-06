@@ -32,6 +32,9 @@
   <Style Selector="Border.wordPresentationCardSection.withProposal :is(TextBlock).wordPresentationCardHeading">
     <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />
   </Style>
+  <Style Selector="Border.wordPresentationCardHeader :is(TextBlock).muted">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMutedOnSelected}" />
+  </Style>
   <Style Selector="Border.wordPresentationCardHeader">
     <Setter Property="Background" Value="{DynamicResource Intent.Selected.Fill}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />

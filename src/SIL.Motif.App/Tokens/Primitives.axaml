@@ -55,6 +55,8 @@
   <Color x:Key="Primitive.Color.Grey0">#FFFFFF</Color>
   <Color x:Key="Primitive.Color.Grey25">#FBFCFD</Color>
   <Color x:Key="Primitive.Color.Grey200">#D3D3D3</Color>
+  <Color x:Key="Primitive.Color.Grey600">#666666</Color>
+  <Color x:Key="Primitive.Color.Slate350">#A0B0C8</Color>
   <Color x:Key="Primitive.Color.Grey550">#7A7A7A</Color>
   <Color x:Key="Primitive.Color.Grey100">#ECEEF2</Color>
   <Color x:Key="Primitive.Color.Grey300">#C3C8D0</Color>

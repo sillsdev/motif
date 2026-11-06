@@ -29,6 +29,7 @@
     Intent.Text                   body text (Semi's Text0)
     Intent.TextSecondary          navigation labels and badge counts, quieter than body text
     Intent.TextMuted              supporting text: details, captions, counts (Semi's Text2)
+    Intent.TextMutedOnSelected    supporting text on a selected surface
     Intent.TextFaint              an unset or unknown state's mark (Semi's Text3)
     Intent.Border                 card edges, dividers and hairlines (Semi's Border)
     Intent.Focus                  the keyboard focus ring, also Semi's own focus adorner
@@ -270,6 +271,7 @@
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey700}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
+      <SolidColorBrush x:Key="Intent.TextMutedOnSelected" Color="{StaticResource Primitive.Color.Grey600}" />
       <StaticResource x:Key="Intent.TextFaint" ResourceKey="SemiColorText3" />
       <StaticResource x:Key="Intent.Border" ResourceKey="SemiColorBorder" />
       <SolidColorBrush x:Key="Intent.Focus" Color="{StaticResource Primitive.Color.Blue650}" />
@@ -365,6 +367,7 @@
       <StaticResource x:Key="Intent.Text" ResourceKey="SemiColorText0" />
       <SolidColorBrush x:Key="Intent.TextSecondary" Color="{StaticResource Primitive.Color.Grey300}" />
       <StaticResource x:Key="Intent.TextMuted" ResourceKey="SemiColorText2" />
+      <SolidColorBrush x:Key="Intent.TextMutedOnSelected" Color="{StaticResource Primitive.Color.Slate350}" />
       <StaticResource x:Key="Intent.TextFaint" ResourceKey="SemiColorText3" />
       <StaticResource x:Key="Intent.Border" ResourceKey="SemiColorBorder" />
       <SolidColorBrush x:Key="Intent.Focus" Color="{StaticResource Primitive.Color.Blue350}" />
