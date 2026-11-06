@@ -243,6 +243,8 @@ public static class MotifAppStrings
 
     public static string TextsWordChangesPattern => Text("MotifApp.TextsWordChangesPattern");
 
+    public static string EditMorphemeInFieldWorksFormat => Text("MotifApp.EditMorphemeInFieldWorksFormat");
+
     public static string StatusChangesPattern => Text("MotifApp.StatusChangesPattern");
     public static string StatusFilterHidesPattern => Text("MotifApp.StatusFilterHidesPattern");
 

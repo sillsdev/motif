@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -555,8 +556,10 @@ public sealed class MorphemePanel : Decorator
             button.Classes.Add("revealLink");
             button.Classes.Add("revealOnHover");
         }
-        AutomationProperties.SetName(button, morph.LinkName);
-        ToolTip.SetTip(button, morph.LinkName);
+        var name = reveal ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.EditMorphemeInFieldWorksFormat, morph.Form)
+            : morph.LinkName;
+        AutomationProperties.SetName(button, name);
+        ToolTip.SetTip(button, name);
         return button;
     }
 }

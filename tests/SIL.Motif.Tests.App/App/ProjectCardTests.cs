@@ -228,7 +228,7 @@ public sealed class ProjectCardTests
 
                 var buttons = card.GetVisualDescendants().OfType<Button>().Where(button => button.IsEffectivelyVisible).ToArray();
                 Button Named(string name) => Assert.Single(buttons, button => button.Name == name);
-                Assert.Same(workspace.RefreshCommand, Named("CardRefreshButton").Command);
+                Assert.DoesNotContain(buttons, button => button.Name == "CardRefreshButton");
                 Assert.Same(workspace.ConfigureCommand, Named("CardChooseButton").Command);
                 Assert.Same(workspace.ConfigureCommand, Named("CardSettingsButton").Command);
                 Assert.Same(workspace.SelectNewProjectCommand, Named("CardOpenAnotherButton").Command);

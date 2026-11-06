@@ -683,11 +683,6 @@ internal static class TooltipOwners
         {
             Pending = "the button is in the project card's pop-up, which the sample's window tree does not hold until the chip opens it; ProjectCardTests opens it",
         },
-        new("card refresh", "Views/ProjectCardView.axaml", "Capture a new Baseline from FieldWorks' last save.", TooltipScene.Overview,
-            control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectCardRefresh)
-        {
-            Pending = "the button is in the project card's pop-up; ProjectCardTests opens it",
-        },
         new("card choose texts", "Views/ProjectCardView.axaml", "{Binding ConfigureDetailText}", TooltipScene.Overview,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectCardChoose)
         {
@@ -869,7 +864,7 @@ internal static class TooltipOwners
         {
             Pending = "current word presentations keep morpheme forms selectable and show their FieldWorks link separately",
         },
-        new("FieldWorks link on a morpheme", "Controls/WordPresentation/MorphemePanel.cs", "morph.LinkName", TooltipScene.WordCard,
+        new("FieldWorks link on a morpheme", "Controls/WordPresentation/MorphemePanel.cs", "EditMorphemeInFieldWorksFormat", TooltipScene.WordCard,
             control => control is HyperlinkButton && control.Classes.Contains("morphemePanelLink")),
         new("morpheme that opens the inspector", "Controls/WordPresentation/MorphemePanel.cs", "$\"Show {morph.Form} in the inspector\"",
             TooltipScene.WordCard, control => control is StackPanel && control.Classes.Contains("morphemePanelInspectable")),

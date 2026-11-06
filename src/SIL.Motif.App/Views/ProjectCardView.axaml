@@ -21,12 +21,7 @@
           <views:CopyableTextBlock Classes="muted" Text="{Binding ProjectCardSubtitle}"
                                    IsVisible="{Binding ProjectCardSubtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
-        <Button x:Name="CardRefreshButton" Grid.Column="1" Content="{x:Static app:MotifAppStrings.ProjectCardButtonRefresh}"
-                Command="{Binding RefreshCommand}" IsVisible="{Binding HasFreshness}"
-                VerticalAlignment="Top"
-                AutomationProperties.Name="{x:Static app:MotifAppStrings.RefreshAccessibleName}"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectCardRefresh}"
-                ToolTip.Tip="{x:Static app:MotifAppStrings.RefreshTip}" />
+
       </Grid>
 
       <Border x:Name="CardStatusBlock" Classes="cardStatus" IsVisible="{Binding HasFreshness}"
