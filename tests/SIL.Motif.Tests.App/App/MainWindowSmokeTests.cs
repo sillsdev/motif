@@ -1231,7 +1231,7 @@ public sealed class MainWindowSmokeTests
                     $"morpheme panels={card.GetLogicalDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.MorphemePanel>().Count()}; " +
                     $"card links={string.Join(", ", cardLinks.Select(button => AutomationProperties.GetName(button)))}.");
                 var morphLink = Assert.Single(cardLinks,
-                    button => AutomationProperties.GetName(button) == "Open the entry for motif- in Lexicon Edit");
+                    button => AutomationProperties.GetName(button) == "Edit \"motif-\" in FieldWorks");
                 Assert.Equal("Lexicon Edit ↗", morphLink.Content);
                 Assert.True(morphLink.Focus(NavigationMethod.Tab));
                 Dispatcher.UIThread.RunJobs();

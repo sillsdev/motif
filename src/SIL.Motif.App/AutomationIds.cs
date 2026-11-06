@@ -12,7 +12,6 @@ public static class AutomationIds
     public const string ProjectChip = "motif-project-chip";
     /// <summary>The project card that opens from the chip.</summary>
     public const string ProjectCard = "motif-project-card";
-    public const string ProjectCardRefresh = "motif-project-card-refresh";
     public const string ProjectCardSeeWhatChanged = "motif-project-card-see-what-changed";
     public const string ProjectCardChoose = "motif-project-card-choose";
     public const string ProjectCardSettings = "motif-project-card-settings";

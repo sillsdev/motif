@@ -62,8 +62,8 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
             var link = Assert.IsType<HyperlinkButton>(part.Children[3]);
             Assert.Equal(new Uri(EntryLink), link.NavigateUri);
             Assert.Equal("↗", link.Content);
-            Assert.Equal("Open كتاب in Lexicon Edit", AutomationProperties.GetName(link));
-            Assert.Equal("Open كتاب in Lexicon Edit", ToolTip.GetTip(link));
+            Assert.Equal("Edit \"كِتَاب\" in FieldWorks", AutomationProperties.GetName(link));
+            Assert.Equal("Edit \"كِتَاب\" in FieldWorks", ToolTip.GetTip(link));
             Assert.Contains("revealControl", link.Classes);
             Assert.Contains("revealLink", link.Classes);
             Assert.Contains("revealOnHover", link.Classes);
