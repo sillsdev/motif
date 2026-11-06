@@ -98,13 +98,14 @@ public static class AssessCommand
 
     internal static CommandOutcome<AssessCommandResponse> AssessWithLimits(
         AssessRequest request, string managedRoot, string? parserPath,
-        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits, bool recordBudgetStop = true)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits, bool recordBudgetStop = true,
+        ProjectParseLease? admission = null)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
         var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(
             new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker));
-        return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, null, limits, recordBudgetStop);
+        return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission, limits, recordBudgetStop);
     }
 
     /// <summary>
@@ -709,7 +710,7 @@ public static class AssessCommand
                 try
                 {
                     var pruned = StorePruneCommand.RunHeld(database, project, admission ?? parseLease!, standaloneAssessmentCount, managedRoot,
-                        cancellationToken);
+                        cancellationToken, protectedAssessments: assessmentIds);
                     if (!pruned.Succeeded)
                         ProjectDiagnosticLog.Append(request.ProjectPath, "Assess saved its Assessment but could not prune old evidence.",
                             new InvalidOperationException(pruned.Refusal!.Message));

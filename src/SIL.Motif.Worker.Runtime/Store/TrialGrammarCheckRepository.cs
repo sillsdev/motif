@@ -44,7 +44,8 @@ public sealed class TrialGrammarCheckRepository(MotifDatabase database)
                 CheckedUtc = excluded.CheckedUtc;
             DELETE FROM GrammarChecks WHERE rowid IN (
                 SELECT rowid FROM GrammarChecks WHERE ProposalId = $proposal
-                ORDER BY CheckedUtc DESC, rowid DESC LIMIT -1 OFFSET $maximum);
+                ORDER BY (BaselineToken = $baseline AND IntentDigest = $intent) DESC,
+                    CheckedUtc DESC, rowid DESC LIMIT -1 OFFSET $maximum);
             """;
         command.Parameters.AddWithValue("$baseline", JsonSerializer.Serialize(baseline, MotifJson.CreateOptions()));
         command.Parameters.AddWithValue("$proposal", proposalId.Value);

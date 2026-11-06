@@ -5,6 +5,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Jobs;
 using Xunit;
 
 namespace SIL.Motif.Tests.Store;
@@ -101,6 +102,49 @@ public sealed class StoreByteBudgetTests : IDisposable
         Sweep(100, 1);
 
         Assert.Equal(["cited"], Ids("SELECT AssessmentId FROM Assessments;"));
+    }
+
+    [Theory]
+    [InlineData("parsimony-report")]
+    [InlineData("parsimony-candidate")]
+    public void ActiveParsimonyJobsHoldTheirInputsUntilTheyFinish(string kind)
+    {
+        Record("needed", "Correctness", 0);
+        Record("old", "Correctness", 1);
+        new JobRepository(_database).CreateWithAssessments("job", "project", kind,
+            "{\"assessmentIds\":[\"needed\"]}", "2026-01-01T00:00:00Z", ["needed"]);
+
+        Sweep(100, 1);
+
+        Assert.Equal(["needed"], Ids("SELECT AssessmentId FROM Assessments;"));
+        Execute("UPDATE Jobs SET Status = 'failed' WHERE JobId = 'job';");
+        Sweep(100, 1);
+        Assert.Empty(Ids("SELECT AssessmentId FROM Assessments;"));
+    }
+
+    [Fact]
+    public void ParsimonyJobCannotQueueAnAssessmentThatExpiredAfterValidation()
+    {
+        Assert.Throws<AssessmentExpiredException>(() => new JobRepository(_database).CreateWithAssessments(
+            "job", "project", "parsimony-report", "{}", "2026-01-01T00:00:00Z", ["missing"]));
+        Assert.Equal("0", Scalar("SELECT COUNT(*) FROM Jobs;"));
+    }
+
+    [Theory]
+    [InlineData("trial")]
+    [InlineData("parsimony-candidate")]
+    public void ProposalSweepKeepsEvidenceNamedByAJob(string kind)
+    {
+        var proposal = CanonicalId.Mint("proposal/");
+        Execute($"INSERT INTO Proposals (ProposalId, Status) VALUES ('{proposal.Value}', 'proposed');");
+        Record("needed", "Correctness", 0, proposal);
+        Record("old", "Correctness", 1, proposal);
+        new JobRepository(_database).Create("job", "project", kind,
+            "{\"assessmentIds\":[\"needed\"]}", "2026-01-01T00:00:00Z");
+
+        _repository.DeleteByProposal(proposal, null);
+
+        Assert.Equal(["needed"], Ids("SELECT AssessmentId FROM Assessments;"));
     }
 
     [Fact]

@@ -63,6 +63,17 @@ public sealed class ProjectParseLease : IDisposable
             throw new InvalidOperationException("The project parse lease is no longer held.");
     }
 
+    /// <summary>Releases this admission in the transaction that publishes its successor's work.</summary>
+    public void ReleaseInTransaction(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        EnsureHeld(connection, transaction);
+        using var delete = connection.CreateCommand();
+        delete.Transaction = transaction;
+        delete.CommandText = "DELETE FROM ActiveParse WHERE Id = 1 AND Token = $token;";
+        delete.Parameters.AddWithValue("$token", _token);
+        delete.ExecuteNonQuery();
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

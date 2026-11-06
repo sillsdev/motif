@@ -5,6 +5,8 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Projects;
 
 namespace SIL.Motif.Commands;
@@ -22,10 +24,24 @@ public static class TrialBaselines
 
     /// <summary>Measures the before words under the deterministic limits chosen for their Trial.</summary>
     internal static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
-        string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits) =>
+        string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits,
+        ProjectParseLease? admission = null) =>
         AssessCommand.AssessWithLimits(new AssessRequest(projectPath,
             words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
-            managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits, recordBudgetStop: false);
+            managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits, recordBudgetStop: false,
+            admission: admission);
+
+    internal static CommandOutcome<T> WithAdmission<T>(EnqueueTrialRequest request,
+        Func<ProjectParseLease?, Refusal?, CommandOutcome<T>> enqueue) where T : class?
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.BaselineAssessmentIds is not null) return enqueue(null, null);
+        return ProjectStoreCommand.Run(request.FwDataPath, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            using var admission = ProjectParseLease.TryAcquire(database);
+            return enqueue(admission, admission is null ? ProjectParseLease.BusyRefusal() : null);
+        });
+    }
 
     /// <summary>
     /// Queues a Trial that carries its Baseline Assessments, so <c>difference produce</c> has a before side.
@@ -42,8 +58,11 @@ public static class TrialBaselines
     public static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         string managedRoot, string? parserPath, CancellationToken cancellationToken,
         Action<string>? onBaselineUnavailable = null) =>
-        EnqueueWithBaseline(request, (words, limits) => Assess(request.FwDataPath, words, managedRoot, parserPath,
-            cancellationToken, limits), onBaselineUnavailable, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
+        WithAdmission(request, (admission, busy) => EnqueueWithBaseline(request,
+            (words, limits) => busy is null
+                ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission)
+                : CommandOutcome<AssessCommandResponse>.Refused(busy),
+            onBaselineUnavailable, parserPath ?? PanGlossExecutable.TryLocate(), admission));
 
     /// <summary>As the other overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
@@ -54,10 +73,10 @@ public static class TrialBaselines
     /// <summary>Passes one frozen limit policy to the before measurement and the queued Trial.</summary>
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         Func<IReadOnlyList<string>, TrialLimits?, CommandOutcome<AssessCommandResponse>> assess,
-        Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null)
+        Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null, ProjectParseLease? admission = null)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.BaselineAssessmentIds is not null) return JobCommands.EnqueueTrial(request, expectedParserPath);
+        if (request.BaselineAssessmentIds is not null) return JobCommands.EnqueueTrialAdmitted(request, expectedParserPath, admission);
         var resolved = JobCommands.ResolveTrialWords(request);
         if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
         var words = resolved.Value;
@@ -70,7 +89,7 @@ public static class TrialBaselines
         {
             // A project that cannot be assessed here still queues its Trial; the caller is told what is missing.
             onBaselineUnavailable(exception.Message);
-            return JobCommands.EnqueueTrial(request, expectedParserPath);
+            return JobCommands.EnqueueTrialAdmitted(request, expectedParserPath, admission);
         }
         if (!before.Succeeded)
         {
@@ -80,12 +99,12 @@ public static class TrialBaselines
             if (onBaselineUnavailable is null || before.Refusal.Reason == FailureReason.Cancelled)
                 return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal);
             onBaselineUnavailable(before.Refusal!.Message);
-            return JobCommands.EnqueueTrial(request, expectedParserPath);
+            return JobCommands.EnqueueTrialAdmitted(request, expectedParserPath, admission);
         }
-        return JobCommands.EnqueueTrial(request with
+        return JobCommands.EnqueueTrialAdmitted(request with
         {
             Words = words,
             BaselineAssessmentIds = before.Value!.AssessmentIds,
-        }, expectedParserPath);
+        }, expectedParserPath, admission);
     }
 }

@@ -146,11 +146,14 @@ public static class JobCommands
     public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request,
         string? parserPath = null) => EnqueueTrialCore(request, parserPath, null);
 
+    internal static CommandOutcome<JobEnqueuedResponse> EnqueueTrialAdmitted(EnqueueTrialRequest request,
+        string? parserPath, ProjectParseLease? admission) => EnqueueTrialCore(request, parserPath, null, admission);
+
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueStoppedTrial(EnqueueTrialRequest request,
         string? parserPath, Refusal stop) => EnqueueTrialCore(request, parserPath, stop);
 
     private static CommandOutcome<JobEnqueuedResponse> EnqueueTrialCore(EnqueueTrialRequest request,
-        string? parserPath, Refusal? stop)
+        string? parserPath, Refusal? stop, ProjectParseLease? admission = null)
     {
         if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
                 !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
@@ -206,7 +209,7 @@ public static class JobCommands
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var stamped = JobParserPin.Stamp(inputJson, parserPath);
             if (stop is null)
-                return QueueTrial(jobs, record, jobId, workspaceKey, stamped, request.BaselineAssessmentIds);
+                return QueueTrial(jobs, record, jobId, workspaceKey, stamped, request.BaselineAssessmentIds, admission);
             var stopped = jobs.RecordBudgetStop(jobId, workspaceKey, TrialKind, stamped,
                 JsonSerializer.Serialize(new { code = stop.Code, message = stop.Message,
                     wordsDone = int.Parse(stop.Facts["wordsDone"], System.Globalization.CultureInfo.InvariantCulture),
@@ -219,12 +222,13 @@ public static class JobCommands
 
     // The job is inserted only if the Proposal, or the Draft the Trial was read from, still exists in that write.
     internal static CommandOutcome<JobEnqueuedResponse> QueueTrial(JobRepository jobs, ProposalRecord record,
-        string jobId, string workspaceKey, string stampedInput, IReadOnlyList<string>? requiredAssessments)
+        string jobId, string workspaceKey, string stampedInput, IReadOnlyList<string>? requiredAssessments,
+        ProjectParseLease? admission = null)
     {
         try
         {
             var created = jobs.CreateTrial(jobId, workspaceKey, stampedInput, NowStamp(), requiredAssessments,
-                record.ProposalId, record.DraftName);
+                record.ProposalId, record.DraftName, admission);
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         }

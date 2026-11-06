@@ -70,6 +70,42 @@ public sealed class GrammarCheckStorageTests : IDisposable
         Assert.NotNull(writer.GetLatest(third));
     }
 
+    [Fact]
+    public void RepeatedTrialCheckSurvivesRetentionEvenWhenOtherTimestampsAreAhead()
+    {
+        Directory.CreateDirectory(_root);
+        var project = new ProjectLocator(Path.Combine(_root, "project.fwdata"), "project");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var token = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+            "2026-08-29T00:00:00Z", "sha256:" + new string('b', 64));
+        var id = CanonicalId.Mint("proposal/");
+        var writer = new TrialGrammarCheckRepository(database);
+        for (var i = 0; i < 5; i++) writer.Save(token, id, "digest-" + i, "selection", new GrammarCheckResponse([], true));
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT INTO GrammarChecks " +
+                "(BaselineToken, ProposalId, IntentDigest, SelectionSha256, ParserStamp, ResponseGzip, CheckedUtc) " +
+                "SELECT BaselineToken, ProposalId, 'overflow', SelectionSha256, ParserStamp, ResponseGzip, CheckedUtc " +
+                "FROM GrammarChecks WHERE IntentDigest = 'digest-1'; " +
+                "UPDATE GrammarChecks SET CheckedUtc = '9999-01-01T00:00:00Z';";
+            command.ExecuteNonQuery();
+        }
+
+        writer.Save(token, id, "digest-0", "selection", new GrammarCheckResponse([], true) { Locale = "new" });
+
+        var tokenJson = JsonSerializer.Serialize(token, MotifJson.CreateOptions());
+        var saved = new GrammarCheckRepository(database).GetLatest(tokenJson, id.Value, "digest-0");
+        Assert.NotNull(saved);
+        Assert.Equal("new", saved.Locale);
+        using var read = database.OpenConnection();
+        using var count = read.CreateCommand();
+        count.CommandText = "SELECT COUNT(*) FROM GrammarChecks WHERE ProposalId = $id;";
+        count.Parameters.AddWithValue("$id", id.Value);
+        Assert.Equal(5L, (long)count.ExecuteScalar()!);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);

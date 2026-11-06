@@ -98,9 +98,9 @@ public static class ParsimonyCommands
             var jobId = CanonicalId.Mint("job/").Value;
             var input = JsonSerializer.Serialize(new ParsimonyJobInput(request.MeasureId, scopeBinding, assessmentIds),
                 MotifJson.CreateOptions());
-            var job = new JobRepository(database).Create(jobId, workspaceKey,
+            var job = new JobRepository(database).CreateWithAssessments(jobId, workspaceKey,
                 SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind, JobParserPin.Stamp(input, parserPath),
-                DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+                DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture), assessmentIds);
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(job.JobId, job.Kind, workspaceKey));
         });
@@ -197,9 +197,9 @@ public static class ParsimonyCommands
             var input = JsonSerializer.Serialize(new ParsimonyJobInput(
                 ids.Count == 1 ? ids[0] : ParsimonyAdmission.AllMeasures, scope, assessmentIds, ids, note),
                 MotifJson.CreateOptions());
-            var job = new JobRepository(database).Create(jobId, workspaceKey,
+            var job = new JobRepository(database).CreateWithAssessments(jobId, workspaceKey,
                 SIL.Motif.Worker.Parsimony.ParsimonyJobHandler.JobKind, JobParserPin.Stamp(input, parserPath),
-                DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+                DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture), assessmentIds);
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(job.JobId, job.Kind, workspaceKey, note));
         });
@@ -294,9 +294,9 @@ public static class ParsimonyCommands
                 dryRun.JobId, request.MeasureId, scopeBinding, assessmentIds, retirementTranslation);
             var jobId = CanonicalId.Mint("job/").Value;
             var json = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
-            var created = new JobRepository(database).Create(jobId, dryRun.ProjectKey,
+            var created = new JobRepository(database).CreateWithAssessments(jobId, dryRun.ProjectKey,
                 ParsimonyCandidateEvidenceBuilder.JobKind, JobParserPin.Stamp(json, parserPath),
-                DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+                DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture), assessmentIds);
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, created.Kind, created.ProjectKey));
         });

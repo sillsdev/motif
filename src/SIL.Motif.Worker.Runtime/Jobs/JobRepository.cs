@@ -29,10 +29,10 @@ public sealed class JobRepository
         => Create(requested, null);
 
     internal JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments)
-        => Create(requested, requiredAssessments, null, null);
+        => Create(requested, requiredAssessments, null, null, null);
 
     private JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments,
-        CanonicalId? proposalId, string? draftName)
+        CanonicalId? proposalId, string? draftName, ProjectParseLease? admission)
     {
         var record = Normalize(requested);
         using var connection = _database.OpenConnection();
@@ -51,6 +51,7 @@ public sealed class JobRepository
             if (proposalId is { } id && !ProposalStillThere(connection, transaction, id, draftName))
                 throw new TrialProposalGoneException(id.Value, draftName);
             Insert(connection, transaction, record);
+            admission?.ReleaseInTransaction(connection, transaction);
             transaction.Commit();
             return record;
         }
@@ -105,15 +106,21 @@ public sealed class JobRepository
         string? lineageId = null) => Create(new JobRecord(jobId, projectKey, kind, JobStatus.Queued, 1, inputJson,
             null, createdUtc, createdUtc, null, lineageId));
 
+    internal JobRecord CreateWithAssessments(string jobId, string projectKey, string kind, string inputJson,
+        string createdUtc, IReadOnlyList<string> requiredAssessments) =>
+        Create(new JobRecord(jobId, projectKey, kind, JobStatus.Queued, 1, inputJson, null, createdUtc, createdUtc,
+            null, null), requiredAssessments);
+
     /// <summary>
     /// Queues a Trial for a Proposal, or for the named Draft of one, after checking in the same write transaction
     /// that it still exists, so a discard or delete that committed after the caller read it cannot leave a job behind.
     /// </summary>
     /// <exception cref="TrialProposalGoneException">The Proposal or its Draft no longer exists.</exception>
     internal JobRecord CreateTrial(string jobId, string projectKey, string inputJson, string createdUtc,
-        IReadOnlyList<string>? requiredAssessments, CanonicalId proposalId, string? draftName) => Create(
+        IReadOnlyList<string>? requiredAssessments, CanonicalId proposalId, string? draftName,
+        ProjectParseLease? admission = null) => Create(
             new JobRecord(jobId, projectKey, TrialJobHandler.TrialKind, JobStatus.Queued, 1, inputJson, null,
-                createdUtc, createdUtc, null, null), requiredAssessments, proposalId, draftName);
+                createdUtc, createdUtc, null, null), requiredAssessments, proposalId, draftName, admission);
 
     private static bool ProposalStillThere(SqliteConnection connection, SqliteTransaction transaction,
         CanonicalId proposalId, string? draftName)

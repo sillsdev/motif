@@ -61,6 +61,10 @@ internal static class AssessmentRetention
             UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
             """));
         removable.ExceptWith(ReadFrozenReportAssessmentIds(connection, transaction));
+        var all = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;");
+        removable.ExceptWith(ReadJsonReferences(connection, transaction,
+            "SELECT InputJson FROM Jobs WHERE Kind IN ('trial', 'parsimony-report', 'parsimony-candidate') " +
+            "AND Status IN ('queued', 'running', 'waiting-for-baseline', 'waiting-for-project-host');", all));
         var replacements = ReadPairs(connection, transaction,
             "SELECT AssessmentId, ReplacesAssessmentId FROM Assessments WHERE ReplacesAssessmentId IS NOT NULL;");
         for (var kept = true; kept;)
@@ -170,6 +174,8 @@ internal static class AssessmentRetention
             "SELECT RecordJson FROM AppliedIndex WHERE RecordJson IS NOT NULL;",
             "SELECT InputJson FROM Jobs WHERE Kind = 'trial';",
             "SELECT ResultJson FROM Jobs WHERE Kind = 'trial' AND ResultJson IS NOT NULL;",
+            "SELECT InputJson FROM Jobs WHERE Kind IN ('parsimony-report', 'parsimony-candidate') " +
+                "AND Status IN ('queued', 'running', 'waiting-for-baseline', 'waiting-for-project-host');",
         })
             removable.ExceptWith(ReadJsonReferences(connection, transaction, sql, all));
 

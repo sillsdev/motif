@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Installation;
+using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Commands;
 
@@ -40,8 +41,11 @@ public static class TrialWorkflow
     /// <param name="cancellationToken">Cancels the Baseline measurement.</param>
     public static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
         string? parserPath, BaselineMode mode, CancellationToken cancellationToken) =>
-        Enqueue(request, (words, limits) => TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath,
-            cancellationToken, limits), mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate());
+        EnqueueWithUpdateGate(() => TrialBaselines.WithAdmission(request, (admission, busy) => EnqueueCore(request,
+            (words, limits) => busy is null
+                ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission)
+                : CommandOutcome<AssessCommandResponse>.Refused(busy),
+            mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate(), admission)));
 
     /// <summary>As the public overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request,
@@ -52,14 +56,24 @@ public static class TrialWorkflow
     /// <summary>Runs the update-gated workflow while carrying the frozen limits through the before measurement.</summary>
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request,
         Func<IReadOnlyList<string>, TrialLimits?, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode,
-        string? expectedParserPath = null)
+        string? expectedParserPath = null, ProjectParseLease? admission = null) =>
+        EnqueueWithUpdateGate(() => EnqueueCore(request, assess, mode, expectedParserPath, admission));
+
+    private static CommandOutcome<TrialEnqueued> EnqueueWithUpdateGate(Func<CommandOutcome<TrialEnqueued>> enqueue)
     {
-        ArgumentNullException.ThrowIfNull(request);
         // The lease covers the assess step too, because it runs the installed PanGloss binary an update replaces.
         using var lease = MotifUpdateGate.TryAcquire();
         if (lease is null)
             return CommandOutcome<TrialEnqueued>.Refused(new Refusal(RefusalCodes.TrialUpdateInProgress,
                 FailureReason.Busy, "Motif is installing an update. Try the Trial again in a moment."));
+        return enqueue();
+    }
+
+    private static CommandOutcome<TrialEnqueued> EnqueueCore(EnqueueTrialRequest request,
+        Func<IReadOnlyList<string>, TrialLimits?, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode,
+        string? expectedParserPath, ProjectParseLease? admission)
+    {
+        ArgumentNullException.ThrowIfNull(request);
         string? warning = null;
         var failed = false;
         string? failure = null;
@@ -75,7 +89,7 @@ public static class TrialWorkflow
                     failure = exception.Message;
                     throw;
                 }
-            }, mode == BaselineMode.BestEffort ? reason => warning ??= reason : null, expectedParserPath);
+            }, mode == BaselineMode.BestEffort ? reason => warning ??= reason : null, expectedParserPath, admission);
         }
         catch (Exception) when (failed && mode == BaselineMode.Required)
         {

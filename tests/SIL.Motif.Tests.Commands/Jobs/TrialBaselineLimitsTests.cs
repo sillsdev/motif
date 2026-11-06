@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
@@ -124,6 +125,28 @@ public sealed class TrialBaselineLimitsTests : IDisposable
         Assert.False(queued.Succeeded);
         Assert.Equal("selection.default-missing", queued.Refusal!.Code);
         Assert.DoesNotContain("batch", FakeParser.Invocations(_parser));
+    }
+
+    [Theory]
+    [InlineData(BaselineMode.BestEffort)]
+    [InlineData(BaselineMode.Required)]
+    public void AParseAlreadyRunningRespectsTheBaselineMode(BaselineMode mode)
+    {
+        var request = NewRequest();
+        using var database = ProjectMotifDatabase.Open(_project.FwDataPath);
+        using var admission = ProjectParseLease.TryAcquire(database)!;
+
+        var result = TrialWorkflow.Enqueue(request, _project.ManagedRoot, _parser, mode, CancellationToken.None);
+
+        if (mode == BaselineMode.Required)
+            Assert.Equal(ProjectParseLease.BusyRefusal().Code, result.Refusal?.Code);
+        else
+        {
+            Assert.True(result.Succeeded, result.Refusal?.Message);
+            Assert.Equal(ProjectParseLease.BusyRefusal().Message, result.Value!.BaselineWarning);
+            var job = new JobRepository(database).Get(result.Value.Job.JobId)!;
+            Assert.Null(TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds);
+        }
     }
 
     private void SaveDefault(SelectionParsingLimits limits)

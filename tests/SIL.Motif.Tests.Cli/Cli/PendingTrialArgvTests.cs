@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Installation;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.TestFixtures;
@@ -26,6 +27,55 @@ namespace SIL.Motif.Tests.Cli;
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group1)]
 public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public async Task TrialOverBudgetKeepsItsBeforeAndPrunesOldUnrootedEvidence()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        Guid wordformId = Guid.Empty;
+        NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+            wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("retention-word", scratch.DefaultVernWs)).Guid);
+        new FwDataProjectLoader().Save(scratch);
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "retention-worker");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var wordsPath = Path.Combine(Path.GetDirectoryName(path)!, "retention-words.txt");
+        File.WriteAllText(wordsPath, "retention-word\n");
+        var old = await RunAsync(root, "assess", path, "--words", wordsPath, "--json");
+        Assert.True(old.ExitCode == 0, old.Error);
+        var oldIds = ProjectionJson.Deserialize<AssessCommandResponse>(old.Output)!.AssessmentIds;
+        Assert.NotEmpty(oldIds);
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, MotifProductVersion.CurrentText));
+        var pending = PendingChanges.Put(new PutPendingChangeRequest(path, MotifProductVersion.CurrentText,
+            initial.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
+                CanonicalId.FromGuid(wordformId).Value, "retention-word", OriginPage: "Texts")));
+        Assert.True(pending.Succeeded, pending.Refusal?.Message);
+        var project = new ProjectLocator(Path.GetFullPath(path), Path.GetFileNameWithoutExtension(path));
+        using var database = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current)
+            .OpenOwned(project);
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT INTO ProposalPictures (ProposalId, MediaType, Width, Height, Bytes, CreatedUtc) " +
+                "SELECT ProposalId, 'image/png', 1, 1, zeroblob(105 * 1024 * 1024), '2026-01-01T00:00:00Z' " +
+                "FROM Proposals WHERE Role = 'pending-changes';";
+            Assert.Equal(1, command.ExecuteNonQuery());
+        }
+
+        var result = await RunAsync(root, "trial", "--project", path, pending.Value!.DraftId!, "--words", wordsPath,
+            "--wait", "--wait-timeout-ms", ((int)(JobProgress.Cap + TimeSpan.FromMinutes(1)).TotalMilliseconds)
+                .ToString(System.Globalization.CultureInfo.InvariantCulture), "--json");
+
+        Assert.True(result.ExitCode == 0, PendingTrialFailure(path, result));
+        using var response = JsonDocument.Parse(result.Output);
+        var job = new JobRepository(database).Get(response.RootElement.GetProperty("jobId").GetString()!)!;
+        var before = TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds!;
+        Assert.NotEmpty(before);
+        var assessments = new AssessmentRepository(database);
+        Assert.All(before, id => Assert.Equal(id, assessments.Get(id).AssessmentId));
+        Assert.All(oldIds, id => Assert.Throws<KeyNotFoundException>(() => assessments.Get(id)));
+    }
+
     [Fact]
     public async Task PendingTrialWaitsForTheCurrentDraftWithoutIdentityFlags()
     {
@@ -76,6 +126,8 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
         start.Environment["MOTIF_DEVELOPER_COMMANDS"] = "1";
         if (root is not null)
         {
+            CliProcess.EnableAdvancedAiMode(start, root);
+            start.Environment[MotifUpdateGate.TestNamespaceVariable] = Guid.NewGuid().ToString("N");
             start.Environment[RunnerOptions.RootVariable] = root;
             start.Environment["MOTIF_WORKER_EXE"] = BuildOutput.Worker;
             start.Environment["MOTIF_PANGLOSS_EXE"] = FakeParser.ExecutablePath;

@@ -1,6 +1,7 @@
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
@@ -32,6 +33,35 @@ public sealed class TrialEnqueueDiscardRaceTests : IDisposable
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
         Assert.NotNull(new JobRepository(fixture.Database).Get("job-1"));
         Assert.True(repository.DraftNameExists("d"));
+    }
+
+    [Fact]
+    public void QueuingATrialReleasesItsParseAdmissionWithTheJob()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var (_, draft) = NewDraft(fixture, "d");
+        using var admission = ProjectParseLease.TryAcquire(fixture.Database)!;
+
+        var queued = JobCommands.QueueTrial(new JobRepository(fixture.Database), draft, "job-1", Key(fixture), "{}", null, admission);
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        Assert.NotNull(new JobRepository(fixture.Database).Get("job-1"));
+        using var next = ProjectParseLease.TryAcquire(fixture.Database);
+        Assert.NotNull(next);
+    }
+
+    [Fact]
+    public void FailedEnqueueLeavesTheParseAdmissionHeld()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var (_, draft) = NewDraft(fixture, "d");
+        using var admission = ProjectParseLease.TryAcquire(fixture.Database)!;
+
+        Assert.Throws<AssessmentExpiredException>(() => JobCommands.QueueTrial(new JobRepository(fixture.Database),
+            draft, "job-1", Key(fixture), "{}", ["missing"], admission));
+
+        Assert.Null(new JobRepository(fixture.Database).Get("job-1"));
+        Assert.Null(ProjectParseLease.TryAcquire(fixture.Database));
     }
 
     [Fact]

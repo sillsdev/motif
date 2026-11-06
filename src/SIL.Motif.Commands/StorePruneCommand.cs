@@ -56,7 +56,7 @@ public static class StorePruneCommand
     internal static CommandOutcome<StorePruneResponse> RunHeld(MotifDatabase database, ProjectLocator project,
         ProjectParseLease lease, int keepPerKind, string? managedRoot = null,
         CancellationToken cancellationToken = default, Action<string>? progress = null,
-        long byteBudget = StoreBudgetBytes, bool compact = false)
+        long byteBudget = StoreBudgetBytes, bool compact = false, IReadOnlyCollection<string>? protectedAssessments = null)
     {
         progress ??= line => ProjectDiagnosticLog.AppendLine(project.FullFwDataPath, line);
         using var connection = database.OpenConnection();
@@ -81,6 +81,7 @@ public static class StorePruneCommand
                 var set = current.Value!.Set;
                 var roots = set is null ? [] : new[] { set.RootAssessmentId }.OfType<string>()
                     .Concat(set.ReplacementAssessmentIds).Concat(set.MeasurementIds.Values).ToArray();
+                roots = roots.Concat(protectedAssessments ?? []).ToArray();
                 removed = AssessmentRetention.SweepStandalone(connection, transaction, lease, keepPerKind, roots, out removedInvocations,
                     cancellationToken, progress, byteBudget);
                 ProposalDifferenceRetention.DropForClosedProposals(connection, transaction);

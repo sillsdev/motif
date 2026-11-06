@@ -16,7 +16,9 @@ store and to files outside it. No store schema change: the budget and the sweep 
    the oldest Assessments nothing needs until the store fits, one Assessment at a time with its payloads, in the
    same transaction. An Assessment is needed while it is the current one, pinned, cited by a Report (including a
    frozen Parsimony Report's inputs), held by a retained invocation, named by a Proposal, Receipt or Trial Job, or the
-   root a surviving Assessment replaces. Assessments recorded against a Proposal that is still proposed or deferred
+   root a surviving Assessment replaces. An active Parsimony job also holds its named Assessment inputs until it
+   finishes and its Report takes over. A newly saved Assessment is held through its command's own prune, and a Trial's
+   Before Assessments are held until the Trial job is recorded. Assessments recorded against a Proposal that is still proposed or deferred
    are never removed by the budget. When nothing more may go, the response says `OverBudget`.
 2. **A decided Proposal keeps its record and drops the rest.** Its Revision, Receipt and Difference summary stay
    as good as forever. Its Difference word detail goes when it is decided (ADR 0067), and a prune drops any that a
@@ -56,8 +58,9 @@ store and to files outside it. No store schema change: the budget and the sweep 
 
 ## Consequences
 
-An eng-sized project whose Assessments alone exceed 100 MB keeps fewer Assessments than the count caps allow, so a
-person can read the latest and not an older history. An open Proposal's evidence is never traded for space, so a
+An eng-sized project whose Assessments alone exceed 100 MB keeps fewer Assessments than the count caps allow. The
+oldest unneeded evidence goes first; after its producing command finishes, even the newest unrooted Assessment may
+go if the store still exceeds its budget. An open Proposal's evidence is never traded for space, so a
 store full of open Proposals reports `OverBudget` rather than losing a go or no-go. Deciding a Proposal releases the
 bundle pins of its Parsimony Reports whatever the bundle kind; only candidate bundles of closed Proposals go at
 once, and a baseline bundle goes under the usual count or when it is no longer current.

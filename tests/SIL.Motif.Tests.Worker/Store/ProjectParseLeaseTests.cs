@@ -53,6 +53,24 @@ public sealed class ProjectParseLeaseTests : IDisposable
         Assert.NotNull(secondLease);
     }
 
+    [Fact]
+    public void TransactionalReleaseRollsBackWithItsTransaction()
+    {
+        using var database = Open();
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        using (var connection = database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            lease.ReleaseInTransaction(connection, transaction);
+            transaction.Rollback();
+        }
+
+        Assert.Null(ProjectParseLease.TryAcquire(database));
+        lease.Dispose();
+        using var next = ProjectParseLease.TryAcquire(database);
+        Assert.NotNull(next);
+    }
+
     private MotifDatabase Open(string name = "project")
     {
         Directory.CreateDirectory(_root);
