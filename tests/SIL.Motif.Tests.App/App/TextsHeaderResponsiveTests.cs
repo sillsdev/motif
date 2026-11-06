@@ -137,8 +137,13 @@ public sealed class TextsHeaderResponsiveTests
                     .Where(button => AutomationProperties.GetName(button) is
                         "Matrix tab" or "Analyze texts tab" or "Lists tab" or "What changed tab" or
                         "Parse all words in the Selection").ToArray();
+                var pending = texts.GetVisualDescendants().OfType<Button>().Single(button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.ReviewChanges);
+                var pendingLabels = Assert.IsType<StackPanel>(pending.Content).Children.OfType<TextBlock>()
+                    .Select(label => label.Text ?? string.Empty).ToArray();
 
                 Assert.Equal(5, controls.Length);
+                Assert.Equal([workspace.Context.Changes.CountText, "·", MotifAppStrings.ReviewChanges], pendingLabels);
                 Assert.All(controls, control => AssertInside(window, control));
                 Assert.All(controls, control =>
                     Assert.InRange(Math.Abs(control.TranslatePoint(default, window)!.Value.Y -

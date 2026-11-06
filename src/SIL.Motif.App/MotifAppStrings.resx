@@ -545,8 +545,12 @@
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.ReviewChanges" xml:space="preserve">
-    <value>· Review Changes</value>
-    <comment>Window text.</comment>
+    <value>Review Changes</value>
+    <comment>Action to review the word changes not applied yet.</comment>
+  </data>
+  <data name="MotifApp.PendingChangesSeparatorMark" xml:space="preserve">
+    <value>·</value>
+    <comment>Separator between the pending word-change count and the Review Changes action.</comment>
   </data>
   <data name="MotifApp.ParseAllWordsInTheSelectionAccessibleName" xml:space="preserve">
     <value>Parse all words in the Selection</value>

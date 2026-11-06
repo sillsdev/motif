@@ -428,6 +428,8 @@ public static class MotifAppStrings
 
     public static string ReviewTheChangesNotAppliedYetAccessibleName => Text("MotifApp.ReviewTheChangesNotAppliedYetAccessibleName");
 
+    public static string PendingChangesSeparatorMark => Text("MotifApp.PendingChangesSeparatorMark");
+
     public static string ReviewChanges => Text("MotifApp.ReviewChanges");
 
     public static string ParseAllWordsInTheSelectionAccessibleName => Text("MotifApp.ParseAllWordsInTheSelectionAccessibleName");

@@ -40,6 +40,8 @@
                          Fill="{DynamicResource Intent.Warning.Text}" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Changes.CountText}" FontWeight="{DynamicResource Intent.Weight.Strong}"
                            VerticalAlignment="Center" />
+                <TextBlock Text="{x:Static app:MotifAppStrings.PendingChangesSeparatorMark}"
+                           VerticalAlignment="Center" />
                 <TextBlock Text="{x:Static app:MotifAppStrings.ReviewChanges}" Foreground="{DynamicResource Intent.Accent}"
                            VerticalAlignment="Center" />
               </StackPanel>

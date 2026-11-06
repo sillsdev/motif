@@ -107,6 +107,8 @@ Adopted in this slice (each passes contrast, each pinned): selected row, field b
    selected row.
 2. Muted text on the word-card selected header uses `Intent.TextMutedOnSelected`: Light `#666666` and Dark
    `#A0B0C8` on the existing selected fill. Both meet 4.5:1, pinned by `MutedTextOnTheWordCardHeaderMeetsAa`.
+   The Inspector breadcrumb strip, selected Settings rail entry and segment, open word strip and chosen timing row
+   still use muted captions or glosses on the selected fill. Their contrast remains a follow-up.
 3. Semi-role colours (Intent.Border rules): FieldWorks' LightGray rule (#D3D3D3, decorative) needs a
    Motif-owned card theme, since a Semi key is never overridden app-wide. TextBox frames now use Intent.Input.Border.
 4. Dialog padding and menu density (8 against 10, 8,4 against 8,3): only if Motif's views are hosted beside FieldWorks
