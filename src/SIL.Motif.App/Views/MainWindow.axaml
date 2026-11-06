@@ -142,10 +142,10 @@
               <StackPanel Orientation="Horizontal" />
             </ItemsPanelTemplate>
           </ListBox.ItemsPanel>
-          <ListBoxItem AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewTodayAccessibleName}">
+          <ListBoxItem Classes="segmentDivider" AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewTodayAccessibleName}">
             <TextBlock Text="{x:Static app:MotifAppStrings.ProposalViewToday}" />
           </ListBoxItem>
-          <ListBoxItem AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewTodayToProposalAccessibleName}">
+          <ListBoxItem Classes="segmentDivider" AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewTodayToProposalAccessibleName}">
             <TextBlock Text="{x:Static app:MotifAppStrings.ProposalViewTodayToProposal}" />
           </ListBoxItem>
           <ListBoxItem AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalViewProposalAccessibleName}">

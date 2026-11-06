@@ -100,6 +100,35 @@ public sealed class ProposalBarViewTests
     }
 
     [Fact]
+    public void TheThreeViewsFormOneOutlinedSegmentedSwitch()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await OpenedAsync(Trial(TrialFreshness.Current));
+            try
+            {
+                PageScreenshots.Settle(window);
+                var list = Switch(window);
+                var items = list.Items.OfType<ListBoxItem>().ToArray();
+                Assert.Equal(3, items.Length);
+                Assert.True(list.BorderThickness.Left > 0);
+                Assert.All(items, item => Assert.Equal(new CornerRadius(0), item.CornerRadius));
+                for (var index = 1; index < items.Length; index++)
+                {
+                    var previousRight = items[index - 1].TranslatePoint(new Point(items[index - 1].Bounds.Width, 0), list)!.Value.X;
+                    var nextLeft = items[index].TranslatePoint(default, list)!.Value.X;
+                    Assert.InRange(Math.Abs(nextLeft - previousRight), 0, 0.5);
+                }
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
     public void TheViewSwitchOffersThreeViewsAndDrivesTheLens()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

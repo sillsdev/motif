@@ -130,15 +130,21 @@
   <!-- The view switch: three choices in a row, the chosen one inverted so it reads without colour alone. -->
   <Style Selector="Border.proposalBar ListBox.proposalBarView">
     <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Inset.None}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Proposal.Text}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="ClipToBounds" Value="True" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
   </Style>
   <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem">
     <Setter Property="MinHeight" Value="{DynamicResource Component.Shell.PaneButtonSize}" />
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Proposal.Text}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem.segmentDivider">
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerEnd}" />
   </Style>
   <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Text}" />
