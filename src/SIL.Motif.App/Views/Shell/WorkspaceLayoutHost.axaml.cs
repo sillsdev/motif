@@ -117,7 +117,9 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         var footerBudget = Math.Min(Math.Min(footerCap, windowShare), bandBudget);
         SetValue(BandBudgetProperty, Math.Min(footerCap, bandBudget));
         // Beside the page the Inspector column keeps its own body; the page's minimum height does not bind it.
-        var inspectorBody = (double)this.FindResource("Component.Shell.InspectorBodyMinHeight")!;
+        var inspectorBody = Math.Max((double)this.FindResource("Component.Shell.InspectorBodyMinHeight")!,
+            Math.Min((double)this.FindResource("Component.Shell.InspectorBodyPreferredHeight")!,
+                Math.Floor(availableSize.Height * 0.80)));
         // The details budget leaves the pinned actions and the Inspector body their own space.
         var inspectorActions = Part<PageContentSlot>("InspectorRowHost");
         var inspectorActionsHeight = inspectorActions.Content is Control inspectorRow

@@ -98,7 +98,9 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
                 Assert.True(inspectorFooterViewport.IsEffectivelyVisible);
                 Assert.False(pageFooterViewport.IsEffectivelyVisible);
                 var inspectorBudget = Math.Min(Math.Min(FooterHeightCap, Math.Floor(availableHeight * WorkspaceLayoutHost.InspectorFooterWindowShare)), availableHeight - (double)host.FindResource("Component.Shell.PaneHeaderHeight")! -
-                    (double)host.FindResource("Component.Shell.InspectorBodyMinHeight")!);
+                    Math.Max((double)host.FindResource("Component.Shell.InspectorBodyMinHeight")!,
+                        Math.Min((double)host.FindResource("Component.Shell.InspectorBodyPreferredHeight")!,
+                            Math.Floor(availableHeight * 0.80))));
                 Assert.Equal(inspectorBudget, inspectorFooterViewport.MaxHeight);
                 Assert.InRange(inspectorFooterViewport.Bounds.Height, Math.Min(inspectorBudget, expectedBudget) - 2, inspectorBudget + 2);
                 Assert.Equal(ScrollBarVisibility.Auto,
