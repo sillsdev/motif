@@ -235,7 +235,9 @@ public sealed class ReviewWorkspacePaneTests
                 Assert.Empty(page.Entries);
                 Assert.Equal("Choose a change in Texts to begin.", page.ApplyDisabledReason);
                 Assert.Same(apply, ApplyButton(host));
-                AssertVisibleDisabledReason(host, page);
+                Assert.False(DisabledReason(host).IsEffectivelyVisible);
+                Assert.Contains(host.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == page.ApplyDisabledReason);
             }
             finally
             {

@@ -58,8 +58,8 @@
           <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ReviewScoped.axaml" />
         </Border.Styles>
       <StackPanel Classes="reviewRelated reviewFooterDetails">
-        <views:CopyableTextBlock x:Name="ApplyFullReason" Classes="reviewBlockedTitle" Text="{Binding ApplyDisabledReason}"
-                                 IsVisible="{Binding !CanApply}" TextWrapping="Wrap"
+        <views:CopyableTextBlock x:Name="ApplyFullReason" Classes="reviewBlockedTitle" Text="{Binding ApplyDetailsReason}"
+                                 IsVisible="{Binding ApplyDetailsReason, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap"
                                  AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyApplyIsUnavailableAccessibleName}" />
         <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding MeasurementRefusal}" />
         <views:TrialBaselineNoticeBlock DataContext="{Binding BaselineNotice}" />

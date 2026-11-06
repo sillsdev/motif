@@ -465,7 +465,7 @@ public sealed class ParsimonyWorkspacePaneTests
                 Assert.False(model.IsListed);
                 Assert.DoesNotContain(shellWindow.GetVisualDescendants().OfType<Button>(), button =>
                     button.IsEffectivelyVisible && IsParsimonyFilter(button));
-                Assert.Contains(shellWindow.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                Assert.Single(shellWindow.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text == model.Message);
                 Assert.NotEqual(string.Empty, model.Message);
             }

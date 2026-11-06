@@ -882,6 +882,21 @@ public sealed partial class ReviewPageModel : PageModel
     /// </summary>
     public string? ApplyDisabledReason => CanApply ? null : ApplyBlockReason;
 
+    /// <summary>The remaining detail after reasons already visible beside Apply or in the Proposal bar.</summary>
+    public string? ApplyDetailsReason
+    {
+        get
+        {
+            if (CanApply || !HasEntries) return null;
+            if (!InProposalMode || Context.ProposalStanding.Kind != TrialStandingKind.NotTried)
+                return ApplyDisabledReason;
+            var remaining = string.Join(" ", ApplyBlockers.Where(blocker => blocker.Kind != ApplyBlockerKind.TrialNeeded)
+                .Select(blocker => blocker.Sentence));
+            return remaining.Length == 0 ? null : remaining;
+        }
+    }
+
+
     /// <summary>Shows the response already bound to the exact Proposal and Dry Run being reviewed.</summary>
     public void ShowRetirementReview(RetirementProposalReviewProjection projection)
     {
@@ -1393,6 +1408,7 @@ public sealed partial class ReviewPageModel : PageModel
                 break;
             case nameof(ApplyBlockReason):
                 OnPropertyChanged(nameof(ApplyDisabledReason));
+                OnPropertyChanged(nameof(ApplyDetailsReason));
                 OnPropertyChanged(nameof(ApplyBlockers));
                 OnPropertyChanged(nameof(IsApplyBlocked));
                 OnPropertyChanged(nameof(ApplyBlockedTitle));

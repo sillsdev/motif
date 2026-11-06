@@ -22,7 +22,7 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
 {
-    private const double FooterHeightCap = 240;
+    private const double FooterHeightCap = 280;
 
     public static TheoryData<int, int, string> MinimumWindowCases => new()
     {
@@ -59,7 +59,7 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
                 var caseName = $"640-{height}-{zoom}-{theme}";
                 SaveCaptureIfRequested(window, $"footer-at-top-{caseName}.png");
                 var availableHeight = window.ClientSize.Height / scale;
-                var expectedBudget = Math.Min(FooterHeightCap, Math.Max(0, (availableHeight - (double)host.FindResource("Component.Shell.WorkingPageMinHeight")!) / 2));
+                var expectedBudget = Math.Min(Math.Min(FooterHeightCap, Math.Floor(availableHeight * WorkspaceLayoutHost.InspectorFooterWindowShare)), Math.Max(0, Math.Floor((availableHeight - (double)host.FindResource("Component.Shell.WorkingPageMinHeight")!) / 2)));
                 var pageViewport = host.FindControl<ContentControl>("WorkingPageHost")!;
                 Assert.True(pageViewport.Bounds.Height >= expectedBudget - 2,
                     $"The working page has {pageViewport.Bounds.Height:0.#} DIP beside a {footer.Bounds.Height:0.#} DIP footer at " +
@@ -464,8 +464,8 @@ public sealed class FooterHeightBudgetTests(AvaloniaHeadlessFixture avalonia)
 
                 var viewport = Assert.IsType<ScrollViewer>(host.FindControl<ScrollViewer>("InspectorFooterViewport"));
                 Assert.True(viewport.IsEffectivelyVisible);
-                Assert.Equal(240d, viewport.MaxHeight);
-                Assert.Equal(240d, viewport.Bounds.Height);
+                Assert.Equal(280d, viewport.MaxHeight);
+                Assert.Equal(280d, viewport.Bounds.Height);
                 viewport.Offset = new Vector(viewport.Offset.X, viewport.Extent.Height);
                 PageScreenshots.Settle(window);
                 SaveCaptureIfRequested(window, "footer-wide-1920-1080.png");

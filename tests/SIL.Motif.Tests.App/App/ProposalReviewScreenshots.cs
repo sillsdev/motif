@@ -1,6 +1,9 @@
 using System.Globalization;
 using Avalonia;
 using Avalonia.Styling;
+using Avalonia.Automation;
+using Avalonia.Controls;
+using SIL.Motif.App;
 using Avalonia.VisualTree;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
@@ -53,6 +56,50 @@ public sealed class ProposalReviewScreenshots
                 var card = Assert.Single(window.GetVisualDescendants().OfType<WordCard>());
                 var pending = Assert.Single(card.Document!.Sections.OfType<WordCardPendingChange>());
                 Assert.Equal(["wa-", "toto"], pending.Morphs.Select(morph => morph.Form));
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void PopulatedApplyCardFitsItsDetailsAndPinnedActions()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var word = WordChange("kitabu");
+            fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [word],
+                [new ChangeFit("kitabu", true, [])]));
+            fake.ReadTrialCompletesWith(null);
+            fake.Review = new ProposalReviewResponse(ProposalId, "sha256:intent", "sha256:revision",
+                [Rule("rule", 0, null, "Voicing rule before vowels"), Word(1, word)], null, null, [], 0)
+                { EvidenceDigest = "sha256:evidence", Label = "Sound change" };
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            try
+            {
+                await workspace.Context.OpenProposalAsync(ProposalId, CancellationToken.None);
+                var page = workspace.PageModel<ReviewPageModel>();
+                workspace.CurrentPage = WorkspacePage.Review;
+                await page.LoadReviewAsync();
+                LayoutInvariantFixtures.Apply(window, new LayoutCell(1440, 900, 100));
+                PageScreenshots.Settle(window);
+                var viewport = Assert.Single(window.GetVisualDescendants().OfType<ScrollViewer>(),
+                    view => view.Name == "InspectorFooterViewport" && view.IsEffectivelyVisible);
+                Assert.True(viewport.Extent.Height <= viewport.Viewport.Height + 1,
+                    $"Apply details need scrolling: {viewport.Extent.Height} > {viewport.Viewport.Height}.");
+                var apply = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.ApplyChanges);
+                var decline = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.DeclineProposal);
+                Assert.True(apply.IsEffectivelyVisible && decline.IsEffectivelyVisible);
+                Assert.DoesNotContain(viewport.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == TrialStandingWords.NotTried.Sentence);
+                Assert.Contains(viewport.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text?.Contains("Not tried yet") == true);
             }
             finally
             {

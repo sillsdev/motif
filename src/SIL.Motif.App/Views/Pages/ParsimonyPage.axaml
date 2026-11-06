@@ -19,8 +19,6 @@
         <StackPanel.Styles>
           <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ParsimonyScoped.axaml" />
         </StackPanel.Styles>
-        <views:CopyableTextBlock Classes="muted" Text="{Binding UnavailableText}" TextWrapping="Wrap"
-                                 IsVisible="{Binding !IsListed}" AutomationProperties.Name="{x:Static app:MotifAppStrings.FindingsNotAvailableAccessibleName}" />
         <StackPanel Classes="parsimonyStack" IsVisible="{Binding IsListed}">
           <StackPanel Orientation="Horizontal" Classes="parsimonyTabs">
             <Button Classes="parsimonyTab" Classes.selected="{Binding ShowingActive}" Content="{Binding ActiveTabLabel}"

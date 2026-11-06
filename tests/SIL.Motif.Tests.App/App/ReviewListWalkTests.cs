@@ -509,6 +509,7 @@ public sealed class ReviewListWalkTests
         Assert.Equal(MotifAppStrings.TryIt, blocker.ActionText);
         Assert.Equal("Try this Proposal", blocker.ActionAccessibleName);
         Assert.Contains(page.ApplyChecks, check => check is { Text: "Not tried yet", Passed: false });
+        Assert.DoesNotContain(TrialStandingWords.NotTried.Sentence, page.ApplyDetailsReason ?? string.Empty);
     }
 
     [Fact]

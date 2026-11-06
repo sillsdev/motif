@@ -17,9 +17,9 @@ public sealed partial class WorkspaceLayoutHost : UserControl
 {
     /// <summary>
     /// The share of the window height the Inspector footer may take, which beats the footer's token cap below
-    /// about 1044 DIP, so a selected change's actions stay in the body.
+    /// about 933 DIP, leaving room for the Inspector body.
     /// </summary>
-    internal const double InspectorFooterWindowShare = 0.23;
+    internal const double InspectorFooterWindowShare = 0.30;
 
     /// <summary>A bubbling request from a page to show its details in the Inspector.</summary>
     public static readonly RoutedEvent<RoutedEventArgs> PageInspectorRequestedEvent =
@@ -113,16 +113,19 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         // Whole DIPs, so layout rounding cannot overshoot.
         var bandBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
             : Math.Max(0, Math.Floor((availableSize.Height - pageMinHeight - fixedBands) / 2));
-        var footerBudget = Math.Min(footerCap - pageActionsHeight, bandBudget);
+        var windowShare = Math.Floor(availableSize.Height * InspectorFooterWindowShare);
+        var footerBudget = Math.Min(Math.Min(footerCap, windowShare), bandBudget);
         SetValue(BandBudgetProperty, Math.Min(footerCap, bandBudget));
         // Beside the page the Inspector column keeps its own body; the page's minimum height does not bind it.
         var inspectorBody = (double)this.FindResource("Component.Shell.InspectorBodyMinHeight")!;
-        // Below about 1044 high the footer is capped at a share of the window, so the body keeps room.
-        var windowShare = Math.Floor(availableSize.Height * InspectorFooterWindowShare);
-        var inspectorBudget = double.IsInfinity(availableSize.Height) ? double.PositiveInfinity
+        // The details budget leaves the pinned actions and the Inspector body their own space.
+        var inspectorActions = Part<PageContentSlot>("InspectorRowHost");
+        var inspectorActionsHeight = inspectorActions.Content is Control inspectorRow
+            ? ActionsHeight(inspectorActions, inspectorRow) : 0;
+        var inspectorBudget = double.IsInfinity(availableSize.Height) ? footerCap
             : Math.Max(0, Math.Min(Math.Min(footerCap, windowShare),
-                availableSize.Height - paneHeader - inspectorBody));
-        FitFooter("InspectorFooterViewport", "InspectorRowHost", inspectorBudget);
+                availableSize.Height - paneHeader - inspectorBody - inspectorActionsHeight));
+        FitFooter("InspectorFooterViewport", "InspectorRowHost", inspectorBudget, rowCounted: true);
         FitFooter("PageActionFooterViewport", "PageActionRowHost", footerBudget, rowCounted: true);
         return base.MeasureOverride(availableSize);
     }
