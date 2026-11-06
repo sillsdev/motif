@@ -792,7 +792,7 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
     public bool HasItems => Items.Count > 0;
 
     /// <summary>How many changes wait, as the Texts page's strip says it.</summary>
-    public string CountText => PluralText.Format(MotifAppStrings.StatusChangesPattern, Items.Count);
+    public string CountText => PluralText.Format(MotifAppStrings.TextsWordChangesPattern, Items.Count);
 
     private void Raise()
     {

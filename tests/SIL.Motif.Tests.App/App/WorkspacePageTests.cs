@@ -267,12 +267,13 @@ public sealed class WorkspacePageTests
 
         Assert.Equal(2, workspace.Context.Changes.Items.Count);
         Assert.Equal("2", review.Badge);
-        Assert.Equal("2 changes not applied yet", workspace.Context.Changes.CountText);
+        Assert.Equal("2 word changes not applied yet", workspace.Context.Changes.CountText);
         Assert.Equal("2 changes not applied yet", review.ChangesTip);
 
         await workspace.Context.Changes.RemoveCommand.ExecuteAsync(workspace.Context.Changes.Items[0]);
 
         Assert.Equal("1", review.Badge);
+        Assert.Equal("1 word change not applied yet", workspace.Context.Changes.CountText);
         Assert.Equal("1 change not applied yet", review.ChangesTip);
         Assert.Equal("1 warning", review.WarningsTip);
     }

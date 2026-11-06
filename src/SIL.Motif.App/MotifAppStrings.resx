@@ -168,6 +168,10 @@
     <value>Open Warnings</value>
     <comment>Accessible name of the status bar warnings count button.</comment>
   </data>
+  <data name="MotifApp.TextsWordChangesPattern" xml:space="preserve">
+    <value>{0, plural, one {# word change not applied yet} other {# word changes not applied yet}}</value>
+    <comment>Plural pattern for staged word changes in Texts; # is the count.</comment>
+  </data>
   <data name="MotifApp.StatusChangesPattern" xml:space="preserve">
     <value>{0, plural, one {# change not applied yet} other {# changes not applied yet}}</value>
     <comment>Plural pattern: the status bar changes sentence; # is the count.</comment>
