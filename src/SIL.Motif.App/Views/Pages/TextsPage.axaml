@@ -72,11 +72,19 @@
     </Border>
 
     <Panel Grid.Row="1">
-      <Panel IsVisible="{Binding ShowMatrixContent}" Classes.waiting="{Binding Assess.IsActive}">
-        <views:LazyContent x:Name="CompareHost" />
-        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.NoResultsYetChooseTheWords}"
+      <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowMatrixContent}" Classes.waiting="{Binding Assess.IsActive}">
+        <Grid x:Name="MatrixListSelection" ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
+              IsVisible="{Binding TextsLists.HasListSelectionInMatrix}">
+          <views:CopyableTextBlock Classes="muted" Text="{Binding TextsLists.MatrixListSelection}" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="{x:Static app:MotifAppStrings.Clear}"
+                  Command="{Binding Assess.Compare.ClearSelectionCommand}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ClearChosenMatrixCellsAccessibleName}" />
+        </Grid>
+        <views:LazyContent Grid.Row="1" x:Name="CompareHost" />
+        <views:CopyableTextBlock Grid.Row="1" Classes="muted" Text="{x:Static app:MotifAppStrings.NoResultsYetChooseTheWords}"
             IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      </Panel>
+      </Grid>
       <ScrollViewer x:Name="AnalyzeTextsScroll" IsVisible="{Binding ShowAnalyzeTextsContent}"
                     HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
       <Grid x:Name="AnalyzeTextsHost" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}">

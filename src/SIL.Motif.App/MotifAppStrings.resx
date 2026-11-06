@@ -176,6 +176,10 @@
     <value>Edit "{0}" in FieldWorks</value>
     <comment>Accessible name and tooltip for the link to edit a morpheme; {0} is its form.</comment>
   </data>
+  <data name="MotifApp.MatrixListSelectionFormat" xml:space="preserve">
+    <value>Showing: {0} (chosen in Lists) ·</value>
+    <comment>Matrix selection summary; {0} is the list name, followed by a Clear action.</comment>
+  </data>
   <data name="MotifApp.StatusChangesPattern" xml:space="preserve">
     <value>{0, plural, one {# change not applied yet} other {# changes not applied yet}}</value>
     <comment>Plural pattern: the status bar changes sentence; # is the count.</comment>

@@ -184,7 +184,11 @@ public sealed partial class TextsListsViewModel : ObservableObject
                 SentenceFor(preset),
                 preset.Cells.Select(cell => new TextsListCell(cell.Row, cell.Column)).ToArray(), compare))
             .ToArray();
-        SelectListCommand = new RelayCommand<TextsListDefinitionViewModel>(SelectList);
+        SelectListCommand = new RelayCommand<TextsListDefinitionViewModel>(list =>
+        {
+            SelectList(list);
+            MarkSelectionFromLists();
+        });
         HandOffListCommand = new RelayCommand(HandOffList, CanHandOffList);
         HandOffCheckedWordsCommand = new RelayCommand(HandOffCheckedWords, CanHandOffCheckedWords);
         ParseAgainCommand = new AsyncRelayCommand(() => Compare.RerunCommand.ExecuteAsync(null), () => CanParseAgain);
@@ -212,6 +216,25 @@ public sealed partial class TextsListsViewModel : ObservableObject
     public IReadOnlyList<TextsListDefinitionViewModel> Lists { get; }
 
     public bool HasSelectedList => SelectedList is not null;
+
+    private bool _selectionFromLists;
+
+    /// <summary>Whether Matrix is showing a list selected in Lists.</summary>
+    public bool HasListSelectionInMatrix => _selectionFromLists && SelectedList is not null;
+
+    /// <summary>Names the list whose cells are shown in Matrix.</summary>
+    public string MatrixListSelection => SelectedList is { } list
+        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.MatrixListSelectionFormat, list.Name)
+        : string.Empty;
+
+    /// <summary>Records that the list visible in Lists supplies the shared Matrix selection.</summary>
+    public void MarkSelectionFromLists()
+    {
+        _selectionFromLists = SelectedList is not null;
+        OnPropertyChanged(nameof(HasListSelectionInMatrix));
+        OnPropertyChanged(nameof(MatrixListSelection));
+    }
+
 
     /// <summary>Whether a line says which words the list shows, because they are not simply today's.</summary>
     public bool ShowsListedLine => SelectedList is not null && (Compare.ListBasis != WordListBasis.Today || Compare.MovedFilterOn);
@@ -393,7 +416,11 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     private void OnChosenCellsChanged(object? sender, EventArgs e)
     {
+        var previousList = SelectedList;
         RefreshSelection();
+        _selectionFromLists = _selectionFromLists && ReferenceEquals(previousList, SelectedList) && SelectedList is not null;
+        OnPropertyChanged(nameof(HasListSelectionInMatrix));
+        OnPropertyChanged(nameof(MatrixListSelection));
         NotifyParseAgain();
         HandOffListCommand.NotifyCanExecuteChanged();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();

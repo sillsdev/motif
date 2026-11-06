@@ -85,6 +85,19 @@ public sealed class TextsListsViewModelTests
     }
 
     [Fact]
+    public void MatrixSummaryFollowsAListChoiceAndClearsWithTheSharedSelection()
+    {
+        var (compare, lists) = Loaded();
+        Assert.False(lists.HasListSelectionInMatrix);
+        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Lost"));
+        Assert.True(lists.HasListSelectionInMatrix);
+        Assert.Equal("Showing: Lost (chosen in Lists) ·", lists.MatrixListSelection);
+        compare.ClearSelectionCommand.Execute(null);
+        Assert.False(lists.HasListSelectionInMatrix);
+        Assert.DoesNotContain(compare.Cells, cell => cell.IsSelected);
+    }
+
+    [Fact]
     public void EachNamedListSelectsOnlyItsDefinedMatrixCells()
     {
         var (compare, lists) = Loaded();

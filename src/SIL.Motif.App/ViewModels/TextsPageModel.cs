@@ -272,7 +272,11 @@ public sealed partial class TextsPageModel : PageModel
         OnPropertyChanged(nameof(ShowsTabContent));
         OnPropertyChanged(nameof(ShowListsContent));
         ShowProposalMoves();
-        if (value == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
+        if (value == TextsTab.Lists)
+        {
+            TextsLists.SelectFirstIfNeeded();
+            TextsLists.MarkSelectionFromLists();
+        }
     }
 
     private TextsTab _tracedTab;

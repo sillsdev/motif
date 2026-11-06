@@ -14,6 +14,48 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TextsHeaderResponsiveTests
 {
+    [Fact]
+    public void MatrixExplainsAndClearsTheListSelectionAtNarrowZoom()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            try
+            {
+                SettingsTestAccess.Model(window).ZoomPercent = 150;
+                window.Width = 640;
+                window.Height = 600;
+                workspace.CurrentPage = WorkspacePage.Texts;
+                var page = workspace.PageModel<TextsPageModel>();
+                page.Tab = TextsTab.Lists;
+                var list = page.TextsLists.Lists.Single(item => item.Name == "Lost");
+                page.TextsLists.SelectListCommand.Execute(list);
+                page.Tab = TextsTab.Matrix;
+                PageScreenshots.Settle(window);
+                Assert.True(page.TextsLists.HasListSelectionInMatrix,
+                    $"list={page.TextsLists.SelectedList?.Name}; tab={page.Tab}; matrix={page.ShowMatrixContent}");
+                var summary = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.Text == "Showing: Lost (chosen in Lists) ·");
+                Assert.True(summary.IsEffectivelyVisible, $"matrix={page.ShowMatrixContent}; bounds={summary.Bounds}");
+                var selectionLine = summary.FindAncestorOfType<Grid>()!;
+                var clear = Assert.Single(selectionLine.GetVisualDescendants().OfType<Button>(), button =>
+                    button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "Clear the chosen matrix cells");
+                AssertInside(window, summary);
+                AssertInside(window, clear);
+                Assert.True(summary.Bounds.Height > 0 && summary.Bounds.Width > 0);
+                HeadlessClick.Click(window, clear, "Clear the chosen matrix cells");
+                PageScreenshots.Settle(window);
+                Assert.DoesNotContain(page.Assess.Compare.Cells, cell => cell.IsSelected);
+                Assert.False(summary.IsEffectivelyVisible);
+            }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     [Theory]
     [InlineData(640, 600, 100)]
     [InlineData(640, 600, 150)]
