@@ -9481,8 +9481,4 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.TimingRuleMissing" xml:space="preserve"><value>Missing</value></data>
   <data name="MotifApp.TimingRuleChanges" xml:space="preserve"><value>Rule work change (Trial Baseline → Proposal)</value></data>
   <data name="MotifApp.TimingRuleUnavailable" xml:space="preserve"><value>Rule work comparison is unavailable for the retained Trial and selected words.</value></data>
-  <data name="MotifApp.RefusalTrialReviewBaselineChanged" xml:space="preserve"><value>The Baseline changed while the Trial was being prepared. Capture it again and retry.</value></data>
-  <data name="MotifApp.RefusalTrialReviewInputUnavailable" xml:space="preserve"><value>The Trial could not retain its review inputs. Check the selected evidence and try again.</value></data>
-  <data name="MotifApp.RefusalTrialTraceUnavailable" xml:space="preserve"><value>The trace inputs for this Trial are unavailable. Run a new Trial to capture them.</value></data>
-  <data name="MotifApp.RefusalAssessUnavailable" xml:space="preserve"><value>The parser could not complete this run. Check the parser and try again.</value></data>
 </root>
