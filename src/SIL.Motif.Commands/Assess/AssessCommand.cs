@@ -336,8 +336,22 @@ public static class AssessCommand
                 parsedWords = scope.ParsedWords;
                 if (reuseParserPath is not null && BeforeAssessmentReuse.Find(database, assessments, baseline.Token,
                         composition.Selection, scope, baselineReader.Cache, reuseParserPath, cancellationToken) is { } reused)
+                {
+                    try
+                    {
+                        var pruned = StorePruneCommand.RunHeld(database, project, admission ?? parseLease!,
+                            standaloneAssessmentCount, managedRoot, cancellationToken, protectedAssessments: [reused]);
+                        if (!pruned.Succeeded)
+                            ProjectDiagnosticLog.Append(request.ProjectPath, "Assess reused evidence but could not prune old evidence.",
+                                new InvalidOperationException(pruned.Refusal!.Message));
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        ProjectDiagnosticLog.Append(request.ProjectPath, "Assess reused evidence but could not prune old evidence.", exception);
+                    }
                     return CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(
                         baseline, composition.Projection, [reused], string.Empty));
+                }
                 var timeLimit = limits.PerWordLimit;
                 var latestWordProgress = new TrialWordProgress(0, parsedWords.Count, null);
                 onProgress?.Invoke(new AssessmentProgress(

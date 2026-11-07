@@ -37,6 +37,7 @@ public sealed class TrialsTests : IDisposable
 
     [Theory]
     [InlineData("matching", true)]
+    [InlineData("token-format", true)]
     [InlineData("assessor", false)]
     [InlineData("token", false)]
     [InlineData("executable", false)]
@@ -641,7 +642,10 @@ public sealed class TrialsTests : IDisposable
 
         public void RecordWorkAssessment(SavedProposal proposal, string id, bool before, string mismatch)
         {
-            var token = before && mismatch == "token" ? _tokenJson + " " : _tokenJson;
+            var token = before && mismatch == "token"
+                ? JsonSerializer.Serialize(new BaselineToken(Token.ProjectIdentity, "sha256:" + new string('2', 64),
+                    Token.ProjectionVersion, Token.CapturedUtc, Token.BundleDigest), MotifJson.CreateOptions())
+                : before && mismatch == "token-format" ? _tokenJson + " " : _tokenJson;
             var assessor = before && mismatch == "assessor" ? "other" : "pangloss";
             var executable = mismatch == "missing-executable" ? "" : before && mismatch == "executable" ? "other" : "parser";
             var parserWorkLimit = before && mismatch == "parser-work-limit" ? new ParserWorkLimit(100) : new ParserWorkLimit(200);

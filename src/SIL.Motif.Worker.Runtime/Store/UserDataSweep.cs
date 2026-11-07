@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.PanGloss;
 
 namespace SIL.Motif.Worker.Store;
 
@@ -187,6 +188,32 @@ public sealed class UserDataSweep
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
+                using var sourceLease = entry.Family == "assessment-sources"
+                    ? StatsCacheLock.CreateSharedSourceLock(Path.GetDirectoryName(entry.Path)!, exclusive: true) : null;
+                if (sourceLease is not null)
+                {
+                    if (!sourceLease.TryAcquire()) return;
+                    var currentTokens = new HashSet<string>(StringComparer.Ordinal);
+                    var currentStores = new HashSet<string>(liveStores.Keys, PathComparer);
+                    foreach (var project in _projects.List())
+                    {
+                        var store = Path.ChangeExtension(project.FullFwDataPath, ".motif.db");
+                        if (File.Exists(store)) currentStores.Add(Path.GetFullPath(store));
+                        else if (!Directory.Exists(Path.GetDirectoryName(project.FullFwDataPath))) return;
+                    }
+                    var runRoot = Path.Combine(_root, "assessment-runs");
+                    if (Directory.Exists(runRoot))
+                        foreach (var owner in Directory.EnumerateFiles(runRoot, "*.owner"))
+                        {
+                            if ((File.GetAttributes(owner) & FileAttributes.ReparsePoint) != 0) return;
+                            var store = File.ReadAllText(owner).Trim();
+                            if (!TryFullPath(store, out var fullStore) || !File.Exists(fullStore)) return;
+                            currentStores.Add(fullStore);
+                        }
+                    foreach (var store in currentStores)
+                        if (!ReadTokens(store, currentTokens)) return;
+                    if (currentTokens.Contains(entry.Key)) return;
+                }
                 Delete(entry.Path);
                 foreach (var sidecar in new[] { entry.Path + ".owner", entry.Path + ".prune" })
                     if (File.Exists(sidecar)) File.Delete(sidecar);

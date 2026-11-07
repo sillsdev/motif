@@ -78,6 +78,7 @@ public sealed class DeterministicAssessCommandTests : IDisposable
 
         Assert.True(first.Succeeded, first.Refusal?.Message);
         Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.Empty(Directory.GetDirectories(Path.Combine(root, "assessment-sources")));
         var parseId = first.Value!.Measurements.Single(item => item.Kind == "ParseTime").AssessmentId;
         Assert.Equal([parseId], second.Value!.AssessmentIds);
         var fresh = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits);

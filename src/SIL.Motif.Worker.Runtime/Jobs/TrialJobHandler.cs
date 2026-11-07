@@ -273,7 +273,8 @@ internal sealed class TrialJobHandler
                     if (_grammarHealthWithSnapshot is null || path != candidate.GrammarPath || assessor is not PanGlossAssessor)
                         return await _grammarHealth(path, name, wait, token).ConfigureAwait(false);
                     var response = await _grammarHealthWithSnapshot(path, name, snapshotPath, wait, token).ConfigureAwait(false);
-                    if (response is not null) importedSnapshot = PanGlossImportedSnapshot.Capture(path, snapshotPath);
+                    if (response is not null) importedSnapshot = PanGlossImportedSnapshot.Capture(path, snapshotPath)
+                        with { TransferOwnership = !preserveScratch };
                     return response;
                 }
                 var (grammarCheck, dropped) = await DroppedGrammarCheck.CheckAsync(Check, claim.Database,
@@ -329,6 +330,14 @@ internal sealed class TrialJobHandler
                 catch (TrialPublicationOutcomeUnknownException exception)
                 {
                     preserveArtifacts = true;
+                    foreach (var lease in artifactLeases)
+                    {
+                        try { lease.Retain(); }
+                        catch (Exception retainException)
+                        {
+                            ReportTrialMaintenanceFailure(claim.JobId, "retain uncertain Assessment artifacts", retainException);
+                        }
+                    }
                     ReportTrialMaintenanceFailure(claim.JobId, "confirm publication", exception);
                     ReleaseSettledTrialParseLease(parseLease, claim.JobId);
                     return new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None,

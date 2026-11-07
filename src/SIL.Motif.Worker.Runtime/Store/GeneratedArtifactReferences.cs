@@ -412,7 +412,8 @@ internal static class GeneratedArtifactReferences
         string[] allowed = ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
             "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256", "PerWordTimeoutMs",
             "PerWordParserWorkLimit", "Threads", "CollectStatistics", "ExecutableVersion", "ExecutablePath", "AnalysesPath",
-            "AnalysesSha256", "StoppedWordRetry", "GrammarWarnings"];
+            "AnalysesSha256", "StoppedWordRetry", "GrammarWarnings", "GrammarExportFormat", "ApprovedExpectationsSha256",
+            "ImportedSnapshotPath", "ImportedSnapshotSha256"];
         string[] required = ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
             "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256", "PerWordTimeoutMs",
             "PerWordParserWorkLimit", "Threads", "CollectStatistics"];
@@ -452,6 +453,21 @@ internal static class GeneratedArtifactReferences
         if (hasAnalysesHash && (analysesHashes[0].ValueKind != JsonValueKind.String ||
             !IsCanonicalSha256(analysesHashes[0].GetString()))) valid = false;
         if (hasAnalysesPath != hasAnalysesHash) valid = false;
+        var snapshotPaths = Properties(root, "ImportedSnapshotPath").ToArray();
+        var snapshotHashes = Properties(root, "ImportedSnapshotSha256").ToArray();
+        if (snapshotPaths.Length > 1 || snapshotHashes.Length > 1) valid = false;
+        var hasSnapshotPath = snapshotPaths.Length == 1 && snapshotPaths[0].ValueKind != JsonValueKind.Null;
+        var hasSnapshotHash = snapshotHashes.Length == 1 && snapshotHashes[0].ValueKind != JsonValueKind.Null;
+        if (hasSnapshotPath)
+        {
+            if (snapshotPaths[0].ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(snapshotPaths[0].GetString())) valid = false;
+            else AddPath(builder, ArtifactReferenceFamily.InvocationArtifacts, storeIdentity, recordId,
+                "invocation-snapshot-path", snapshotPaths[0].GetString()!);
+        }
+        if (hasSnapshotHash && (snapshotHashes[0].ValueKind != JsonValueKind.String ||
+            !IsCanonicalSha256(snapshotHashes[0].GetString()))) valid = false;
+        if (hasSnapshotPath != hasSnapshotHash) valid = false;
         var retries = Properties(root, "StoppedWordRetry").ToArray();
         if (retries.Length > 1) valid = false;
         if (retries.Length == 1 && retries[0].ValueKind != JsonValueKind.Null)

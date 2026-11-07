@@ -161,6 +161,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         string? sourceDigest = null;
         string? executableDigest = null;
         string? wordsDigest = null;
+        WorkerMutexOwner? sharedLease = null;
         if (request is PanGlossRequest.Batch { ArtifactDirectory: { } artifactDirectory })
             scratch = Path.GetFullPath(artifactDirectory);
         if (request is PanGlossRequest.Facts { ArtifactDirectory: { } factsArtifactDirectory })
@@ -176,14 +177,32 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 if (retained && request is PanGlossRequest.Batch batch)
                 {
                     var stagedSource = Path.Combine(scratch, "source" + Path.GetExtension(batch.ProjectFilePath));
-                    File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false);
+                    if (batch.SharedArtifactDirectory is { } sharedDirectory)
+                    {
+                        Directory.CreateDirectory(sharedDirectory);
+                        sharedLease = StatsCacheLock.CreateSharedSourceLock(sharedDirectory, exclusive: false);
+                        while (!sharedLease.TryAcquire())
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            cancellationToken.WaitHandle.WaitOne(StatsCacheLock.RetryInterval);
+                        }
+                        try { stagedSource = SharedAssessmentArtifacts.Publish(sharedDirectory, batch.ProjectFilePath); }
+                        catch (InvalidDataException) { File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false); }
+                    }
+                    else File.Copy(batch.ProjectFilePath, stagedSource, overwrite: false);
                     var importedSnapshot = batch.ImportedSnapshot;
                     if (importedSnapshot is not null)
                     {
                         if (!importedSnapshot.Matches(stagedSource))
                             return new PanGlossOutcome.Incomplete("The imported snapshot's project changed before staging.", string.Empty);
                         var stagedSnapshot = Path.Combine(scratch, "grammar-snapshot.json");
-                        File.Copy(importedSnapshot.Path, stagedSnapshot, overwrite: false);
+                        if (batch.SharedArtifactDirectory is { } snapshotDirectory)
+                        {
+                            try { stagedSnapshot = SharedAssessmentArtifacts.Publish(snapshotDirectory, importedSnapshot.Path,
+                                importedSnapshot.TransferOwnership); }
+                            catch (InvalidDataException) { File.Copy(importedSnapshot.Path, stagedSnapshot, overwrite: false); }
+                        }
+                        else File.Copy(importedSnapshot.Path, stagedSnapshot, overwrite: false);
                         importedSnapshot = importedSnapshot with { Path = stagedSnapshot };
                         if (!importedSnapshot.Matches(stagedSource))
                             return new PanGlossOutcome.Incomplete("The imported snapshot changed while staging.", string.Empty);
@@ -353,14 +372,18 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     GrammarExportFormat = GrammarExportFormats.ForPath(capturedBatch.ProjectFilePath),
                     AnalysesPath = analysesPath,
                     AnalysesSha256 = analysesDigest,
+                    ImportedSnapshotPath = capturedBatch.ImportedSnapshot?.Path,
+                    ImportedSnapshotSha256 = capturedBatch.ImportedSnapshot?.SnapshotSha256,
                     ExecutableVersion = ParserExecutableIdentity.ReadVersion(executable),
                     ExecutablePath = Path.GetFullPath(executable),
                 };
                 published = true;
+                var batchLease = new Assess.AssessmentArtifactLease(scratch, sharedLease);
+                sharedLease = null;
                 return completed with
                 {
                     BatchEvidence = evidence,
-                    ArtifactLease = new Assess.AssessmentArtifactLease(scratch)
+                    ArtifactLease = batchLease
                 };
                 }
                 finally
@@ -377,6 +400,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
         }
         finally
         {
+            sharedLease?.Dispose();
             // Best effort: a leaked scratch directory must not turn a completed run into a failure.
             try { if (created && !published) Directory.Delete(scratch, recursive: true); }
             catch (IOException) { }

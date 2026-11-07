@@ -1546,6 +1546,13 @@ internal static class AgentTools
         }
         var outcome = TrialResults.Assess(context, named.Value!, cancellation);
         if (!outcome.Succeeded) return ToolOutcome.Refused(outcome.Refusal!);
+        if (outcome.Value!.InvocationId.Length == 0 && outcome.Value.AssessmentIds.FirstOrDefault() is { } reused)
+            return ToolOutcome.From(ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, _) =>
+            {
+                var record = new AssessmentRepository(database).Get(reused);
+                return CommandOutcome<JsonObject>.Success(
+                    AssessSummary.PageStored(reused, record.Words ?? [], offset, limit, detailed));
+            }), AssessNext(reused, offset, limit));
         var page = AssessSummary.Page(outcome.Value!, offset, limit, detailed);
         return ToolOutcome.Ok(page, AssessNext(page["assessment"]?.GetValue<string>(), offset, limit));
     }

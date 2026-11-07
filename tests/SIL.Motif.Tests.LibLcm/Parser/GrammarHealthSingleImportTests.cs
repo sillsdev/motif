@@ -52,21 +52,27 @@ public sealed class GrammarHealthSingleImportTests(PristineProjectFixture pristi
             Assert.Equal(separate.Facts!.SourceSha256, combined.Facts!.SourceSha256);
             Assert.Equal(separate.Facts.ModelFingerprint, combined.Facts.ModelFingerprint);
             Assert.Equal(ReadEveryFact(separate.Facts.Path), ReadEveryFact(combined.Facts.Path));
-            var snapshot = PanGlossImportedSnapshot.Capture(cache.ProjectId.Path, newSnapshot);
+            var snapshotBytes = File.ReadAllBytes(newSnapshot);
+            var snapshot = PanGlossImportedSnapshot.Capture(cache.ProjectId.Path, newSnapshot) with { TransferOwnership = true };
             var words = new[] { SeededProject.FirstForm, "mofita" };
             var oldBatch = Assert.IsType<PanGlossOutcome.Completed>(await invoker.RunAsync(
                 new PanGlossRequest.Batch(cache.ProjectId.Path, words, null) { CollectAnalyses = true },
                 "separate-batch", CancellationToken.None));
             var newBatch = Assert.IsType<PanGlossOutcome.Completed>(await invoker.RunAsync(
                 new PanGlossRequest.Batch(cache.ProjectId.Path, words, null)
-                { CollectAnalyses = true, ImportedSnapshot = snapshot, ArtifactDirectory = Path.Combine(root, "assessment") },
+                {
+                    CollectAnalyses = true, ImportedSnapshot = snapshot,
+                    ArtifactDirectory = Path.Combine(root, "assessment"),
+                    SharedArtifactDirectory = Path.Combine(root, "assessment-sources"),
+                },
                 "combined-batch", CancellationToken.None));
             using var batchLease = newBatch.ArtifactLease;
             var evidence = Assert.IsType<BatchInvocationEvidence>(newBatch.BatchEvidence);
             Assert.Equal(BatchInvocationEvidence.DigestFile(cache.ProjectId.Path), evidence.SourceBytesSha256);
             Assert.Equal(File.ReadAllBytes(cache.ProjectId.Path), File.ReadAllBytes(evidence.SourcePath));
-            Assert.Equal(File.ReadAllBytes(newSnapshot),
-                File.ReadAllBytes(Path.Combine(Path.GetDirectoryName(evidence.SourcePath)!, "grammar-snapshot.json")));
+            Assert.False(File.Exists(newSnapshot));
+            Assert.Equal(snapshotBytes, File.ReadAllBytes(evidence.ImportedSnapshotPath!));
+            Assert.Equal(snapshot.SnapshotSha256, evidence.ImportedSnapshotSha256);
             Assert.Equal(Results(oldBatch), Results(newBatch));
             Assert.Equal(Morphologies(oldBatch), Morphologies(newBatch));
             Assert.Contains(Results(newBatch), row => row.Contains(SeededProject.FirstForm, StringComparison.Ordinal));

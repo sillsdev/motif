@@ -3,6 +3,7 @@ using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -25,6 +26,66 @@ public sealed class UserDataSweepTests : IDisposable
     }
 
     private string Data => Path.Combine(_root, "data");
+
+    [Theory]
+    [InlineData(".fwdata")]
+    [InlineData(".json")]
+    public void ALeasedSourceSurvivesBudgetSweepUntilItsLeaseIsReleased(string extension)
+    {
+        var directory = Path.Combine(Data, "assessment-sources");
+        Directory.CreateDirectory(directory);
+        var source = Path.Combine(directory, new string('b', 64) + extension);
+        File.WriteAllText(source, "leased evidence");
+        File.SetLastWriteTimeUtc(source, Now.UtcDateTime.AddDays(-30));
+
+        using (var lease = StatsCacheLock.AcquireForFile(source))
+        {
+            Sweep(new UserDataSweepOptions { BudgetBytes = 1 });
+            Assert.True(File.Exists(source));
+        }
+
+        Sweep(new UserDataSweepOptions { BudgetBytes = 1 });
+        Assert.False(File.Exists(source));
+    }
+
+    [Fact]
+    public void AReferencedSharedSnapshotSurvivesAndAnOrphanIsCollected()
+    {
+        var keptDigest = new string('a', 64);
+        var goneDigest = new string('b', 64);
+        AddLiveProject("snapshot", "run-snapshot-0001", baselineDigest: keptDigest);
+        var directory = Path.Combine(Data, "assessment-sources");
+        Directory.CreateDirectory(directory);
+        var kept = Path.Combine(directory, keptDigest + ".json");
+        var gone = Path.Combine(directory, goneDigest + ".json");
+        File.WriteAllText(kept, "retained snapshot");
+        File.WriteAllText(gone, "unreferenced snapshot");
+        File.SetLastWriteTimeUtc(kept, Now.UtcDateTime.AddDays(-30));
+        File.SetLastWriteTimeUtc(gone, Now.UtcDateTime.AddDays(-30));
+
+        var result = Sweep(new UserDataSweepOptions { BudgetBytes = 1 });
+
+        Assert.True(File.Exists(kept));
+        Assert.False(File.Exists(gone));
+        Assert.Equal(1, result.SourcesRemoved);
+    }
+
+    [Fact]
+    public async Task SharedSourcesCanBeReadConcurrentlyWhileSweepWaits()
+    {
+        var directory = Path.Combine(Data, "assessment-sources");
+        Directory.CreateDirectory(directory);
+        var source = Path.Combine(directory, new string('c', 64) + ".fwdata");
+        File.WriteAllText(source, "shared evidence");
+        File.SetLastWriteTimeUtc(source, Now.UtcDateTime.AddDays(-30));
+        using var first = StatsCacheLock.AcquireForFile(source);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        using var second = await Task.Run(() => StatsCacheLock.AcquireForFile(source, timeout.Token));
+        Sweep(new UserDataSweepOptions { BudgetBytes = 1 });
+
+        Assert.True(File.Exists(source));
+    }
 
     [Fact]
     public void AnOrphanOlderThanTheMinimumAgeGoesAndAReferencedRunStays()

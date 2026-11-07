@@ -1438,6 +1438,86 @@ public sealed class PanGlossInvokerTests : IDisposable
     }
 
     [Fact]
+    public async Task CapturedBatchesShareVerifiedSourceBytes()
+    {
+        var source = Project("shared-captured");
+        File.WriteAllText(source, "shared source bytes");
+        var snapshotPath = Path.Combine(_root, "shared-snapshot.json");
+        File.WriteAllText(snapshotPath, "shared snapshot bytes");
+        var snapshot = PanGlossImportedSnapshot.Capture(source, snapshotPath);
+        var shared = Path.Combine(_root, "assessment-sources");
+        using var invoker = Invoker();
+        async Task<PanGlossOutcome.Completed> Run(string name) => Assert.IsType<PanGlossOutcome.Completed>(
+            await invoker.RunAsync(new PanGlossRequest.Batch(source, ["motifa"], null,
+                ArtifactDirectory: Path.Combine(_root, name))
+                { SharedArtifactDirectory = shared, ImportedSnapshot = snapshot },
+                "test:shared", CancellationToken.None));
+
+        var first = await Run("shared-first");
+        using var firstLease = first.ArtifactLease;
+        var second = await Run("shared-second");
+        using var secondLease = second.ArtifactLease;
+        Assert.Equal(first.BatchEvidence!.SourcePath, second.BatchEvidence!.SourcePath);
+        Assert.Equal(BatchInvocationEvidence.DigestFile(source), first.BatchEvidence.SourceBytesSha256);
+        Assert.Single(Directory.GetFiles(shared, "*.fwdata"));
+        Assert.Equal(first.BatchEvidence.ImportedSnapshotPath, second.BatchEvidence.ImportedSnapshotPath);
+        Assert.Equal(snapshot.SnapshotSha256, first.BatchEvidence.ImportedSnapshotSha256);
+        Assert.Equal(Path.Combine(shared, snapshot.SnapshotSha256["sha256:".Length..] + ".json"),
+            first.BatchEvidence.ImportedSnapshotPath);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChangedSharedArtifactIsNeverReused(bool corruptSnapshot)
+    {
+        var source = Project("shared-corrupt");
+        File.WriteAllText(source, "source bytes");
+        var snapshotPath = Path.Combine(_root, "snapshot-corrupt.json");
+        File.WriteAllText(snapshotPath, "snapshot bytes");
+        var snapshot = PanGlossImportedSnapshot.Capture(source, snapshotPath);
+        var shared = Path.Combine(_root, "assessment-sources");
+        using var invoker = Invoker();
+        PanGlossRequest.Batch Request(string name) => new(source, ["motifa"], null,
+            ArtifactDirectory: Path.Combine(_root, name))
+            { SharedArtifactDirectory = shared, ImportedSnapshot = snapshot };
+        var first = Assert.IsType<PanGlossOutcome.Completed>(
+            await invoker.RunAsync(Request("corrupt-first"), "test:shared", CancellationToken.None));
+        using var lease = first.ArtifactLease;
+        var path = corruptSnapshot ? first.BatchEvidence!.ImportedSnapshotPath! : first.BatchEvidence!.SourcePath;
+        File.AppendAllText(path, "tampered");
+
+        var second = Assert.IsType<PanGlossOutcome.Completed>(
+            await invoker.RunAsync(Request("corrupt-second"), "test:shared", CancellationToken.None));
+        using var secondLease = second.ArtifactLease;
+
+        var retained = corruptSnapshot ? second.BatchEvidence!.ImportedSnapshotPath! : second.BatchEvidence!.SourcePath;
+        Assert.NotEqual(path, retained);
+        Assert.Equal(corruptSnapshot ? snapshot.SnapshotSha256 : BatchInvocationEvidence.DigestFile(source),
+            BatchInvocationEvidence.DigestFile(retained));
+    }
+
+    [Fact]
+    public async Task ATransferredSnapshotIsPublishedWithoutKeepingTheOriginalCopy()
+    {
+        var source = Project("shared-transfer");
+        File.WriteAllText(source, "source bytes");
+        var snapshotPath = Path.Combine(_root, "snapshot-transfer.json");
+        File.WriteAllText(snapshotPath, "snapshot bytes");
+        var snapshot = PanGlossImportedSnapshot.Capture(source, snapshotPath) with { TransferOwnership = true };
+        using var invoker = Invoker();
+
+        var completed = Assert.IsType<PanGlossOutcome.Completed>(await invoker.RunAsync(
+            new PanGlossRequest.Batch(source, ["motifa"], null, ArtifactDirectory: Path.Combine(_root, "transfer-run"))
+            { SharedArtifactDirectory = Path.Combine(_root, "assessment-sources"), ImportedSnapshot = snapshot },
+            "test:shared", CancellationToken.None));
+        using var lease = completed.ArtifactLease;
+
+        Assert.False(File.Exists(snapshotPath));
+        Assert.Equal(snapshot.SnapshotSha256, BatchInvocationEvidence.DigestFile(completed.BatchEvidence!.ImportedSnapshotPath!));
+    }
+
+    [Fact]
     public async Task CapturedBatchWritesTheRequestedStatisticsManifestBesideItsSnapshot()
     {
         var source = Path.ChangeExtension(Project("manifest"), ".json");

@@ -39,6 +39,12 @@ public sealed record BatchInvocationEvidence(
     public string? AnalysesPath { get; init; }
     public string? AnalysesSha256 { get; init; }
 
+    /// <summary>The exact imported snapshot consumed by the batch, when one was retained.</summary>
+    public string? ImportedSnapshotPath { get; init; }
+
+    /// <summary>The SHA-256 of the retained imported snapshot.</summary>
+    public string? ImportedSnapshotSha256 { get; init; }
+
     /// <summary>The staging contract for the grammar source, or null for older evidence.</summary>
     public GrammarExportFormat? GrammarExportFormat { get; init; }
 

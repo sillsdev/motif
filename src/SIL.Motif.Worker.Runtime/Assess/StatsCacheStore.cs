@@ -21,6 +21,17 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
     }
 
     /// <inheritdoc />
+    public string SharedArtifactDirectory
+    {
+        get
+        {
+            var path = Path.Combine(_ownership.WorkerRoot, "assessment-sources");
+            RequireOwned(path);
+            return path;
+        }
+    }
+
+    /// <inheritdoc />
     public string DirectoryFor(string invocationId)
     {
         if (string.IsNullOrWhiteSpace(invocationId) ||
@@ -225,6 +236,7 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
                 UNION ALL SELECT json_extract(EvidenceJson, '$.TsvPath') FROM AssessmentInvocations
                 UNION ALL SELECT json_extract(EvidenceJson, '$.StandardErrorPath') FROM AssessmentInvocations
                 UNION ALL SELECT json_extract(EvidenceJson, '$.AnalysesPath') FROM AssessmentInvocations
+                UNION ALL SELECT json_extract(EvidenceJson, '$.ImportedSnapshotPath') FROM AssessmentInvocations
                 UNION ALL SELECT BaselineFwDataPath FROM RetainedInvocations;
                 """;
             using var reader = command.ExecuteReader();

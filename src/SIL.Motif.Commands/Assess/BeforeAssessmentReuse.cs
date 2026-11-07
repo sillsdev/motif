@@ -71,6 +71,9 @@ internal static class BeforeAssessmentReuse
                     !Matches(invocation.TsvPath, invocation.TsvSha256) ||
                     !Matches(invocation.StandardErrorPath, invocation.StandardErrorSha256) ||
                     !Matches(invocation.AnalysesPath, invocation.AnalysesSha256) ||
+                    ((invocation.ImportedSnapshotPath is null) != (invocation.ImportedSnapshotSha256 is null)) ||
+                    (invocation.ImportedSnapshotPath is not null &&
+                        !Matches(invocation.ImportedSnapshotPath, invocation.ImportedSnapshotSha256)) ||
                     (record.CachePath is not null && !Matches(record.CachePath, record.CacheDigest))) continue;
                 var detail = assessments.GetSelected(record.AssessmentId);
                 if (detail.Words is null || detail.Words.Count != scope.ParsedWords.Count ||

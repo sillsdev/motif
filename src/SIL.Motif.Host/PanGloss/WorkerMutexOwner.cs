@@ -212,9 +212,8 @@ internal sealed class WindowsFileLock : IDisposable
 
         try
         {
-            _stream = new FileStream(_path, FileMode.OpenOrCreate,
-                _access == WorkerLockAccess.Shared ? FileAccess.Read : FileAccess.ReadWrite,
-                _access == WorkerLockAccess.Shared ? FileShare.Read : FileShare.None);
+            _stream = new FileStream(_path, FileMode.OpenOrCreate, FileAccess.ReadWrite,
+                _access == WorkerLockAccess.Shared ? FileShare.ReadWrite : FileShare.None);
             return true;
         }
         catch (IOException exception) when (IsSharingViolation(exception))

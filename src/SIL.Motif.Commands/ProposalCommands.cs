@@ -1770,7 +1770,9 @@ public static partial class ProposalCommands
         var baseline = JsonSerializer.Deserialize<BaselineToken>(candidate.BaselineToken, MotifJson.CreateOptions());
         if (baseline is null || baseline.ProjectionVersion != BaselineSemanticDigest.ProjectionVersion) return;
         var digest = BaselineSemanticDigest.Compute(current);
-        using var source = new FwDataProjectLoader().LoadScratchCache(invocation.SourcePath);
+        using var sourceLock = StatsCacheLock.AcquireForFile(invocation.SourcePath);
+        using var isolated = AssessmentSourceScratch.Create(invocation.SourcePath, invocation.SourceBytesSha256);
+        using var source = new FwDataProjectLoader().LoadScratchCache(isolated.Path);
         if (BaselineSemanticDigest.Compute(source) != digest ||
             BatchInvocationEvidence.DigestFile(invocation.SourcePath) != invocation.SourceBytesSha256) return;
         var before = assessments.ListByProposal(proposalId).LastOrDefault(record =>

@@ -3,11 +3,11 @@ using System.Text;
 
 namespace SIL.Motif.Host.PanGloss;
 
-/// <summary>Coordinates statistics-cache readers, writers and cleanup with one lease per invocation directory.</summary>
+/// <summary>Coordinates invocation-directory leases and shared Assessment source leases.</summary>
 /// <remarks>
 /// Two unrelated invocation directories never share a lease. The lease name is the full SHA-256 of the directory path,
 /// 24 characters of prefix plus 64 of hex, well inside the 259-character limit of a Windows mutex name and of a Unix
-/// file name. On Unix the lock file lives in the temporary folder and is deleted when the lease is released.
+/// file name. Invocation lock files are temporary. Shared source readers coexist until collection takes the exclusive lease.
 /// </remarks>
 public static class StatsCacheLock
 {
@@ -23,7 +23,8 @@ public static class StatsCacheLock
                 directory = current;
                 break;
             }
-        var owner = Create(directory.FullName);
+        var owner = string.Equals(directory.Name, "assessment-sources", StringComparison.OrdinalIgnoreCase)
+            ? CreateSharedSourceLock(directory.FullName, exclusive: false) : Create(directory.FullName);
         try
         {
             while (!owner.TryAcquire())
@@ -50,5 +51,15 @@ public static class StatsCacheLock
         if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) path = path.ToUpperInvariant();
         var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path)));
         return WorkerMutexOwner.ForTransientRoot("Global\\Motif.StatsCache." + digest);
+    }
+
+    /// <summary>Creates a shared source reader lease or the exclusive lease used by collection.</summary>
+    public static WorkerMutexOwner CreateSharedSourceLock(string directory, bool exclusive)
+    {
+        var path = Path.GetFullPath(directory);
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) path = path.ToUpperInvariant();
+        var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path)));
+        return new WorkerMutexOwner("Global\\Motif.AssessmentSources." + digest, true,
+            exclusive ? WorkerLockAccess.Exclusive : WorkerLockAccess.Shared);
     }
 }

@@ -92,6 +92,8 @@ public abstract record PanGlossRequest
         /// <summary>A snapshot produced from this run's project, bound to both files' exact bytes.</summary>
         public PanGlossImportedSnapshot? ImportedSnapshot { get; init; }
 
+        internal string? SharedArtifactDirectory { get; init; }
+
         /// <summary>Optional provenance manifest binding the statistics cache to its exact grammar input bytes.</summary>
         public string? StatsManifestPath { get; init; }
 

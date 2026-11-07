@@ -782,7 +782,8 @@ public static class ArtifactRetentionCommands
                     ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
                         "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256",
                         "PerWordTimeoutMs", "PerWordParserWorkLimit", "Threads", "CollectStatistics", "ExecutableVersion",
-                        "ExecutablePath", "AnalysesPath", "AnalysesSha256", "StoppedWordRetry", "GrammarWarnings"],
+                        "ExecutablePath", "AnalysesPath", "AnalysesSha256", "StoppedWordRetry", "GrammarWarnings",
+                        "GrammarExportFormat", "ApprovedExpectationsSha256", "ImportedSnapshotPath", "ImportedSnapshotSha256"],
                     ["InvocationId", "SourcePath", "SourceBytesSha256", "ExecutableBytesSha256", "WordsPath",
                         "WordsSha256", "TsvPath", "TsvSha256", "StandardErrorPath", "StandardErrorSha256",
                         "PerWordTimeoutMs", "PerWordParserWorkLimit", "Threads", "CollectStatistics"],
@@ -1453,7 +1454,9 @@ public static class ArtifactRetentionCommands
         IsDigest(evidence.SourceBytesSha256) && IsDigest(evidence.WordsSha256) &&
         IsDigest(evidence.TsvSha256) && IsDigest(evidence.StandardErrorSha256) &&
         (evidence.AnalysesPath is null && evidence.AnalysesSha256 is null ||
-         IsAbsolutePath(evidence.AnalysesPath) && IsDigest(evidence.AnalysesSha256));
+         IsAbsolutePath(evidence.AnalysesPath) && IsDigest(evidence.AnalysesSha256)) &&
+        (evidence.ImportedSnapshotPath is null && evidence.ImportedSnapshotSha256 is null ||
+         IsAbsolutePath(evidence.ImportedSnapshotPath) && IsDigest(evidence.ImportedSnapshotSha256));
 
     private static IEnumerable<string> EvidencePaths(BatchInvocationEvidence evidence)
     {
@@ -1462,6 +1465,7 @@ public static class ArtifactRetentionCommands
         yield return Path.GetFullPath(evidence.TsvPath);
         yield return Path.GetFullPath(evidence.StandardErrorPath);
         if (evidence.AnalysesPath is not null) yield return Path.GetFullPath(evidence.AnalysesPath);
+        if (evidence.ImportedSnapshotPath is not null) yield return Path.GetFullPath(evidence.ImportedSnapshotPath);
     }
 
     private static bool IsDigest(string? value) => value is { Length: 71 } &&

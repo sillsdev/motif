@@ -20,6 +20,9 @@ public interface IAssessorCachePathResolver
     /// May create its parent, but never creates the final directory: publication owns that creation.
     /// </summary>
     string DirectoryFor(string invocationId);
+
+    /// <summary>Directory for shared immutable inputs, or null to retain inputs with each invocation.</summary>
+    string? SharedArtifactDirectory => null;
 }
 
 /// <summary>Produces timing, statistics, and approved morphology comparisons from one batch invocation.</summary>
@@ -126,7 +129,8 @@ public sealed class PanGlossAssessor : IAssessor
         {
             var batch = new PanGlossRequest.Batch(
                 sources[0], requestedWords, wordsScope.PerWordLimit, cachePath, wordsScope.PerWordParserWorkLimit, directory)
-                { CollectAnalyses = true, OnProgress = onProgress, OnAdmissionWait = onAdmissionWait, ImportedSnapshot = importedSnapshot };
+                { CollectAnalyses = true, OnProgress = onProgress, OnAdmissionWait = onAdmissionWait,
+                    ImportedSnapshot = importedSnapshot, SharedArtifactDirectory = _paths.SharedArtifactDirectory };
             var outcome = await _invoker.RunAsync(batch,
                 "assess:batch", cancellationToken).ConfigureAwait(false);
             artifactLease = (outcome as PanGlossOutcome.Completed)?.ArtifactLease;
@@ -140,8 +144,16 @@ public sealed class PanGlossAssessor : IAssessor
                     ParserRefusal = outcome as PanGlossOutcome.Refused,
                     MemoryKill = (outcome as PanGlossOutcome.MemoryLimit)?.Kill,
                 };
+            var shared = _paths.SharedArtifactDirectory;
+            var expectedSource = shared is null
+                ? Path.Combine(Path.GetFullPath(directory), "source.fwdata")
+                : Path.Combine(Path.GetFullPath(shared), evidence.SourceBytesSha256.Replace("sha256:", "", StringComparison.Ordinal) + ".fwdata");
+            var comparison = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+                ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var actualSource = Path.GetFullPath(evidence.SourcePath);
             var matchingArtifacts = evidence.InvocationId == invocationId &&
-                Path.GetFullPath(evidence.SourcePath) == Path.Combine(Path.GetFullPath(directory), "source.fwdata");
+                (string.Equals(actualSource, expectedSource, comparison) ||
+                 string.Equals(actualSource, Path.Combine(Path.GetFullPath(directory), "source.fwdata"), comparison));
             if (!matchingArtifacts || evidence.PerWordParserWorkLimit != wordsScope.PerWordParserWorkLimit ||
                 evidence.PerWordTimeoutMs != (wordsScope.PerWordLimit is { } timeLimit
                     ? (int)timeLimit.TotalMilliseconds : null) ||
@@ -238,7 +250,8 @@ public sealed class PanGlossAssessor : IAssessor
                 if (wanted.Contains(AssessmentKind.Correctness))
                 {
                     IReadOnlyDictionary<string, IReadOnlyList<ApprovedMorphology>> expected;
-                    using (var cache = new FwDataProjectLoader().LoadScratchCache(evidence.SourcePath))
+                    using var sourceScratch = AssessmentSourceScratch.Create(evidence.SourcePath, evidence.SourceBytesSha256);
+                    using (var cache = new FwDataProjectLoader().LoadScratchCache(sourceScratch.Path))
                         expected = ApprovedMorphologyReader.Read(cache, ApprovedMorphologyReader.FormsOf(rows.Select(row => row.Word)));
                     evidence = evidence with { ApprovedExpectationsSha256 = ApprovedExpectationsDigest.Compute(expected) };
                     rows = rows.Select(row => row with

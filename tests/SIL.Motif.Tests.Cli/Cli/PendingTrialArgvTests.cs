@@ -40,11 +40,16 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
         var root = Path.Combine(Path.GetDirectoryName(path)!, "retention-worker");
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
         var wordsPath = Path.Combine(Path.GetDirectoryName(path)!, "retention-words.txt");
+        var oldWordsPath = Path.Combine(Path.GetDirectoryName(path)!, "old-retention-words.txt");
+        File.WriteAllText(oldWordsPath, "obsolete-evidence\n");
         File.WriteAllText(wordsPath, "retention-word\n");
-        var old = await RunAsync(root, "assess", path, "--words", wordsPath, "--json");
+        var old = await RunAsync(root, "assess", path, "--words", oldWordsPath, "--json");
         Assert.True(old.ExitCode == 0, old.Error);
         var oldIds = ProjectionJson.Deserialize<AssessCommandResponse>(old.Output)!.AssessmentIds;
         Assert.NotEmpty(oldIds);
+        var reusable = await RunAsync(root, "assess", path, "--words", wordsPath, "--json");
+        Assert.True(reusable.ExitCode == 0, reusable.Error);
+        var reusableIds = ProjectionJson.Deserialize<AssessCommandResponse>(reusable.Output)!.AssessmentIds;
         var initial = PendingChanges.Load(new PendingChangesRequest(path, MotifProductVersion.CurrentText));
         var pending = PendingChanges.Put(new PutPendingChangeRequest(path, MotifProductVersion.CurrentText,
             initial.Value!.Revision, new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling",
@@ -71,6 +76,7 @@ public sealed class PendingTrialArgvTests(PristineProjectFixture pristine)
         var job = new JobRepository(database).Get(response.RootElement.GetProperty("jobId").GetString()!)!;
         var before = TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds!;
         Assert.NotEmpty(before);
+        Assert.Contains(before, reusableIds.Contains);
         var assessments = new AssessmentRepository(database);
         Assert.All(before, id => Assert.Equal(id, assessments.Get(id).AssessmentId));
         Assert.All(oldIds, id => Assert.Throws<KeyNotFoundException>(() => assessments.Get(id)));

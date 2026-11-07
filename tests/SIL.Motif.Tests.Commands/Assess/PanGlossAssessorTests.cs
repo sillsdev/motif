@@ -70,7 +70,8 @@ public sealed class PanGlossAssessorTests : IDisposable
         Assert.Equal("motifa", Assert.Single(raw.Analysis.Words).Word);
         var cache = Assert.IsType<AssessmentRaw.FileCache>(statistics.Raw);
         Assert.Equal(BatchInvocationEvidence.DigestFile(cache.Path), cache.Digest);
-        Assert.Equal(Path.GetDirectoryName(evidence.SourcePath), Path.GetDirectoryName(cache.Path));
+        Assert.Equal(_paths.SharedArtifactDirectory, Path.GetDirectoryName(evidence.SourcePath));
+        Assert.Equal(Path.GetDirectoryName(evidence.TsvPath), Path.GetDirectoryName(cache.Path));
     }
 
     [Fact]
