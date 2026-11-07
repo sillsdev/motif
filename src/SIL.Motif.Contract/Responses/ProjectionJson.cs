@@ -28,6 +28,9 @@ public static class ProjectionJson
 
     public static string Serialize<T>(T projection) => JsonSerializer.Serialize(projection, Options);
 
+    /// <summary>Serializes a projection as UTF-8 with the same wire conventions as the text form.</summary>
+    public static byte[] ToUtf8Bytes<T>(T projection) => JsonSerializer.SerializeToUtf8Bytes(projection, Options);
+
     /// <summary>The same projection as a JSON tree, for a caller that adds fields to it before it is rendered.</summary>
     public static System.Text.Json.Nodes.JsonNode? ToNode<T>(T projection) =>
         JsonSerializer.SerializeToNode(projection, Options);

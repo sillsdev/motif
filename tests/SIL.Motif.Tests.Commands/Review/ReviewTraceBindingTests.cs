@@ -51,12 +51,27 @@ public sealed class ReviewTraceBindingTests : IDisposable
         var child = command.Read("project", new ReviewReportId(Id), TraceId, limit: 1, parent: "0");
         Assert.Equal("1", Assert.Single(child.Value!.Nodes).Id);
         Assert.NotNull(child.Value.NextCursor);
-        Assert.False(command.Read("project", new ReviewReportId(Id), TraceId, child.Value.NextCursor, 1).Succeeded);
+        var wrongParent = command.Read("project", new ReviewReportId(Id), TraceId, child.Value.NextCursor, 1);
+        Assert.Equal("review.cursor-invalid", wrongParent.Refusal!.Code);
         var next = command.Read("project", new ReviewReportId(Id), TraceId, first.Value.NextCursor, 1);
         Assert.True(next.Succeeded);
         Assert.Equal("1", Assert.Single(next.Value!.Nodes).Id);
         Assert.False(command.Read("other-project", new ReviewReportId(Id), TraceId).Succeeded);
         Assert.False(command.Read("project", new ReviewReportId(Id), TraceId, Convert.ToBase64String("wrong:1"u8.ToArray())).Succeeded);
+    }
+
+    [Fact]
+    public void DiagnosticDisagreementUsesExactReadingsEvenWhenCountsMatch()
+    {
+        var form = Guid.NewGuid().ToString("D");
+        var other = Guid.NewGuid().ToString("D");
+        var msa = Guid.NewGuid().ToString("D");
+        var saved = new ReadingRow("identity", Side.Before, IdentityState.Exact, [new Morph(form, msa, [], "", "")], true, [], []);
+        TraceAnalysis Analysis(string id) => new(null, null, null, "available",
+            [new TraceMorph(null, null, null, null, null, null, null, null, null, null) { FormId = id, MsaId = msa }]);
+        Assert.Equal(ReadingAgreement.Same, ReviewTraceCommands.CompareReadings([Analysis(form)], [saved]));
+        Assert.Equal(ReadingAgreement.Different, ReviewTraceCommands.CompareReadings([Analysis(other)], [saved]));
+        Assert.Equal(ReadingAgreement.Unknown, ReviewTraceCommands.CompareReadings([Analysis("missing")], [saved]));
     }
 
     [Fact]

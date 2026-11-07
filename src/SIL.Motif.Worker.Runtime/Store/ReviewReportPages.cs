@@ -13,6 +13,8 @@ public sealed record ReviewChildPageRequest(string ProjectKey, ReviewReportId Re
 {
     /// <summary>The named set that owns a requested cell's variants.</summary>
     public string? SetId { get; init; }
+    /// <summary>Restricts captured readings to the selected side.</summary>
+    public Side? Side { get; init; }
 }
 
 public sealed partial class ReviewReportRepository
@@ -143,9 +145,10 @@ public sealed partial class ReviewReportRepository
         if (request.Limit is < 1 or > 200 || string.IsNullOrWhiteSpace(request.ProjectKey) ||
             string.IsNullOrWhiteSpace(request.ReportId.Value) || string.IsNullOrWhiteSpace(request.CaseKey) ||
             request.Kind is not ("readings" or "expectations" or "sources" or "memberships" or "variants") ||
-            request.Kind == "variants" && string.IsNullOrWhiteSpace(request.SetId))
+            request.Kind == "variants" && string.IsNullOrWhiteSpace(request.SetId) ||
+            request.Side is not null && (request.Kind != "readings" || !Enum.IsDefined(request.Side.Value)))
             throw new ArgumentException("Invalid child page request.", nameof(request));
-        const string digest = "children-v1";
+        var digest = request.Side is null ? "children-v1" : "children-v1/" + request.Side.Value.ToString().ToLowerInvariant();
         var parent = request.Kind == "variants" ? JsonSerializer.Serialize(new[] { request.SetId, request.CaseKey }) : request.CaseKey;
         var lastText = request.Cursor is null ? null : ReviewReportCursor.Decode(request.Cursor, request.ProjectKey,
             request.ReportId.Value, request.Kind, digest, request.Kind, parent).Last;
@@ -177,12 +180,14 @@ public sealed partial class ReviewReportRepository
         if (hasReadings is null) throw new KeyNotFoundException("The review case was not found.");
         if (hasReadings is not long captured || captured == 0)
             return new ReviewPage(request.Kind, digest, request.Kind, null, null, 0, request.Limit, null, ListAvailability.Unavailable, []);
-        using var count = PageCommand(connection, transaction, "SELECT COUNT(*) FROM ReviewReportEvents WHERE ReportId=$report AND CaseKey=$case AND json_extract(FactsJson,'$.kind')=$kind;",
-            ("$report", request.ReportId.Value), ("$case", request.CaseKey), ("$kind", eventKind));
+        using var count = PageCommand(connection, transaction, "SELECT COUNT(*) FROM ReviewReportEvents WHERE ReportId=$report AND CaseKey=$case AND json_extract(FactsJson,'$.kind')=$kind AND ($side IS NULL OR json_extract(FactsJson,'$.side')=$side);",
+            ("$report", request.ReportId.Value), ("$case", request.CaseKey), ("$kind", eventKind),
+            ("$side", request.Side?.ToString().ToLowerInvariant()));
         var total = (long)count.ExecuteScalar()!;
         using var command = PageCommand(connection, transaction,
-            "SELECT Ordinal,FactsJson FROM ReviewReportEvents WHERE ReportId=$report AND CaseKey=$case AND json_extract(FactsJson,'$.kind')=$kind AND Ordinal>$last ORDER BY Ordinal LIMIT $limit;",
-            ("$report", request.ReportId.Value), ("$case", request.CaseKey), ("$kind", eventKind), ("$last", last), ("$limit", request.Limit + 1));
+            "SELECT Ordinal,FactsJson FROM ReviewReportEvents WHERE ReportId=$report AND CaseKey=$case AND json_extract(FactsJson,'$.kind')=$kind AND ($side IS NULL OR json_extract(FactsJson,'$.side')=$side) AND Ordinal>$last ORDER BY Ordinal LIMIT $limit;",
+            ("$report", request.ReportId.Value), ("$case", request.CaseKey), ("$kind", eventKind), ("$side", request.Side?.ToString().ToLowerInvariant()),
+            ("$last", last), ("$limit", request.Limit + 1));
         using var reader = command.ExecuteReader();
         var items = new List<ReviewRow>();
         var current = last;

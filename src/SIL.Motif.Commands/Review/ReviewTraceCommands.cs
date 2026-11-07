@@ -61,9 +61,22 @@ public sealed class ReviewTraceCommands(MotifDatabase database)
             var diagnostic = outcome.Value!;
             var (nodes, complete) = ReviewTraceProjection.Capture(diagnostic.Reading.Root);
             var observed = request.Side == Side.Before ? word.Before : word.After;
-            var agreement = diagnostic.Complete && observed.Completion == Completion.Complete &&
-                observed.ObservedReadingCount is { } count && count != diagnostic.Reading.Analyses.Count
-                ? ReadingAgreement.Different : ReadingAgreement.Unknown;
+            var readings = new List<ReadingRow>();
+            string? cursor = null;
+            var captured = true;
+            if (diagnostic.SearchCompletion == TraceSearchCompletion.Complete && observed.Completion == Completion.Complete)
+            {
+                do
+                {
+                    var page = repository.ReadChildren(new ReviewChildPageRequest(request.ProjectKey, request.ReportId,
+                        "readings", request.CaseKey, cursor, 200) { Side = request.Side });
+                    if (page.ListAvailability != ListAvailability.Complete) { captured = false; break; }
+                    readings.AddRange(page.Items.OfType<ReadingRow>());
+                    cursor = page.NextCursor;
+                } while (cursor is not null);
+            }
+            else captured = false;
+            var agreement = captured ? CompareReadings(diagnostic.Reading.Analyses, readings) : ReadingAgreement.Unknown;
             var trace = new RetainedReviewTrace(traceId, request.ProjectKey, request.ReportId.Value, request.CaseKey,
                 request.Side, parserDigest, grammarDigest, input.Inputs.ScopeDigest,
                 diagnostic.Complete ? "complete" : "stopped", complete, nodes, agreement);
@@ -105,9 +118,9 @@ public sealed class ReviewTraceCommands(MotifDatabase database)
                 var value = Encoding.UTF8.GetString(Convert.FromBase64String(cursor)).Split(':');
                 if (value.Length != 3 || value[0] != trace.TraceId || value[1] != binding ||
                     !int.TryParse(value[2], out offset) || offset < 0 || offset >= selected.Count)
-                    return Refuse("Invalid trace cursor.", FailureReason.InvalidArgument);
+                    return InvalidCursor();
             }
-            catch (FormatException) { return Refuse("Invalid trace cursor.", FailureReason.InvalidArgument); }
+            catch (FormatException) { return InvalidCursor(); }
         }
         var parentIds = trace.Nodes.Select(node => node.ParentId).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var baseUri = $"motif://projects/{Uri.EscapeDataString(trace.ProjectKey)}/trial-reports/{Uri.EscapeDataString(trace.ReportId)}" +
@@ -125,8 +138,52 @@ public sealed class ReviewTraceCommands(MotifDatabase database)
 
     private static string Hash(string text) => "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
     private static string HashFile(string path) { using var stream = File.OpenRead(path); return "sha256:" + Convert.ToHexStringLower(SHA256.HashData(stream)); }
-    private static CommandOutcome<TracePage> Refuse(string message, FailureReason reason = FailureReason.Refused) =>
-        CommandOutcome<TracePage>.Refused(new Refusal(reason == FailureReason.InvalidArgument
-            ? RefusalCodes.DifferenceUnreadable : RefusalCodes.TrialTraceUnavailable, reason,
-            reason == FailureReason.InvalidArgument ? message : message + " Run a new Trial to capture the needed inputs."));
+    internal static ReadingAgreement CompareReadings(IReadOnlyList<TraceAnalysis> diagnostic, IReadOnlyList<ReadingRow> saved)
+    {
+        static string? Key(IEnumerable<(string? Form, string? Msa, string? Infl, string? Guess)> morphs)
+        {
+            var parts = new List<object>();
+            foreach (var (form, msa, infl, guess) in morphs)
+            {
+                if (!Guid.TryParse(form, out var formId) || formId == Guid.Empty ||
+                    !Guid.TryParse(msa, out var msaId) || msaId == Guid.Empty ||
+                    infl is not null && (!Guid.TryParse(infl, out var inflId) || inflId == Guid.Empty)) return null;
+                string? normalized;
+                try { normalized = string.IsNullOrEmpty(guess) ? null : guess.Normalize(NormalizationForm.FormD); }
+                catch (ArgumentException) { return null; }
+                parts.Add(new { Form = formId.ToString("D"), Msa = msaId.ToString("D"),
+                    Infl = infl is null ? null : Guid.Parse(infl).ToString("D"), Guess = normalized });
+            }
+            return parts.Count == 0 ? null : JsonSerializer.Serialize(parts);
+        }
+        var before = new HashSet<string>(StringComparer.Ordinal);
+        var after = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var row in saved)
+        {
+            if (row.IdentityState != IdentityState.Exact || row.Morphs.Any(morph => morph.InflTypeIds.Count > 1))
+                return ReadingAgreement.Unknown;
+            var key = Key(row.Morphs.Select(morph => (morph.FormId, morph.MsaId, morph.InflTypeIds.FirstOrDefault(), (string?)morph.Form)));
+            if (key is null) return ReadingAgreement.Unknown;
+            before.Add(key);
+        }
+        foreach (var row in diagnostic)
+        {
+            var key = Key(row.Morphs.Select(morph => (morph.FormId, morph.MsaId, morph.InflTypeId, morph.GuessedString)));
+            if (key is null) return ReadingAgreement.Unknown;
+            after.Add(key);
+        }
+        return before.SetEquals(after) ? ReadingAgreement.Same : ReadingAgreement.Different;
+    }
+
+    private static CommandOutcome<TracePage> InvalidCursor() => CommandOutcome<TracePage>.Refused(
+        new Refusal(RefusalCodes.ReviewCursorInvalid, FailureReason.InvalidArgument, "The continuation does not match this trace."));
+
+    private static CommandOutcome<TracePage> Refuse(string message, FailureReason reason = FailureReason.Refused)
+    {
+        if (reason == FailureReason.InvalidArgument)
+            return CommandOutcome<TracePage>.Refused(new Refusal(RefusalCodes.DifferenceInvalidPage,
+                FailureReason.InvalidArgument, message));
+        return CommandOutcome<TracePage>.Refused(new Refusal(RefusalCodes.TrialTraceUnavailable,
+            FailureReason.Refused, message + " Run a new Trial to capture the needed inputs."));
+    }
 }

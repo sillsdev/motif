@@ -384,6 +384,13 @@
   },
   {
     "view": "Pages/TimingPage",
+    "name": "TimingPageProposalRuleChangesItems",
+    "source": "ProposalRuleChanges",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Pages/TimingPage",
     "name": "TimingPageMatrixCellsItems",
     "source": "MatrixCells",
     "mode": "finite",

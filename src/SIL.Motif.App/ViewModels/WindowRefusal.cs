@@ -108,6 +108,7 @@ public sealed partial record WindowRefusal
         [C.ParseAlreadyRunningHere] = () => MotifAppStrings.RefusalParseAlreadyRunningHere,
         ["parse.already-running"] = () => MotifAppStrings.RefusalParseAlreadyRunningElsewhere,
         [C.AssessBaselineChanged] = () => MotifAppStrings.RefusalAssessBaselineChanged,
+        [C.AssessUnavailable] = () => MotifAppStrings.RefusalAssessUnavailable,
         [C.AssessInvalidLimit] = () => MotifAppStrings.RefusalAssessInvalidLimit,
         [C.AssessInvocationInconsistent] = () => MotifAppStrings.RefusalAssessInvocationInconsistent,
         [C.AssessMeasurementsIncomplete] = () => MotifAppStrings.RefusalAssessMeasurementsIncomplete,
@@ -246,6 +247,9 @@ public sealed partial record WindowRefusal
         [C.TimingWordSetNotFound] = () => MotifAppStrings.RefusalTimingWordSetNotFound,
         [C.TimingWrongKind] = () => MotifAppStrings.RefusalTimingWrongKind,
 
+        [C.TrialReviewBaselineChanged] = () => MotifAppStrings.RefusalTrialReviewBaselineChanged,
+        [C.TrialReviewInputUnavailable] = () => MotifAppStrings.RefusalTrialReviewInputUnavailable,
+        [C.TrialTraceUnavailable] = () => MotifAppStrings.RefusalTrialTraceUnavailable,
         [C.TrialChangesChanged] = () => MotifAppStrings.RefusalTrialChangesChanged,
         [C.TrialMeasurementIncomplete] = () => MotifAppStrings.RefusalTrialMeasurementIncomplete,
         [NoProjectCode] = () => MotifAppStrings.RefusalNoProjectCode,

@@ -399,6 +399,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.TimingOverrideNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.TimingWordSetNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.TimingWrongKind, FailureReason.NotFound),
+        Spec(RefusalCodes.ReviewCursorInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.ReviewDetailUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.TrialChangesChanged, FailureReason.Refused),
         Spec(RefusalCodes.TrialMeasurementIncomplete, FailureReason.Refused),
         Spec(RefusalCodes.TrialNothingPending, FailureReason.Refused),

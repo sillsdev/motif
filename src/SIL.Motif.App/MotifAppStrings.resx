@@ -6055,6 +6055,22 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>A parse is already running for this project in another Motif window or process. Use that window to see its progress or cancel it.</value>
     <comment>Sentence the window shows when the command refuses with code parse.already-running. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalAssessUnavailable" xml:space="preserve">
+    <value>The measurements are unavailable. Measure the words again.</value>
+    <comment>Sentence the window shows when this action cannot continue.</comment>
+  </data>
+  <data name="MotifApp.RefusalTrialReviewBaselineChanged" xml:space="preserve">
+    <value>The project was refreshed while the Trial was being prepared. Try the Proposal again.</value>
+    <comment>Sentence the window shows when this action cannot continue.</comment>
+  </data>
+  <data name="MotifApp.RefusalTrialReviewInputUnavailable" xml:space="preserve">
+    <value>The information needed for this Trial is unavailable. Try the Proposal again.</value>
+    <comment>Sentence the window shows when this action cannot continue.</comment>
+  </data>
+  <data name="MotifApp.RefusalTrialTraceUnavailable" xml:space="preserve">
+    <value>The information needed to trace this Trial is unavailable. Try the Proposal again.</value>
+    <comment>Sentence the window shows when this action cannot continue.</comment>
+  </data>
   <data name="MotifApp.RefusalAssessBaselineChanged" xml:space="preserve">
     <value>The project was refreshed while words were being measured. Measure them again.</value>
     <comment>Sentence the window shows when the command refuses with code C.AssessBaselineChanged. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

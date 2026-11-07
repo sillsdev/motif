@@ -80,11 +80,24 @@ public sealed class TrialReviewCommands(MotifDatabase database)
                     var cases = repository.FindCases(request.ProjectKey, new ReviewReportId(reportId), request.Word, request.Case);
                     if (cases.Count == 0) return Refused(RefusalCodes.DifferenceInvalidWord, FailureReason.InvalidArgument, "No matching case was found.");
                     if (cases.Count != 1) return Invalid("The word matches multiple cases: " + string.Join(", ", cases));
-                    var word = repository.ReadWord(request.ProjectKey, new ReviewReportId(reportId), cases[0], request.Limit ?? 50);
-                    word = word with { TraceRequest = new ReadTarget(TargetKind.Tool, "Trace this case", null, "motif_difference",
-                        new ReadArguments(Proposal: request.ProposalId, Report: reportId, Detail: DetailLevel.Full,
-                            Case: cases[0], Trace: true)) };
-                    report = report with { Word = word };
+                    if (request.Section is "readings" or "expectations" or "sources" or "memberships")
+                    {
+                        var child = repository.ReadChildren(new ReviewChildPageRequest(request.ProjectKey,
+                            new ReviewReportId(reportId), request.Section, cases[0], Cursor: request.Cursor, Limit: request.Limit ?? 50)
+                        { Side = request.Side });
+                        report = report with { Page = child };
+                    }
+                    else
+                    {
+                        var word = repository.ReadWord(request.ProjectKey, new ReviewReportId(reportId), cases[0], request.Limit ?? 50);
+                        if (request.Side is not null)
+                            word = word with { Readings = repository.ReadChildren(new ReviewChildPageRequest(request.ProjectKey,
+                                new ReviewReportId(reportId), "readings", cases[0], Limit: request.Limit ?? 50) { Side = request.Side }) };
+                        word = word with { TraceRequest = new ReadTarget(TargetKind.Tool, "Trace this case", null, "motif_difference",
+                            new ReadArguments(Proposal: request.ProposalId, Report: reportId, Detail: DetailLevel.Full,
+                                Case: cases[0], Trace: true)) };
+                        report = report with { Word = word };
+                    }
                 }
                 else
                 {
@@ -94,13 +107,20 @@ public sealed class TrialReviewCommands(MotifDatabase database)
                     report = report with { Page = page };
                 }
             }
-            catch (ReviewDetailUnavailableException) { return Refused(RefusalCodes.DifferenceNoBefore, FailureReason.Refused, "Report detail is no longer retained."); }
+            catch (ReviewDetailUnavailableException exception)
+            {
+                var facts = new Dictionary<string, string> { ["reason"] = exception.Reason };
+                if (exception.SummaryUri is not null) facts["summaryUri"] = exception.SummaryUri;
+                return CommandOutcome<TrialReviewResult>.Refused(new Refusal(RefusalCodes.ReviewDetailUnavailable,
+                    FailureReason.Refused, "Report detail is no longer retained.", facts));
+            }
+            catch (ReviewCursorInvalidException) { return Refused(RefusalCodes.ReviewCursorInvalid, FailureReason.InvalidArgument, "The continuation does not match this report selection."); }
             catch (ArgumentException exception) { return Invalid(exception.Message); }
         }
         var links = new List<ReadTarget> { Resource(request.ProjectKey, reportId, "summary", null) };
         if (report.Word is { } selectedWord)
             links.Add(Resource(request.ProjectKey, reportId, "case", "cases/" + Uri.EscapeDataString(selectedWord.Row.CaseKey)));
-        if (report.Page is { } selectedPage && request.Set is null && request.Outcome is null && request.Flag is null && request.Filter is null)
+        if (report.Page is { } selectedPage && request.Word is null && request.Case is null && request.Set is null && request.Outcome is null && request.Flag is null && request.Filter is null)
             links.Add(Resource(request.ProjectKey, reportId, "section", "sections/" + Uri.EscapeDataString(selectedPage.Section) +
                 "?limit=" + (request.Limit ?? 50) + (request.Cursor is null ? "" : "&cursor=" + Uri.EscapeDataString(request.Cursor))));
         report = report with { Links = links };

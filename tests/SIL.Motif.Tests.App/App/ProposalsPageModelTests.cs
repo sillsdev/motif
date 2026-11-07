@@ -270,11 +270,11 @@ public sealed class ProposalsPageModelTests
         fake.ReadTrialCompletesWith(Trial("p/one", TrialFreshness.Current) with
         {
             JobId = "job/one",
-            Work = new TrialWork(3, 1000, 1200, 20, [], 0, 0),
+            Work = new TrialWork(3, 1000, 1210, 21, [], 0, 0),
         });
 
         await page.TryAgainCommand.ExecuteAsync(page.SelectedProposal);
-        Assert.Equal("This Trial makes parsing about 20% more work than the Baseline.",
+        Assert.Equal("This Trial makes parsing about 21% more work than the Baseline.",
             page.SelectedProposal?.WorkNotice);
 
         fake.ProposalStandingsCompleteWith(Standings(first with
@@ -394,11 +394,11 @@ public sealed class ProposalsPageModelTests
     }
 
     [Theory]
-    [InlineData(5.0, null)]
-    [InlineData(5.1, "This Trial makes parsing about 6% more work than the Baseline.")]
+    [InlineData(20.0, null)]
+    [InlineData(20.1, "This Trial makes parsing about 21% more work than the Baseline.")]
     public async Task ReopenedInspectorShowsTheStoredTrialsWorkNotice(double percent, string? expected)
     {
-        var trial = Summary(TrialFreshness.Current) with { Work = new TrialWork(1, 100, 106, percent, [], 0, 0) };
+        var trial = Summary(TrialFreshness.Current) with { Work = new TrialWork(1, 1000, 1000 + (long)(percent * 10), percent, [], 0, 0) };
         var (_, _, page) = await OpenAsync(Standings(Card("p/a", "A", ProposalGroup.WaitingForYou,
             trial: trial, standing: TrialStanding.Current)));
 

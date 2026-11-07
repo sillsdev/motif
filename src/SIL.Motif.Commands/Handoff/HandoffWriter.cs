@@ -195,7 +195,7 @@ public static class HandoffWriter
         var tracePath = Path.Combine(incomingRoot, TraceRelativePath(trace.Word)
             .Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(tracePath)!);
-        File.WriteAllText(tracePath, ProjectionJson.Serialize(StandaloneTraceProjection.From(trace)));
+        File.WriteAllBytes(tracePath, ProjectionJson.ToUtf8Bytes(StandaloneTraceProjection.From(trace)));
     }
 
     private static JsonObject BuildAssessedWordRecord(AssessedWordStatistics word, WordTraceResponse? trace)

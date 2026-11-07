@@ -217,6 +217,27 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task PurgedDetailReturnsItsReasonAndRetainedSummaryTarget()
+    {
+        CreateInterrupted();
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE ReviewReports SET DetailAvailable=0 WHERE ReportId=$id;";
+            command.Parameters.AddWithValue("$id", id.Value);
+            command.ExecuteNonQuery();
+        }
+        var commands = new TrialReviewCommands(_database);
+        var summary = commands.Read(new ReviewReadRequest("project", _proposal.Value, ReportId: id.Value));
+        Assert.True(summary.Succeeded);
+        var detail = commands.Read(new ReviewReadRequest("project", _proposal.Value, ReportId: id.Value, Detail: DetailLevel.Full));
+        Assert.Equal("review.detail-unavailable", detail.Refusal!.Code);
+        Assert.Equal("not-retained", detail.Refusal.Facts["reason"]);
+        Assert.Contains(Uri.EscapeDataString(id.Value), detail.Refusal.Facts["summaryUri"]);
+    }
+
+    [Fact]
     public async Task PairedWarningsFromTheTrialProduceAFlagEvenWithoutParsimony()
     {
         CreateInterrupted();

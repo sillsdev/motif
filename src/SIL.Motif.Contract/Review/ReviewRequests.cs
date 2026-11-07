@@ -27,11 +27,22 @@ public sealed record ReviewReadRequest(
         if ((Detail.HasValue && !Enum.IsDefined(Detail.Value)) || (Flag.HasValue && !Enum.IsDefined(Flag.Value)) ||
             (Side.HasValue && !Enum.IsDefined(Side.Value))) return "unknown enum value";
         if (Section is not null and not ("wordforms" or "sampled-tokens" or "paradigm-cells" or "controls" or
-            "negative-controls" or "parser-work" or "warnings" or "parsimony" or "incomplete" or "effects" or "evidence"))
+            "negative-controls" or "parser-work" or "warnings" or "parsimony" or "incomplete" or "effects" or "evidence" or
+            "readings" or "expectations" or "sources" or "memberships"))
             return "unknown section";
+        if (Section is "readings" or "expectations" or "sources" or "memberships")
+        {
+            if (Word is null && Case is null) return "child section requires a word or case";
+            if (Trace) return "child section cannot select a trace";
+        }
         if (JobId is not null && ReportId is not null) return "job and report are exclusive";
         if (Word is not null && Case is not null) return "word and case are exclusive";
         if (Trace && Word is null && Case is null) return "trace requires a word or case";
+        if (!Trace && Cursor is not null && (Word is not null || Case is not null) &&
+            Section is not ("readings" or "expectations" or "sources" or "memberships"))
+            return "case continuation requires a child section";
+        if (Side is not null && Word is null && Case is null) return "side requires a word or case";
+        if (!Trace && Side is not null && Section is not null and not "readings") return "side only filters readings";
         if ((Word is not null || Case is not null || Trace) && Detail is not null and not DetailLevel.Full)
             return "word, case and trace require full detail";
         if ((Cursor is not null || Limit is not null || Filter is not null || Outcome is not null || Flag is not null) &&

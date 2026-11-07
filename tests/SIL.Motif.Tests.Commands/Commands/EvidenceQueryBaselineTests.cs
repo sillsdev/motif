@@ -470,10 +470,9 @@ public sealed class EvidenceQueryBaselineTests : IDisposable
             "trace", "--project", project.Path, "--word", SeededProject.AnalysedWordForm, "--json");
 
         Assert.True(child.ExitCode == 0, child.FailureDetails);
-        var trace = ProjectionJson.Deserialize<WordTraceResponse>(child.Output)!;
+        var trace = ProjectionJson.Deserialize<SIL.Motif.Commands.Review.StandaloneTraceProjection>(child.Output)!;
         Assert.Equal(SeededProject.AnalysedWordForm, trace.Word);
-        Assert.Equal(project.Baseline.Token, trace.HostCapture!.Baseline!.Token);
-        Assert.NotEmpty(trace.HostCapture.WritingSystems);
+        Assert.Equal(project.Baseline.Token, trace.Baseline!.Token);
         Assert.Contains("parse", FakeParser.Invocations(parser));
         Assert.Equal(heldPath, held.ProjectId.Path);
         Assert.Equal(original, File.ReadAllBytes(project.Baseline.FwDataPath));

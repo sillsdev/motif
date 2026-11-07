@@ -3148,6 +3148,14 @@ public static class MotifAppStrings
 
     public static string RefusalParseAlreadyRunningElsewhere => Text("MotifApp.RefusalParseAlreadyRunningElsewhere");
 
+    public static string RefusalAssessUnavailable => Text("MotifApp.RefusalAssessUnavailable");
+
+    public static string RefusalTrialReviewBaselineChanged => Text("MotifApp.RefusalTrialReviewBaselineChanged");
+
+    public static string RefusalTrialReviewInputUnavailable => Text("MotifApp.RefusalTrialReviewInputUnavailable");
+
+    public static string RefusalTrialTraceUnavailable => Text("MotifApp.RefusalTrialTraceUnavailable");
+
     public static string RefusalAssessBaselineChanged => Text("MotifApp.RefusalAssessBaselineChanged");
 
     public static string RefusalAssessInvalidLimit => Text("MotifApp.RefusalAssessInvalidLimit");

@@ -40,9 +40,9 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
    change does and why, in Markdown. Rewrite it with `motif_set_rationale` (the full Proposal id) whenever the
    Proposal changes, until the person has applied or closed it; the window marks a Rationale out of date once
    the Proposal moves past it.
-   The person may answer in a Comment. Any result about a Proposal carries `commentsChanged`; when it is true, read the
-   Comments with `motif_proposals` (the Proposal id) and reply with `motif_add_comment` (give `author`, what you call
-   yourself, such as "Claude (Opus 5.5)") or by writing a new Rationale. You can add Comments but never edit or delete one.
+   The person may answer in a Comment. Read the Comments with `motif_proposals` (the Proposal id), especially when a
+   result reports `commentsChanged`, and reply with `motif_add_comment` (give `author`, what you call yourself,
+   such as "Claude (Opus 5.5)") or by writing a new Rationale. You can add Comments but never edit or delete one.
 2. Use the semantic composer tool whose description matches the intended operation. For example,
    `motif_set_gloss` changes a gloss; it does not authorize a raw property write. Keep each operation
    grounded in ids and current values returned by Motif.
@@ -60,14 +60,16 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
 4. Call `motif_dry_run` on the Draft. Read the effects and any refusal before continuing.
 5. Call `motif_trial` with representative positive words and, when available, attested negative words.
    Read its summary, including unfinished searches, without treating an incomplete search as rejection.
-6. Use the Trial's Difference id with `motif_difference` to page through the relevant categories. Read
-   every lost positive and newly parsing negative before deciding whether to revise.
+6. Read the Trial report's flags, Incomplete evidence and limitations. No red flags means only not bad,
+   never good. Use `motif_difference` with the Proposal and report id to page through failures and all
+   retained cases, including unchanged ones. Read the affected readings and newly accepted negatives;
+   request a case trace explicitly when it would help, and distinguish that diagnostic from batch evidence.
 
 ## Revise and Finalize
 
 1. If the evidence is not acceptable, revise the Draft with the appropriate semantic composer. To
    replace an operation, read its id and remove it with `motif_remove_operations` before adding the
-   replacement. Then repeat Dry Run, Trial, and Difference review.
+   replacement. Then repeat Dry Run, Trial, and report review.
 2. Call `motif_finalize_proposal` only when the Draft is ready for a person to review. Tell the person
    the Proposal label and summarize its Dry Run and Trial evidence.
 3. Never Apply. The person reviews and Applies the Proposal in Motif if they choose.
@@ -75,6 +77,6 @@ connect, inspect its MCP launch log instead. Do not substitute direct FieldWorks
 ## Several projects
 
 The same requested change in two projects is two Proposals. For each Known project, make a separate
-Draft, read that project's objects, run its own Dry Run and Trial, review its Difference, and Finalize
+Draft, read that project's objects, run its own Dry Run and Trial, review its report, and Finalize
 it independently. Name the related project in each Proposal's Rationale so the person can review them
 together without combining them.

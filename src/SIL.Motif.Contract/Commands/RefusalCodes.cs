@@ -228,6 +228,11 @@ public static class RefusalCodes
     public const string TimingWordSetNotFound = "timing.word-set-not-found";
     public const string TimingWrongKind = "timing.wrong-kind";
 
+    /// <summary>A continuation belongs to another report, selection, or parent.</summary>
+    public const string ReviewCursorInvalid = "review.cursor-invalid";
+    /// <summary>The report summary remains available but its requested detail is not retained.</summary>
+    public const string ReviewDetailUnavailable = "review.detail-unavailable";
+
     public const string TrialChangesChanged = "trial.changes-changed";
     public const string TrialMeasurementIncomplete = "trial.measurement-incomplete";
     public const string TrialNothingPending = "trial.nothing-pending";

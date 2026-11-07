@@ -413,7 +413,7 @@ public sealed class ProposalParsimonyPresentationTests
     {
         var model = Model(new FakeCommandClient());
 
-        foreach (var percent in new[] { 5.2, 12.4, 40.01 })
+        foreach (var percent in new[] { 21.2, 25.4, 40.01 })
         {
             var work = new TrialWork(40, 1_000, 1_000 + (long)(percent * 10), percent, [], 0, 0);
             model.SetParserWork(work);

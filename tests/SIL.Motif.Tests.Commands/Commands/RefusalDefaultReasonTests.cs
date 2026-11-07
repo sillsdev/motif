@@ -46,6 +46,7 @@ public sealed class RefusalDefaultReasonTests
     // Codes the scan cannot resolve: the reason is computed, passed through a variable, or chosen in another layer.
     private static readonly Dictionary<string, string> NotDeterminable = new(StringComparer.Ordinal)
     {
+        ["assess.unavailable"] = "reason not determinable statically: passed through the Trial admission helper and recorded by the Worker",
         ["agent.built-in"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["agent.human"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",
         ["agent.human-name"] = "reason not determinable statically: an operation failure raised in the runner with the code leading its message, which carries no FailureReason",

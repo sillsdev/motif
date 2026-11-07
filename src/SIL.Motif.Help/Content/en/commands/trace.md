@@ -16,6 +16,10 @@ For an unparsed word, text output names the shape whose recorded lexical lookup 
 
 When Motif captures a trace, `hostCapture.lexiconEntryCount` records the number of lexical entries in the exact Baseline or Trial copy used. A completed trace with an empty lexicon names that fact and the word, instead of guessing which affix or spelling is wrong. A missing count is unknown. Saved traces retain this count and their recorded reasons without opening the current project.
 
+## Trace a Trial report case
+
+A report-bound trace selects an exact case and side: `motif proposal trial --project <fwdata> <proposalId> --report <reportId> --case <caseKey> --trace --side after`. Motif uses the recorded parser, grammar and limits or explains that the exact inputs are unavailable. The diagnostic has its own identity and completion; it does not alter the batch report.
+
 ## Read a saved trace
 
 ```powershell

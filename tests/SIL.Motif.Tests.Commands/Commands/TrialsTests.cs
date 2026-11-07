@@ -56,7 +56,7 @@ public sealed class TrialsTests : IDisposable
         Assert.NotNull(trial.Work);
         Assert.Equal(comparable ? 100L : null, trial.Work.BaselineWork);
         Assert.Equal(comparable ? 110L : null, trial.Work.TrialParserWork);
-        Assert.Equal(comparable, trial.Work.WorkIncreaseWarning);
+        Assert.False(trial.Work.WorkIncreaseWarning);
         Assert.Equal(JobStatus.Completed, trial.Status);
     }
 

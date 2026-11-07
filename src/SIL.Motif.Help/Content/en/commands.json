@@ -1566,12 +1566,12 @@
   },
   "trial": {
     "title": "Trial a Proposal",
-    "description": "Measures a Draft or finalized Proposal on a throwaway copy, producing a Dry Run and Assessments. Read negatives now parsing, positives lost, unfinished cases, other changes and counts before revising.",
+    "description": "Measures a Proposal on a throwaway copy and records review evidence. Read observed red flags, incomplete cases and retained details before deciding what to do.",
     "source": "Authored from ADR 0058 and the typed command contract."
   },
   "trial --wait": {
     "title": "Read Trial progress",
-    "description": "Waits for a Trial job and reads its state. Read the stored Difference after the Trial completes.",
+    "description": "Waits for a Trial job and reads its state. Read the stored review report after the Trial completes.",
     "source": "Authored from ADR 0058 and the typed command contract."
   },
   "motif_grammar": {

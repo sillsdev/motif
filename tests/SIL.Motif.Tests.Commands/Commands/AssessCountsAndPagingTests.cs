@@ -130,7 +130,7 @@ public sealed class AssessCountsAndPagingTests
     }
 
     [Fact]
-    public void AConciseRowCarriesTheWordsParserWorkAndWhichLimitStoppedIt()
+    public void AConciseRowOmitsParserWorkAndNamesWhichLimitStoppedIt()
     {
         var words = new[]
         {
@@ -142,10 +142,10 @@ public sealed class AssessCountsAndPagingTests
         var rows = AssessSummary.Page(new AssessCommandResponse(null!, null!, [], "") { Words = words },
             0, 25, false)["words"]!.AsArray();
 
-        Assert.Equal(1_200, rows[0]!["parserWork"]!.GetValue<long>());
+        Assert.Null(rows[0]!["parserWork"]);
         Assert.Null(rows[0]!["stoppedBy"]);
         Assert.Equal("work-limit", rows[1]!["stoppedBy"]!.GetValue<string>());
-        Assert.Equal(20_000_000, rows[1]!["parserWork"]!.GetValue<long>());
+        Assert.Null(rows[1]!["parserWork"]);
         Assert.Equal("time-safety-net", rows[2]!["stoppedBy"]!.GetValue<string>());
         Assert.Null(rows[2]!["parserWork"]);
     }
