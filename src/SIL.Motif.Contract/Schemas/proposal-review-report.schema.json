@@ -1,0 +1,3982 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "motif.proposal-review-report.v1",
+  "$ref": "#/$defs/TrialReviewResult",
+  "$defs": {
+    "ReviewFlagId": {
+      "type": "string",
+      "enum": [
+        "new-word-failures",
+        "confirmed-readings-lost",
+        "known-nonwords-now-accepted",
+        "parser-work-increase",
+        "new-warnings-or-parsimony"
+      ]
+    },
+    "EvidenceState": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "partial",
+        "unavailable",
+        "not-configured"
+      ]
+    },
+    "WorkComparison": {
+      "type": "string",
+      "enum": [
+        "comparable",
+        "not-comparable"
+      ]
+    },
+    "DetailLevel": {
+      "type": "string",
+      "enum": [
+        "summary",
+        "failures",
+        "full"
+      ]
+    },
+    "FreshnessRelation": {
+      "type": "string",
+      "enum": [
+        "current",
+        "historical",
+        "unknown"
+      ]
+    },
+    "DetailAvailability": {
+      "type": "string",
+      "enum": [
+        "available",
+        "unavailable",
+        "partial"
+      ]
+    },
+    "Side": {
+      "type": "string",
+      "enum": [
+        "before",
+        "after"
+      ]
+    },
+    "CoveragePrecision": {
+      "type": "string",
+      "enum": [
+        "exact",
+        "lower-bound",
+        "unavailable"
+      ]
+    },
+    "ListAvailability": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "unavailable",
+        "partial"
+      ]
+    },
+    "Completion": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "stopped",
+        "not-measured",
+        "unavailable"
+      ]
+    },
+    "Attribution": {
+      "type": "string",
+      "enum": [
+        "exact",
+        "candidate",
+        "not-attributed"
+      ]
+    },
+    "CellOutcome": {
+      "type": "string",
+      "enum": [
+        "covered",
+        "uncovered",
+        "unknown"
+      ]
+    },
+    "DiagnosticChange": {
+      "type": "string",
+      "enum": [
+        "added",
+        "removed",
+        "unchanged",
+        "changed"
+      ]
+    },
+    "FindingChange": {
+      "type": "string",
+      "enum": [
+        "added",
+        "removed",
+        "unchanged",
+        "evidence-changed"
+      ]
+    },
+    "IdentityState": {
+      "type": "string",
+      "enum": [
+        "exact",
+        "guessed",
+        "unavailable"
+      ]
+    },
+    "ExpectationAssertion": {
+      "type": "string",
+      "enum": [
+        "correct-reading",
+        "whole-word-negative"
+      ]
+    },
+    "ReferenceAuthority": {
+      "type": "string",
+      "enum": [
+        "human",
+        "source-validated"
+      ]
+    },
+    "ExpectationOutcome": {
+      "type": "string",
+      "enum": [
+        "matched",
+        "missing",
+        "unknown"
+      ]
+    },
+    "TraceOrigin": {
+      "type": "string",
+      "enum": [
+        "stored",
+        "diagnostic-rerun"
+      ]
+    },
+    "ReadingAgreement": {
+      "type": "string",
+      "enum": [
+        "same",
+        "different",
+        "unknown"
+      ]
+    },
+    "TargetKind": {
+      "type": "string",
+      "enum": [
+        "resource",
+        "tool"
+      ]
+    },
+    "TrialReviewResult": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/NoTrialResult"
+        },
+        {
+          "$ref": "#/$defs/PendingTrialResult"
+        },
+        {
+          "$ref": "#/$defs/AvailableTrialResult"
+        }
+      ]
+    },
+    "FlagFacts": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/NewWordFacts"
+        },
+        {
+          "$ref": "#/$defs/ReadingLossFacts"
+        },
+        {
+          "$ref": "#/$defs/NegativeFacts"
+        },
+        {
+          "$ref": "#/$defs/WorkChange"
+        },
+        {
+          "$ref": "#/$defs/NewFindingFacts"
+        }
+      ]
+    },
+    "ReviewRow": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/WordRow"
+        },
+        {
+          "$ref": "#/$defs/TokenRow"
+        },
+        {
+          "$ref": "#/$defs/CellRow"
+        },
+        {
+          "$ref": "#/$defs/DiagnosticRow"
+        },
+        {
+          "$ref": "#/$defs/FindingRow"
+        },
+        {
+          "$ref": "#/$defs/EffectRow"
+        },
+        {
+          "$ref": "#/$defs/EvidenceRow"
+        },
+        {
+          "$ref": "#/$defs/ReadingRow"
+        },
+        {
+          "$ref": "#/$defs/ExpectationRow"
+        },
+        {
+          "$ref": "#/$defs/SourceRow"
+        },
+        {
+          "$ref": "#/$defs/SetRow"
+        }
+      ]
+    },
+    "EvidencePin": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SetEvidencePin"
+        },
+        {
+          "$ref": "#/$defs/ScopeEvidencePin"
+        },
+        {
+          "$ref": "#/$defs/CheckpointEvidencePin"
+        },
+        {
+          "$ref": "#/$defs/ExpectationEvidencePin"
+        },
+        {
+          "$ref": "#/$defs/CheckEvidencePin"
+        },
+        {
+          "$ref": "#/$defs/ParsimonyEvidencePin"
+        }
+      ]
+    },
+    "ReportView": {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "motif.proposal-review-report"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "reportId": {
+          "type": "string"
+        },
+        "reportDigest": {
+          "type": "string"
+        },
+        "detail": {
+          "$ref": "#/$defs/DetailLevel"
+        },
+        "pins": {
+          "$ref": "#/$defs/ReportPins"
+        },
+        "freshness": {
+          "$ref": "#/$defs/Freshness"
+        },
+        "summary": {
+          "$ref": "#/$defs/ReviewSummary"
+        },
+        "flagEvidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FlagEvidence"
+          },
+          "minItems": 5,
+          "maxItems": 5
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Limitation"
+          }
+        },
+        "detailAvailability": {
+          "$ref": "#/$defs/DetailAvailability"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SectionView"
+          }
+        },
+        "page": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewPage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "word": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WordView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trace": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TracePage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "schema",
+        "schemaVersion",
+        "reportId",
+        "reportDigest",
+        "detail",
+        "pins",
+        "freshness",
+        "summary",
+        "flagEvidence",
+        "limitations",
+        "detailAvailability",
+        "sections",
+        "page",
+        "word",
+        "trace",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "ReportPins": {
+      "type": "object",
+      "properties": {
+        "projectKey": {
+          "type": "string"
+        },
+        "proposalId": {
+          "type": "string"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "intentDigest": {
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PrerequisitePin"
+          }
+        },
+        "trialJobId": {
+          "type": "string"
+        },
+        "baselineToken": {
+          "$ref": "#/$defs/BaselineToken"
+        },
+        "candidate": {
+          "$ref": "#/$defs/CandidatePin"
+        },
+        "dryRun": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DryRunPin"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checkpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CheckpointPin"
+          }
+        },
+        "setCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "setsDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expectationsDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "warningCheckIds": {
+          "$ref": "#/$defs/WarningCheckPins"
+        },
+        "parsimonyPairs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ParsimonyPair"
+          }
+        },
+        "evidenceManifestDigest": {
+          "type": "string"
+        },
+        "algorithmVersion": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectKey",
+        "proposalId",
+        "label",
+        "intentDigest",
+        "revision",
+        "prerequisites",
+        "trialJobId",
+        "baselineToken",
+        "candidate",
+        "dryRun",
+        "checkpoints",
+        "setCount",
+        "setsDigest",
+        "expectationsDigest",
+        "warningCheckIds",
+        "parsimonyPairs",
+        "evidenceManifestDigest",
+        "algorithmVersion"
+      ],
+      "additionalProperties": false
+    },
+    "PrerequisitePin": {
+      "type": "object",
+      "properties": {
+        "proposalId": {
+          "type": "string"
+        },
+        "intentDigest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposalId",
+        "intentDigest"
+      ],
+      "additionalProperties": false
+    },
+    "CandidatePin": {
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "string"
+        },
+        "grammarDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "modelFingerprint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "identity",
+        "grammarDigest",
+        "modelFingerprint"
+      ],
+      "additionalProperties": false
+    },
+    "DryRunPin": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "effectDigest": {
+          "type": "string"
+        },
+        "footprintDigest": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "effectDigest",
+        "footprintDigest"
+      ],
+      "additionalProperties": false
+    },
+    "CheckpointPin": {
+      "type": "object",
+      "properties": {
+        "side": {
+          "$ref": "#/$defs/Side"
+        },
+        "assessmentIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assessor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parserVersion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parserDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "counterSemantics": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scopeDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tokeniser": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TokeniserPin"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "side",
+        "assessmentIds",
+        "assessor",
+        "parserVersion",
+        "parserDigest",
+        "counterSemantics",
+        "scopeDigest",
+        "tokeniser"
+      ],
+      "additionalProperties": false
+    },
+    "TokeniserPin": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "WarningCheckPins": {
+      "type": "object",
+      "properties": {
+        "before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ],
+      "additionalProperties": false
+    },
+    "ParsimonyPair": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "measureId": {
+          "type": "string"
+        },
+        "beforeReportId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "afterReportId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "group",
+        "measureId",
+        "beforeReportId",
+        "afterReportId"
+      ],
+      "additionalProperties": false
+    },
+    "Freshness": {
+      "type": "object",
+      "properties": {
+        "relation": {
+          "$ref": "#/$defs/FreshnessRelation"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "relation",
+        "reasons"
+      ],
+      "additionalProperties": false
+    },
+    "ReviewSummary": {
+      "type": "object",
+      "properties": {
+        "notice": {
+          "const": "No red flags means only 'not bad', never 'good'."
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FlagFact"
+          },
+          "maxItems": 5
+        },
+        "incomplete": {
+          "$ref": "#/$defs/IncompleteSummary"
+        },
+        "wordforms": {
+          "$ref": "#/$defs/WordformSummary"
+        },
+        "approved": {
+          "$ref": "#/$defs/ApprovedSummary"
+        },
+        "sampledTokens": {
+          "$ref": "#/$defs/CoverageSummary"
+        },
+        "paradigmCells": {
+          "$ref": "#/$defs/CoverageSummary"
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ControlSummary"
+          }
+        },
+        "negatives": {
+          "$ref": "#/$defs/NegativeSummary"
+        },
+        "parserWork": {
+          "$ref": "#/$defs/WorkChange"
+        },
+        "warnings": {
+          "$ref": "#/$defs/WarningSummary"
+        },
+        "parsimony": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ParsimonySummary"
+          }
+        },
+        "effects": {
+          "$ref": "#/$defs/EffectsSummary"
+        },
+        "sectionCounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SectionCount"
+          }
+        }
+      },
+      "required": [
+        "notice",
+        "flags",
+        "incomplete",
+        "wordforms",
+        "approved",
+        "sampledTokens",
+        "paradigmCells",
+        "controls",
+        "negatives",
+        "parserWork",
+        "warnings",
+        "parsimony",
+        "effects",
+        "sectionCounts"
+      ],
+      "additionalProperties": false
+    },
+    "WordformSummary": {
+      "type": "object",
+      "properties": {
+        "requested": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "after": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "newNoParseWords": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "newApprovedLossWords": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "requested",
+        "before",
+        "after",
+        "newNoParseWords",
+        "newApprovedLossWords"
+      ],
+      "additionalProperties": false
+    },
+    "ApprovedSummary": {
+      "type": "object",
+      "properties": {
+        "expected": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "beforeMatched": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "afterMatched": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "newlyLostReadings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unknownAfter": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "expected",
+        "beforeMatched",
+        "afterMatched",
+        "newlyLostReadings",
+        "unknownAfter"
+      ],
+      "additionalProperties": false
+    },
+    "CoverageSummary": {
+      "type": "object",
+      "properties": {
+        "setCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "before": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "after": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "deltaPoints": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "setCount",
+        "before",
+        "after",
+        "deltaPoints"
+      ],
+      "additionalProperties": false
+    },
+    "ControlSummary": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "setCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "wordCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expectedReadingCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lostReadings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "additionalReadings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unresolvedExpectations": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "role",
+        "setCount",
+        "wordCount",
+        "expectedReadingCount",
+        "lostReadings",
+        "additionalReadings",
+        "unresolvedExpectations"
+      ],
+      "additionalProperties": false
+    },
+    "NegativeSummary": {
+      "type": "object",
+      "properties": {
+        "setCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "newlyAcceptedWords": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alreadyAcceptedWords": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unknownWords": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "setCount",
+        "newlyAcceptedWords",
+        "alreadyAcceptedWords",
+        "unknownWords"
+      ],
+      "additionalProperties": false
+    },
+    "WarningSummary": {
+      "type": "object",
+      "properties": {
+        "newCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolvedCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "preExistingCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "newCount",
+        "resolvedCount",
+        "preExistingCount"
+      ],
+      "additionalProperties": false
+    },
+    "ParsimonySummary": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "measureId": {
+          "type": "string"
+        },
+        "newFindings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolvedFindings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidenceChangedFindings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "type": "string"
+        },
+        "evidenceState": {
+          "$ref": "#/$defs/EvidenceState"
+        }
+      },
+      "required": [
+        "group",
+        "measureId",
+        "newFindings",
+        "resolvedFindings",
+        "evidenceChangedFindings",
+        "unit",
+        "evidenceState"
+      ],
+      "additionalProperties": false
+    },
+    "EffectsSummary": {
+      "type": "object",
+      "properties": {
+        "changeCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dryRunAvailable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "changeCount",
+        "dryRunAvailable"
+      ],
+      "additionalProperties": false
+    },
+    "SectionCount": {
+      "type": "object",
+      "properties": {
+        "section": {
+          "type": "string"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "type": "string"
+        },
+        "available": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "section",
+        "total",
+        "unit",
+        "available"
+      ],
+      "additionalProperties": false
+    },
+    "FlagFact": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/ReviewFlagId"
+        },
+        "text": {
+          "type": "string"
+        },
+        "wordCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "readingCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidenceState": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "sectionIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sampleEventIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5
+        },
+        "facts": {
+          "$ref": "#/$defs/FlagFacts"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "wordCount",
+        "readingCount",
+        "evidenceState",
+        "sectionIds",
+        "sampleEventIds",
+        "facts"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "new-word-failures"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "$ref": "#/$defs/NewWordFacts"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "confirmed-readings-lost"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "$ref": "#/$defs/ReadingLossFacts"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "known-nonwords-now-accepted"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "$ref": "#/$defs/NegativeFacts"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "parser-work-increase"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "$ref": "#/$defs/WorkChange"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "const": "new-warnings-or-parsimony"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "$ref": "#/$defs/NewFindingFacts"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "NewWordFacts": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "word-failures"
+        },
+        "noParseWords": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "lostApprovedWords": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "overlapWords": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "kind",
+        "noParseWords",
+        "lostApprovedWords",
+        "overlapWords"
+      ],
+      "additionalProperties": false
+    },
+    "ReadingLossFacts": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "reading-loss"
+        },
+        "uniqueReadings": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "approvedConfirmed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "referenceConfirmed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "overlapConfirmed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "overlapWithWordFailures": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "kind",
+        "uniqueReadings",
+        "approvedConfirmed",
+        "referenceConfirmed",
+        "overlapConfirmed",
+        "overlapWithWordFailures"
+      ],
+      "additionalProperties": false
+    },
+    "NegativeFacts": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "negative-accepted"
+        },
+        "words": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "memberships": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "setIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "words",
+        "memberships",
+        "setIds"
+      ],
+      "additionalProperties": false
+    },
+    "WorkChange": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "parser-work"
+        },
+        "percentChange": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "scopeDigest": {
+          "type": "string"
+        },
+        "comparison": {
+          "$ref": "#/$defs/WorkComparison"
+        },
+        "reasonCodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "percentChange",
+        "wordCount",
+        "scopeDigest",
+        "comparison",
+        "reasonCodes"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "comparison": {
+                "const": "comparable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "percentChange": {
+                "type": "number"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "percentChange": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "NewFindingFacts": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "new-findings"
+        },
+        "warnings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parsimony": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FindingCount"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "warnings",
+        "parsimony"
+      ],
+      "additionalProperties": false
+    },
+    "FindingCount": {
+      "type": "object",
+      "properties": {
+        "measureId": {
+          "type": "string"
+        },
+        "findings": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "measureId",
+        "findings",
+        "unit"
+      ],
+      "additionalProperties": false
+    },
+    "FlagEvidence": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/ReviewFlagId"
+        },
+        "state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "observedEvents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "id",
+        "state",
+        "reasons",
+        "observedEvents"
+      ],
+      "additionalProperties": false
+    },
+    "Coverage": {
+      "type": "object",
+      "properties": {
+        "numerator": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "denominator": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "knownNoMatch": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "percent": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "precision": {
+          "$ref": "#/$defs/CoveragePrecision"
+        },
+        "reasonCodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "numerator",
+        "denominator",
+        "knownNoMatch",
+        "unknown",
+        "percent",
+        "precision",
+        "reasonCodes"
+      ],
+      "additionalProperties": false
+    },
+    "IncompleteSummary": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "const": "Incomplete"
+        },
+        "requiredCases": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "affectedWords": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before": {
+          "$ref": "#/$defs/IncompleteSide"
+        },
+        "after": {
+          "$ref": "#/$defs/IncompleteSide"
+        },
+        "runInterruptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RunInterruption"
+          }
+        },
+        "evidenceGapCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "label",
+        "requiredCases",
+        "affectedWords",
+        "before",
+        "after",
+        "runInterruptions",
+        "evidenceGapCount"
+      ],
+      "additionalProperties": false
+    },
+    "IncompleteSide": {
+      "type": "object",
+      "properties": {
+        "notMeasured": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stopped": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IncompleteReason"
+          }
+        }
+      },
+      "required": [
+        "notMeasured",
+        "stopped",
+        "reasons"
+      ],
+      "additionalProperties": false
+    },
+    "IncompleteReason": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "cases": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "reason",
+        "cases"
+      ],
+      "additionalProperties": false
+    },
+    "RunInterruption": {
+      "type": "object",
+      "properties": {
+        "jobId": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "side": {
+          "$ref": "#/$defs/Side"
+        },
+        "scopeDigest": {
+          "type": "string"
+        },
+        "attributedStoppedCases": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unmeasuredCases": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "jobId",
+        "code",
+        "side",
+        "scopeDigest",
+        "attributedStoppedCases",
+        "unmeasuredCases"
+      ],
+      "additionalProperties": false
+    },
+    "Limitation": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "sectionIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "text": {
+          "type": "string"
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "code",
+        "sectionIds",
+        "text",
+        "evidenceRefs"
+      ],
+      "additionalProperties": false
+    },
+    "ReadTarget": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/TargetKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "arguments": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadArguments"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "uri",
+        "tool",
+        "arguments"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "resource"
+            },
+            "uri": {
+              "type": "string"
+            },
+            "tool": {
+              "type": "null"
+            },
+            "arguments": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "tool"
+            },
+            "uri": {
+              "type": "null"
+            },
+            "tool": {
+              "type": "string"
+            },
+            "arguments": {
+              "$ref": "#/$defs/ReadArguments"
+            }
+          }
+        }
+      ]
+    },
+    "SectionView": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "definition": {
+          "type": "string"
+        },
+        "scopeDigest": {
+          "type": "string"
+        },
+        "counts": {
+          "$ref": "#/$defs/SectionCounts"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CauseGroup"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Limitation"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "definition",
+        "scopeDigest",
+        "counts",
+        "groups",
+        "limitations",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "SectionCounts": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "string"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unknown": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "unit",
+        "total",
+        "observed",
+        "unknown"
+      ],
+      "additionalProperties": false
+    },
+    "CauseGroup": {
+      "type": "object",
+      "properties": {
+        "cause": {
+          "type": "string"
+        },
+        "count": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "type": "string"
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReviewRow"
+          }
+        },
+        "remaining": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "link": {
+          "$ref": "#/$defs/ReadTarget"
+        }
+      },
+      "required": [
+        "cause",
+        "count",
+        "unit",
+        "samples",
+        "remaining",
+        "link"
+      ],
+      "additionalProperties": false
+    },
+    "ReviewPage": {
+      "type": "object",
+      "properties": {
+        "section": {
+          "type": "string"
+        },
+        "filterDigest": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "totalInSection": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "totalMatching": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "returned": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "listAvailability": {
+          "$ref": "#/$defs/ListAvailability"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReviewRow"
+          }
+        }
+      },
+      "required": [
+        "section",
+        "filterDigest",
+        "unit",
+        "totalInSection",
+        "totalMatching",
+        "returned",
+        "limit",
+        "nextCursor",
+        "listAvailability",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "WordRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "word"
+        },
+        "caseKey": {
+          "type": "string"
+        },
+        "wordKey": {
+          "type": "string"
+        },
+        "word": {
+          "type": "string"
+        },
+        "writingSystemId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before": {
+          "$ref": "#/$defs/WordSide"
+        },
+        "after": {
+          "$ref": "#/$defs/WordSide"
+        },
+        "flagIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReviewFlagId"
+          }
+        },
+        "causes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "setIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "membershipsTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expectationsTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "work": {
+          "$ref": "#/$defs/WorkChange"
+        },
+        "attribution": {
+          "$ref": "#/$defs/Attribution"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "rowKind",
+        "caseKey",
+        "wordKey",
+        "word",
+        "writingSystemId",
+        "before",
+        "after",
+        "flagIds",
+        "causes",
+        "setIds",
+        "membershipsTotal",
+        "expectationsTotal",
+        "work",
+        "attribution",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "WordSide": {
+      "type": "object",
+      "properties": {
+        "completion": {
+          "$ref": "#/$defs/Completion"
+        },
+        "stopReasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "observedReadingCount": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approvedMatched": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approvedMissing": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approvedUnknown": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "referenceMatched": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "referenceMissing": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "referenceUnknown": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "disapprovedReturned": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "readingPage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadTarget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "completion",
+        "stopReasons",
+        "observedReadingCount",
+        "approvedMatched",
+        "approvedMissing",
+        "approvedUnknown",
+        "referenceMatched",
+        "referenceMissing",
+        "referenceUnknown",
+        "disapprovedReturned",
+        "readingPage"
+      ],
+      "additionalProperties": false
+    },
+    "WordView": {
+      "type": "object",
+      "properties": {
+        "row": {
+          "$ref": "#/$defs/WordRow"
+        },
+        "memberships": {
+          "$ref": "#/$defs/ReviewPage"
+        },
+        "expectations": {
+          "$ref": "#/$defs/ReviewPage"
+        },
+        "readings": {
+          "$ref": "#/$defs/ReviewPage"
+        },
+        "sourceReferences": {
+          "$ref": "#/$defs/ReviewPage"
+        },
+        "traceRequest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadTarget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "row",
+        "memberships",
+        "expectations",
+        "readings",
+        "sourceReferences",
+        "traceRequest"
+      ],
+      "additionalProperties": false
+    },
+    "TokenRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "token"
+        },
+        "caseId": {
+          "type": "string"
+        },
+        "wordKey": {
+          "type": "string"
+        },
+        "occurrenceId": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "sourceLocator": {
+          "type": "string"
+        },
+        "before": {
+          "$ref": "#/$defs/WordSide"
+        },
+        "after": {
+          "$ref": "#/$defs/WordSide"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "rowKind",
+        "caseId",
+        "wordKey",
+        "occurrenceId",
+        "weight",
+        "sourceLocator",
+        "before",
+        "after",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "CellRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "cell"
+        },
+        "setId": {
+          "type": "string"
+        },
+        "cellId": {
+          "type": "string"
+        },
+        "lexemeId": {
+          "type": "string"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FeatureValue"
+          }
+        },
+        "variantCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "before": {
+          "$ref": "#/$defs/CellOutcome"
+        },
+        "after": {
+          "$ref": "#/$defs/CellOutcome"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "rowKind",
+        "setId",
+        "cellId",
+        "lexemeId",
+        "features",
+        "variantCount",
+        "before",
+        "after",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "FeatureValue": {
+      "type": "object",
+      "properties": {
+        "featureId": {
+          "type": "string"
+        },
+        "valueId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "featureId",
+        "valueId"
+      ],
+      "additionalProperties": false
+    },
+    "DiagnosticRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "warning"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "diagnosticKey": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "change": {
+          "$ref": "#/$defs/DiagnosticChange"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "subjectIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "type": "string"
+        },
+        "attribution": {
+          "type": "string"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "rowKind",
+        "eventId",
+        "diagnosticKey",
+        "code",
+        "change",
+        "severity",
+        "subjectIds",
+        "description",
+        "attribution",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "FindingRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "parsimony"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "measureId": {
+          "type": "string"
+        },
+        "findingId": {
+          "type": "string"
+        },
+        "change": {
+          "$ref": "#/$defs/FindingChange"
+        },
+        "group": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        },
+        "disposition": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidenceDigest": {
+          "type": "string"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "rowKind",
+        "eventId",
+        "measureId",
+        "findingId",
+        "change",
+        "group",
+        "unit",
+        "tier",
+        "disposition",
+        "evidenceDigest",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "EffectRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "effect"
+        },
+        "operationId": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "detail": {
+          "$ref": "#/$defs/ReadTarget"
+        }
+      },
+      "required": [
+        "rowKind",
+        "operationId",
+        "summary",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "evidence"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "pins": {
+          "$ref": "#/$defs/EvidencePin"
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Limitation"
+          }
+        }
+      },
+      "required": [
+        "rowKind",
+        "id",
+        "kind",
+        "pins",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "ReadingRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "reading"
+        },
+        "identityDigest": {
+          "type": "string"
+        },
+        "side": {
+          "$ref": "#/$defs/Side"
+        },
+        "identityState": {
+          "$ref": "#/$defs/IdentityState"
+        },
+        "morphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Morph"
+          }
+        },
+        "observed": {
+          "type": "boolean"
+        },
+        "expectationIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceRefs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "rowKind",
+        "identityDigest",
+        "side",
+        "identityState",
+        "morphs",
+        "observed",
+        "expectationIds",
+        "sourceRefs"
+      ],
+      "additionalProperties": false
+    },
+    "Morph": {
+      "type": "object",
+      "properties": {
+        "formId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msaId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inflTypeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "form": {
+          "type": "string"
+        },
+        "gloss": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "formId",
+        "msaId",
+        "inflTypeIds",
+        "form",
+        "gloss"
+      ],
+      "additionalProperties": false
+    },
+    "ExpectationRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "expectation"
+        },
+        "id": {
+          "type": "string"
+        },
+        "assertion": {
+          "$ref": "#/$defs/ExpectationAssertion"
+        },
+        "reference": {
+          "$ref": "#/$defs/ReferenceAuthority"
+        },
+        "actorId": {
+          "type": "string"
+        },
+        "revisionId": {
+          "type": "string"
+        },
+        "readingIdentityDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceRefs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "before": {
+          "$ref": "#/$defs/ExpectationOutcome"
+        },
+        "after": {
+          "$ref": "#/$defs/ExpectationOutcome"
+        }
+      },
+      "required": [
+        "rowKind",
+        "id",
+        "assertion",
+        "reference",
+        "actorId",
+        "revisionId",
+        "readingIdentityDigest",
+        "sourceRefs",
+        "before",
+        "after"
+      ],
+      "additionalProperties": false
+    },
+    "SourceRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "source"
+        },
+        "id": {
+          "type": "string"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excerptComplete": {
+          "type": "boolean"
+        },
+        "actorId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "rowKind",
+        "id",
+        "citation",
+        "locator",
+        "excerpt",
+        "excerptComplete",
+        "actorId"
+      ],
+      "additionalProperties": false
+    },
+    "SetRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": {
+          "const": "set"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "membershipDigest": {
+          "type": "string"
+        },
+        "expectationDigest": {
+          "type": "string"
+        },
+        "memberships": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "words": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expectations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "rowKind",
+        "id",
+        "name",
+        "role",
+        "membershipDigest",
+        "expectationDigest",
+        "memberships",
+        "words",
+        "expectations",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "TracePage": {
+      "type": "object",
+      "properties": {
+        "traceId": {
+          "type": "string"
+        },
+        "reportId": {
+          "type": "string"
+        },
+        "caseKey": {
+          "type": "string"
+        },
+        "side": {
+          "$ref": "#/$defs/Side"
+        },
+        "origin": {
+          "$ref": "#/$defs/TraceOrigin"
+        },
+        "parserDigest": {
+          "type": "string"
+        },
+        "grammarDigest": {
+          "type": "string"
+        },
+        "scopeDigest": {
+          "type": "string"
+        },
+        "traceSchema": {
+          "type": "string"
+        },
+        "completion": {
+          "type": "string"
+        },
+        "captureComplete": {
+          "type": "boolean"
+        },
+        "truncationReason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "readingAgreement": {
+          "$ref": "#/$defs/ReadingAgreement"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TraceNode"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "traceId",
+        "reportId",
+        "caseKey",
+        "side",
+        "origin",
+        "parserDigest",
+        "grammarDigest",
+        "scopeDigest",
+        "traceSchema",
+        "completion",
+        "captureComplete",
+        "truncationReason",
+        "readingAgreement",
+        "nodes",
+        "nextCursor",
+        "links"
+      ],
+      "additionalProperties": false
+    },
+    "TraceNode": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "parentId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "reasonCode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objectRefs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "children": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadTarget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "parentId",
+        "kind",
+        "label",
+        "reasonCode",
+        "objectRefs",
+        "children"
+      ],
+      "additionalProperties": false
+    },
+    "NoTrialResult": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "const": "no-trial"
+        },
+        "proposalId": {
+          "type": "string"
+        },
+        "next": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "state",
+        "proposalId",
+        "next"
+      ],
+      "additionalProperties": false
+    },
+    "PendingTrialResult": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "const": "pending"
+        },
+        "proposalId": {
+          "type": "string"
+        },
+        "jobId": {
+          "type": "string"
+        },
+        "jobState": {
+          "type": "string"
+        },
+        "report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReportView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReadTarget"
+          }
+        }
+      },
+      "required": [
+        "state",
+        "proposalId",
+        "jobId",
+        "jobState",
+        "report",
+        "next"
+      ],
+      "additionalProperties": false
+    },
+    "AvailableTrialResult": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "const": "report"
+        },
+        "report": {
+          "$ref": "#/$defs/ReportView"
+        }
+      },
+      "required": [
+        "state",
+        "report"
+      ],
+      "additionalProperties": false
+    },
+    "ReadArguments": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "action": {
+          "anyOf": [
+            {
+              "enum": [
+                "run",
+                "read",
+                "refresh-report"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "job": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "report": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DetailLevel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "section": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "set": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "flag": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewFlagId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filter": {
+          "anyOf": [
+            {
+              "enum": [
+                "all",
+                "changed",
+                "unchanged",
+                "review",
+                "incomplete"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "word": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "case": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "side": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Side"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "trace": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "words": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "negative_words": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_sets": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wordsFile": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "difference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "wait_seconds": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "SetEvidencePin": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "set"
+        },
+        "id": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "membershipDigest": {
+          "type": "string"
+        },
+        "expectationDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "role",
+        "membershipDigest",
+        "expectationDigest"
+      ],
+      "additionalProperties": false
+    },
+    "ScopeEvidencePin": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "scope"
+        },
+        "scopeDigest": {
+          "type": "string"
+        },
+        "assessor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parserDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "counterSemantics": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "scopeDigest",
+        "assessor",
+        "parserDigest",
+        "counterSemantics"
+      ],
+      "additionalProperties": false
+    },
+    "CheckpointEvidencePin": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "checkpoint"
+        },
+        "side": {
+          "$ref": "#/$defs/Side"
+        },
+        "assessmentIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scopeDigest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "side",
+        "assessmentIds",
+        "scopeDigest"
+      ],
+      "additionalProperties": false
+    },
+    "ExpectationEvidencePin": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "expectation"
+        },
+        "id": {
+          "type": "string"
+        },
+        "reference": {
+          "$ref": "#/$defs/ReferenceAuthority"
+        },
+        "actorId": {
+          "type": "string"
+        },
+        "revisionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "reference",
+        "actorId",
+        "revisionId"
+      ],
+      "additionalProperties": false
+    },
+    "CheckEvidencePin": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "check"
+        },
+        "beforeId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "afterId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "beforeId",
+        "afterId",
+        "digest"
+      ],
+      "additionalProperties": false
+    },
+    "ParsimonyEvidencePin": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "parsimony"
+        },
+        "group": {
+          "type": "string"
+        },
+        "measureId": {
+          "type": "string"
+        },
+        "beforeReportId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "afterReportId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "group",
+        "measureId",
+        "beforeReportId",
+        "afterReportId"
+      ],
+      "additionalProperties": false
+    },
+    "BaselineToken": {
+      "type": "object",
+      "properties": {
+        "projectIdentity": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "semanticSnapshotDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "projectionVersion": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "capturedUtc": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,7})?Z$"
+        },
+        "bundleDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "capturedHostSessionId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "capturedEditGeneration": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "projectIdentity",
+        "semanticSnapshotDigest",
+        "projectionVersion",
+        "capturedUtc",
+        "bundleDigest",
+        "capturedHostSessionId",
+        "capturedEditGeneration"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "capturedHostSessionId": {
+              "type": "null"
+            },
+            "capturedEditGeneration": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "capturedHostSessionId": {
+              "type": "string",
+              "pattern": "\\S"
+            },
+            "capturedEditGeneration": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        }
+      ]
+    },
+    "RefusalEnvelope": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "code": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "next": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "code",
+        "reason",
+        "message",
+        "facts",
+        "next"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
