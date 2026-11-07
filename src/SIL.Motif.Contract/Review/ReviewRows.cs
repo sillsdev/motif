@@ -530,3 +530,27 @@ public sealed record TraceNode(
             throw new JsonException("Invalid TraceNode.");
     }
 }
+
+/// <summary>A rule's paired parser-work change in the retained report scope.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record RuleWorkRow([property: JsonRequired] string Kind, [property: JsonRequired] string Key,
+    [property: JsonRequired] string IdentityQuality,
+    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? Scope,
+    [property: JsonRequired] string Name, [property: JsonRequired] string Status,
+    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] double? PercentChange,
+    [property: JsonRequired, JsonIgnore(Condition = JsonIgnoreCondition.Never)] string? UnavailableReason) : ReviewRow, IJsonOnDeserialized, IJsonOnSerializing
+{
+    [JsonRequired]
+    public string RowKind { get; init; } = "rule-work";
+
+    void IJsonOnDeserialized.OnDeserialized() => Validate();
+    void IJsonOnSerializing.OnSerializing() => Validate();
+
+    private void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Kind) || string.IsNullOrWhiteSpace(Key) || string.IsNullOrWhiteSpace(IdentityQuality) ||
+            Name is null || RowKind != "rule-work" || Status is not ("paired" or "new" or "missing" or "unavailable") ||
+            (Status == "paired") != (PercentChange is not null) || PercentChange is { } n && !double.IsFinite(n))
+            throw new JsonException("Invalid rule work row.");
+    }
+}

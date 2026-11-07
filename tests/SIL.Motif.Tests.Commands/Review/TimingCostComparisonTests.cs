@@ -23,7 +23,7 @@ public sealed class TimingCostComparisonTests
         var after = Record("after", 150, [Object("a", 60)]);
         var result = TimingCostComparisonQuery.Compare(before, after, ["a"]);
         Assert.Equal(50, result.Total.PercentChange);
-        Assert.Equal(100, Assert.Single(result.Objects).Change.PercentChange);
+        Assert.Equal(100, Assert.Single(result.Objects, row => row.Kind != "unattributed").Change.PercentChange);
         Assert.Null(TimingCostComparisonQuery.Compare(before, after, ["missing"]).Total.PercentChange);
     }
 
@@ -32,10 +32,42 @@ public sealed class TimingCostComparisonTests
     {
         var before = Record("before", 100, []);
         var after = Record("after", 150, [Object("a", 60)]);
-        Assert.Null(Assert.Single(TimingCostComparisonQuery.Compare(before, after, ["a"]).Objects).Change.PercentChange);
+        Assert.Null(Assert.Single(TimingCostComparisonQuery.Compare(before, after, ["a"]).Objects, row => row.Kind != "unattributed").Change.PercentChange);
         var incomplete = before with { Details = ((AssessmentRecordDetails.Words)before.Details) with
             { ObjectTimings = [Object("a", 30)], TimingEvidence = new AssessmentTimingEvidence([], 0, false, 1) } };
-        Assert.Null(Assert.Single(TimingCostComparisonQuery.Compare(incomplete, after, ["a"]).Objects).Change.PercentChange);
+        Assert.Null(Assert.Single(TimingCostComparisonQuery.Compare(incomplete, after, ["a"]).Objects, row => row.Kind != "unattributed").Change.PercentChange);
+    }
+
+    [Fact]
+    public void NewAndMissingRulesRemainVisibleWithoutInventingZero()
+    {
+        var before = Record("before", 100, [Object("a", 30)]);
+        var after = Record("after", 150, [Object("a", 60) with { Key = "22345678-1234-1234-abcd-123456789abc" }]);
+        var changes = TimingCostComparisonQuery.Compare(before, after, ["a"]).Objects;
+        Assert.Contains(changes, row => row.Key == Rule && row.Status == "missing" && row.Change.PercentChange is null);
+        Assert.Contains(changes, row => row.Key != Rule && row.Status == "new" && row.Change.PercentChange is null);
+    }
+
+    [Fact]
+    public void LocalOrdinalsInDifferentGrammarScopesAreNotCalledNewOrMissing()
+    {
+        var before = Record("before", 100, [Object("a", 20) with { Key = "1", IdentityQuality = "grammar-local", Scope = "old" }]);
+        var after = Record("after", 150, [Object("a", 30) with { Key = "1", IdentityQuality = "grammar-local", Scope = "new" }]);
+        var rows = TimingCostComparisonQuery.Compare(before, after, ["a"]).Objects.Where(row => row.Kind != "unattributed");
+        Assert.All(rows, row => Assert.Equal("unavailable", row.Status));
+        Assert.Equal(2, rows.Count());
+    }
+
+    [Fact]
+    public void UnattributedWorkIsPairedOnlyWhenTheCompleteRemainderIsKnown()
+    {
+        var before = Record("before", 100, [Object("a", 20)]);
+        var after = Record("after", 150, [Object("a", 30)]);
+        var other = TimingCostComparisonQuery.Compare(before, after, ["a"]).Objects.Single(row => row.Kind == "unattributed");
+        Assert.Equal(50, other.Change.PercentChange);
+        var inconsistent = Record("before", 10, [Object("a", 20)]);
+        Assert.Null(TimingCostComparisonQuery.Compare(inconsistent, after, ["a"]).Objects
+            .Single(row => row.Kind == "unattributed").Change.PercentChange);
     }
 
     [Fact]
@@ -45,7 +77,7 @@ public sealed class TimingCostComparisonTests
         var after = Record("after", 200, [Object("a", 30)]);
         var result = TimingCostComparisonQuery.Compare(before, after, ["a"]);
         Assert.Equal(100, result.Total.PercentChange);
-        Assert.Equal(50, Assert.Single(result.Objects).Change.PercentChange);
+        Assert.Equal(50, Assert.Single(result.Objects, row => row.Kind != "unattributed").Change.PercentChange);
     }
 
     [Fact]
@@ -93,7 +125,7 @@ public sealed class TimingCostComparisonTests
     {
         var before = Record("before", 100, [Object("a", 30) with { Key = Rule.ToUpperInvariant() }]);
         var after = Record("after", 150, [Object("a", 60)]);
-        Assert.Equal(100, Assert.Single(TimingCostComparisonQuery.Compare(before, after, ["a"]).Objects).Change.PercentChange);
+        Assert.Equal(100, Assert.Single(TimingCostComparisonQuery.Compare(before, after, ["a"]).Objects, row => row.Kind != "unattributed").Change.PercentChange);
     }
 
     private static AssessmentObjectTiming Object(string word, long work) =>

@@ -4497,6 +4497,14 @@ public static class MotifAppStrings
 
     public static string WarningsFindingsNoun => Text("MotifApp.WarningsFindingsNoun");
 
+    public static string TimingRuleNew => Text("MotifApp.TimingRuleNew");
+
+    public static string TimingRuleMissing => Text("MotifApp.TimingRuleMissing");
+
+    public static string TimingRuleUnavailable => Text("MotifApp.TimingRuleUnavailable");
+
+    public static string TimingRuleChanges => Text("MotifApp.TimingRuleChanges");
+
     public static string TimingProposalPairedNote => Text("MotifApp.TimingProposalPairedNote");
 
     public static string TimingProposalViewNote => Text("MotifApp.TimingProposalViewNote");

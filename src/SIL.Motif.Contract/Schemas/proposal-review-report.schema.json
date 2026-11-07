@@ -206,6 +206,9 @@
     "ReviewRow": {
       "oneOf": [
         {
+          "$ref": "#/$defs/RuleWorkRow"
+        },
+        {
           "$ref": "#/$defs/WordRow"
         },
         {
@@ -2309,6 +2312,26 @@
         "items"
       ],
       "additionalProperties": false
+    },
+    "RuleWorkRow": {
+      "type": "object",
+      "properties": {
+        "rowKind": { "const": "rule-work" },
+        "kind": { "type": "string", "minLength": 1 },
+        "key": { "type": "string", "minLength": 1 },
+        "identityQuality": { "type": "string", "minLength": 1 },
+        "scope": { "type": ["string", "null"] },
+        "name": { "type": "string" },
+        "status": { "enum": ["paired", "new", "missing", "unavailable"] },
+        "percentChange": { "type": ["number", "null"] },
+        "unavailableReason": { "type": ["string", "null"] }
+      },
+      "required": ["rowKind", "kind", "key", "identityQuality", "scope", "name", "status", "percentChange", "unavailableReason"],
+      "additionalProperties": false,
+      "oneOf": [
+        { "properties": { "status": { "const": "paired" }, "percentChange": { "type": "number" } } },
+        { "properties": { "status": { "enum": ["new", "missing", "unavailable"] }, "percentChange": { "type": "null" } } }
+      ]
     },
     "WordRow": {
       "type": "object",

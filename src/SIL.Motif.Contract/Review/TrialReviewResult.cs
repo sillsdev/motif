@@ -94,6 +94,7 @@ public sealed class ReviewRowConverter : JsonConverter<ReviewRow>
             throw new JsonException("Missing review discriminator.");
         return kind.GetString() switch
         {
+            "rule-work" => JsonSerializer.Deserialize<RuleWorkRow>(doc.RootElement, options)!,
             "word" => JsonSerializer.Deserialize<WordRow>(doc.RootElement, options)!,
             "token" => JsonSerializer.Deserialize<TokenRow>(doc.RootElement, options)!,
             "cell" => JsonSerializer.Deserialize<CellRow>(doc.RootElement, options)!,
@@ -113,6 +114,7 @@ public sealed class ReviewRowConverter : JsonConverter<ReviewRow>
     {
         switch (value)
         {
+            case RuleWorkRow item: JsonSerializer.Serialize(writer, item, options); break;
             case WordRow item: JsonSerializer.Serialize(writer, item, options); break;
             case TokenRow item: JsonSerializer.Serialize(writer, item, options); break;
             case CellRow item: JsonSerializer.Serialize(writer, item, options); break;

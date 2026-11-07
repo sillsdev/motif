@@ -13,6 +13,7 @@ using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Runtime.Review;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker.Review;
@@ -94,6 +95,35 @@ public sealed class ReviewReportRepositoryTests : IDisposable
         Assert.Equal("assessment-one", assessments.Get("assessment-one").AssessmentId);
         Assert.Throws<KeyNotFoundException>(() => assessments.Get("unreferenced"));
         Assert.True(_repository.ReadManifest(id)!.DetailAvailable);
+    }
+
+    [Fact]
+    public void RetainedRuleWorkRequiresMatchingWritingSystemPartitions()
+    {
+        const string rule = "12345678-1234-1234-abcd-123456789abc";
+        var assessments = new AssessmentRepository(_database);
+        NewAssessmentRecord Timing(string id, long steps) => Assessment(id) with
+        {
+            Kind = "ParseTime",
+            Material = new AssessmentRecordMaterial.Words(
+                [new SIL.Motif.Host.Parser.AssessedWord("sample", "analysed", []) { ParserWork = steps }], null, null,
+                [new AssessmentObjectTiming("morph_rule", rule, "authored", "forward", "Rule", "sample", null, null, null)
+                    { ParserWork = steps / 2 }])
+                { TimingEvidence = new AssessmentTimingEvidence([], 1, true, 1) },
+        };
+        assessments.Record(Timing("before", 100));
+        assessments.Record(Timing("after", 150));
+        var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", "parser", [], [],
+            [new ReviewPlannedCase("case", "key", "sample", "ws", null, [], [])]);
+        var input = new TrialJobInput("{}", null, ReviewBaselines:
+            [new ReviewBaselinePartition("ws", ["case"], ["before"])]);
+        var scope = new ReviewWorkScope("scope", "baseline", "parser", "digest", "1", "settings", "tokeniser");
+        var work = new ReviewWorkInputs(scope, scope, ["case"], [new("case", true, 100)], [new("case", true, 150)]);
+        var result = JsonSerializer.Serialize(new { reviewAfter = new[] { new ReviewAfterPartition("ws", ["case"], ["after"]) } });
+        var rows = TrialReviewRuleWork.Read(_database, input, result, inputs, work)!;
+        Assert.Equal(50, Assert.Single(rows.Select(row => row.Row).OfType<RuleWorkRow>(), row => row.Kind == "morph_rule").PercentChange);
+        var wrong = JsonSerializer.Serialize(new { reviewAfter = new[] { new ReviewAfterPartition("other", ["case"], ["after"]) } });
+        Assert.Null(TrialReviewRuleWork.Read(_database, input, wrong, inputs, work));
     }
 
     [Fact]

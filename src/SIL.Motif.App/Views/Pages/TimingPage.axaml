@@ -230,6 +230,21 @@
 
               <Border Classes="card">
                 <StackPanel>
+                  <views:CopyableTextBlock Text="{Binding ProposalRuleNote}" IsVisible="{Binding HasProposalRuleNote}" TextWrapping="Wrap" />
+                  <StackPanel IsVisible="{Binding HasProposalRuleChanges}">
+                    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TimingRuleChanges}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
+                    <ItemsControl ItemsSource="{Binding ProposalRuleChanges}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TimingRuleChange">
+                          <Grid ColumnDefinitions="*,*,Auto">
+                            <views:CopyableTextBlock Text="{Binding Name}" />
+                            <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Identity}" TextTrimming="CharacterEllipsis" />
+                            <views:CopyableTextBlock Grid.Column="2" Text="{Binding Change}" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
                   <Grid Classes="timingTableHeader timingColumns">
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="2*" />

@@ -780,6 +780,7 @@ public sealed partial class ReviewReportRepository
 
     private static ReviewRow StubRow(ReviewRow row) => row switch
     {
+        RuleWorkRow rule => rule with { Name = Clip(rule.Name) },
         ReviewWordRow word => word with { Word = Clip(word.Word), Causes = [], SetIds = [] },
         TokenRow token => token with { SourceLocator = Clip(token.SourceLocator) },
         CellRow cell => cell with { Features = [] },
@@ -889,12 +890,12 @@ internal static class ReviewReportPages
     internal static string SectionKey(string section) => "\u001fsection:" + section;
     internal static string Unit(string section) => section switch
     {
-        "parser-work" => "words", "warnings" => "diagnostics", "parsimony" => "findings",
+        "parser-work" => "rows", "warnings" => "diagnostics", "parsimony" => "findings",
         "effects" => "operations", "evidence" => "bindings", _ => throw new ArgumentException("Unknown section.")
     };
     internal static bool IsSectionRow(string section, ReviewRow row) => section switch
     {
-        "parser-work" => row is ReviewWordRow, "warnings" => row is DiagnosticRow,
+        "parser-work" => row is ReviewWordRow or RuleWorkRow, "warnings" => row is DiagnosticRow,
         "parsimony" => row is FindingRow, "effects" => row is EffectRow,
         "evidence" => row is EvidenceRow or SetRow, _ => false
     };

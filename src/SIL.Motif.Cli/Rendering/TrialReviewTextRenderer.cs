@@ -77,6 +77,8 @@ public static class TrialReviewTextRenderer
         (value.Precision == CoveragePrecision.LowerBound ? " (lower bound)" : "");
     private static string Row(ReviewRow row) => row switch
     {
+        RuleWorkRow rule => rule.Name + ": " + (rule.PercentChange is { } percent
+            ? percent.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) + "%" : rule.Status),
         WordRow word => word.Word + " (" + word.CaseKey + ")",
         DiagnosticRow warning => warning.Code + ": " + warning.Description,
         FindingRow finding => finding.MeasureId + ": " + finding.FindingId,

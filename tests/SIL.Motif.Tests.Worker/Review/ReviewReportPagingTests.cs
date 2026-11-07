@@ -83,6 +83,20 @@ public sealed class ReviewReportPagingTests : IDisposable
         Assert.Throws<ReviewDetailUnavailableException>(() => _repository.ReadPage(Request(id) with { Section = "parsimony" }));
     }
 
+    [Fact]
+    public async Task ParserWorkRuleChangesRoundTripThroughFullReportPages()
+    {
+        var row = new RuleWorkRow("morph_rule", "rule-id", "authored", null, "Rule", "paired", 25, null);
+        var publication = Publication("rule-work") with
+        {
+            AvailableSections = ["parser-work"], SectionItems = SectionRows(new ReviewSectionItem("parser-work", row))
+        };
+        var id = await _repository.PublishAsync(publication, Cases(Sample(0, 0)), CancellationToken.None);
+        var page = _repository.ReadPage(Request(id) with { Section = "parser-work" });
+        Assert.Equal(25, Assert.IsType<RuleWorkRow>(Assert.Single(page.Items)).PercentChange);
+        Assert.DoesNotContain("parserWork", JsonSerializer.Serialize(page, ReviewJson.Options), StringComparison.OrdinalIgnoreCase);
+    }
+
     private static async IAsyncEnumerable<ReviewSectionItem> SectionRows(params ReviewSectionItem[] items)
     {
         foreach (var item in items) { yield return item; await Task.Yield(); }

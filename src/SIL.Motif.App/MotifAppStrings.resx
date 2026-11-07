@@ -9106,7 +9106,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>The word for what the Warnings page shows, put into a note such as 'This page shows today's findings.' Lower case.</comment>
   </data>
   <data name="MotifApp.TimingProposalPairedNote" xml:space="preserve">
-    <value>The total word time, the median, the words stopped at the work limit and the work by kind read today's parser work, then the parser work with this Proposal, for the same words. The bar, the rule table, its times and everything else on this page are today's.</value>
+    <value>The total word time, the median, the words stopped at the work limit and the work by kind read today's parser work, then the parser work with this Proposal, for the same words. Rule changes use the retained paired Trial evidence. The bar and other details are today's.</value>
     <comment>Note on the Timing page while a Proposal is open and its parser work are shown beside today's.</comment>
   </data>
   <data name="MotifApp.TimingProposalViewNote" xml:space="preserve">
@@ -9461,4 +9461,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Loading project...</value>
     <comment>Message in the sidebar's Selection summary while the chosen project is still opening.</comment>
   </data>
+  <data name="MotifApp.TimingRuleNew" xml:space="preserve"><value>New</value></data>
+  <data name="MotifApp.TimingRuleMissing" xml:space="preserve"><value>Missing</value></data>
+  <data name="MotifApp.TimingRuleChanges" xml:space="preserve"><value>Rule work change (Trial Baseline → Proposal)</value></data>
+  <data name="MotifApp.TimingRuleUnavailable" xml:space="preserve"><value>Rule work comparison is unavailable for the retained Trial and selected words.</value></data>
 </root>

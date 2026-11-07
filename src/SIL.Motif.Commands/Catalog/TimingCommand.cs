@@ -157,12 +157,6 @@ public static class TimingCommand
                 ? TimingCostComparison.Unavailable("The Assessment does not contain every requested word.")
                 : TimingCostComparisonQuery.Read(database, trialSet?.Origin.JobId, assessment,
                     selectedWords.Select(word => word.Word).ToArray(), evidenceSet.Components.Count != 1, request.By);
-            comparison = comparison with
-            {
-                Objects = comparison.Objects.Where(item => namedAggregates.Any(row =>
-                    request.By == "kind" ? row.Key == item.Key : row.Kind == item.Kind &&
-                        ObjectIdentity.CanonicalKey(row.Key, row.IdentityQuality) == item.Key)).ToArray(),
-            };
             return CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 assessment.AssessmentId, request.WordSet, request.By, selectedWords.Count,
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,

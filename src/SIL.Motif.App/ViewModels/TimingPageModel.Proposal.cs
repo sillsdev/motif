@@ -9,7 +9,8 @@ public sealed partial class TimingPageModel
 {
     // Only what the page shows is kept from the Proposal's read; its per-word rows are dropped with the response.
     private sealed record ProposalTiming(WordWorkSummary Work, IReadOnlyList<TimingWorkAggregate> ParserWorkAggregates,
-        IReadOnlyList<TimingAggregateRow> Aggregates, int StoppedWords, WordSetDigest Words);
+        IReadOnlyList<TimingAggregateRow> Aggregates, int StoppedWords, WordSetDigest Words,
+        TimingCostComparison RuleComparison);
 
     // What a held read belongs to; the chosen words count by reference, as changing them replaces the list.
     private sealed record ProposalTimingKey(string Project, string ProposalId, string TrialId, string WordSet, int Top,
@@ -100,6 +101,26 @@ public sealed partial class TimingPageModel
     /// <summary>The note saying what is paired, what stays today's and why the Proposal may have nothing to show.</summary>
     public string? ProposalNote => ProposalPageNote.For(Context, new ProposalPageNote.Parts(
         MotifAppStrings.TimingNoun, ProposalReading, ProposalUnreadable, ProposalMeasured, PairedNote(), AloneNote()));
+
+    /// <summary>Paired rule percentages and explicit missing or new objects from the retained Trial scope.</summary>
+    public IReadOnlyList<TimingRuleChange> ProposalRuleChanges => ShowsPairs && Held is { } held
+        ? held.RuleComparison.Objects.Select(row => new TimingRuleChange(row.Kind == "unattributed"
+            ? MotifAppStrings.TimingNotAttributedLabel : row.Name,
+            row.Kind == "unattributed" ? string.Empty : row.Kind + ":" + row.Key +
+                (row.Scope is null ? string.Empty : " (" + row.Scope + ")"),
+            row.Change.PercentChange is { } percent ? percent.ToString("+0.##;-0.##;0", CultureInfo.CurrentCulture) + "%"
+                : row.Status switch { "new" => MotifAppStrings.TimingRuleNew, "missing" => MotifAppStrings.TimingRuleMissing,
+                    _ => MotifAppStrings.TimingNotRecorded })).ToArray() : [];
+
+    /// <summary>Explains when the retained Trial has no comparable rule detail.</summary>
+    public string? ProposalRuleNote => ShowsPairs && Held is { RuleComparison.Objects.Count: 0 }
+        ? MotifAppStrings.TimingRuleUnavailable : null;
+
+    /// <summary>Whether the rule-comparison note is displayed.</summary>
+    public bool HasProposalRuleNote => ProposalRuleNote is not null;
+
+    /// <summary>Whether paired rule evidence is displayed.</summary>
+    public bool HasProposalRuleChanges => ProposalRuleChanges.Count > 0;
 
     /// <summary>Whether the page has a note to show.</summary>
     public bool HasProposalNote => ProposalNote is not null;
@@ -209,9 +230,14 @@ public sealed partial class TimingPageModel
                 .ConfigureAwait(true);
             if (!read.Succeeded) return (null, true);
             if (read.Value is not { } response) return (null, false);
+            var rules = await Context.Commands.TimingAsync(new TimingRequest(key.Project, null, key.WordSet, "rule",
+                Top: key.Top, ExplicitWords: key.ExplicitWords, ProposalId: key.ProposalId), cancellationToken)
+                .ConfigureAwait(true);
+            var comparison = rules.Succeeded && rules.Value is { } value ? value.CostComparison
+                : TimingCostComparison.Unavailable("Rule detail is unavailable.");
             return (new ProposalTiming(response.Work, response.ParserWorkAggregates, response.Aggregates,
                 response.Words.Count(word => word.Completion is TimingCompletion.WorkLimit or TimingCompletion.MemoryLimit),
-                WordSetDigest.Of(response.Words.Select(word => word.Word))), false);
+                WordSetDigest.Of(response.Words.Select(word => word.Word)), comparison), false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { return null; }
         catch (Exception ex) when (ex is not OperationCanceledException) { return (null, true); }
@@ -240,7 +266,12 @@ public sealed partial class TimingPageModel
         {
             nameof(HeadlineTotal), nameof(HeadlineTotalCaption), nameof(HeadlineMedian), nameof(HeadlineStopped),
             nameof(ShowHeadlineCard), nameof(ShowKindCard), nameof(ShowPageBody), nameof(ShowParsePromptCard), nameof(KindShares),
-            nameof(ProposalNote), nameof(HasProposalNote), nameof(ShareDenominatorText), nameof(ScopeLabel),
+            nameof(ProposalNote), nameof(HasProposalNote), nameof(ProposalRuleChanges), nameof(HasProposalRuleChanges),
+            nameof(ProposalRuleNote), nameof(HasProposalRuleNote),
+            nameof(ShareDenominatorText), nameof(ScopeLabel),
         }) OnPropertyChanged(name);
     }
 }
+
+/// <summary>A rule's name and paired work change.</summary>
+public sealed record TimingRuleChange(string Name, string Identity, string Change);

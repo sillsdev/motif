@@ -11,7 +11,15 @@ public sealed record TimingCostChange(double? PercentChange, string? Unavailable
 public sealed record TimingWordCostChange(string Word, TimingCostChange Change);
 
 /// <summary>A parser object's paired work change over the same selected words.</summary>
-public sealed record TimingObjectCostChange(string Kind, string Key, string Name, TimingCostChange Change);
+public sealed record TimingObjectCostChange(string Kind, string Key, string Name, TimingCostChange Change)
+{
+    /// <summary>Whether the object is paired, new, missing, or lacks comparable detail.</summary>
+    public string Status { get; init; } = "unavailable";
+    /// <summary>The identity domain used to pair this object.</summary>
+    public string IdentityQuality { get; init; } = "unknown";
+    /// <summary>The grammar scope required by a local identity.</summary>
+    public string? Scope { get; init; }
+}
 
 /// <summary>Paired parser work for a scope and its individual words.</summary>
 public sealed record TimingCostComparison(TimingCostChange Total, IReadOnlyList<TimingWordCostChange> Words)

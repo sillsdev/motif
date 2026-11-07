@@ -15,7 +15,7 @@ public sealed class ReviewReportExpandedTests
     {
         Type[] types = [typeof(WordRow), typeof(TokenRow), typeof(CellRow), typeof(DiagnosticRow),
             typeof(FindingRow), typeof(EffectRow), typeof(EvidenceRow), typeof(ReadingRow),
-            typeof(ExpectationRow), typeof(SourceRow), typeof(SetRow)];
+            typeof(ExpectationRow), typeof(SourceRow), typeof(SetRow), typeof(RuleWorkRow)];
         foreach (var type in types)
         {
             var row = (ReviewRow)Create(type);
@@ -83,6 +83,7 @@ public sealed class ReviewReportExpandedTests
             ["ReviewSummary"] = "notice flags incomplete wordforms approved sampledTokens paradigmCells controls negatives parserWork warnings parsimony effects sectionCounts",
             ["FlagFact"] = "id text wordCount readingCount evidenceState sectionIds sampleEventIds facts",
             ["WorkChange"] = "kind percentChange wordCount scopeDigest comparison reasonCodes",
+            ["RuleWorkRow"] = "rowKind kind key identityQuality scope name status percentChange unavailableReason",
             ["WordRow"] = "rowKind caseKey wordKey word writingSystemId before after flagIds causes setIds membershipsTotal expectationsTotal work attribution links",
             ["TokenRow"] = "rowKind caseId wordKey occurrenceId weight sourceLocator before after links",
             ["CellRow"] = "rowKind setId cellId lexemeId features variantCount before after links",
@@ -179,6 +180,7 @@ public sealed class ReviewReportExpandedTests
         if (type == typeof(EvidencePin)) return Create(typeof(SetEvidencePin));
         if (type == typeof(FlagFacts)) return new WorkChange(null, 0, "test", WorkComparison.NotComparable, []);
         if (type == typeof(WorkChange)) return new WorkChange(null, 0, "test", WorkComparison.NotComparable, []);
+        if (type == typeof(RuleWorkRow)) return new RuleWorkRow("rule", "id", "authored", null, "name", "paired", 25, null);
         var constructor = type.GetConstructors().Single();
         return constructor.Invoke(constructor.GetParameters().Select(p =>
             Nullable.GetUnderlyingType(p.ParameterType) is not null ||

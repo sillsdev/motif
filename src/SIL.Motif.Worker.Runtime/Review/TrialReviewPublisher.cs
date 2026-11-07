@@ -52,6 +52,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
                     .Distinct(StringComparer.Ordinal).ToArray()));
         var work = TrialReviewWork.Read(_database, input, job.ResultJson, inputs, baseline, ledger);
         if (work is not null) accumulator.SetWork(work);
+        var ruleWorkRows = TrialReviewRuleWork.Read(_database, input, job.ResultJson, inputs, work);
         var overlappingLosses = new HashSet<(string Word, string Reading)>();
         var negativeSets = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in Classify(inputs, before, after))
@@ -70,7 +71,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         }
         var facts = accumulator.Snapshot();
         var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(new { input = reference.Sha256, job.JobId,
-            job.InputJson, job.ResultJson, ledger, parsimony = parsimony?.ResultDigest, algorithm = "review-v1" }, MotifJson.CreateOptions());
+            job.InputJson, job.ResultJson, ledger, parsimony = parsimony?.ResultDigest, algorithm = "review-v2" }, MotifJson.CreateOptions());
         var digest = "sha256:" + Convert.ToHexStringLower(SHA256.HashData(manifestBytes));
         var beforeAssessmentIds = (input.BaselineAssessmentIds ?? []).Concat(input.ReviewBaselines?.SelectMany(part => part.AssessmentIds) ?? [])
             .Distinct(StringComparer.Ordinal).ToArray();
@@ -82,8 +83,10 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             (input.Prerequisites ?? []).Select(item => new PrerequisitePin(item.ProposalId, item.IntentDigest)).ToArray(),
             job.JobId, baseline, new CandidatePin(job.JobId, ledger.CandidateFileDigest, null), dryRun?.Pin, checkpoints, inputs.Sets.Count,
             Digest(inputs.Sets), Digest(inputs.Cases.Select(item => item.Assertions)), new WarningCheckPins(null, null),
-            parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, "review-v1");
+            parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, "review-v2");
         var summary = BuildSummary(facts, inputs, ledger, overlappingLosses.Count, negativeSets.Order(StringComparer.Ordinal).ToArray(), hasWarnings);
+        summary = summary with { SectionCounts = summary.SectionCounts.Select(section => section.Section == "parser-work"
+            ? new SectionCount("parser-work", ruleWorkRows?.Count, "rows", ruleWorkRows?.Count) : section).ToArray() };
         if (dryRun is not null) summary = summary with { Effects = new EffectsSummary(dryRun.Value.Count, true) };
         var limitations = facts.Limitations.Select(code => new Limitation(code, [], code, [])).ToList();
         foreach (var code in facts.Findings?.Limitations.Where(code => code is not ("warnings-unavailable" or "parsimony-unavailable")) ?? [])
@@ -92,6 +95,8 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             limitations.Add(new Limitation("sets-omitted", ["evidence"], "Some configured review sets were omitted.", inputs.OmittedSetIds));
         if (facts.ParserWork is not { Comparison: WorkComparison.Comparable })
             limitations.Add(new Limitation("work-unavailable", ["parser-work"], "Comparable parser work is unavailable.", []));
+        if (ruleWorkRows is null)
+            limitations.Add(new Limitation("rule-work-unavailable", ["parser-work"], "Paired rule detail is unavailable.", []));
         if (!hasWarnings)
             limitations.Add(new Limitation("warnings-unavailable", ["warnings"], "Paired warning evidence is unavailable.", []));
         if (parsimony is null)
@@ -122,11 +127,13 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             .Distinct(StringComparer.Ordinal).ToArray();
         var warningRows = hasWarnings ? WarningRows(ledger.BeforeWarnings!, ledger.AfterWarnings!) : null;
         var sections = new List<string> { "evidence" };
+        if (ruleWorkRows is not null) sections.Add("parser-work");
         if (warningRows is not null) sections.Add("warnings");
         if (parsimony is not null) sections.Add("parsimony");
         var publication = new ReviewReportPublication(inputs.ProjectKey, inputs.ProposalId, job.JobId, digest, report, references, estimate)
         { AvailableSections = sections,
-            SectionItems = Sections(SetRows(inputs).Concat(warningRows ?? []).Concat(parsimony?.Rows ?? []).ToArray(), ct) };
+            SectionItems = Sections(SetRows(inputs).Concat(warningRows ?? []).Concat(parsimony?.Rows ?? [])
+                .Concat(ruleWorkRows ?? []).ToArray(), ct) };
         return await new ReviewReportRepository(_database).PublishAsync(publication,
             Cases(inputs, before, after, ct), ct).ConfigureAwait(false);
     }

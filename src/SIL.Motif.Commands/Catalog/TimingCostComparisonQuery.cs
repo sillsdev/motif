@@ -89,7 +89,14 @@ public static class TimingCostComparisonQuery
         var byWord = words.Select(word => new TimingWordCostChange(word,
             Change([leftIndex[word]], [rightIndex[word]]))).ToArray();
         var total = Change(left, right);
-        IReadOnlyList<TimingObjectCostChange> objects = total.PercentChange is null ? [] : CompareObjects(before, after, requested, by);
+        IReadOnlyList<TimingObjectCostChange> objects = total.PercentChange is null ? [] : TimingObjectComparison.Compare(before.ObjectTimings, after.ObjectTimings, requested,
+            before.TimingEvidence is { DetailComplete: true, StatisticsUnavailable: false, HasRetriedWords: false } &&
+            after.TimingEvidence is { DetailComplete: true, StatisticsUnavailable: false, HasRetriedWords: false }, by);
+        if (by == "rule" && total.PercentChange is not null)
+            objects = objects.Append(TimingObjectComparison.Unattributed(before.ObjectTimings, after.ObjectTimings, requested,
+                left.Sum(row => (decimal)row.ParserWork!.Value), right.Sum(row => (decimal)row.ParserWork!.Value),
+                before.TimingEvidence is { DetailComplete: true, StatisticsUnavailable: false, HasRetriedWords: false } &&
+                after.TimingEvidence is { DetailComplete: true, StatisticsUnavailable: false, HasRetriedWords: false })).ToArray();
         return new TimingCostComparison(total, byWord)
         {
             Objects = objects,
@@ -97,39 +104,5 @@ public static class TimingCostComparisonQuery
         };
     }
 
-    private static IReadOnlyList<TimingObjectCostChange> CompareObjects(AssessmentRecord before,
-        AssessmentRecord after, HashSet<string> words, string by)
-    {
-        var oldRows = before.ObjectTimings.Where(row => words.Contains(row.Word)).ToArray();
-        var newRows = after.ObjectTimings.Where(row => words.Contains(row.Word)).ToArray();
-        var groups = oldRows.Select(row => (Side: 0, Row: row)).Concat(newRows.Select(row => (Side: 1, Row: row)))
-            .GroupBy(item => by == "kind" ? (item.Row.Kind, Key: item.Row.Kind, Quality: "kind", Scope: (string?)null)
-                : (item.Row.Kind, Key: ObjectIdentity.CanonicalKey(item.Row.Key, item.Row.IdentityQuality) ?? item.Row.Key,
-                    Quality: item.Row.IdentityQuality, item.Row.Scope));
-        var complete = before.TimingEvidence is { DetailComplete: true, StatisticsUnavailable: false, HasRetriedWords: false } &&
-            after.TimingEvidence is { DetailComplete: true, StatisticsUnavailable: false, HasRetriedWords: false };
-        return groups.Select(group =>
-        {
-            var key = group.Key;
-            var oldObject = group.Where(item => item.Side == 0).Select(item => item.Row).ToArray();
-            var newObject = group.Where(item => item.Side == 1).Select(item => item.Row).ToArray();
-            var identityKnown = group.All(item => item.Row.IdentityQuality == "authored" &&
-                Guid.TryParse(item.Row.Key, out _) || !string.IsNullOrWhiteSpace(item.Row.Scope));
-            var oldWords = oldObject.Select(row => row.Word).ToHashSet(StringComparer.Ordinal);
-            var newWords = newObject.Select(row => row.Word).ToHashSet(StringComparer.Ordinal);
-            var allPresent = words.IsSubsetOf(oldWords) && words.IsSubsetOf(newWords);
-            var oldKeys = oldObject.Select(row => (row.Word, Key: ObjectIdentity.CanonicalKey(row.Key, row.IdentityQuality),
-                row.Direction, row.IdentityQuality, row.Scope)).ToHashSet();
-            var newKeys = newObject.Select(row => (row.Word, Key: ObjectIdentity.CanonicalKey(row.Key, row.IdentityQuality),
-                row.Direction, row.IdentityQuality, row.Scope)).ToHashSet();
-            allPresent &= oldObject.Length == oldKeys.Count && newObject.Length == newKeys.Count && oldKeys.SetEquals(newKeys);
-            var countersKnown = oldObject.Concat(newObject).All(row => row.ParserWork is >= 0);
-            var percent = complete && identityKnown && allPresent && countersKnown
-                ? ReviewWorkComparison.PercentChange(oldObject.Sum(row => (decimal)row.ParserWork!.Value),
-                    newObject.Sum(row => (decimal)row.ParserWork!.Value)) : null;
-            return new TimingObjectCostChange(key.Kind, key.Key, by == "kind" ? key.Kind : group.First().Row.Object,
-                percent is { } value ? new TimingCostChange(value, null) :
-                TimingCostChange.Unavailable("Matching complete object counters are unavailable for these words."));
-        }).ToArray();
-    }
+
 }

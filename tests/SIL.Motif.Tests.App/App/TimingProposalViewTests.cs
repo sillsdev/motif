@@ -21,8 +21,8 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins the Timing page in Proposal mode: one read of the open Proposal's timing per Proposal, Trial, scope and word
-/// set, only while the page is shown; a pair only over the same words; and never an older key's numbers.
+/// Pins the Timing page in Proposal mode: scoped kind and rule reads while shown, paired only over compatible words,
+/// with no older key's numbers.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TimingProposalViewTests
@@ -68,6 +68,16 @@ public sealed class TimingProposalViewTests
                 word.Stopped ? TimingCompletion.WorkLimit : "Finished") { ParserWork = word.Steps })],
             Work = new WordWorkSummary(words.Length, total, median, null),
             ParserWorkAggregates = request.By == "kind" ? kinds : [],
+            CostComparison = request.By == "rule" && request.ProposalId is not null
+                ? new TimingCostComparison(new TimingCostChange(-10, null), [])
+                {
+                    Objects = [new TimingObjectCostChange("morph_rule", "one", "Rule one", new TimingCostChange(-25, null))
+                        { Status = "paired" },
+                        new TimingObjectCostChange("morph_rule", "two", "Rule two", TimingCostChange.Unavailable("new"))
+                        { Status = "new" },
+                        new TimingObjectCostChange("morph_rule", "three", "Rule three", TimingCostChange.Unavailable("missing"))
+                        { Status = "missing" }],
+                } : TimingCostComparison.Unavailable("No pair."),
         };
     }
 
@@ -141,7 +151,7 @@ public sealed class TimingProposalViewTests
         string.Format(MotifAppStrings.OverviewPairFormat, today, proposal);
 
     internal static int ProposalReads(FakeCommandClient fake) =>
-        fake.TimingRequests.Count(request => request.ProposalId is not null);
+        fake.TimingRequests.Count(request => request.ProposalId is not null && request.By == "kind");
 
     [Fact]
     public async Task TodayToProposalPairsTheHeadlineAndTheKindsOverTheSameWords()
@@ -155,7 +165,17 @@ public sealed class TimingProposalViewTests
         Assert.Equal(Pair("0", "0"), page.HeadlineStopped);
         Assert.Equal(MotifAppStrings.TimingProposalPairedNote, page.ProposalNote);
         Assert.Equal(1, ProposalReads(fake));
-        Assert.DoesNotContain(fake.TimingRequests, request => request.ProposalId is not null && request.By != "kind");
+        Assert.Contains(fake.TimingRequests, request => request.ProposalId is not null && request.By == "rule");
+    }
+
+    [Fact]
+    public async Task RuleChangesUseTheBoundPairAndNameNewAndMissingRules()
+    {
+        var (_, context, page) = await OpenedAsync();
+        context.ShowProposalView(MarkupView.TodayToProposal);
+        Assert.Equal("-25%", page.ProposalRuleChanges.Single(row => row.Name == "Rule one").Change);
+        Assert.Equal(MotifAppStrings.TimingRuleNew, page.ProposalRuleChanges.Single(row => row.Name == "Rule two").Change);
+        Assert.Equal(MotifAppStrings.TimingRuleMissing, page.ProposalRuleChanges.Single(row => row.Name == "Rule three").Change);
     }
 
     [Fact]
