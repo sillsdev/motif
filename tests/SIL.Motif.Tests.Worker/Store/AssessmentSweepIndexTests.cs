@@ -26,7 +26,7 @@ public sealed class AssessmentSweepIndexTests : IDisposable
         _database = MotifDatabase.OpenOwned(Path.Combine(_root, "sweep.motif.db"), project,
             MotifSchema.CurrentSchema, new Version(1, 0));
         var repository = new AssessmentRepository(_database);
-        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var start = DateTimeOffset.UtcNow.AddDays(-1);
         for (var run = 0; run < Runs; run++)
             repository.Record(NewRun($"run-{run:D2}", run, start.AddMinutes(run)));
     }

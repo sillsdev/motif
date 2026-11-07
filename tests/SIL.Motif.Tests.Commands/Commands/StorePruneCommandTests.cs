@@ -32,7 +32,7 @@ public sealed class StorePruneCommandTests : IDisposable
                     "{}", "scope", new AssessmentSubject.Words(Selection.Create("fixture", ["word"]), "none", "1"),
                     "{}", "outcome", "semantic", "grammar", "model", "pipeline", 0,
                     new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], null, null, []),
-                    $"2026-01-0{i + 1}T00:00:00Z"));
+                    DateTimeOffset.UtcNow.AddMinutes(i - 3).ToString("O")));
             return CommandOutcome<string>.Success("seeded");
         });
         Assert.True(seeded.Succeeded, seeded.Refusal?.Message);
@@ -171,7 +171,7 @@ public sealed class StorePruneCommandTests : IDisposable
                     "{}", "scope", new AssessmentSubject.Words(Selection.Create("fixture", ["word"]), "none", "1"),
                     "{}", "outcome", "semantic", "grammar", "model", "pipeline", 0,
                     new AssessmentRecordMaterial.Words([new AssessedWord(bulky + i, "complete", [])], null, null, []),
-                    $"2026-01-01T00:{i:D2}:00Z"));
+                    DateTimeOffset.UtcNow.AddMinutes(i - 30).ToString("O")));
             return CommandOutcome<string>.Success("seeded");
         });
         Assert.True(seeded.Succeeded, seeded.Refusal?.Message);

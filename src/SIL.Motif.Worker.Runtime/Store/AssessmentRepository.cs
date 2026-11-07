@@ -508,6 +508,7 @@ public sealed class AssessmentRepository : IAssessmentRepository
                     }
         InsertRows(connection, transaction, "AssessmentWordPayloads", ["Hash", "Payload"], payloads.Values.ToArray(),
             " ON CONFLICT(Hash) DO UPDATE SET Payload = CASE WHEN Payload = excluded.Payload THEN Payload ELSE NULL END");
+        var wordOwners = new List<PreparedAssessment>();
         foreach (var prepared in assessments)
         {
             var assessment = prepared.Record;
@@ -523,7 +524,18 @@ public sealed class AssessmentRepository : IAssessmentRepository
             switch (assessment.Material)
             {
                 case AssessmentRecordMaterial.Words:
-                    InsertWordsAndAnalyses(connection, transaction, prepared);
+                    var owner = prepared.Words.Count == 0 ? null : wordOwners.FirstOrDefault(candidate =>
+                        SameWordSet(candidate, prepared));
+                    if (owner is null)
+                    {
+                        InsertWordsAndAnalyses(connection, transaction, prepared);
+                        if (prepared.Words.Count != 0) wordOwners.Add(prepared);
+                    }
+                    else
+                    {
+                        InsertRows(connection, transaction, "AssessmentWordSetBindings",
+                            ["AssessmentId", "OwnerAssessmentId"], [[assessment.AssessmentId, owner.Record.AssessmentId]]);
+                    }
                     InsertRows(connection, transaction, "AssessmentObjectTimings", ObjectTimingColumns,
                         prepared.ObjectTimings);
                     break;
@@ -533,6 +545,25 @@ public sealed class AssessmentRepository : IAssessmentRepository
                 default: throw new ArgumentException("Unknown Assessment material.");
             }
         }
+    }
+
+    private static bool SameWordSet(PreparedAssessment left, PreparedAssessment right)
+    {
+        if (left.Words.Count != right.Words.Count || left.Analyses.Count != right.Analyses.Count) return false;
+        for (var i = 0; i < left.Words.Count; i++)
+            if (!SameValues(left.Words[i], right.Words[i], 2)) return false;
+        for (var i = 0; i < left.Analyses.Count; i++)
+            if (left.Analyses[i].Word != right.Analyses[i].Word ||
+                !SameValues(left.Analyses[i].Values, right.Analyses[i].Values, 1)) return false;
+        return true;
+    }
+
+    private static bool SameValues(object?[] left, object?[] right, int start)
+    {
+        for (var i = start; i < left.Length; i++)
+            if (left[i] is byte[] bytes ? right[i] is not byte[] other || !bytes.AsSpan().SequenceEqual(other)
+                : !Equals(left[i], right[i])) return false;
+        return true;
     }
 
     // Every value a row needs, computed outside the transaction; word rows leave their id to be assigned inside it.
@@ -1310,7 +1341,8 @@ public sealed class AssessmentRepository : IAssessmentRepository
                    (aw.MissedApprovedJson IS NOT NULL AND NOT EXISTS (SELECT 1 FROM AssessmentWordPayloads WHERE Hash = aw.MissedApprovedJson))
             FROM AssessedWords aw
             LEFT JOIN ParsedAnalyses pa ON pa.AssessedWordId = aw.AssessedWordId
-            WHERE aw.AssessmentId = $id
+            WHERE aw.AssessmentId = COALESCE((SELECT OwnerAssessmentId FROM AssessmentWordSetBindings
+                WHERE AssessmentId = $id), $id)
               AND ($forms IS NULL OR aw.Word IN (SELECT value FROM json_each($forms)))
             ORDER BY aw.OrdinalIndex, pa.OrdinalIndex;
             """;

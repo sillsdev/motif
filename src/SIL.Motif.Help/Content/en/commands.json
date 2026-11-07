@@ -26,7 +26,7 @@
   },
   "store prune": {
     "title": "Prune project store",
-    "description": "Removes older standalone Assessments that are no longer needed by retained evidence. It also reclaims available space in the project store.",
+    "description": "Removes older Assessments that are no longer needed by retained evidence. It also reclaims available space in the project store.",
     "source": "Hand-written from the project store retention behavior."
   },
   "project initialize": {

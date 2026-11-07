@@ -310,12 +310,12 @@ public sealed class RetainedInvocationRepositoryTests : IDisposable
         };
         var invocations = new RetainedInvocationRepository(database);
         invocations.Record(retained, [
-            NewAssessment("old-parse", "ParseTime", "old") with { SavedUtc = "2026-01-01T00:00:00Z" },
-            NewAssessment("old-timing", "ObjectTiming", "old") with { SavedUtc = "2026-01-01T00:00:00Z" },
+            NewAssessment("old-parse", "ParseTime", "old") with { SavedUtc = DateTimeOffset.UtcNow.AddMinutes(-3).ToString("O") },
+            NewAssessment("old-timing", "ObjectTiming", "old") with { SavedUtc = DateTimeOffset.UtcNow.AddMinutes(-3).ToString("O") },
         ]);
         var assessments = new AssessmentRepository(database);
         assessments.Record(NewAssessment("new-parse", "ParseTime", "new-parse") with
-            { SavedUtc = "2026-01-02T00:00:00Z" });
+            { SavedUtc = DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O") });
         using var lease = ProjectParseLease.TryAcquire(database)!;
         using var connection = database.OpenConnection();
         using (var transaction = connection.BeginTransaction())
@@ -326,7 +326,7 @@ public sealed class RetainedInvocationRepositoryTests : IDisposable
         Assert.Equal(2, invocations.Get("old").Members.Count);
 
         assessments.Record(NewAssessment("new-timing", "ObjectTiming", "new-timing") with
-            { SavedUtc = "2026-01-03T00:00:00Z" });
+            { SavedUtc = DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O") });
         using (var transaction = connection.BeginTransaction())
         {
             Assert.Equal(2, AssessmentRetention.SweepStandalone(connection, transaction, lease, 1, []));

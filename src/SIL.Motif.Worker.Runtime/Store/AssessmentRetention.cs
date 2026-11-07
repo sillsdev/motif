@@ -90,6 +90,9 @@ internal static class AssessmentRetention
     /// </summary>
     internal const int ObjectTimingsKept = 5;
 
+    internal const int ClosedProposalAssessmentsPerKind = 30;
+    internal const int ComputedEvidenceDays = 90;
+
     /// <summary>The Proposal statuses whose Assessments nothing still needs once they are not cited.</summary>
     private const string ClosedStatuses = "('applied', 'rejected', 'withdrawn', 'superseded')";
 
@@ -121,6 +124,19 @@ internal static class AssessmentRetention
                                 ELSE CAST($keep AS INTEGER) END;
             """, ("$keep", keepPerKind.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             ("$timings", ObjectTimingsKept.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        removable.UnionWith(ReadIds(connection, transaction, $"""
+            SELECT AssessmentId FROM (
+                SELECT a.AssessmentId, a.SavedUtc,
+                       ROW_NUMBER() OVER (PARTITION BY a.ProposalId, a.Kind ORDER BY a.SavedUtc DESC, a.AssessmentId DESC) AS rank
+                FROM Assessments a JOIN Proposals p ON p.ProposalId = a.ProposalId
+                WHERE p.Status IN {ClosedStatuses}
+            ) WHERE rank > {ClosedProposalAssessmentsPerKind}
+                OR julianday(SavedUtc) < julianday('now', '-{ComputedEvidenceDays} days');
+            """));
+        removable.UnionWith(ReadIds(connection, transaction, $"""
+            SELECT AssessmentId FROM Assessments WHERE ProposalId IS NULL
+                AND julianday(SavedUtc) < julianday('now', '-{ComputedEvidenceDays} days');
+            """));
         var artifacts = new List<(string Artifact, string[] Requires)>();
         var deleted = RemoveUnneeded(connection, transaction, removable, null, currentEvidence, all, artifacts,
             cancellationToken, progress, null);
@@ -338,6 +354,19 @@ internal static class AssessmentRetention
                 Execute(connection, transaction, "DELETE FROM RetainedInvocationMembers WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);");
                 Execute(connection, transaction, "DELETE FROM RetainedInvocations WHERE InvocationId IN (SELECT InvocationId FROM temp.RemovedInvocations) AND NOT EXISTS (SELECT 1 FROM RetainedInvocationMembers m WHERE m.InvocationId = RetainedInvocations.InvocationId);");
             }
+            using (var owner = Command(connection, transaction,
+                       "SELECT MIN(AssessmentId) FROM AssessmentWordSetBindings WHERE OwnerAssessmentId = $id;", ("$id", id)))
+            {
+                if (owner.ExecuteScalar() is string successor)
+                {
+                    Execute(connection, transaction, "UPDATE AssessedWords SET AssessmentId = $next WHERE AssessmentId = $id;",
+                        ("$next", successor), ("$id", id));
+                    Execute(connection, transaction, "UPDATE AssessmentWordSetBindings SET OwnerAssessmentId = $next WHERE OwnerAssessmentId = $id;",
+                        ("$next", successor), ("$id", id));
+                    Execute(connection, transaction, "DELETE FROM AssessmentWordSetBindings WHERE AssessmentId = $next;", ("$next", successor));
+                }
+            }
+            Execute(connection, transaction, "DELETE FROM AssessmentWordSetBindings WHERE AssessmentId = $id;", ("$id", id));
             foreach (var sql in new[]
             {
                 "DELETE FROM PhonologyAssessmentDependencies WHERE AssessmentId IN (SELECT AssessmentId FROM temp.RemovedAssessments);",

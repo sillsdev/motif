@@ -1550,8 +1550,9 @@ internal static class AgentTools
             return ToolOutcome.From(ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, _) =>
             {
                 var record = new AssessmentRepository(database).Get(reused);
-                return CommandOutcome<JsonObject>.Success(
-                    AssessSummary.PageStored(reused, record.Words ?? [], offset, limit, detailed));
+                var reusedPage = AssessSummary.PageStored(reused, record.Words ?? [], offset, limit, detailed);
+                if (record.Invocation is { } invocation) reusedPage["invocation"] = invocation.InvocationId;
+                return CommandOutcome<JsonObject>.Success(reusedPage);
             }), AssessNext(reused, offset, limit));
         var page = AssessSummary.Page(outcome.Value!, offset, limit, detailed);
         return ToolOutcome.Ok(page, AssessNext(page["assessment"]?.GetValue<string>(), offset, limit));

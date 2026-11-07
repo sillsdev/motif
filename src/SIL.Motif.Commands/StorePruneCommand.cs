@@ -28,7 +28,7 @@ public sealed record StorePruneResponse(int AssessmentsRemoved, long BytesBefore
     bool UnownedSizeComplete = true, string? InvocationParentPath = null, bool FullyVacuumed = false,
     bool OverBudget = false);
 
-/// <summary>Removes older unreferenced standalone Assessments and reclaims their database pages.</summary>
+/// <summary>Removes older unreferenced Assessments and reclaims their database pages.</summary>
 public static class StorePruneCommand
 {
     /// <summary>The bytes a project store may use before its oldest unneeded evidence is removed: 100 MB.</summary>

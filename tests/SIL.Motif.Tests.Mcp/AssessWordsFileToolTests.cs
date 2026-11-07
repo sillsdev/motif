@@ -152,6 +152,7 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
             ("limit", JsonSerializer.SerializeToElement(words.Length))));
         var inlinePage = inlineResponse.GetProperty("result");
         Assert.Equal(assessment, inlinePage.GetProperty("assessment").GetString());
+        Assert.Equal(filePage.GetProperty("invocation").GetString(), inlinePage.GetProperty("invocation").GetString());
         Assert.Equal(words.Length, inlinePage.GetProperty("total").GetInt32());
         Assert.Equal(words, PageWords(inlinePage));
         Assert.True(JsonElement.DeepEquals(filePage.GetProperty("counts"), inlinePage.GetProperty("counts")));

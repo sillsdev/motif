@@ -206,7 +206,7 @@ public sealed class StoreByteBudgetTests : IDisposable
             BaselineToken: "{\"baseline\":true}", OutcomeDigest: "sha256:outcome", SemanticDigest: "sha256:semantic",
             GrammarSourceSha256: "sha256:grammar", ModelFingerprint: "fingerprint", Pipeline: "pipeline",
             DiagnosticCount: 0, Material: new AssessmentRecordMaterial.Words(words, null, null, []),
-            SavedUtc: new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(run).ToString("O")));
+            SavedUtc: DateTimeOffset.UtcNow.AddMinutes(run - 30).ToString("O")));
     }
 
     private long BytesInUse()

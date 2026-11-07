@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 64;
+    public const int CurrentSchema = 65;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -58,7 +58,7 @@ public static class MotifSchema
     {
         var expectedTables = new HashSet<string>(StringComparer.Ordinal)
         {
-            "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentWordPayloads", "AssessmentInvocations",
+            "MotifMetadata", "Corpora", "CorpusDocuments", "Assessments", "AssessedWords", "AssessmentWordPayloads", "AssessmentWordSetBindings", "AssessmentInvocations",
             "ParsedAnalyses", "AssessmentPins", "Proposals", "ProposalRevisions",
             "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
             "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
@@ -72,7 +72,7 @@ public static class MotifSchema
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
-            "IX_AssessedWords_Assessment", "IX_AssessedWords_Word", "IX_ParsedAnalyses_Word",
+            "IX_AssessedWords_Assessment", "IX_AssessedWords_Word", "IX_ParsedAnalyses_Word", "IX_AssessmentWordSetBindings_Owner",
             "IX_AssessedWords_MorphologyJson", "IX_AssessedWords_CorrectnessJson", "IX_AssessedWords_ReadingGradesJson",
             "IX_AssessedWords_AnalysisComparisonJson", "IX_AssessedWords_MissedApprovedJson",
             "IX_Jobs_Lineage_Attempt", "IX_Jobs_Status_Updated", "IX_Jobs_Lease", "IX_Jobs_QueueOrder",
@@ -347,6 +347,7 @@ public static class MotifSchema
             "IX_AssessedWords_CorrectnessJson" or "IX_AssessedWords_ReadingGradesJson" or
             "IX_AssessedWords_AnalysisComparisonJson" or "IX_AssessedWords_MissedApprovedJson" => "AssessedWords",
         "IX_ParsedAnalyses_Word" => "ParsedAnalyses",
+        "IX_AssessmentWordSetBindings_Owner" => "AssessmentWordSetBindings",
         "IX_Jobs_Lineage_Attempt" or "IX_Jobs_Status_Updated" or "IX_Jobs_Lease" or "IX_Jobs_QueueOrder" => "Jobs",
         "IX_Proposals_DraftName" or "IX_Proposals_OpenRole" => "Proposals",
         "IX_ProposalRationaleRevisions_Proposal" => "ProposalRationaleRevisions",
@@ -387,6 +388,7 @@ public static class MotifSchema
         "IX_AssessedWords_AnalysisComparisonJson" => ["AnalysisComparisonJson"],
         "IX_AssessedWords_MissedApprovedJson" => ["MissedApprovedJson"],
         "IX_ParsedAnalyses_Word" => ["AssessedWordId"],
+        "IX_AssessmentWordSetBindings_Owner" => ["OwnerAssessmentId"],
         "IX_Jobs_Lineage_Attempt" => ["LineageId", "Attempt"],
         "IX_Jobs_Status_Updated" => ["Status", "UpdatedUtc"],
         "IX_Jobs_Lease" => ["Status", "LeaseUntilUtc"],
@@ -439,6 +441,8 @@ public static class MotifSchema
         "BaselineTextWords" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextWordforms" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
         "BaselineTextReadIndex" => [new("Baselines", "ProjectKey", "ProjectKey", "NO ACTION", "NO ACTION", "NONE")],
+        "AssessmentWordSetBindings" => [new("Assessments", "OwnerAssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE"),
+            new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "AssessedWords" => [new("AssessmentWordPayloads", "MissedApprovedJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
             new("AssessmentWordPayloads", "AnalysisComparisonJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
             new("AssessmentWordPayloads", "ReadingGradesJson", "Hash", "NO ACTION", "NO ACTION", "NONE"),
@@ -529,6 +533,7 @@ public static class MotifSchema
             C("ScopeDigest", "TEXT", true), C("TokeniserName", "TEXT"), C("TokeniserVersion", "TEXT"),
             C("BaselineToken", "TEXT", true), C("CachePath", "TEXT"), C("CacheDigest", "TEXT"), C("InvocationId", "TEXT"), C("ReplacesAssessmentId", "TEXT"), C("SubjectKind", "TEXT", true), C("SubjectJson", "TEXT")],
         "AssessmentWordPayloads" => [C("Hash", "BLOB", true, 1), C("Payload", "BLOB", true)],
+        "AssessmentWordSetBindings" => [C("AssessmentId", "TEXT", true, 1), C("OwnerAssessmentId", "TEXT", true)],
         "AssessedWords" =>
         [C("AssessedWordId", "INTEGER", false, 1), C("AssessmentId", "TEXT", true), C("OrdinalIndex", "INTEGER", true),
             C("Word", "TEXT", true), C("Outcome", "TEXT", true), C("ElapsedMs", "INTEGER"), C("ElapsedNs", "INTEGER"),
@@ -896,6 +901,12 @@ public static class MotifSchema
             Hash BLOB NOT NULL PRIMARY KEY,
             Payload BLOB NOT NULL
         ) WITHOUT ROWID;
+
+        CREATE TABLE AssessmentWordSetBindings (
+            AssessmentId TEXT NOT NULL PRIMARY KEY REFERENCES Assessments(AssessmentId),
+            OwnerAssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId)
+        ) WITHOUT ROWID;
+        CREATE INDEX IX_AssessmentWordSetBindings_Owner ON AssessmentWordSetBindings(OwnerAssessmentId);
 
         CREATE TABLE AssessedWords (
             AssessedWordId INTEGER PRIMARY KEY AUTOINCREMENT,

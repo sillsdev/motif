@@ -136,8 +136,8 @@ public sealed class StatsCacheStoreTests : IDisposable
             new AssessmentSubject.Words(Selection.Create("fixture", ["word"]), "none", "1"),
             "{}", "outcome", "semantic", "sha256:source", "model", "pipeline", 0,
             new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], null, null, [], run), saved);
-        repository.Record(Record("cited", "2026-01-01T00:00:00Z", invocation));
-        repository.Record(Record("recent", "2026-01-02T00:00:00Z", null));
+        repository.Record(Record("cited", DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O"), invocation));
+        repository.Record(Record("recent", DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O"), null));
         using (var connection = _database.OpenConnection())
         using (var command = connection.CreateCommand())
         {
@@ -180,8 +180,8 @@ public sealed class StatsCacheStoreTests : IDisposable
             new AssessmentSubject.Words(Selection.Create("fixture", ["word"]), "none", "1"),
             "{}", "outcome", "semantic", "grammar", "model", "pipeline", 0,
             new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], path, null, []), saved);
-        repository.Record(Record("old", "2026-01-01T00:00:00Z", cache));
-        repository.Record(Record("new", "2026-01-02T00:00:00Z", null));
+        repository.Record(Record("old", DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O"), cache));
+        repository.Record(Record("new", DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O"), null));
         using var lease = ProjectParseLease.TryAcquire(_database)!;
 
         var result = StorePruneCommand.RunHeld(_database, _project, lease, 1, _root);
@@ -204,8 +204,8 @@ public sealed class StatsCacheStoreTests : IDisposable
             new AssessmentSubject.Words(Selection.Create("fixture", ["word"]), "none", "1"),
             "{}", "outcome", "semantic", "grammar", "model", "pipeline", 0,
             new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], path, null, []), saved);
-        repository.Record(Record("old", "2026-01-01T00:00:00Z", cache));
-        repository.Record(Record("new", "2026-01-02T00:00:00Z", null));
+        repository.Record(Record("old", DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O"), cache));
+        repository.Record(Record("new", DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O"), null));
         using var lease = ProjectParseLease.TryAcquire(_database)!;
         using (var reader = StatsCacheLock.Create(directory))
         {
@@ -300,9 +300,9 @@ public sealed class StatsCacheStoreTests : IDisposable
                 "{}", "outcome", "semantic", "grammar", "model", "pipeline", 0,
                 new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], null, null, [], invocation), saved);
         }
-        repository.Record(Record("trial", "2026-01-01T00:00:00Z", trial));
-        repository.Record(Record("shared-old", "2026-01-02T00:00:00Z", shared));
-        repository.Record(Record("shared-new", "2026-01-03T00:00:00Z", shared));
+        repository.Record(Record("trial", DateTimeOffset.UtcNow.AddMinutes(-4).ToString("O"), trial));
+        repository.Record(Record("shared-old", DateTimeOffset.UtcNow.AddMinutes(-3).ToString("O"), shared));
+        repository.Record(Record("shared-new", DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O"), shared));
         new JobRepository(_database).Create("job", "project", "trial", "{\"baselineAssessmentIds\":[\"trial\"]}",
             "2026-01-01T00:00:00Z");
         using var lease = ProjectParseLease.TryAcquire(_database)!;
@@ -312,7 +312,7 @@ public sealed class StatsCacheStoreTests : IDisposable
         Assert.Equal(0, result.Value.InvocationDirectoriesRemoved);
         Assert.True(File.Exists(Path.Combine(shared, "source.fwdata")));
         Assert.True(File.Exists(Path.Combine(trial, "source.fwdata")));
-        repository.Record(Record("newest", "2026-01-04T00:00:00Z", null));
+        repository.Record(Record("newest", DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O"), null));
         result = StorePruneCommand.RunHeld(_database, _project, lease, 1, _root);
         Assert.True(result.Succeeded);
         Assert.Equal(1, result.Value!.InvocationDirectoriesRemoved);
@@ -338,8 +338,8 @@ public sealed class StatsCacheStoreTests : IDisposable
                 "{}", "outcome", "semantic", "grammar", "model", "pipeline", 0,
                 new AssessmentRecordMaterial.Words([new AssessedWord("word", "complete", [])], null, null, [], invocation), saved);
         }
-        repository.Record(Record("old", "shared-source", "2026-01-01T00:00:00Z"));
-        repository.Record(Record("new", "other-run", "2026-01-02T00:00:00Z"));
+        repository.Record(Record("old", "shared-source", DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O")));
+        repository.Record(Record("new", "other-run", DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O")));
         using var lease = ProjectParseLease.TryAcquire(_database)!;
         var result = StorePruneCommand.RunHeld(_database, _project, lease, 1, _root);
         Assert.True(result.Succeeded);

@@ -17,7 +17,7 @@ public static class MotifStoreUpgrade
     private static readonly HashSet<string> Derived = new(StringComparer.Ordinal)
     {
         "ActiveParse", "AssessedWords", "AssessmentInvocations", "AssessmentObjectTimings", "AssessmentPins",
-        "AssessmentWordPayloads", "Assessments", "BeforeAssessmentBinding", "BaselineSummaries", "BaselineTextReadIndex", "BaselineTextWordforms",
+        "AssessmentWordPayloads", "AssessmentWordSetBindings", "Assessments", "BeforeAssessmentBinding", "BaselineSummaries", "BaselineTextReadIndex", "BaselineTextWordforms",
         "BaselineTextWords", "Baselines", "CurrentParsimonyBundles", "GrammarChecks", "Jobs", "ParsedAnalyses",
         "ParserRefusals", "ParsimonyBuildClaims", "ParsimonyBundleReferences", "ParsimonyBundles", "ParsimonyFrozenViews", "ParsimonyReaderLeases",
         "PendingChangeFits", "PhonologyAssessmentBindings", "PhonologyAssessmentDependencies", "PhonologyAssessmentRows",

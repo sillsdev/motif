@@ -56,6 +56,29 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void Schema64UpgradeKeepsAuthoredHistoryAndDropsComputedEvidence()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+            Execute(old, """
+                DROP TABLE AssessmentWordSetBindings;
+                INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status) VALUES ('p', 'digest', 'applied');
+                INSERT INTO ProposalComments (ProposalId, PersonName, Text, CreatedUtc) VALUES ('p', 'person', 'comment', '2026');
+                INSERT INTO Receipts VALUES ('receipt', 'p', 'digest', '{}', '2026');
+                INSERT INTO AssessmentWordPayloads VALUES (x'01', x'02');
+                """);
+        var output = Path.Combine(_root, "copy.db");
+        var report = MotifStoreUpgrade.Copy(Source, output);
+        using var copy = Connect(output);
+        Assert.Equal(64, report.SourceSchema);
+        Assert.Contains("AssessmentWordPayloads", report.Dropped);
+        Assert.Equal("applied", Text(copy, "SELECT Status FROM Proposals WHERE ProposalId = 'p';"));
+        Assert.Equal("comment", Text(copy, "SELECT Text FROM ProposalComments WHERE ProposalId = 'p';"));
+        Assert.Equal(1, Count(copy, "Receipts"));
+        Assert.Equal(0, Count(copy, "AssessmentWordPayloads"));
+    }
+
+    [Fact]
     public void UpgradeCarriesTheParsimonySelectionPointerBesideTheDefaultOne()
     {
         CreateCurrentSchemaAsOld();

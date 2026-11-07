@@ -61,8 +61,90 @@ public sealed class AssessmentRepositoryTests : IDisposable
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT COUNT(DISTINCT MorphologyJson) FROM AssessedWords;";
         Assert.Equal(2L, command.ExecuteScalar());
+        command.CommandText = "SELECT COUNT(*) FROM AssessedWords;";
+        Assert.Equal(2L, command.ExecuteScalar());
+        Assert.Equal(JsonSerializer.Serialize(repository.Get("parse").Words),
+            JsonSerializer.Serialize(repository.Get("correct").Words));
         Assert.False(Assert.Single(repository.Get("parse").Words!).Morphology!.Capped);
         Assert.True(Assert.Single(repository.Get("different").Words!).Morphology!.Capped);
+    }
+
+    [Fact]
+    public void PruningSharedWordSetOwnerPreservesTheSurvivingAssessment()
+    {
+        var repository = NewRepository("shared-owner.fwdata", out var database);
+        using var owned = database;
+        var word = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("same", true);
+        var old = NewAssessment("old-owner", null, null, "ParseTime", [word],
+            DateTimeOffset.UtcNow.AddDays(-100).ToString("O"));
+        var current = NewAssessment("survivor", null, null, "Correctness", [word],
+            DateTimeOffset.UtcNow.ToString("O"));
+        repository.RecordBatch([old, current]);
+        var expected = JsonSerializer.Serialize(repository.Get("survivor").Words);
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        using (var connection = database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            Assert.Equal(1, AssessmentRetention.SweepStandalone(connection, transaction, lease, 30, ["survivor"]));
+            transaction.Commit();
+        }
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("old-owner"));
+        Assert.Equal(expected, JsonSerializer.Serialize(repository.Get("survivor").Words));
+        Assert.Equal("1", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM AssessedWords"));
+    }
+
+    [Fact]
+    public void SharedWordSetsPreserveComparisonAndHistoricalReads()
+    {
+        var shared = NewRepository("shared-comparison.fwdata", out var sharedDatabase);
+        var separate = NewRepository("separate-comparison.fwdata", out var separateDatabase);
+        using var ownedShared = sharedDatabase;
+        using var ownedSeparate = separateDatabase;
+        var word = SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word("same", true);
+        var changed = word with { Morphology = word.Morphology! with { Capped = true } };
+        var records = new[]
+        {
+            NewAssessment("parse", null, null, "ParseTime", [word], "2026-10-13T00:00:00Z"),
+            NewAssessment("correct", null, null, "Correctness", [word], "2026-10-13T00:00:00Z"),
+            NewAssessment("different", null, null, "Correctness", [changed], "2026-10-13T00:00:00Z"),
+        };
+        shared.RecordBatch(records);
+        foreach (var record in records) separate.Record(record);
+
+        Assert.Equal(JsonSerializer.Serialize(separate.ListBaselineAssessments("Correctness")),
+            JsonSerializer.Serialize(shared.ListBaselineAssessments("Correctness")));
+        var sharedComparison = AssessmentComparer.Compare(shared.Get("correct").ToComparable(),
+            shared.Get("different").ToComparable());
+        var separateComparison = AssessmentComparer.Compare(separate.Get("correct").ToComparable(),
+            separate.Get("different").ToComparable());
+        Assert.Equal(JsonSerializer.Serialize(separateComparison), JsonSerializer.Serialize(sharedComparison));
+    }
+
+    [Fact]
+    public void ClosedProposalCountAndAgeLimitsKeepPinnedAndAuthoredData()
+    {
+        var repository = NewRepository("closed-retention.fwdata", out var database);
+        using var owned = database;
+        var proposal = CanonicalId.Mint("proposal/");
+        SeedProposal(database, proposal.Value);
+        Execute(database, "UPDATE Proposals SET Status = 'applied' WHERE ProposalId = $proposal;", proposal.Value);
+        for (var i = 0; i < 32; i++)
+            repository.Record(NewAssessment("count-" + i, proposal, "sha256:intent", "ParseTime",
+                savedUtc: DateTimeOffset.UtcNow.AddMinutes(i - 32).ToString("O")));
+        repository.Record(NewAssessment("aged", proposal, "sha256:intent", "Correctness",
+            savedUtc: DateTimeOffset.UtcNow.AddDays(-100).ToString("O")));
+        Execute(database, "INSERT INTO AssessmentPins VALUES ('count-0', 'test', '2026-01-01T00:00:00Z');", proposal.Value);
+        using var lease = ProjectParseLease.TryAcquire(database)!;
+        using (var connection = database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            Assert.Equal(2, AssessmentRetention.SweepStandalone(connection, transaction, lease, 100, []));
+            transaction.Commit();
+        }
+        Assert.Equal("count-0", repository.Get("count-0").AssessmentId);
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("count-1"));
+        Assert.Throws<KeyNotFoundException>(() => repository.Get("aged"));
+        Assert.Equal("1", Scalar(database, "SELECT CAST(COUNT(*) AS TEXT) FROM Proposals"));
     }
 
     [Fact]
@@ -384,7 +466,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
     {
         var repository = NewRepository("standalone-roots.fwdata", out var database);
         using var owned = database;
-        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var start = DateTimeOffset.UtcNow.AddMinutes(-10);
         var ids = new[] { "old", "pinned", "current", "trial", "root", "replacement", "newest" };
         for (var i = 0; i < ids.Length; i++)
             repository.Record(NewAssessment(ids[i], null, null, "ParseTime", savedUtc: start.AddMinutes(i).ToString("O"))
@@ -408,8 +490,8 @@ public sealed class AssessmentRepositoryTests : IDisposable
     {
         var repository = NewRepository("standalone-snapshot.fwdata", out var database);
         using var owned = database;
-        repository.Record(NewAssessment("old", null, null, "ParseTime", savedUtc: "2026-01-01T00:00:00Z"));
-        repository.Record(NewAssessment("new", null, null, "ParseTime", savedUtc: "2026-01-02T00:00:00Z"));
+        repository.Record(NewAssessment("old", null, null, "ParseTime", savedUtc: DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O")));
+        repository.Record(NewAssessment("new", null, null, "ParseTime", savedUtc: DateTimeOffset.UtcNow.ToString("O")));
         using var readerConnection = database.OpenConnection();
         using var readerTransaction = readerConnection.BeginTransaction(deferred: true);
         var typed = (AssessmentRepository)repository;
@@ -437,8 +519,8 @@ public sealed class AssessmentRepositoryTests : IDisposable
         using var owned = database;
         _ = NewRepository("other-lease.fwdata", out var other);
         using var otherOwned = other;
-        repository.Record(NewAssessment("old", null, null, "ParseTime", savedUtc: "2026-01-01T00:00:00Z"));
-        repository.Record(NewAssessment("new", null, null, "ParseTime", savedUtc: "2026-01-02T00:00:00Z"));
+        repository.Record(NewAssessment("old", null, null, "ParseTime", savedUtc: DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O")));
+        repository.Record(NewAssessment("new", null, null, "ParseTime", savedUtc: DateTimeOffset.UtcNow.ToString("O")));
         using var otherLease = ProjectParseLease.TryAcquire(other)!;
         using var connection = database.OpenConnection();
         using (var transaction = connection.BeginTransaction())
@@ -472,7 +554,7 @@ public sealed class AssessmentRepositoryTests : IDisposable
             new AssessmentObjectTiming("morph_rule", $"rule-{index}", "authored", "analysis", $"Rule {index}",
                 word.Word, 1, 1, 1000))).ToArray();
         var evidence = new AssessmentTimingEvidence([], 2000, false, 720600);
-        var start = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var start = DateTimeOffset.UtcNow.AddDays(-1);
         long atTwenty = 0;
         long final = 0;
         long beforePrune = 0;
