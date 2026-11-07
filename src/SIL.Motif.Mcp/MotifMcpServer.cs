@@ -56,6 +56,8 @@ public static class MotifMcpServer
             new SIL.Motif.Commands.Catalog.CommandSurfacePolicy(false, options.AdvancedAiModeEnabled), profile), AgentTools.All);
         var exposed = policy.Tools;
         var includeParsimonyResources = policy.Exposes("parsimony measures");
+        var includeReviewDrillDown = options.AdvancedAiModeEnabled && exposed.Any(tool => tool.Tool.Name == "motif_difference");
+        var includeReviewResources = includeReviewDrillDown || options.AdvancedAiModeEnabled && exposed.Any(tool => tool.Tool.Name == "motif_trial");
         var prompts = options.AdvancedAiModeEnabled
             ? Array.Empty<Prompt>()
             : new[]
@@ -114,10 +116,15 @@ public static class MotifMcpServer
                 },
                 ListResourcesHandler = (_, _) => ValueTask.FromResult(
                     ParsimonyTools.ListResources(includeParsimonyResources)),
+                ListResourceTemplatesHandler = (_, _) => ValueTask.FromResult(includeReviewResources
+                    ? ReviewReportResources.Templates(includeReviewDrillDown) : new ListResourceTemplatesResult { ResourceTemplates = [] }),
                 ReadResourceHandler = (request, _) => ValueTask.FromResult(
-                    includeParsimonyResources && request.Params?.Uri == ParsimonyTools.MeasuresResourceUri
-                        ? ParsimonyTools.ReadMeasuresResource(string.Empty, MotifProductVersion.CurrentText)
-                        : EncodingGuides.ReadResource(request.Params?.Uri ?? string.Empty)),
+                    request.Params?.Uri is { } uri && uri.StartsWith(ReviewReportResources.Prefix, StringComparison.Ordinal)
+                        ? includeReviewResources ? ReviewReportResources.Read(uri, context.ProductVersion, SIL.Motif.Worker.RunnerOptions.ResolveRoot(), includeReviewDrillDown)
+                            : throw new McpProtocolException("Report resources are unavailable.", McpErrorCode.InvalidParams)
+                        : includeParsimonyResources && request.Params?.Uri == ParsimonyTools.MeasuresResourceUri
+                            ? ParsimonyTools.ReadMeasuresResource(string.Empty, MotifProductVersion.CurrentText)
+                            : EncodingGuides.ReadResource(request.Params?.Uri ?? string.Empty)),
             },
         }, loggerFactory);
         await using (server)
@@ -232,11 +239,31 @@ public static class MotifMcpServer
         var envelope = new JsonObject { ["ok"] = true, ["result"] = value?.DeepClone() };
         if (outcome.Next is not null) envelope["next"] = outcome.Next;
         var text = envelope.ToJsonString(Json);
+        var content = new List<ContentBlock> { new TextContentBlock { Text = outcome.Next is null ? text : text + "\nNext: " + outcome.Next } };
+        if (tool.Tool.Name is "motif_trial" or "motif_difference")
+            AddReportLinks(value, content, new HashSet<string>(StringComparer.Ordinal));
         return new CallToolResult
         {
-            Content = [new TextContentBlock { Text = outcome.Next is null ? text : text + "\nNext: " + outcome.Next }],
+            Content = content,
             StructuredContent = JsonSerializer.SerializeToElement(envelope),
         };
+    }
+
+    private static void AddReportLinks(JsonNode? node, List<ContentBlock> content, HashSet<string> seen)
+    {
+        if (node is JsonObject item)
+        {
+            if (item["kind"] is JsonValue kind && kind.TryGetValue<string>(out var text) && text == "resource" &&
+                item["uri"] is JsonValue address && address.TryGetValue<string>(out var uri) &&
+                uri.StartsWith(ReviewReportResources.Prefix, StringComparison.Ordinal) && seen.Add(uri) && seen.Count <= 50)
+            {
+                var name = item["name"] is JsonValue label && label.TryGetValue<string>(out var value) ? value : "Trial report";
+                content.Add(new ResourceLinkBlock { Uri = uri, Name = name, MimeType = "application/json" });
+            }
+            foreach (var child in item) AddReportLinks(child.Value, content, seen);
+        }
+        else if (node is JsonArray array)
+            foreach (var child in array) AddReportLinks(child, content, seen);
     }
 
     private static void ValidateDetailAndLimit(ExposedTool tool, JsonObject args)
@@ -244,7 +271,10 @@ public static class MotifMcpServer
         if (tool.Tool.ArgumentNames.Contains("detail"))
         {
             if (!args.TryGetPropertyValue("detail", out var detailNode))
-                args["detail"] = tool.DefaultDetail;
+            {
+                if (tool.Tool.Name is not ("motif_trial" or "motif_difference") || tool.DefaultDetail != "summary")
+                    args["detail"] = tool.DefaultDetail;
+            }
             else
             {
                 var choices = (tool.Tool.InputSchema["properties"]?["detail"]?["enum"] as JsonArray)?

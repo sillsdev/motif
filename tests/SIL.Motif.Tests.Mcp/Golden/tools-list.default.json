@@ -8997,11 +8997,11 @@
       "properties": {
         "difference": {
           "type": "string",
-          "description": "Stored Difference Assessment id."
+          "description": "Stored legacy Difference id."
         },
         "category": {
           "type": "string",
-          "description": "Category to page through.",
+          "description": "Legacy Difference category.",
           "enum": [
             "negatives-now-parsing",
             "positives-lost",
@@ -9011,9 +9011,70 @@
         },
         "offset": {
           "type": "integer",
-          "description": "Rows to skip.",
+          "description": "Legacy rows to skip.",
           "minimum": 0,
           "maximum": 1000000
+        },
+        "proposal": {
+          "type": "string",
+          "description": "Proposal for the report."
+        },
+        "report": {
+          "type": "string",
+          "description": "Exact Trial report id."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Report disclosure level.",
+          "enum": [
+            "summary",
+            "failures",
+            "full"
+          ]
+        },
+        "section": {
+          "type": "string",
+          "description": "Report section."
+        },
+        "set": {
+          "type": "string",
+          "description": "Review set."
+        },
+        "outcome": {
+          "type": "string",
+          "description": "Outcome selector."
+        },
+        "flag": {
+          "type": "string",
+          "description": "Flag selector."
+        },
+        "filter": {
+          "type": "string",
+          "description": "Case filter."
+        },
+        "word": {
+          "type": "string",
+          "description": "Exact word selector."
+        },
+        "case": {
+          "type": "string",
+          "description": "Exact case selector."
+        },
+        "side": {
+          "type": "string",
+          "description": "Trace side.",
+          "enum": [
+            "before",
+            "after"
+          ]
+        },
+        "trace": {
+          "type": "boolean",
+          "description": "Explicitly run or read a report-bound trace."
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Report page continuation."
         },
         "limit": {
           "type": "integer",
@@ -9026,16 +9087,14 @@
           "description": "Known project name or recorded .fwdata path."
         }
       },
+      "additionalProperties": false,
       "required": [
-        "difference",
-        "category",
         "project"
-      ],
-      "additionalProperties": false
+      ]
     },
-    "readOnlyHint": true,
+    "readOnlyHint": false,
     "destructiveHint": false,
-    "idempotentHint": true
+    "idempotentHint": false
   },
   {
     "name": "motif_proposal_difference",

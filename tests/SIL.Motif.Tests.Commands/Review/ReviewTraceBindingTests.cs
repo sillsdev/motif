@@ -35,7 +35,9 @@ public sealed class ReviewTraceBindingTests : IDisposable
     [Fact]
     public void ReadResourceCannotStartDiagnosticAndCursorIsBoundToTrace()
     {
-        var nodes = Enumerable.Range(0, 3).Select(i => new TraceNode(i.ToString(), null, "rule", "label", null, [], null)).ToArray();
+        var nodes = new[] { new TraceNode("0", null, "rule", "root", null, [], null),
+            new TraceNode("1", "0", "rule", "first", null, [], null),
+            new TraceNode("2", "0", "rule", "second", null, [], null) };
         ReviewTraceArtifacts.Store(_database, new RetainedReviewTrace(TraceId, "project", Id, "case", Side.After,
             "parser", "grammar", "scope", "complete", true, nodes));
         var saved = ReviewTraceArtifacts.Find(_database, "project", Id, "case", Side.After);
@@ -45,6 +47,11 @@ public sealed class ReviewTraceBindingTests : IDisposable
         var first = command.Read("project", new ReviewReportId(Id), TraceId, limit: 1);
         Assert.True(first.Succeeded);
         Assert.Equal(TraceOrigin.Stored, first.Value!.Origin);
+        Assert.NotNull(Assert.Single(first.Value.Nodes).Children);
+        var child = command.Read("project", new ReviewReportId(Id), TraceId, limit: 1, parent: "0");
+        Assert.Equal("1", Assert.Single(child.Value!.Nodes).Id);
+        Assert.NotNull(child.Value.NextCursor);
+        Assert.False(command.Read("project", new ReviewReportId(Id), TraceId, child.Value.NextCursor, 1).Succeeded);
         var next = command.Read("project", new ReviewReportId(Id), TraceId, first.Value.NextCursor, 1);
         Assert.True(next.Succeeded);
         Assert.Equal("1", Assert.Single(next.Value!.Nodes).Id);

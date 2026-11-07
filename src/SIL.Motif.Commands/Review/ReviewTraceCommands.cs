@@ -76,35 +76,48 @@ public sealed class ReviewTraceCommands(MotifDatabase database)
     }
 
     /// <summary>Reads a retained trace without starting a diagnostic or parser.</summary>
-    public CommandOutcome<TracePage> Read(string project, ReviewReportId report, string traceId, string? cursor = null, int limit = 50)
+    public CommandOutcome<TracePage> Read(string project, ReviewReportId report, string traceId, string? cursor = null, int limit = 50,
+        string? parent = null)
     {
         if (limit is < 1 or > 200) return Refuse("Invalid trace page limit.", FailureReason.InvalidArgument);
         try
         {
             var trace = ReviewTraceArtifacts.Read(_database, project, report.Value, traceId);
-            return trace is null ? Refuse("The retained trace is unavailable.") : Page(trace, cursor, limit, TraceOrigin.Stored);
+            return trace is null ? Refuse("The retained trace is unavailable.") : Page(trace, cursor, limit, TraceOrigin.Stored, parent);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or
             InvalidOperationException or ArgumentException or ReviewDetailUnavailableException)
         { return Refuse(exception.Message); }
     }
 
-    private static CommandOutcome<TracePage> Page(RetainedReviewTrace trace, string? cursor, int limit, TraceOrigin origin)
+    private static CommandOutcome<TracePage> Page(RetainedReviewTrace trace, string? cursor, int limit, TraceOrigin origin,
+        string? parent = null)
     {
+        if (parent is not null && !trace.Nodes.Any(node => node.Id == parent))
+            return Refuse("The trace parent was not found.", FailureReason.InvalidArgument);
+        var selected = parent is null ? trace.Nodes : trace.Nodes.Where(node => node.ParentId == parent).ToArray();
+        var binding = Convert.ToBase64String(Encoding.UTF8.GetBytes(parent ?? ""));
         var offset = 0;
         if (cursor is not null)
         {
             try
             {
                 var value = Encoding.UTF8.GetString(Convert.FromBase64String(cursor)).Split(':');
-                if (value.Length != 2 || value[0] != trace.TraceId || !int.TryParse(value[1], out offset) ||
-                    offset < 0 || offset >= trace.Nodes.Count) return Refuse("Invalid trace cursor.", FailureReason.InvalidArgument);
+                if (value.Length != 3 || value[0] != trace.TraceId || value[1] != binding ||
+                    !int.TryParse(value[2], out offset) || offset < 0 || offset >= selected.Count)
+                    return Refuse("Invalid trace cursor.", FailureReason.InvalidArgument);
             }
             catch (FormatException) { return Refuse("Invalid trace cursor.", FailureReason.InvalidArgument); }
         }
-        var items = trace.Nodes.Skip(offset).Take(limit).ToArray();
-        var next = offset + items.Length < trace.Nodes.Count
-            ? Convert.ToBase64String(Encoding.UTF8.GetBytes($"{trace.TraceId}:{offset + items.Length}")) : null;
+        var parentIds = trace.Nodes.Select(node => node.ParentId).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var baseUri = $"motif://projects/{Uri.EscapeDataString(trace.ProjectKey)}/trial-reports/{Uri.EscapeDataString(trace.ReportId)}" +
+            "/traces/" + Uri.EscapeDataString(trace.TraceId);
+        var items = selected.Skip(offset).Take(limit).Select(node => parentIds.Contains(node.Id) ? node with
+        {
+            Children = new ReadTarget(TargetKind.Resource, "trace children", baseUri + "?parent=" + Uri.EscapeDataString(node.Id), null, null)
+        } : node).ToArray();
+        var next = offset + items.Length < selected.Count
+            ? Convert.ToBase64String(Encoding.UTF8.GetBytes($"{trace.TraceId}:{binding}:{offset + items.Length}")) : null;
         return CommandOutcome<TracePage>.Success(new TracePage(trace.TraceId, trace.ReportId, trace.CaseKey, trace.Side,
             origin, trace.ParserDigest, trace.GrammarDigest, trace.ScopeDigest, "motif-trace-v1", trace.Completion,
             trace.CaptureComplete, trace.CaptureComplete ? null : "capture-limit", trace.ReadingAgreement, items, next, []));

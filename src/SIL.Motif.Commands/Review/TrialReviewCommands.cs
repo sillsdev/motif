@@ -28,8 +28,11 @@ public sealed class TrialReviewCommands(MotifDatabase database)
             var trace = new ReviewTraceCommands(_database).Produce(new ReviewTraceRequest(request.ProjectKey,
                 new ReviewReportId(available.Report.ReportId), word.Row.CaseKey, request.EffectiveSide!.Value,
                 request.Cursor, request.Limit ?? 50));
+            var traced = trace.Succeeded ? trace.Value! with { Links = [Resource(request.ProjectKey, available.Report.ReportId,
+                "trace", "traces/" + Uri.EscapeDataString(trace.Value!.TraceId) + "?limit=" + (request.Limit ?? 50) +
+                (request.Cursor is null ? "" : "&cursor=" + Uri.EscapeDataString(request.Cursor)))] } : null;
             return trace.Succeeded ? CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(
-                available.Report with { Trace = trace.Value })) : CommandOutcome<TrialReviewResult>.Refused(trace.Refusal!);
+                available.Report with { Trace = traced })) : CommandOutcome<TrialReviewResult>.Refused(trace.Refusal!);
         }
         if (request.ReportId?.StartsWith("legacy/", StringComparison.Ordinal) == true)
         {
@@ -77,7 +80,11 @@ public sealed class TrialReviewCommands(MotifDatabase database)
                     var cases = repository.FindCases(request.ProjectKey, new ReviewReportId(reportId), request.Word, request.Case);
                     if (cases.Count == 0) return Refused(RefusalCodes.DifferenceInvalidWord, FailureReason.InvalidArgument, "No matching case was found.");
                     if (cases.Count != 1) return Invalid("The word matches multiple cases: " + string.Join(", ", cases));
-                    report = report with { Word = repository.ReadWord(request.ProjectKey, new ReviewReportId(reportId), cases[0], request.Limit ?? 50) };
+                    var word = repository.ReadWord(request.ProjectKey, new ReviewReportId(reportId), cases[0], request.Limit ?? 50);
+                    word = word with { TraceRequest = new ReadTarget(TargetKind.Tool, "Trace this case", null, "motif_difference",
+                        new ReadArguments(Proposal: request.ProposalId, Report: reportId, Detail: DetailLevel.Full,
+                            Case: cases[0], Trace: true)) };
+                    report = report with { Word = word };
                 }
                 else
                 {
@@ -90,8 +97,19 @@ public sealed class TrialReviewCommands(MotifDatabase database)
             catch (ReviewDetailUnavailableException) { return Refused(RefusalCodes.DifferenceNoBefore, FailureReason.Refused, "Report detail is no longer retained."); }
             catch (ArgumentException exception) { return Invalid(exception.Message); }
         }
+        var links = new List<ReadTarget> { Resource(request.ProjectKey, reportId, "summary", null) };
+        if (report.Word is { } selectedWord)
+            links.Add(Resource(request.ProjectKey, reportId, "case", "cases/" + Uri.EscapeDataString(selectedWord.Row.CaseKey)));
+        if (report.Page is { } selectedPage && request.Set is null && request.Outcome is null && request.Flag is null && request.Filter is null)
+            links.Add(Resource(request.ProjectKey, reportId, "section", "sections/" + Uri.EscapeDataString(selectedPage.Section) +
+                "?limit=" + (request.Limit ?? 50) + (request.Cursor is null ? "" : "&cursor=" + Uri.EscapeDataString(request.Cursor))));
+        report = report with { Links = links };
         return CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(report));
     }
+
+    private static ReadTarget Resource(string project, string report, string name, string? suffix) => new(TargetKind.Resource,
+        name, $"motif://projects/{Uri.EscapeDataString(project)}/trial-reports/{Uri.EscapeDataString(report)}" +
+        (suffix is null ? "" : "/" + suffix), null, null);
 
     /// <summary>Produces a report explicitly from the selected retained Trial.</summary>
     public async Task<CommandOutcome<TrialReviewResult>> ProduceAsync(ReviewProduceRequest request, CancellationToken ct = default)

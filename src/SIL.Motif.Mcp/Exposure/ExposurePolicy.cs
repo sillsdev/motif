@@ -87,7 +87,7 @@ internal sealed class ExposurePolicy
         foreach (var tool in tools)
             if (profile.SelectionFor(tool.Name) is { } selection)
             {
-                var detail = selection.Detail ?? (tool.Name == "motif_trial" ? "summary" : profile.DefaultDetail);
+                var detail = selection.Detail ?? (tool.Name is "motif_trial" or "motif_difference" ? "summary" : profile.DefaultDetail);
                 var choices = (tool.InputSchema["properties"]?["detail"]?["enum"] as System.Text.Json.Nodes.JsonArray)?
                     .Select(item => item?.GetValue<string>()).ToArray();
                 if (selection.Detail is not null && choices is not null && !choices.Contains(detail, StringComparer.Ordinal))
