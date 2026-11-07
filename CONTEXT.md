@@ -334,6 +334,9 @@ runs, sources and Baselines ([ADR 0082](docs/adr/0082-stores-and-user-data-stay-
 is a guaranteed physical ceiling. A Proposal releases unneeded computed evidence at committed close or after
 seven days without Proposal activity even while open, keeping authored content and written summaries with bounded
 examples ([ADR 0093](docs/adr/0093-proposals-release-computed-data-on-close-and-after-seven-days-untouched.md)).
+Primary Corpus files and metadata have no size cap and are never evicted; stored per-occurrence analysis follows
+computed-evidence retention, while its frozen language summary tables remain durable history
+([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)).
 _Avoid_: quota, disk limit, cache size
 
 **Proposal activity**:
@@ -669,8 +672,10 @@ FieldWorks adapter or the `net10.0` Host owns loading, saving, locking, and disp
 _Avoid_: cache, session, connection
 
 **Motif store**:
-Project workflow records — Proposals, Drafts, jobs, Assessments, Reports, Receipts, Corpora, and the
-applied index — live in the project's paired sibling database. Parsimony Report bindings are stored here,
+Project workflow records — Proposals, Drafts, jobs, Assessments, Reports, Receipts, Harvests, the Corpus index,
+stored corpus analysis and its durable summaries, and the applied index — live in the project's paired sibling
+database. Primary Corpus files and their metadata sidecar live under the project folder's `corpora/` directory
+([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)). Parsimony Report bindings are stored here,
 but reviewed negatives and dispositions remain durable data in the FieldWorks project. File-backed
 Baselines and disposable parser and grammar-analysis artifacts live separately under the Motif worker root, which defaults on Windows to
 `%LOCALAPPDATA%\SIL\Motif` and can be changed with `MOTIF_WORKER_ROOT`. Content digests identify
@@ -743,17 +748,94 @@ _Avoid_: auto mode, unsupervised, API mode, "the API" for the CLI
 
 **Text**:
 FieldWorks' term, kept for FieldWorks' meaning: an interlinearised document **in the language project**.
-Never used for a Corpus or a Document, which Motif holds and FieldWorks does not.
+Never used for a Corpus or a Document, which Motif holds outside the FieldWorks model even when its files
+sit in the same project folder.
 _Avoid_: using this for corpus material
 
 **Corpus**:
-A body of running text Motif holds, with a record of where it came from, how it was tokenised, and what
-anyone attests about it. Never part of the language project.
+A body of running text collected for a project, preserving its Documents, order, repetitions, source
+information and any attributed qualification. Its files are primary project assets outside the FieldWorks model,
+with no size cap or automatic eviction. A particular segmentation and analysis interpret that material; neither is the Corpus
+itself ([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)).
 _Avoid_: text, texts, dataset, word list, sample
 
 **Document**:
-One unit within a Corpus — an article, a file. The boundary counts and n-gram models must not run across.
+One source unit within a Corpus, preserving running text in order with repetitions. Its boundary scopes
+contexts and counts; n-gram models must not run across it. It keeps its identity when edited; a content hash
+distinguishes the version a measurement or Harvest used. It is never a FieldWorks Text.
 _Avoid_: text, article, item, record
+
+**Harvester**:
+A named, reusable definition for finding material in Corpora and producing or updating a curated FieldWorks
+Text, with an explanation, regex or filters, source references and a destination Text. People and agents can
+edit it; the definition belongs to the FieldWorks project. It is distinct from a Harvest, which records a use
+([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)).
+_Avoid_: Recipe, corpus group, approval rule, run
+
+**Harvest**:
+One recorded run or other derived use of Corpus Documents: what was used, which definition or manual method
+was used, and what it produced or updated. It includes manual extraction, linking an imported Text and uses
+such as n-gram training; a Harvester and a destination Text are optional for manual or other kinds. Motif keeps
+the provenance record, distinct from disposable computed output.
+_Avoid_: Harvester, import (as a synonym), Trial, approval
+
+**Wordform**:
+A written word form considered independently of any particular place it occurs. Many Occurrences can share
+one Wordform; its spelling alone does not decide its language. In this shared analyzer vocabulary it does
+not imply a stored FieldWorks wordform object or a spelling judgment.
+_Avoid_: token, Occurrence (for the form)
+
+**Occurrence**:
+One instance of a Wordform at a particular span in source material, retaining its original surface and location.
+Repeated instances remain distinct. A Corpus Occurrence is bound to a Document version and segmentation;
+a FieldWorks Text occurrence uses its saved FieldWorks context. Sharing a Wordform assigns no approved reading.
+_Avoid_: token, Wordform (for the instance), analysis
+
+**Word-forming character**:
+A character that belongs inside a word under a writing system's segmentation rules, including Unicode defaults,
+configured additions and WordMaker's numeric rule. Being word-forming does not establish a valid word.
+_Avoid_: letter only, Latin word character
+
+**Segmentation profile**:
+The recorded writing-system rules used to find word boundaries, with the identity and hash of the source
+`.ldml` from which they were obtained. It describes segmentation, not the fuller Assessment scope or a
+language judgment.
+_Avoid_: Tokenization profile, tokenizer guess, language detector, Assessment scope
+
+**Segmentation alternative**:
+Another division of the same source span into one or more parts, alongside the primary FieldWorks-rule split.
+Each part retains its own analysis and Language candidates. Alternatives remain visible rather than replacing
+the primary split or multiplying the count of source Occurrences. A character can be word-forming in one
+interpretation and punctuation in another. If any alternative is analyzed, the Occurrence is analyzed;
+misses of its other alternatives are ignored for failure, misspelling and no-analysis counts, flags and squiggles
+([ADR 0094](docs/adr/0094-corpus-files-harvesters-and-stored-word-analysis.md)).
+_Avoid_: replacement profile, discarded split, correction
+
+**Dictionary pack**:
+A data bundle for dictionary and word evidence: Hunspell `.dic`/`.aff` data, a word list and an optional
+n-gram profile, with source, version and licence identity. It can support contact-language checking and
+suggestions without a grammar. It is distinct from a Language Pack; absence from a limited word list is
+not spelling rejection.
+_Avoid_: Language Pack, executable plugin, guaranteed lexicon
+
+**N-gram profile**:
+A language-specific summary of short-sequence frequencies used as language-detection evidence. It is
+optional data in a Dictionary pack, distinct from a Segmentation profile, a grammar or a spelling verdict.
+_Avoid_: grammar analysis, exclusive language label
+
+**Language Pack**:
+A PanGloss `.pgpack` grammar analysis artifact, also called a PanGloss Language Pack. A contact language
+can have one loaded alongside the vernacular grammar. The term means only this grammar artifact;
+Dictionary packs supply the separate dictionary resources.
+_Avoid_: Dictionary pack, umbrella language-resource bundle, Hunspell pack (as a synonym)
+
+**Language candidate**:
+A possible language for an Occurrence or a part of a Segmentation alternative, carrying supporting evidence
+and, when applicable, a misspelling flag and correction suggestions. Evidence can come from Dictionary packs
+or Language Packs, including another loaded grammar for a contact language. Several candidates can coexist
+with the vernacular parse. A suggested correction is not valid-word evidence for the original spelling.
+Candidate alone keeps its FieldWorks analysis meaning.
+_Avoid_: exclusive language label, confirmed language, Candidate (alone)
 
 **Corpus bundle**:
 The handoff an outside tool writes when it has fetched text for Motif: a small file describing one Corpus and
@@ -788,7 +870,7 @@ _Avoid_: HC XML, export, projection
 > | --- | --- | --- |
 > | **parse coverage** | What share of a word list parsed. The raw figure | PanGloss |
 > | **grammar coverage** | How much of a language the grammar reaches — parse coverage reported over a named Corpus, with provenance | Motif |
-> | **Text Coverage** | What share of the Default Selection's words in the project's vernacular writing systems, and of their occurrences in the chosen Texts, parse. Digit-only tokens and words in other writing systems are counted separately; words the parser refuses as invalid shape stay in the share. Measured over the project's own Texts; the same share over a Corpus is grammar coverage | Motif |
+> | **Text Coverage** | What share of the Default Selection's words in the project's vernacular writing systems, and of their occurrences in the chosen Texts, parse. Digit-only Wordforms and their Occurrences, and words in other writing systems, are counted separately; words the parser refuses as invalid shape stay in the share. Measured over the project's own Texts; the same share over a Corpus is grammar coverage | Motif |
 > | **feature coverage** | Which declared grammar features, and which combinations of them, the analysed words actually exercise. What a Hole is an absence in | Motif |
 > | **test coverage** | What the manual analyses assert. Always qualified in prose and API names — this repo has literal unit tests | Motif |
 > | **model coverage** | Whether the generator accounts for every field in LibLCM's model. The terms in this section concern this one | Motif |
