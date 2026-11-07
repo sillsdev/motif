@@ -1,15 +1,16 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using SIL.Motif.Commands;
 
 namespace SIL.Motif.App.Services;
 
 /// <summary>
-/// Opens the window's file picker for a picture and scales what it returns with <see cref="PictureScaler"/>.
+/// Opens the window's file picker and reads a picture for the Proposal command to prepare.
 /// </summary>
 public sealed class AvaloniaPictureIntake : IPictureIntake
 {
     /// <summary>The largest file read at all; a bigger one is refused as too large without being decoded.</summary>
-    public const long MaxSourceBytes = 64L * 1024 * 1024;
+    public const long MaxSourceBytes = SIL.Motif.Commands.PictureScaler.MaxSourceBytes;
 
     private static readonly FilePickerFileType PictureFileType = new("Pictures")
     {
@@ -37,19 +38,30 @@ public sealed class AvaloniaPictureIntake : IPictureIntake
         try
         {
             await using var stream = await files[0].OpenReadAsync();
-            using var buffer = new MemoryStream();
-            var chunk = new byte[81920];
-            int read;
-            while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
-            {
-                buffer.Write(chunk, 0, read);
-                if (buffer.Length > MaxSourceBytes) return new PictureIntakeResult(PictureIntakeStatus.TooLarge);
-            }
-            return await Task.Run(() => PictureScaler.Scale(buffer.ToArray()), cancellationToken);
+            return await ReadAsync(stream, cancellationToken);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             return new PictureIntakeResult(PictureIntakeStatus.Unreadable);
         }
+    }
+
+    internal static async Task<PictureIntakeResult> ReadAsync(Stream stream, CancellationToken cancellationToken = default)
+    {
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            buffer.Write(chunk, 0, read);
+            if (buffer.Length > MaxSourceBytes) return new PictureIntakeResult(PictureIntakeStatus.TooLarge);
+        }
+        var source = buffer.ToArray();
+        return PictureScaler.ValidateSource(source) switch
+        {
+            PictureScaleStatus.Ready => new PictureIntakeResult(PictureIntakeStatus.Ready, source),
+            PictureScaleStatus.TooLarge => new PictureIntakeResult(PictureIntakeStatus.TooLarge),
+            _ => new PictureIntakeResult(PictureIntakeStatus.Unsupported),
+        };
     }
 }

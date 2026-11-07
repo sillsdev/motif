@@ -377,7 +377,7 @@ public sealed record DeleteCommentRequest(string FwDataPath, string ProductVersi
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The full id of the Proposal the picture is for.</param>
-/// <param name="Bytes">A WebP, PNG or JPEG picture of at most <see cref="ProposalPictures.MaxBytes"/> bytes and <see cref="ProposalPictures.MaxSide"/> pixels on a side; the window scales a larger one first.</param>
+/// <param name="Bytes">A WebP, PNG, JPEG, GIF or BMP picture of at most <see cref="PictureScaler.MaxSourceBytes"/> bytes; it is turned upright, scaled to at most <see cref="ProposalPictures.MaxSide"/> pixels on a side and stored as a metadata-free WebP of at most <see cref="ProposalPictures.MaxBytes"/> bytes.</param>
 /// <param name="CommentId">The Comment to attach it to; null attaches it to the Proposal.</param>
 /// <param name="Caption">An optional one-line caption of at most <see cref="ProposalPictures.MaxCaptionLength"/> characters.</param>
 public sealed record AddPictureRequest(

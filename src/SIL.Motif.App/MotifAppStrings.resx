@@ -6004,7 +6004,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Sentence the window shows when the command refuses with code C.ProposalCommentInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalPictureInvalid" xml:space="preserve">
-    <value>That picture could not be added. It must be a WebP, PNG or JPEG picture of about 1 MB or less and at most {0} pixels on a side, and a Proposal holds at most {1} pictures. Remove one to add another.</value>
+    <value>That picture could not be added. It must be a WebP, PNG, JPEG, GIF or BMP picture that Motif can open; Motif scales it to at most {0} pixels on a side. A Proposal holds at most {1} pictures. Remove one to add another.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProposalPictureInvalid. {0} is the longest side in pixels, {1} the most pictures. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalRationaleEmpty" xml:space="preserve">

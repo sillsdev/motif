@@ -575,7 +575,7 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "proposal", "proposal comment delete",
             new[] { "proposal comment delete <proposalId> <commentId> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal picture add",
-            new[] { "proposal picture add <proposalId> --project <fwdata> --file <webp-png-or-jpeg> [--comment <commentId>] [--caption <text>] [--json]" }),
+            new[] { "proposal picture add <proposalId> --project <fwdata> --file <webp-png-jpeg-gif-or-bmp> [--comment <commentId>] [--caption <text>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal picture remove",
             new[] { "proposal picture remove <proposalId> <pictureId> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal picture show",

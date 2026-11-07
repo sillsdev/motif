@@ -113,9 +113,12 @@ public sealed class DiscardEmptyDraftsTests(PristineProjectFixture pristine)
             Assert.True(comment.Succeeded);
             commentId = comment.Value!.CommentId;
         }
-        var bytes = onComment ? ProposalPicturesTests.Jpeg(20, 10) : ProposalPicturesTests.Png(20, 10);
+        var bytes = onComment ? ProposalPicturesTests.Real(20, 10, jpeg: true) : ProposalPicturesTests.Real(20, 10);
         var picture = ProposalPictures.Add(new(path, Version, id, bytes, commentId));
         Assert.True(picture.Succeeded, picture.Refusal?.Message);
+        var before = ProposalPictures.Show(new(path, Version, id, picture.Value!.PictureId));
+        Assert.True(before.Succeeded, before.Refusal?.Message);
+        var storedBytes = Convert.FromBase64String(Assert.IsType<string>(before.Value!.DataBase64));
 
         var outcome = ProposalCommands.DiscardEmptyDrafts(new(path, Version));
 
@@ -131,7 +134,7 @@ public sealed class DiscardEmptyDraftsTests(PristineProjectFixture pristine)
         var stored = Assert.Single(pictures.List(CanonicalId.Parse(id)));
         Assert.Equal(picture.Value!.PictureId, stored.PictureId);
         Assert.Equal(commentId, stored.CommentId);
-        Assert.Equal(bytes, pictures.ReadBytes(CanonicalId.Parse(id), stored.PictureId));
+        Assert.Equal(storedBytes, pictures.ReadBytes(CanonicalId.Parse(id), stored.PictureId));
     }
 
     [Fact]
@@ -143,15 +146,17 @@ public sealed class DiscardEmptyDraftsTests(PristineProjectFixture pristine)
         using var database = ProjectMotifDatabase.Open(path);
         var repository = new ProposalRepository(database);
         var listed = repository.GetDraft("picture-after-listing");
-        var bytes = ProposalPicturesTests.Png(20, 10);
+        var bytes = ProposalPicturesTests.Real(20, 10);
         var picture = ProposalPictures.Add(new(path, Version, listed.ProposalId.Value, bytes));
         Assert.True(picture.Succeeded, picture.Refusal?.Message);
+        var pictures = new ProposalPictureRepository(database);
+        var storedBytes = Assert.IsType<byte[]>(pictures.ReadBytes(listed.ProposalId, picture.Value!.PictureId));
 
         Assert.Throws<DraftAuthoredContentException>(() => repository.DiscardDraft("picture-after-listing",
             listed.ProposalJson, beforeEvidenceRemoved: null, emptyDraftId: listed.ProposalId));
 
         Assert.Equal(listed, repository.GetDraft("picture-after-listing"));
-        Assert.Equal(bytes, new ProposalPictureRepository(database).ReadBytes(listed.ProposalId, picture.Value!.PictureId));
+        Assert.Equal(storedBytes, pictures.ReadBytes(listed.ProposalId, picture.Value.PictureId));
     }
 
     [Fact]

@@ -1610,9 +1610,9 @@ try
                         if (!long.TryParse(pictureCommentText, out var parsedComment)) return Usage(pictureUsage, asJson);
                         pictureComment = parsedComment;
                     }
-                    if (new FileInfo(pictureFile).Length > ProposalPictures.MaxBytes)
-                        return Usage("This file is " + new FileInfo(pictureFile).Length + " bytes; Motif keeps pictures at most " +
-                            ProposalPictures.MaxBytes + " bytes. Make it smaller (or attach it in the Motif window, which scales it for you) and try again. " + pictureUsage, asJson);
+                    if (new FileInfo(pictureFile).Length > PictureScaler.MaxSourceBytes)
+                        return Usage("This file is " + new FileInfo(pictureFile).Length + " bytes; Motif reads picture files up to " +
+                            PictureScaler.MaxSourceBytes + " bytes. Reduce it and try again. " + pictureUsage, asJson);
                     result = RenderCommand(ProposalPictures.Add(new AddPictureRequest(pictureProject, CliProductVersion(),
                         positionals[2], File.ReadAllBytes(pictureFile), pictureComment,
                         flags.GetValueOrDefault("caption"))));

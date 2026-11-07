@@ -47,9 +47,19 @@ Pictures change as follows; the rest of this ADR stands.
 - On attach the window honours the EXIF orientation, resizes so the long side is at most 1000 px (never enlarging) and
   stores only a WebP copy: lossless when the source is a PNG (or a GIF, BMP or lossless WebP), lossy at quality 80 when it
   is a JPEG. Re-drawing the picture drops all metadata (GPS, camera, orientation tag). The original is not kept.
-  WebP is encoded with the SkiaSharp that Avalonia already bundles, so no package is added. A build whose Skia cannot
-  encode WebP falls back to PNG for a PNG source and JPEG at quality 80 for the rest, still resized and stripped.
-- The commands re-check what the window did: WebP, PNG or JPEG, at most 1 MiB and 1000 px on a side, so the CLI
-  cannot bypass the limits, and they remove metadata without decoding (JPEG APP1 to APP15 and comments, PNG text, EXIF
-  and time chunks, WebP EXIF and XMP chunks). The CLI scales and converts nothing: it refuses a larger file, naming its
-  size and pointing to the window, which resizes. Re-drawing in the window also drops the colour profile.
+  A build whose Skia cannot encode WebP falls back to PNG for a PNG source and JPEG at quality 80 for the rest, still
+  resized and stripped.
+
+## Amended 2026-11-07
+
+- The CLI and the other commands scale pictures exactly as the window does. `proposal picture add` (and `AddPictureRequest`)
+  accept a WebP, PNG, JPEG, GIF or BMP file of up to 64 MiB and about 100 megapixels (the declared size is checked before
+  any decoding), and store the same WebP copy: upright, long side at most 1000 px, never enlarged, lossless for a PNG-like
+  source and quality 80 for a JPEG or lossy WebP, metadata and colour profile dropped. The 1 MiB limit applies to that
+  converted copy. A file that cannot be decoded, or is over the input limits, is refused with a message saying why.
+- There is one implementation, `PictureScaler` in `SIL.Motif.Commands`, built on SkiaSharp; the window calls it. The
+  earlier byte-level metadata stripping and the refusal of pictures over 1000 px are gone.
+- Dependency: the owner approved a `SkiaSharp` package reference on the commands project on 2026-11-07, at the version
+  Avalonia.Skia brings the window (3.119.4) so the build holds one Skia, and approved `SkiaSharp.NativeAssets.Linux` at
+  the same version on 2026-11-07 so the native library is found on Linux (Windows and macOS assets come with SkiaSharp).
+  The native libSkiaSharp therefore ships with both the CLI and the MCP server, which reference Commands.

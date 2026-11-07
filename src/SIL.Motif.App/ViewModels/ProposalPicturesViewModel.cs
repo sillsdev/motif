@@ -46,8 +46,8 @@ public sealed partial class ProposalPictureItem : ObservableObject
 }
 
 /// <summary>
-/// The pictures on the selected Proposal. A person adds one through the file picker, which scales it to at most 1000 pixels
-/// and about 1 MB, as WebP, before it is stored, and removes any; a decided Proposal shows its pictures and no longer changes them.
+/// The pictures on the selected Proposal. A person adds one through the file picker and removes any; the command prepares
+/// the stored picture at at most 1000 pixels and about 1 MB. A decided Proposal shows its pictures without changing them.
 /// </summary>
 public sealed partial class ProposalPicturesViewModel : ObservableObject
 {

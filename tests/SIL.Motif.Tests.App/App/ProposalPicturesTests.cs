@@ -53,7 +53,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
             {
                 var scaled = PictureScaler.Scale(source);
 
-                Assert.Equal(PictureIntakeStatus.Ready, scaled.Status);
+                Assert.Equal(PictureScaleStatus.Ready, scaled.Status);
                 Assert.True(scaled.Bytes!.Length <= ProposalPictures.MaxBytes, $"{scaled.Bytes.Length} bytes");
                 var sniffed = PictureSniffer.Read(scaled.Bytes);
                 Assert.NotNull(sniffed);
@@ -116,12 +116,12 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
         {
             var small = Noise(40, 30, jpeg: false);
 
-            Assert.Equal(PictureIntakeStatus.Unsupported, PictureScaler.Scale("not a picture, just words"u8.ToArray()).Status);
+            Assert.Equal(PictureScaleStatus.Unsupported, PictureScaler.Scale("not a picture, just words"u8.ToArray()).Status);
             // A PNG header that claims a large picture, followed by nothing a decoder can read.
             var corrupt = new byte[small.Length];
             Array.Copy(small, corrupt, 33);
             corrupt[18] = 0x20;
-            Assert.Equal(PictureIntakeStatus.Unreadable, PictureScaler.Scale(corrupt).Status);
+            Assert.Equal(PictureScaleStatus.Unreadable, PictureScaler.Scale(corrupt).Status);
         });
     }
 
@@ -142,14 +142,14 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
             var huge = DeclaringPng(15000, 15000);
             Assert.True(huge.Length < 10_000);
 
-            Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(huge).Status);
+            Assert.Equal(PictureScaleStatus.TooLarge, PictureScaler.Scale(huge).Status);
             // Over the sniffer's side limit too, and a JPEG that declares the same.
-            Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(DeclaringPng(60000, 60000)).Status);
+            Assert.Equal(PictureScaleStatus.TooLarge, PictureScaler.Scale(DeclaringPng(60000, 60000)).Status);
             var jpeg = Noise(40, 30, jpeg: true);
             var frame = Array.IndexOf(jpeg, (byte)0xC0, 2);
             while (jpeg[frame - 1] != 0xFF) frame = Array.IndexOf(jpeg, (byte)0xC0, frame + 1);
             jpeg[frame + 4] = jpeg[frame + 6] = 0x3A; // 0x3Axx rows and columns: about 218 megapixels
-            Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(jpeg).Status);
+            Assert.Equal(PictureScaleStatus.TooLarge, PictureScaler.Scale(jpeg).Status);
         });
     }
 
@@ -162,7 +162,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
             byte[] webp = [(byte)'R', (byte)'I', (byte)'F', (byte)'F', 22, 0, 0, 0, (byte)'W', (byte)'E', (byte)'B', (byte)'P',
                 (byte)'V', (byte)'P', (byte)'8', (byte)'X', 10, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0x3F, 0, 0xFF, 0x3F, 0];
 
-            Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(webp).Status);
+            Assert.Equal(PictureScaleStatus.TooLarge, PictureScaler.Scale(webp).Status);
         });
     }
 
@@ -233,7 +233,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
 
             var scaled = PictureScaler.Scale(photo);
 
-            Assert.Equal(PictureIntakeStatus.Ready, scaled.Status);
+            Assert.Equal(PictureScaleStatus.Ready, scaled.Status);
             Assert.Equal((tall, startIsRed, endIsRed), Turned(scaled.Bytes!));
             Assert.Equal(1, PictureScaler.ExifOrientation(scaled.Bytes!));
         });
@@ -248,7 +248,7 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
 
             var scaled = PictureScaler.Scale(small);
 
-            Assert.Equal(PictureIntakeStatus.Ready, scaled.Status);
+            Assert.Equal(PictureScaleStatus.Ready, scaled.Status);
             Assert.Equal(1, PictureScaler.ExifOrientation(scaled.Bytes!));
             Assert.Equal((true, true, false), Turned(scaled.Bytes!));
         });

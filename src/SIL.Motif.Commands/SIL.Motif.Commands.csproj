@@ -27,6 +27,12 @@
     <InternalsVisibleTo Include="SIL.Motif.Tests.Commands" />
   </ItemGroup>
 
+  <!-- Picture scaling (ADR 0084). Same Skia version as Avalonia.Skia, so one in the build; Linux native added for the CLI. -->
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
+  </ItemGroup>
+
   <!-- The pasted-header template (ADR 0045 decision 5): the only Handoff asset left once reference/ is gone. -->
   <ItemGroup>
     <EmbeddedResource Include="Handoff\Assets\starter-prompt.md">

@@ -8,16 +8,16 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Commands;
 
 /// <summary>
-/// The pictures on a Proposal. Only a person adds or removes one: the window scales a picture to about
-/// <see cref="MaxBytes"/> first and these commands re-check the cap and the picture's own header, so the CLI
-/// cannot bypass it. Pictures live in the project store, count in its budget and are never pruned.
+/// The pictures on a Proposal. Only a person adds or removes one: every picture, from the window or the CLI, is
+/// scaled by <see cref="PictureScaler"/> to a metadata-free WebP of at most <see cref="MaxBytes"/> and
+/// <see cref="MaxSide"/> pixels before it is stored. Pictures live in the project store, count in its budget and are never pruned.
 /// </summary>
 public static class ProposalPictures
 {
     /// <summary>The most bytes one stored picture may take: 1 MiB.</summary>
     public const int MaxBytes = 1024 * 1024;
 
-    /// <summary>The longest side, in pixels, a stored picture may have; the window scales down to it on attach.</summary>
+    /// <summary>The longest side, in pixels, a stored picture may have; a larger picture is scaled down to it on attach.</summary>
     public const int MaxSide = 1000;
 
     /// <summary>How many pictures one Proposal holds; a Proposal over it keeps what it has and takes no more.</summary>
@@ -26,7 +26,7 @@ public static class ProposalPictures
     /// <summary>The most characters a picture's caption may have.</summary>
     public const int MaxCaptionLength = 200;
 
-    /// <summary>Adds a WebP, PNG or JPEG picture to an open Proposal, or to one of its Comments.</summary>
+    /// <summary>Scales a picture and adds it to an open Proposal, or to one of its Comments.</summary>
     public static CommandOutcome<ProposalPictureChangedResponse> Add(AddPictureRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -34,18 +34,22 @@ public static class ProposalPictures
         {
             if (request.Bytes is not { Length: > 0 })
                 return Refuse(id, "A picture cannot be empty.");
-            if (PictureSniffer.Read(request.Bytes) is not var (mediaType, width, height))
-                return Refuse(id, "Only WebP, PNG and JPEG pictures can be added.");
-            if (Math.Max(width, height) > MaxSide)
-                return Refuse(id, string.Format(CultureInfo.InvariantCulture,
-                    "This picture is {0} x {1} pixels; Motif keeps pictures at most {2} pixels on the longest side. " +
-                    "Resize it (or attach it in the Motif window, which resizes for you) and try again.",
-                    width, height, MaxSide));
-            var stored = PictureMetadata.Strip(request.Bytes);
-            if (stored.Length > MaxBytes)
-                return Refuse(id, string.Format(CultureInfo.InvariantCulture,
-                    "This picture is {0} bytes; Motif keeps pictures at most {1} bytes. Make it smaller (or attach it " +
-                    "in the Motif window, which scales it for you) and try again.", stored.Length, MaxBytes));
+            var scaled = PictureScaler.Scale(request.Bytes);
+            switch (scaled.Status)
+            {
+                case PictureScaleStatus.Unsupported:
+                    return Refuse(id, "Only WebP, PNG, JPEG, GIF and BMP pictures can be added.");
+                case PictureScaleStatus.Unreadable:
+                    return Refuse(id, "This picture cannot be opened; it may be damaged. Check the file and try again.");
+                case PictureScaleStatus.TooLarge:
+                    return Refuse(id, string.Format(CultureInfo.InvariantCulture,
+                        "This picture is too large to attach: Motif reads files up to {0} MiB and about {1} megapixels, " +
+                        "and scales them down to {2} bytes. Reduce it and try again.",
+                        PictureScaler.MaxSourceBytes / (1024 * 1024), PictureScaler.MaxSourcePixels / 1_000_000, MaxBytes));
+            }
+            var stored = scaled.Bytes!;
+            if (stored.Length > MaxBytes || PictureSniffer.Read(stored) is not var (mediaType, width, height))
+                return Refuse(id, "This picture cannot be stored; try another.");
             var caption = request.Caption?.Trim();
             if (caption?.Contains('\n') == true || caption?.Contains('\r') == true)
                 return Refuse(id, "A caption is one line; remove the line breaks and try again.");
