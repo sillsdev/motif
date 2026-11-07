@@ -114,6 +114,7 @@ public sealed partial class ReviewReportRepository
             }
         }
         var samples = new List<ReviewWordRow>();
+        var bytes = 16 * 1024;
         foreach (var (key, total) in keys)
         {
             var word = ReadWord(request.ProjectKey, request.ReportId, key, 1).Row;
@@ -131,10 +132,17 @@ public sealed partial class ReviewReportRepository
                 var member = JsonSerializer.Deserialize<ReviewMembership>(reader.GetString(0), ReviewJson.Options)
                     ?? throw new InvalidDataException("Invalid membership index.");
                 examples.Add(new TokenRow(member.CaseId, word.WordKey, member.OccurrenceId ?? member.CaseId,
-                    member.Weight, member.SourceLocator ?? "", word.Before, word.After, word.Links));
+                    member.Weight, Excerpt(member.SourceLocator ?? ""), word.Before, word.After, word.Links));
             }
-            samples.Add(word with { SamplePositions = examples, SamplePositionsTotal = total,
-                Links = word.Links.Append(ChildLink(request.ProjectKey, request.ReportId, key, "memberships")).ToArray() });
+            var sample = word with { SamplePositions = examples, SamplePositionsTotal = total,
+                Links = word.Links.Append(ChildLink(request.ProjectKey, request.ReportId, key, "memberships")).ToArray() };
+            int Size() => JsonSerializer.SerializeToUtf8Bytes<ReviewRow>(sample, ReviewJson.Options).Length;
+            while (examples.Count > 0 && bytes + Size() > PageBytes) examples.RemoveAt(examples.Count - 1);
+            if (bytes + Size() > PageBytes) sample = (ReviewWordRow)StubRow(sample);
+            var size = Size();
+            if (bytes + size > PageBytes) throw new ReviewDetailUnavailableException("row-over-budget");
+            bytes += size;
+            samples.Add(sample);
         }
         return (forms, positions, samples);
     }
@@ -889,6 +897,8 @@ public sealed partial class ReviewReportRepository
         var length = char.IsHighSurrogate(value[1023]) ? 1023 : 1024;
         return value[..length];
     }
+
+    private static string Excerpt(string value) => value.Length > 1024 ? Clip(value) + " [excerpt]" : value;
 
     private static WordSide SideFacts(ReviewCaseSideFacts facts, ReadTarget? link, long? readings, SideTotals? totals) =>
         new(facts.Completion, facts.StopReasons, readings, totals?.ApprovedMatched, totals?.ApprovedMissing,

@@ -218,7 +218,8 @@ public sealed class TrialReviewCommandsTests : IDisposable
             var expectation = "expectation-" + i;
             var memberships = Enumerable.Range(0, i == 4 ? 5 : 1).Select(position =>
                 new ReviewMembership("sentences", "token-" + i + "-" + position, "sampled-tokens",
-                    i == 4 ? 100 : i == 5 ? 450 : 1, null, null, []))
+                    i == 4 ? 100 : i == 5 ? 450 : 1, null, null, [])
+                    { SourceLocator = i == 4 && position == 0 ? new string('\u00e9', 50_000) : "short location" })
                 .Append(new ReviewMembership("paradigm", "cell-" + i, "paradigm-cells", 1, "cell-" + i, "variant-" + i, [expectation])).ToArray();
             var before = new ReviewCaseSideFacts(Completion.Complete, true, [], [expectation], [], []);
             var after = affected ? new ReviewCaseSideFacts(Completion.Complete, false, [], [], [expectation], []) : before;
@@ -242,8 +243,14 @@ public sealed class TrialReviewCommandsTests : IDisposable
         Assert.Equal(new[] { "word-4", "word-5" }, forms.Select(form => form.Word));
         Assert.Equal(5, forms[0].SamplePositionsTotal);
         Assert.Equal(3, forms[0].SamplePositions!.Count);
+        var excerpt = forms[0].SamplePositions![0].SourceLocator;
+        Assert.EndsWith(" [excerpt]", excerpt, StringComparison.Ordinal);
+        Assert.True(excerpt.Length <= 1034);
+        Assert.True(JsonSerializer.SerializeToUtf8Bytes(tokenSection, ReviewJson.Options).Length < 192 * 1024);
+        Assert.Contains(forms[0].Links, link => link.Name == "memberships" && link.Uri is not null);
         Assert.Equal(1, forms[1].SamplePositionsTotal);
         Assert.Equal(450, Assert.Single(forms[1].SamplePositions!).Weight);
+        Assert.Equal("short location", forms[1].SamplePositions![0].SourceLocator);
         Assert.Equal("new-no-parse", tokenGroup.Link.Arguments!.Outcome);
         var cellSection = Assert.Single(Read("paradigm-cells").Sections);
         var lost = Assert.Single(cellSection.Groups, group => group.Cause == "lost");

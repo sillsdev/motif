@@ -41,6 +41,23 @@ public sealed class TrialReviewRenderingTests
     }
 
     [Fact]
+    public void FailurePositionExcerptIsLabeledInText()
+    {
+        var report = (ReportView)Create(typeof(ReportView));
+        var word = (WordRow)Create(typeof(WordRow));
+        var token = new TokenRow("case", "word", "position", 1, "source [excerpt]", word.Before, word.After, []);
+        word = word with { SamplePositions = [token], SamplePositionsTotal = 7 };
+        var section = (SectionView)Create(typeof(SectionView));
+        var group = new CauseGroup("coverage", 1, "forms", [word], 0,
+            new ReadTarget(TargetKind.Resource, "memberships", "motif://memberships", null, null));
+        var text = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
+        {
+            Sections = [section with { Groups = [group] }]
+        }));
+        Assert.Contains("7 positions: position source [excerpt]", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void WordDetailRendersReadingsExpectationsAndContinuation()
     {
         var report = (ReportView)Create(typeof(ReportView));
