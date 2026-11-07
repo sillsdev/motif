@@ -419,13 +419,6 @@
   },
   {
     "view": "Pages/TimingPage",
-    "name": "TimingPageProposalRuleChangesItems",
-    "source": "ProposalRuleChanges",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "Pages/TimingPage",
     "name": "TimingPageRuleRowsItems",
     "source": "RuleRows",
     "mode": "paged",

@@ -61,6 +61,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         CreateCurrentSchemaAsOld();
         using (var old = Connect(Source))
             Execute(old, """
+                PRAGMA user_version = 64;
                 DROP TABLE AssessmentWordSetBindings;
                 INSERT INTO Proposals (ProposalId, CurrentIntentDigest, Status) VALUES ('p', 'digest', 'applied');
                 INSERT INTO ProposalComments (ProposalId, PersonName, Text, CreatedUtc) VALUES ('p', 'person', 'comment', '2026');

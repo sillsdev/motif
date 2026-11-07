@@ -151,7 +151,10 @@ public sealed class WalkthroughWindow : IDisposable
         var grammarPaths = Directory.EnumerateFiles(_managedRoot, "*.fwdata", SearchOption.AllDirectories).ToArray();
         Assert.NotEmpty(grammarPaths);
         foreach (var grammarPath in grammarPaths)
-            FakeParser.Behave(Path.GetDirectoryName(grammarPath)!, behavior);
+        {
+            try { FakeParser.Behave(Path.GetDirectoryName(grammarPath)!, behavior); }
+            catch (DirectoryNotFoundException) { }
+        }
         FakeParser.BehaveBesideExecutable(_parserPath
             ?? throw new InvalidOperationException("A fake parser path is required to set its behavior."), behavior);
     }
