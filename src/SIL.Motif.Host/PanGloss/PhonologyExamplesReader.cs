@@ -112,7 +112,8 @@ internal static class PhonologyExamplesReader
             completions.NotStarted == Count(rows, PhonologyCompletion.NotStarted), "Completion counts contradict rows.");
         return new PhonologyMeasurement(result.GrammarSha256, inputs.Dependencies, result.RequestFileSha256,
             result.RequestSha256, result.Build, inputs.ExecutableSha256, PhonologyInvocationInputs.Digest(bytes.Span), bytes.Length,
-            limits, result.MeasuredEntryCount, rows.AsReadOnly());
+            limits, result.MeasuredEntryCount, rows.AsReadOnly())
+        { GrammarExportFormat = GrammarExportFormats.ForPath(inputs.GrammarPath) };
     }
 
     private static ulong Count(List<PhonologyMeasuredRow> rows, PhonologyDisposition disposition) =>

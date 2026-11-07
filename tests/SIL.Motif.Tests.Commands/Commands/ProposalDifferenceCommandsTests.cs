@@ -797,7 +797,7 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
             if (sha is null) return null;
             return new BatchInvocationEvidence("invocation-" + id, "src", "sha256:src", sha, "words", "sha256:words",
                 "tsv", "sha256:tsv", "err", "sha256:err", null, ParserWorkLimit.Default, 1, false)
-            { ExecutableVersion = before ? "0.1.0" : "0.2.0" };
+            { ExecutableVersion = before ? "0.1.0" : "0.2.0", GrammarExportFormat = GrammarExportFormats.FwData };
         }
 
         private static AssessedWord Word(string word, int index, params ParseAnalysis[] readings) =>

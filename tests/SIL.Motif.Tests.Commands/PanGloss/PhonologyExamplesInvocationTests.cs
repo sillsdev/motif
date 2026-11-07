@@ -84,6 +84,7 @@ public sealed class PhonologyExamplesInvocationTests : IDisposable
         Assert.Equal("m+baya", example.GetProperty("underlying").GetString());
         Assert.Equal("mbaya", example.GetProperty("expected")[0].GetString());
         Assert.Equal(PhonologyInvocationInputs.Digest(grammarBytes), measurement.GrammarSha256);
+        Assert.Equal(GrammarExportFormats.FwData, measurement.GrammarExportFormat);
         Assert.Equal(PhonologyInvocationInputs.Digest(requestBytes), measurement.RequestFileSha256);
         Assert.Equal(executableHash, measurement.ExecutableSha256);
         Assert.Equal(PhonologyInvocationInputs.Digest(Encoding.UTF8.GetBytes(Captured("result"))), measurement.OutputSha256);

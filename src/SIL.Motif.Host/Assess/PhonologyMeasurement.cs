@@ -1,3 +1,4 @@
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Phonology;
 
 namespace SIL.Motif.Host.Assess;
@@ -23,6 +24,8 @@ public sealed class PhonologyMeasurement
         Rows = rows;
     }
 
+    /// <summary>The grammar staging contract, when known.</summary>
+    public GrammarExportFormat? GrammarExportFormat { get; internal init; }
     public string GrammarSha256 { get; }
     public IReadOnlyList<PhonologyGrammarDependency> GrammarDependencies { get; }
     public string RequestFileSha256 { get; }

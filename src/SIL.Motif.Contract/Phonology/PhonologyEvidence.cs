@@ -69,7 +69,12 @@ public abstract record PhonologyInvocationBinding
         [property: JsonPropertyName("measuredEntryCount"), JsonRequired] ulong MeasuredEntryCount,
         [property: JsonPropertyName("agreeCount"), JsonRequired] int AgreeCount,
         [property: JsonPropertyName("disagreeCount"), JsonRequired] int DisagreeCount,
-        [property: JsonPropertyName("unavailableCount"), JsonRequired] int UnavailableCount) : PhonologyInvocationBinding;
+        [property: JsonPropertyName("unavailableCount"), JsonRequired] int UnavailableCount) : PhonologyInvocationBinding
+    {
+        /// <summary>The grammar staging contract, or null for older evidence.</summary>
+        [JsonPropertyName("grammarExportFormat")]
+        public GrammarExportFormat? GrammarExportFormat { get; init; }
+    }
 
     [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
     public sealed record Unavailable(

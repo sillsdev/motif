@@ -140,7 +140,8 @@ public sealed class PhonologyAssessmentRepository(MotifDatabase database)
                     Hash(measurement.ExecutableSha256), Hash(measurement.OutputSha256), measurement.OutputBytes,
                     measurement.MeasuredEntryCount, measured.Count(row => row.Disposition == PhonologyDisposition.Agree),
                     measured.Count(row => row.Disposition == PhonologyDisposition.Disagree),
-                    measured.Count(row => row.Disposition == PhonologyDisposition.Unavailable));
+                    measured.Count(row => row.Disposition == PhonologyDisposition.Unavailable))
+                { GrammarExportFormat = measurement.GrammarExportFormat };
                 break;
             case PhonologyAssessmentOutcome.Unavailable unavailable:
                 if (!Enum.IsDefined(unavailable.Reason) || string.IsNullOrWhiteSpace(unavailable.Detail))

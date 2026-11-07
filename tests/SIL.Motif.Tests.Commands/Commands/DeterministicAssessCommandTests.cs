@@ -84,6 +84,12 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         Assert.True(fresh.Succeeded, fresh.Refusal?.Message);
         var freshId = fresh.Value!.Measurements.Single(item => item.Kind == "ParseTime").AssessmentId;
         var repository = OpenRepository(seeded.FwDataPath);
+        Assert.Equal(SIL.Motif.Host.PanGloss.GrammarExportFormats.FwData,
+            repository.Get(parseId).Invocation!.GrammarExportFormat);
+        var report = SIL.Motif.Commands.ReportCommands.Produce(new SIL.Motif.Commands.Requests.ProduceReportRequest(
+            seeded.FwDataPath, "1.0", parseId, "coverage", null, null));
+        Assert.True(report.Succeeded, report.Refusal?.Message);
+        Assert.Equal(SIL.Motif.Host.PanGloss.GrammarExportFormats.FwData, report.Value!.GrammarExportFormat);
         Assert.Equal(JsonSerializer.Serialize(repository.Get(parseId).Words!.Select(word => word.Correctness)),
             JsonSerializer.Serialize(repository.Get(freshId).Words!.Select(word => word.Correctness)));
     }
@@ -98,6 +104,8 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     [InlineData("parser-version")]
     [InlineData("parser-hash")]
     [InlineData("expectations")]
+    [InlineData("grammar-format")]
+    [InlineData("missing-grammar-format")]
     public void ChangedBeforeInputsCauseANewAssessment(string changed)
     {
         using var seeded = NewSeededScratch();
@@ -136,6 +144,18 @@ public sealed class DeterministicAssessCommandTests : IDisposable
                 "WHERE InvocationId = (SELECT InvocationId FROM Assessments WHERE AssessmentId = $id);";
             command.Parameters.AddWithValue("$path", "$.ApprovedExpectationsSha256");
             command.Parameters.AddWithValue("$value", "different");
+            command.Parameters.AddWithValue("$id", id);
+            Assert.Equal(1, command.ExecuteNonQuery());
+        }
+        if (changed is "grammar-format" or "missing-grammar-format")
+        {
+            using var connection = OpenDatabase(seeded.FwDataPath).OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = changed == "grammar-format"
+                ? "UPDATE AssessmentInvocations SET EvidenceJson = json_set(EvidenceJson, '$.GrammarExportFormat.Version', 2) " +
+                    "WHERE InvocationId = (SELECT InvocationId FROM Assessments WHERE AssessmentId = $id);"
+                : "UPDATE AssessmentInvocations SET EvidenceJson = json_remove(EvidenceJson, '$.GrammarExportFormat') " +
+                    "WHERE InvocationId = (SELECT InvocationId FROM Assessments WHERE AssessmentId = $id);";
             command.Parameters.AddWithValue("$id", id);
             Assert.Equal(1, command.ExecuteNonQuery());
         }

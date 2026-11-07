@@ -350,6 +350,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     capturedBatch.PerWordParserWorkLimit ?? ParserWorkLimit.Default,
                     capturedBatch.ThreadCount, capturedBatch.StatsCachePath is not null)
                 {
+                    GrammarExportFormat = GrammarExportFormats.ForPath(capturedBatch.ProjectFilePath),
                     AnalysesPath = analysesPath,
                     AnalysesSha256 = analysesDigest,
                     ExecutableVersion = ParserExecutableIdentity.ReadVersion(executable),

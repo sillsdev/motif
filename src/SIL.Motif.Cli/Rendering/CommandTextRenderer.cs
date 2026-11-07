@@ -511,6 +511,8 @@ public static class CommandTextRenderer
         text.AppendLine("Report " + response.ReportId);
         text.AppendLine("  Assessment: " + response.AssessmentId);
         text.AppendLine("  Kind:       " + response.Kind);
+        if (response.GrammarExportFormat is { } format)
+            text.AppendLine($"  Grammar format: {format.Name} v{format.Version}");
         text.AppendLine(response.Text);
         return text.ToString();
     }

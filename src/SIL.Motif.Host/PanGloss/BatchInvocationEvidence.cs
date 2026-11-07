@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
 
 namespace SIL.Motif.Host.PanGloss;
@@ -37,6 +38,9 @@ public sealed record BatchInvocationEvidence(
 
     public string? AnalysesPath { get; init; }
     public string? AnalysesSha256 { get; init; }
+
+    /// <summary>The staging contract for the grammar source, or null for older evidence.</summary>
+    public GrammarExportFormat? GrammarExportFormat { get; init; }
 
     /// <summary>Digest of the approved morphology used for correctness, when collected.</summary>
     public string? ApprovedExpectationsSha256 { get; init; }

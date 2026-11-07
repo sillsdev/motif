@@ -21,9 +21,11 @@ public sealed partial class ProposalDifferenceCommandsTests
         Assert.Equal("pangloss", summary.Assessor);
         Assert.StartsWith("sha256:", summary.ProposalIntentDigest, StringComparison.Ordinal);
         Assert.Equal(new ProposalDifferenceSidePin("0.1.0", ParserOne, "sha256:grammar", "Default",
-            DefaultSelectionSha(), "whitespace", "1"), summary.Before);
+            DefaultSelectionSha(), "whitespace", "1")
+            { GrammarExportFormat = SIL.Motif.Host.PanGloss.GrammarExportFormats.FwData }, summary.Before);
         Assert.Equal(new ProposalDifferenceSidePin("0.2.0", ParserOne, "sha256:grammar", "Default",
-            DefaultSelectionSha(), "whitespace", "1"), summary.After);
+            DefaultSelectionSha(), "whitespace", "1")
+            { GrammarExportFormat = SIL.Motif.Host.PanGloss.GrammarExportFormats.FwData }, summary.After);
         Assert.Empty(summary.Warnings);
     }
 

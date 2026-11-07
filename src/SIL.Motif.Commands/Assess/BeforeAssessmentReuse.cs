@@ -52,6 +52,8 @@ internal static class BeforeAssessmentReuse
                 var invocation = record.Invocation;
                 if (invocation is null || invocation.StoppedWordRetry is not null ||
                     invocation.ExecutableBytesSha256 != parserHash || invocation.ExecutableVersion != version ||
+                    invocation.GrammarExportFormat is null ||
+                    invocation.GrammarExportFormat != GrammarExportFormats.ForPath(cache.ProjectId.Path) ||
                     invocation.ApprovedExpectationsSha256 != expected ||
                     invocation.CollectStatistics != scope.Collect.Contains(AssessmentKind.ObjectTiming) ||
                     invocation.PerWordTimeoutMs != (scope.PerWordLimit is { } limit ? (int)limit.TotalMilliseconds : null) ||

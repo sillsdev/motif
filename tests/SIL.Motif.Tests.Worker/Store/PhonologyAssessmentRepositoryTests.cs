@@ -70,6 +70,7 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
         Assert.Equal("sha256:" + new string('d', 64), binding.ExecutableSha256);
         Assert.Equal("sha256:" + new string('e', 64), binding.RequestFileSha256);
         Assert.Equal(9UL, binding.MeasuredEntryCount);
+        Assert.Equal(SIL.Motif.Host.PanGloss.GrammarExportFormats.FwData, binding.GrammarExportFormat);
         Assert.Equal(new PhonologyDependency("WritingSystemStore/ws.ldml", "sha256:" + BareHash),
             Assert.Single(results.ReadDependencies("produced")));
         var unavailable = results.ReadExample("unavailable", "e");
@@ -274,7 +275,8 @@ public sealed class PhonologyAssessmentRepositoryTests : IDisposable
                 ParserWork = Math.Min(row.ParserWork, work) };
         }).ToArray();
         var measurement = new PhonologyMeasurement(BareHash, [new("WritingSystemStore/ws.ldml", BareHash)],
-            new string('e', 64), new string('f', 64), "producer-build", new string('d', 64), BareHash, 1024, limits, 9, rows);
+            new string('e', 64), new string('f', 64), "producer-build", new string('d', 64), BareHash, 1024, limits, 9, rows)
+        { GrammarExportFormat = SIL.Motif.Host.PanGloss.GrammarExportFormats.FwData };
         return new NewAssessmentRecord(id, null, null, "pangloss", "PhonologyExamples",
             ScopeCodec.Write(new StoredScope.PhonologyExamples(revision.Revision, limits)), "sha256:scope",
             new AssessmentSubject.PhonologyExamples(revision.Revision), JsonSerializer.Serialize(_baseline, MotifJson.CreateOptions()),

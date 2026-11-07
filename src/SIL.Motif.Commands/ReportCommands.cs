@@ -107,13 +107,15 @@ public static class ReportCommands
 
             var reportId = CanonicalId.Mint("report/").Value;
             var reportJson = JsonSerializer.Serialize(
-                new { kind = rendered.Kind, assessmentId = request.AssessmentId, text = rendered.Text },
+                new { kind = rendered.Kind, assessmentId = request.AssessmentId, text = rendered.Text,
+                    grammarExportFormat = record.Invocation?.GrammarExportFormat },
                 MotifJson.CreateOptions());
             var evidenceJson = JsonSerializer.Serialize(new
             {
                 assessmentId = request.AssessmentId,
                 selectionSha256 = record.Selection.Sha256,
                 grammarSourceSha256 = record.GrammarSourceSha256,
+                grammarExportFormat = record.Invocation?.GrammarExportFormat,
             }, MotifJson.CreateOptions());
             new ReportRepository(database).Save(new ReportRecord(
                 reportId, record.ProposalId, request.AssessmentId, reportJson, evidenceJson, rendered.Kind,
@@ -122,6 +124,7 @@ public static class ReportCommands
             return CommandOutcome<ReportResponse>.Success(
                 new ReportResponse(reportId, request.AssessmentId, rendered.Kind, rendered.Text)
                 {
+                    GrammarExportFormat = record.Invocation?.GrammarExportFormat,
                     TotalSearches = rendered.TotalSearches,
                     CompletedSearches = rendered.CompletedSearches,
                     SelectionWords = record.Words?.Select(word => word.Word).ToArray() ?? Array.Empty<string>(),

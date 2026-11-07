@@ -92,6 +92,9 @@ public sealed record ProposalDifferenceSidePin(
     [property: JsonRequired] string TokeniserName,
     [property: JsonRequired] string TokeniserVersion) : IJsonOnDeserialized
 {
+    /// <summary>The grammar staging contract, or null for older evidence.</summary>
+    public GrammarExportFormat? GrammarExportFormat { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() =>
         ClosedShape.RequireNonNull(nameof(ProposalDifferenceSidePin), (nameof(GrammarSourceSha256), GrammarSourceSha256),
             (nameof(SelectionName), SelectionName), (nameof(SelectionSha256), SelectionSha256),

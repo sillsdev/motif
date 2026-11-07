@@ -16,6 +16,9 @@ public sealed record ReportKindListResponse(IReadOnlyList<ReportKindResponse> Ki
 /// <summary>One computed and stored Report, as <c>report</c> prints it.</summary>
 public sealed record ReportResponse(string ReportId, string? AssessmentId, string Kind, string Text)
 {
+    /// <summary>The grammar staging contract, or null for older evidence.</summary>
+    public GrammarExportFormat? GrammarExportFormat { get; init; }
+
     /// <summary>The exact Selection words measured by this Assessment.</summary>
     public IReadOnlyList<string> SelectionWords { get; init; } = [];
 

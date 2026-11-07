@@ -43,7 +43,8 @@ internal static class ProposalDifferenceSummaries
 
     private static ProposalDifferenceSidePin Pin(AssessmentRecord record) => new(
         record.Invocation?.ExecutableVersion, record.Invocation?.ExecutableBytesSha256, record.GrammarSourceSha256,
-        record.Selection.Name, record.Selection.Sha256, record.TokeniserName, record.TokeniserVersion);
+        record.Selection.Name, record.Selection.Sha256, record.TokeniserName, record.TokeniserVersion)
+        { GrammarExportFormat = record.Invocation?.GrammarExportFormat };
 
     // ADR 0042: a differing parser or tokeniser only annotates; a side with no recorded parser is no mismatch.
     private static string[] Warnings(AssessmentRecord before, AssessmentRecord after, string reference,
