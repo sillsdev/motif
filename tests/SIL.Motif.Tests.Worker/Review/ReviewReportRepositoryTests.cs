@@ -12,6 +12,7 @@ using SIL.Motif.Host.Corpus;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Jobs;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker.Review;
@@ -179,6 +180,62 @@ public sealed class ReviewReportRepositoryTests : IDisposable
         var before = command.ExecuteScalar();
         await _repository.PublishAsync(Publication("independent"), Cases(Case("a")), CancellationToken.None);
         Assert.Equal(before, command.ExecuteScalar());
+    }
+
+    [Fact]
+    public async Task RemovedArchivedJobStillProtectsOpenReportScratch()
+    {
+        var jobs = new JobRepository(_database);
+        jobs.Create("trial", "project", TrialJobHandler.TrialKind, "{}", DateTimeOffset.UtcNow.ToString("O"));
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE Jobs SET Status='completed', ArchivedUtc=UpdatedUtc WHERE JobId='trial';";
+            command.ExecuteNonQuery();
+        }
+        var id = await _repository.PublishAsync(Publication("scratch"), Cases(Case("a")), CancellationToken.None);
+        jobs.DeleteArchived("trial");
+        var root = Path.Combine(_root, "scratch");
+        var scratch = Path.Combine(root, Path.GetFileName(TrialScratchPath.ForJob("trial")));
+        Directory.CreateDirectory(scratch);
+        Directory.SetLastWriteTimeUtc(scratch, DateTime.UtcNow.AddDays(-3));
+        TrialScratchRetention.Sweep([(_database, "project")], root);
+        Assert.True(_repository.ReadManifest(id)!.DetailAvailable);
+        Assert.True(Directory.Exists(scratch));
+    }
+
+    [Theory]
+    [InlineData("deferred")]
+    [InlineData("rejected")]
+    public async Task LatePublicationAfterDecisionKeepsOnlySummary(string status)
+    {
+        new ProposalRepository(_database).SetStatus(_proposal, status, null);
+        var id = await _repository.PublishAsync(Publication("late") with { InputReferences = ["input"] },
+            Cases(Case("a")), CancellationToken.None);
+        var stored = _repository.ReadManifest(id)!;
+        Assert.False(stored.DetailAvailable);
+        Assert.Empty(stored.InputReferences);
+        Assert.Equal(DetailAvailability.Unavailable, stored.Summary.DetailAvailability);
+        Assert.Contains(stored.Summary.Limitations, item => item.Code == "detail-released");
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM ReviewReportCases;";
+        Assert.Equal(0L, command.ExecuteScalar());
+    }
+
+    [Fact]
+    public async Task DecisionCleanupDoesNotResignDamagedSummary()
+    {
+        var id = await _repository.PublishAsync(Publication("damaged"), Cases(Case("a")), CancellationToken.None);
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE ReviewReports SET SummaryJson=json_set(SummaryJson,'$.summary.wordforms.requested',999);";
+            command.ExecuteNonQuery();
+        }
+        Assert.Throws<InvalidDataException>(() => _repository.ReadManifest(id));
+        Assert.Throws<InvalidDataException>(() => new ProposalRepository(_database).SetStatus(_proposal, "deferred", null));
+        Assert.Throws<InvalidDataException>(() => _repository.ReadManifest(id));
     }
 
     private ReviewReportPublication Publication(string digest) =>

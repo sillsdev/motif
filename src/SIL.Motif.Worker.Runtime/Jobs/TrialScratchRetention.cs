@@ -133,6 +133,7 @@ internal static class TrialScratchRetention
             var jobs = new JobRepository(database).ListByProjectAndKind(workspaceKey, TrialJobHandler.TrialKind);
             var proposals = ProposalStatuses(database);
             var protectedJobs = ReviewReportRetention.ProtectedTrialJobs(database);
+            foreach (var jobId in protectedJobs) active.Add(Path.GetFileName(TrialScratchPath.ForJob(jobId)));
             foreach (var job in jobs)
             {
                 var name = Path.GetFileName(TrialScratchPath.ForJob(job.JobId));

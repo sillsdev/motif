@@ -36,14 +36,19 @@ public sealed class ReviewReportRepository(MotifDatabase database)
         {
             if (existing.ExecuteScalar() is string id) return new ReviewReportId(id);
         }
+        string status;
+        using (var proposal = Command(connection, transaction, "SELECT Status FROM Proposals WHERE ProposalId=$id;",
+            ("$id", publication.ProposalId)))
+            status = proposal.ExecuteScalar() as string ?? throw new InvalidOperationException("Proposal does not exist.");
+        var released = !ProposalDifferenceRetention.KeepsWordDetail(status);
         var reportId = new ReviewReportId("review-report/" + Guid.NewGuid().ToString("N"));
-        var available = publication.EstimatedDetailBytes <= Budget - Math.Min(Budget, AssessmentRetention.BytesInUse(connection, transaction));
+        var available = !released && publication.EstimatedDetailBytes <= Budget - Math.Min(Budget, AssessmentRetention.BytesInUse(connection, transaction));
         var summary = publication.Summary with { ReportId = reportId.Value, ReportDigest = publication.ManifestDigest };
         var summaryJson = JsonSerializer.Serialize(summary, ReviewJson.Options);
         Execute(connection, transaction, "INSERT INTO ReviewReports (ReportId,ProjectKey,ProposalId,TrialJobId,ManifestDigest,SummaryJson,SummaryDigest,InputReferencesJson,DetailAvailable,DetailBytes,CreatedUtc) VALUES ($id,$project,$proposal,$job,$manifest,$summary,$hash,$refs,$available,0,$created);",
             ("$id", reportId.Value), ("$project", publication.ProjectKey), ("$proposal", publication.ProposalId),
             ("$job", publication.TrialJobId), ("$manifest", publication.ManifestDigest), ("$summary", summaryJson),
-            ("$hash", Hash(summaryJson)), ("$refs", JsonSerializer.Serialize(publication.InputReferences)),
+            ("$hash", Hash(summaryJson)), ("$refs", JsonSerializer.Serialize(released ? [] : publication.InputReferences)),
             ("$available", available ? 1 : 0), ("$created", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)));
         long detailBytes = 0;
         if (available)
@@ -78,7 +83,8 @@ public sealed class ReviewReportRepository(MotifDatabase database)
         {
             ReviewReportRetention.DeleteRows(connection, transaction, reportId.Value);
             summary = summary with { DetailAvailability = DetailAvailability.Unavailable, Page = null, Word = null, Trace = null,
-                Limitations = summary.Limitations.Concat([new Limitation("store-budget", [], "Complete report detail exceeds the store budget.", [])]).ToArray() };
+                Limitations = summary.Limitations.Concat([new Limitation(released ? "detail-released" : "store-budget", [],
+                    released ? "Report detail was released after the Proposal decision." : "Complete report detail exceeds the store budget.", [])]).ToArray() };
             summaryJson = JsonSerializer.Serialize(summary, ReviewJson.Options);
             Execute(connection, transaction, "UPDATE ReviewReports SET SummaryJson=$summary,SummaryDigest=$hash,DetailAvailable=0,DetailBytes=0 WHERE ReportId=$id;",
                 ("$summary", summaryJson), ("$hash", Hash(summaryJson)), ("$id", reportId.Value));

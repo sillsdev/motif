@@ -9,17 +9,18 @@ internal static class ReviewReportRetention
 {
     internal static void DropDetail(SqliteConnection connection, SqliteTransaction transaction, string proposalId, string droppedUtc)
     {
-        var reports = new List<(string Id, string Json)>();
+        var reports = new List<(string Id, string Json, string Digest)>();
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = "SELECT ReportId,SummaryJson FROM ReviewReports WHERE ProposalId=$proposal AND (DetailAvailable=1 OR InputReferencesJson != '[]');";
+            command.CommandText = "SELECT ReportId,SummaryJson,SummaryDigest FROM ReviewReports WHERE ProposalId=$proposal AND (DetailAvailable=1 OR InputReferencesJson != '[]');";
             command.Parameters.AddWithValue("$proposal", proposalId);
             using var reader = command.ExecuteReader();
-            while (reader.Read()) reports.Add((reader.GetString(0), reader.GetString(1)));
+            while (reader.Read()) reports.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
         }
-        foreach (var (id, json) in reports)
+        foreach (var (id, json, digest) in reports)
         {
+            if (ReviewReportRepository.Hash(json) != digest) throw new InvalidDataException("Review summary digest does not match.");
             var summary = JsonSerializer.Deserialize<ReportView>(json, ReviewJson.Options) ?? throw new InvalidDataException("Invalid review summary.");
             summary = summary with { DetailAvailability = DetailAvailability.Unavailable, Page = null, Word = null, Trace = null,
                 Limitations = summary.Limitations.Concat([new Limitation("detail-released", [], "Report detail was released after the Proposal decision.", [])]).ToArray() };
