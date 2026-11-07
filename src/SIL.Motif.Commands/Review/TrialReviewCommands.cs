@@ -233,6 +233,33 @@ public sealed class TrialReviewCommands(MotifDatabase database)
                     report.Pins.EvidenceManifestDigest, new SectionCounts(section == "warnings" ? "diagnostics" : "findings",
                         eventGroups.Sum(group => group.Count), null, null), causes, [], []));
         }
+        foreach (var (id, label) in new[]
+        {
+            ("sampled-tokens", "Sampled example sentences"), ("paradigm-cells", "Verb paradigm cells"),
+            ("parser-work", "Parser work"), ("effects", "Changes to the project"), ("evidence", "What was measured")
+        }.Where(item => selected == item.Item1))
+        {
+            var target = new ReadTarget(TargetKind.Tool, label, null, "motif_difference",
+                new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
+                    Detail: DetailLevel.Full, Section: id));
+            var limitations = report.Limitations.Where(item => item.SectionIds.Contains(id)).ToList();
+            try
+            {
+                var page = repository.ReadPage(new ReviewPageRequest(report.Pins.ProjectKey,
+                    new ReviewReportId(report.ReportId), id, Limit: 5));
+                var groupsForSection = page.TotalMatching == 0 ? Array.Empty<CauseGroup>() :
+                    [new CauseGroup(id, page.TotalMatching,
+                        page.Unit, page.Items, page.TotalMatching is null ? null : page.TotalMatching - page.Returned, target)];
+                sections.Add(new SectionView(id, label, "Stored Trial evidence", report.Pins.EvidenceManifestDigest,
+                    new SectionCounts(page.Unit, page.TotalInSection, page.TotalMatching, null), groupsForSection, limitations, [target]));
+            }
+            catch (ReviewDetailUnavailableException)
+            {
+                limitations.Add(new Limitation("section-unavailable", [id], "This section was not retained.", []));
+                sections.Add(new SectionView(id, label, "Stored Trial evidence", report.Pins.EvidenceManifestDigest,
+                    new SectionCounts("rows", null, null, null), [], limitations, []));
+            }
+        }
         return sections;
     }
 

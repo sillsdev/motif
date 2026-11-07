@@ -160,6 +160,24 @@ public sealed class TrialReviewCommandsTests : IDisposable
         Assert.DoesNotContain(report.Summary.Flags, item => item.Id == ReviewFlagId.NewWordFailures);
     }
 
+    [Theory]
+    [InlineData("parser-work")]
+    [InlineData("sampled-tokens")]
+    [InlineData("paradigm-cells")]
+    [InlineData("effects")]
+    [InlineData("evidence")]
+    public async Task ExplicitFailuresSectionIncludesEvidenceOrAnUnavailableReason(string section)
+    {
+        CreateInterrupted(configured: true);
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var result = new TrialReviewCommands(_database).Read(new ReviewReadRequest("project", _proposal.Value,
+            ReportId: id.Value, Section: section));
+        var report = Assert.IsType<AvailableTrialResult>(result.Value).Report;
+        var selected = Assert.Single(report.Sections);
+        Assert.Equal(section, selected.Id);
+        Assert.True(selected.Links.Count > 0 || selected.Limitations.Count > 0);
+    }
+
     [Fact]
     public async Task AllDetailsShareIdenticalSummary()
     {
