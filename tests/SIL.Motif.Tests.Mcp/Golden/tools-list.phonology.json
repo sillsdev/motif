@@ -1715,16 +1715,25 @@
           "type": "string",
           "description": "The proposal id."
         },
+        "action": {
+          "type": "string",
+          "description": "Run, read or explicitly refresh a report.",
+          "enum": [
+            "run",
+            "read",
+            "refresh-report"
+          ]
+        },
         "words": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "description": "Words to parse. Omit to use the words the Proposal touches."
+          "description": "Words to parse."
         },
         "wordsFile": {
           "type": "string",
-          "description": "Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."
+          "description": "Path to a UTF-8 word list."
         },
         "negative_words": {
           "type": "array",
@@ -1733,27 +1742,51 @@
           },
           "description": "Attested counterexamples that should not parse."
         },
+        "review_sets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Named review sets to include."
+        },
         "job": {
           "type": "string",
-          "description": "A job id from an earlier \u0027running\u0027 result, to keep waiting for it."
+          "description": "Exact Trial job to resume or read."
+        },
+        "report": {
+          "type": "string",
+          "description": "Exact stored report to read."
         },
         "wait_seconds": {
           "type": "integer",
-          "description": "How long to wait for the result. Default 40.",
+          "description": "How long to wait. Default 40.",
           "minimum": 1,
           "maximum": 300
         },
         "detail": {
           "type": "string",
-          "description": "\u0027concise\u0027 (default) drops empty fields and long lists; \u0027detailed\u0027 returns everything.",
+          "description": "Report disclosure level.",
           "enum": [
-            "concise",
-            "detailed"
+            "summary",
+            "failures",
+            "full"
           ]
+        },
+        "section": {
+          "type": "string",
+          "description": "Report section to read."
+        },
+        "set": {
+          "type": "string",
+          "description": "Review set to select."
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Continuation from the same report and filters."
         },
         "limit": {
           "type": "integer",
-          "description": "The most list items to return in concise mode. Default 25.",
+          "description": "Maximum page items. Default 50.",
           "minimum": 1,
           "maximum": 200
         },

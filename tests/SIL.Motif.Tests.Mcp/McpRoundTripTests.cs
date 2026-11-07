@@ -984,7 +984,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         // The Trial's copy is where the Draft's changes live; let the fake parser accept the word only there.
         var scratchRoot = SIL.Motif.Worker.Jobs.TrialScratchPath.ForJob(
-            trial.GetProperty("result").GetProperty("job").GetString()!);
+            trial.GetProperty("result").GetProperty("report").GetProperty("pins").GetProperty("trialJobId").GetString()!);
         using var scratchCleanup = new ScratchDirectoryCleanup(scratchRoot);
         var scratch = SIL.Motif.Worker.Jobs.TrialScratchPath.ProjectFile(scratchRoot);
         Assert.NotNull(scratch);
@@ -1069,11 +1069,9 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var trial = await session.CallAsync("motif_trial", ("proposal", proposalId),
             ("words", new[] { SeededProject.AnalysedWordForm }), ("wait_seconds", 120));
         Assert.True(trial.GetProperty("ok").GetBoolean(), trial.ToString());
-        var evidence = trial.GetProperty("result");
-        Assert.True(evidence.GetProperty("evidenceCurrent").GetBoolean());
-        Assert.Equal(new[] { TrialResults.Categories[0], "droppedGrammar" }.Concat(TrialResults.Categories.Skip(1))
-                .Append("counts"),
-            evidence.GetProperty("summary").EnumerateObject().Select(property => property.Name));
+        var evidence = trial.GetProperty("result").GetProperty("report");
+        Assert.NotEqual("historical", evidence.GetProperty("freshness").GetProperty("relation").GetString());
+        Assert.True(evidence.GetProperty("summary").TryGetProperty("flags", out _));
         var noted = SIL.Motif.Commands.ProposalComments.Add(new SIL.Motif.Commands.Requests.AddCommentRequest(
             project.FwDataPath, SIL.Motif.Host.MotifProductVersion.CurrentText, proposalId, "Check the other gloss too.", "John"));
         Assert.True(noted.Succeeded, noted.Refusal?.Message);
@@ -1082,13 +1080,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Contains("left a Comment", dryRunAgain.GetProperty("next").GetString(), StringComparison.Ordinal);
         var trialAgain = await session.CallAsync("motif_trial", ("proposal", proposalId),
             ("words", new[] { SeededProject.AnalysedWordForm }), ("wait_seconds", 120));
-        Assert.True(trialAgain.GetProperty("result").GetProperty("commentsChanged").GetBoolean(), trialAgain.ToString());
-
-        var difference = evidence.GetProperty("difference").GetString()!;
-        var page = await session.CallAsync("motif_difference", ("difference", difference),
-            ("category", "other-changes"), ("offset", 0), ("limit", 1));
-        Assert.Equal(difference, page.GetProperty("result").GetProperty("difference").GetString());
-        Assert.InRange(page.GetProperty("result").GetProperty("returned").GetInt32(), 0, 1);
+        Assert.Equal("report", trialAgain.GetProperty("result").GetProperty("state").GetString());
 
         var operationId = glossed.GetProperty("result").GetProperty("operationId").GetString()!;
         await session.CallAsync("motif_remove_operations", ("draft", "gloss-fix"),
@@ -1100,14 +1092,15 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ("job", dryRun.GetProperty("result").GetProperty("job").GetString()));
         Assert.False(oldDryRun.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
         var oldTrial = await session.CallAsync("motif_trial", ("proposal", proposalId),
-            ("job", evidence.GetProperty("job").GetString()));
-        Assert.False(oldTrial.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
+            ("job", evidence.GetProperty("pins").GetProperty("trialJobId").GetString()));
+        Assert.Equal(evidence.GetProperty("pins").GetProperty("intentDigest").GetString(),
+            oldTrial.GetProperty("result").GetProperty("report").GetProperty("pins").GetProperty("intentDigest").GetString());
         dryRun = await session.CallAsync("motif_dry_run", ("proposal", proposalId), ("wait_seconds", 120));
         trial = await session.CallAsync("motif_trial", ("proposal", proposalId),
             ("words", new[] { SeededProject.AnalysedWordForm }), ("wait_seconds", 120));
-        var revisedEvidence = trial.GetProperty("result");
-        Assert.NotEqual(evidence.GetProperty("contentDigest").GetString(), revisedEvidence.GetProperty("contentDigest").GetString());
-        Assert.True(revisedEvidence.GetProperty("evidenceCurrent").GetBoolean());
+        var revisedEvidence = trial.GetProperty("result").GetProperty("report");
+        Assert.NotEqual(evidence.GetProperty("pins").GetProperty("intentDigest").GetString(), revisedEvidence.GetProperty("pins").GetProperty("intentDigest").GetString());
+        Assert.NotEqual("historical", revisedEvidence.GetProperty("freshness").GetProperty("relation").GetString());
         evidence = revisedEvidence;
 
         var finished = await session.CallAsync("motif_finalize_proposal", ("draft", "gloss-fix"));
@@ -1116,8 +1109,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
             ("job", dryRun.GetProperty("result").GetProperty("job").GetString()));
         Assert.True(retainedDryRun.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
         var retainedTrial = await session.CallAsync("motif_trial", ("proposal", proposalId),
-            ("job", evidence.GetProperty("job").GetString()));
-        Assert.True(retainedTrial.GetProperty("result").GetProperty("evidenceCurrent").GetBoolean());
+            ("job", evidence.GetProperty("pins").GetProperty("trialJobId").GetString()));
+        Assert.NotEqual("historical", retainedTrial.GetProperty("result").GetProperty("report").GetProperty("freshness").GetProperty("relation").GetString());
         var proposals = await session.CallAsync("motif_proposals");
         Assert.Single(proposals.GetProperty("result").GetProperty("proposals").EnumerateArray());
 

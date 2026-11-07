@@ -281,6 +281,7 @@ internal sealed record ExposedTool(AgentTool Tool, string Name, string Descripti
         Name = Name,
         Description = Description,
         InputSchema = JsonSerializer.SerializeToElement(Tool.InputSchema),
+        OutputSchema = Tool.OutputSchema is null ? null : JsonSerializer.SerializeToElement(Tool.OutputSchema),
         Annotations = new ToolAnnotations
         {
             ReadOnlyHint = Tool.ReadOnly,

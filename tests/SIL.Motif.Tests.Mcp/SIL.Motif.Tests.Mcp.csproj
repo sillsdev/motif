@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="JsonSchema.Net" Version="9.4.0" />
     <SupportedPlatform Include="windows" />
     <ProjectReference Include="..\..\src\SIL.Motif.Cli\SIL.Motif.Cli.csproj" />
     <ProjectReference Include="..\..\src\SIL.Motif.Commands\SIL.Motif.Commands.csproj" />

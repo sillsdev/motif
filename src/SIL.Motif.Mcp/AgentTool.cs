@@ -66,6 +66,8 @@ internal sealed class ToolArgs
                     $"Its arguments are: {string.Join(", ", known.Order(StringComparer.Ordinal))}.");
     }
 
+    public bool Has(string name) => _arguments.ContainsKey(name);
+
     public string Required(string name) =>
         Optional(name) ?? throw new ToolArgumentException("tool.missing-argument", $"Argument '{name}' is required.");
 
@@ -190,6 +192,8 @@ internal sealed record AgentTool(
     Func<ServerContext, ToolArgs, CancellationToken, Task<ToolOutcome>> Run)
 {
     public IReadOnlyList<Type> Requests { get; init; } = [];
+
+    public JsonObject? OutputSchema { get; init; }
 
     /// <summary>
     /// For a tool whose arguments are named differently from its request's fields: the request field to the argument

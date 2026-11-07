@@ -179,7 +179,7 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
             ("proposal", JsonSerializer.SerializeToElement(fileProposal)),
             ("wordsFile", JsonSerializer.SerializeToElement(wordsFile)),
             ("wait_seconds", JsonSerializer.SerializeToElement(1))));
-        var fileJob = fileResponse.GetProperty("result").GetProperty("job").GetString()!;
+        var fileJob = TrialJob(fileResponse);
         var fileInput = TrialJobInput.Parse(ReadJobInput(project.FwDataPath, fileJob));
 
         var inlineProposal = await StartDraftAsync(context, project.FwDataPath, "inline-words-trial");
@@ -187,12 +187,19 @@ public sealed class AssessWordsFileIngressTests(PristineProjectFixture pristine)
             ("proposal", JsonSerializer.SerializeToElement(inlineProposal)),
             ("words", JsonSerializer.SerializeToElement(words)),
             ("wait_seconds", JsonSerializer.SerializeToElement(1))));
-        var inlineJob = inlineResponse.GetProperty("result").GetProperty("job").GetString()!;
+        var inlineJob = TrialJob(inlineResponse);
         var inlineInput = TrialJobInput.Parse(ReadJobInput(project.FwDataPath, inlineJob));
 
         Assert.Equal(words, fileInput.Words);
         Assert.Equal(words, inlineInput.Words);
         Assert.Equal(fileInput.Words, inlineInput.Words);
+    }
+
+    private static string TrialJob(JsonElement envelope)
+    {
+        var result = envelope.GetProperty("result");
+        return result.GetProperty("state").GetString() == "pending" ? result.GetProperty("jobId").GetString()! :
+            result.GetProperty("report").GetProperty("pins").GetProperty("trialJobId").GetString()!;
     }
 
     private static async Task<string> StartDraftAsync(ServerContext context, string projectPath, string name)

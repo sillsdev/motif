@@ -86,8 +86,14 @@ internal sealed class ExposurePolicy
         var exposed = new List<ExposedTool>();
         foreach (var tool in tools)
             if (profile.SelectionFor(tool.Name) is { } selection)
-                exposed.Add(new ExposedTool(tool, selection.As ?? tool.Name, selection.Description ?? tool.Description,
-                    selection.Detail ?? profile.DefaultDetail));
+            {
+                var detail = selection.Detail ?? (tool.Name == "motif_trial" ? "summary" : profile.DefaultDetail);
+                var choices = (tool.InputSchema["properties"]?["detail"]?["enum"] as System.Text.Json.Nodes.JsonArray)?
+                    .Select(item => item?.GetValue<string>()).ToArray();
+                if (selection.Detail is not null && choices is not null && !choices.Contains(detail, StringComparer.Ordinal))
+                    throw new ProfileException($"Profile '{profile.Name}': invalid detail '{detail}' for tool '{tool.Name}'.");
+                exposed.Add(new ExposedTool(tool, selection.As ?? tool.Name, selection.Description ?? tool.Description, detail));
+            }
         var duplicate = exposed.GroupBy(tool => tool.Name, StringComparer.Ordinal).FirstOrDefault(group => group.Count() > 1);
         if (duplicate is not null)
             throw new ProfileException($"Profile '{profile.Name}' gives two tools the name '{duplicate.Key}'.");

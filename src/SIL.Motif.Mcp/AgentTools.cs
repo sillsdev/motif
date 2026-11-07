@@ -816,17 +816,24 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Evaluate,
             Schema.Object([("proposal", Schema.String("The proposal id."), true),
-                ("words", Schema.StringArray("Words to parse. Omit to use the words the Proposal touches."), false),
-                ("wordsFile", Schema.String("Path to a UTF-8 file with one word per line, or word, a tab, then a count, instead of words; counts are used only when the file is saved with the Selection."), false),
+                ("action", Schema.String("Run, read or explicitly refresh a report.", "run", "read", "refresh-report"), false),
+                ("words", Schema.StringArray("Words to parse."), false),
+                ("wordsFile", Schema.String("Path to a UTF-8 word list."), false),
                 ("negative_words", Schema.StringArray("Attested counterexamples that should not parse."), false),
-                ("job", Schema.String("A job id from an earlier 'running' result, to keep waiting for it."), false),
-                ("wait_seconds", Schema.Integer("How long to wait for the result. Default 40.", 1, 300), false),
-                ..Schema.Verbosity()]),
+                ("review_sets", Schema.StringArray("Named review sets to include."), false),
+                ("job", Schema.String("Exact Trial job to resume or read."), false),
+                ("report", Schema.String("Exact stored report to read."), false),
+                ("wait_seconds", Schema.Integer("How long to wait. Default 40.", 1, 300), false),
+                ("detail", Schema.String("Report disclosure level.", "summary", "failures", "full"), false),
+                ("section", Schema.String("Report section to read."), false),
+                ("set", Schema.String("Review set to select."), false),
+                ("cursor", Schema.String("Continuation from the same report and filters."), false),
+                ("limit", Schema.Integer("Maximum page items. Default 50.", 1, 200), false)]),
             false,
             false,
-            true,
             false,
-            Trial) { Requests = [typeof(EnqueueTrialRequest), typeof(WaitForJobRequest)] },
+            false,
+            Trial) { Requests = [typeof(EnqueueTrialRequest), typeof(WaitForJobRequest)], OutputSchema = TrialReviewTools.OutputSchema },
 
         new("motif_try_word",
             string.Empty,
@@ -1566,28 +1573,36 @@ internal static class AgentTools
     private static async Task<ToolOutcome> Trial(ServerContext context, ToolArgs args, CancellationToken cancellation)
     {
         var proposal = args.Required("proposal");
+        var action = args.Optional("action") ?? "run";
+        if (action is "read" or "refresh-report") return TrialReviewTools.Read(context, proposal, args, action == "refresh-report");
+        if (action != "run") return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Unknown Trial action.");
+        if (args.Has("report") || args.Has("section") || args.Has("set") || args.Has("cursor") || args.Has("limit") ||
+            args.Optional("detail") is not (null or "summary"))
+            return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Run cannot use report selectors.");
         var wait = TimeSpan.FromSeconds(Math.Clamp(args.Int("wait_seconds", 40), 1, 300));
         var job = args.Optional("job");
+        if (job is not null && (args.Has("words") || args.Has("wordsFile") || args.Has("negative_words") || args.Has("review_sets")))
+            return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "A resumed Trial cannot change its inputs.");
         if (job is null)
         {
             var negatives = args.List("negative_words");
             var named = WordListFile.Resolve(args.List("words"), args.Optional("wordsFile"));
             if (!named.Succeeded) return ToolOutcome.Refused(named.Refusal!);
             var words = named.Value!.Concat(negatives).Distinct(StringComparer.Ordinal).ToArray();
-            var queued = await Task.Run(() => TrialWorkflow.Enqueue(
-                new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
-                    Words: words.Length == 0 ? null : words, NegativeWords: negatives),
+            var request = new EnqueueTrialRequest(context.ProjectPath, context.ProductVersion, proposal,
+                Words: words.Length == 0 ? null : words, NegativeWords: negatives)
+                { ReviewSetIds = args.Has("review_sets") ? args.List("review_sets") : null };
+            var queued = await Task.Run(() => TrialWorkflow.Enqueue(request,
                 RunnerOptions.ResolveRoot(), context.JobParserPath, BaselineMode.Required, cancellation), cancellation);
             if (!queued.Succeeded) return ToolOutcome.Refused(queued.Refusal!);
             job = queued.Value!.Job.JobId;
         }
-        // Wake on a resumed wait too: a queued job whose runner idled out or never started runs again.
         context.StartRunner();
         var waited = await Task.Run(() => JobCommands.WaitForJob(
-            new WaitForJobRequest(context.ProjectPath, job, context.ProductVersion, wait), context.StartRunner),
-            cancellation);
-        if (!waited.Succeeded) return StillRunning(context, waited.Refusal!, job) ?? ToolOutcome.Refused(waited.Refusal!);
-        return TrialResults.Complete(context, job, proposal) with { JobId = job };
+            new WaitForJobRequest(context.ProjectPath, job, context.ProductVersion, wait), context.StartRunner), cancellation);
+        if (!waited.Succeeded && waited.Refusal!.Code is not ("job.wait-timeout" or "job.wait-cancelled"))
+            return ToolOutcome.Refused(waited.Refusal!);
+        return TrialReviewTools.ReadJob(context, proposal, job);
     }
 
     // A wait that ran out is progress, not a failure: say where the job is and how to keep waiting.
