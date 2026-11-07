@@ -1003,8 +1003,9 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.Contains(proposalId, detailed.GetProperty("tracedAgainst").GetString());
         Assert.True(detailed.GetProperty("parsed").GetBoolean());
         Assert.Equal(word, detailed.GetProperty("word").GetString());
-        Assert.True(detailed.TryGetProperty("reading", out _), "detailed keeps the full response shape");
-        Assert.False(concise.TryGetProperty("reading", out _));
+        Assert.True(detailed.TryGetProperty("nodes", out _), "detailed retains bounded diagnostic nodes");
+        Assert.False(detailed.TryGetProperty("diagnosticJson", out _));
+        Assert.False(concise.TryGetProperty("nodes", out _));
 
         var unknown = await session.Client.CallToolAsync("motif_try_word", new Dictionary<string, object?>
         {
