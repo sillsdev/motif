@@ -75,7 +75,7 @@ namespace SIL.Motif.Host.Corpus;
 /// declare a different tokeniser rather than accept this one's answer.
 /// </para>
 /// </remarks>
-public sealed class WhitespaceAndPunctuationTokeniser : IWordTokeniser
+public sealed class WhitespaceAndPunctuationTokeniser : IWordTokeniser, IWordSpanTokeniser
 {
     /// <summary>
     /// Matched against a corpus's declared <see cref="TokenisationRecord.Method"/> by
@@ -109,6 +109,24 @@ public sealed class WhitespaceAndPunctuationTokeniser : IWordTokeniser
         ArgumentNullException.ThrowIfNull(text);
 
         return TokeniseCore(text);
+    }
+
+    /// <summary>Maps the existing tokenisation to original UTF-16 and UTF-8 offsets; not CEB-compatible.</summary>
+    public IEnumerable<CorpusWordSpan> TokeniseSpans(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var position = 0;
+        var bytePosition = 0;
+        foreach (var word in Tokenise(text))
+        {
+            var start = text.IndexOf(word, position, StringComparison.Ordinal);
+            if (start < 0) throw new InvalidDataException("A Wordform did not map to its source.");
+            bytePosition += System.Text.Encoding.UTF8.GetByteCount(text.AsSpan(position, start - position));
+            var byteLength = System.Text.Encoding.UTF8.GetByteCount(word);
+            yield return new CorpusWordSpan(word, start, word.Length, bytePosition, byteLength);
+            position = start + word.Length;
+            bytePosition += byteLength;
+        }
     }
 
     private static IEnumerable<string> TokeniseCore(string text)

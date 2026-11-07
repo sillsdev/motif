@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Controls.WebView" Version="12.1.1" />
     <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
     <PackageReference Include="Semi.Avalonia" Version="12.1.0" />
@@ -28,6 +29,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="SIL.Motif.Tests.App" />
+    <EmbeddedResource Include="CorpusViewer/client.bundle.js" LogicalName="Motif.CorpusViewer.js" />
   </ItemGroup>
 
   <ItemGroup>

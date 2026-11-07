@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 68;
+    public const int CurrentSchema = 69;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -521,12 +521,13 @@ public static class MotifSchema
         [C("TextId", "TEXT", true, 1), C("ParagraphId", "TEXT", true, 2),
             C("SegmentId", "TEXT", true, 3), C("WordIndex", "INTEGER", true, 4),
             C("FingerprintJson", "TEXT", true)],
-        "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true)],
+        "Corpora" => [C("CorpusId", "TEXT", false, 1), C("ProvenanceJson", "TEXT", true),
+            C("FileBacked", "INTEGER", true, defaultValue: "0")],
         "CorpusDocuments" =>
         [C("CorpusId", "TEXT", true, 1), C("DocumentId", "TEXT", true, 2), C("OrdinalIndex", "INTEGER", true),
             C("Title", "TEXT", true), C("Source", "TEXT", true), C("Text", "TEXT", true),
             C("ContentSha256", "TEXT", true), C("IngestedUtc", "TEXT", true), C("Licence", "TEXT"),
-            C("CapabilitiesJson", "TEXT"), C("AttributesJson", "TEXT")],
+            C("CapabilitiesJson", "TEXT"), C("AttributesJson", "TEXT"), C("FileBacked", "INTEGER", true, defaultValue: "0")],
         "PhonologyAssessmentBindings" => [C("AssessmentId", "TEXT", true, 1), C("RevisionId", "TEXT", true),
             C("HeaderJson", "TEXT", true)],
         "PhonologyAssessmentRows" => [C("AssessmentId", "TEXT", true, 1), C("RevisionId", "TEXT", true),
@@ -756,7 +757,8 @@ public static class MotifSchema
     private const string CorpusDdl = """
         CREATE TABLE IF NOT EXISTS Corpora (
             CorpusId TEXT PRIMARY KEY,
-            ProvenanceJson TEXT NOT NULL
+            ProvenanceJson TEXT NOT NULL,
+            FileBacked INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS CorpusDocuments (
@@ -771,6 +773,7 @@ public static class MotifSchema
             Licence TEXT NULL,
             CapabilitiesJson TEXT NULL,
             AttributesJson TEXT NULL,
+            FileBacked INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (CorpusId, DocumentId)
         );
 

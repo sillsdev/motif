@@ -58,6 +58,151 @@ public sealed class SqliteCorpusStoreTests : IDisposable
         Attributes: new System.Collections.Generic.Dictionary<string, string> { ["isoCode"] = "tst" });
 
     [Fact]
+    public void ReindexRepairsDatabaseAfterPublicationBeforeTransactionCommit()
+    {
+        var files = new CorpusFileService(_root);
+        var store = new SqliteCorpusStore(Database, files);
+        store.Save(StoredCorpus.Create("c", Provenance()).With(Document("d", "text")));
+        var snapshot = store.Load("c")!;
+        files.AfterSidecarPublication = (_, _) => throw new IOException("Simulated termination before database commit");
+        Assert.Throws<IOException>(() => store.Save(snapshot with
+        {
+            Documents = new[] { snapshot.Documents.Single() with { Title = "New Title" } }
+        }));
+        files.AfterSidecarPublication = null;
+        using (var connection = Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT Title FROM CorpusDocuments WHERE CorpusId='c';";
+            Assert.Equal("Testlang d", command.ExecuteScalar());
+        }
+        Assert.Equal("New Title", store.Load("c")!.Documents.Single().Title);
+        Assert.Equal(1, store.RebuildIndex());
+        using var verified = Database.OpenConnection();
+        using var query = verified.CreateCommand();
+        query.CommandText = "SELECT Title FROM CorpusDocuments WHERE CorpusId='c';";
+        Assert.Equal("New Title", query.ExecuteScalar());
+    }
+
+    [Fact]
+    public void StaleCorpusCannotReplaceDocumentsAddedByAnotherWriter()
+    {
+        var store = Store();
+        store.Save(StoredCorpus.Create("c", Provenance()));
+        var first = store.Load("c")!;
+        var stale = store.Load("c")!;
+        store.Save(first.With(Document("first", "one")));
+        Assert.Throws<IOException>(() => store.Save(stale.With(Document("second", "two"))));
+        Assert.Equal(new[] { "first" }, store.Load("c")!.Documents.Select(d => d.DocumentId));
+    }
+
+    [Fact]
+    public void MissingSidecarIsVisibleEvenForAnEmptyCorpus()
+    {
+        var store = Store();
+        store.Save(StoredCorpus.Create("empty", Provenance()));
+        File.Delete(Directory.GetFiles(Path.Combine(_root, "corpora"), "corpus.json", SearchOption.AllDirectories).Single());
+        Assert.Throws<FileNotFoundException>(() => store.Load("empty"));
+    }
+
+    [Fact]
+    public void PublishedSidecarsRebuildAnEmptyIndexWithoutDatabaseText()
+    {
+        var store = Store();
+        store.Save(StoredCorpus.Create("source", Provenance()).With(Document("one", "source text")));
+        using (var connection = Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "DELETE FROM CorpusDocuments; DELETE FROM Corpora;";
+            command.ExecuteNonQuery();
+        }
+        Assert.Equal(1, store.RebuildIndex());
+        Assert.Equal("source text", store.Load("source")!.Documents.Single().Text);
+        Assert.Equal("isoCode", store.Load("source")!.Documents.Single().Attributes!.Keys.Single());
+    }
+
+    [Fact]
+    public void OpeningAnAlreadyPublishedCorpusDoesNotRewriteItsSidecar()
+    {
+        var store = Store();
+        store.Save(StoredCorpus.Create("published", Provenance()).With(Document("d", "text")));
+        var path = Directory.GetFiles(Path.Combine(_root, "corpora"), "corpus.json", SearchOption.AllDirectories).Single();
+        var timestamp = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(path, timestamp);
+        store.ExportExisting("published");
+        Assert.Equal(timestamp, File.GetLastWriteTimeUtc(path));
+        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(path)!, "*.backup"));
+    }
+
+    [Fact]
+    public void DamagedSidecarDoesNotRetireLegacyDatabaseText()
+    {
+        var store = Store();
+        store.Save(StoredCorpus.Create("legacy", Provenance()).With(Document("d", "old text")));
+        using (var connection = Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE CorpusDocuments SET Text='old text', FileBacked=0 WHERE CorpusId='legacy'; " +
+                "UPDATE Corpora SET FileBacked=0 WHERE CorpusId='legacy';";
+            command.ExecuteNonQuery();
+        }
+        var path = Directory.GetFiles(Path.Combine(_root, "corpora"), "corpus.json", SearchOption.AllDirectories).Single();
+        File.WriteAllText(path, "{");
+        Assert.Throws<InvalidDataException>(() => store.ExportExisting("legacy"));
+        Assert.Equal("old text", store.Load("legacy")!.Documents.Single().Text);
+        Assert.Equal("{", File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void ConflictingSidecarCannotReplaceLegacyDatabaseText()
+    {
+        var store = Store();
+        store.Save(StoredCorpus.Create("legacy", Provenance()).With(Document("d", "old text")));
+        using (var connection = Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE CorpusDocuments SET Text='old text', FileBacked=0 WHERE CorpusId='legacy'; " +
+                "UPDATE Corpora SET FileBacked=0 WHERE CorpusId='legacy';";
+            command.ExecuteNonQuery();
+        }
+        var path = Directory.GetFiles(Path.Combine(_root, "corpora"), "corpus.json", SearchOption.AllDirectories).Single();
+        File.WriteAllText(path, File.ReadAllText(path).Replace("Testlang d", "Changed Title", StringComparison.Ordinal));
+        Assert.Throws<IOException>(() => store.ExportExisting("legacy"));
+        Assert.Equal("old text", store.Load("legacy")!.Documents.Single().Text);
+        Assert.Equal("Testlang d", store.Load("legacy")!.Documents.Single().Title);
+    }
+
+    [Fact]
+    public void ExportExistingPreservesLegacyTextAndReadsLaterFileEdits()
+    {
+        var store = Store();
+        store.Save(StoredCorpus.Create("legacy", Provenance()).With(Document("d", "old text")));
+        using (var connection = Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE CorpusDocuments SET Text='old text', FileBacked=0 WHERE CorpusId='legacy'; " +
+                "UPDATE Corpora SET FileBacked=0 WHERE CorpusId='legacy';";
+            command.ExecuteNonQuery();
+        }
+        Directory.Delete(Path.Combine(_root, "corpora"), recursive: true);
+
+        store.ExportExisting("legacy");
+        store.ExportExisting("legacy");
+        using (var connection = Database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "SELECT Text FROM CorpusDocuments WHERE CorpusId='legacy';";
+            Assert.Equal("", command.ExecuteScalar());
+        }
+        var path = Directory.GetFiles(Path.Combine(_root, "corpora"), "*.txt", SearchOption.AllDirectories).Single();
+        Assert.Equal("old text", File.ReadAllText(path));
+        File.WriteAllText(path, "edited text");
+        Assert.Equal("edited text", store.Load("legacy")!.Documents.Single().Text);
+        File.Delete(path);
+        Assert.Throws<FileNotFoundException>(() => store.Load("legacy"));
+    }
+
+    [Fact]
     public void ACorpusRoundTripsThroughTheDatabase_EveryFieldIntact()
     {
         var store = Store();

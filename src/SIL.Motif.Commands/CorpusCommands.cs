@@ -30,6 +30,44 @@ public static class CorpusCommands
     /// <summary>The Corpus store for one project — over the same gated database a verb already opened.</summary>
     public static ICorpusStore StoreFor(MotifDatabase database) => new SqliteCorpusStore(database);
 
+    /// <summary>Publishes legacy content and returns the Document with explicitly interim boundaries.</summary>
+    public static CommandOutcome<CorpusViewerDocument> OpenDocument(OpenCorpusDocumentRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            var store = new SqliteCorpusStore(database);
+            store.ExportExisting(request.CorpusId);
+            var files = new CorpusFileService(Path.GetDirectoryName(project.FullFwDataPath)!);
+            var service = new CorpusViewerService(files, new WhitespaceAndPunctuationTokeniser());
+            return CommandOutcome<CorpusViewerDocument>.Success(service.Open(request.CorpusId, request.DocumentId));
+        });
+
+    /// <summary>Reads a range only when its Document still matches the supplied hash.</summary>
+    public static CommandOutcome<CorpusRangeResponse> ReadRange(CorpusRangeRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (_, project) =>
+        {
+            var files = new CorpusFileService(Path.GetDirectoryName(project.FullFwDataPath)!);
+            var bytes = files.ReadRange(request.CorpusId, request.DocumentId, request.Sha256, request.Offset, request.Length);
+            return CommandOutcome<CorpusRangeResponse>.Success(new CorpusRangeResponse(request.Sha256, request.Offset, bytes));
+        });
+
+    /// <summary>Adds one pasted Document to a Corpus with its supplied source metadata.</summary>
+    public static CommandOutcome<CorpusDocumentAddedResponse> PasteDocument(PasteCorpusDocumentRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        {
+            var ingestion = new CorpusIngestion(StoreFor(database));
+            var document = ingestion.AddPastedDocument(request.CorpusId, request.Text,
+                new DocumentMetadata(request.DocumentId, request.Title, request.Licence, request.Capabilities, request.Attributes));
+            return CommandOutcome<CorpusDocumentAddedResponse>.Success(new CorpusDocumentAddedResponse(
+                request.CorpusId, document.DocumentId, document.Title, document.Source.Describe(),
+                document.Text.Length, document.ContentSha256, document.Licence));
+        });
+
+    /// <summary>Rebuilds the Corpus index from source sidecars without deleting other indexed records.</summary>
+    public static CommandOutcome<RebuildCorpusIndexResponse> RebuildIndex(RebuildCorpusIndexRequest request) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+            CommandOutcome<RebuildCorpusIndexResponse>.Success(new RebuildCorpusIndexResponse(
+                new SqliteCorpusStore(database).RebuildIndex())));
+
     /// <summary>Create an empty Corpus with its origin and tokenisation recorded.</summary>
     public static CommandOutcome<CorpusAddedResponse> AddCorpus(AddCorpusRequest request)
     {

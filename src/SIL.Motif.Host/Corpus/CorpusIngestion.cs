@@ -114,6 +114,19 @@ public sealed class CorpusIngestion
         return document;
     }
 
+    /// <summary>Adds one pasted Document, preserving its exact text and supplied metadata.</summary>
+    public CorpusDocument AddPastedDocument(string corpusId, string text, DocumentMetadata metadata)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(metadata);
+        var corpus = _store.Load(corpusId) ?? throw new InvalidOperationException($"No corpus '{corpusId}'.");
+        var bytes = new UTF8Encoding(false, true).GetBytes(text);
+        var document = new CorpusDocument(metadata.DocumentId, metadata.Title, new DocumentSource.Paste(), text,
+            Sha256Hex(bytes), _clock(), metadata.Licence, metadata.Capabilities, metadata.Attributes);
+        _store.Save(corpus.With(document));
+        return document;
+    }
+
     /// <summary>
     /// Take in a whole handoff bundle: the corpus metadata and every document it names, in one call.
     /// </summary>

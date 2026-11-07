@@ -95,6 +95,23 @@ public class CorpusIngestionTests : IDisposable
     // ---------------------------------------------------------------- the ordinary path
 
     [Fact]
+    public void PastedDocumentsPreserveTextBoundariesAndMetadata()
+    {
+        var ingestion = new CorpusIngestion(Store());
+        ingestion.AddCorpus("paste", Provenance());
+        var metadata = new DocumentMetadata("one", "First", "licence", null,
+            new Dictionary<string, string> { ["language"] = "ceb" });
+        ingestion.AddPastedDocument("paste", "á one\n", metadata);
+        ingestion.AddPastedDocument("paste", "second", new DocumentMetadata("two", "Second"));
+        var documents = Store().Load("paste")!.Documents;
+        Assert.Equal(new[] { "one", "two" }, documents.Select(d => d.DocumentId));
+        Assert.Equal("á one\n", documents[0].Text);
+        Assert.IsType<DocumentSource.Paste>(documents[0].Source);
+        Assert.Equal("ceb", documents[0].Attributes!["language"]);
+        Assert.Equal("licence", documents[0].Licence);
+    }
+
+    [Fact]
     public async Task AFileBecomesADocument_WithItsBytesHashedAsTheyArrived()
     {
         var path = WriteFile("tstNT.txt", "Mbali ninga mbali.\nNinga mbali.\n");

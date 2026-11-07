@@ -24,6 +24,12 @@ namespace SIL.Motif.App.Views;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
+    private void OnCorpusClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is WorkspaceShellViewModel { Context.ProjectPath: { } path })
+            new CorpusViewerWindow(path).Show(this);
+    }
+
     private readonly IUriLauncher _uriLauncher;
     private readonly ProblemReportWindowServices _problemReportServices;
     private readonly IUserPreferencesStore _preferences;

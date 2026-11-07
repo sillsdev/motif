@@ -1134,6 +1134,40 @@ try
                 CorpusCommands.AddBundle(new AddCorpusBundleRequest(addBundleProject, CliProductVersion(), bundlePath)));
             break;
 
+        case "corpus-paste":
+            if (!flags.TryGetValue("project", out var pasteProject) || !flags.TryGetValue("corpus", out var pasteCorpus) ||
+                !flags.TryGetValue("doc", out var pasteDocument) || !flags.TryGetValue("title", out var pasteTitle) ||
+                !flags.TryGetValue("text", out var pasteText))
+                return Usage(UsageLineFor("corpus-paste"), asJson);
+            result = RenderCommand(CorpusCommands.PasteDocument(new PasteCorpusDocumentRequest(pasteProject,
+                CliProductVersion(), pasteCorpus, pasteDocument, pasteTitle, pasteText, flags.GetValueOrDefault("licence"),
+                HasAnyLicenceFlag(flags) ? CorpusCommands.CapabilitiesFromFlags(flags) : null)));
+            break;
+
+        case "corpus-reindex":
+            if (!flags.TryGetValue("project", out var reindexProject))
+                return Usage(UsageLineFor("corpus-reindex"), asJson);
+            result = RenderCommand(CorpusCommands.RebuildIndex(new RebuildCorpusIndexRequest(reindexProject, CliProductVersion())));
+            break;
+
+        case "corpus-open":
+            if (!flags.TryGetValue("project", out var corpusOpenProject) ||
+                !flags.TryGetValue("corpus", out var corpusOpenId) || !flags.TryGetValue("doc", out var corpusOpenDocument))
+                return Usage(UsageLineFor("corpus-open"), asJson);
+            result = RenderCommand(CorpusCommands.OpenDocument(new OpenCorpusDocumentRequest(
+                corpusOpenProject, CliProductVersion(), corpusOpenId, corpusOpenDocument)));
+            break;
+
+        case "corpus-range":
+            if (!flags.TryGetValue("project", out var rangeProject) || !flags.TryGetValue("corpus", out var rangeCorpus) ||
+                !flags.TryGetValue("doc", out var rangeDocument) || !flags.TryGetValue("sha256", out var rangeHash) ||
+                !flags.TryGetValue("offset", out var rangeOffsetText) || !long.TryParse(rangeOffsetText, out var rangeOffset) ||
+                !flags.TryGetValue("length", out var rangeLengthText) || !int.TryParse(rangeLengthText, out var rangeLength))
+                return Usage(UsageLineFor("corpus-range"), asJson);
+            result = RenderCommand(CorpusCommands.ReadRange(new CorpusRangeRequest(rangeProject, CliProductVersion(),
+                rangeCorpus, rangeDocument, rangeHash, rangeOffset, rangeLength)));
+            break;
+
         case "corpora":
             if (!flags.TryGetValue("project", out var corporaProject))
                 return Usage("Usage: motif corpora --project <fwdata> [--json]", asJson);

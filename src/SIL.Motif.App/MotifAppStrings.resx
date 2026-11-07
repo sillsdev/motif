@@ -9549,4 +9549,43 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>That Request is already answered or withdrawn.</value>
     <comment>Sentence the window shows when the command refuses with code C.RequestNotOpen.</comment>
   </data>
+  <data name="MotifApp.MenuCorpus" xml:space="preserve"><value>_Corpus</value></data>
+  <data name="MotifApp.CorpusTitle" xml:space="preserve"><value>Corpus</value></data>
+  <data name="MotifApp.CorpusCorpora" xml:space="preserve"><value>Corpora</value></data>
+  <data name="MotifApp.CorpusDocuments" xml:space="preserve"><value>Documents</value></data>
+  <data name="MotifApp.CorpusWordforms" xml:space="preserve"><value>Wordforms</value></data>
+  <data name="MotifApp.CorpusBoundariesNotice" xml:space="preserve"><value>Interim Boundaries — Not CEB-Compatible</value></data>
+  <data name="MotifApp.CorpusNoProject" xml:space="preserve"><value>Open a Project to View Its Corpora</value></data>
+  <data name="MotifApp.CorpusUnavailable" xml:space="preserve"><value>Corpus Unavailable</value></data>
+  <data name="MotifApp.CorpusContexts" xml:space="preserve"><value>Source Contexts</value></data>
+  <data name="MotifApp.CorpusSource" xml:space="preserve"><value>Document Source</value></data>
+  <data name="MotifApp.CorpusEditorPhrase0" xml:space="preserve"><value>Find</value><comment>CodeMirror phrase: Find</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase1" xml:space="preserve"><value>Replace</value><comment>CodeMirror phrase: Replace</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase2" xml:space="preserve"><value>Next</value><comment>CodeMirror phrase: next</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase3" xml:space="preserve"><value>Previous</value><comment>CodeMirror phrase: previous</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase4" xml:space="preserve"><value>All</value><comment>CodeMirror phrase: all</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase5" xml:space="preserve"><value>Match Case</value><comment>CodeMirror phrase: match case</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase6" xml:space="preserve"><value>Regular Expression</value><comment>CodeMirror phrase: regexp</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase7" xml:space="preserve"><value>By Word</value><comment>CodeMirror phrase: by word</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase8" xml:space="preserve"><value>Replace</value><comment>CodeMirror phrase: replace</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase9" xml:space="preserve"><value>Replace All</value><comment>CodeMirror phrase: replace all</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase10" xml:space="preserve"><value>Close</value><comment>CodeMirror phrase: close</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase11" xml:space="preserve"><value>Go to Line</value><comment>CodeMirror phrase: Go to line</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase12" xml:space="preserve"><value>Go</value><comment>CodeMirror phrase: go</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase13" xml:space="preserve"><value>current match</value><comment>CodeMirror phrase: current match</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase14" xml:space="preserve"><value>on line</value><comment>CodeMirror phrase: on line</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase15" xml:space="preserve"><value>replaced match on line $</value><comment>CodeMirror phrase: replaced match on line $</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase16" xml:space="preserve"><value>replaced $ matches</value><comment>CodeMirror phrase: replaced $ matches</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase17" xml:space="preserve"><value>Control character</value><comment>CodeMirror phrase: Control character</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase18" xml:space="preserve"><value>Selection deleted</value><comment>CodeMirror phrase: Selection deleted</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase19" xml:space="preserve"><value>folded code</value><comment>CodeMirror phrase: folded code</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase20" xml:space="preserve"><value>to</value><comment>CodeMirror phrase: to</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase21" xml:space="preserve"><value>unfold</value><comment>CodeMirror phrase: unfold</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase22" xml:space="preserve"><value>Folded Lines</value><comment>CodeMirror phrase: Folded lines</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase23" xml:space="preserve"><value>Unfolded Lines</value><comment>CodeMirror phrase: Unfolded lines</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase24" xml:space="preserve"><value>Fold Line</value><comment>CodeMirror phrase: Fold line</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase25" xml:space="preserve"><value>Unfold Line</value><comment>CodeMirror phrase: Unfold line</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase26" xml:space="preserve"><value>Completions</value><comment>CodeMirror phrase: Completions</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase27" xml:space="preserve"><value>Diagnostics</value><comment>CodeMirror phrase: Diagnostics</comment></data>
+  <data name="MotifApp.CorpusEditorPhrase28" xml:space="preserve"><value>No diagnostics</value><comment>CodeMirror phrase: No diagnostics</comment></data>
 </root>

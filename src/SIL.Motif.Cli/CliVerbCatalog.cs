@@ -510,6 +510,14 @@ public static class CliVerbCatalog
             {
                 "add-corpus-bundle --project <fwdata> --bundle <path>   (the handoff a fetching tool writes)",
             }),
+        new CliVerbDescriptor("Corpus", "corpus-paste", "corpus-paste",
+            new[] { "corpus-paste --project <fwdata> --corpus <id> --doc <id> --title <title> --text <text> [--licence <text>] [--json]" }),
+        new CliVerbDescriptor("Corpus", "corpus-reindex", "corpus-reindex",
+            new[] { "corpus-reindex --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Corpus", "corpus-open", "corpus-open",
+            new[] { "corpus-open --project <fwdata> --corpus <id> --doc <id> [--json]" }),
+        new CliVerbDescriptor("Corpus", "corpus-range", "corpus-range",
+            new[] { "corpus-range --project <fwdata> --corpus <id> --doc <id> --sha256 <hash> --offset <bytes> --length <bytes> [--json]" }),
         new CliVerbDescriptor(
             "Corpus", "corpora", "corpora", new[] { "corpora --project <fwdata> [--json]" }),
         new CliVerbDescriptor(

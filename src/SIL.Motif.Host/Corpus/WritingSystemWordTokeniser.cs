@@ -69,7 +69,7 @@ namespace SIL.Motif.Host.Corpus;
 /// digit-tone-marking project would land by default.
 /// </para>
 /// </remarks>
-public sealed class WritingSystemWordTokeniser : IWordTokeniser
+public sealed class WritingSystemWordTokeniser : IWordTokeniser, IWordSpanTokeniser
 {
     private readonly CoreWritingSystemDefinition _ws;
 
@@ -137,46 +137,34 @@ public sealed class WritingSystemWordTokeniser : IWordTokeniser
     }
 
     /// <inheritdoc />
-    public IEnumerable<string> Tokenise(string text)
+    public IEnumerable<string> Tokenise(string text) => TokeniseSpans(text).Select(span => span.Surface);
+
+    /// <summary>Returns source spans in UTF-16 code units and UTF-8 bytes; this is not CEB-compatible segmentation.</summary>
+    public IEnumerable<CorpusWordSpan> TokeniseSpans(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-
-        return TokeniseCore(text);
-    }
-
-    /// <summary>Codepoint by codepoint, not char by char, so a surrogate pair stays one character.</summary>
-    private IEnumerable<string> TokeniseCore(string text)
-    {
-        var current = new StringBuilder();
         var i = 0;
+        var byteOffset = 0;
+        var start = -1;
+        var byteStart = 0;
         while (i < text.Length)
         {
-            int codepoint;
-            int width;
-            if (char.IsHighSurrogate(text[i]) && i + 1 < text.Length && char.IsSurrogatePair(text[i], text[i + 1]))
-            {
-                codepoint = char.ConvertToUtf32(text[i], text[i + 1]);
-                width = 2;
-            }
-            else
-            {
-                codepoint = text[i];
-                width = 1;
-            }
-
+            var width = char.IsHighSurrogate(text[i]) && i + 1 < text.Length &&
+                char.IsSurrogatePair(text[i], text[i + 1]) ? 2 : 1;
+            var codepoint = width == 2 ? char.ConvertToUtf32(text[i], text[i + 1]) : text[i];
             if (_ws.get_IsWordForming(codepoint))
             {
-                current.Append(text, i, width);
+                if (start < 0) { start = i; byteStart = byteOffset; }
             }
-            else if (current.Length > 0)
+            else if (start >= 0)
             {
-                yield return current.ToString();
-                current.Clear();
+                yield return new CorpusWordSpan(text[start..i], start, i - start, byteStart, byteOffset - byteStart);
+                start = -1;
             }
-
+            byteOffset += Encoding.UTF8.GetByteCount(text.AsSpan(i, width));
             i += width;
         }
-
-        if (current.Length > 0) yield return current.ToString();
+        if (start >= 0)
+            yield return new CorpusWordSpan(text[start..i], start, i - start, byteStart, byteOffset - byteStart);
     }
 }

@@ -7,6 +7,7 @@ using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Corpus;
 
 namespace SIL.Motif.Commands.Catalog;
 
@@ -157,6 +158,10 @@ public static class CommandCatalog
         new CommandDescriptor("add-corpus-bundle", typeof(AddCorpusBundleRequest), typeof(CorpusBundleAddedResponse), CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("corpora", typeof(ListCorporaRequest), typeof(CorpusListProjection), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("show-corpus", typeof(ShowCorpusRequest), typeof(CorpusDetailProjection), CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("corpus-paste", typeof(PasteCorpusDocumentRequest), typeof(CorpusDocumentAddedResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("corpus-reindex", typeof(RebuildCorpusIndexRequest), typeof(RebuildCorpusIndexResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("corpus-open", typeof(OpenCorpusDocumentRequest), typeof(CorpusViewerDocument), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("corpus-range", typeof(CorpusRangeRequest), typeof(CorpusRangeResponse), CommandSurface.Developer, AgentClass.Read),
 
         // ConfigCommands
         new CommandDescriptor("config show", typeof(ShowConfigRequest), typeof(ProjectConfigurationProjection), CommandSurface.Released, AgentClass.Read),

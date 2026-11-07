@@ -48,6 +48,71 @@ public sealed class CorpusCommandsSqliteWiringTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    [Theory]
+    [InlineData("{")]
+    [InlineData("{}")]
+    [InlineData("{\"CorpusId\":\"c\",\"Provenance\":null,\"Documents\":[]}")]
+    public void DamagedSidecarsRefuseOpenShowAndReindexWithoutChangingSources(string damaged)
+    {
+        Assert.True(AddCorpus(_fwDataPath, "1.0", "c", "Corpus", null, null,
+            LicenceCapabilities.Unknown(), "whitespace-and-punctuation", "1", null).Succeeded);
+        Assert.True(CorpusCommands.PasteDocument(new PasteCorpusDocumentRequest(_fwDataPath, "1.0", "c", "d",
+            "Document", "original text", null, null)).Succeeded);
+        var sidecar = Directory.GetFiles(_root, "corpus.json", SearchOption.AllDirectories).Single();
+        var source = Directory.GetFiles(_root, "*.txt", SearchOption.AllDirectories).Single();
+        File.WriteAllText(sidecar, damaged);
+        Assert.False(CorpusCommands.OpenDocument(new OpenCorpusDocumentRequest(_fwDataPath, "1.0", "c", "d")).Succeeded);
+        Assert.False(ShowCorpus(_fwDataPath, "1.0", "c").Succeeded);
+        Assert.False(CorpusCommands.RebuildIndex(new RebuildCorpusIndexRequest(_fwDataPath, "1.0")).Succeeded);
+        Assert.Equal(damaged, File.ReadAllText(sidecar));
+        Assert.Equal("original text", File.ReadAllText(source));
+    }
+
+    [Theory]
+    [InlineData("bad\0name")]
+    [InlineData("../escape")]
+    [InlineData("bad/name")]
+    public void InvalidSidecarFilenameIsAControlledRefusal(string invalidName)
+    {
+        Assert.True(AddCorpus(_fwDataPath, "1.0", "c", "Corpus", null, null,
+            LicenceCapabilities.Unknown(), "whitespace-and-punctuation", "1", null).Succeeded);
+        Assert.True(CorpusCommands.PasteDocument(new PasteCorpusDocumentRequest(_fwDataPath, "1.0", "c", "d",
+            "Document", "original text", null, null)).Succeeded);
+        var path = Directory.GetFiles(_root, "corpus.json", SearchOption.AllDirectories).Single();
+        var source = Directory.GetFiles(_root, "*.txt", SearchOption.AllDirectories).Single();
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))!;
+        json["Documents"]![0]!["RelativePath"] = invalidName;
+        var damaged = json.ToJsonString();
+        File.WriteAllText(path, damaged);
+        var open = CorpusCommands.OpenDocument(new OpenCorpusDocumentRequest(_fwDataPath, "1.0", "c", "d"));
+        var show = ShowCorpus(_fwDataPath, "1.0", "c");
+        var reindex = CorpusCommands.RebuildIndex(new RebuildCorpusIndexRequest(_fwDataPath, "1.0"));
+        Assert.Equal("store.inconsistent", open.Refusal!.Code);
+        Assert.Equal("store.inconsistent", show.Refusal!.Code);
+        Assert.Equal("store.inconsistent", reindex.Refusal!.Code);
+        Assert.Equal(damaged, File.ReadAllText(path));
+        Assert.Equal("original text", File.ReadAllText(source));
+    }
+
+    [Fact]
+    public void PastedDocumentCanBeViewedAndReadByHash()
+    {
+        var added = AddCorpus(_fwDataPath, "1.0", "c", "Corpus", null, null,
+            LicenceCapabilities.Unknown(), "whitespace-and-punctuation", "1", null);
+        Assert.True(added.Succeeded);
+        var pasted = CorpusCommands.PasteDocument(new PasteCorpusDocumentRequest(_fwDataPath, "1.0", "c", "d",
+            "Document", "one two one", null, null));
+        Assert.True(pasted.Succeeded);
+        var opened = CorpusCommands.OpenDocument(new OpenCorpusDocumentRequest(_fwDataPath, "1.0", "c", "d"));
+        Assert.True(opened.Succeeded);
+        Assert.Equal("one", opened.Value!.Wordforms[0].Wordform);
+        Assert.Equal(2, opened.Value.Wordforms[0].Frequency);
+        var range = CorpusCommands.ReadRange(new CorpusRangeRequest(_fwDataPath, "1.0", "c", "d",
+            opened.Value.Sha256, 4, 3));
+        Assert.True(range.Succeeded);
+        Assert.Equal("two", System.Text.Encoding.UTF8.GetString(range.Value!.Bytes));
+    }
+
     [Fact]
     public void StoreForReturnsASqliteBackedStore_AndTheHandlersRoundTripThroughIt()
     {

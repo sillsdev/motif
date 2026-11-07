@@ -15,7 +15,14 @@ public sealed class MotifDatabase : IDisposable
 {
     private readonly MotifSqliteStore _store;
 
-    private MotifDatabase(MotifSqliteStore store) => _store = store;
+    private MotifDatabase(MotifSqliteStore store, ProjectLocator project)
+    {
+        _store = store;
+        Project = project;
+    }
+
+    /// <summary>The FieldWorks project paired with this database.</summary>
+    public ProjectLocator Project { get; }
 
     /// <summary>
     /// Opens a project database with a shared active-use lease, creating it if absent. Older project stores
@@ -39,7 +46,7 @@ public sealed class MotifDatabase : IDisposable
         TimeProvider? timeProvider = null)
     {
         var descriptor = Describe(path, project, supportedSchema, workerVersion, timeProvider);
-        return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience));
+        return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience), project);
     }
 
     /// <summary>

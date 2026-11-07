@@ -31,12 +31,7 @@ namespace SIL.Motif.Host.Corpus;
 /// The hash of the exact bytes ingested — <b>identity, not surveillance</b>. It says precisely what a figure
 /// was computed over, so two corpora can be compared without shipping their contents and a figure citing a
 /// hash that no longer matches is recognisable as describing different text.
-/// <para>
-/// It is emphatically <b>not</b> a change detector pointed at the source. Motif never revisits a URL, never
-/// polls, and never asks whether eBible has news: text is grabbed when somebody decides to grab it, and a
-/// corpus stays exactly what it was until a person fetches again. Fetching again means a new corpus, which is
-/// the whole mechanism — see ADR 0037 decision 1.
-/// </para>
+/// <para>The hash identifies source bytes at ingestion; current exported text has its own hash and can change.</para>
 /// </param>
 /// <param name="IngestedUtc">When Motif took it in — distinct from when the source published it.</param>
 /// <param name="Licence">This document's licence verbatim, when it differs from the corpus's.</param>
@@ -91,6 +86,8 @@ public sealed record StoredCorpus(
     CorpusProvenance Provenance,
     IReadOnlyList<CorpusDocument> Documents)
 {
+    internal string? PublicationRevision { get; init; }
+
     /// <summary>An empty corpus. Documents are added afterwards, because a fetch arrives a file at a time.</summary>
     public static StoredCorpus Create(string corpusId, CorpusProvenance provenance)
     {

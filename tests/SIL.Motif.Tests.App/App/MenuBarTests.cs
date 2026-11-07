@@ -95,7 +95,7 @@ public sealed class MenuBarTests
                 Items(window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!).Select(Plain).ToArray());
         });
         Assert.Equal(TopLevel, top);
-        Assert.Equal(["Options…", "Writing Systems and Fonts"], tools);
+        Assert.Equal(["Corpus", "Options…", "Writing Systems and Fonts"], tools);
         Assert.Equal(["Help Topics", "Keyboard Shortcuts", "Report a Problem…"], help);
         Assert.Equal(["Select New…", "Open Recent", "Refresh", "Configure…", "Exit"], file);
     }

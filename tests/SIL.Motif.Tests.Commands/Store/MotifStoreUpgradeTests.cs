@@ -168,6 +168,34 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void UpgradeFromSchema68KeepsRequestsAndDatabaseHeldCorpusText()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+            Execute(old, """
+                ALTER TABLE Corpora DROP COLUMN FileBacked;
+                ALTER TABLE CorpusDocuments DROP COLUMN FileBacked;
+                PRAGMA user_version = 68;
+                INSERT INTO Requests (RequestId, TargetKind, TargetId, TargetLabel, Status, CreatedUtc)
+                    VALUES ('request/1', 'word', 'word', 'word', 'open', '2026-01-01T00:00:00Z');
+                INSERT INTO Proposals (ProposalId, Status, RequestId) VALUES ('open', 'proposed', 'request/1');
+                INSERT INTO Corpora (CorpusId, ProvenanceJson) VALUES ('corpus', '{}');
+                INSERT INTO CorpusDocuments (CorpusId, DocumentId, OrdinalIndex, Title, Source, Text, ContentSha256, IngestedUtc)
+                    VALUES ('corpus', 'doc', 0, 'Document', 'paste:', 'original text', 'hash', '2026-01-01T00:00:00Z');
+                """);
+        var output = Path.Combine(_root, "copy.db");
+        var report = MotifStoreUpgrade.Copy(Source, output);
+        Assert.Equal(68, report.SourceSchema);
+        Assert.Equal(69, report.TargetSchema);
+        using var upgraded = Connect(output);
+        Assert.Equal("request/1", Text(upgraded, "SELECT RequestId FROM Proposals WHERE ProposalId = 'open';"));
+        Assert.Equal(1, Count(upgraded, "Requests"));
+        Assert.Equal("original text", Text(upgraded, "SELECT Text FROM CorpusDocuments WHERE DocumentId = 'doc';"));
+        Assert.Equal(0, Scalar(upgraded, "SELECT FileBacked FROM Corpora WHERE CorpusId = 'corpus';"));
+        Assert.Equal(0, Scalar(upgraded, "SELECT FileBacked FROM CorpusDocuments WHERE DocumentId = 'doc';"));
+    }
+
+    [Fact]
     public void UpgradeKeepsRequestsAndTheLinkFromAProposalToItsRequest()
     {
         CreateCurrentSchemaAsOld();

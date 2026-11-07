@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:SIL.Motif.App"
+        x:Class="SIL.Motif.App.Views.CorpusViewerWindow"
+        Title="{x:Static app:MotifAppStrings.CorpusTitle}"
+        Width="{DynamicResource Component.Shell.DiagnosticWidth}"
+        Height="{DynamicResource Component.Shell.DiagnosticHeight}"
+        MinWidth="{DynamicResource Component.Shell.DiagnosticMinWidth}"
+        MinHeight="{DynamicResource Component.Shell.DiagnosticMinHeight}">
+  <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,*,2*">
+    <TextBlock Grid.ColumnSpan="3" Text="{x:Static app:MotifAppStrings.CorpusBoundariesNotice}" />
+    <StackPanel Grid.Row="1">
+      <TextBlock Text="{x:Static app:MotifAppStrings.CorpusCorpora}" />
+      <ListBox x:Name="Corpora" SelectionChanged="OnCorpusSelected" />
+      <TextBlock Text="{x:Static app:MotifAppStrings.CorpusDocuments}" />
+      <ListBox x:Name="Documents" SelectionChanged="OnDocumentSelected" />
+    </StackPanel>
+    <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,*,Auto,*">
+      <TextBlock Text="{x:Static app:MotifAppStrings.CorpusWordforms}" />
+      <ListBox x:Name="Wordforms" Grid.Row="1" SelectionChanged="OnWordformSelected" />
+      <TextBlock Grid.Row="2" Text="{x:Static app:MotifAppStrings.CorpusContexts}" />
+      <ListBox x:Name="Contexts" Grid.Row="3" SelectionChanged="OnContextSelected" />
+    </Grid>
+    <NativeWebView x:Name="Viewer" Grid.Row="1" Grid.Column="2" />
+    <TextBlock x:Name="Error" Grid.Row="0" Grid.Column="2" TextWrapping="Wrap" />
+  </Grid>
+</Window>

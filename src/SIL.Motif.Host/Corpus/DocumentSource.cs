@@ -38,6 +38,12 @@ public abstract record DocumentSource
         public override string Describe() => Uri.ToString();
     }
 
+    /// <summary>Text pasted directly by a person.</summary>
+    public sealed record Paste : DocumentSource
+    {
+        public override string Describe() => "paste:";
+    }
+
     /// <summary>How this source reads in a message to a person.</summary>
     public abstract string Describe();
 
@@ -51,6 +57,8 @@ public abstract record DocumentSource
     {
         if (string.IsNullOrWhiteSpace(fileOrUrl))
             throw new ArgumentException("A document source must be a file path or a URL.", nameof(fileOrUrl));
+
+        if (fileOrUrl == "paste:") return new Paste();
 
         if (Uri.TryCreate(fileOrUrl, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))

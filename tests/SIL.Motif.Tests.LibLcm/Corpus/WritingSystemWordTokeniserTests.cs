@@ -72,6 +72,16 @@ public class WritingSystemWordTokeniserTests
     /// — which is why this test asserts both halves.
     /// </remarks>
     [Fact]
+    public void SpansMapCombiningAndAstralCharactersToBothOffsetUnits()
+    {
+        var tokeniser = new WritingSystemWordTokeniser(WritingSystem("seh"));
+        var spans = tokeniser.TokeniseSpans("😀 a\u0301 𐐀b").ToArray();
+        Assert.Equal(new CorpusWordSpan("a\u0301", 3, 2, 5, 3), spans[0]);
+        Assert.Equal(new CorpusWordSpan("𐐀b", 6, 3, 9, 5), spans[1]);
+        Assert.Equal(2, spans.Length);
+    }
+
+    [Fact]
     public void DigitsSplitAWordUntilTheWritingSystemDeclaresThem()
     {
         // Undeclared: a digit is a separator, not trimmable — "ma1" loses its tone mark, "a1b" splits wrongly.

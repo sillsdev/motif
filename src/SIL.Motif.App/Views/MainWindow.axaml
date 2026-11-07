@@ -68,6 +68,8 @@
             <MenuItem x:Name="ResetZoomMenuItem" Header="{x:Static app:MotifAppStrings.MenuResetZoom}" Tag="ResetZoom" Click="OnViewMenuClick" />
           </MenuItem>
           <MenuItem x:Name="ToolsMenu" Header="{x:Static app:MotifAppStrings.MenuTools}">
+            <MenuItem x:Name="CorpusMenuItem" Header="{x:Static app:MotifAppStrings.MenuCorpus}"
+                      IsEnabled="{Binding Context.HasProject}" Click="OnCorpusClick" />
             <MenuItem x:Name="OptionsMenuItem" Header="{x:Static app:MotifAppStrings.MenuOptions}" Tag="OpenSettings" Click="OnSettingsClick" />
             <MenuItem x:Name="WritingSystemsMenuItem" Header="{x:Static app:MotifAppStrings.MenuWritingSystems}" Click="OnWritingSystemsGuideClick" />
           </MenuItem>

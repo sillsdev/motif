@@ -189,6 +189,117 @@ public static class MotifAppStrings
 
     public static string MenuOptions => Text("MotifApp.MenuOptions");
 
+    public static string MenuCorpus => Text("MotifApp.MenuCorpus");
+
+    public static string CorpusTitle => Text("MotifApp.CorpusTitle");
+
+    public static string CorpusCorpora => Text("MotifApp.CorpusCorpora");
+
+    public static string CorpusDocuments => Text("MotifApp.CorpusDocuments");
+
+    public static string CorpusSource => Text("MotifApp.CorpusSource");
+
+    public static string CorpusEditorPhrase0 => Text("MotifApp.CorpusEditorPhrase0");
+
+    public static string CorpusEditorPhrase1 => Text("MotifApp.CorpusEditorPhrase1");
+
+    public static string CorpusEditorPhrase2 => Text("MotifApp.CorpusEditorPhrase2");
+
+    public static string CorpusEditorPhrase3 => Text("MotifApp.CorpusEditorPhrase3");
+
+    public static string CorpusEditorPhrase4 => Text("MotifApp.CorpusEditorPhrase4");
+
+    public static string CorpusEditorPhrase5 => Text("MotifApp.CorpusEditorPhrase5");
+
+    public static string CorpusEditorPhrase6 => Text("MotifApp.CorpusEditorPhrase6");
+
+    public static string CorpusEditorPhrase7 => Text("MotifApp.CorpusEditorPhrase7");
+
+    public static string CorpusEditorPhrase8 => Text("MotifApp.CorpusEditorPhrase8");
+
+    public static string CorpusEditorPhrase9 => Text("MotifApp.CorpusEditorPhrase9");
+
+    public static string CorpusEditorPhrase10 => Text("MotifApp.CorpusEditorPhrase10");
+
+    public static string CorpusEditorPhrase11 => Text("MotifApp.CorpusEditorPhrase11");
+
+    public static string CorpusEditorPhrase12 => Text("MotifApp.CorpusEditorPhrase12");
+
+    public static string CorpusEditorPhrase13 => Text("MotifApp.CorpusEditorPhrase13");
+
+    public static string CorpusEditorPhrase14 => Text("MotifApp.CorpusEditorPhrase14");
+
+    public static string CorpusEditorPhrase15 => Text("MotifApp.CorpusEditorPhrase15");
+
+    public static string CorpusEditorPhrase16 => Text("MotifApp.CorpusEditorPhrase16");
+
+    public static string CorpusEditorPhrase17 => Text("MotifApp.CorpusEditorPhrase17");
+
+    public static string CorpusEditorPhrase18 => Text("MotifApp.CorpusEditorPhrase18");
+
+    public static string CorpusEditorPhrase19 => Text("MotifApp.CorpusEditorPhrase19");
+
+    public static string CorpusEditorPhrase20 => Text("MotifApp.CorpusEditorPhrase20");
+
+    public static string CorpusEditorPhrase21 => Text("MotifApp.CorpusEditorPhrase21");
+
+    public static string CorpusEditorPhrase22 => Text("MotifApp.CorpusEditorPhrase22");
+
+    public static string CorpusEditorPhrase23 => Text("MotifApp.CorpusEditorPhrase23");
+
+    public static string CorpusEditorPhrase24 => Text("MotifApp.CorpusEditorPhrase24");
+
+    public static string CorpusEditorPhrase25 => Text("MotifApp.CorpusEditorPhrase25");
+
+    public static string CorpusEditorPhrase26 => Text("MotifApp.CorpusEditorPhrase26");
+
+    public static string CorpusEditorPhrase27 => Text("MotifApp.CorpusEditorPhrase27");
+
+    public static string CorpusEditorPhrase28 => Text("MotifApp.CorpusEditorPhrase28");
+
+    internal static IReadOnlyDictionary<string, string> CorpusEditorPhrases => new Dictionary<string, string>
+    {
+        ["Find"] = CorpusEditorPhrase0,
+        ["Replace"] = CorpusEditorPhrase1,
+        ["next"] = CorpusEditorPhrase2,
+        ["previous"] = CorpusEditorPhrase3,
+        ["all"] = CorpusEditorPhrase4,
+        ["match case"] = CorpusEditorPhrase5,
+        ["regexp"] = CorpusEditorPhrase6,
+        ["by word"] = CorpusEditorPhrase7,
+        ["replace"] = CorpusEditorPhrase8,
+        ["replace all"] = CorpusEditorPhrase9,
+        ["close"] = CorpusEditorPhrase10,
+        ["Go to line"] = CorpusEditorPhrase11,
+        ["go"] = CorpusEditorPhrase12,
+        ["current match"] = CorpusEditorPhrase13,
+        ["on line"] = CorpusEditorPhrase14,
+        ["replaced match on line $"] = CorpusEditorPhrase15,
+        ["replaced $ matches"] = CorpusEditorPhrase16,
+        ["Control character"] = CorpusEditorPhrase17,
+        ["Selection deleted"] = CorpusEditorPhrase18,
+        ["folded code"] = CorpusEditorPhrase19,
+        ["to"] = CorpusEditorPhrase20,
+        ["unfold"] = CorpusEditorPhrase21,
+        ["Folded lines"] = CorpusEditorPhrase22,
+        ["Unfolded lines"] = CorpusEditorPhrase23,
+        ["Fold line"] = CorpusEditorPhrase24,
+        ["Unfold line"] = CorpusEditorPhrase25,
+        ["Completions"] = CorpusEditorPhrase26,
+        ["Diagnostics"] = CorpusEditorPhrase27,
+        ["No diagnostics"] = CorpusEditorPhrase28,
+    };
+
+    public static string CorpusContexts => Text("MotifApp.CorpusContexts");
+
+    public static string CorpusWordforms => Text("MotifApp.CorpusWordforms");
+
+    public static string CorpusBoundariesNotice => Text("MotifApp.CorpusBoundariesNotice");
+
+    public static string CorpusNoProject => Text("MotifApp.CorpusNoProject");
+
+    public static string CorpusUnavailable => Text("MotifApp.CorpusUnavailable");
+
     public static string MenuWritingSystems => Text("MotifApp.MenuWritingSystems");
 
     public static string MenuHelp => Text("MotifApp.MenuHelp");
