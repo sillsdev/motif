@@ -127,7 +127,7 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
                             ("$id", reportId.Value), ("$case", item.CaseKey), ("$ordinal", ordinal++), ("$facts", json));
                         return true;
                     }
-                    foreach (var assertion in item.Assertions.Where(assertion => assertion.Eligible))
+                    foreach (var assertion in item.Assertions)
                     {
                         var row = new ExpectationRow(assertion.Id,
                             assertion.WholeWordNegative ? ExpectationAssertion.WholeWordNegative : ExpectationAssertion.CorrectReading,
@@ -243,6 +243,7 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
 
     private static ExpectationOutcome ExpectationState(ReviewAssertion assertion, ReviewCaseSideFacts side)
     {
+        if (!assertion.Eligible) return ExpectationOutcome.Unknown;
         if (assertion.WholeWordNegative)
             return side.Parsed == true ? ExpectationOutcome.Missing : side.Completion == Completion.Complete && side.Parsed == false
                 ? ExpectationOutcome.Matched : ExpectationOutcome.Unknown;

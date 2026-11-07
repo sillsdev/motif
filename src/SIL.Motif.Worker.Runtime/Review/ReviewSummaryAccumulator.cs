@@ -32,6 +32,7 @@ public sealed class ReviewSummaryAccumulator
     private long _beforeNotMeasured, _beforeStopped, _afterNotMeasured, _afterStopped, _incompleteTokens;
     private string? _incompleteTokenProblem;
     private bool _approvedIdentityIncomplete;
+    private bool _negativeContextUnavailable;
     private WorkChange? _parserWork;
     private bool _workFlag;
     private ReviewFindingDelta? _findings;
@@ -77,6 +78,8 @@ public sealed class ReviewSummaryAccumulator
                 _negativeSets.Add(member.SetId);
             }
         }
+        if (item.Limitations.Contains("negative-context-unavailable", StringComparer.Ordinal))
+            _negativeContextUnavailable = true;
         if (item.Limitations.Contains("expectation-identity-unavailable", StringComparer.Ordinal) &&
             item.Assertions.Any(assertion => assertion.Eligible && assertion.Approved && !assertion.WholeWordNegative))
             _approvedIdentityIncomplete = true;
@@ -165,6 +168,7 @@ public sealed class ReviewSummaryAccumulator
         var tokenAfter = _tokenAfter.Value();
         var limitations = new HashSet<string>(StringComparer.Ordinal);
         if (_approvedIdentityIncomplete) limitations.Add("expectation-identity-unavailable");
+        if (_negativeContextUnavailable) limitations.Add("negative-context-unavailable");
         foreach (var coverage in new[] { wordBefore, wordAfter, tokenBefore, tokenAfter, cellBefore, cellAfter })
             foreach (var reason in coverage.ReasonCodes.Where(reason => reason is "count-overflow" or "invalid-weight"))
                 limitations.Add(reason);

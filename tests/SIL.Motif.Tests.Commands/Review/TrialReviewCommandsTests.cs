@@ -50,6 +50,38 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task ContextualNegativeRemainsUnknownInPublishedEvidenceAndDetails()
+    {
+        var assertion = new ReviewAssertion("negative", "", null, ReferenceAuthority.Human,
+            "actor", "revision", false, true, false, ["source"]) { Context = "context" };
+        var membership = new ReviewMembership("negatives", "member", "negative", 1, null, null, ["negative"]);
+        var set = new ReviewSetBinding("negatives", "Negatives", "negative", "members", "expectations", "source", []);
+        var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [set], [],
+            [new ReviewPlannedCase("case", "word-key", "word", "ws", null, [membership], [assertion])]);
+        var digest = "sha256:" + new string('a', 64);
+        var baseline = new BaselineToken("project", digest, "v1", "2026-01-01T00:00:00Z", digest);
+        var reference = ReviewInputArtifacts.Store(_database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>()) { Baseline = baseline });
+        var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(), proposalId = _proposal.Value, operations = Array.Empty<object>() });
+        var input = new TrialJobInput(proposalJson, null, ReviewInputs: reference);
+        new JobRepository(_database).RecordInterrupted(Job, "project", "trial", JsonSerializer.Serialize(input, MotifJson.CreateOptions()),
+            "{}", "2026-01-01T00:00:00Z", JobStatus.Failed);
+        var empty = new ParseWordEvidence("fieldworks-parse-analysis/v1", 0, "word", 0, false, false, false, [], []);
+        TrialReviewEvidence.Save(_database, new TrialReviewLedger(Job, reference,
+            [new("case", "word", "no-analysis", empty)], [new("case", "word", "analysed", empty)], []));
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var repository = new ReviewReportRepository(_database);
+        var report = repository.ReadManifest(id)!.Summary;
+        var flag = Assert.Single(report.FlagEvidence, item => item.Id == ReviewFlagId.KnownNonwordsNowAccepted);
+        Assert.Equal(EvidenceState.Partial, flag.State);
+        Assert.Contains("negative-context-unavailable", flag.Reasons);
+        Assert.Contains(report.Limitations, item => item.Code == "negative-context-unavailable");
+        var page = repository.ReadChildren(new ReviewChildPageRequest("project", id, "expectations", "case"));
+        var row = Assert.IsType<ExpectationRow>(Assert.Single(page.Items));
+        Assert.Equal("actor", row.ActorId);
+        Assert.Equal(ExpectationOutcome.Unknown, row.After);
+    }
+
+    [Fact]
     public void NoTrialPointsToExplicitProduction()
     {
         var result = new TrialReviewCommands(_database).Read(new ReviewReadRequest("project", _proposal.Value));

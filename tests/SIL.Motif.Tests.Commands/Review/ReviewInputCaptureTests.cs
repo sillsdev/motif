@@ -154,6 +154,9 @@ public sealed class ReviewInputCaptureTests
         Assert.Contains("negative-context-unavailable", result.Limitations);
         Assert.Equal(new[] { "n1", "n2" }, result.Before.UnknownExpectationIds);
         Assert.False(result.NewlyAcceptedNegative);
+        var accumulator = new SIL.Motif.Worker.Runtime.Review.ReviewSummaryAccumulator(captured.Sets);
+        accumulator.Add(result);
+        Assert.Contains("negative-context-unavailable", accumulator.Snapshot().Limitations);
     }
 
     [Fact]

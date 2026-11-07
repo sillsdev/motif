@@ -340,6 +340,21 @@ public sealed class ReviewReportPagingTests : IDisposable
     }
 
     [Fact]
+    public async Task IneligibleContextualNegativeRemainsAnUnknownAttributedExpectation()
+    {
+        var assertion = new ReviewAssertion("negative", "", null, ReferenceAuthority.Human,
+            "actor", "revision", false, true, false, ["source"]) { Context = "context" };
+        var item = Sample(0, 0) with { Assertions = [assertion] };
+        var id = await Publish("context", item);
+        var page = _repository.ReadChildren(new ReviewChildPageRequest("project", id, "expectations", item.CaseKey));
+        var row = Assert.IsType<ExpectationRow>(Assert.Single(page.Items));
+        Assert.Equal("actor", row.ActorId);
+        Assert.Equal(new[] { "source" }, row.SourceRefs);
+        Assert.Equal(ExpectationOutcome.Unknown, row.Before);
+        Assert.Equal(ExpectationOutcome.Unknown, row.After);
+    }
+
+    [Fact]
     public async Task LargeStreamReadsOnlyOneBoundedPage()
     {
         var id = await _repository.PublishAsync(Publication("large") with { EstimatedDetailBytes = 50_000_000 },
