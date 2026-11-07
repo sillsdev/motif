@@ -51,7 +51,7 @@ CONTEXT, glossaries). Batching changes nothing else: `./test.ps1 -All` with a fr
 `-SkipBuild`, and at most two suites at once (`MOTIF_TEST_SLOTS=2`) stay as they are. The report lists the branches with
 their commit SHAs and the passed, failed and skipped counts for each project.
 
-**The text editor library is a submodule.** `build.ps1` and `test.ps1` run `git submodule update --init external/SIL.TextEditing` when it is empty; a bare `dotnet build` fails with that command in its message.
+**The text editor library is the sealed folder `textediting/` (ADR 0092).** It has its own build, solution, rules (`textediting/AGENTS.md`) and ADRs, and its own CI job (`.github/workflows/textediting.yml`); `build.ps1` and `test.ps1` build only the two projects `SIL.Motif.App` references, at net10.0. Nothing in it may reference Motif except `Directory.Build.Common.props` and `SilVersions.props`, and Motif projects are never added to its solution nor its projects to `Motif.sln`. Raising `SilVersions.props` re-tests its .NET Framework 4.8 line.
 
 **One machine, many worktrees: the scripts size themselves.** `build.ps1` passes `-m:N` to restore and build, with
 `N = MOTIF_BUILD_NODES` or, on a developer machine, a quarter of the processors (minimum two). CI is uncapped: no `-m`, no slot, and xUnit keeps its own thread default.
