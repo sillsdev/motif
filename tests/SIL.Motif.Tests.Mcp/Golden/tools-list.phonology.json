@@ -1850,7 +1850,7 @@
   },
   {
     "name": "motif_finalize_proposal",
-    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
+    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.\nThenMove: A status move made in the same transaction; if it is refused the Draft stays a Draft.",
     "inputSchema": {
       "type": "object",
       "properties": {
