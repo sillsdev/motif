@@ -26,7 +26,7 @@ internal static class ProposalNumberText
         Number("Coverage", Show(trial.TextCoveragePercent, Percent), trial.TextCoveragePercent.Moved,
             side: Side(trial.TextCoveragePercent, Percent)),
         new("Approved kept", ShowKept(trial), trial.ApprovedKept.Moved || trial.ApprovedTotal.Moved),
-        Number("Work", ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialParserWork),
+        Number(MotifAppStrings.ProposalWork, ShowWork(trial.Work), trial.Work is { } work && PairedMoves.Work(work.BaselineWork, work.TrialParserWork),
             MotifAppStrings.ProposalWorkNotComparable),
         Number("Warnings", Show(trial.WarningCount, Count), trial.WarningCount.Moved,
             side: Side(trial.WarningCount, Count)),
@@ -323,7 +323,8 @@ public sealed class ProposalCardViewModel : ObservableObject
     public bool HasStatus => StatusText.Length > 0;
 
     /// <summary>The latest Trial's verdict, or its standing when no comparable result exists.</summary>
-    public string VerdictText => Card.Trial is { ApprovedKept.HasAfter: true, ApprovedTotal.HasBefore: true } trial
+    public string VerdictText => Card.Trial is
+        { ApprovedKept.HasAfter: true, ApprovedTotal.HasBefore: true, LostApprovedKnown: true } trial
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalVerdictFormat,
             trial.ApprovedKept.After, trial.ApprovedTotal.Before,
             trial.LostApproved == 0 ? MotifAppStrings.ProposalLosesNone : trial.LostApproved.ToString(CultureInfo.CurrentCulture))

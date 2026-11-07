@@ -418,7 +418,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("60% → 64.5%", card.Numbers[0].Value);
         Assert.True(card.Numbers[0].Moved);
         Assert.Equal("10 of 12 → 9 of 12", card.Numbers[1].Value);
-        Assert.Equal(["Coverage", "Approved kept", "Work", "Warnings"], card.Numbers.Select(n => n.Label));
+        Assert.Equal(["Coverage", "Approved kept", "Parser Work", "Warnings"], card.Numbers.Select(n => n.Label));
         Assert.Equal("1 lost", card.LostChip);
         Assert.Null(card.FitChip);
         Assert.Equal("also changes words in Other", card.AlsoChip);

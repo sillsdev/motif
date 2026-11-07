@@ -50,6 +50,9 @@ public sealed record TrialSummary(
     int LostApproved,
     int NoLongerFits)
 {
+    /// <summary>Whether the Trial's losses could be compared against complete correctness evidence.</summary>
+    public bool LostApprovedKnown { get; init; }
+
     /// <summary>Parser work measured for this Trial against its Baseline, when available.</summary>
     public TrialWork? Work { get; init; }
 }

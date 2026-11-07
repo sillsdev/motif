@@ -1341,8 +1341,8 @@
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.ProposalWork" xml:space="preserve">
-    <value>Work</value>
-    <comment>Column heading on the Proposals page for the parser work, in parser work, a Trial took beside the Baseline's.</comment>
+    <value>Parser Work</value>
+    <comment>Column heading for parser work in a Trial compared with its Baseline.</comment>
   </data>
   <data name="MotifApp.ProposalsAccessibleName" xml:space="preserve">
     <value>Proposals</value>

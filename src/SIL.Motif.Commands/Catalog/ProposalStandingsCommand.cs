@@ -224,27 +224,29 @@ public static class ProposalStandingsCommand
         return new TrialSummary(trial.JobId, trial.CompletedUtc, trial.Freshness, trial.WordScope,
             Pair(today?.WordCoveragePercent, after?.WordCoveragePercent, today?.WordCoveragePercent is not null,
                 PairedMoves.Percent),
-            Pair<int>(today?.Accuracy.ApprovedWordsKept ?? 0, after?.Accuracy.ApprovedWordsKept ?? 0, true,
+            Pair<int>(today?.Accuracy.ApprovedWordsKept ?? 0, after?.Accuracy.ApprovedWordsKept ?? 0, today is not null,
                 (before, now) => PairedMoves.Count(before, now)),
-            Pair<int>(today?.Accuracy.ApprovedWordCount ?? 0, after?.Accuracy.ApprovedWordCount ?? 0, true,
+            Pair<int>(today?.Accuracy.ApprovedWordCount ?? 0, after?.Accuracy.ApprovedWordCount ?? 0, today is not null,
                 (before, now) => PairedMoves.Count(before, now)),
             Pair(wordTimeToday, after?.Timing.Attribution.WordTimeMs, wordTimeToday is not null, PairedMoves.Time),
-            warnings, lost, noLongerFits) { Work = trial.Work };
+            warnings, lost.Count, noLongerFits) { Work = trial.Work, LostApprovedKnown = lost.Known };
     }
 
-    private static int LostApproved(MotifDatabase database, TrialRecord trial, AssessmentRecord? before,
+    private static (int Count, bool Known) LostApproved(MotifDatabase database, TrialRecord trial, AssessmentRecord? before,
         OverviewResponse? after)
     {
-        if (after is null || !trial.AssessmentIds.TryGetValue(AssessmentKinds.Correctness, out var trialId)) return 0;
+        if (after is null || !trial.AssessmentIds.TryGetValue(AssessmentKinds.Correctness, out var trialId)) return (0, false);
         try
         {
-            return ReviewNumbersCommand.Summarize(before, new AssessmentRepository(database).Get(trialId),
-                trial.Words.Count).WordsLosingApprovedAnalysis.Count;
+            var comparison = ReviewNumbersCommand.Summarize(before, new AssessmentRepository(database).Get(trialId),
+                trial.Words.Count);
+            return (comparison.WordsLosingApprovedAnalysis.Count,
+                comparison is { Comparability: ReviewComparability.Compared, EvidenceComplete: true });
         }
         catch (Exception exception) when (exception is ReportRefusalException or ComparisonRefusalException or
             KeyNotFoundException)
         {
-            return 0;
+            return (0, false);
         }
     }
 

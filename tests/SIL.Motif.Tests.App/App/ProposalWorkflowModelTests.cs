@@ -11,6 +11,26 @@ public sealed class ProposalWorkflowModelTests
     private const string Id = "proposal/one";
 
     [Fact]
+    public void TheVerdictDoesNotClaimNoLossesWithoutComparableEvidence()
+    {
+        var trial = new TrialSummary("job/one", DateTimeOffset.UnixEpoch, TrialFreshness.Current,
+            TrialWordScope.AllWords, new Paired<double?>(null, null, false, false, false, null),
+            new Paired<int>(43, 43, true, true, false, null), new Paired<int>(52, 52, true, true, false, null),
+            new Paired<double?>(null, null, false, false, false, null),
+            new Paired<int?>(null, null, false, false, false, null), 0, 0);
+        var card = new ProposalCard(Id, "Sound change", "proposed", ProposalGroup.WaitingForYou,
+            false, [], TrialStanding.Current, trial, []);
+
+        Assert.Equal(TrialStandingWords.Current.Sentence, new ProposalCardViewModel(card).VerdictText);
+        Assert.Equal("Keeps 43 of 52 approved, loses none.",
+            new ProposalCardViewModel(card with { Trial = trial with { LostApprovedKnown = true } }).VerdictText);
+        Assert.Equal(TrialStandingWords.Current.Sentence, new ProposalCardViewModel(card with
+        {
+            Trial = trial with { LostApprovedKnown = true, ApprovedTotal = trial.ApprovedTotal with { HasBefore = false } },
+        }).VerdictText);
+    }
+
+    [Fact]
     public async Task SelectingAProposalReadsItsRationaleAndDescribesEveryOperation()
     {
         var fake = NewFake();

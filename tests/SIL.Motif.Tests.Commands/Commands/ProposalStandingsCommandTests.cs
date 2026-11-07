@@ -56,6 +56,7 @@ public sealed class ProposalStandingsCommandTests : IDisposable
         Assert.Equal(ProposalGroup.WaitingForYou, card.Group);
         Assert.Equal(TrialFreshness.Current, card.Trial!.Freshness);
         Assert.Equal("trial", card.Trial.JobId);
+        Assert.False(card.Trial.LostApprovedKnown);
     }
 
     [Fact]
