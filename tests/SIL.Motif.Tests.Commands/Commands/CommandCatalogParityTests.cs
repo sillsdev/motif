@@ -225,6 +225,10 @@ public sealed class CommandCatalogParityTests
     {
         var codes = RefusalCodeLiteralsIn("SIL.Motif.Commands");
         codes.UnionWith(RefusalCodeLiteralsIn(Path.Combine("SIL.Motif.Contract", "Parsimony", "ParsimonyRefusalCodes.cs")));
+        codes.UnionWith([SIL.Motif.Contract.Commands.RefusalCodes.AssessUnavailable,
+            SIL.Motif.Contract.Commands.RefusalCodes.JobInvalidWords,
+            SIL.Motif.Contract.Commands.RefusalCodes.TrialReviewBaselineChanged,
+            SIL.Motif.Contract.Commands.RefusalCodes.TrialReviewInputUnavailable]);
 
         Assert.Equal(
             ExpectedRefusalCodes.Order(StringComparer.Ordinal),

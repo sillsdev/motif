@@ -256,8 +256,8 @@ public sealed class HandoffWriterTests : IDisposable
         using var exported = JsonDocument.Parse(File.ReadAllText(tracePath));
         Assert.False(exported.RootElement.TryGetProperty("producerExtension", out _));
         Assert.False(exported.RootElement.GetProperty("complete").GetBoolean());
-        Assert.Equal(ProjectionJson.Serialize(SIL.Motif.Commands.Review.StandaloneTraceProjection.From(selectedTrace.Value)),
-            File.ReadAllText(tracePath));
+        Assert.True(JsonNode.DeepEquals(ProjectionJson.ToNode(SIL.Motif.Commands.Review.StandaloneTraceProjection.From(selectedTrace.Value)),
+            JsonNode.Parse(File.ReadAllText(tracePath))));
         Assert.Equal(HandoffFileExpectations.OneWordTrace.Select(file => file.RelativePath.Replace(
             "<word>", selectedWord, StringComparison.Ordinal)), outcome.Value.Files);
     }

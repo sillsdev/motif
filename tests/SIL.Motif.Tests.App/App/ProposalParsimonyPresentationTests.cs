@@ -418,8 +418,13 @@ public sealed class ProposalParsimonyPresentationTests
             var work = new TrialWork(40, 1_000, 1_000 + (long)(percent * 10), percent, [], 0, 0);
             model.SetParserWork(work);
 
-            var whole = Regex.Match(TrialWorkNotice.For(work)!, @"\d+").Value;
-            Assert.StartsWith($"About {whole}% more", model.ParserWork, StringComparison.Ordinal);
+            var notice = TrialWorkNotice.For(work);
+            if (percent <= 20) Assert.Null(notice);
+            else
+            {
+                var whole = Regex.Match(notice!, @"\d+").Value;
+                Assert.StartsWith($"About {whole}% more", model.ParserWork, StringComparison.Ordinal);
+            }
         }
         await Task.CompletedTask;
     }

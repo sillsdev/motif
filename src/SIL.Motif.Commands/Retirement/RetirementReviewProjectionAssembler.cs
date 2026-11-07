@@ -65,7 +65,14 @@ internal static class RetirementReviewProjectionAssembler
 
         var assessments = ReadAssessmentPair(database, evidence, unavailable);
         if (assessments is null) return null;
-        var (beforeAssessment, afterAssessment) = assessments.Value;
+        var (beforeAssessment, afterAssessments) = assessments.Value;
+        var afterRuns = afterAssessments.Select(RecipeVerificationTrialProjection.From).ToArray();
+        var afterRun = afterRuns[0] with
+        {
+            Assessment = afterRuns[0].Assessment with { Words = afterRuns.SelectMany(run => run.Assessment.Words).ToArray() },
+            SelectionWords = beforeAssessment.Selection.Words.ToArray(),
+            Unavailable = afterRuns.SelectMany(run => run.Unavailable).Distinct(StringComparer.Ordinal).ToArray(),
+        };
         if (translation.Original.Baseline != evidence.Candidate.BaselineToken ||
             translation.ProposalIntentDigest != IntentDigest.Compute(proposal) ||
             translation.DryRunEffectDigest != dryRun.EffectDigest ||
@@ -74,13 +81,13 @@ internal static class RetirementReviewProjectionAssembler
 
         var verification = RecipeVerification.Compare(translation,
             RecipeVerificationTrialProjection.From(beforeAssessment),
-            RecipeVerificationTrialProjection.From(afterAssessment));
+            afterRun);
         var statistics = Statistics(footprint, translation, dryRun, boundFinding.Finding, evidence, afterFinding);
         var attributions = translation.Original.Cases.SelectMany(@case => @case.Readings
             .Where(reading => reading.Opinion == "approved")
             .Select(reading => new RetirementRuleAttribution(@case.CaseId, reading.ReadingId,
                 "unavailable", null, null, "PanGloss did not retain a rule trace for this reading."))).ToArray();
-        var afterSurfaces = afterAssessment.Words!.GroupBy(word =>
+        var afterSurfaces = afterAssessments.SelectMany(assessment => assessment.Words ?? []).GroupBy(word =>
                 (word.Morphology?.Word ?? word.Word).Normalize(NormalizationForm.FormD), StringComparer.Ordinal)
             .Where(group => group.Count() == 1)
             .ToDictionary(group => group.Key, group => group.Single().Morphology?.Word ?? group.Single().Word,
@@ -165,45 +172,58 @@ internal static class RetirementReviewProjectionAssembler
             throw new InvalidDataException("The live project's retirement references differ from the Dry Run source.");
     }
 
-    private static (AssessmentRecord Before, AssessmentRecord After)? ReadAssessmentPair(
+    private static (AssessmentRecord Before, IReadOnlyList<AssessmentRecord> After)? ReadAssessmentPair(
         MotifDatabase database, ParsimonyCandidateEvidenceResponse evidence, ICollection<string> unavailable)
     {
-        if (evidence.After.AssessmentIds.Count != 1 || evidence.After.Inputs.AssessmentIds.Count != 1 ||
-            evidence.After.AssessmentIds[0] != evidence.After.Inputs.AssessmentIds[0])
+        var ids = evidence.After.AssessmentIds;
+        if (ids.Count == 0 || ids.Distinct(StringComparer.Ordinal).Count() != ids.Count ||
+            !ids.Order(StringComparer.Ordinal).SequenceEqual(evidence.After.Inputs.AssessmentIds.Order(StringComparer.Ordinal)))
         {
-            unavailable.Add("One exact after parser result is not available for the affected readings yet.");
+            unavailable.Add("Exact after parser results are not available for the affected readings yet.");
             return null;
         }
         var repository = new AssessmentRepository(database);
-        AssessmentRecord after;
-        try
-        {
-            after = repository.Get(evidence.After.AssessmentIds[0]);
-        }
+        AssessmentRecord[] after;
+        try { after = ids.Select(repository.Get).ToArray(); }
         catch (KeyNotFoundException)
         {
             unavailable.Add("The after parser result is not available in the project store yet.");
             return null;
         }
-        var recordedBaseline = JsonSerializer.Deserialize<BaselineToken>(after.BaselineToken, MotifJson.CreateOptions());
-        if (recordedBaseline != evidence.Candidate.BaselineToken || after.Assessor != "pangloss" ||
-            after.Kind != ParseTime || after.ProposalId?.Value != evidence.Candidate.ProposalId ||
-            after.ProposalIntentDigest != evidence.Candidate.ProposalIntentDigest || after.Invocation is null ||
-            after.Invocation.SourceBytesSha256 != evidence.Candidate.CandidateSourceSha256 ||
-            after.GrammarSourceSha256 != after.Invocation.SourceBytesSha256)
-            throw new InvalidDataException("The after parser Assessment does not match this candidate Report.");
-
+        foreach (var item in after)
+        {
+            var recordedBaseline = JsonSerializer.Deserialize<BaselineToken>(item.BaselineToken, MotifJson.CreateOptions());
+            if (recordedBaseline != evidence.Candidate.BaselineToken || item.Assessor != "pangloss" ||
+                item.Kind != ParseTime || item.ProposalId?.Value != evidence.Candidate.ProposalId ||
+                item.ProposalIntentDigest != evidence.Candidate.ProposalIntentDigest || item.Invocation is null ||
+                item.Invocation.SourceBytesSha256 != evidence.Candidate.CandidateSourceSha256 ||
+                item.GrammarSourceSha256 != item.Invocation.SourceBytesSha256)
+                throw new InvalidDataException("The after parser Assessment does not match this candidate Report.");
+        }
+        var first = after[0];
+        var firstRun = RecipeVerificationTrialProjection.From(first);
+        if (after.Any(item => item.TokeniserName != first.TokeniserName || item.TokeniserVersion != first.TokeniserVersion ||
+                RecipeVerificationTrialProjection.From(item).Options != firstRun.Options))
+        {
+            unavailable.Add("The after parser partitions use different parser settings.");
+            return null;
+        }
+        var words = after.SelectMany(item => item.Selection.Words).ToArray();
+        if (words.Distinct(StringComparer.Ordinal).Count() != words.Length)
+        {
+            unavailable.Add("The after parser partitions contain ambiguous word spellings.");
+            return null;
+        }
         var matchingBefore = repository.ListBaselineAssessments(ParseTime).Where(candidate =>
-                candidate.BaselineToken == after.BaselineToken && candidate.Assessor == after.Assessor &&
-                candidate.Selection.Sha256 == after.Selection.Sha256 &&
-                candidate.Selection.Words.SequenceEqual(after.Selection.Words, StringComparer.Ordinal) &&
-                candidate.TokeniserName == after.TokeniserName && candidate.TokeniserVersion == after.TokeniserVersion &&
+                candidate.BaselineToken == first.BaselineToken && candidate.Assessor == first.Assessor &&
+                candidate.Selection.Words.Order(StringComparer.Ordinal).SequenceEqual(words.Order(StringComparer.Ordinal)) &&
+                candidate.TokeniserName == first.TokeniserName && candidate.TokeniserVersion == first.TokeniserVersion &&
                 candidate.Invocation is { } beforeInvocation &&
-                beforeInvocation.ExecutableBytesSha256 == after.Invocation.ExecutableBytesSha256 &&
+                beforeInvocation.ExecutableBytesSha256 == first.Invocation!.ExecutableBytesSha256 &&
                 AssessmentSearchCaps.Match(beforeInvocation.PerWordParserWorkLimit,
-                    after.Invocation.PerWordParserWorkLimit) &&
-                beforeInvocation.Threads == after.Invocation.Threads &&
-                beforeInvocation.CollectStatistics == after.Invocation.CollectStatistics &&
+                    first.Invocation.PerWordParserWorkLimit) &&
+                beforeInvocation.Threads == first.Invocation.Threads &&
+                beforeInvocation.CollectStatistics == first.Invocation.CollectStatistics &&
                 beforeInvocation.SourceBytesSha256 == evidence.Candidate.BaselineSourceSha256 &&
                 candidate.GrammarSourceSha256 == beforeInvocation.SourceBytesSha256)
             .ToArray();

@@ -13,7 +13,7 @@ public sealed record StandaloneTraceProjection(
     IReadOnlyList<TraceRuleReading> RulesOnBestPath, IReadOnlyList<TraceRef> Refs,
     IReadOnlyList<TraceNode> Nodes, IReadOnlyList<StandaloneNodeDetail> NodeDetails, bool NodesComplete, TraceBaselineSource? Baseline,
     TraceProvenanceComparison? Provenance, string? ParserName, string? ParserVersion, string? GrammarHash,
-    int? LexiconEntryCount)
+    int? LexiconEntryCount, IReadOnlyList<TraceWritingSystem> WritingSystems)
 {
     /// <summary>Projects only known linguistic facts; raw diagnostics and performance measurements stay private.</summary>
     public static StandaloneTraceProjection From(WordTraceResponse response)
@@ -46,7 +46,7 @@ public sealed record StandaloneTraceProjection(
                         null, null, null, null, m.FieldWorksLink)).ToArray())).ToArray(),
             reading.RulesOnBestPath, reading.Refs, nodes, details, complete, response.HostCapture?.Baseline,
             response.Provenance, response.ParserName, response.ParserVersion, response.GrammarHash,
-            response.HostCapture?.LexiconEntryCount);
+            response.HostCapture?.LexiconEntryCount, response.HostCapture?.WritingSystems ?? []);
     }
 
     private static string? Operand(JsonElement? payload, string name) =>

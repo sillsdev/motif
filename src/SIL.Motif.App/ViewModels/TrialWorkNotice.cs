@@ -12,7 +12,7 @@ public static class TrialWorkNotice
 {
     /// <summary>
     /// The note for <paramref name="work"/>, with the rise rounded up to a whole percent, or
-    /// <see langword="null"/> when there is nothing to show: no Trial work, a missing total, or a rise that
+    /// <see langword="null"/> when there is nothing to show: no Trial work, an unavailable comparison, or a rise that
     /// does not pass the threshold.
     /// </summary>
     /// <param name="work">
@@ -20,7 +20,7 @@ public static class TrialWorkNotice
     /// </param>
     public static string? For(TrialWork? work)
     {
-        if (work is not { BaselineWork: not null, TrialParserWork: not null, PercentChange: { } change })
+        if (work is not { PercentChange: { } change })
             return null;
         if (!work.WorkIncreaseWarning) return null;
         return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TrialWorkNotice,

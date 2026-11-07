@@ -27,10 +27,12 @@ public sealed class TrialWorkNoticeTests
     }
 
     [Fact]
-    public void TheNoteIsHiddenWhenEitherTotalIsMissing()
+    public void TheNoteUsesTheSerializedComparisonWithoutRawTotals()
     {
-        Assert.Null(TrialWorkNotice.For(TrialWorkAt(26.0, baselineWork: null)));
-        Assert.Null(TrialWorkNotice.For(TrialWorkAt(26.0, missingTrialWork: true)));
+        var serialized = System.Text.Json.JsonSerializer.Serialize(TrialWorkAt(26.0));
+        var restored = System.Text.Json.JsonSerializer.Deserialize<TrialWork>(serialized);
+        Assert.Equal("This Trial makes parsing about 26% more work than the Baseline.", TrialWorkNotice.For(restored));
+        Assert.Null(TrialWorkNotice.For(TrialWorkAt(null)));
     }
 
     [Fact]
@@ -41,8 +43,8 @@ public sealed class TrialWorkNoticeTests
 
     [Theory]
     [InlineData(20.1, 21)]
-    [InlineData(21.4, 22)]
-    [InlineData(21.0, 21)]
+    [InlineData(26.4, 27)]
+    [InlineData(26.0, 26)]
     [InlineData(22.1, 23)]
     public void TheNoteRoundsThePercentToAWholeNumber(double percentChange, int shown)
     {
@@ -87,11 +89,11 @@ public sealed class TrialWorkNoticeTests
         var context = WorkspaceContextTests.NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(@"C:\projects\one.fwdata");
-        fake.ReadTrialCompletesWith(TrialRecordWith(TrialWorkAt(21.0)));
+        fake.ReadTrialCompletesWith(TrialRecordWith(TrialWorkAt(26.0)));
         await context.OpenProposalAsync("proposal/one", CancellationToken.None);
         fake.EnqueueTrialCompletesWith(new JobEnqueuedResponse("job/one", "trial", "project/test"));
         await page.TryAgainCommand.ExecuteAsync(null);
-        Assert.Equal("This Trial makes parsing about 21% more work than the Baseline.", page.WorkNotice);
+        Assert.Equal("This Trial makes parsing about 26% more work than the Baseline.", page.WorkNotice);
 
         fake.ReadTrialCompletesWith(TrialRecordWith(TrialWorkAt(0.0)) with { ProposalId = "proposal/two" });
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
@@ -108,17 +110,18 @@ public sealed class TrialWorkNoticeTests
         var context = WorkspaceContextTests.NewContext(fake);
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(@"C:\projects\one.fwdata");
-        fake.ReadTrialCompletesWith(TrialRecordWith(TrialWorkAt(21.0)));
+        fake.ReadTrialCompletesWith(TrialRecordWith(TrialWorkAt(26.0)));
 
         await context.OpenProposalAsync("proposal/one", CancellationToken.None);
-        Assert.Equal("This Trial makes parsing about 21% more work than the Baseline.", page.WorkNotice);
+        Assert.Equal("This Trial makes parsing about 26% more work than the Baseline.", page.WorkNotice);
 
         await context.OpenProjectAsync(@"C:\projects\two.fwdata");
         Assert.Null(page.WorkNotice);
     }
 
-    private static TrialWork TrialWorkAt(double? percentChange, long? baselineWork = 1000, bool missingTrialWork = false) =>
-        new(3, baselineWork, missingTrialWork ? null : 1000 + (long)((percentChange ?? 0) * 10), percentChange, [], 0, 0);
+    private static TrialWork TrialWorkAt(
+        double? percentChange) =>
+        new(3, 1000, percentChange is null ? null : 1000 + (long)Math.Round(percentChange.Value * 10), percentChange, [], 0, 0);
 
     private static TrialRecord TrialRecordWith(TrialWork? work) =>
         new("job/trial", "proposal/one", "sha256:intent", PageScreenshots.Token(), null,

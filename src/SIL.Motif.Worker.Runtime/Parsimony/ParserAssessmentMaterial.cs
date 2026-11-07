@@ -39,9 +39,9 @@ internal static class ParserAssessmentMaterial
             using (StatsCacheLock.AcquireForFile(invocation.SourcePath, cancellationToken))
                 AssessmentSourceArtifactStore.Verify(invocation.SourcePath, invocation.SourceBytesSha256);
             var next = new ParserAssessmentSourceArtifact(invocation.SourcePath, invocation.SourceBytesSha256);
-            if (artifact is not null && artifact != next)
+            if (artifact is not null && artifact.SourceBytesSha256 != next.SourceBytesSha256)
                 throw new InvalidDataException("Parser Assessments do not share one retained candidate source.");
-            artifact = next;
+            artifact ??= next;
         }
         return artifact;
     }

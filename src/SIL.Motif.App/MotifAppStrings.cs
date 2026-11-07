@@ -4505,6 +4505,14 @@ public static class MotifAppStrings
 
     public static string WarningsFindingsNoun => Text("MotifApp.WarningsFindingsNoun");
 
+    public static string RefusalTrialReviewBaselineChanged => Text("MotifApp.RefusalTrialReviewBaselineChanged");
+
+    public static string RefusalTrialReviewInputUnavailable => Text("MotifApp.RefusalTrialReviewInputUnavailable");
+
+    public static string RefusalTrialTraceUnavailable => Text("MotifApp.RefusalTrialTraceUnavailable");
+
+    public static string RefusalAssessUnavailable => Text("MotifApp.RefusalAssessUnavailable");
+
     public static string TimingRuleNew => Text("MotifApp.TimingRuleNew");
 
     public static string TimingRuleMissing => Text("MotifApp.TimingRuleMissing");

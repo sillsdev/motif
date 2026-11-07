@@ -82,6 +82,7 @@ public sealed class RefusalDefaultReasonTests
         ["variant.self-link"] = "reason not determinable statically: the variant link helper carries Refused for each code",
         ["window.check"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
         ["window.diagnostic-not-written"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
+        ["assess.unavailable"] = "reason not determinable statically: a Worker records this code on an interrupted review, not a refusal",
         ["job.parser-unavailable"] = "reason not determinable statically: a failure code a Worker records on a job, not a refusal",
         ["window.diagnostic-unreadable"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
         ["window.no-project"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
