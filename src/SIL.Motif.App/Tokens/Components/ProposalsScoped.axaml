@@ -23,6 +23,9 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
     <Setter Property="Margin" Value="{DynamicResource Component.Proposals.DeleteSetApart}" />
   </Style>
+  <Style Selector="Button.proposalReview.Primary">
+    <Setter Property="Theme" Value="{DynamicResource SolidButton}" />
+  </Style>
   <Style Selector="WrapPanel.proposalInspectorActions">
     <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Compact}" />
   </Style>

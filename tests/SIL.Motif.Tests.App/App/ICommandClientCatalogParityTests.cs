@@ -37,6 +37,8 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.RemoveOperationsAsync)] = "remove-operations",
             [nameof(ICommandClient.ReopenAsync)] = "reopen",
             [nameof(ICommandClient.DeclineProposalAsync)] = "reject --proposal",
+            [nameof(ICommandClient.DeferProposalAsync)] = "defer",
+            [nameof(ICommandClient.ShowProposalAsync)] = "show",
             [nameof(ICommandClient.ReopenProposalAsync)] = "reopen --proposal",
             [nameof(ICommandClient.DiscardDraftAsync)] = "discard-draft",
             [nameof(ICommandClient.LoadPendingChangesAsync)] = "pending-changes",

@@ -31,7 +31,7 @@ public sealed class ProposalNumberEmphasisTests
             {
                 Application.Current.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
                 workspace.CurrentPage = WorkspacePage.Proposals;
-                window.Width = 1920;
+                window.Width = 2400;
                 window.Height = 1080;
                 PageScreenshots.Settle(window);
                 var model = workspace.PageModel<ProposalsPageModel>();

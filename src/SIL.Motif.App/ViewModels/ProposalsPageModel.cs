@@ -177,6 +177,9 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>The automation id of this card's Open button.</summary>
     public string OpenAutomationId { get; }
 
+    /// <summary>The identifier of the Proposal lens action in the row menu.</summary>
+    public string MenuOpenAutomationId => OpenAutomationId + "-menu";
+
     /// <summary>The automation id of this card's Try again button.</summary>
     public string TryAgainAutomationId { get; }
 

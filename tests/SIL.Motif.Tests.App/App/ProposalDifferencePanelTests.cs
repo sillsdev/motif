@@ -38,6 +38,10 @@ public sealed class ProposalDifferencePanelTests
         var window = new MotifTestWindow { Width = width, Height = 1000, Content = host };
         window.Show();
         PageScreenshots.Settle(window);
+        var checks = Assert.Single(host.GetVisualDescendants().OfType<Expander>(),
+            expander => expander.Header is TextBlock { Text: var text } && text == MotifAppStrings.ProposalOptionalChecks);
+        checks.IsExpanded = true;
+        PageScreenshots.Settle(window);
         return (model, Assert.Single(host.GetVisualDescendants().OfType<ProposalDifferencePanel>()), window);
     }
 

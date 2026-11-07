@@ -132,20 +132,15 @@
         <StackPanel>
           <StackPanel Classes="proposalInspectorActions" Spacing="{DynamicResource Intent.Space.Compact}"
                       IsVisible="{Binding !IsConfirmingDelete}" IsEnabled="{Binding !IsConfirmingDecline}">
-            <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}" Classes="Primary" Theme="{DynamicResource SolidButton}"
-                    IsVisible="{Binding !SelectedProposal.CanTry}"
-                    Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
-                    Click="OnRequestPageInspector"
-                    AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
             <WrapPanel Classes="proposalInspectorActions">
               <Button Content="{Binding SelectedProposal.TryText}" Classes="Primary" Theme="{DynamicResource SolidButton}"
                       IsVisible="{Binding SelectedProposal.CanTry}"
                       Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
                       AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}" />
-              <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}"
-                      IsVisible="{Binding SelectedProposal.CanTry}"
+              <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}" Classes="proposalReview"
+                      Classes.Primary="{Binding !SelectedProposal.CanTry}"
                       Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
-                      Click="OnRequestPageInspector" />
+                      Click="OnRequestPageInspector" AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
               <Button Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding SelectedProposal.CanReopen}"
                       Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}"
                       AutomationProperties.AutomationId="{Binding SelectedReopenAutomationId}" />
@@ -189,7 +184,7 @@
       </Border>
     </DataTemplate>
   </UserControl.Resources>
-  <Grid x:Name="ProposalsTableHost" RowDefinitions="Auto,Auto,*,Auto,Auto"
+  <Grid x:Name="ProposalsTableHost" RowDefinitions="Auto,Auto,4*,*,Auto"
         controls:DenseTable.IsWidthHost="True">
     <StackPanel Grid.Row="0" Grid.Column="0" Classes="proposalsPage">
       <StackPanel Classes="proposalsHeading">
@@ -267,14 +262,15 @@
                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}"
                       VerticalAlignment="Center">
                   <TextBlock Classes="denseTableCell denseTableItem" Classes.unread="{Binding IsUnread}" Text="{Binding Label}"
-                             TextWrapping="Wrap"
+                             TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
                              ToolTip.Tip="{Binding Label}" />
                   <Border Grid.Column="1" controls:DenseTable.Secondary="True">
                     <TextBlock Classes="denseTableCell" Text="{Binding ChangeCountText}"
                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
                   </Border>
                   <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Classes="denseTableCell muted" Classes.unread="{Binding IsUnread}"
-                             Text="{Binding DecisionFacts}" TextWrapping="Wrap" />
+                             Text="{Binding DecisionFacts}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding DecisionFacts}" />
                 </Grid>
                 <Border Grid.Column="1" controls:DenseTable.Secondary="True">
                   <TextBlock Classes="denseTableCell" Text="{Binding AuthorText}"
@@ -351,7 +347,7 @@
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                                   Content="{x:Static app:MotifAppStrings.ViewWithThisProposal}" IsVisible="{Binding ShowsOpenAction}"
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
-                                  CommandParameter="{Binding}" />
+                                  CommandParameter="{Binding}" AutomationProperties.AutomationId="{Binding MenuOpenAutomationId}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                                   Content="{x:Static app:MotifAppStrings.Delete}" IsVisible="{Binding CanDelete}"
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).AskToDeleteCommand}"
@@ -396,11 +392,11 @@
         <views:CopyableTextBlock Text="{Binding Detail.Rationale.Markdown}" TextWrapping="Wrap" />
         <views:RefusalBlock DataContext="{Binding DetailRefusal}" />
         <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalWhatItChanges}" />
-        <ItemsControl ItemsSource="{Binding OperationDescriptions}">
+        <views:ProgressiveItemsControl x:Name="ProposalOperationDescriptions" FullItemsSource="{Binding OperationDescriptions}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
           </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        </views:ProgressiveItemsControl>
       </StackPanel>
     </ScrollViewer>
     <Button Grid.Row="4" Grid.Column="0" Content="{Binding SetAsideLinkText}"

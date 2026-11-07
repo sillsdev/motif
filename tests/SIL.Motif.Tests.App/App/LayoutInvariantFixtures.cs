@@ -124,7 +124,7 @@ internal static class LayoutInvariantFixtures
             expected.Add(workspace.CurrentPage switch
             {
                 WorkspacePage.Overview => "Open slowest words in Timing",
-                WorkspacePage.Proposals => "Open",
+                WorkspacePage.Proposals => $"View with This Proposal|id:{workspace.PageModel<ProposalsPageModel>().SelectedProposal?.ActionsAutomationId}",
                 WorkspacePage.Texts => "Analyze texts tab",
                 WorkspacePage.TryAWord => "Try the word",
                 WorkspacePage.Timing => "All timed words",

@@ -40,6 +40,10 @@ public sealed class ProposalParsimonyPanelTests
                 await Wait.UntilAsync(() => page.Parsimony.Status is not null, "The Parsimony section never showed a status.");
             PageScreenshots.Settle(window);
         }
+        var checks = Assert.Single(window.GetVisualDescendants().OfType<Expander>(),
+            expander => expander.Header is TextBlock { Text: var text } && text == MotifAppStrings.ProposalOptionalChecks);
+        checks.IsExpanded = true;
+        PageScreenshots.Settle(window);
         return (workspace, window, fake);
     }
 
@@ -58,8 +62,10 @@ public sealed class ProposalParsimonyPanelTests
             var (workspace, window, _) = await OpenAsync(choose: Selected);
             try
             {
-                var label = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.IsEffectivelyVisible && text.Text == "Work" &&
+                var numbers = Assert.Single(window.GetVisualDescendants().OfType<ItemsControl>(),
+                    control => control.Name == "ProposalsNumberItems");
+                var label = Assert.Single(numbers.GetVisualDescendants().OfType<TextBlock>(),
+                    text => text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalWork &&
                         text.Parent is Grid { Classes: var classes } && classes.Contains("inspectorFact"));
                 var row = Assert.IsType<Grid>(label.Parent);
                 var value = Assert.Single(row.Children.OfType<TextBlock>(), text => text != label);
