@@ -94,6 +94,23 @@ public sealed class ReviewCaseClassifierTests
         Assert.True(loss.ReferenceConfirmed);
     }
 
+    [Fact]
+    public void UnresolvedReferenceDoesNotSuppressAnotherReferencesProvenLoss()
+    {
+        var known = Assertion(Form1, false);
+        var unknown = Assertion(Form2, false) with { Morphology = new ApprovedMorphology([]) };
+        var delta = ReviewCaseClassifier.Compare(Facts([Form1], [], [known, unknown]));
+        var accumulator = new ReviewSummaryAccumulator();
+        accumulator.Add(delta);
+        var snapshot = accumulator.Snapshot();
+        var control = Assert.Single(snapshot.Controls);
+        Assert.Equal(1, snapshot.UniqueReadingLosses);
+        Assert.Equal(1, control.LostReadings);
+        Assert.Equal(1, control.UnresolvedExpectations);
+        Assert.Null(control.ExpectedReadingCount);
+        Assert.Contains(ReviewFlagId.ConfirmedReadingsLost, delta.Flags);
+    }
+
     private static ReviewCaseFacts Facts(string[] before, string[] after, ReviewAssertion[] assertions) =>
         new("case", "word", "word", "ws", Evidence(before), Evidence(after), assertions,
             assertions.Where(a => !a.Approved && !a.WholeWordNegative && a.Eligible)

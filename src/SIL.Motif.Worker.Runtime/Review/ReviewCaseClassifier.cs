@@ -118,7 +118,7 @@ public static class ReviewCaseClassifier
             Guid.TryParse(m.Msa, out var msa) && msa != Guid.Empty &&
             (m.InflType is null || Guid.TryParse(m.InflType, out var infl) && infl != Guid.Empty));
 
-    private static bool Exact(ApprovedMorphology morphology) => morphology.Morphs is { Count: > 0 } &&
+    internal static bool Exact(ApprovedMorphology morphology) => morphology.Morphs is { Count: > 0 } &&
         morphology.Morphs.All(m => m is not null && Guid.TryParse(m.Form, out var form) && form != Guid.Empty &&
             Guid.TryParse(m.Msa, out var msa) && msa != Guid.Empty && ValidForms(m.Forms) &&
             (m.InflType is null || Guid.TryParse(m.InflType, out var infl) && infl != Guid.Empty));

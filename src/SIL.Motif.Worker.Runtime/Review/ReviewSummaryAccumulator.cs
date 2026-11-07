@@ -231,8 +231,8 @@ public sealed class ReviewSummaryAccumulator
         {
             var assertion = item.Assertions.FirstOrDefault(assertion => assertion.Id == id && assertion.Eligible &&
                 !assertion.WholeWordNegative);
-            if (assertion?.Morphology is null || string.IsNullOrWhiteSpace(assertion.ReadingIdentity) ||
-                item.Limitations.Contains("expectation-identity-unavailable", StringComparer.Ordinal))
+            if (assertion?.Morphology is null || !ReviewCaseClassifier.Exact(assertion.Morphology) ||
+                string.IsNullOrWhiteSpace(assertion.ReadingIdentity))
             {
                 totals.Unresolved.Add((member.SetId, member.CaseId, id));
                 continue;
