@@ -46,6 +46,18 @@ public sealed class LowercasePass
         return For(cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem);
     }
 
+    /// <summary>Uses the exact project writing system, or the default when the case has none.</summary>
+    public static LowercasePass ForCache(SIL.LCModel.LcmCache cache, string? writingSystemId)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        if (writingSystemId is null) return ForCache(cache);
+        var handle = cache.WritingSystemFactory.GetWsFromStr(writingSystemId);
+        var writingSystem = handle == 0 ? null : cache.ServiceLocator.WritingSystemManager.Get(handle);
+        return writingSystem is null
+            ? throw new InvalidOperationException($"Writing system '{writingSystemId}' is not in the captured project.")
+            : For(writingSystem);
+    }
+
     /// <summary>
     /// The pass for the project's default vernacular writing system, which is the one the parser's words are in.
     /// A project that cannot be opened gets <see cref="None"/>: the parser reads the same file and reports the

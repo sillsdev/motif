@@ -317,7 +317,8 @@ public static class Trials
         [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string> AssessmentIds,
         [property: JsonPropertyName("allWords")] bool AllWords,
         [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null,
-        [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null);
+        [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null,
+        [property: JsonPropertyName("reviewAfter")] IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null);
 
     private sealed record TrialCandidate(JobRecord Job, TrialJobInput Input, Contract.Model.Proposal Proposal);
 

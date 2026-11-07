@@ -10,6 +10,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Assess;
@@ -144,10 +145,25 @@ public static class JobCommands
     /// measures <see cref="DerivedTrialWords"/>, so every front end tries a Proposal the same way.
     /// </summary>
     public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request,
-        string? parserPath = null) => EnqueueTrialCore(request, parserPath, null);
+        string? parserPath = null)
+    {
+        var words = ResolveTrialWords(request);
+        if (!words.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(words.Refusal!);
+        var captured = ReviewTrialCapture.Capture(request, words.Value, parserPath);
+        return captured.Succeeded ? EnqueueTrialCore(captured.Value!, parserPath, null)
+            : CommandOutcome<JobEnqueuedResponse>.Refused(captured.Refusal!);
+    }
 
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueTrialAdmitted(EnqueueTrialRequest request,
-        string? parserPath, ProjectParseLease? admission) => EnqueueTrialCore(request, parserPath, null, admission);
+        string? parserPath, ProjectParseLease? admission)
+    {
+        if (request.ReviewInputs is not null) return EnqueueTrialCore(request, parserPath, null, admission);
+        var words = ResolveTrialWords(request);
+        if (!words.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(words.Refusal!);
+        var captured = ReviewTrialCapture.Capture(request, words.Value, parserPath);
+        return captured.Succeeded ? EnqueueTrialCore(captured.Value!, parserPath, null, admission)
+            : CommandOutcome<JobEnqueuedResponse>.Refused(captured.Refusal!);
+    }
 
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueStoppedTrial(EnqueueTrialRequest request,
         string? parserPath, Refusal stop) => EnqueueTrialCore(request, parserPath, stop);
@@ -188,6 +204,22 @@ public static class JobCommands
             if (StaleBaselineRefusal(project, new BaselineRepository(database).GetCurrentPublished(workspaceKey), "Trial")
                 is { } staleBaseline)
                 return CommandOutcome<JobEnqueuedResponse>.Refused(staleBaseline);
+            if (request.ReviewInputs is { } reviewInputs)
+            {
+                try
+                {
+                    if (ReviewInputArtifacts.Read(database, reviewInputs).Baseline !=
+                        new BaselineRepository(database).GetCurrentPublished(workspaceKey)?.Token)
+                        return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                            "trial.review-baseline-changed", FailureReason.Refused,
+                            "The Baseline changed after the review inputs were captured. Queue the Trial again."));
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                    return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                        "trial.review-input-unavailable", FailureReason.Refused, exception.Message));
+                }
+            }
             var proposalJson = CanonicalProposalJson(record);
             var proposal = ProposalJsonParser.Parse(proposalJson);
             IReadOnlyList<FrozenProposalRevision> prerequisites;
@@ -203,9 +235,13 @@ public static class JobCommands
             var words = (request.Words ?? (request.AllWords ? null : DerivedTrialWords(proposal)))
                 ?.Select(word => word.Normalize(System.Text.NormalizationForm.FormD))
                 .Distinct(StringComparer.Ordinal).ToArray();
-            var input = new TrialJobInput(proposalJson, request.Scope, words, request.AllWords, prerequisites,
+            var wordList = request.ReviewInputs is not null && words is not null &&
+                words.Sum(word => (long)Encoding.UTF8.GetByteCount(word) + 4) > 65536
+                ? JobWordLists.Store(database, words) : null;
+            var input = new TrialJobInput(proposalJson, request.Scope, wordList is null ? words : null, request.AllWords, prerequisites,
                 request.Limits ?? ResolveTrialLimits(database, project, request.Scope),
-                request.BaselineAssessmentIds, request.NegativeWords);
+                request.BaselineAssessmentIds, request.NegativeWords, WordList: wordList,
+                ReviewInputs: request.ReviewInputs, ReviewBaselines: request.ReviewBaselines);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var stamped = JobParserPin.Stamp(inputJson, parserPath);
             if (stop is null)
@@ -252,7 +288,7 @@ public static class JobCommands
                 }));
 
     // The default Selection's limits as Assess resolves them, so Baseline and Trial stop a word at the same cap.
-    private static TrialLimits? ResolveTrialLimits(MotifDatabase database, ProjectLocator project, string? scopeName)
+    internal static TrialLimits? ResolveTrialLimits(MotifDatabase database, ProjectLocator project, string? scopeName)
     {
         var saved = new NamedSelectionRepository(database).GetDefault();
         var limits = saved?.Limits;

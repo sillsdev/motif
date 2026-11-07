@@ -99,14 +99,14 @@ public static class AssessCommand
     internal static CommandOutcome<AssessCommandResponse> AssessWithLimits(
         AssessRequest request, string managedRoot, string? parserPath,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits, bool recordBudgetStop = true,
-        ProjectParseLease? admission = null, bool reuseBefore = false)
+        ProjectParseLease? admission = null, bool reuseBefore = false, string? writingSystemId = null)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
         var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(
             new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker));
         return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission, limits, recordBudgetStop,
-            reuseBefore ? parserPath : null);
+            reuseBefore ? parserPath : null, writingSystemId);
     }
 
     /// <summary>
@@ -130,7 +130,8 @@ public static class AssessCommand
 
     private static CommandOutcome<AssessCommandResponse> RunCore(
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
-        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission, TrialLimits? frozenLimits = null, bool recordBudgetStop = true, string? reuseParserPath = null)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission,
+        TrialLimits? frozenLimits = null, bool recordBudgetStop = true, string? reuseParserPath = null, string? writingSystemId = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(assessor);
@@ -331,7 +332,7 @@ public static class AssessCommand
                     : ParseRunLimits.Resolve(policy, ParseRunLimits.ReadRate(assessments)));
                 scope = new AssessmentScope.Words(composition.Selection.Words, collected,
                     limits.PerWordLimit, limits.PerWordParserWorkLimit)
-                { Casing = LowercasePass.ForCache(baselineReader.Cache) };
+                { Casing = LowercasePass.ForCache(baselineReader.Cache, writingSystemId) };
                 // The lowercase wordforms are rows of their own, so every per-word context and total covers them.
                 parsedWords = scope.ParsedWords;
                 if (reuseParserPath is not null && BeforeAssessmentReuse.Find(database, assessments, baseline.Token,

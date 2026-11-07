@@ -17,6 +17,7 @@ using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
@@ -810,6 +811,40 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(UnanalysedWordform, whileRunning?.CurrentWord);
         Assert.Equal(0, whileRunning?.Completed);
         Assert.Equal(1, JsonSerializer.Deserialize<TrialWordProgress>(completed.ProgressJson!)?.Completed);
+    }
+
+    [Fact]
+    public void ReviewCasesWithDifferentWritingSystemInputsRunSeparateAssessments()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(_baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath);
+        var writingSystem = cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem.Id;
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "review partitions");
+        SaveCommittedProposal(proposalId, proposalJson);
+        ReviewPlannedCase[] cases =
+        [
+            new("case-a", "word-a", UnanalysedWordform, null, null, [], []),
+            new("case-b", "word-b", UnanalysedWordform, writingSystem, null, [], []),
+        ];
+        var inputs = new FrozenReviewInputs("project", proposalId.Value, "scope", "evidence", null, [], [], cases);
+        var reference = ReviewInputArtifacts.Store(_database, new(inputs, new Dictionary<string, byte[]>()) { Baseline = _token });
+        var calls = new List<string[]>();
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new FakeAssessor("pangloss", [AssessmentKind.Correctness], rawForScope: (scope, _, _) =>
+        {
+            calls.Add(scope.WordForms.ToArray());
+            return new AssessmentRaw.WordMeasurements([]);
+        });
+
+        var finished = RunAndFinish(BuildHandler(lanes, assessor),
+            CreateTrialJob(proposalJson, [UnanalysedWordform], reviewInputs: reference));
+
+        Assert.Equal(JobStatus.Completed, finished.Status);
+        Assert.Equal(2, calls.Count);
+        Assert.All(calls, words => Assert.Equal([UnanalysedWordform], words));
+        var after = JsonDocument.Parse(finished.ResultJson!).RootElement.GetProperty("reviewAfter");
+        Assert.Equal(2, after.GetArrayLength());
+        Assert.Equal(2, after.EnumerateArray().Select(row => row.GetProperty("AssessmentIds")[0].GetString()).Distinct().Count());
     }
 
     [Fact]
@@ -1820,9 +1855,10 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     private JobRecord CreateTrialJob(string proposalJson, IReadOnlyList<string>? words = null, bool allWords = false,
-        string? createdUtc = null, bool startRunning = true, JobWordList? wordList = null)
+        string? createdUtc = null, bool startRunning = true, JobWordList? wordList = null,
+        ReviewInputReference? reviewInputs = null)
     {
-        var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words, allWords, wordList },
+        var inputJson = JsonSerializer.Serialize(new { proposalJson, scope = (string?)null, words, allWords, wordList, reviewInputs },
             SIL.Motif.Contract.MotifJson.CreateOptions());
         var job = _jobs.Create(Guid.NewGuid().ToString("N"), ProjectWorkspaceKey.Compute(_project),
             TrialJobHandler.TrialKind, inputJson, createdUtc ?? "2026-08-29T00:00:00Z");

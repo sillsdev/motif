@@ -50,7 +50,9 @@ public sealed record TrialJobInput(
     [property: JsonPropertyName("limits")] TrialLimits? Limits = null,
     [property: JsonPropertyName("baselineAssessmentIds")] IReadOnlyList<string>? BaselineAssessmentIds = null,
     [property: JsonPropertyName("negativeWords")] IReadOnlyList<string>? NegativeWords = null,
-    [property: JsonPropertyName("wordList")] JobWordList? WordList = null)
+    [property: JsonPropertyName("wordList")] JobWordList? WordList = null,
+    [property: JsonPropertyName("reviewInputs")] ReviewInputReference? ReviewInputs = null,
+    [property: JsonPropertyName("reviewBaselines")] IReadOnlyList<ReviewBaselinePartition>? ReviewBaselines = null)
 {
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>
@@ -209,10 +211,13 @@ internal sealed class TrialJobHandler
         }
 
         var input = TrialJobInput.Parse(claim.Job.InputJson);
+        var reviewArtifact = input.ReviewInputs is { } reviewInputs
+            ? ReviewInputArtifacts.Read(claim.Database, reviewInputs) : null;
+        if (reviewArtifact is not null && reviewArtifact.Baseline != baseline.Token)
+            throw new InvalidOperationException("The Trial's captured review Baseline is no longer current.");
         progress.Total = input.Words?.Count ?? 0;
         var proposal = ProposalJsonParser.Parse(input.ProposalJson);
-        var configuration = _configuration.Read(project);
-        var scopeConfiguration = ResolveScope(configuration, input.Scope);
+        var scopeConfiguration = reviewArtifact?.Scope ?? ResolveScope(_configuration.Read(project), input.Scope);
         var assessor = _assessors.Resolve(scopeConfiguration.Assessor);
         var lane = _lanes.GetOrCreate(workspaceKey);
 
@@ -232,7 +237,8 @@ internal sealed class TrialJobHandler
             var words = input.WordList is { } list ? JobWordLists.Read(claim.Database, list) : input.Words;
             candidate = await RunCandidateAsync(claim, lane, proposal, input.Prerequisites ?? [],
                 scopeConfiguration, words, input.AllWords, input.Limits, baseline.FwDataPath,
-                scratchRoot, cancellationToken).ConfigureAwait(false);
+                scratchRoot, reviewArtifact is null ? null : ReviewInputPartitions.Create(reviewArtifact.Inputs),
+                cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -256,7 +262,7 @@ internal sealed class TrialJobHandler
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        progress.Total = candidate.Scope.WordForms.Count;
+        progress.Total = candidate.Partitions.Sum(partition => partition.Scope.WordForms.Count);
         try
         {
             string? grammarCheckWarning = null;
@@ -293,35 +299,54 @@ internal sealed class TrialJobHandler
                 droppedGrammar = DroppedGrammar.NotChecked("No grammar check is configured for this Trial.");
             }
             var limitMs = candidate.Scope.PerWordLimit is { } limit ? (int?)limit.TotalMilliseconds : null;
-            var initialProgress = new TrialWordProgress(0, candidate.Scope.ParsedWords.Count, null)
+            var totalWords = candidate.Partitions.Sum(partition => partition.Scope.ParsedWords.Count);
+            var initialProgress = new TrialWordProgress(0, totalWords, null)
                 { PerWordLimitMs = limitMs };
             claim.PublishTrialProgress(initialProgress);
             var batchPhase = new JobStageProgress("batch", _grammarHealth is null ? 1 : 2,
                 _grammarHealth is null ? 1 : 2, "assessment");
             var batchWait = claim.ObserveParserWait(batchPhase);
-            void WordProgress(TrialWordProgress wordProgress)
-            {
-                Interlocked.Exchange(ref progress.Done, wordProgress.Completed);
-                claim.PublishTrialProgress(wordProgress with { PerWordLimitMs = limitMs });
-            }
-            var produced = assessor is PanGlossAssessor panGloss
-                ? await panGloss.ProduceAsync(candidate.Scope, candidate.ExportedDirectory, WordProgress,
-                    batchWait.Observe, cancellationToken, importedSnapshot).ConfigureAwait(false)
-                : await assessor.ProduceAsync(candidate.Scope, candidate.ExportedDirectory, WordProgress,
-                    batchWait.Observe, cancellationToken).ConfigureAwait(false);
-            var artifactLeases = produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>().Distinct().ToArray();
+            var artifactLeases = new List<AssessmentArtifactLease>();
+            var producedGroups = new List<(CandidatePartition Partition, IReadOnlyList<ProducedAssessment> Produced)>();
             var published = false;
             var preserveArtifacts = false;
             try
             {
+                var completedEarlier = 0;
+                foreach (var partition in candidate.Partitions)
+                {
+                    void WordProgress(TrialWordProgress wordProgress)
+                    {
+                        var completed = completedEarlier + wordProgress.Completed;
+                        Interlocked.Exchange(ref progress.Done, completed);
+                        claim.PublishTrialProgress(wordProgress with { Completed = completed, Total = totalWords, PerWordLimitMs = limitMs });
+                    }
+                    var produced = assessor is PanGlossAssessor panGloss
+                        ? await panGloss.ProduceAsync(partition.Scope, candidate.ExportedDirectory, WordProgress,
+                            batchWait.Observe, cancellationToken, importedSnapshot).ConfigureAwait(false)
+                        : await assessor.ProduceAsync(partition.Scope, candidate.ExportedDirectory, WordProgress,
+                            batchWait.Observe, cancellationToken).ConfigureAwait(false);
+                    producedGroups.Add((partition, produced));
+                    artifactLeases.AddRange(produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>()
+                        .Where(lease => !artifactLeases.Contains(lease)));
+                    completedEarlier += partition.Scope.ParsedWords.Count;
+                }
                 cancellationToken.ThrowIfCancellationRequested();
-                var records = PrepareAll(produced, proposal, candidate.DryRun,
-                    candidate.Selection, candidate.Scope, scopeConfiguration, assessor.Name, baseline.Token,
-                    candidate.ProjectStandings);
+                var records = new List<NewAssessmentRecord>();
+                var reviewAfter = new List<ReviewAfterPartition>();
+                foreach (var group in producedGroups)
+                {
+                    var part = PrepareAll(group.Produced, proposal, candidate.DryRun,
+                        group.Partition.Selection, group.Partition.Scope, scopeConfiguration, assessor.Name, baseline.Token,
+                        candidate.ProjectStandings);
+                    records.AddRange(part);
+                    reviewAfter.Add(new(group.Partition.WritingSystemId, group.Partition.CaseKeys,
+                        part.Select(record => record.AssessmentId).ToArray()));
+                }
                 var assessmentIds = records.Select(record => record.AssessmentId).ToArray();
                 var completionJson = JsonSerializer.Serialize(
                     new TrialCompletion(baseline.Token, assessmentIds, input.AllWords, grammarCheckWarning,
-                        droppedGrammar),
+                        droppedGrammar, reviewArtifact is null ? null : reviewAfter),
                     MotifJson.CreateOptions());
                 try
                 {
@@ -398,14 +423,18 @@ internal sealed class TrialJobHandler
     }
 
     // What one attempt on a throwaway copy produces; assembled on the lane, read off it.
+    private sealed record CandidatePartition(string? WritingSystemId, IReadOnlyList<string> CaseKeys,
+        AssessmentScope.Words Scope, Selection Selection);
+
     private sealed record CandidateRun(DryRunModel DryRun, AssessmentScope.Words Scope, Selection Selection,
-        string ExportedDirectory, string GrammarPath, IReadOnlyDictionary<string, string> ProjectStandings);
+        string ExportedDirectory, string GrammarPath, IReadOnlyDictionary<string, string> ProjectStandings,
+        IReadOnlyList<CandidatePartition> Partitions);
 
     private async Task<CandidateRun> RunCandidateAsync(ClaimedJob claim, ProjectLane lane,
         Contract.Model.Proposal proposal, IReadOnlyList<FrozenProposalRevision> frozenPrerequisites,
         AssessmentScopeConfiguration scopeConfiguration,
         IReadOnlyList<string>? requestedWords, bool allWords, TrialLimits? limits, string baselineFwDataPath,
-        string scratchRoot, CancellationToken cancellationToken)
+        string scratchRoot, IReadOnlyList<ReviewParsePartition>? reviewPartitions, CancellationToken cancellationToken)
     {
         CandidateRun? candidate = null;
         await lane.EnqueueAsync(ProjectWorkItem.CandidateExport(async (_, laneToken) =>
@@ -432,12 +461,25 @@ internal sealed class TrialJobHandler
                     limits is { } selectedLimits ? selectedLimits.PerWordLimit : scopeConfiguration.PerWordLimit,
                     limits?.PerWordParserWorkLimit ?? scopeConfiguration.PerWordParserWorkLimit)
                     { Casing = cache is null ? null : LowercasePass.ForCache(cache) };
-                var projectStandings = ReadProjectStandings(cache, scope.ParsedWords);
+                var partitions = reviewPartitions is null || reviewPartitions.Count == 0
+                    ? [new CandidatePartition(null, [], scope, Selection.Create(scopeConfiguration.Name, words))]
+                    : reviewPartitions.Select(partition =>
+                    {
+                        var partitionScope = new AssessmentScope.Words(partition.Words, scope.Collect,
+                            scope.PerWordLimit, scope.PerWordParserWorkLimit)
+                        {
+                            Casing = cache is null ? null : LowercasePass.ForCache(cache, partition.WritingSystemId),
+                        };
+                        return new CandidatePartition(partition.WritingSystemId, partition.CaseKeys,
+                            partitionScope, Selection.Create(scopeConfiguration.Name, partition.Words));
+                    }).ToArray();
+                var projectStandings = ReadProjectStandings(cache,
+                    partitions.SelectMany(partition => partition.Scope.ParsedWords).Distinct(StringComparer.Ordinal).ToArray());
                 var exportedDirectory = await _prepareForAssessment(cache, laneToken).ConfigureAwait(false);
                 candidate = new CandidateRun(dryRun, scope, Selection.Create(scopeConfiguration.Name, words),
                     exportedDirectory, Path.GetFullPath(cache?.ProjectId.Path
                         ?? throw new InvalidOperationException("A Trial requires a scratch project for grammar health.")),
-                    projectStandings);
+                    projectStandings, partitions);
             }
             finally
             {
@@ -581,5 +623,7 @@ internal sealed class TrialJobHandler
         [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string> AssessmentIds,
         [property: JsonPropertyName("allWords")] bool AllWords,
         [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null,
-        [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null);
+        [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null,
+        [property: JsonPropertyName("reviewAfter"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null);
 }

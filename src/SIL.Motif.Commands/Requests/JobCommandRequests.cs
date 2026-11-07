@@ -26,7 +26,15 @@ public sealed record EnqueueTrialRequest(
     string FwDataPath, string ProductVersion, string ProposalId, string? Scope = null,
     IReadOnlyList<string>? Words = null, bool AllWords = false, string? ExpectedDraftRevision = null,
     TrialLimits? Limits = null, IReadOnlyList<string>? BaselineAssessmentIds = null,
-    IReadOnlyList<string>? NegativeWords = null);
+    IReadOnlyList<string>? NegativeWords = null)
+{
+    /// <summary>The named review sets to include, or null to include every configured set.</summary>
+    public IReadOnlyList<string>? ReviewSetIds { get; init; }
+
+    internal SIL.Motif.Worker.Jobs.ReviewInputReference? ReviewInputs { get; init; }
+    internal SIL.Motif.Contract.Review.FrozenReviewInputs? ReviewSnapshot { get; init; }
+    internal IReadOnlyList<SIL.Motif.Worker.Jobs.ReviewBaselinePartition>? ReviewBaselines { get; init; }
+}
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

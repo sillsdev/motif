@@ -1106,7 +1106,7 @@ internal static class GeneratedArtifactReferences
                 {
                     RequireObjectShape(json, "Trial job input",
                         ["proposalJson", "scope", "words", "allWords", "prerequisites", "limits",
-                            "baselineAssessmentIds", "negativeWords", "wordList"], ["proposalJson", "scope"]);
+                            "baselineAssessmentIds", "negativeWords", "wordList", "reviewInputs", "reviewBaselines"], ["proposalJson", "scope"]);
                     var input = JsonSerializer.Deserialize<TrialJobInput>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The Trial input is null.");
                     if (string.IsNullOrWhiteSpace(input.ProposalJson) ||
@@ -1321,7 +1321,7 @@ internal static class GeneratedArtifactReferences
                 case TrialJobHandler.TrialKind:
                 {
                     RequireObjectShape(json, "Trial result",
-                        ["baselineToken", "assessmentIds", "allWords", "grammarCheckWarning"],
+                        ["baselineToken", "assessmentIds", "allWords", "grammarCheckWarning", "droppedGrammar", "reviewAfter"],
                         ["baselineToken", "assessmentIds", "allWords", "grammarCheckWarning"]);
                     var completion = JsonSerializer.Deserialize<TrialJobReferenceCompletion>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The Trial result is null.");
@@ -2444,7 +2444,9 @@ internal static class GeneratedArtifactReferences
         [property: JsonPropertyName("baselineToken")] BaselineToken BaselineToken,
         [property: JsonPropertyName("assessmentIds")] IReadOnlyList<string> AssessmentIds,
         [property: JsonPropertyName("allWords")] bool AllWords,
-        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning);
+        [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning,
+        [property: JsonPropertyName("droppedGrammar")] JsonElement? DroppedGrammar = null,
+        [property: JsonPropertyName("reviewAfter")] IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null);
 
     private sealed record ParsimonyJobReferenceCompletion(
         [property: JsonPropertyName("reportIds")] IReadOnlyList<string> ReportIds,
