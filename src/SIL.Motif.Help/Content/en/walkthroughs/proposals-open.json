@@ -4,7 +4,7 @@
   "description": "See the Proposals waiting for review and open one beside today's numbers.",
   "steps": {
     "proposals": "Proposals lists what is waiting for you, what needs another try and your own changes not applied yet.",
-    "overview-with-proposal": "Open shows the Overview with a bar naming the Proposal. The four headline numbers read today's value, then the Proposal's; the rest of the page is today's."
+    "overview-with-proposal": "View with This Proposal shows the Overview with a bar naming the Proposal. The four headline numbers read today's value, then the Proposal's; the rest of the page is today's."
   },
   "callouts": {
     "proposals": {

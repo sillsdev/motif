@@ -540,9 +540,7 @@ public sealed class WalkthroughWindow : IDisposable
         WaitUntil(() => FindOptionalByAutomationId(automationId)?.IsEffectivelyEnabled == true,
             TimeSpan.FromSeconds(30), $"AutomationId '{automationId}' is disabled or missing");
         var control = FindByAutomationId(automationId);
-        var topLevel = automationId == AutomationIds.SelectNewProject
-            ? TopLevel.GetTopLevel(control) ?? Window
-            : Window;
+        var topLevel = TopLevel.GetTopLevel(control) ?? Window;
         ClickControl(control, automationId, topLevel);
         Window.UpdateLayout();
         Pump();
@@ -655,6 +653,10 @@ public sealed class WalkthroughWindow : IDisposable
         var seen = new HashSet<Control>(ReferenceEqualityComparer.Instance);
         foreach (var control in ControlsFrom(Window))
             if (seen.Add(control)) yield return control;
+        foreach (var button in Window.GetLogicalDescendants().OfType<Button>())
+            if (button.Flyout is Flyout { IsOpen: true, Content: Control content })
+                foreach (var control in ControlsFrom(content))
+                    if (seen.Add(control)) yield return control;
         if (Window.FindInWindowOrWorkspace<Button>("StatusParseProgress")?.Flyout is Flyout { IsOpen: true, Content: Control progress })
             foreach (var control in ControlsFrom(progress))
                 if (seen.Add(control)) yield return control;
