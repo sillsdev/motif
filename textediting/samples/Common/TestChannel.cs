@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
@@ -24,13 +25,13 @@ namespace SIL.TextEditing.Samples
         }
 
         /// <summary>Serves snapshots of the view's active field on a background thread until the process ends.</summary>
-        public static void Start(string pipeName, PlaygroundView view)
+        public static void Start(string pipeName, PlaygroundView view, Func<IEnumerable<string>>? hostLines = null)
         {
-            var thread = new Thread(() => Serve(pipeName, view)) { IsBackground = true, Name = "test channel" };
+            var thread = new Thread(() => Serve(pipeName, view, hostLines)) { IsBackground = true, Name = "test channel" };
             thread.Start();
         }
 
-        static void Serve(string pipeName, PlaygroundView view)
+        static void Serve(string pipeName, PlaygroundView view, Func<IEnumerable<string>>? hostLines)
         {
             while (true)
             {
@@ -45,7 +46,7 @@ namespace SIL.TextEditing.Samples
                     while ((request = reader.ReadLine()) != null)
                     {
                         // The model is read on the UI thread so a snapshot never races an edit.
-                        string reply = request == "snapshot" ? Dispatcher.UIThread.Invoke(() => Format(view)) : "error unknown request\nend\n";
+                        string reply = request == "snapshot" ? Dispatcher.UIThread.Invoke(() => Format(view, hostLines)) : "error unknown request\nend\n";
                         writer.Write(reply);
                     }
                 }
@@ -57,8 +58,8 @@ namespace SIL.TextEditing.Samples
         }
 
         /// <summary>Lines: <c>caret P:O</c>, <c>anchor P:O</c>, <c>field X Y W H</c> (screen pixels, or none), one <c>p</c> line per paragraph with
-        /// tab-separated run ws and text pairs (text escaped by <see cref="Escape"/>), then <c>end</c>.</summary>
-        public static string Format(PlaygroundView view)
+        /// tab-separated run ws and text pairs (text escaped by <see cref="Escape"/>), <c>popup open|closed</c> (the completion popup), the host's own lines (<c>focus</c>, <c>box</c>, <c>rect</c>), then <c>end</c>.</summary>
+        public static string Format(PlaygroundView view, Func<IEnumerable<string>>? hostLines = null)
         {
             var field = view.Field;
             var editor = field.Editor;
@@ -77,6 +78,8 @@ namespace SIL.TextEditing.Samples
                 foreach (var run in paragraph.Runs) sb.Append('\t').Append(run.Ws).Append('\t').Append(Escape(run.Text));
                 sb.Append('\n');
             }
+            sb.Append("popup ").Append(field.IsCompletionOpen ? "open" : "closed").Append('\n');
+            if (hostLines != null) foreach (var line in hostLines()) sb.Append(line).Append('\n');
             return sb.Append("end\n").ToString();
         }
 

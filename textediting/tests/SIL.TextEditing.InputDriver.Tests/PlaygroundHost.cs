@@ -14,6 +14,9 @@ namespace SIL.TextEditing.InputDriver.Tests
     {
         public string Caret = "", Anchor = "";
         public int[] FieldRect = new int[4];
+        public string Focus = "", Popup = "", AvaloniaFocus = "";
+        public readonly Dictionary<string, string> Boxes = new Dictionary<string, string>();
+        public readonly Dictionary<string, int[]> Rects = new Dictionary<string, int[]>();
         public readonly List<List<(string Ws, string Text)>> Paragraphs = new List<List<(string Ws, string Text)>>();
 
         public string Text(int paragraph) => string.Concat(Paragraphs[paragraph].Select(r => r.Text));
@@ -27,7 +30,20 @@ namespace SIL.TextEditing.InputDriver.Tests
                 if (line.StartsWith("caret ")) s.Caret = line.Substring(6);
                 else if (line.StartsWith("anchor ")) s.Anchor = line.Substring(7);
                 else if (line.StartsWith("field ")) s.FieldRect = line.Substring(6).Split(' ').Select(int.Parse).ToArray();
-                else if (line.StartsWith("p"))
+                else if (line.StartsWith("popup ")) s.Popup = line.Substring(6);
+                else if (line.StartsWith("focus ")) s.Focus = line.Substring(6);
+                else if (line.StartsWith("avalonia ")) s.AvaloniaFocus = line.Substring(9);
+                else if (line.StartsWith("box "))
+                {
+                    var parts = line.Split(new[] { ' ' }, 3);
+                    s.Boxes[parts[1]] = Unescape(parts.Length > 2 ? parts[2] : "");
+                }
+                else if (line.StartsWith("rect "))
+                {
+                    var parts = line.Split(' ');
+                    s.Rects[parts[1]] = parts.Skip(2).Select(int.Parse).ToArray();
+                }
+                else if (line == "p" || line.StartsWith("p\t"))
                 {
                     var parts = line.Split('\t');
                     var runs = new List<(string Ws, string Text)>();
@@ -50,8 +66,11 @@ namespace SIL.TextEditing.InputDriver.Tests
             return sb.ToString();
         }
 
-        public override string ToString() => "caret " + Caret + ", anchor " + Anchor + ", text [" + AllText.Replace("\n", "|") + "]";
+        public override string ToString() => "caret " + Caret + ", anchor " + Anchor + ", focus " + Focus + ", avalonia focus " + AvaloniaFocus + ", popup " + Popup + ", text [" + AllText.Replace("\n", "|") + "]";
     }
+
+    /// <summary>The three hosts the driver runs: the plain Avalonia desktop host on each Avalonia line, and FieldWorks' WinForms shape (net48).</summary>
+    public enum HostKind { Desktop10, Desktop48, WinForms48 }
 
     /// <summary>The playground's plain desktop host running as a child process, with its test pipe when one was asked for.</summary>
     sealed class PlaygroundHost : IDisposable
@@ -72,19 +91,24 @@ namespace SIL.TextEditing.InputDriver.Tests
             PipeName = pipeName;
         }
 
-        /// <summary>The built host, found beside this test project's output (same configuration, net10.0).</summary>
-        public static string HostPath()
+        /// <summary>The built host of that kind, found beside this test project's output (same configuration).</summary>
+        public static string HostPath(HostKind kind = HostKind.Desktop10)
         {
             var dir = new DirectoryInfo(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar));
-            string framework = dir.Name, configuration = dir.Parent!.Name;
+            string configuration = dir.Parent!.Name;
             string bin = dir.Parent.Parent!.Parent!.FullName;
-            return Path.Combine(bin, "Playground.Desktop", configuration, framework, "Playground.Desktop.exe");
+            switch (kind)
+            {
+                case HostKind.Desktop48: return Path.Combine(bin, "Playground.Desktop", configuration, "net48", "Playground.Desktop.exe");
+                case HostKind.WinForms48: return Path.Combine(bin, "Host48", configuration, "net48", "Host48.exe");
+                default: return Path.Combine(bin, "Playground.Desktop", configuration, "net10.0", "Playground.Desktop.exe");
+            }
         }
 
-        public static PlaygroundHost Launch(bool withChannel, string scenario = "Empty")
+        public static PlaygroundHost Launch(bool withChannel, string scenario = "Empty", HostKind kind = HostKind.Desktop10)
         {
             string? pipe = withChannel ? "textediting-test-" + Guid.NewGuid().ToString("N") : null;
-            var info = new ProcessStartInfo(HostPath()) { UseShellExecute = false };
+            var info = new ProcessStartInfo(HostPath(kind)) { UseShellExecute = false };
             info.ArgumentList.Add("--scenario");
             info.ArgumentList.Add(scenario);
             if (pipe != null)

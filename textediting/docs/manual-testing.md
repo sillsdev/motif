@@ -132,9 +132,9 @@ are not tab stops (click them).
 
 | # | Steps | Expected | D10 | D48 | W48 | Notes |
 |---|---|---|---|---|---|---|
-| 6.1 | Click the first TextBox, press Tab. | Focus enters the playground field: the caret shows and typing goes into the field. | n/a | n/a | | |
-| 6.2 | Press Tab again. | Focus moves to the second TextBox. | n/a | n/a | | |
-| 6.3 | Press Shift+Tab twice. | Focus returns to the field, then to the first TextBox. | n/a | n/a | | |
+| 6.1 | Click the first TextBox, press Tab. | Focus enters the playground field: the caret shows and typing goes into the field. | n/a | n/a | automated: InputDriverTests.Tab_and_shift_tab_move_focus_between_the_winforms_text_boxes_and_the_field_and_typing_follows | |
+| 6.2 | Press Tab again. | Focus moves to the second TextBox. | n/a | n/a | automated: InputDriverTests.Tab_and_shift_tab_move_focus_between_the_winforms_text_boxes_and_the_field_and_typing_follows | |
+| 6.3 | Press Shift+Tab twice. | Focus returns to the field, then to the first TextBox. | n/a | n/a | automated: InputDriverTests.Tab_and_shift_tab_move_focus_between_the_winforms_text_boxes_and_the_field_and_typing_follows | |
 | 6.4 | In the field press Left, Right, Up, Down, Home, End, Backspace, Delete, Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+Z, Ctrl+Y. | Each acts in the field; none moves WinForms focus or beeps; Enter makes a new paragraph and does not press a default button. | n/a | n/a | | |
 | 6.5 | Click a toolbar button (Bold), then type. | Focus stays in the field; typing continues. | | | | |
 | 6.6 | In the Many fields scenario click different fields, then Tab. | The Model tab and `ws:` follow the clicked field; Tab leaves the control rather than walking through every field (note what it does). | n/a | n/a | | |

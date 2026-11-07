@@ -10,7 +10,7 @@ namespace SIL.TextEditing.InputDriver.Tests
         const uint InputMouse = 0, InputKeyboard = 1;
         const uint KeyUp = 0x0002, KeyUnicode = 0x0004;
         const uint MouseLeftDown = 0x0002, MouseLeftUp = 0x0004;
-        const ushort VkBack = 0x08, VkMenu = 0x12;
+        const ushort VkBack = 0x08, VkTab = 0x09, VkShift = 0x10, VkControl = 0x11, VkMenu = 0x12, VkEscape = 0x1B, VkSpace = 0x20;
         const int SwRestore = 9;
 
         [StructLayout(LayoutKind.Sequential)]
@@ -91,6 +91,23 @@ namespace SIL.TextEditing.InputDriver.Tests
 
         /// <summary>How a legacy-transport Keyman output arrives: <paramref name="deletes"/> Backspace presses, then the replacement as Unicode packets.</summary>
         public static uint KeymanLegacyOutput(int deletes, string replacement) => Backspace(deletes) + TypeUnicode(replacement);
+
+        public const ushort Tab = VkTab, Escape = VkEscape, Space = VkSpace, Back = VkBack, A = 0x41;
+
+        /// <summary>A key press with the modifiers held around it, as a person types a shortcut; returns the events Windows accepted.</summary>
+        public static uint Press(ushort vk, bool shift = false, bool control = false)
+        {
+            var events = new List<Input>();
+            if (control) events.Add(Key(VkControl, 0, 0));
+            if (shift) events.Add(Key(VkShift, 0, 0));
+            events.Add(Key(vk, 0, 0));
+            events.Add(Key(vk, 0, KeyUp));
+            if (shift) events.Add(Key(VkShift, 0, KeyUp));
+            if (control) events.Add(Key(VkControl, 0, KeyUp));
+            return Send(events.ToArray());
+        }
+
+        public static uint PressedEvents(bool shift, bool control) => 2u + (shift ? 2u : 0) + (control ? 2u : 0);
 
         static Input Key(ushort vk, ushort scan, uint flags) =>
             new Input { type = InputKeyboard, u = new InputUnion { ki = new KeyboardInput { wVk = vk, wScan = scan, dwFlags = flags } } };

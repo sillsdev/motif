@@ -32,7 +32,7 @@ namespace SIL.TextEditing.Samples.PlaygroundDesktop
                 }
                 desktop.MainWindow = window;
                 var channel = TestChannel.NameFrom(args);
-                if (channel != null) TestChannel.Start(channel, view);
+                if (channel != null) TestChannel.Start(channel, view, () => new[] { "focus " + (view.Field.IsFocused ? "field" : "other") });
             }
             base.OnFrameworkInitializationCompleted();
         }
