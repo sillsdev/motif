@@ -76,6 +76,21 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void DecliningADraftWithAReasonFinalizesDeclinesAndSavesTheReasonInOneStep()
+    {
+        var path = NewProject();
+        var id = Draft(path, "draft-declined-why");
+
+        Assert.True(ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, id, "Not this one.")).Succeeded);
+
+        var record = Record(path, id);
+        Assert.Null(record.DraftName);
+        Assert.Equal("rejected", record.Status);
+        var shown = ProposalCommands.Show(new ShowProposalRequest(path, Version, id));
+        Assert.Equal("Not this one.", Assert.Single(shown.Value!.Comments!).Markdown);
+    }
+
+    [Fact]
     public void AnAssistantWithdrawsItsProposalAndAPersonMayReopenIt()
     {
         var (path, id) = Finalized("withdrawn");

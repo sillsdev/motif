@@ -1277,8 +1277,10 @@
   <data name="MotifApp.ProposalRationale" xml:space="preserve"><value>Rationale</value><comment>Heading for the builder's explanation of a Proposal.</comment></data>
   <data name="MotifApp.ProposalWhatItChanges" xml:space="preserve"><value>What It Changes</value><comment>Heading for a Proposal's operation descriptions.</comment></data>
   <data name="MotifApp.ProposalRationaleOutOfDate" xml:space="preserve"><value>Out of date</value><comment>Marker on a Rationale written for older Proposal content.</comment></data>
-  <data name="MotifApp.ProposalWordCountUnavailable" xml:space="preserve"><value>word count not available</value><comment>Shown when an operation's affected words were not recorded.</comment></data>
-  <data name="MotifApp.ProposalOperationSentenceFormat" xml:space="preserve"><value>{0} ({1}).</value><comment>One operation and its affected word count. {0} is its description; {1} is the count or an unavailable message.</comment></data>
+  <data name="MotifApp.ProposalOperationSentenceFormat" xml:space="preserve"><value>{0} ({1}).</value><comment>One operation with the number of words it affects. {0} is what it changes; {1} is the count phrase, such as "affects 12 words".</comment></data>
+  <data name="MotifApp.ProposalOperationSentenceNoCountFormat" xml:space="preserve"><value>{0}.</value><comment>One operation when no affected word count is known. {0} is what it changes.</comment></data>
+  <data name="MotifApp.ProposalOperationNamedFormat" xml:space="preserve"><value>Adds the {0} {1}</value><comment>An operation that makes one named thing. {0} is the kind of thing, such as allomorph or rule; {1} is its name.</comment></data>
+  <data name="MotifApp.ProposalOperationAffectsPattern" xml:space="preserve"><value>{0, plural, one {affects # word} other {affects # words}}</value><comment>Plural pattern: how many words an operation affects; # is the count.</comment></data>
   <data name="MotifApp.ProposalOptionalChecks" xml:space="preserve"><value>More checks (optional)</value><comment>Heading for optional Proposal checks.</comment></data>
   <data name="MotifApp.ViewWithThisProposal" xml:space="preserve">
     <value>View with This Proposal</value>

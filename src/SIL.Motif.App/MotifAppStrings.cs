@@ -783,11 +783,17 @@ public static class MotifAppStrings
     /// <summary>Warns that a Proposal's Rationale describes older content.</summary>
     public static string ProposalRationaleOutOfDate => Text("MotifApp.ProposalRationaleOutOfDate");
 
-    /// <summary>Says an operation's affected word count is unavailable.</summary>
-    public static string ProposalWordCountUnavailable => Text("MotifApp.ProposalWordCountUnavailable");
-
-    /// <summary>Formats an operation description and its word count.</summary>
+    /// <summary>Formats an operation description and its affected word count phrase.</summary>
     public static string ProposalOperationSentenceFormat => Text("MotifApp.ProposalOperationSentenceFormat");
+
+    /// <summary>Formats an operation description when no affected word count is known.</summary>
+    public static string ProposalOperationSentenceNoCountFormat => Text("MotifApp.ProposalOperationSentenceNoCountFormat");
+
+    /// <summary>Formats an operation that makes one named thing.</summary>
+    public static string ProposalOperationNamedFormat => Text("MotifApp.ProposalOperationNamedFormat");
+
+    /// <summary>The plural pattern for how many words an operation affects.</summary>
+    public static string ProposalOperationAffectsPattern => Text("MotifApp.ProposalOperationAffectsPattern");
 
     /// <summary>The heading for optional Proposal checks.</summary>
     public static string ProposalOptionalChecks => Text("MotifApp.ProposalOptionalChecks");

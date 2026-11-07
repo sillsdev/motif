@@ -282,6 +282,15 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>The Work value for the table, or the existing no-Trial wording.</summary>
     public string TableWorkText => Work?.Value ?? TrialStandingWords.NotTried.Status;
 
+    /// <summary>
+    /// Whether Open in Review Changes is the one Primary button: nothing to try and nothing to reopen, so looking
+    /// through the changes is the next step.
+    /// </summary>
+    public bool IsOpenPrimary => !CanTry && !CanReopen;
+
+    /// <summary>Whether Reopen is the one Primary button: a closed Proposal's next step is to work on it again.</summary>
+    public bool IsReopenPrimary => !CanTry && CanReopen;
+
     /// <summary>Whether the row's main action should open the Proposal.</summary>
     public bool ShowsOpenAction => !CanReopen;
 
@@ -897,7 +906,20 @@ public sealed partial class ProposalsPageModel : PageModel
     private void SelectProposal(ProposalCardViewModel? card)
     {
         if (card is null || !Groups.Any(group => group.Cards.Contains(card))) return;
+        SelectByUser(card);
+    }
+
+    // Only a person's own choice of a row marks it read; a re-read that reselects a row does not.
+    private void SelectByUser(ProposalCardViewModel card)
+    {
+        _pendingUserSelectionId = card.ProposalId;
         SetSelectedProposal(card);
+        _pendingUserSelectionId = null;
+        if (!_selectionByUser && ReferenceEquals(SelectedProposal, card))
+        {
+            _selectionByUser = true;
+            MarkSelectedRead();
+        }
     }
 
     private void UpdateRows(string? selectedId)
@@ -927,6 +949,7 @@ public sealed partial class ProposalsPageModel : PageModel
 
     partial void OnSelectedProposalChanged(ProposalCardViewModel? value)
     {
+        _selectionByUser = value is not null && value.ProposalId == _pendingUserSelectionId;
         value?.SetSelected(true);
         if (value?.ProposalId != _declineProposalId) CancelDecline();
         ReadDetail(value);
@@ -1055,7 +1078,7 @@ public sealed partial class ProposalsPageModel : PageModel
     private void AskToDelete(ProposalCardViewModel? card)
     {
         if (card is null || !card.CanDelete) return;
-        SetSelectedProposal(card);
+        SelectByUser(card);
         SetDeleteQuestion(card.ProposalId);
     }
 

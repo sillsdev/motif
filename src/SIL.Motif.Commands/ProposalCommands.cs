@@ -685,9 +685,14 @@ public static partial class ProposalCommands
                 var intentDigest = IntentDigest.Compute(envelope);
 
                 var finalization = repository.Finalize(request.DraftName, intentDigest, proposalJson,
-                    draft.Label!, request.ExpectedRevision);
+                    draft.Label!, request.ExpectedRevision, request.ThenMove);
                 if (finalization == DraftFinalizationResult.DraftChanged)
                     return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftRevisionConflict(request.DraftName));
+                if (finalization == DraftFinalizationResult.MoveRefused)
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(new Refusal(
+                        "proposal.invalid-status", FailureReason.Refused,
+                        $"Proposal {draft.ProposalId} could not be moved, so the Draft was left as it was.",
+                        Fact(("proposalId", draft.ProposalId), ("draftName", request.DraftName))));
 
                 return CommandOutcome<ProposalFinalizedResponse>.Success(new ProposalFinalizedResponse(
                     request.DraftName, draft.ProposalId, intentDigest, envelope.Operations.Count,

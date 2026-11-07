@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Requests;
 
@@ -398,8 +399,10 @@ public sealed record ShowPicturesRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="ExpectedRevision">The required Draft revision for this write.</param>
+/// <param name="ThenMove">A status move made in the same transaction; if it is refused the Draft stays a Draft.</param>
 public sealed record FinalizeRequest(
-    string FwDataPath, string ProductVersion, string DraftName, string? ExpectedRevision = null);
+    string FwDataPath, string ProductVersion, string DraftName, string? ExpectedRevision = null,
+    FinalizeMove? ThenMove = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

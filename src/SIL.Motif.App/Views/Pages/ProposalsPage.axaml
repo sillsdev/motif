@@ -138,10 +138,11 @@
                       Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"
                       AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}" />
               <Button Content="{x:Static app:MotifAppStrings.OpenInReviewChanges}" Classes="proposalReview"
-                      Classes.Primary="{Binding !SelectedProposal.CanTry}"
+                      Classes.Primary="{Binding SelectedProposal.IsOpenPrimary}"
                       Command="{Binding OpenInReviewCommand}" CommandParameter="{Binding SelectedProposal}"
                       Click="OnRequestPageInspector" AutomationProperties.AutomationId="{Binding SelectedOpenAutomationId}" />
               <Button Content="{x:Static app:MotifAppStrings.Reopen}" IsVisible="{Binding SelectedProposal.CanReopen}"
+                      Classes.Primary="{Binding SelectedProposal.IsReopenPrimary}"
                       Command="{Binding ReopenCommand}" CommandParameter="{Binding SelectedProposal}"
                       AutomationProperties.AutomationId="{Binding SelectedReopenAutomationId}" />
               <Button Content="{x:Static app:MotifAppStrings.DeclineProposalPrompt}" IsVisible="{Binding SelectedProposal.CanDecide}"

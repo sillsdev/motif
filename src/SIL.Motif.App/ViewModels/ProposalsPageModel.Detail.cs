@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
@@ -15,6 +13,8 @@ public sealed partial class ProposalsPageModel
 {
     private int _detailGeneration;
     private string? _markingReadId;
+    private string? _pendingUserSelectionId;
+    private bool _selectionByUser;
 
     /// <summary>The selected Proposal's stored detail, if it could be read.</summary>
     [ObservableProperty]
@@ -73,17 +73,13 @@ public sealed partial class ProposalsPageModel
         {
             var count = words.Where(word => word.OperationIds.Contains(operation.OperationId))
                 .Select(word => word.Change.WordformId).Distinct(StringComparer.Ordinal).Count();
-            var countText = count > 0
-                ? PluralText.Format(MotifAppStrings.WordCountPattern, count)
-                : MotifAppStrings.ProposalWordCountUnavailable;
-            return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalOperationSentenceFormat,
-                ChangeVocabulary.Of(operation.Kind).Title, countText);
+            return ProposalOperationSentence.For(operation, count);
         }).ToArray();
     }
 
     private void MarkSelectedRead()
     {
-        if (Context.CurrentPage != WorkspacePage.Proposals || Context.ProjectPath is not { } path ||
+        if (!_selectionByUser || Context.CurrentPage != WorkspacePage.Proposals || Context.ProjectPath is not { } path ||
             SelectedProposal is not { IsUnread: true } card || Detail?.ProposalId != card.ProposalId ||
             _markingReadId == card.ProposalId) return;
         _markingReadId = card.ProposalId;
@@ -92,8 +88,8 @@ public sealed partial class ProposalsPageModel
 
     private async Task MarkReadAsync(string path, ProposalCardViewModel card)
     {
-        var digest = "sha256:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(card.ProposalId)))
-            .ToLowerInvariant();
+        // The mark names the revision that was read, so a later revision shows unread again.
+        var digest = Detail?.CurrentIntentDigest ?? "none";
         var mark = await Context.Commands.MarkLookedAtAsync(new ReviewMarkRequest(path, card.ProposalId,
             ReviewMarkKeys.ProposalRead, digest, "none", true), CancellationToken.None).ConfigureAwait(true);
         if (_markingReadId == card.ProposalId) _markingReadId = null;

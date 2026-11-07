@@ -27,7 +27,13 @@ public enum DraftFinalizationResult
 
     /// <summary>The Draft no longer matches the expected revision, and no store rows changed.</summary>
     DraftChanged,
+
+    /// <summary>The requested follow-up status move was refused, so the Draft was not finalized either.</summary>
+    MoveRefused,
 }
+
+/// <summary>A status move a finalize performs in its own transaction, so both happen or neither does.</summary>
+public sealed record FinalizeMove(IReadOnlyCollection<string> AllowedFrom, string To, string? Comment = null);
 
 /// <summary>Durable Proposal workflow access through a worker-owned Motif database.</summary>
 public interface IProposalRepository
@@ -84,13 +90,15 @@ public interface IProposalRepository
     /// <param name="proposalJson">The finalized Proposal JSON, stored as the new revision.</param>
     /// <param name="label">The Proposal's short description.</param>
     /// <param name="expectedDraftRevision">The expected Draft content revision, or <see langword="null"/> to skip the check.</param>
+    /// <param name="thenMove">A status move made in the same transaction; if it is refused, nothing is finalized.</param>
     /// <returns>
     /// <see cref="DraftFinalizationResult.Finalized"/> for a first commit,
     /// <see cref="DraftFinalizationResult.Amended"/> for a new revision, or
-    /// <see cref="DraftFinalizationResult.DraftChanged"/> when the expected revision no longer matches and no rows changed.
+    /// <see cref="DraftFinalizationResult.DraftChanged"/> when the expected revision no longer matches and no rows changed, or
+    /// <see cref="DraftFinalizationResult.MoveRefused"/> when <paramref name="thenMove"/> was refused and no rows changed.
     /// </returns>
     DraftFinalizationResult Finalize(string draftName, string intentDigest, string proposalJson, string label,
-        string? expectedDraftRevision = null);
+        string? expectedDraftRevision = null, FinalizeMove? thenMove = null);
     /// <summary>
     /// Loads one finalized Proposal, verifying that its recorded revision exists and that the
     /// revision's own embedded id and recomputed digest agree with the pointer that named it.
@@ -597,7 +605,7 @@ public sealed class ProposalRepository : IProposalRepository
 
     /// <inheritdoc />
     public DraftFinalizationResult Finalize(string draftName, string intentDigest, string proposalJson, string label,
-        string? expectedDraftRevision = null)
+        string? expectedDraftRevision = null, FinalizeMove? thenMove = null)
     {
         if (string.IsNullOrWhiteSpace(intentDigest) || string.IsNullOrWhiteSpace(proposalJson))
             throw new ArgumentException("Finalize requires an intent digest and Proposal content.", nameof(intentDigest));
@@ -674,6 +682,10 @@ public sealed class ProposalRepository : IProposalRepository
             commit.ExecuteNonQuery();
         }
         ProposalDiscussionRepository.StampDigest(connection, transaction, proposalId, intentDigest);
+        if (thenMove is not null &&
+            !MoveInTransaction(connection, transaction, CanonicalId.Parse(proposalId), thenMove.AllowedFrom,
+                thenMove.To, null, thenMove.Comment).Moved)
+            return DraftFinalizationResult.MoveRefused;
         transaction.Commit();
         return wasAmend ? DraftFinalizationResult.Amended : DraftFinalizationResult.Finalized;
     }
@@ -889,6 +901,15 @@ public sealed class ProposalRepository : IProposalRepository
         ArgumentNullException.ThrowIfNull(allowedFrom);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        var outcome = MoveInTransaction(connection, transaction, proposalId, allowedFrom, to, supersededBy, comment);
+        if (outcome.Moved) transaction.Commit();
+        return outcome;
+    }
+
+    private StatusTransitionOutcome MoveInTransaction(SqliteConnection connection, SqliteTransaction transaction,
+        CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string? supersededBy,
+        string? comment)
+    {
         var placeholders = string.Join(", ", allowedFrom.Select((_, i) => "$from" + i));
         if (comment is not null)
         {
@@ -920,7 +941,6 @@ public sealed class ProposalRepository : IProposalRepository
         if (update.ExecuteNonQuery() > 0)
         {
             DropWordDetailIfDecided(connection, transaction, proposalId.Value, to);
-            transaction.Commit();
             return new StatusTransitionOutcome(true, to);
         }
 

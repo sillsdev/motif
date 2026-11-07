@@ -144,16 +144,39 @@ public sealed class ProposalStandingsCommandTests : IDisposable
     }
 
     [Fact]
-    public void AProposalRemainsUnreadUntilItsReadMarkIsStored()
+    public void AnOpenProposalRemainsUnreadUntilItsReadMarkNamesItsLatestRevision()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
 
         Assert.True(Assert.Single(Read(fixture).Proposals).IsUnread);
         SIL.Motif.Commands.Review.ReviewMarks.Put(fixture.Database, proposal.Id.Value,
-            ReviewMarkKeys.ProposalRead, "sha256:read", "none");
-
+            ReviewMarkKeys.ProposalRead, proposal.Digest, "none");
         Assert.False(Assert.Single(Read(fixture).Proposals).IsUnread);
+
+        var newer = "sha256:" + new string('9', 64);
+        new ProposalRepository(fixture.Database).SaveRevision(
+            new ProposalRevisionRecord(proposal.Id, newer, proposal.Json, "proposed", null, null, null));
+
+        Assert.True(Assert.Single(Read(fixture).Proposals).IsUnread);
+    }
+
+    [Theory]
+    [InlineData("applied")]
+    [InlineData("rejected")]
+    [InlineData("superseded")]
+    [InlineData("withdrawn")]
+    public void AClosedProposalIsNeverUnreadEvenWithNoReadMark(string status)
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        new ProposalRepository(fixture.Database).SetStatus(proposal.Id, status,
+            status == "superseded" ? "proposal/other" : null);
+
+        var card = Assert.Single(Read(fixture, includeSetAside: true).Proposals);
+
+        Assert.Equal(status, card.Status);
+        Assert.False(card.IsUnread);
     }
 
     [Fact]

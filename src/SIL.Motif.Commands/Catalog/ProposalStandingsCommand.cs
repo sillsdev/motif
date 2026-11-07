@@ -94,7 +94,7 @@ public static class ProposalStandingsCommand
                     RationaleNew = candidate.Record.Rationale is not null && !ProposalCommands.RationaleLookedAt(
                         database, ProposalRecordMapping.ToManifest(candidate.Record)),
                     HasNote = commentCounts.ContainsKey(id),
-                    IsUnread = !candidate.IsPendingDraft && !readProposals.Contains(id),
+                    IsUnread = IsUnread(candidate, readProposals),
                     Builder = Metadata(candidate.Proposal, "builtBy"),
                     Model = Metadata(candidate.Proposal, "model"),
                     Question = Metadata(candidate.Proposal, "question"),
@@ -113,16 +113,27 @@ public static class ProposalStandingsCommand
         extension.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString() : null;
 
-    private static HashSet<string> ReadSeenProposals(MotifDatabase database)
+    /// <summary>Closed is never unread; open is unread until its mark names its latest revision.</summary>
+    private static bool IsUnread(Candidate candidate, IReadOnlyDictionary<string, string> readMarks)
+    {
+        var record = candidate.Record;
+        if (candidate.IsPendingDraft) return false;
+        if (record.DraftName is null && record.Status is ManifestStatus.Applied or ManifestStatus.Rejected
+            or ManifestStatus.Superseded or ManifestStatus.Withdrawn) return false;
+        return !readMarks.TryGetValue(record.ProposalId.Value, out var digest) ||
+            digest != (record.IntentDigest ?? "none");
+    }
+
+    private static Dictionary<string, string> ReadSeenProposals(MotifDatabase database)
     {
         using var connection = database.OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT ProposalId FROM ReviewMarks WHERE EntryKey = $key;";
+        command.CommandText = "SELECT ProposalId, ContentDigest FROM ReviewMarks WHERE EntryKey = $key;";
         command.Parameters.AddWithValue("$key", ReviewMarkKeys.ProposalRead);
         using var reader = command.ExecuteReader();
-        var ids = new HashSet<string>(StringComparer.Ordinal);
-        while (reader.Read()) ids.Add(reader.GetString(0));
-        return ids;
+        var marks = new Dictionary<string, string>(StringComparer.Ordinal);
+        while (reader.Read()) marks[reader.GetString(0)] = reader.GetString(1);
+        return marks;
     }
 
     private static IReadOnlyDictionary<string, DateTimeOffset?> ReadFirstFinalized(MotifDatabase database)

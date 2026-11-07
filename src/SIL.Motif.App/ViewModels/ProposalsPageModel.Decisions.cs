@@ -39,7 +39,7 @@ public sealed partial class ProposalsPageModel
     private void AskToDecline(ProposalCardViewModel? card)
     {
         if (card is null || !card.CanDecide) return;
-        SetSelectedProposal(card);
+        SelectByUser(card);
         _declineProposalId = card.ProposalId;
         DeclineReason = string.Empty;
         IsConfirmingDecline = true;

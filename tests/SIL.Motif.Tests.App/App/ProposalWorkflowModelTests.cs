@@ -1,4 +1,5 @@
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Generator;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -51,7 +52,7 @@ public sealed class ProposalWorkflowModelTests
 
         Assert.Equal("Why this helps", page.Detail!.Rationale!.Markdown);
         Assert.True(page.Detail.Rationale.OutOfDate);
-        Assert.Equal(["Add a phonological rule (word count not available).", "Add a wordform (1 word)."],
+        Assert.Equal(["Add a phonological rule.", "Add a wordform (affects 1 word)."],
             page.OperationDescriptions);
     }
 
@@ -120,7 +121,7 @@ public sealed class ProposalWorkflowModelTests
     }
 
     [Fact]
-    public async Task AProposalBecomesReadOnlyWhenItsPageIsViewed()
+    public async Task AProposalBecomesReadOnlyWhenAPersonSelectsItNotWhenTheListSelectsIt()
     {
         var fake = new FakeCommandClient();
         fake.ProposalStandingsCompleteWith(new ProposalStandings(
@@ -130,14 +131,98 @@ public sealed class ProposalWorkflowModelTests
         var page = new ProposalsPageModel(context);
         await context.OpenProjectAsync(Path);
         await page.DetailReading;
+        context.OpenPage(WorkspacePage.Proposals);
+        await page.ReadMarkWriting;
         Assert.True(page.SelectedProposal!.IsUnread);
         Assert.Empty(fake.ReviewMarkRequests);
 
-        context.OpenPage(WorkspacePage.Proposals);
+        page.SelectProposalCommand.Execute(page.SelectedProposal);
         await page.ReadMarkWriting;
 
         Assert.False(page.SelectedProposal.IsUnread);
         Assert.Equal(ReviewMarkKeys.ProposalRead, Assert.Single(fake.ReviewMarkRequests).EntryKey);
+    }
+
+    [Fact]
+    public async Task AListReloadThatReselectsTheProposalDoesNotMarkItRead()
+    {
+        var fake = new FakeCommandClient();
+        fake.ProposalStandingsCompleteWith(new ProposalStandings(
+            [new ProposalCard(Id, "Sound change", "proposed", ProposalGroup.WaitingForYou,
+                false, [], TrialStanding.Current, null, []) { IsUnread = true }], 0));
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(Path);
+        context.OpenPage(WorkspacePage.Proposals);
+        await context.OpenProjectAsync(Path);
+        await page.DetailReading;
+        await page.ReadMarkWriting;
+
+        Assert.True(page.SelectedProposal!.IsUnread);
+        Assert.Empty(fake.ReviewMarkRequests);
+    }
+
+    [Theory]
+    [InlineData("proposed", false, ProposalGroup.WaitingForYou, "Open")]
+    [InlineData("proposed", false, ProposalGroup.NotTried, "Try")]
+    [InlineData("proposed", false, ProposalGroup.NeedsAnotherTry, "Try")]
+    [InlineData("deferred", false, ProposalGroup.NotTried, "Try")]
+    [InlineData("proposed", true, ProposalGroup.NotTried, "Try")]
+    [InlineData("rejected", false, ProposalGroup.SetAside, "Reopen")]
+    [InlineData("withdrawn", false, ProposalGroup.SetAside, "Reopen")]
+    [InlineData("rejected", true, ProposalGroup.NotTried, "Try")]
+    [InlineData("superseded", false, ProposalGroup.SetAside, "Open")]
+    [InlineData("applied", false, ProposalGroup.SetAside, "Open")]
+    public void EveryStateHasExactlyOnePrimaryButton(string status, bool isDraft, ProposalGroup group, string expected)
+    {
+        var standing = group == ProposalGroup.NeedsAnotherTry
+            ? TrialStanding.NeedsAnotherTry(TrialStaleReason.ProposalChanged)
+            : group == ProposalGroup.WaitingForYou ? TrialStanding.Current : TrialStanding.NotTried;
+        var card = new ProposalCardViewModel(new ProposalCard(Id, "Sound change", status, group, false, [],
+            standing, null, []) { IsDraft = isDraft });
+
+        var primary = new[] { (card.CanTry, "Try"), (card.IsReopenPrimary, "Reopen"), (card.IsOpenPrimary, "Open") }
+            .Where(button => button.Item1).Select(button => button.Item2).ToArray();
+
+        Assert.Equal([expected], primary);
+    }
+
+    [Fact]
+    public void OnlyTheNamedButtonsCarryThePrimaryClassInTheInspector()
+    {
+        var xaml = File.ReadAllText(System.IO.Path.Combine(
+            RepoPaths.FindRepoRoot(), "src", "SIL.Motif.App", "Views", "Pages", "ProposalsPage.axaml"));
+        var start = xaml.IndexOf("ProposalInspectorActionsTemplate", StringComparison.Ordinal);
+        var end = xaml.IndexOf("</DataTemplate>", start, StringComparison.Ordinal);
+        var section = xaml[start..end];
+        var primaries = System.Text.RegularExpressions.Regex.Matches(section, @"Classes\.Primary=""\{Binding (\S+?)\}""|Classes=""Primary""");
+
+        Assert.Equal(new[] { "", "", "SelectedProposal.IsOpenPrimary", "SelectedProposal.IsReopenPrimary" },
+            primaries.Select(match => match.Groups[1].Value).Order().ToArray());
+    }
+
+    [Fact]
+    public async Task AnOperationThatNamesWhatItMakesSaysSoAndOmitsAnUnknownCount()
+    {
+        var fake = NewFake();
+        fake.ProposalDetail = new ProposalDetailProjection(Id, "proposed", "Suffix", null, "new",
+            [new ProposalOperationView("op/one", "lexical/lexEntry/createLexemeForm", null, null, [],
+                "{\"morphType\":\"x\",\"ws\":\"seh\",\"text\":\"-an\"}"),
+             new ProposalOperationView("op/two", "grammar/phPhonData/createPhonRules", null, null, [], "{}")]);
+        var change = new PendingChange("change/one", "word/one", "word", "approve", null, null, ["op/one"]);
+        fake.Review = fake.Review with
+        {
+            Entries = [new WordChangeEntry("change/one", 0, "Approve", ["op/one"], [], "digest", false,
+                change, null, default)],
+        };
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(Path);
+        await page.DetailReading;
+
+        Assert.Equal(["Adds the allomorph -an (affects 1 word).", "Add a phonological rule."],
+            page.OperationDescriptions);
+        Assert.DoesNotContain(page.OperationDescriptions, text => text.Contains("not available"));
     }
 
     private static FakeCommandClient NewFake()

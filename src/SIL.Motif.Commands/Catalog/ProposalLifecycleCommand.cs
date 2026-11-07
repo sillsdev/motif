@@ -148,8 +148,17 @@ public static class ProposalLifecycleCommand
                     new ProposalStatusChangedResponse(id, ManifestStatus.Withdrawn, null));
             }
 
-            var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, version, draftName));
+            // The finalize and the move are one store transaction: a refused move leaves the Draft a Draft.
+            var to = status == ManifestStatus.Rejected ? ManifestStatus.Rejected : ManifestStatus.Withdrawn;
+            var allowedFrom = to == ManifestStatus.Rejected
+                ? ProposalLifecycle.AllowedFromWire(ProposalTransition.Reject)
+                : ProposalLifecycle.AllowedFromWire(ProposalTransition.Withdraw);
+            var comment = to == ManifestStatus.Rejected && !string.IsNullOrWhiteSpace(reason) ? reason.Trim() : null;
+            var finalized = ProposalCommands.Finalize(new FinalizeRequest(projectPath, version, draftName, null,
+                new FinalizeMove(allowedFrom, to, comment)));
             if (!finalized.Succeeded) return CommandOutcome<ProposalStatusChangedResponse>.Refused(finalized.Refusal!);
+            return CommandOutcome<ProposalStatusChangedResponse>.Success(
+                new ProposalStatusChangedResponse(id, to, null));
         }
         var rejectRequest = new RejectRequest(projectPath, version, id);
         return status == ManifestStatus.Rejected

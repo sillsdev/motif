@@ -331,6 +331,37 @@ public sealed class ProposalRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void ARefusedMoveAfterFinalizeLeavesTheDraftAsItWasAndSavesNoComment()
+    {
+        var project = new ProjectLocator(Path.Combine(_root, "texts.fwdata"), "texts");
+        using var database = MotifDatabase.OpenOwned(Path.Combine(_root, "texts.motif.db"), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        var repository = new ProposalRepository(database);
+        var id = CanonicalId.Mint("proposal/");
+        repository.CreateDraft("working", id, "{\"draft\":true}");
+
+        var refused = repository.Finalize("working", "sha256:one", "{\"proposalId\":\"" + id.Value + "\"}", "a label",
+            null, new FinalizeMove(["applied"], "rejected", "Not wanted."));
+
+        Assert.Equal(DraftFinalizationResult.MoveRefused, refused);
+        var record = repository.Get(id);
+        Assert.Equal("working", record.DraftName);
+        Assert.Null(record.IntentDigest);
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT (SELECT COUNT(*) FROM ProposalComments), (SELECT COUNT(*) FROM ProposalRevisions);";
+        using var reader = command.ExecuteReader();
+        Assert.True(reader.Read());
+        Assert.Equal(0, reader.GetInt32(0));
+        Assert.Equal(0, reader.GetInt32(1));
+
+        var moved = repository.Finalize("working", "sha256:one", "{\"proposalId\":\"" + id.Value + "\"}", "a label",
+            null, new FinalizeMove(["proposed"], "rejected", "Not wanted."));
+        Assert.Equal(DraftFinalizationResult.Finalized, moved);
+        Assert.Equal("rejected", repository.Get(id).Status);
+    }
+
+    [Fact]
     public void FinalizeIsAtomicSettingRevisionDigestAndClearingTheDraftNameTogether()
     {
         var project = new ProjectLocator(Path.Combine(_root, "finalize.fwdata"), "finalize");
