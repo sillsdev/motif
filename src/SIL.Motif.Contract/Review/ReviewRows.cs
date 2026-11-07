@@ -521,6 +521,10 @@ public sealed record TraceNode(
     [property: JsonRequired]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] ReadTarget? Children) : IJsonOnDeserialized, IJsonOnSerializing
 {
+    /// <summary>Whether this node is a bounded stub with omitted producer detail.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool DetailTruncated { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

@@ -125,15 +125,36 @@ public sealed class ReviewTraceCommands(MotifDatabase database)
         var parentIds = trace.Nodes.Select(node => node.ParentId).OfType<string>().ToHashSet(StringComparer.Ordinal);
         var baseUri = $"motif://projects/{Uri.EscapeDataString(trace.ProjectKey)}/trial-reports/{Uri.EscapeDataString(trace.ReportId)}" +
             "/traces/" + Uri.EscapeDataString(trace.TraceId);
-        var items = selected.Skip(offset).Take(limit).Select(node => parentIds.Contains(node.Id) ? node with
+        const int pageBytes = 192 * 1024;
+        var items = new List<TraceNode>();
+        TracePage MakePage()
         {
-            Children = new ReadTarget(TargetKind.Resource, "trace children", baseUri + "?parent=" + Uri.EscapeDataString(node.Id), null, null)
-        } : node).ToArray();
-        var next = offset + items.Length < selected.Count
-            ? Convert.ToBase64String(Encoding.UTF8.GetBytes($"{trace.TraceId}:{binding}:{offset + items.Length}")) : null;
-        return CommandOutcome<TracePage>.Success(new TracePage(trace.TraceId, trace.ReportId, trace.CaseKey, trace.Side,
-            origin, trace.ParserDigest, trace.GrammarDigest, trace.ScopeDigest, "motif-trace-v1", trace.Completion,
-            trace.CaptureComplete, trace.CaptureComplete ? null : "capture-limit", trace.ReadingAgreement, items, next, []));
+            var nextOffset = offset + items.Count;
+            var next = nextOffset < selected.Count
+                ? Convert.ToBase64String(Encoding.UTF8.GetBytes($"{trace.TraceId}:{binding}:{nextOffset}")) : null;
+            return new TracePage(trace.TraceId, trace.ReportId, trace.CaseKey, trace.Side,
+                origin, trace.ParserDigest, trace.GrammarDigest, trace.ScopeDigest, "motif-trace-v1", trace.Completion,
+                trace.CaptureComplete, trace.CaptureComplete ? null : "capture-limit", trace.ReadingAgreement, items.ToArray(), next, []);
+        }
+        bool Fits() => JsonSerializer.SerializeToUtf8Bytes(MakePage(), ReviewJson.Options).Length <= pageBytes;
+        foreach (var source in selected.Skip(offset).Take(limit))
+        {
+            var node = parentIds.Contains(source.Id) ? source with
+            {
+                Children = new ReadTarget(TargetKind.Resource, "trace children", baseUri + "?parent=" + Uri.EscapeDataString(source.Id), null, null)
+            } : source;
+            items.Add(node);
+            if (Fits()) continue;
+            items.RemoveAt(items.Count - 1);
+            if (items.Count > 0) break;
+            static string Short(string value, int length) => value.Length <= length ? value : value[..length];
+            items.Add(node with { Kind = Short(node.Kind, 128), Label = Short(node.Label, 256),
+                ReasonCode = node.ReasonCode is null ? null : Short(node.ReasonCode, 128), ObjectRefs = [], DetailTruncated = true });
+            if (!Fits()) return Refuse("The trace page metadata exceeds the response budget.");
+            break;
+        }
+        if (!Fits()) return Refuse("The trace page metadata exceeds the response budget.");
+        return CommandOutcome<TracePage>.Success(MakePage());
     }
 
     private static string Hash(string text) => "sha256:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));

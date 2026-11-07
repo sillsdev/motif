@@ -60,6 +60,31 @@ public sealed class ReviewTraceBindingTests : IDisposable
         Assert.False(command.Read("project", new ReviewReportId(Id), TraceId, Convert.ToBase64String("wrong:1"u8.ToArray())).Succeeded);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TracePagesRespectSerializedByteBudgetWithContinuation(bool children)
+    {
+        var nodes = Enumerable.Range(0, 201).Select(i => new TraceNode(i.ToString(), i == 0 ? null : "0", "rule",
+            new string('x', 1024), new string('y', 1024), [Guid.NewGuid().ToString("D")], null)).ToArray();
+        ReviewTraceArtifacts.Store(_database, new RetainedReviewTrace(TraceId, "project", Id, "case", Side.After,
+            "parser", "grammar", "scope", "complete", true, nodes));
+        var command = new ReviewTraceCommands(_database);
+        var seen = new List<string>();
+        string? cursor = null;
+        do
+        {
+            var result = command.Read("project", new ReviewReportId(Id), TraceId, cursor, 200, children ? "0" : null);
+            Assert.True(result.Succeeded);
+            var page = result.Value!;
+            Assert.True(JsonSerializer.SerializeToUtf8Bytes(page, ReviewJson.Options).Length <= 192 * 1024);
+            Assert.True(page.CaptureComplete);
+            seen.AddRange(page.Nodes.Select(node => node.Id));
+            cursor = page.NextCursor;
+        } while (cursor is not null);
+        Assert.Equal(children ? 200 : 201, seen.Distinct().Count());
+    }
+
     [Fact]
     public void DiagnosticDisagreementUsesExactReadingsEvenWhenCountsMatch()
     {
