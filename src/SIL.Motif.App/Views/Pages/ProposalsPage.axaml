@@ -297,7 +297,7 @@
                             CommandParameter="{Binding}"
                             AutomationProperties.AutomationId="{Binding ReopenAutomationId}" />
                   </StackPanel>
-                  <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.Open}" IsVisible="{Binding ShowsOpenAction}"
+                  <Button Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.ViewWithThisProposal}" IsVisible="{Binding ShowsOpenAction}"
                           Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
                           CommandParameter="{Binding}"
                           AutomationProperties.AutomationId="{Binding OpenAutomationId}" />
@@ -321,7 +321,7 @@
                                   CommandParameter="{Binding}" Click="OnRequestPageInspector"
                                   AutomationProperties.AutomationId="{Binding DetailsAutomationId}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                  Content="{x:Static app:MotifAppStrings.Open}" IsVisible="{Binding ShowsOpenAction}"
+                                  Content="{x:Static app:MotifAppStrings.ViewWithThisProposal}" IsVisible="{Binding ShowsOpenAction}"
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).OpenCommand}"
                                   CommandParameter="{Binding}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"

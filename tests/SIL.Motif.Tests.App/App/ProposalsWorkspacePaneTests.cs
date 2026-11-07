@@ -338,6 +338,7 @@ public sealed class ProposalsWorkspacePaneTests
                 var staleOpen = Assert.Single(staleRow.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetAutomationId(button) == staleCard.OpenAutomationId);
                 Assert.True(staleOpen.IsEffectivelyVisible);
+                Assert.Equal("View with This Proposal", staleOpen.Content);
                 Assert.True(staleTryAgain.IsEffectivelyVisible);
                 Assert.True(staleMenu.IsEffectivelyVisible);
                 Assert.Equal(staleCard.ActionsAutomationId, AutomationProperties.GetAutomationId(staleMenu));
@@ -363,7 +364,7 @@ public sealed class ProposalsWorkspacePaneTests
                     .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, MotifAppStrings.TryAgain));
                 Assert.True(repeatedTryAgain.IsEffectivelyVisible);
                 var repeatedOpen = Assert.Single(Assert.IsAssignableFrom<Control>(staleFlyout.Content)
-                    .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, MotifAppStrings.Open));
+                    .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "View with This Proposal"));
                 Assert.True(repeatedOpen.IsEffectivelyVisible);
                 var detailsAction = Assert.Single(Assert.IsAssignableFrom<Control>(staleFlyout.Content)
                     .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Details"));

@@ -1248,6 +1248,10 @@
     <value>What It Would Do to the Numbers</value>
     <comment>Section heading above how the Proposal would change the project numbers.</comment>
   </data>
+  <data name="MotifApp.ViewWithThisProposal" xml:space="preserve">
+    <value>View with This Proposal</value>
+    <comment>Action on a Proposal row to enter the Proposal lens.</comment>
+  </data>
   <data name="MotifApp.OpenInReviewChanges" xml:space="preserve">
     <value>Open in Review Changes</value>
     <comment>Window text.</comment>

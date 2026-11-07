@@ -771,6 +771,9 @@ public static class MotifAppStrings
 
     public static string OpenInReviewChanges => Text("MotifApp.OpenInReviewChanges");
 
+    /// <summary>The row action that enters the selected Proposal's lens.</summary>
+    public static string ViewWithThisProposal => Text("MotifApp.ViewWithThisProposal");
+
     public static string Reopen => Text("MotifApp.Reopen");
 
     public static string Delete => Text("MotifApp.Delete");
