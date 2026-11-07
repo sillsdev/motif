@@ -39,6 +39,20 @@ public sealed class ReviewReportRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task RetainedReportProtectsInputsEvenWhenItsTrialRowIsMissing()
+    {
+        var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [], []);
+        var reference = ReviewInputArtifacts.Store(_database, new(inputs, new Dictionary<string, byte[]>()));
+        var path = Path.Combine(_database.FullPath + ".review-inputs", reference.Sha256 + ".json");
+        await _repository.PublishAsync(Publication("missing-trial"), Cases(Case("a")), CancellationToken.None);
+
+        ReviewInputArtifacts.Sweep(_database);
+        Assert.True(File.Exists(path));
+        new ProposalRepository(_database).SetStatus(_proposal, "deferred", null);
+        Assert.False(File.Exists(path));
+    }
+
+    [Fact]
     public async Task InterruptedPublicationExposesNoPartialReport()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(() => _repository.PublishAsync(Publication("one"), Interrupted(), CancellationToken.None));

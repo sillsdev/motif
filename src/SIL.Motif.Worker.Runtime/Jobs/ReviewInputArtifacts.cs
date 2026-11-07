@@ -64,6 +64,7 @@ public static class ReviewInputArtifacts
         if (!Directory.Exists(directory) || (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) return;
         var retained = new HashSet<string>(StringComparer.Ordinal);
         var protectedJobs = new HashSet<string>(StringComparer.Ordinal);
+        var seenJobs = new HashSet<string>(StringComparer.Ordinal);
         using var connection = database.OpenConnection();
         using (var exists = connection.CreateCommand())
         {
@@ -99,6 +100,7 @@ public static class ReviewInputArtifacts
             using var reader = jobs.ExecuteReader();
             while (reader.Read())
             {
+                seenJobs.Add(reader.GetString(0));
                 var input = TrialJobInput.Parse(reader.GetString(2));
                 if (input.ReviewInputs is not { } reference) continue;
                 var proposalId = ProposalJsonParser.Parse(input.ProposalJson).ProposalId.Value;
@@ -108,6 +110,7 @@ public static class ReviewInputArtifacts
                     retained.Add(reference.Sha256);
             }
         }
+        if (protectedJobs.Except(seenJobs, StringComparer.Ordinal).Any()) return;
         foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
         {
             var digest = Path.GetFileNameWithoutExtension(path);
