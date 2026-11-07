@@ -15,6 +15,7 @@ using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Runtime.Review;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
@@ -189,13 +190,7 @@ public static class ProposalParsimonyStatusCommand
 
     private static IReadOnlyList<ParsimonyStageTiming>? StageTimingsOf(JobRecord job)
     {
-        if (string.IsNullOrWhiteSpace(job.ResultJson)) return null;
-        try
-        {
-            return JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(job.ResultJson,
-                MotifJson.CreateOptions())?.StageTimings;
-        }
-        catch (JsonException) { return null; }
+        return RetainedParsimonyReportReader.Read(job.ResultJson)?.StageTimings;
     }
 
     private static string? QueuedBehind(MotifDatabase database, JobRecord job)
@@ -258,10 +253,7 @@ public static class ProposalParsimonyStatusCommand
 
     private static IReadOnlyList<ProposalParsimonyGroup> ReadGrammar(JobRecord job)
     {
-        if (job.ResultJson is null) return [UnrunGrammar()];
-        ParsimonyCandidateEvidenceResponse? response;
-        try { response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(job.ResultJson, MotifJson.CreateOptions()); }
-        catch (JsonException) { return [UnrunGrammar()]; }
+        var response = RetainedParsimonyReportReader.Read(job.ResultJson);
         if (response is null) return [UnrunGrammar()];
         var sides = new List<(string Measure, ParsimonyReportResponse Before, ParsimonyReportResponse After,
             IReadOnlyList<ParsimonyCandidateFindingChange> Changes)>
