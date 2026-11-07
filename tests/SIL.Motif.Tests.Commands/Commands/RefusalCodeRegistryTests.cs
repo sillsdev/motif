@@ -29,7 +29,7 @@ public sealed class RefusalCodeRegistryTests
 
     // Dotted literals that are not refusal codes: finding codes, cgroup files, SQL tables, trace spans.
     private static readonly Regex NotRefusalCodes = new(
-        "^(?:motif\\.proposal-review-report$|proposal\\.(?:rationale|read)$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.allomorph\\.|" +
+        "^(?:motif\\.(?:review-word-set|proposal-review-report)$|proposal\\.(?:rationale|read)$|delta\\.|cgroup\\.|cpu\\.|memory\\.|facts\\.|sil\\.lcmodel$|parse\\.allomorph\\.|" +
         "lexicon\\.(?:stem-typed-as-content-word|duplicate-entry|affix-hyphen-on-wrong-side)$|" +
         "job\\.claim-lost$|grammar\\.(?:compile\\.failed$|empty-lexicon|required-slot-empty|negated-feature-value|derived-stem-keeps-from-class|template-has-no-slots|phoneme-spelling-ambiguous|phoneme-case-alias-missing|phoneme-never-used$|allomorph-environment-ignored-by-parser|allomorph-repeats-environment-material|restricted-solid-blocks-hyphen|stored-analysis\\.)|" +
         "compare\\.(?:apply-filter|short-matrix-walk)$|context\\.publish-to-pages$|layout\\.(?:arrange|host-measure|measure)$|" +

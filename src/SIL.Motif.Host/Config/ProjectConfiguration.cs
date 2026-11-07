@@ -96,7 +96,8 @@ public sealed record ProjectConfiguration
         IReadOnlyList<AssessmentScopeConfiguration> scopes,
         bool gateOnRegression,
         bool purgeOnApply,
-        int standaloneAssessmentCount = DefaultStandaloneAssessmentCount)
+        int standaloneAssessmentCount = DefaultStandaloneAssessmentCount,
+        IReadOnlyList<ReviewWordSetConfiguration>? reviewWordSets = null)
     {
         ArgumentNullException.ThrowIfNull(scopes);
         if (scopes.Count == 0)
@@ -107,6 +108,7 @@ public sealed record ProjectConfiguration
         if (standaloneAssessmentCount < 1)
             throw new ArgumentOutOfRangeException(nameof(standaloneAssessmentCount));
         StandaloneAssessmentCount = standaloneAssessmentCount;
+        ReviewWordSets = reviewWordSets ?? Array.Empty<ReviewWordSetConfiguration>();
     }
 
     /// <summary>Every declared Assessment scope, at least one.</summary>
@@ -120,6 +122,9 @@ public sealed record ProjectConfiguration
 
     /// <summary>The number of recent standalone Assessments retained per kind, in addition to referenced evidence.</summary>
     public int StandaloneAssessmentCount { get; }
+
+    /// <summary>Named sets included in review Trials.</summary>
+    public IReadOnlyList<ReviewWordSetConfiguration> ReviewWordSets { get; }
 
     /// <summary>The documented configuration for a project with no <c>.motif.toml</c>.</summary>
     public static ProjectConfiguration Defaults() => new(

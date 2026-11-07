@@ -30,6 +30,7 @@ public static class ProjectConfigurationFile
     private const string ApplyTable = "apply";
     private const string RetentionTable = "retention";
     private const string ScopeTable = "scope";
+    private const string ReviewTable = "review-word-set";
 
     private static readonly HashSet<string> RegressionKeys = new(StringComparer.Ordinal) { "gate" };
     private static readonly HashSet<string> ApplyKeys = new(StringComparer.Ordinal) { "purge-on-apply" };
@@ -51,6 +52,9 @@ public static class ProjectConfigurationFile
         bool? purge = null;
         int? standaloneCount = null;
         var scopes = new List<AssessmentScopeConfiguration>();
+        var reviewSets = new List<ReviewWordSetConfiguration>();
+        var review = new Dictionary<string, string>(StringComparer.Ordinal);
+        var reviewLine = 0;
         string? section = null;
         var inScope = false;
         ScopeBuilder current = new();
@@ -65,17 +69,20 @@ public static class ProjectConfigurationFile
             if (trimmed.StartsWith("[[", StringComparison.Ordinal))
             {
                 FlushScope(scopes, ref current, ref inScope, path, lineNumber);
+                FlushReview(reviewSets, review, ref reviewLine, path);
                 var name = HeaderName(trimmed, "[[", "]]", path, lineNumber);
-                if (name != ScopeTable)
+                if (name != ScopeTable && name != ReviewTable)
                     throw Malformed(path, lineNumber, $"unknown table '[[{name}]]'");
-                inScope = true;
-                section = ScopeTable;
+                inScope = name == ScopeTable;
+                if (name == ReviewTable) reviewLine = lineNumber;
+                section = name;
                 continue;
             }
 
             if (trimmed.StartsWith("[", StringComparison.Ordinal))
             {
                 FlushScope(scopes, ref current, ref inScope, path, lineNumber);
+                FlushReview(reviewSets, review, ref reviewLine, path);
                 var name = HeaderName(trimmed, "[", "]", path, lineNumber);
                 if (name == ScopeTable)
                     throw Malformed(path, lineNumber, "'scope' must be declared as '[[scope]]', not '[scope]'");
@@ -109,6 +116,12 @@ public static class ProjectConfigurationFile
                     if (!RetentionKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[retention]");
                     standaloneCount = ParsePositiveInteger(path, lineNumber, key, rawValue);
                     break;
+                case ReviewTable:
+                    if (key is not ("id" or "name" or "role" or "selection" or "manifest"))
+                        throw UnknownKey(path, lineNumber, key, "[[review-word-set]]");
+                    if (!review.TryAdd(key, ParseString(path, lineNumber, key, rawValue)))
+                        throw Malformed(path, lineNumber, $"duplicate key '{key}'");
+                    break;
                 case ScopeTable:
                     if (key == "engine")
                         throw Malformed(path, lineNumber,
@@ -119,6 +132,7 @@ public static class ProjectConfigurationFile
             }
         }
         FlushScope(scopes, ref current, ref inScope, path, lines.Length + 1);
+        FlushReview(reviewSets, review, ref reviewLine, path);
 
         if (scopes.Count == 0) scopes.Add(AssessmentScopeConfiguration.Default());
         var duplicate = scopes.GroupBy(s => s.Name, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1);
@@ -127,7 +141,7 @@ public static class ProjectConfigurationFile
                 $"{Path.GetFileName(path)}: scope name '{duplicate.Key}' is declared more than once.");
 
         return new ProjectConfiguration(scopes, gate ?? true, purge ?? true,
-            standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount);
+            standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount, reviewSets);
     }
 
     /// <summary>Renders a resolved configuration back to the same TOML shape <see cref="Parse"/> reads.</summary>
@@ -156,7 +170,36 @@ public static class ProjectConfigurationFile
             sb.AppendLine($"per-word-parser-work-limit = {scope.PerWordParserWorkLimit.ToArgument()}");
             sb.AppendLine($"timing-detail-words = {scope.TimingDetailWords}");
         }
+        foreach (var set in configuration.ReviewWordSets)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"[[{ReviewTable}]]");
+            sb.AppendLine($"id = {Quote(set.Id)}");
+            sb.AppendLine($"name = {Quote(set.Name)}");
+            sb.AppendLine($"role = {Quote(set.Role)}");
+            sb.AppendLine(set.Selection is not null
+                ? $"selection = {Quote(set.Selection)}" : $"manifest = {Quote(set.Manifest!)}");
+        }
         return sb.ToString();
+    }
+
+    private static void FlushReview(List<ReviewWordSetConfiguration> sets,
+        Dictionary<string, string> values, ref int line, string path)
+    {
+        if (line == 0) return;
+        try
+        {
+            string Required(string key) => values.TryGetValue(key, out var value) ? value :
+                throw new ArgumentException($"missing '{key}'");
+            values.TryGetValue("selection", out var selection);
+            values.TryGetValue("manifest", out var manifest);
+            var set = new ReviewWordSetConfiguration(Required("id"), Required("name"), Required("role"), selection, manifest);
+            if (sets.Any(s => s.Id == set.Id)) throw new ArgumentException($"duplicate id '{set.Id}'");
+            sets.Add(set);
+        }
+        catch (ArgumentException e) { throw Malformed(path, line, e.Message); }
+        values.Clear();
+        line = 0;
     }
 
     private static void FlushScope(
