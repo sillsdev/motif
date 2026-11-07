@@ -78,6 +78,27 @@ public sealed class ReviewInputCaptureTests
     }
 
     [Fact]
+    public async Task OptionalWordformIdJoinsNativeCaseWithoutInflatingWork()
+    {
+        var identities = new[]
+        {
+            new ReviewProjectWordIdentity("cat", "qaa", "qaa", Guid.NewGuid().ToString("D"), "cat-key"),
+            new ReviewProjectWordIdentity("dog", "qaa", "qaa", Guid.NewGuid().ToString("D"), "dog-key"),
+        };
+        var captured = await ReviewInputCapture.CaptureAsync("project", "proposal", null,
+            [Set("a", "reference", Member("one", "cat"))], null, ["cat", "dog"], identities, [], []);
+        Assert.Equal(2, captured.Cases.Count);
+        Assert.Single(Assert.Single(captured.Cases, item => item.Word == "cat").Memberships);
+        var keys = captured.Cases.ToDictionary(item => item.Word, item => item.CaseKey);
+        var scope = new ReviewWorkScope("scope", "baseline", "assessor", "parser", "counter", "settings", "tokeniser");
+        var work = new ReviewWorkInputs(scope, scope, keys.Values.ToArray(),
+            [new(keys["cat"], true, 100), new(keys["dog"], true, 100)],
+            [new(keys["cat"], true, 140), new(keys["dog"], true, 100)]);
+        Assert.Equal(20, SIL.Motif.Worker.Runtime.Review.ReviewWorkComparison.Compare(work).PercentChange);
+        Assert.False(SIL.Motif.Worker.Runtime.Review.ReviewWorkComparison.IsRedFlag(work));
+    }
+
+    [Fact]
     public async Task TouchedWordKeepsApprovedAssertionsWhenNamedMembershipHasNoReferences()
     {
         var wordform = Guid.NewGuid();

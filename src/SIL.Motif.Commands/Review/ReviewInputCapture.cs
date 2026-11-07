@@ -50,14 +50,15 @@ public static class ReviewInputCapture
                 if (sourceCases.TryGetValue(member.CaseId, out var existing) && existing != sourceIdentity)
                     throw new InvalidOperationException($"Review case '{member.CaseId}' names conflicting identities.");
                 sourceCases[member.CaseId] = sourceIdentity;
-                var identity = member.WordformId is null ? null : identities.SingleOrDefault(item =>
-                    item.WordformId == member.WordformId && item.WritingSystemId == writingSystemId && item.Word == word);
+                var matchingIdentities = identities.Where(item => item.WritingSystemId == writingSystemId && item.Word == word &&
+                    (member.WordformId is null || item.WordformId == member.WordformId)).ToArray();
+                var identity = matchingIdentities.Length == 1 ? matchingIdentities[0] : null;
                 if (member.WordformId is not null && identity is null)
                     throw new InvalidOperationException($"Review case '{member.CaseId}' has an unresolved project word identity.");
                 var wordKey = identity?.WordKey ?? Hash(new { writingSystemId, word });
                 var caseKey = Hash(new { wordKey, member.CaseId });
                 if (!cases.TryGetValue(wordKey, out var item))
-                    cases[wordKey] = item = new(caseKey, wordKey, word, writingSystemId, member.WordformId);
+                    cases[wordKey] = item = new(caseKey, wordKey, word, writingSystemId, identity?.WordformId ?? member.WordformId);
                 var membership = new ReviewMembership(set.Id, member.CaseId, set.Role, member.Token?.Weight ?? 1,
                     member.Cell?.CellId, member.Cell?.VariantId, Array.AsReadOnly(member.ExpectationRefs.ToArray()))
                 {
