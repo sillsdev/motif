@@ -41,6 +41,8 @@ public sealed class JobRunnerLoop
     private readonly TimeProvider _timeProvider;
     private readonly Random _jitter = new();
 
+    internal Func<JobRecord, Task>? AfterTerminal { get; set; }
+
     /// <summary>Creates a loop bound to one project's queue and the kinds it can run.</summary>
     /// <param name="timeProvider">Clock used by claims and delays; defaults to system time.</param>
     public JobRunnerLoop(JobClaims claims, string projectKey, string ownerId, TimeSpan lease,
@@ -95,6 +97,7 @@ public sealed class JobRunnerLoop
         {
             FinishWithDetail(claimed, JobStatus.Failed, JobFailureCategory.Unknown,
                 "No handler is registered for job kind '" + claimed.Kind + "'.");
+            await NotifyTerminal(claimed).ConfigureAwait(false);
             return;
         }
 
@@ -127,6 +130,18 @@ public sealed class JobRunnerLoop
             try { await heartbeat.ConfigureAwait(false); } catch (OperationCanceledException) { }
             catch (Exception exception) { ReportHeartbeatFailure(claimed, exception); }
             if (parked && Volatile.Read(ref claimLost) == 0) ReleaseParkedClaim(claimed);
+            if (Volatile.Read(ref claimLost) == 0) await NotifyTerminal(claimed).ConfigureAwait(false);
+        }
+    }
+
+    private async Task NotifyTerminal(JobRecord claimed)
+    {
+        if (AfterTerminal is not { } afterTerminal) return;
+        try { await afterTerminal(claimed).ConfigureAwait(false); }
+        catch (Exception exception)
+        {
+            try { Console.Error.WriteLine("warning: follow-on work for job '" + claimed.JobId + "' failed: " + exception.Message); }
+            catch (Exception) { }
         }
     }
 

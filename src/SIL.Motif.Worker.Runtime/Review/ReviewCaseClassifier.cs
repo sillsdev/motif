@@ -130,7 +130,7 @@ public static class ReviewCaseClassifier
         return (evidence.Analyses, complete);
     }
 
-    private static bool Exact(ParseAnalysis? analysis) => analysis?.Morphs is { Count: > 0 } &&
+    internal static bool Exact(ParseAnalysis? analysis) => analysis?.Morphs is { Count: > 0 } &&
         analysis.Morphs.All(m => m is not null && Guid.TryParse(m.Form, out var form) && form != Guid.Empty &&
             Guid.TryParse(m.Msa, out var msa) && msa != Guid.Empty &&
             (m.InflType is null || Guid.TryParse(m.InflType, out var infl) && infl != Guid.Empty));

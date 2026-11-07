@@ -15,6 +15,7 @@ using SIL.Motif.Worker.Scheduling;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Runtime.Review;
 
 namespace SIL.Motif.Worker.Jobs;
 
@@ -134,8 +135,16 @@ public static class ProjectJobHandlers
             if (Reconciled.TryAdd(workspaceKey, 0)) _ = TryReconcile(database, baselines, workspaceKey);
         }
 
-        return new JobRunnerLoop(new JobClaims(database, parserKey: ParserIdentity.KeyOf(options.ParserPath)), workspaceKey, ownerId: ownerId,
+        var loop = new JobRunnerLoop(new JobClaims(database, parserKey: ParserIdentity.KeyOf(options.ParserPath)), workspaceKey, ownerId: ownerId,
             lease: options.Lease, poll: TimeSpan.Zero, handlers: handlers);
+        loop.AfterTerminal = async claimed =>
+        {
+            if (claimed.Kind != TrialJobHandler.TrialKind) return;
+            var job = new JobRepository(database).Get(claimed.JobId);
+            if (job is null || !JobStateMachine.IsTerminal(job.Status) || TrialJobInput.Parse(job.InputJson).ReviewInputs is null) return;
+            await new TrialReviewPublisher(database).PublishAsync(new ReviewPublishRequest(job.JobId), CancellationToken.None).ConfigureAwait(false);
+        };
+        return loop;
     }
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> Reconciled = new();

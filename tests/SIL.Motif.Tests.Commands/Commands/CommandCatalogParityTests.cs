@@ -86,7 +86,7 @@ public sealed class CommandCatalogParityTests
         "apply.reconciliation-needed",
         "apply.trial-missing", "apply.trial-stale", "review.invalid-mark", "review.unreadable",
         "assess.baseline-changed", "assess.invalid-limit", "assess.invalid-replacement", "assess.invocation-inconsistent", "assess.measurements-incomplete",
-        "assess.parser-memory-limit", "assess.parser-unavailable", "assess.timing-detail-selection", "assess.unsupported-kind",
+        "assess.parser-memory-limit", "assess.parser-unavailable", "assess.timing-detail-selection", "assess.unavailable", "assess.unsupported-kind",
         "selection.default-missing", "selection.invalid", "selection.retry-source-required", "selection.retry-source-not-found", "selection.retry-source-invalid",
         "selection.retry-source-mismatch", "selection.retry-source-project-mismatch", "selection.retry-source-without-retry", "selection.retry-work-invalid",
         "assessment.aggregate-unavailable", "assessment.baseline-unavailable", "assessment.cancelled", "assessment.invalid-evidence", "assessment.invalid-id", "assessment.not-found",
@@ -196,6 +196,7 @@ public sealed class CommandCatalogParityTests
         "timing.no-assessment", "timing.no-baseline", "timing.override-not-found",
         "timing.wrong-assessment", "timing.wrong-kind", "timing.word-set-not-found",
         "trial.changes-changed", "trial.measurement-incomplete", "trial.nothing-pending",
+        "trial.review-baseline-changed", "trial.review-input-unavailable",
         "inspect.invalid-request",
         "uses.invalid-request", "uses.no-assessment",
         "store.inconsistent", "store.other-project", "store.other-version", "store.unsupported",
@@ -252,7 +253,7 @@ public sealed class CommandCatalogParityTests
         foreach (Match match in codePattern.Matches(File.ReadAllText(file)))
         {
             var literal = match.Groups[1].Value;
-            if (!FileExtensions.Contains(literal[(literal.LastIndexOf('.') + 1)..])) codes.Add(literal);
+            if (literal != "motif.proposal-review-report" && !FileExtensions.Contains(literal[(literal.LastIndexOf('.') + 1)..])) codes.Add(literal);
         }
         return codes;
     }

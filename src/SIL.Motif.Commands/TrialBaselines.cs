@@ -10,6 +10,7 @@ using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Jobs;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
 
@@ -61,11 +62,39 @@ public static class TrialBaselines
     public static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         string managedRoot, string? parserPath, CancellationToken cancellationToken,
         Action<string>? onBaselineUnavailable = null) =>
-        WithAdmission(request, (admission, busy) => EnqueueWithBaseline(request,
-            (words, limits, writingSystem, onPartial) => busy is null
-                ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial)
-                : CommandOutcome<AssessCommandResponse>.Refused(busy),
-            onBaselineUnavailable, parserPath ?? PanGlossExecutable.TryLocate(), admission));
+        WithAdmission(request, (admission, busy) =>
+        {
+            var resolved = JobCommands.ResolveTrialWords(request);
+            if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
+            if (resolved.Value is null && !request.AllWords && onBaselineUnavailable is null && RequireDefault(request) is { } missing)
+                return CommandOutcome<JobEnqueuedResponse>.Refused(missing);
+            if (busy is null && request.BaselineAssessmentIds is null)
+            {
+                var baseline = EnsureCurrentBaseline(request, managedRoot);
+                if (!baseline.Succeeded && onBaselineUnavailable is null)
+                    return CommandOutcome<JobEnqueuedResponse>.Refused(baseline.Refusal!);
+            }
+            return EnqueueWithBaseline(request,
+                (words, limits, writingSystem, onPartial) => busy is null
+                    ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial)
+                    : CommandOutcome<AssessCommandResponse>.Refused(busy),
+                onBaselineUnavailable, parserPath ?? PanGlossExecutable.TryLocate(), admission);
+        });
+
+    internal static CommandOutcome<BaselineCaptureResponse> EnsureCurrentBaseline(EnqueueTrialRequest request, string managedRoot) =>
+        ProjectStoreCommand.Run(request.FwDataPath, MotifProductVersion.CurrentText, (database, project) =>
+            AssessCommand.EnsureBaseline(request.FwDataPath, managedRoot, project,
+                ProjectWorkspaceKey.Compute(project), new SIL.Motif.Worker.Baselines.BaselineRepository(database)));
+
+    internal static Refusal? RequireDefault(EnqueueTrialRequest request)
+    {
+        var selection = ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+            new NamedSelectionRepository(database).GetDefault() is null
+                ? CommandOutcome<SelectionPresent>.Refused(new Refusal("selection.default-missing", FailureReason.Refused,
+                    "No default Selection is saved for this project. Save one with `motif selection set-default` first."))
+                : CommandOutcome<SelectionPresent>.Success(new SelectionPresent()));
+        return selection.Refusal;
+    }
 
     /// <summary>As the other overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
@@ -147,4 +176,6 @@ public static class TrialBaselines
             ReviewBeforePartial = partialRows.ToArray(),
         };
     }
+
+    private sealed record SelectionPresent;
 }

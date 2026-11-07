@@ -78,6 +78,17 @@ public sealed class ReviewInputCaptureTests
     }
 
     [Fact]
+    public async Task TouchedSpellingInMultipleWritingSystemsKeepsEveryIdentity()
+    {
+        var identities = new[] { new ReviewProjectWordIdentity("cat", "qaa", "qaa", "wordform/a", "key/a"),
+            new ReviewProjectWordIdentity("cat", "qab", "qab", "wordform/b", "key/b") };
+        var captured = await ReviewInputCapture.CaptureAsync("project", "proposal", null, [], null,
+            ["cat"], identities, [], []);
+        Assert.Equal(new[] { "key/a", "key/b" }, captured.Cases.Select(item => item.WordKey).Order().ToArray());
+        Assert.Equal(2, ReviewInputCapture.Partitions(captured).Count);
+    }
+
+    [Fact]
     public async Task FrozenExpectationsSurviveSourceAndOpinionEdits()
     {
         var wordform = Guid.NewGuid();

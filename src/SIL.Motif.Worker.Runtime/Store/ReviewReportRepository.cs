@@ -21,7 +21,7 @@ public sealed record ReviewReportPublication(string ProjectKey, string ProposalI
 
 /// <summary>One retained section row and the scalar selectors used to find it.</summary>
 public sealed record ReviewSectionItem(string Section, ReviewRow Row, string? Set = null, string? Outcome = null,
-    IReadOnlyList<ReviewFlagId>? Flags = null, bool Changed = false, bool Incomplete = false);
+    IReadOnlyList<ReviewFlagId>? Flags = null, bool Changed = false, bool Incomplete = false, string? Group = null);
 
 /// <summary>The stored summary and retained input references for a report.</summary>
 public sealed record StoredReviewReport(ReportView Summary, bool DetailAvailable, IReadOnlyList<string> InputReferences);
@@ -167,7 +167,7 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
                             throw new InvalidDataException("A section row does not match its captured section.");
                         var digest = ReviewRowArtifacts.Write(_database, reportId, item.Row);
                         var json = JsonSerializer.Serialize(new { kind = "section-row", digest, item.Set, item.Outcome,
-                            Flags = item.Flags ?? [], item.Changed, item.Incomplete }, ReviewJson.Options);
+                            Flags = item.Flags ?? [], item.Changed, item.Incomplete, item.Group }, ReviewJson.Options);
                         detailBytes = checked(detailBytes + Cost(json));
                         if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
                         Execute(connection, transaction, "INSERT INTO ReviewReportEvents VALUES ($id,$case,$ordinal,$facts);",

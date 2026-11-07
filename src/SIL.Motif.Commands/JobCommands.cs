@@ -244,7 +244,9 @@ public static class JobCommands
                 ReviewInputs: request.ReviewInputs, ReviewBaselines: request.ReviewBaselines,
                 ReviewBeforeStopCode: request.ReviewBeforeStopCode,
                 ReviewBeforePartial: request.ReviewBeforePartial is { Count: > 0 } partial
-                    ? TrialReviewEvidence.StoreBefore(database, partial) : null);
+                    ? TrialReviewEvidence.StoreBefore(database, partial) : null,
+                ReviewRevision: record.DraftName is null ? IntentDigest.Compute(proposal) : null,
+                ReviewCounterSemantics: request.ReviewInputs is null ? null : SIL.Motif.Host.PanGloss.PanGlossInterfaceVersions.StatsCounterSemanticsVersion);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var stamped = JobParserPin.Stamp(inputJson, parserPath);
             if (stop is null)
@@ -255,6 +257,19 @@ public static class JobCommands
                 JsonSerializer.Serialize(new { code = stop.Code, message = stop.Message,
                     wordsDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsDone"), out var done) ? done : (int?)null,
                     wordsNotDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsNotDone"), out var notDone) ? notDone : (int?)null }), NowStamp(), status);
+            if (input.ReviewInputs is not null)
+            {
+                try
+                {
+                    new SIL.Motif.Worker.Runtime.Review.TrialReviewPublisher(database).PublishAsync(
+                        new SIL.Motif.Worker.Runtime.Review.ReviewPublishRequest(stopped.JobId), CancellationToken.None)
+                        .GetAwaiter().GetResult();
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    System.Diagnostics.Trace.TraceError("Could not publish the interrupted Trial review: {0}", exception.Message);
+                }
+            }
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(stopped.JobId, TrialKind, workspaceKey));
         });
@@ -316,8 +331,11 @@ public static class JobCommands
     /// <summary>The words a Trial request would measure: its own, or those its Proposal touches; null means all.</summary>
     internal static CommandOutcome<IReadOnlyList<string>?> ResolveTrialWords(EnqueueTrialRequest request)
     {
-        if (request.Words is not null || request.AllWords)
-            return CommandOutcome<IReadOnlyList<string>?>.Success(request.Words);
+        if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
+                !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
+            return CommandOutcome<IReadOnlyList<string>?>.Refused(new Refusal(
+                "job.invalid-words", FailureReason.InvalidArgument,
+                "Trial words must be nonblank and have no surrounding whitespace."));
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
@@ -326,8 +344,9 @@ public static class JobCommands
                 var id = ProposalCommands.NormalizeId(request.ProposalId);
                 var record = repository.Get(CanonicalId.Parse(id));
                 if (record.DraftName is null) (record, _) = repository.GetFinalized(CanonicalId.Parse(id));
-                return CommandOutcome<IReadOnlyList<string>?>.Success(
-                    DerivedTrialWords(ProposalJsonParser.Parse(CanonicalProposalJson(record))));
+                var proposal = ProposalJsonParser.Parse(CanonicalProposalJson(record));
+                return CommandOutcome<IReadOnlyList<string>?>.Success(request.Words is not null || request.AllWords
+                    ? request.Words : DerivedTrialWords(proposal));
             }
             catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
             {

@@ -517,7 +517,9 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
             DELETE FROM ParsimonyBundleReferences WHERE ReferenceKind='report' AND ReferenceId IN (
                 SELECT r.ReportId FROM Reports AS r JOIN Proposals AS p ON p.ProposalId=r.ProposalId
                 WHERE r.Kind='parsimony' AND ($proposal IS NULL OR r.ProposalId=$proposal)
-                    AND p.Status IN ('applied','rejected','withdrawn','superseded'));
+                    AND p.Status IN ('applied','rejected','withdrawn','superseded')
+                    AND NOT EXISTS (SELECT 1 FROM ReviewReports, json_each(ReviewReports.InputReferencesJson)
+                        WHERE json_each.value=r.ReportId));
             """;
         command.Parameters.AddWithValue("$proposal", (object?)proposalId ?? DBNull.Value);
         return command.ExecuteNonQuery();
@@ -543,12 +545,14 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
         using var transaction = connection.BeginTransaction();
         using var report = connection.CreateCommand();
         report.Transaction = transaction;
-        report.CommandText = "DELETE FROM Reports WHERE ReportId=$id;";
+        report.CommandText = "DELETE FROM Reports WHERE ReportId=$id AND NOT EXISTS " +
+            "(SELECT 1 FROM ReviewReports, json_each(ReviewReports.InputReferencesJson) WHERE json_each.value=$id);";
         report.Parameters.AddWithValue("$id", reportId);
         var deleted = report.ExecuteNonQuery() == 1;
         using var reference = connection.CreateCommand();
         reference.Transaction = transaction;
-        reference.CommandText = "DELETE FROM ParsimonyBundleReferences WHERE ReferenceKind='report' AND ReferenceId=$id;";
+        reference.CommandText = "DELETE FROM ParsimonyBundleReferences WHERE ReferenceKind='report' AND ReferenceId=$id " +
+            "AND NOT EXISTS (SELECT 1 FROM ReviewReports, json_each(ReviewReports.InputReferencesJson) WHERE json_each.value=$id);";
         reference.Parameters.AddWithValue("$id", reportId);
         reference.ExecuteNonQuery();
         transaction.Commit();

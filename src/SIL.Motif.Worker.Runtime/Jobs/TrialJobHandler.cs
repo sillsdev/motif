@@ -55,7 +55,9 @@ public sealed record TrialJobInput(
     [property: JsonPropertyName("reviewInputs")] ReviewInputReference? ReviewInputs = null,
     [property: JsonPropertyName("reviewBaselines")] IReadOnlyList<ReviewBaselinePartition>? ReviewBaselines = null,
     [property: JsonPropertyName("reviewBeforeStopCode")] string? ReviewBeforeStopCode = null,
-    [property: JsonPropertyName("reviewBeforePartial")] string? ReviewBeforePartial = null)
+    [property: JsonPropertyName("reviewBeforePartial")] string? ReviewBeforePartial = null,
+    [property: JsonPropertyName("reviewRevision")] string? ReviewRevision = null,
+    [property: JsonPropertyName("reviewCounterSemantics")] int? ReviewCounterSemantics = null)
 {
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>
@@ -222,6 +224,11 @@ internal sealed class TrialJobHandler
                 .GroupBy(item => item.CaseKey, StringComparer.Ordinal).Select(group => group.Last()).ToArray() };
             Save();
         }
+        public void SetWarnings(GrammarCheckResponse before, GrammarCheckResponse after)
+        {
+            Ledger = Ledger with { BeforeWarnings = before.Findings.ToArray(), AfterWarnings = after.Findings.ToArray() };
+            Save();
+        }
         public void Interrupt(string code)
         {
             Ledger = TrialReviewEvidence.Interrupt(Ledger, Inputs, "after", code);
@@ -316,19 +323,27 @@ internal sealed class TrialJobHandler
                 claim.PublishStageProgress(grammarPhase);
                 var grammarWait = claim.ObserveParserWait(grammarPhase);
                 var snapshotPath = Path.Combine(scratchRoot, "grammar-snapshot.json");
+                GrammarCheckResponse? pairedBaseline = null;
                 async Task<GrammarCheckResponse?> Check(string path, string name, Action<bool>? wait, CancellationToken token)
                 {
+                    GrammarCheckResponse? response;
                     if (_grammarHealthWithSnapshot is null || path != candidate.GrammarPath || assessor is not PanGlossAssessor)
-                        return await _grammarHealth(path, name, wait, token).ConfigureAwait(false);
-                    var response = await _grammarHealthWithSnapshot(path, name, snapshotPath, wait, token).ConfigureAwait(false);
-                    if (response is not null) importedSnapshot = PanGlossImportedSnapshot.Capture(path, snapshotPath)
-                        with { TransferOwnership = !preserveScratch };
+                        response = await _grammarHealth(path, name, wait, token).ConfigureAwait(false);
+                    else
+                    {
+                        response = await _grammarHealthWithSnapshot(path, name, snapshotPath, wait, token).ConfigureAwait(false);
+                        if (response is not null) importedSnapshot = PanGlossImportedSnapshot.Capture(path, snapshotPath)
+                            with { TransferOwnership = !preserveScratch };
+                    }
+                    if (path == baseline.FwDataPath) pairedBaseline = response;
                     return response;
                 }
                 var (grammarCheck, dropped) = await DroppedGrammarCheck.CheckAsync(Check, claim.Database,
                     baseline.Token, baseline.FwDataPath, candidate.GrammarPath, project.FieldWorksProjectIdentity,
                     proposal, grammarWait.Observe, StageTimeout, cancellationToken).ConfigureAwait(false);
                 droppedGrammar = dropped;
+                if (pairedBaseline is not null && grammarCheck is not null)
+                    review?.SetWarnings(pairedBaseline, grammarCheck);
                 if (grammarCheck is not null)
                     new TrialGrammarCheckRepository(claim.Database).Save(baseline.Token,
                         proposal.ProposalId, IntentDigest.Compute(proposal), candidate.Selection.Sha256,
@@ -401,7 +416,8 @@ internal sealed class TrialJobHandler
                 var assessmentIds = records.Select(record => record.AssessmentId).ToArray();
                 var completionJson = JsonSerializer.Serialize(
                     new TrialCompletion(baseline.Token, assessmentIds, input.AllWords, grammarCheckWarning,
-                        droppedGrammar, reviewArtifact is null ? null : reviewAfter),
+                        droppedGrammar, reviewArtifact is null ? null : reviewAfter,
+                        reviewArtifact is null ? null : PanGlossInterfaceVersions.StatsCounterSemanticsVersion),
                     MotifJson.CreateOptions());
                 try
                 {
@@ -682,5 +698,7 @@ internal sealed class TrialJobHandler
         [property: JsonPropertyName("grammarCheckWarning")] string? GrammarCheckWarning = null,
         [property: JsonPropertyName("droppedGrammar")] DroppedGrammar? DroppedGrammar = null,
         [property: JsonPropertyName("reviewAfter"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null);
+        IReadOnlyList<ReviewAfterPartition>? ReviewAfter = null,
+        [property: JsonPropertyName("reviewCounterSemantics"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        int? ReviewCounterSemantics = null);
 }

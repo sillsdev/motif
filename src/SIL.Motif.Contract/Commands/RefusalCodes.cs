@@ -40,6 +40,8 @@ public static class RefusalCodes
     public const string OperationInvalidDependency = "operation.invalid-dependency";
     public const string ApplyReopenFailed = "apply.reopen-failed";
 
+    public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
+    public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
     public const string AssessBaselineChanged = "assess.baseline-changed";
     public const string AssessInvalidLimit = "assess.invalid-limit";
     public const string AssessInvocationInconsistent = "assess.invocation-inconsistent";

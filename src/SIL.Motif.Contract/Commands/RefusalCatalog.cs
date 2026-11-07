@@ -227,6 +227,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.OperationCascadingDelete, FailureReason.Refused),
         Spec(RefusalCodes.OperationInvalidDependency, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ApplyReopenFailed, FailureReason.Refused),
+        Spec(RefusalCodes.TrialReviewBaselineChanged, FailureReason.Refused),
+        Spec(RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused),
         Spec(RefusalCodes.AssessBaselineChanged, FailureReason.StoreInconsistent),
         Spec(RefusalCodes.AssessInvalidLimit, FailureReason.InvalidArgument),
         Spec(RefusalCodes.AssessInvocationInconsistent, FailureReason.Refused),

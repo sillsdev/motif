@@ -103,17 +103,25 @@ public static class ReviewInputCapture
         foreach (var word in touchedWords.Select(word => word.Normalize(NormalizationForm.FormD)).Distinct(StringComparer.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (cases.Values.Any(item => item.Word == word)) continue;
             var matches = identities.Where(item => item.Word == word).ToArray();
-            if (matches.Length > 1) throw new InvalidOperationException($"Trial word '{word}' has ambiguous project identities.");
-            var match = matches.SingleOrDefault();
-            var wordKey = match?.WordKey ?? Hash(new { unresolved = word });
-            var item = new CaseBuilder(Hash(new { wordKey, source = "touched" }), wordKey, word,
-                match?.WritingSystemId, match?.WordformId);
-            if (match is not null)
+            if (matches.Length == 0)
+            {
+                if (cases.Values.Any(item => item.Word == word)) continue;
+                var unresolvedKey = Hash(new { unresolved = word });
+                cases.Add(unresolvedKey, new CaseBuilder(Hash(new { wordKey = unresolvedKey, source = "touched" }),
+                    unresolvedKey, word, null, null));
+                continue;
+            }
+            foreach (var match in matches)
+            {
+                var wordKey = match.WordKey ?? Hash(new { unresolved = word, match.WordformId, match.WritingSystemTag });
+                if (cases.ContainsKey(wordKey)) continue;
+                var item = new CaseBuilder(Hash(new { wordKey, source = "touched" }), wordKey, word,
+                    match.WritingSystemId, match.WordformId);
                 foreach (var assertion in assertions.Where(value => SourceWordform(value) == match.WordformId))
                     item.Assertions.TryAdd(assertion.Id, FreezeAssertion(assertion));
-            cases.Add(wordKey, item);
+                cases.Add(wordKey, item);
+            }
         }
         var rows = cases.Values.Select(item => item.Freeze()).OrderBy(item => item.CaseKey, StringComparer.Ordinal).ToArray();
         var scopeDigest = Hash(new

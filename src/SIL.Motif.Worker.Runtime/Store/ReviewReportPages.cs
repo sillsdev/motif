@@ -48,6 +48,94 @@ public sealed partial class ReviewReportRepository
         return result;
     }
 
+    /// <summary>Reads a bounded shortlist ordered by captured sample weight and membership count.</summary>
+    public IReadOnlyList<ReviewWordRow> ReadFailureSamples(ReviewPageRequest request, int limit)
+    {
+        if (limit is < 0 or > 30 || !WordSections.Contains(request.Section))
+            throw new ArgumentException("Invalid failure sample request.", nameof(request));
+        if (limit == 0) return [];
+        var keys = new List<string>();
+        using (var lease = ReviewRowArtifacts.Acquire(_database, request.ReportId.Value))
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            RequireDetail(connection, transaction, request.ProjectKey, request.ReportId);
+            var args = FilterArguments(request).ToList();
+            args.Add(("$report", request.ReportId.Value));
+            args.Add(("$limit", limit));
+            var sql = "SELECT c.CaseKey FROM ReviewReportCases c WHERE c.ReportId=$report" + WordFilter(request) +
+                " ORDER BY (SELECT SUM(json_extract(m.FactsJson,'$.weight')) FROM ReviewReportMemberships m " +
+                "WHERE m.ReportId=c.ReportId AND m.CaseKey=c.CaseKey AND m.Role='sampled-tokens') DESC, " +
+                "(SELECT COUNT(*) FROM ReviewReportMemberships m WHERE m.ReportId=c.ReportId AND m.CaseKey=c.CaseKey) DESC, " +
+                "c.WordSort,c.WritingSystemSort,c.CaseKey LIMIT $limit;";
+            using var command = PageCommand(connection, transaction, sql, args.ToArray());
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) keys.Add(reader.GetString(0));
+        }
+        return keys.Select(key => ReadWord(request.ProjectKey, request.ReportId, key, 1).Row).ToArray();
+    }
+
+    /// <summary>Counts retained new warning or finding rows by their producer-backed group.</summary>
+    public IReadOnlyList<(string Group, long Count)> ReadFailureEventGroups(string project, ReviewReportId report, string section)
+    {
+        if (section is not ("warnings" or "parsimony")) throw new ArgumentException("Invalid event section.", nameof(section));
+        using var lease = ReviewRowArtifacts.Acquire(_database, report.Value);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        RequireDetail(connection, transaction, project, report);
+        var key = ReviewReportPages.SectionKey(section);
+        using var available = PageCommand(connection, transaction,
+            "SELECT 1 FROM ReviewReportEvents WHERE ReportId=$report AND CaseKey=$case AND Ordinal=-1;",
+            ("$report", report.Value), ("$case", key));
+        if (available.ExecuteScalar() is null) throw new ReviewDetailUnavailableException();
+        using var command = PageCommand(connection, transaction,
+            "SELECT json_extract(FactsJson,'$.group'),COUNT(*) FROM ReviewReportEvents " +
+            "WHERE ReportId=$report AND CaseKey=$case AND Ordinal>=0 AND json_extract(FactsJson,'$.outcome')='added' " +
+            "AND EXISTS (SELECT 1 FROM json_each(FactsJson,'$.flags') WHERE value='new-warnings-or-parsimony') " +
+            "GROUP BY json_extract(FactsJson,'$.group') ORDER BY 1;", ("$report", report.Value), ("$case", key));
+        using var reader = command.ExecuteReader();
+        var result = new List<(string, long)>();
+        while (reader.Read()) if (!reader.IsDBNull(0)) result.Add((reader.GetString(0), reader.GetInt64(1)));
+        return result;
+    }
+
+    /// <summary>Finds exact case identities for a word or case selector in one retained report.</summary>
+    public IReadOnlyList<string> FindCases(string project, ReviewReportId report, string? word, string? caseKey)
+    {
+        if ((word is null) == (caseKey is null)) throw new ArgumentException("Select exactly one word or case.");
+        using var lease = ReviewRowArtifacts.Acquire(_database, report.Value);
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        RequireDetail(connection, transaction, project, report);
+        using var command = PageCommand(connection, transaction,
+            "SELECT CaseKey FROM ReviewReportCases WHERE ReportId=$report AND " +
+            (caseKey is null ? "WordSort=$value" : "CaseKey=$value") + " ORDER BY CaseKey;",
+            ("$report", report.Value), ("$value", caseKey is null
+                ? Encoding.BigEndianUnicode.GetBytes(word!.Normalize(NormalizationForm.FormD)) : caseKey));
+        using var reader = command.ExecuteReader();
+        var cases = new List<string>();
+        while (reader.Read()) cases.Add(reader.GetString(0));
+        return cases;
+    }
+
+    /// <summary>Reads one exact case and its first bounded child pages.</summary>
+    public WordView ReadWord(string project, ReviewReportId report, string caseKey, int limit = 50)
+    {
+        if (limit is < 1 or > 200 || string.IsNullOrWhiteSpace(caseKey)) throw new ArgumentException("Invalid case request.");
+        ReviewWordRow row;
+        using (var lease = ReviewRowArtifacts.Acquire(_database, report.Value))
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            RequireDetail(connection, transaction, project, report);
+            var request = new ReviewPageRequest(project, report, "wordforms", Limit: 1);
+            var page = ReadWords(connection, transaction, request, ReviewReportCursor.FilterDigest(request), null, caseKey);
+            row = page.Items.OfType<ReviewWordRow>().SingleOrDefault() ?? throw new KeyNotFoundException("The report case was not found.");
+        }
+        ReviewPage Child(string kind) => ReadChildren(new ReviewChildPageRequest(project, report, kind, caseKey, Limit: limit));
+        return new WordView(row, Child("memberships"), Child("expectations"), Child("readings"), Child("sources"), null);
+    }
+
     /// <summary>Reads one case's retained indexed child references in a separate bounded page.</summary>
     public ReviewPage ReadChildren(ReviewChildPageRequest request)
     {
@@ -272,7 +360,16 @@ public sealed partial class ReviewReportRepository
         var total = Count(connection, transaction, "SELECT COUNT(*)" + source, args);
         var filter = "";
         if (request.Set is not null) { filter += " AND json_extract(FactsJson,'$.set') IN (SELECT value FROM json_each($set))"; args.Add(("$set", SelectorValues(request.Set))); }
-        if (request.Outcome is not null) { filter += " AND json_extract(FactsJson,'$.outcome') IN (SELECT value FROM json_each($outcome))"; args.Add(("$outcome", SelectorValues(request.Outcome))); }
+        if (request.Outcome is not null)
+        {
+            var prefix = request.Section == "warnings" ? "warning/" : request.Section == "parsimony" ? "parsimony/" : null;
+            if (prefix is not null && request.Outcome.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                filter += " AND json_extract(FactsJson,'$.outcome')='added' AND json_extract(FactsJson,'$.group')=$group";
+                args.Add(("$group", request.Outcome[prefix.Length..]));
+            }
+            else { filter += " AND json_extract(FactsJson,'$.outcome') IN (SELECT value FROM json_each($outcome))"; args.Add(("$outcome", SelectorValues(request.Outcome))); }
+        }
         if (request.Flag is { } flag)
         {
             filter += " AND EXISTS (SELECT 1 FROM json_each(FactsJson,'$.flags') f WHERE f.value=$flag)";
@@ -319,12 +416,14 @@ public sealed partial class ReviewReportRepository
     }
 
     private static ReviewPage ReadWords(SqliteConnection connection, SqliteTransaction transaction, ReviewPageRequest request,
-        string digest, string? last)
+        string digest, string? last, string? exactCase = null)
     {
-        var filter = WordFilter(request);
+        var exact = exactCase is null ? "" : " AND c.CaseKey=$exact";
+        var filter = WordFilter(request) + exact;
         var args = FilterArguments(request).ToList();
+        if (exactCase is not null) args.Add(("$exact", exactCase));
         args.Add(("$report", request.ReportId.Value));
-        var sectionFilter = WordFilter(request with { Set = null, Flag = null, Filter = null, Outcome = null });
+        var sectionFilter = WordFilter(request with { Set = null, Flag = null, Filter = null, Outcome = null }) + exact;
         var total = Count(connection, transaction, "SELECT COUNT(*) FROM ReviewReportCases c WHERE c.ReportId=$report" + sectionFilter, args);
         var matching = Count(connection, transaction, "SELECT COUNT(*) FROM ReviewReportCases c WHERE c.ReportId=$report" + filter, args);
         var tuple = last is null ? null : ReadTuple(last, 3);
@@ -621,18 +720,27 @@ public sealed partial class ReviewReportRepository
             var predicates = choices.Select(choice => choice switch
             {
                 "no-parse" => "(json_extract(c.FactsJson,'$.after.completion')='complete' AND json_extract(c.FactsJson,'$.after.parsed')=0)",
+                "new-no-parse" => "json_extract(c.FactsJson,'$.newNoParse')=1",
                 "approved-reading-lost" => "json_extract(c.FactsJson,'$.newApprovedLoss')=1",
                 "reference-reading-lost" => "EXISTS (SELECT 1 FROM ReviewReportEvents e WHERE e.ReportId=c.ReportId AND e.CaseKey=c.CaseKey AND json_extract(e.FactsJson,'$.referenceConfirmed')=1)",
                 "negative-now-parsing" => "json_extract(c.FactsJson,'$.newlyAcceptedNegative')=1",
                 "parsed" => "json_extract(c.FactsJson,'$.after.parsed')=1",
                 "unknown" => "json_extract(c.FactsJson,'$.after.parsed') IS NULL",
                 "incomplete" => "(json_extract(c.FactsJson,'$.before.completion')!='complete' OR json_extract(c.FactsJson,'$.after.completion')!='complete')",
+                "incomplete/not-measured" => "(json_extract(c.FactsJson,'$.before.completion')='not-measured' OR json_extract(c.FactsJson,'$.after.completion')='not-measured')",
+                "incomplete/work-limit" => StopReason("work-limit"),
+                "incomplete/time-limit" => StopReason("time-limit"),
+                "incomplete/invalid-evidence" => StopReason("invalid-evidence"),
                 _ => throw new ArgumentException("Unknown outcome filter.")
             });
             filter += " AND (" + string.Join(" OR ", predicates) + ")";
         }
         return filter;
     }
+
+    private static string StopReason(string reason) =>
+        "(EXISTS (SELECT 1 FROM json_each(c.FactsJson,'$.before.stopReasons') WHERE value='" + reason + "') OR " +
+        "EXISTS (SELECT 1 FROM json_each(c.FactsJson,'$.after.stopReasons') WHERE value='" + reason + "'))";
 
     private static IEnumerable<(string, object?)> FilterArguments(ReviewPageRequest request)
     {

@@ -32,7 +32,13 @@ public sealed record TrialReviewInterruption(string Side, string Code, IReadOnly
 /// <summary>Retained before and after observations for the exact captured Trial scope.</summary>
 public sealed record TrialReviewLedger(string JobId, ReviewInputReference Inputs,
     IReadOnlyList<TrialReviewObservation> Before, IReadOnlyList<TrialReviewObservation> After,
-    IReadOnlyList<TrialReviewInterruption> Interruptions);
+    IReadOnlyList<TrialReviewInterruption> Interruptions)
+{
+    /// <summary>Baseline diagnostics captured by the same parser invocation policy as the candidate.</summary>
+    public IReadOnlyList<GrammarWarning>? BeforeWarnings { get; init; }
+    /// <summary>Candidate diagnostics paired with the retained Baseline diagnostics.</summary>
+    public IReadOnlyList<GrammarWarning>? AfterWarnings { get; init; }
+}
 
 /// <summary>Persists a Trial's attributed evidence independently of its terminal status.</summary>
 public static class TrialReviewEvidence

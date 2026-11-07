@@ -842,9 +842,38 @@ public sealed class TrialJobHandlerTests : IDisposable
         Assert.Equal(JobStatus.Completed, finished.Status);
         Assert.Equal(2, calls.Count);
         Assert.All(calls, words => Assert.Equal([UnanalysedWordform], words));
-        var after = JsonDocument.Parse(finished.ResultJson!).RootElement.GetProperty("reviewAfter");
+        var result = JsonDocument.Parse(finished.ResultJson!).RootElement;
+        Assert.Equal(PanGlossInterfaceVersions.StatsCounterSemanticsVersion, result.GetProperty("reviewCounterSemantics").GetInt32());
+        var after = result.GetProperty("reviewAfter");
         Assert.Equal(2, after.GetArrayLength());
         Assert.Equal(2, after.EnumerateArray().Select(row => row.GetProperty("AssessmentIds")[0].GetString()).Distinct().Count());
+    }
+
+    [Fact]
+    public void ReviewRetainsGrammarChecksRunOnBothSidesOfTheSameTrial()
+    {
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "paired grammar checks");
+        SaveCommittedProposal(proposalId, proposalJson);
+        var inputs = new FrozenReviewInputs("project", proposalId.Value, "scope", "evidence", null, [], [],
+            [new ReviewPlannedCase("case", "word", UnanalysedWordform, null, null, [], [])]);
+        var reference = ReviewInputArtifacts.Store(_database, new(inputs, new Dictionary<string, byte[]>()) { Baseline = _token });
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform], reviewInputs: reference);
+        var calls = 0;
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]),
+            grammarHealth: (_, _, _, _) =>
+            {
+                var findings = Interlocked.Increment(ref calls) == 1
+                    ? new[] { new GrammarWarning(GrammarDiagnosticLevel.Warning, "label", [], [], "warning") { Code = "warning" } }
+                    : Array.Empty<GrammarWarning>();
+                return Task.FromResult<GrammarCheckResponse?>(new GrammarCheckResponse(findings, true));
+            });
+        var finished = RunAndFinish(handler, job);
+        Assert.Equal(JobStatus.Completed, finished.Status);
+        var ledger = TrialReviewEvidence.ReadJob(_database, job.JobId)!;
+        Assert.Empty(ledger.BeforeWarnings!);
+        Assert.Single(ledger.AfterWarnings!);
     }
 
     [Fact]

@@ -52,6 +52,20 @@ public sealed class ReviewReportPagingTests : IDisposable
     }
 
     [Fact]
+    public async Task FailureSamplesPrioritizeWeightThenMembershipCount()
+    {
+        var low = Sample(0, 1);
+        var many = Sample(1, 2);
+        var heavy = Sample(2, 1) with
+        {
+            Memberships = [new ReviewMembership("set", "heavy", "sampled-tokens", 9, null, null, [])]
+        };
+        var id = await Publish("failure-order", low, many, heavy);
+        var samples = _repository.ReadFailureSamples(Request(id), 3);
+        Assert.Equal(new[] { "case-0002", "case-0001", "case-0000" }, samples.Select(row => row.CaseKey));
+    }
+
+    [Fact]
     public async Task RetainedSectionRowsAndEmptySectionsAreAddressable()
     {
         var effect = new EffectRow("operation", "change", new ReadTarget(TargetKind.Resource, "detail", "motif://detail", null, null));

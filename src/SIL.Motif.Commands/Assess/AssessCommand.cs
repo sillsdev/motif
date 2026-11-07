@@ -798,7 +798,7 @@ public static class AssessCommand
     }
 
     // No Baseline yet: capture and publish one. One already current: reuse it rather than recapturing.
-    private static CommandOutcome<BaselineCaptureResponse> EnsureBaseline(string projectPath, string managedRoot,
+    internal static CommandOutcome<BaselineCaptureResponse> EnsureBaseline(string projectPath, string managedRoot,
         ProjectLocator project, string workspaceKey, BaselineRepository baselines)
     {
         var current = baselines.GetCurrentPublished(workspaceKey);

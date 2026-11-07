@@ -41,6 +41,23 @@ public sealed class JobRunnerLoopTests : IDisposable
     }
 
     [Fact]
+    public async Task TerminalCallbackObservesCommittedJobAndCannotChangeItsOutcome()
+    {
+        var jobs = new JobRepository(_database);
+        jobs.Create("job-1", Project, "demo", "{}", Stamp());
+        var seen = new List<JobStatus>();
+        var loop = Loop((_, _) => Task.FromResult<JobOutcome?>(JobOutcome.Completed));
+        loop.AfterTerminal = job =>
+        {
+            seen.Add(jobs.Get(job.JobId)!.Status);
+            throw new InvalidOperationException("report publication failed");
+        };
+        await loop.RunUntilIdleAsync(CancellationToken.None);
+        Assert.Equal([JobStatus.Completed], seen);
+        Assert.Equal(JobStatus.Completed, jobs.Get("job-1")!.Status);
+    }
+
+    [Fact]
     public async Task AKindWithNoHandlerFailsTheJobRatherThanSpinningOnIt()
     {
         var jobs = new JobRepository(_database);

@@ -81,21 +81,24 @@ internal static class ReviewTrialCapture
                     selectionChecks.Add((selection.Name, selection.Revision));
                     var resolved = CurrentEvidenceQuery.ResolveSelection(evidence.ProjectSummary, selection);
                     if (!resolved.Succeeded) throw new InvalidOperationException(resolved.Refusal!.Message);
-                    var members = resolved.Value!.Selection.Words.Select(word =>
+                    var members = resolved.Value!.Selection.Words.SelectMany(word =>
                     {
-                        var matching = identities.Where(item => item.Word == word).ToArray();
-                        if (matching.Length > 1)
-                            throw new InvalidOperationException($"Selection word '{word}' has ambiguous project identities.");
-                        var identity = matching.SingleOrDefault();
-                        var expectationIds = identity is null ? [] : assertions.Where(item =>
-                            Guid.TryParse(item.Morphology?.SourceWordformGuid, out var guid) &&
-                            SIL.Motif.Contract.Ids.CanonicalId.FromGuid(guid).Value == identity.WordformId)
-                            .Select(item => item.Id).Distinct(StringComparer.Ordinal).ToArray();
-                        var caseId = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
-                            Encoding.UTF8.GetBytes((identity?.WritingSystemId ?? string.Empty) + "\0" + word)));
-                        return new ReviewWordSetMember(caseId,
-                            word, identity?.WritingSystemId ?? string.Empty, identity?.WordformId,
-                            new ReviewWordSetSource("selection:" + selection.Name, null), expectationIds, null, null);
+                        var matches = identities.Where(item => item.Word == word).ToArray();
+                        IEnumerable<ReviewProjectWordIdentity?> candidates = matches.Length == 0
+                            ? new ReviewProjectWordIdentity?[] { null } : matches.Cast<ReviewProjectWordIdentity?>();
+                        return candidates.Select(identity =>
+                        {
+                            var expectationIds = identity is null ? [] : assertions.Where(item =>
+                                Guid.TryParse(item.Morphology?.SourceWordformGuid, out var guid) &&
+                                SIL.Motif.Contract.Ids.CanonicalId.FromGuid(guid).Value == identity.WordformId)
+                                .Select(item => item.Id).Distinct(StringComparer.Ordinal).ToArray();
+                            var caseId = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(
+                                Encoding.UTF8.GetBytes((identity?.WritingSystemId ?? string.Empty) + "\0" + word +
+                                    "\0" + (identity?.WordformId ?? string.Empty))));
+                            return new ReviewWordSetMember(caseId, word, identity?.WritingSystemId ?? string.Empty,
+                                identity?.WordformId, new ReviewWordSetSource("selection:" + selection.Name, null),
+                                expectationIds, null, null);
+                        });
                     }).ToArray();
                     var selectionBytes = JsonSerializer.SerializeToUtf8Bytes(selection);
                     sources.Add(set.Id, selectionBytes);

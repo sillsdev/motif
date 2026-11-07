@@ -41,11 +41,25 @@ public static class TrialWorkflow
     /// <param name="cancellationToken">Cancels the Baseline measurement.</param>
     public static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request, string managedRoot,
         string? parserPath, BaselineMode mode, CancellationToken cancellationToken) =>
-        EnqueueWithUpdateGate(() => TrialBaselines.WithAdmission(request, (admission, busy) => EnqueueCore(request,
-            (words, limits, writingSystem, onPartial) => busy is null
-                ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial)
-                : CommandOutcome<AssessCommandResponse>.Refused(busy),
-            mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate(), admission)));
+        EnqueueWithUpdateGate(() => TrialBaselines.WithAdmission(request, (admission, busy) =>
+        {
+            var resolved = JobCommands.ResolveTrialWords(request);
+            if (!resolved.Succeeded) return CommandOutcome<TrialEnqueued>.Refused(resolved.Refusal!);
+            if (resolved.Value is null && !request.AllWords && mode == BaselineMode.Required &&
+                request.BaselineAssessmentIds is null && TrialBaselines.RequireDefault(request) is { } missing)
+                return CommandOutcome<TrialEnqueued>.Refused(missing);
+            if (busy is null && request.BaselineAssessmentIds is null)
+            {
+                var baseline = TrialBaselines.EnsureCurrentBaseline(request, managedRoot);
+                if (!baseline.Succeeded && mode == BaselineMode.Required)
+                    return CommandOutcome<TrialEnqueued>.Refused(baseline.Refusal!);
+            }
+            return EnqueueCore(request,
+                (words, limits, writingSystem, onPartial) => busy is null
+                    ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial)
+                    : CommandOutcome<AssessCommandResponse>.Refused(busy),
+                mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate(), admission);
+        }));
 
     /// <summary>As the public overload, with the Baseline measurement supplied by the caller.</summary>
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request,

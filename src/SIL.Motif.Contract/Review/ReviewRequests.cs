@@ -26,6 +26,9 @@ public sealed record ReviewReadRequest(
             .Any(value => value is not null && string.IsNullOrWhiteSpace(value))) return "selectors cannot be blank";
         if ((Detail.HasValue && !Enum.IsDefined(Detail.Value)) || (Flag.HasValue && !Enum.IsDefined(Flag.Value)) ||
             (Side.HasValue && !Enum.IsDefined(Side.Value))) return "unknown enum value";
+        if (Section is not null and not ("wordforms" or "sampled-tokens" or "paradigm-cells" or "controls" or
+            "negative-controls" or "parser-work" or "warnings" or "parsimony" or "incomplete" or "effects" or "evidence"))
+            return "unknown section";
         if (JobId is not null && ReportId is not null) return "job and report are exclusive";
         if (Word is not null && Case is not null) return "word and case are exclusive";
         if (Trace && Word is null && Case is null) return "trace requires a word or case";
