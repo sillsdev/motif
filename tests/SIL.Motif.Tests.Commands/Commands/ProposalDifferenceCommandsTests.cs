@@ -314,6 +314,23 @@ public sealed partial class ProposalDifferenceCommandsTests : IDisposable
     }
 
     [Fact]
+    public void ABoundBeforeProducesTheSameDifferenceAsFreshEvidence()
+    {
+        using var fresh = new Fixture(_root);
+        using var reused = new Fixture(_root, beforeTokenSeed: 'b');
+        new BeforeAssessmentBindingRepository(reused.Database).Bind("before", reused.Token.SemanticIdentity);
+
+        var expected = ProposalDifferenceCommands.Produce(fresh.ProduceRequest());
+        var actual = ProposalDifferenceCommands.Produce(reused.ProduceRequest());
+
+        Assert.True(expected.Succeeded, expected.Refusal?.Message);
+        Assert.True(actual.Succeeded, actual.Refusal?.Message);
+        Assert.Equal(expected.Value!.Summary.Matrix, actual.Value!.Summary.Matrix);
+        Assert.Equal(expected.Value.Summary.CouldBeBadWords, actual.Value.Summary.CouldBeBadWords);
+        Assert.Equal(expected.Value.Summary.ImprovedWords, actual.Value.Summary.ImprovedWords);
+    }
+
+    [Fact]
     public void ABaselineAssessmentWithNoWordResultsSaysThereIsNothingToCompare()
     {
         using var fixture = new Fixture(_root, beforeNoWords: true);

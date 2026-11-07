@@ -9,12 +9,15 @@ namespace SIL.Motif.Commands;
 public static class TrialWorkComparison
 {
     /// <summary>Compares Assessments only when their parser and deterministic limits match.</summary>
-    public static TrialWork Compare(AssessmentRecord? baseline, AssessmentRecord trial)
+    public static TrialWork Compare(AssessmentRecord? baseline, AssessmentRecord trial) =>
+        Compare(baseline, trial, baseline?.BaselineToken == trial.BaselineToken);
+
+    internal static TrialWork Compare(AssessmentRecord? baseline, AssessmentRecord trial, bool sameBaseline)
     {
         var before = baseline?.Invocation;
         var after = trial.Invocation;
         var compatible = baseline is not null && baseline.Assessor == trial.Assessor &&
-            baseline.BaselineToken == trial.BaselineToken && before is not null && after is not null &&
+            sameBaseline && before is not null && after is not null &&
             !string.IsNullOrWhiteSpace(before.ExecutableBytesSha256) &&
             before.ExecutableBytesSha256 == after.ExecutableBytesSha256 &&
             before.PerWordParserWorkLimit == after.PerWordParserWorkLimit;

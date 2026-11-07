@@ -62,6 +62,98 @@ public sealed class DeterministicAssessCommandTests : IDisposable
     }
 
     [Fact]
+    public void ARepeatedBeforeAssessmentReusesVerifiedEvidence()
+    {
+        using var seeded = NewSeededScratch();
+        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, "reuse-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome = "complete" } } });
+        var request = new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay"], false, null));
+        var root = NewManagedRoot();
+        var limits = new TrialLimits(TimeSpan.FromSeconds(1), ParserWorkLimit.Default);
+
+        var first = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits,
+            reuseBefore: true);
+        var second = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits,
+            reuseBefore: true);
+
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        var parseId = first.Value!.Measurements.Single(item => item.Kind == "ParseTime").AssessmentId;
+        Assert.Equal([parseId], second.Value!.AssessmentIds);
+        var fresh = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits);
+        Assert.True(fresh.Succeeded, fresh.Refusal?.Message);
+        var freshId = fresh.Value!.Measurements.Single(item => item.Kind == "ParseTime").AssessmentId;
+        var repository = OpenRepository(seeded.FwDataPath);
+        Assert.Equal(JsonSerializer.Serialize(repository.Get(parseId).Words!.Select(word => word.Correctness)),
+            JsonSerializer.Serialize(repository.Get(freshId).Words!.Select(word => word.Correctness)));
+    }
+
+    [Theory]
+    [InlineData("selection")]
+    [InlineData("time-limit")]
+    [InlineData("work-limit")]
+    [InlineData("artifact")]
+    [InlineData("missing-artifact")]
+    [InlineData("baseline")]
+    [InlineData("parser-version")]
+    [InlineData("parser-hash")]
+    [InlineData("expectations")]
+    public void ChangedBeforeInputsCauseANewAssessment(string changed)
+    {
+        using var seeded = NewSeededScratch();
+        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, "invalidation-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome = "complete" } } });
+        var request = new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay"], false, null));
+        var root = NewManagedRoot();
+        var limits = new TrialLimits(TimeSpan.FromSeconds(1), ParserWorkLimit.Default);
+        var first = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits,
+            reuseBefore: true);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var id = first.Value!.Measurements.Single(item => item.Kind == "ParseTime").AssessmentId;
+
+        if (changed == "selection") request = request with
+            { Selection = new SelectionRequest(false, [], ["mutu"], false, null) };
+        if (changed == "time-limit") limits = limits with { PerWordLimit = TimeSpan.FromSeconds(2) };
+        if (changed == "work-limit") limits = limits with { PerWordParserWorkLimit = new ParserWorkLimit(100) };
+        if (changed == "artifact")
+        {
+            var record = OpenRepository(seeded.FwDataPath).Get(id);
+            File.AppendAllText(record.Invocation!.TsvPath, "corruption");
+        }
+        if (changed == "missing-artifact")
+        {
+            var record = OpenRepository(seeded.FwDataPath).Get(id);
+            File.Delete(record.Invocation!.AnalysesPath!);
+        }
+        if (changed == "parser-version")
+            File.WriteAllText(Path.Combine(Path.GetDirectoryName(parser)!, "_fake-pangloss-version"), "pangloss 99.1.0");
+        if (changed == "parser-hash") File.AppendAllText(parser, "different executable bytes");
+        if (changed == "expectations")
+        {
+            using var connection = OpenDatabase(seeded.FwDataPath).OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE AssessmentInvocations SET EvidenceJson = json_set(EvidenceJson, $path, $value) " +
+                "WHERE InvocationId = (SELECT InvocationId FROM Assessments WHERE AssessmentId = $id);";
+            command.Parameters.AddWithValue("$path", "$.ApprovedExpectationsSha256");
+            command.Parameters.AddWithValue("$value", "different");
+            command.Parameters.AddWithValue("$id", id);
+            Assert.Equal(1, command.ExecuteNonQuery());
+        }
+        if (changed == "baseline")
+        {
+            NonUndoableUnitOfWorkHelper.Do(seeded.Cache.ActionHandlerAccessor,
+                () => seeded.Cache.ServiceLocator.GetInstance<ILexEntryFactory>().Create());
+            new FwDataProjectLoader().Save(seeded.Cache);
+            File.SetLastWriteTimeUtc(seeded.FwDataPath, first.Value.Baseline.SourceLastWriteUtc.AddMinutes(5).UtcDateTime);
+        }
+
+        var second = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits,
+            reuseBefore: true);
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.DoesNotContain(id, second.Value!.AssessmentIds);
+    }
+
+    [Fact]
     public void FirstRunCapturesABaselineAndRecordsAnAssessmentPerCollectedKind()
     {
         using var seeded = NewSeededScratch();

@@ -99,13 +99,14 @@ public static class AssessCommand
     internal static CommandOutcome<AssessCommandResponse> AssessWithLimits(
         AssessRequest request, string managedRoot, string? parserPath,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits, bool recordBudgetStop = true,
-        ProjectParseLease? admission = null)
+        ProjectParseLease? admission = null, bool reuseBefore = false)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
         var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(
             new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker));
-        return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission, limits, recordBudgetStop);
+        return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission, limits, recordBudgetStop,
+            reuseBefore ? parserPath : null);
     }
 
     /// <summary>
@@ -129,7 +130,7 @@ public static class AssessCommand
 
     private static CommandOutcome<AssessCommandResponse> RunCore(
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
-        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission, TrialLimits? frozenLimits = null, bool recordBudgetStop = true)
+        Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission, TrialLimits? frozenLimits = null, bool recordBudgetStop = true, string? reuseParserPath = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(assessor);
@@ -333,6 +334,10 @@ public static class AssessCommand
                 { Casing = LowercasePass.ForCache(baselineReader.Cache) };
                 // The lowercase wordforms are rows of their own, so every per-word context and total covers them.
                 parsedWords = scope.ParsedWords;
+                if (reuseParserPath is not null && BeforeAssessmentReuse.Find(database, assessments, baseline.Token,
+                        composition.Selection, scope, baselineReader.Cache, reuseParserPath, cancellationToken) is { } reused)
+                    return CommandOutcome<AssessCommandResponse>.Success(new AssessCommandResponse(
+                        baseline, composition.Projection, [reused], string.Empty));
                 var timeLimit = limits.PerWordLimit;
                 var latestWordProgress = new TrialWordProgress(0, parsedWords.Count, null);
                 onProgress?.Invoke(new AssessmentProgress(

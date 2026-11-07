@@ -10,6 +10,7 @@ using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using DryRunModel = SIL.Motif.Model.DryRun.DryRun;
@@ -92,9 +93,16 @@ internal static class ApplyAuthorization
         {
             var current = currentAssessment;
             if (currentIsStale)
-                current = candidate is null ? null : assessments.FindLatestBaselineAssessment(
-                    RegressionChecker.RequiredKind, currentBaselineToken!, candidate.Selection.Sha256,
-                    candidate.Selection.Words);
+            {
+                current = null;
+                if (candidate is not null && baseline is not null)
+                    current = ReusedBeforeCorrectness(database, project, record.ProposalId, assessments,
+                        baseline.Token.SemanticIdentity, candidate);
+                if (current is null && candidate is not null)
+                    current = assessments.FindLatestBaselineAssessment(
+                        RegressionChecker.RequiredKind, currentBaselineToken!, candidate.Selection.Sha256,
+                        candidate.Selection.Words);
+            }
             var candidateBaselineToken = candidate?.BaselineToken ?? "";
             if (baseline is not null && candidate is not null)
                 candidateBaselineToken = ProposalCommands.AssessmentUsesCurrentBaseline(baselines, projectKey, candidate)
@@ -116,5 +124,35 @@ internal static class ApplyAuthorization
         var candidate = choice.Candidate;
         var readiness = choice.Decision;
         return new ApplyAuthorizationDecision(readiness, candidate, boundDryRun, true, choice.Considered, choice.Unread);
+    }
+
+    private static AssessmentRecord? ReusedBeforeCorrectness(MotifDatabase database, ProjectLocator project,
+        CanonicalId proposalId, AssessmentRepository assessments,
+        SIL.Motif.Contract.Baselines.BaselineSemanticIdentity identity, AssessmentRecord candidate)
+    {
+        var bindings = new BeforeAssessmentBindingRepository(database);
+        var trials = Trials.ListFor(database, project, proposalId.Value);
+        var jobs = new JobRepository(database);
+        foreach (var trial in trials)
+        {
+            if (!trial.AssessmentIds.Values.Contains(candidate.AssessmentId, StringComparer.Ordinal)) continue;
+            var job = jobs.Get(trial.JobId);
+            if (job is null) continue;
+            foreach (var parseId in TrialJobInput.Parse(job.InputJson).BaselineAssessmentIds ?? [])
+            {
+                var parse = assessments.GetHeader(parseId);
+                if (parse?.Kind != AssessmentKinds.ParseTime || parse.Invocation is null ||
+                    !Assess.BeforeAssessmentReuse.MatchesBaseline(database, parse, candidate)) continue;
+                var headers = assessments.ListRecentBaselineHeaders(AssessmentKinds.Correctness, 50).ToList();
+                var boundCorrectness = bindings.Find(identity, AssessmentKinds.Correctness, parse.Invocation.InvocationId);
+                if (boundCorrectness is not null && assessments.GetHeader(boundCorrectness) is { } bound)
+                    headers.Insert(0, bound);
+                var header = headers.FirstOrDefault(item => item.Invocation?.InvocationId == parse.Invocation.InvocationId &&
+                    item.Selection.Sha256 == candidate.Selection.Sha256 &&
+                    item.Selection.Words.SequenceEqual(candidate.Selection.Words, StringComparer.Ordinal));
+                if (header is not null) return assessments.Get(header.AssessmentId);
+            }
+        }
+        return null;
     }
 }

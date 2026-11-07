@@ -44,6 +44,14 @@ public static partial class ParserExecutableIdentity
         }
     }
 
+    /// <summary>Reads the executable's reported version without using the cached observation.</summary>
+    public static string ReadFreshVersion(string path)
+    {
+        try { return File.Exists(path) ? VersionOf(Path.GetFullPath(path)) : "unavailable"; }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        { return "unavailable"; }
+    }
+
     /// <summary>The version already read for the executable at <paramref name="path"/>, or null; it runs nothing.</summary>
     public static string? CachedVersion(string path)
     {

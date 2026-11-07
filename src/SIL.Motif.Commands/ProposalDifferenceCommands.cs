@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -120,7 +121,7 @@ public static class ProposalDifferenceCommands
             var recorded = (input.BaselineAssessmentIds ?? []).Select(assessments.GetSelected).ToArray();
             var before = recorded.FirstOrDefault(record =>
                 record.Kind == AssessmentKinds.ParseTime && record.Assessor == after.Assessor &&
-                record.BaselineToken == after.BaselineToken);
+                BeforeAssessmentReuse.MatchesBaseline(database, record, after));
             var noBefore = NoBeforeMessage(recorded, before, after);
             if (noBefore is not null)
                 return Refuse("difference.no-before", FailureReason.Refused, noBefore);

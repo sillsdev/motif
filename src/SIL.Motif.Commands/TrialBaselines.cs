@@ -29,7 +29,7 @@ public static class TrialBaselines
         AssessCommand.AssessWithLimits(new AssessRequest(projectPath,
             words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
             managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits, recordBudgetStop: false,
-            admission: admission);
+            admission: admission, reuseBefore: true);
 
     internal static CommandOutcome<T> WithAdmission<T>(EnqueueTrialRequest request,
         Func<ProjectParseLease?, Refusal?, CommandOutcome<T>> enqueue) where T : class?

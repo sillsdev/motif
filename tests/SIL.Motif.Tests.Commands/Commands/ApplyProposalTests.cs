@@ -6,11 +6,13 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Analysis;
+using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
@@ -50,6 +52,29 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
 
         Assert.True(applied.Succeeded, applied.Refusal?.Message);
         Assert.True(applied.Value!.Applied);
+    }
+
+    [Fact]
+    public async Task AppliedCandidateCanBeReusedAsTheNextBeforeAssessment()
+    {
+        const string word = "reuse-after-apply";
+        var (path, pending) = await TriedPendingChange(word);
+        var applied = await Task.Run(() => PendingChangesWorkflow.Apply(
+            new ApplyProposalRequest(path, pending.DraftId!, pending.Revision))).WaitAsync(StepBound);
+        Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path));
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        using var database = ProjectMotifDatabase.Open(path);
+        var bound = new BeforeAssessmentBindingRepository(database).Find(captured.Value!.Token.SemanticIdentity);
+        Assert.NotNull(bound);
+        var record = new AssessmentRepository(database).Get(bound!);
+        var scope = ScopeCodec.ReadTrial(record.ScopeJson, "test");
+
+        var before = TrialBaselines.Assess(path, [word], RootFor(path), FakeParser.ExecutablePath,
+            CancellationToken.None, new TrialLimits(scope.PerWordLimit, scope.PerWordParserWorkLimit));
+
+        Assert.True(before.Succeeded, before.Refusal?.Message);
+        Assert.Equal([bound], before.Value!.AssessmentIds);
     }
 
     [Fact]

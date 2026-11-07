@@ -57,6 +57,7 @@ internal static class AssessmentRetention
         removable.ExceptWith(ReadIds(connection, transaction, """
             SELECT AssessmentId FROM Reports WHERE AssessmentId IS NOT NULL
             UNION SELECT AssessmentId FROM AssessmentPins
+            UNION SELECT AssessmentId FROM BeforeAssessmentBinding
             UNION SELECT AssessmentId FROM RetainedInvocationMembers
             UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
             """));
@@ -162,6 +163,7 @@ internal static class AssessmentRetention
         removable.ExceptWith(ReadIds(connection, transaction, """
             SELECT AssessmentId FROM Reports WHERE AssessmentId IS NOT NULL
             UNION SELECT AssessmentId FROM AssessmentPins
+            UNION SELECT AssessmentId FROM BeforeAssessmentBinding
             UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
             """));
         removable.ExceptWith(ReadFrozenReportAssessmentIds(connection, transaction));

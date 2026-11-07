@@ -38,6 +38,9 @@ public sealed record BatchInvocationEvidence(
     public string? AnalysesPath { get; init; }
     public string? AnalysesSha256 { get; init; }
 
+    /// <summary>Digest of the approved morphology used for correctness, when collected.</summary>
+    public string? ApprovedExpectationsSha256 { get; init; }
+
     /// <summary>
     /// Set when words the parser stopped at the per-word time limit were run again in one serial batch under a longer limit and
     /// their rows in the retained TSV and morphology files were replaced by the retried rows; null when none were.

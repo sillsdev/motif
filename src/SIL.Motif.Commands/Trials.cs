@@ -256,9 +256,9 @@ public static class Trials
         var trialAssessment = rootAssessmentId is null ? null : assessments.GetSelected(rootAssessmentId);
         var baselineAssessment = (input.BaselineAssessmentIds ?? []).Select(assessments.GetSelected)
             .FirstOrDefault(record => record.Kind == AssessmentKinds.ParseTime && trialAssessment is not null &&
-                record.Assessor == trialAssessment.Assessor && record.BaselineToken == trialAssessment.BaselineToken);
+                record.Assessor == trialAssessment.Assessor && Assess.BeforeAssessmentReuse.MatchesBaseline(database, record, trialAssessment));
         var work = trialAssessment is not null
-            ? TrialWorkComparison.Compare(baselineAssessment, trialAssessment) : null;
+            ? TrialWorkComparison.Compare(baselineAssessment, trialAssessment, baselineAssessment is not null) : null;
         var grammarCheckId = new GrammarCheckRepository(database).GetLatest(tokenJson, proposalId, intentDigest) is null
             ? null
             : "trial:" + proposalId + ":" + intentDigest;

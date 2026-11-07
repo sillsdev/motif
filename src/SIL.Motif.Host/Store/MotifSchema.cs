@@ -34,7 +34,7 @@ public static class MotifSchema
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
-                PhonologyAssessmentDdl;
+                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl;
             command.ExecuteNonQuery();
         }
 
@@ -68,7 +68,7 @@ public static class MotifSchema
             "ParsimonyFrozenViews", "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
             "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets",
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
-            "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies"
+            "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -416,6 +416,7 @@ public static class MotifSchema
 
     private static IReadOnlyList<ForeignKeyShape> ForeignKeysFor(string table) => table switch
     {
+        "BeforeAssessmentBinding" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "CorpusDocuments" => [new("Corpora", "CorpusId", "CorpusId", "NO ACTION", "NO ACTION", "NONE")],
         "PhonologyAssessmentBindings" => [new("PhonologyExampleSetRevisions", "RevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE"),
             new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
@@ -515,6 +516,8 @@ public static class MotifSchema
             C("SummaryJson", "TEXT", true)],
         "PhonologyAssessmentDependencies" => [C("AssessmentId", "TEXT", true, 1), C("Ordinal", "INTEGER", true, 2),
             C("Path", "TEXT", true), C("Sha256", "TEXT", true)],
+        "BeforeAssessmentBinding" => [C("Id", "INTEGER", false, 1), C("AssessmentId", "TEXT", true),
+            C("SemanticIdentityJson", "TEXT", true)],
         "AssessmentInvocations" => [C("InvocationId", "TEXT", false, 1), C("EvidenceJson", "TEXT", true)],
         "Assessments" =>
         [C("AssessmentId", "TEXT", false, 1), C("SelectionName", "TEXT"), C("SelectionWordsJson", "TEXT"),
@@ -1327,6 +1330,14 @@ public static class MotifSchema
         BEGIN
             SELECT RAISE(ABORT, 'Example Set examples are immutable');
         END;
+        """;
+
+    private const string BeforeAssessmentBindingDdl = """
+        CREATE TABLE BeforeAssessmentBinding (
+            Id INTEGER PRIMARY KEY,
+            AssessmentId TEXT NOT NULL REFERENCES Assessments(AssessmentId),
+            SemanticIdentityJson TEXT NOT NULL
+        );
         """;
 
     private const string PhonologyAssessmentDdl = """

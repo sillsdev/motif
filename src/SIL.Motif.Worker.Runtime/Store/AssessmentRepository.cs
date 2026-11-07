@@ -718,6 +718,22 @@ public sealed class AssessmentRepository : IAssessmentRepository
         return records;
     }
 
+    /// <summary>Reads a bounded set of recent standalone Assessment headers for evidence reuse.</summary>
+    public IReadOnlyList<AssessmentRecord> ListRecentBaselineHeaders(string kind, int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = HeaderSelectSql + " WHERE Kind = $kind AND ProposalId IS NULL " +
+            "ORDER BY SavedUtc DESC, AssessmentId DESC LIMIT $count;";
+        command.Parameters.AddWithValue("$kind", kind);
+        command.Parameters.AddWithValue("$count", count);
+        using var reader = command.ExecuteReader();
+        var records = new List<AssessmentRecord>();
+        while (reader.Read()) records.Add(ReadHeader(reader));
+        return records;
+    }
+
     /// <inheritdoc />
     public IReadOnlyList<AssessmentRecord> ListBaselineAssessments(string kind)
     {

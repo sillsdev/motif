@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Operations;
@@ -55,6 +56,45 @@ public sealed class ReviewReadinessParityTests : IDisposable
 
         Assert.True(AppliesWithoutForce(fixture, proposal.Id));
         Assert.True(ReviewIsReady(fixture, proposal.Id));
+    }
+
+    [Fact]
+    public void ReusedBeforeAndFreshBeforeGiveTheSameReadiness()
+    {
+        using var fresh = new TrialsTests.ProjectFixture(_root);
+        using var reused = new TrialsTests.ProjectFixture(_root);
+        var expected = ArrangeBefore(fresh, false);
+        var actual = ArrangeBefore(reused, true);
+
+        var first = ProposalReview.Read(fresh.Database, fresh.Project, expected.Value).Value!.Readiness!;
+        var second = ProposalReview.Read(reused.Database, reused.Project, actual.Value).Value!.Readiness!;
+        Assert.Equal(first.IsReady, second.IsReady);
+        Assert.Equal(first.Reasons, second.Reasons);
+        Assert.Contains(first.Reasons, reason => reason.Contains("regression", StringComparison.Ordinal));
+    }
+
+    private static CanonicalId ArrangeBefore(TrialsTests.ProjectFixture fixture, bool reuse)
+    {
+        var proposal = fixture.SaveProposal();
+        var token = CurrentToken(fixture);
+        var old = new BaselineToken(token.ProjectIdentity, "sha256:" + new string('b', 64), token.ProjectionVersion,
+            token.CapturedUtc, token.BundleDigest);
+        var invocation = new BatchInvocationEvidence("before-invocation", "source", "sha256:source", "sha256:parser",
+            "words", "sha256:words", "tsv", "sha256:tsv", "stderr", "sha256:stderr", 1000, 200000, 1, false);
+        var correctness = Record(fixture, null, old, "cat", RegressionChecker.RequiredKind, invocation);
+        new AssessmentRepository(fixture.Database).PromoteToCurrent(correctness);
+        var parse = Record(fixture, null, old, "cat", AssessmentKinds.ParseTime, invocation);
+        if (reuse)
+        {
+            var bindings = new BeforeAssessmentBindingRepository(fixture.Database);
+            bindings.Bind(correctness, token.SemanticIdentity);
+            bindings.Bind(parse, token.SemanticIdentity);
+        }
+        else Record(fixture, null, token);
+        var measured = Record(fixture, proposal, token, "cat", matched: false);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", [measured], baselineAssessmentIds: [parse]);
+        Bind(fixture, proposal.Id);
+        return proposal.Id;
     }
 
     [Fact]
@@ -288,7 +328,8 @@ public sealed class ReviewReadinessParityTests : IDisposable
         BaselineToken token) => Record(fixture, proposal, token, "cat");
 
     private static string Record(TrialsTests.ProjectFixture fixture, TrialsTests.SavedProposal? proposal,
-        BaselineToken token, string word)
+        BaselineToken token, string word, string? kind = null, BatchInvocationEvidence? invocation = null,
+        bool matched = true)
     {
         var id = CanonicalId.Mint("assessment/").Value;
         new AssessmentRepository(fixture.Database).Record(new NewAssessmentRecord(
@@ -296,7 +337,7 @@ public sealed class ReviewReadinessParityTests : IDisposable
             ProposalId: proposal?.Id,
             ProposalIntentDigest: proposal?.Digest,
             Assessor: "pangloss",
-            Kind: RegressionChecker.RequiredKind,
+            Kind: kind ?? RegressionChecker.RequiredKind,
             ScopeJson: """{"perWordLimitMs":1000,"perWordParserWorkLimit":{"steps":200000,"isUnbounded":false}}""",
             ScopeDigest: "sha256:" + new string('a', 64),
             Subject: new AssessmentSubject.Words(Selection.Create("test", [word]), "none", "1"),
@@ -307,7 +348,8 @@ public sealed class ReviewReadinessParityTests : IDisposable
             ModelFingerprint: "model",
             Pipeline: "pipeline",
             DiagnosticCount: 0,
-            Material: new AssessmentRecordMaterial.Words([CorrectnessFixture.Word(word, true)], null, null, [])));
+            Material: new AssessmentRecordMaterial.Words([CorrectnessFixture.Word(word, matched)], null, null, [])
+                { Invocation = invocation }));
         return id;
     }
 

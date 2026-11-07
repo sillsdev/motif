@@ -25,6 +25,7 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
+using SIL.Motif.LiveHost.Baselines;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Projection;
 using SIL.Motif.Projection.Store;
@@ -1752,6 +1753,35 @@ public static partial class ProposalCommands
         }
     }
 
+    private static void BindBeforeAssessment(MotifDatabase database, AssessmentRepository assessments,
+        CanonicalId proposalId, AssessmentRecord candidate, LcmCache current)
+    {
+        try { BindVerifiedBeforeAssessment(database, assessments, proposalId, candidate, current); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            JsonException or ArgumentException or InvalidDataException or InvalidOperationException) { }
+    }
+
+    private static void BindVerifiedBeforeAssessment(MotifDatabase database, AssessmentRepository assessments,
+        CanonicalId proposalId, AssessmentRecord candidate, LcmCache current)
+    {
+        var invocation = candidate.Invocation;
+        if (invocation?.ApprovedExpectationsSha256 is null ||
+            BatchInvocationEvidence.DigestFile(invocation.SourcePath) != invocation.SourceBytesSha256) return;
+        var baseline = JsonSerializer.Deserialize<BaselineToken>(candidate.BaselineToken, MotifJson.CreateOptions());
+        if (baseline is null || baseline.ProjectionVersion != BaselineSemanticDigest.ProjectionVersion) return;
+        var digest = BaselineSemanticDigest.Compute(current);
+        using var source = new FwDataProjectLoader().LoadScratchCache(invocation.SourcePath);
+        if (BaselineSemanticDigest.Compute(source) != digest ||
+            BatchInvocationEvidence.DigestFile(invocation.SourcePath) != invocation.SourceBytesSha256) return;
+        var before = assessments.ListByProposal(proposalId).LastOrDefault(record =>
+            record.Kind == AssessmentKinds.ParseTime && record.Invocation?.InvocationId == invocation.InvocationId);
+        if (before is null) return;
+        var binding = new BeforeAssessmentBindingRepository(database);
+        var identity = new BaselineSemanticIdentity(baseline.ProjectIdentity, digest, baseline.ProjectionVersion);
+        binding.Bind(candidate.AssessmentId, identity);
+        binding.Bind(before.AssessmentId, identity);
+    }
+
     internal static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
         proposal.Operations.Select(operation => operation.Extensions)
             .Where(extension => extension is { ValueKind: JsonValueKind.Object } &&
@@ -1959,6 +1989,8 @@ public static partial class ProposalCommands
                 {
                     TryPostApplyStep("Assessment promotion", () =>
                         assessments.PromoteToCurrent(candidate.AssessmentId));
+                    TryPostApplyStep("Before Assessment binding", () =>
+                        BindBeforeAssessment(database, assessments, canonicalId, candidate, cache));
                 }
                 if (configuration.PurgeOnApply)
                 {
