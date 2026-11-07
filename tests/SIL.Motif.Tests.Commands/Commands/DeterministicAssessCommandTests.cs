@@ -94,12 +94,36 @@ public sealed class DeterministicAssessCommandTests : IDisposable
             JsonSerializer.Serialize(repository.Get(freshId).Words!.Select(word => word.Correctness)));
     }
 
+    [Fact]
+    public void BeforeWithoutCorrectnessReusesVerifiedEvidence()
+    {
+        using var seeded = NewSeededScratch();
+        var parser = FakeParser.Copy(Path.Combine(_managedRootsParent, "no-correctness-parser"));
+        FakeParser.BehaveBesideExecutable(parser, new { words = new[] { new { word = "balay", outcome = "complete" } } });
+        var scope = new SIL.Motif.Host.Config.AssessmentScopeConfiguration(
+            "default", "all", "pangloss", ["ParseTime", "ObjectTiming"], TimeSpan.FromSeconds(1));
+        var config = new SIL.Motif.Host.Config.ProjectConfiguration([scope], gateOnRegression: false, purgeOnApply: true);
+        File.WriteAllText(Path.ChangeExtension(seeded.FwDataPath, ".motif.toml"),
+            SIL.Motif.Host.Config.ProjectConfigurationFile.Render(config));
+        var request = new AssessRequest(seeded.FwDataPath, new SelectionRequest(false, [], ["balay"], false, null));
+        var root = NewManagedRoot();
+        var limits = new TrialLimits(TimeSpan.FromSeconds(1), ParserWorkLimit.Default);
+        var first = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits, reuseBefore: true);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var id = first.Value!.Measurements.Single(item => item.Kind == "ParseTime").AssessmentId;
+        var second = AssessCommand.AssessWithLimits(request, root, parser, null, CancellationToken.None, limits, reuseBefore: true);
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+        Assert.Equal([id], second.Value!.AssessmentIds);
+    }
+
     [Theory]
     [InlineData("selection")]
     [InlineData("time-limit")]
     [InlineData("work-limit")]
     [InlineData("artifact")]
     [InlineData("missing-artifact")]
+    [InlineData("missing-stats")]
+    [InlineData("corrupt-stats")]
     [InlineData("baseline")]
     [InlineData("parser-version")]
     [InlineData("parser-hash")]
@@ -132,6 +156,14 @@ public sealed class DeterministicAssessCommandTests : IDisposable
         {
             var record = OpenRepository(seeded.FwDataPath).Get(id);
             File.Delete(record.Invocation!.AnalysesPath!);
+        }
+        if (changed is "missing-stats" or "corrupt-stats")
+        {
+            var timingId = first.Value.Measurements.Single(item => item.Kind == "ObjectTiming").AssessmentId;
+            var path = OpenRepository(seeded.FwDataPath).Get(timingId).CachePath!;
+            Assert.True(File.Exists(path));
+            if (changed == "missing-stats") File.Delete(path);
+            else File.AppendAllText(path, "damaged bytes");
         }
         if (changed == "parser-version")
             File.WriteAllText(Path.Combine(Path.GetDirectoryName(parser)!, "_fake-pangloss-version"), "pangloss 99.1.0");

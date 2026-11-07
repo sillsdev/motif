@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Host.Store;
 
@@ -11,9 +12,22 @@ public sealed class BeforeAssessmentBindingRepository(MotifDatabase database)
     public void Bind(string assessmentId, BaselineSemanticIdentity identity)
     {
         using var connection = database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
         using var command = connection.CreateCommand();
-        command.CommandText = "INSERT INTO BeforeAssessmentBinding (AssessmentId, SemanticIdentityJson) " +
-            "VALUES ($id, $identity); DELETE FROM BeforeAssessmentBinding WHERE Id NOT IN " +
+        command.Transaction = transaction;
+        command.CommandText = "INSERT INTO BeforeAssessmentBinding (AssessmentId, SemanticIdentityJson) VALUES ($id, $identity);";
+        command.Parameters.AddWithValue("$id", assessmentId);
+        command.Parameters.AddWithValue("$identity", JsonSerializer.Serialize(identity));
+        command.ExecuteNonQuery();
+        Prune(connection, transaction);
+        transaction.Commit();
+    }
+
+    internal static void Prune(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "DELETE FROM BeforeAssessmentBinding WHERE Id NOT IN " +
             "(SELECT Id FROM BeforeAssessmentBinding ORDER BY Id DESC LIMIT 10) AND NOT EXISTS " +
             "(SELECT 1 FROM Jobs j, json_each(CASE WHEN json_valid(j.InputJson) THEN j.InputJson ELSE '{}' END, " +
             "'$.baselineAssessmentIds') x " +
@@ -21,8 +35,6 @@ public sealed class BeforeAssessmentBindingRepository(MotifDatabase database)
             "JOIN Assessments bound ON bound.AssessmentId = BeforeAssessmentBinding.AssessmentId " +
             "WHERE j.Kind = 'trial' AND (held.AssessmentId = bound.AssessmentId OR " +
             "held.InvocationId = bound.InvocationId));";
-        command.Parameters.AddWithValue("$id", assessmentId);
-        command.Parameters.AddWithValue("$identity", JsonSerializer.Serialize(identity));
         command.ExecuteNonQuery();
     }
 

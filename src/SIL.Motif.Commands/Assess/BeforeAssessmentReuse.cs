@@ -54,7 +54,7 @@ internal static class BeforeAssessmentReuse
                     invocation.ExecutableBytesSha256 != parserHash || invocation.ExecutableVersion != version ||
                     invocation.GrammarExportFormat is null ||
                     invocation.GrammarExportFormat != GrammarExportFormats.ForPath(cache.ProjectId.Path) ||
-                    invocation.ApprovedExpectationsSha256 != expected ||
+                    (scope.Collect.Contains(AssessmentKind.Correctness) && invocation.ApprovedExpectationsSha256 != expected) ||
                     invocation.CollectStatistics != scope.Collect.Contains(AssessmentKind.ObjectTiming) ||
                     invocation.PerWordTimeoutMs != (scope.PerWordLimit is { } limit ? (int)limit.TotalMilliseconds : null) ||
                     invocation.PerWordParserWorkLimit != scope.PerWordParserWorkLimit ||
@@ -76,16 +76,18 @@ internal static class BeforeAssessmentReuse
                 if (detail.Words is null || detail.Words.Count != scope.ParsedWords.Count ||
                     detail.Words.Any(word => word.IsIncomplete) || !detail.Words.Select(word => word.Word)
                     .ToHashSet(StringComparer.Ordinal).SetEquals(scope.ParsedWords)) continue;
+                if (scope.Collect.Contains(AssessmentKind.ObjectTiming))
+                {
+                    var timing = assessments.ListByInvocationAndKind(invocation.InvocationId, AssessmentKinds.ObjectTiming)
+                        .FirstOrDefault(item => item.Selection.Sha256 == selection.Sha256 &&
+                            item.Selection.Words.SequenceEqual(selection.Words, StringComparer.Ordinal));
+                    if (timing is null || !Matches(timing.CachePath, timing.CacheDigest)) continue;
+                }
                 if (scope.Collect.Contains(AssessmentKind.Correctness))
                 {
-                    var siblings = assessments.ListRecentBaselineHeaders(AssessmentKinds.Correctness, 50).ToList();
-                    var boundCorrectness = new BeforeAssessmentBindingRepository(database).Find(baseline.SemanticIdentity,
-                        AssessmentKinds.Correctness, invocation.InvocationId);
-                    if (boundCorrectness is not null && assessments.GetHeader(boundCorrectness) is { } promotedCorrectness)
-                        siblings.Insert(0, promotedCorrectness);
-                    var sibling = siblings.FirstOrDefault(item => item.Invocation?.InvocationId == invocation.InvocationId &&
-                        item.Selection.Sha256 == selection.Sha256 &&
-                        item.Selection.Words.SequenceEqual(selection.Words, StringComparer.Ordinal));
+                    var sibling = assessments.ListByInvocationAndKind(invocation.InvocationId, AssessmentKinds.Correctness)
+                        .FirstOrDefault(item => item.Selection.Sha256 == selection.Sha256 &&
+                            item.Selection.Words.SequenceEqual(selection.Words, StringComparer.Ordinal));
                     if (sibling is null) continue;
                     var correctness = assessments.GetSelected(sibling.AssessmentId).Words;
                     if (correctness is null || correctness.Count != scope.ParsedWords.Count ||

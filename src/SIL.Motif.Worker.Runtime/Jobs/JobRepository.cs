@@ -730,6 +730,7 @@ public sealed class JobRepository
             count += command.ExecuteNonQuery();
             ReleaseBundlePin(connection, transaction, candidate.JobId);
         }
+        BeforeAssessmentBindingRepository.Prune(connection, transaction);
         transaction.Commit();
         var removed = candidates.Select(candidate => candidate.JobId).ToHashSet(StringComparer.Ordinal);
         JobWordLists.RemoveUnreferenced(_database,
@@ -822,6 +823,7 @@ public sealed class JobRepository
         command.Parameters.AddWithValue("$version", current.Version);
         if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("The job changed concurrently; reload it before deleting.");
         ReleaseBundlePin(connection, transaction, jobId);
+        BeforeAssessmentBindingRepository.Prune(connection, transaction);
     }
 
     public JobRecord Retry(string terminalJobId, string? newJobId = null)

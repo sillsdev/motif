@@ -110,6 +110,7 @@ internal static class AssessmentRetention
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keepPerKind);
         ArgumentNullException.ThrowIfNull(currentEvidence);
         lease.EnsureHeld(connection, transaction);
+        BeforeAssessmentBindingRepository.Prune(connection, transaction);
         var all = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;");
         var removable = ReadIds(connection, transaction, """
             SELECT AssessmentId FROM (

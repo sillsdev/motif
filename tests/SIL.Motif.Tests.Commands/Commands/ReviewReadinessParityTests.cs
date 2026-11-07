@@ -73,6 +73,105 @@ public sealed class ReviewReadinessParityTests : IDisposable
         Assert.Contains(first.Reasons, reason => reason.Contains("regression", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void ReusedBeforeKeepsRegressionGateAfterNewerAssessmentsAndSemanticRecapture()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var token = CurrentToken(fixture);
+        var old = new BaselineToken(token.ProjectIdentity, token.SemanticSnapshotDigest, token.ProjectionVersion,
+            "2026-09-23T10:00:00Z", "sha256:" + new string('b', 64));
+        var invocation = new BatchInvocationEvidence("before-invocation", "source", "sha256:source", "sha256:parser",
+            "words", "sha256:words", "tsv", "sha256:tsv", "stderr", "sha256:stderr", 1000, 200000, 1, false);
+        var correctness = Record(fixture, null, old, "cat", AssessmentKinds.Correctness, invocation);
+        var parse = Record(fixture, null, old, "cat", AssessmentKinds.ParseTime, invocation);
+        var candidate = Record(fixture, proposal, token, "cat", matched: false);
+        fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial", [candidate],
+            baseline: token, baselineAssessmentIds: [parse]);
+        Bind(fixture, proposal.Id);
+        var before = ProposalReview.Read(fixture.Database, fixture.Project, proposal.Id.Value).Value!.Readiness!;
+        Assert.False(before.IsReady);
+        for (var i = 0; i < 51; i++)
+        {
+            var other = Record(fixture, null, token, "dog" + i, AssessmentKinds.Correctness);
+            using var connection = fixture.Database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE Assessments SET SavedUtc='2099-01-01T00:00:00.0000000Z' WHERE AssessmentId=$id";
+            command.Parameters.AddWithValue("$id", other);
+            command.ExecuteNonQuery();
+        }
+        Assert.NotNull(new AssessmentRepository(fixture.Database).GetHeader(correctness));
+        var after = ProposalReview.Read(fixture.Database, fixture.Project, proposal.Id.Value).Value!.Readiness!;
+        Assert.Equal(before.IsReady, after.IsReady);
+        Assert.Equal(before.Reasons, after.Reasons);
+        Assert.Contains(after.Reasons, reason => reason.Contains("regression", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("delete")]
+    [InlineData("purge")]
+    [InlineData("sweep")]
+    public void ReleasingTrialConsumersPrunesExcessBindingsAndKeepsStillHeldPairs(string release)
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+        var token = CurrentToken(fixture);
+        var bindings = new BeforeAssessmentBindingRepository(fixture.Database);
+        var jobs = new SIL.Motif.Worker.Jobs.JobRepository(fixture.Database);
+        var ids = new List<string>();
+        for (var i = 0; i < 20; i++)
+        {
+            var invocation = new BatchInvocationEvidence("invocation-" + i, "source", "sha256:source", "sha256:parser",
+                "words", "sha256:words", "tsv", "sha256:tsv", "stderr", "sha256:stderr", 1000, 200000, 1, false);
+            var correctness = Record(fixture, null, token, "cat", AssessmentKinds.Correctness, invocation);
+            var parse = Record(fixture, null, token, "cat", AssessmentKinds.ParseTime, invocation);
+            var jobId = "holding-trial-" + i;
+            ids.Add(jobId);
+            fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", jobId, [], baseline: token, baselineAssessmentIds: [parse]);
+            var identity = new BaselineSemanticIdentity(token.ProjectIdentity, "sha256:" + i.ToString("x64"), token.ProjectionVersion);
+            bindings.Bind(correctness, identity);
+            bindings.Bind(parse, identity);
+        }
+        long Count()
+        {
+            using var connection = fixture.Database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM BeforeAssessmentBinding";
+            return (long)command.ExecuteScalar()!;
+        }
+        Assert.Equal(40, Count());
+        if (release == "delete")
+        {
+            foreach (var id in ids.Skip(1)) jobs.DeleteArchived(id);
+            Assert.InRange(Count(), 10, 12);
+            var lastIdentity = new BaselineSemanticIdentity(token.ProjectIdentity, "sha256:" + 0.ToString("x64"), token.ProjectionVersion);
+            Assert.NotNull(bindings.Find(lastIdentity, AssessmentKinds.Correctness));
+            Assert.NotNull(bindings.Find(lastIdentity, AssessmentKinds.ParseTime));
+            jobs.DeleteArchived(ids[0]);
+        }
+        else if (release == "purge")
+        {
+            var policy = (ArchivePolicy)Activator.CreateInstance(typeof(ArchivePolicy),
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic, null, [0], null)!;
+            Assert.Equal(20, jobs.PurgeArchived(policy));
+        }
+        else
+        {
+            using (var connection = fixture.Database.OpenConnection())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "DELETE FROM Jobs";
+                command.ExecuteNonQuery();
+            }
+            using var lease = SIL.Motif.Host.Store.ProjectParseLease.TryAcquire(fixture.Database)!;
+            Assert.NotNull(lease);
+            var result = StorePruneCommand.RunHeld(fixture.Database, fixture.Project, lease, 1,
+                managedRoot: _root, byteBudget: long.MaxValue);
+            Assert.True(result.Succeeded, result.Refusal?.Message);
+        }
+        Assert.Equal(10, Count());
+    }
+
     private static CanonicalId ArrangeBefore(TrialsTests.ProjectFixture fixture, bool reuse)
     {
         var proposal = fixture.SaveProposal();

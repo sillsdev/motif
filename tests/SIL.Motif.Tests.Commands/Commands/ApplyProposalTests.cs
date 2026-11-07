@@ -65,8 +65,13 @@ public sealed class ApplyProposalTests(PristineProjectFixture pristine)
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path));
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
         using var database = ProjectMotifDatabase.Open(path);
-        var bound = new BeforeAssessmentBindingRepository(database).Find(captured.Value!.Token.SemanticIdentity);
+        var bindings = new BeforeAssessmentBindingRepository(database);
+        var identity = captured.Value!.Token.SemanticIdentity;
+        var bound = bindings.Find(identity, AssessmentKinds.ParseTime);
+        var timing = bindings.Find(identity, AssessmentKinds.ObjectTiming);
         Assert.NotNull(bound);
+        Assert.NotNull(timing);
+        Assert.True(File.Exists(new AssessmentRepository(database).Get(timing!).CachePath));
         var record = new AssessmentRepository(database).Get(bound!);
         var scope = ScopeCodec.ReadTrial(record.ScopeJson, "test");
 

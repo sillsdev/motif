@@ -1780,6 +1780,9 @@ public static partial class ProposalCommands
         var identity = new BaselineSemanticIdentity(baseline.ProjectIdentity, digest, baseline.ProjectionVersion);
         binding.Bind(candidate.AssessmentId, identity);
         binding.Bind(before.AssessmentId, identity);
+        var timing = assessments.ListByInvocationAndKind(invocation.InvocationId, AssessmentKinds.ObjectTiming)
+            .FirstOrDefault(record => record.ProposalId == proposalId);
+        if (timing is not null) binding.Bind(timing.AssessmentId, identity);
     }
 
     internal static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>

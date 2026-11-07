@@ -718,6 +718,23 @@ public sealed class AssessmentRepository : IAssessmentRepository
         return records;
     }
 
+    /// <summary>Reads Assessment headers of one kind from a particular retained invocation.</summary>
+    public IReadOnlyList<AssessmentRecord> ListByInvocationAndKind(string invocationId, string kind)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(invocationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(kind);
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = HeaderSelectSql + " WHERE InvocationId = $invocation AND Kind = $kind ORDER BY SavedUtc DESC, AssessmentId DESC;";
+        command.Parameters.AddWithValue("$invocation", invocationId);
+        command.Parameters.AddWithValue("$kind", kind);
+        RepositoryReadCounters.QueryExecuted();
+        using var reader = command.ExecuteReader();
+        var records = new List<AssessmentRecord>();
+        while (reader.Read()) records.Add(ReadHeader(reader));
+        return records;
+    }
+
     /// <summary>Reads a bounded set of recent standalone Assessment headers for evidence reuse.</summary>
     public IReadOnlyList<AssessmentRecord> ListRecentBaselineHeaders(string kind, int count)
     {

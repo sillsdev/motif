@@ -96,8 +96,7 @@ internal static class ApplyAuthorization
             {
                 current = null;
                 if (candidate is not null && baseline is not null)
-                    current = ReusedBeforeCorrectness(database, project, record.ProposalId, assessments,
-                        baseline.Token.SemanticIdentity, candidate);
+                    current = ReusedBeforeCorrectness(database, project, record.ProposalId, assessments, candidate);
                 if (current is null && candidate is not null)
                     current = assessments.FindLatestBaselineAssessment(
                         RegressionChecker.RequiredKind, currentBaselineToken!, candidate.Selection.Sha256,
@@ -128,9 +127,8 @@ internal static class ApplyAuthorization
 
     private static AssessmentRecord? ReusedBeforeCorrectness(MotifDatabase database, ProjectLocator project,
         CanonicalId proposalId, AssessmentRepository assessments,
-        SIL.Motif.Contract.Baselines.BaselineSemanticIdentity identity, AssessmentRecord candidate)
+        AssessmentRecord candidate)
     {
-        var bindings = new BeforeAssessmentBindingRepository(database);
         var trials = Trials.ListFor(database, project, proposalId.Value);
         var jobs = new JobRepository(database);
         foreach (var trial in trials)
@@ -143,13 +141,9 @@ internal static class ApplyAuthorization
                 var parse = assessments.GetHeader(parseId);
                 if (parse?.Kind != AssessmentKinds.ParseTime || parse.Invocation is null ||
                     !Assess.BeforeAssessmentReuse.MatchesBaseline(database, parse, candidate)) continue;
-                var headers = assessments.ListRecentBaselineHeaders(AssessmentKinds.Correctness, 50).ToList();
-                var boundCorrectness = bindings.Find(identity, AssessmentKinds.Correctness, parse.Invocation.InvocationId);
-                if (boundCorrectness is not null && assessments.GetHeader(boundCorrectness) is { } bound)
-                    headers.Insert(0, bound);
-                var header = headers.FirstOrDefault(item => item.Invocation?.InvocationId == parse.Invocation.InvocationId &&
-                    item.Selection.Sha256 == candidate.Selection.Sha256 &&
-                    item.Selection.Words.SequenceEqual(candidate.Selection.Words, StringComparer.Ordinal));
+                var header = assessments.ListByInvocationAndKind(parse.Invocation.InvocationId, AssessmentKinds.Correctness)
+                    .FirstOrDefault(item => item.Selection.Sha256 == candidate.Selection.Sha256 &&
+                        item.Selection.Words.SequenceEqual(candidate.Selection.Words, StringComparer.Ordinal));
                 if (header is not null) return assessments.Get(header.AssessmentId);
             }
         }
