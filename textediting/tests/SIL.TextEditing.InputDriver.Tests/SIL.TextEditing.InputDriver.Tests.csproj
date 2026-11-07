@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>SIL.TextEditing.InputDriver.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <!-- Launches the playground's plain desktop host (net10.0, Avalonia 12) as its own process, types into its window through the Windows input
+       APIs and reads the field's model back over the host's opt-in test pipe. Windows only; skipped, with the reason, when the machine gives no
+       usable foreground desktop. The host is built first but not referenced as an assembly. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <ProjectReference Include="..\..\samples\Playground.Desktop\Playground.Desktop.csproj" ReferenceOutputAssembly="false" SetTargetFramework="TargetFramework=net10.0" />
+  </ItemGroup>
+</Project>

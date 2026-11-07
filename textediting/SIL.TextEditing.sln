@@ -37,6 +37,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SIL.TextEditing.SecondDispa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SIL.TextEditing.RealClipboard.Tests", "tests\SIL.TextEditing.RealClipboard.Tests\SIL.TextEditing.RealClipboard.Tests.csproj", "{5CED419A-65E4-4BCA-96FC-0F6F15E38E7F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SIL.TextEditing.InputDriver.Tests", "tests\SIL.TextEditing.InputDriver.Tests\SIL.TextEditing.InputDriver.Tests.csproj", "{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -215,6 +217,18 @@ Global
 		{5CED419A-65E4-4BCA-96FC-0F6F15E38E7F}.Release|x64.Build.0 = Release|Any CPU
 		{5CED419A-65E4-4BCA-96FC-0F6F15E38E7F}.Release|x86.ActiveCfg = Release|Any CPU
 		{5CED419A-65E4-4BCA-96FC-0F6F15E38E7F}.Release|x86.Build.0 = Release|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Debug|x64.Build.0 = Debug|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Debug|x86.Build.0 = Debug|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Release|x64.ActiveCfg = Release|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Release|x64.Build.0 = Release|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Release|x86.ActiveCfg = Release|Any CPU
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -234,5 +248,6 @@ Global
 		{1F827000-9C7F-4429-BEF4-B0464089CEC5} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{5F146197-BD5B-4A90-96E7-A3157F5D048A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{5CED419A-65E4-4BCA-96FC-0F6F15E38E7F} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{5D0E2F1A-7B3C-4C86-9A51-3E8F6B2D4C10} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

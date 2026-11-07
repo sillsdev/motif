@@ -76,6 +76,11 @@ jobs:
           PANDOC_VERSION: 3.9.0.2
         run: dotnet test SIL.TextEditing.sln -c Release --no-build --logger trx --results-directory TestResults
 
+      # Real window, real Windows input: the playground host is launched and typed into with SendInput. When the runner gives no usable foreground
+      # desktop the tests skip with the reason (shown here), they do not fail.
+      - name: Real-input driver (shows why it skipped, if it did)
+        run: dotnet test tests/SIL.TextEditing.InputDriver.Tests -c Release -f net10.0 --no-build --logger "console;verbosity=normal"
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
