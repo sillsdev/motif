@@ -80,6 +80,8 @@ public sealed class ReviewSummaryAccumulator
         }
         if (item.Limitations.Contains("negative-context-unavailable", StringComparer.Ordinal))
             _negativeContextUnavailable = true;
+        if (item.Assertions.Any(assertion => assertion.Approved && !assertion.WholeWordNegative && !assertion.Eligible))
+            _approvedIdentityIncomplete = true;
         if (item.Limitations.Contains("expectation-identity-unavailable", StringComparer.Ordinal) &&
             item.Assertions.Any(assertion => assertion.Eligible && assertion.Approved && !assertion.WholeWordNegative))
             _approvedIdentityIncomplete = true;

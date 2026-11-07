@@ -89,7 +89,8 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             ? new SectionCount("parser-work", ruleWorkRows?.Count, "rows", ruleWorkRows?.Count) : section).ToArray() };
         if (dryRun is not null) summary = summary with { Effects = new EffectsSummary(dryRun.Value.Count, true) };
         var limitations = facts.Limitations.Select(code => new Limitation(code,
-            code == "negative-context-unavailable" ? ["negative-controls"] : [], code, [])).ToList();
+            code == "negative-context-unavailable" ? ["negative-controls"] :
+            code == "expectation-identity-unavailable" ? ["wordforms", "controls"] : [], code, [])).ToList();
         foreach (var code in facts.Findings?.Limitations.Where(code => code is not ("warnings-unavailable" or "parsimony-unavailable")) ?? [])
             limitations.Add(new Limitation(code, ["warnings", "parsimony"], code, []));
         if (inputs.OmittedSetIds.Count > 0)
@@ -111,10 +112,14 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             id == ReviewFlagId.KnownNonwordsNowAccepted && !inputs.Sets.Any(set => set.Role == "negative") ? EvidenceState.NotConfigured :
             id == ReviewFlagId.NewWarningsOrParsimony && (parsimony is null || !hasWarnings ||
                 (facts.Findings?.Limitations.Count ?? 0) > 0) ? EvidenceState.Partial :
-            id == ReviewFlagId.KnownNonwordsNowAccepted && facts.Limitations.Contains("negative-context-unavailable") ? EvidenceState.Partial :
+            id == ReviewFlagId.KnownNonwordsNowAccepted && facts.Limitations.Contains("negative-context-unavailable") ||
+            id is ReviewFlagId.NewWordFailures or ReviewFlagId.ConfirmedReadingsLost &&
+                facts.Limitations.Contains("expectation-identity-unavailable") ? EvidenceState.Partial :
             facts.IncompleteCases > 0 && id != ReviewFlagId.ParserWorkIncrease ? EvidenceState.Partial : EvidenceState.Complete,
             id == ReviewFlagId.KnownNonwordsNowAccepted && facts.Limitations.Contains("negative-context-unavailable")
-                ? ["negative-context-unavailable"] : [],
+                ? ["negative-context-unavailable"] :
+            id is ReviewFlagId.NewWordFailures or ReviewFlagId.ConfirmedReadingsLost &&
+                facts.Limitations.Contains("expectation-identity-unavailable") ? ["expectation-identity-unavailable"] : [],
             id switch { ReviewFlagId.NewWordFailures => facts.NewWordFailureWords,
                 ReviewFlagId.ConfirmedReadingsLost => facts.UniqueReadingLosses,
                 ReviewFlagId.KnownNonwordsNowAccepted => facts.NewlyAcceptedNegativeWords,
