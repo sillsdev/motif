@@ -46,7 +46,8 @@ FieldWorks Markdown is a strict profile of Pandoc Markdown. Each point links to 
 - `ProjectPath` is the path grammar. The host turns paths into GUIDs through `IProjectPathResolver` and object data through
   `IObjectMapper`. `DefaultObjectMapper` reads and writes `silfw://` links with no host.
 - Everything project-aware reaches the core through these (the full list is in
-  [For integrators](../formats/fieldworks-markdown.md#for-integrators)). The checks that need a project stay with the host.
+  [For integrators](../formats/fieldworks-markdown.md#for-integrators)). The checks that need a project run through
+  these interfaces; their liblcm implementation is planned in `SIL.TextEditing.Project` (ADR 0031), not left to each host.
 - The parser reports the format's findings, all `fwmd.*` (syntax, table, heading, version, link, picture, style, writing system), with line
   and column. Finding and object offsets, lines and columns refer to `Source`, the text as written.
 - It lists the objects it built with their ranges (`MarkdownParseResult.Objects`) and makes located findings for the host

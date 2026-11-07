@@ -10,7 +10,9 @@ notation of their own. A GDR is a template written in FieldWorks Markdown, with 
 **Status:** decided by the owner on 2026-11-04, except the items §10 lists as open. It revises the 2026-11-03 draft, which
 was for agents only, used its own dialect and had a separate GDR profile. The format library is built to this revision:
 `SIL.TextEditing.Markdown` and its conformance fixtures are on SIL.TextEditing main (PR #73, merge commit e1eeebf), and this
-text describes what they do. Not built yet: paragraph alignment (§5.2), the project interfaces over liblcm, the checker's
+text describes what they do. The library now lives in Motif at `textediting/` (Motif
+[ADR 0092](../../adr/0092-textediting-is-a-sealed-folder-with-its-own-build.md)); SIL.TextEditing PR and commit numbers here
+refer to the archived repository. Not built yet: paragraph alignment (§5.2), the project interfaces over liblcm, the checker's
 project rules, and the Motif operations and source mode (§8.2). Recorded in
 [ADR 0089](../../adr/0089-gdr-text-is-human-editable-fieldworks-markdown.md) and in SIL.TextEditing ADR 0028 (FieldWorks
 Markdown is a Pandoc profile) and ADR 0029 (clipboard forms). It follows the approved
@@ -167,8 +169,8 @@ setext heading (see below), and a `:::` fence, which is a finding (§7) with a b
 | `::: {custom-style=Name …}` … `:::` | a Pandoc div: every paragraph inside gets that style and those paragraph properties (D15, D18) |
 
 - The style names are the ones a new FLEx project already has (`Templates/NewLangProj.fwdata`; inventory §4).
-- **The table styles are named by the host.** In Motif they are the GDR template's `GDR Table Header` and `GDR Table Row`
-  (§9). The library has no default for them. A host that names none has no pipe tables: a pipe table is
+- **The table styles are named by the host.** In Motif they are the generic table styles (§9). The examples below still
+  show `GDR Table Row`, the name the conformance fixtures use. The library has no default for them. A host that names none has no pipe tables: a pipe table is
   `fwmd.syntax.unsupported-markup`, and the writer puts table-style paragraphs in divs, as for an orphan row below.
 - **Lists.** A list item is one paragraph, so a nested list is `fwmd.syntax.unsupported-markup`. A marker with nothing after
   it (`-`, `*`, `+`, `1.`, `1)`) is an empty paragraph in that list's style, whether it comes first, sits in the middle of a
@@ -217,8 +219,8 @@ The prefix [mang-]{.v} becomes [mam-]{.v} before a labial.
 - **The delimiter row is plain `---`**, written `|---|---|`. Colons (`:---:`) have nowhere to be stored, so they are a
   checker error, not silently dropped. A delimiter row of another width than the header is `fwmd.table.ragged`.
 - **Tables are separated by a blank line plus a header row.** Two tables never merge, and a new header starts a new table.
-- An orphan table row (no header above) is written in a div, `::: {custom-style="GDR Table Row"}` in Motif, cells
-  separated by `&#x9;`. A header row in the middle of a run of rows starts a new table.
+- An orphan table row (no header above) is written in a div with the row style (`::: {custom-style="GDR Table Row"}` in the
+  fixtures), cells separated by `&#x9;`. A header row in the middle of a run of rows starts a new table.
 - **Other rows are left to divs too.** The writer cannot make a pipe row of a row that holds a U+2028, of a row whose tab is
   not plain text in the default analysis writing system (it is in an object run, another writing system, or has a
   property), or of an empty row typed in another writing system. A header whose cells are all empty cannot be a pipe
@@ -234,7 +236,7 @@ The prefix [mang-]{.v} becomes [mam-]{.v} before a labial.
 | [mamalit]{.v custom-style="Emphasized Text"} | buy \| sell |
 ```
 
-An orphan row in Motif:
+An orphan row, with the fixtures' row style:
 
 ```markdown
 ::: {custom-style="GDR Table Row"}
@@ -907,16 +909,20 @@ tests and the fixtures (§6.3) cover each ID.
 - **Project interfaces.** The core defines `IProjectPathResolver` (§4.1) and the lookups the project checks need: writing
   systems (`IWritingSystemMapper`, with optional detail, known-tag and check interfaces), styles (`IStyleCatalog`, with
   optional known-name and check interfaces) and what object data means (`IObjectMapper`, for links and pictures). The
-  host implements them. The host also names the table styles (`MarkdownStyleNames.TableHeader` and `TableRow`).
-- **`SIL.TextEditing.LCModel`** (ADR 0016) converts `ITsString` to and from runs. It is the only package that touches
-  liblcm.
+  host implements them, over liblcm through the planned `SIL.TextEditing.Project`. The host also names the table styles (`MarkdownStyleNames.TableHeader` and `TableRow`).
+- **`SIL.TextEditing.LCModel`** (ADR 0016) converts `ITsString` to and from runs. It is the only built package that
+  touches liblcm.
+- **`SIL.TextEditing.Project`** (planned, SIL.TextEditing ADR 0031) implements the project interfaces over liblcm: project
+  paths, the record schema built from liblcm metadata, and record export and import. It references `SIL.LCModel`.
 
 **Paragraph alignment (§5.2) is not in `SIL.TextEditing.Markdown`, and it is not built yet.** It needs the base document
-that the importer holds. Where it lives follows the ownership boundary (§10 item 3).
+that the importer holds. ADR 0031 does not name its place.
 
-**In Motif:** the implementation of the project interfaces over liblcm (unless it moves to `SIL.TextEditing.LCModel`;
-§10), `gdr check` and `motif_check_gdr`, the Proposal write operations with Dry Run and the Finalize check, the
-create-style operation, the MCP resources under `motif://projects/…`, and the GDR template (§9).
+**In Motif:** `gdr check` and `motif_check_gdr` (the GDR checker), the Proposal write operations with Dry Run and the
+Finalize check, the create-style operation, the MCP resources under `motif://projects/…`, and the GDR template (§9).
+
+Amended 2026-11-07: this section used to put the project interfaces over liblcm in Motif. SIL.TextEditing ADR 0031
+(Q51′, decided 2026-11-05) moved them to `SIL.TextEditing.Project`.
 
 ### 8.2 Build order
 
@@ -924,16 +930,18 @@ create-style operation, the MCP resources under `motif://projects/…`, and the 
    Markdown in between). This needs the run model to carry every property (SIL.TextEditing ADR 0005).
 2. **SIL.TextEditing.Markdown:** the front matter, the writer (export) and parser (import) to this revision, the link
    grammar, the fixtures, the pipeline lock, the NFD option and the Pandoc check in CI. Its tests need no project. **Built**
-   (SIL.TextEditing main, e1eeebf).
-3. **The project interfaces** over liblcm: the path resolver (§4), with a check of the stored silfw form against a real
+   (SIL.TextEditing main, e1eeebf; now in Motif's `textediting/`, Motif ADR 0092).
+3. **The project interfaces** over liblcm, in the planned `SIL.TextEditing.Project` (ADR 0031): the path resolver (§4), with a check of the stored silfw form against a real
    project (§4.5), and the fixture project for CI (§6.5). Then paragraph alignment (§5.2).
 4. **The checker's project rules**, then `gdr check` and `motif_check_gdr`.
 5. **Motif:** the Proposal write operations, Dry Run and the Finalize check. This includes a **create-style operation**
    that adds the GDR table styles (§9). It is project data, not a FLEx code change; it happens once per project, and Undo
-   reverses it.
+   reverses it. Note 2026-11-07: the GDR template no longer has its own table styles (§9). Whether this operation is still
+   needed for the generic table styles a project lacks is open.
 6. **Source mode** in the editor control, after the shared editor's first proof (GDR design §9 step 6).
 
-Steps 1 and 2 are in SIL.TextEditing and can land before Motif uses them; Motif consumes them as a package.
+Steps 1 to 3 are in SIL.TextEditing and can land before Motif uses them. Motif references the library in place, from its
+`textediting/` folder (Motif ADR 0092), not as a package.
 
 ### 8.3 People and the editor
 
@@ -947,7 +955,9 @@ Steps 1 and 2 are in SIL.TextEditing and can land before Motif uses them; Motif 
 ### 8.4 Clipboard (D31; SIL.TextEditing ADR 0029)
 
 - **Copy** offers three forms: FieldWorks' TsString format, FieldWorks Markdown **with its front matter** (links in form
-  A), and plain text in NFC. There is no HTML or RTF.
+  A), and plain text in NFC. There is no HTML or RTF. (Amended 2026-11-07: owner decision R-3, recorded in SIL.TextEditing
+  ADR 0031, reverses this; Word-compatible HTML and RTF are planned in `SIL.TextEditing.WordInterchange`. The FieldWorks
+  Markdown clipboard form is not built yet, motif issue #56.)
 - **Paste** prefers TsString, as FieldWorks does, then FieldWorks Markdown, then plain text. The order is configurable.
 - A writing system the target project lacks maps to the selection's writing system, as FieldWorks does, and the person
   sees a notice. A link whose GUID the target lacks is rebound by its path, with a notice (§4.8).
@@ -967,7 +977,8 @@ Steps 1 and 2 are in SIL.TextEditing and can land before Motif uses them; Motif 
 - **Editor tooling (D27).** No VS Code support now. Later, our own extension, on a language server built around the C#
   checker.
 - **Grammar sketch (D28).** FLEx's grammar sketch generator stays. The GDRs, with their formatting, are fed into the dump
-  it already takes from FieldWorks, so the sketch can include them. This needs no change to liblcm's data model.
+  it already takes from FieldWorks, so the sketch can include them. This needs no change to liblcm's data model. This is
+  post-1.0 and not designed; see the known gap in §10.
 - **File export (D50).** There is no export of a project to files in 1.0. It is designed as one file per record, with
   file-relative links (form B). Being explored: whole records, such as a lexical entry, as one `*.fw.md` file with full
   two-way fidelity and checking, for editing, review and diffs, and as Motif's read API.
@@ -984,9 +995,15 @@ GDRs add no notation, no link kinds and no finding ids of their own. What GDR ad
   `StText`.
 - **Sections.** The template gives the sections a GDR body is written in, as headings. Motif's workflow skill supplies
   them.
-- **Table styles.** Tables in a GDR use `GDR Table Header` and `GDR Table Row`. Motif names them to the Markdown library,
-  which has no default (§3.1). A Proposal creates the two styles the first time a GDR uses a table, once per project, and
-  Undo reverses it (D39). This is project data, not a FLEx code change.
+- **Table styles.** Tables in a GDR use the generic table styles: `Table Row`, the header-row style and the
+  `Table Cell Separator` character style, which the host may rename (owner Q73 and Q74; SIL.TextEditing
+  `docs/formats/tables.md`). The separator style comes with real tables, which are planned; until then cells are
+  separated by tabs (§3.1). The GDR template has no table styles of its own. Motif names the styles to the Markdown
+  library, which has no default (§3.1). This is project data, not a FLEx code change.
+
+  Amended 2026-11-07 (owner): the template's own `GDR Table Header` and `GDR Table Row` styles are dropped. This item used
+  to say a Proposal creates those two styles the first time a GDR uses a table (D39); whether a Proposal must create any
+  generic table style a project lacks is open (§8.2 step 5).
 - **Workflow skill and check script.** Motif's workflow skill tells an agent how to read and write GDRs: levels, reading
   before changing, writing only through a Proposal. Motif's check script runs the FieldWorks Markdown checker over a GDR,
   plus the template's own conventions.
@@ -1001,6 +1018,7 @@ GDRs add no notation, no link kinds and no finding ids of their own. What GDR ad
    and recognition by the front matter (§1, §2.1; SIL.TextEditing ADR 0028).
 3. **GDR is a template, not a format (D34).** Links, multi-string fields, project checks and alignment are part of
    FieldWorks Markdown. GDR keeps its template, the table-style names, and Motif's workflow skill and check script (§9).
+   (Amended 2026-11-07: the template's own table styles are dropped; GDR tables use the generic table styles, §9.)
 4. **Front matter (D32):** the keys `fwmd`, `analysis`, `vernacular` and `writingSystems` (each with `lang`, `dir` and
    `font`); double-quoted values; the project's definitions win; a newer version is refused with a finding (§2.1).
 5. The canonical form is defined by this spec and the JSON fixtures in SIL.TextEditing `tests/conformance/`, not by a
@@ -1029,9 +1047,10 @@ GDRs add no notation, no link kinds and no finding ids of their own. What GDR ad
    reserved `#field.ws` fragment (§4).
 9. **Finding ids** are `fwmd.*`, and `gdr.ws.defaults-changed` is retired (D33).
 10. Two table styles, created once per project by a Proposal, and paragraphs aligned against the exported base with no
-    hidden IDs (D39).
+    hidden IDs (D39). (Amended 2026-11-07: the two GDR table styles are dropped, §9.)
 11. **The clipboard** offers TsString, FieldWorks Markdown and plain text; paste prefers TsString (configurable); no HTML
-    or RTF; Runs.v1 leaves the clipboard (D31; SIL.TextEditing ADR 0029).
+    or RTF; Runs.v1 leaves the clipboard (D31; SIL.TextEditing ADR 0029). (Amended 2026-11-07: R-3 in SIL.TextEditing
+    ADR 0031 reverses "no HTML or RTF", §8.4.)
 12. No typesetting, no VS Code support, no grammar-sketch change to liblcm, and no file export in 1.0 (§8.5).
 13. In SIL.TextEditing, not in this format: the caret correction layer applies on both Avalonia versions (D29;
     SIL.TextEditing ADR 0027), and the fallback font size is 10 pt, as in FieldWorks (D30).
@@ -1046,13 +1065,17 @@ GDRs add no notation, no link kinds and no finding ids of their own. What GDR ad
    object as one `*.fw.md` file (a YAML frame and Markdown), with full two-way fidelity and checking, as Motif's read API,
    as the way agents edit records instead of JSON change sets, and as the shape of the file export. The scoping report
    on which editable surfaces SIL.TextEditing could own is part of the same exploration.
-3. **The project-ownership boundary (Q51′).** Pending with the owner. The owner agreed that SIL.TextEditing owns what both
-   FieldWorks and Motif would use, split into projects by dependency, with host shell and workflow staying in the hosts
-   (decision 51). The exact boundary, and the ADR that supersedes ADR 0011's split, wait for the scoping report. Until
-   then this spec does not say where paragraph alignment (§5.2) and the implementation of the project interfaces (§8.1)
-   live.
+3. **The project-ownership boundary (Q51′).** Decided 2026-11-05 in SIL.TextEditing ADR 0031: SIL.TextEditing owns what
+   both FieldWorks and Motif would use, split into projects by dependency, with host shell and workflow staying in the
+   hosts. The project interfaces over liblcm go to the planned `SIL.TextEditing.Project` (§8.1), and ADR 0031 supersedes
+   ADR 0011's split. Still open: ADR 0031 does not say where paragraph alignment (§5.2) lives.
 
-**Settled as implemented** in SIL.TextEditing e1eeebf (these were open in the earlier text; the owner can object):
+**Known gap** (owner, 2026-11-07): feeding GDRs into the FLEx grammar sketch (D28, §8.5) is post-1.0 and not designed.
+Research report 12 found that M3Dump keeps only plain NFC text, so keeping the formatting needs a liblcm code change and a
+new XSLT template.
+
+**Settled as implemented** in SIL.TextEditing e1eeebf (these were open in the earlier text; the owner can object; the
+library now lives in Motif's `textediting/`, Motif ADR 0092):
 
 - **Wordforms:** not a top folder in 1.0. The library's list is D41's seven plus `files` (§4.2).
 - **List keys (D45):** the segment rules for lists are the host's, through the resolver (§4.3). The spec text says what D45
@@ -1070,4 +1093,4 @@ Paths not taken: our own Markdig dialect (the 2026-11-03 draft); MyST, Djot, Typ
 (SIL.TextEditing ADR 0028); `fw:<kind>/<Name>` links with a kind table, wiki links, URNs and verbatim silfw URLs (paths
 §4); a separate GDR profile; Pandoc native or WASM as the parser (an external process and a large payload); liblcm's
 TsString XML as the catch-all (its writer and reader disagree); per-line paragraph IDs; warn-and-lose for unsupported
-properties (Q30 of 2026-11-02); HTML and RTF on the clipboard (D31).
+properties (Q30 of 2026-11-02); HTML and RTF on the clipboard (D31; reversed by R-3 in SIL.TextEditing ADR 0031, §8.4).

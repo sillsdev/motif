@@ -148,14 +148,16 @@ Planned, not built:
 - **Word-compatible copy and paste.** HTML and RTF out, HTML in, in a new `SIL.TextEditing.WordInterchange` project
   ([ADR 0031](docs/adr/0031-shared-editing-and-interchange-layer.md),
   [clipboard plan](docs/formats/clipboard.md#planned-word-html-and-rtf)).
-- **Real tables** in the field ([#152](https://github.com/sillsdev/SIL.TextEditing/issues/152), [tables plan](docs/formats/tables.md#planned-real-tables-in-the-field)).
+- **Real tables** in the field ([motif#46](https://github.com/sillsdev/motif/issues/46), [tables plan](docs/formats/tables.md#planned-real-tables-in-the-field)).
 - **`SIL.TextEditing.Project`**: LCModel-backed record I/O and the record schema built from liblcm metadata
   ([ADR 0031](docs/adr/0031-shared-editing-and-interchange-layer.md), [ADR 0033](docs/adr/0033-block-features.md)).
-- **The `fwmd` command-line checker** ([#161](https://github.com/sillsdev/SIL.TextEditing/issues/161)).
-- **The FieldWorks Markdown clipboard form** ([#168](https://github.com/sillsdev/SIL.TextEditing/issues/168)).
+- **The `fwmd` command-line checker** ([motif#51](https://github.com/sillsdev/motif/issues/51)).
+- **The FieldWorks Markdown clipboard form** ([motif#56](https://github.com/sillsdev/motif/issues/56)).
+- **Laying out only visible paragraphs** ([ADR 0014](docs/adr/0014-lay-out-visible-paragraphs-only.md)): decided, not built.
+  `RichTextField` measures every paragraph today.
 - **Editor integration**: an inline WYSIWYG and Markdown source mode, and a VS Code extension with a language server. The playground's
-  Markdown pane is a host-side sketch of the source mode. The plan and a proposed ADR are awaiting owner decisions ([#170](https://github.com/sillsdev/SIL.TextEditing/issues/170)).
-- **Retiring the liblcm refusals** once FieldWorks pins a liblcm with its fixes [#410](https://github.com/sillsdev/liblcm/issues/410), [#413](https://github.com/sillsdev/liblcm/issues/413) and [#414](https://github.com/sillsdev/liblcm/issues/414) ([#159](https://github.com/sillsdev/SIL.TextEditing/issues/159)).
+  Markdown pane is a host-side sketch of the source mode. The plan and a proposed ADR are awaiting owner decisions ([motif#57](https://github.com/sillsdev/motif/issues/57)).
+- **Retiring the liblcm refusals** once FieldWorks pins a liblcm with its fixes [#410](https://github.com/sillsdev/liblcm/issues/410), [#413](https://github.com/sillsdev/liblcm/issues/413) and [#414](https://github.com/sillsdev/liblcm/issues/414) ([motif#50](https://github.com/sillsdev/motif/issues/50)).
 
 ## Contributing
 

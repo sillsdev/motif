@@ -9,8 +9,10 @@ A table is a run of paragraphs, one per row:
 
 - The header row is a paragraph in the host's **table header style**. Each body row is a paragraph in its **table row style**.
 - Cells are separated by a tab (U+0009) in the row's text.
-- The host names the two styles (`MarkdownStyleNames.TableHeader` and `TableRow`). They have no default. Motif's are the GDR template's,
-  `GDR Table Header` and `GDR Table Row`, which the fixtures use.
+- The host names the two styles (`MarkdownStyleNames.TableHeader` and `TableRow`). They have no default. The fixtures name them
+  `GDR Table Header` and `GDR Table Row`, as a test host.
+- There is one table model. GDRs use the generic table styles of the plan below, not styles of their own; a GDR style name is at most
+  a host's rename of them (owner, 2026-11-07).
 - A host with no table styles has no tables: a pipe table is `fwmd.syntax.unsupported-markup`, its rows are read as `Normal`, and the
   writer never writes a pipe table.
 
@@ -104,7 +106,7 @@ one paragraph. Hosts may override per field. The enforcement is built; the defau
 
 ## Planned: real tables in the field
 
-> **Planned. Not built.** ADR 0031 lists real tables as a planned addition. The work is tracked from issue #152.
+> **Planned. Not built.** ADR 0031 lists real tables as a planned addition. The work is tracked from [motif#46](https://github.com/sillsdev/motif/issues/46) (old #152).
 
 The owner decided on 2026-11-05:
 
@@ -112,7 +114,8 @@ The owner decided on 2026-11-05:
   and read the text.
 - Each row is one paragraph. Cells are separated by a ` | ` run in a separator character style.
 - The Markdown side stays a standard pipe table. Storage reuses the existing `Table Row` paragraph style, plus a header-row style and a
-  `Table Cell Separator` character style. The host can rename them. USFM table markers are not used.
+  `Table Cell Separator` character style. The host can rename them. USFM table markers are not used. GDRs use these styles too
+  (owner, 2026-11-07, Q73 and Q74).
 - Tab moves to the next cell. Tab in the last cell adds a row, as in Word.
 - Enter and Shift+Enter both insert a hard line break (U+2028) in a cell. Enter on an empty last row leaves the table.
 - Nothing more in the first version: no alignment, widths or merged cells unless asked for again. The caption is kept.

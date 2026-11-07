@@ -49,3 +49,9 @@ GDR template: its sections, title and ID, and the two table styles. The template
 policy. ADR 0011's split of the code stands: anything that needs an open project still runs in Motif.
 
 Owner decision, 2026-11-04.
+
+Amended 2026-11-07: ADR 0031 supersedes "ADR 0011's split of the code stands". Project-aware code (project paths, the record
+schema built from liblcm, record export and import) moves to the planned `SIL.TextEditing.Project`, and the model checks and
+the diff model live in this library too. Only the host shell and workflow stay in Motif, with the GDR checker. Whole records are no longer only under exploration: ADR 0032 ships the record-file format (the YAML frame, its schema,
+reader and writer). Export from liblcm is still planned. The GDR template no longer has its own two table styles: GDR tables
+use the generic table styles (owner, 2026-11-07).

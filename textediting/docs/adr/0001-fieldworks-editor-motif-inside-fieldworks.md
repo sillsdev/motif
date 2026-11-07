@@ -16,3 +16,7 @@ because FieldWorks' `EngineIsolationAuditTests` keeps LCModel out of FwAvalonia.
 Owner decision, 2026-11-03. This supersedes the earlier "general library with no FieldWorks concepts" proposal.
 
 Amended by ADR 0031 (2026-11-05): the library is the shared layer of FieldWorks and Motif, not only FieldWorks' field.
+
+Amended 2026-11-07: the open question about LCModel is answered. ADR 0016 keeps LCModel out of `SIL.TextEditing` and
+`SIL.TextEditing.Avalonia` and puts the `ITsString` adapter in `SIL.TextEditing.LCModel`. ADR 0031 lets the planned
+`SIL.TextEditing.Project` reference `SIL.LCModel` too; the core projects stay free of it.

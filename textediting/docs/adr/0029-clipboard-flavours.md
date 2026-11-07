@@ -33,3 +33,7 @@ the default.
 Owner decision, 2026-11-04.
 
 Amended by ADR 0031 (2026-11-05): "No HTML or RTF" is reversed; Word-compatible HTML and RTF copy and paste are planned (design pending).
+
+Amended 2026-11-07: the rejection of HTML and RTF under "Considered options" is reversed by owner decision R-3 in ADR 0031;
+they are planned in a new `SIL.TextEditing.WordInterchange` project. The FieldWorks Markdown clipboard form this ADR decides
+is not built yet: only its id and the paste order exist (motif issue #56).

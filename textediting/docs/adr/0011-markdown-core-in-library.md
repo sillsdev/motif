@@ -10,7 +10,10 @@ copy and paste from the same code.
 
 Owner decision, 2026-11-03.
 
-Superseded in part by ADR 0028 (2026-11-04): the format, its name (FieldWorks Markdown; GDR Markdown is its GDR
-profile) and the parser version policy.
+Superseded in part by ADR 0028 (2026-11-04): the format, its name (FieldWorks Markdown; GDR Markdown is a GDR
+written in it to the GDR template) and the parser version policy.
 
 Superseded in part by ADR 0031 (2026-11-05): project-aware code no longer stays in Motif; it moves to `SIL.TextEditing.Project`.
+
+Amended 2026-11-07: a GDR is a template, not a profile (ADR 0028; Motif ADR 0089, D34). The spec is no longer on branch
+`gdr-markdown-spec`; it is on Motif main at `docs/superpowers/specs/2026-11-03-gdr-markdown-design.md`.

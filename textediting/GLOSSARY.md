@@ -1,6 +1,6 @@
 # SIL.TextEditing
 
-The rich text field FieldWorks uses to edit multi-writing-system text, and that Motif uses inside FieldWorks.
+The rich text field and shared editing layer for multi-writing-system text, shared by FieldWorks and Motif.
 
 ## Text
 
@@ -25,6 +25,10 @@ _Avoid_: opaque, unknown, lossy
 **Embedded object**:
 A picture, link or other object that sits inline in a run as a single placeholder character.
 _Avoid_: ORC (in prose)
+
+**Box**:
+An inline object the field lays out with its own content, such as the environment box or a rule box with cells.
+_Avoid_: text box (that word is avoided for a field), widget
 
 **Hard line break**:
 A line break inside a paragraph (U+2028), which Shift+Enter inserts. It is not a paragraph separator.
@@ -59,8 +63,12 @@ The first analysis, or the first vernacular, writing system of a project.
 The application that owns the data, the undo history, the styles and the keyboards, and embeds fields: FieldWorks, Motif or the playground.
 
 **Field**:
-One `RichTextField`: one editable text on screen.
+One `RichTextField`, the control: one editable text on screen.
 _Avoid_: editor (for a single control), text box
+
+**Record field**:
+A field of a record schema or of a FieldWorks object, which a host may show in one or more fields.
+_Avoid_: field (alone, when the control could be meant), property
 
 ## Editing
 

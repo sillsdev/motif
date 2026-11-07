@@ -69,3 +69,7 @@ project.
 - Typesetting, VS Code support, grammar-sketch changes and file export are not part of 1.0 (spec §8.5).
 
 Owner decision, 2026-11-04.
+
+Amended 2026-11-07: decision 4's "the names of its two table styles" is stale. The GDR template drops its own
+`GDR Table Header` and `GDR Table Row` styles and uses the generic table styles (`Table Row`, a header-row style and
+`Table Cell Separator`, which the host may rename; owner decision of 2026-11-07, Q73 and Q74).
