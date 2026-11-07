@@ -67,7 +67,7 @@ public sealed class TrialReviewCommands(MotifDatabase database)
         var report = stored.Summary with { Detail = request.EffectiveDetail, Freshness = Freshness(stored.Summary) };
         if (request.EffectiveDetail == DetailLevel.Failures)
         {
-            try { report = report with { Sections = FailureSections(repository, report, request.Section) }; }
+            try { report = report with { Sections = FailureSections(repository, report, request.Section, request.Set) }; }
             catch (ReviewDetailUnavailableException) { }
             catch (ArgumentException exception) { return Invalid(exception.Message); }
         }
@@ -170,7 +170,7 @@ public sealed class TrialReviewCommands(MotifDatabase database)
             Flag: request.Flag, Filter: request.Filter, Cursor: request.Cursor, Limit: request.Limit));
     }
 
-    private static IReadOnlyList<SectionView> FailureSections(ReviewReportRepository repository, ReportView report, string? selected)
+    private static IReadOnlyList<SectionView> FailureSections(ReviewReportRepository repository, ReportView report, string? selected, string? set)
     {
         var groups = new (string Section, string Label, string Cause, string Outcome)[]
         {
@@ -192,16 +192,16 @@ public sealed class TrialReviewCommands(MotifDatabase database)
             foreach (var group in section)
             {
                 var page = repository.ReadPage(new ReviewPageRequest(report.Pins.ProjectKey, new ReviewReportId(report.ReportId),
-                    group.Section, Outcome: group.Outcome, Limit: Math.Max(1, Math.Min(5, remaining))));
+                    group.Section, Set: set, Outcome: group.Outcome, Limit: Math.Max(1, Math.Min(5, remaining))));
                 total = page.TotalInSection;
                 var count = page.TotalMatching;
                 if (count == 0) continue;
                 var samples = repository.ReadFailureSamples(new ReviewPageRequest(report.Pins.ProjectKey,
-                    new ReviewReportId(report.ReportId), group.Section, Outcome: group.Outcome), Math.Min(5, remaining));
+                    new ReviewReportId(report.ReportId), group.Section, Set: set, Outcome: group.Outcome), Math.Min(5, remaining));
                 remaining -= samples.Count;
                 var target = new ReadTarget(TargetKind.Tool, group.Cause, null, "motif_difference",
                     new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId, Detail: DetailLevel.Full,
-                        Section: group.Section, Outcome: group.Outcome));
+                        Section: group.Section, Set: set, Outcome: group.Outcome));
                 causes.Add(new CauseGroup(group.Cause, count, page.Unit, samples,
                     count is null ? null : Math.Max(0, count.Value - samples.Count), target));
             }
@@ -241,12 +241,12 @@ public sealed class TrialReviewCommands(MotifDatabase database)
         {
             var target = new ReadTarget(TargetKind.Tool, label, null, "motif_difference",
                 new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
-                    Detail: DetailLevel.Full, Section: id));
+                    Detail: DetailLevel.Full, Section: id, Set: set));
             var limitations = report.Limitations.Where(item => item.SectionIds.Contains(id)).ToList();
             try
             {
                 var page = repository.ReadPage(new ReviewPageRequest(report.Pins.ProjectKey,
-                    new ReviewReportId(report.ReportId), id, Limit: 5));
+                    new ReviewReportId(report.ReportId), id, Set: set, Limit: 5));
                 var groupsForSection = page.TotalMatching == 0 ? Array.Empty<CauseGroup>() :
                     [new CauseGroup(id, page.TotalMatching,
                         page.Unit, page.Items, page.TotalMatching is null ? null : page.TotalMatching - page.Returned, target)];

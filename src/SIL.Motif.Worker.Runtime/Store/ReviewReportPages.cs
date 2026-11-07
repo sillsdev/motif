@@ -709,7 +709,12 @@ public sealed partial class ReviewReportRepository
             "incomplete" => " AND (json_extract(c.FactsJson,'$.before.completion') != 'complete' OR json_extract(c.FactsJson,'$.after.completion') != 'complete')",
             _ => ""
         };
-        if (request.Set is not null) filter += " AND EXISTS (SELECT 1 FROM ReviewReportMemberships x WHERE x.ReportId=c.ReportId AND x.CaseKey=c.CaseKey AND x.SetId IN (SELECT value FROM json_each($set)))";
+        if (request.Set is not null)
+        {
+            var role = request.Section == "controls" ? " AND x.Role IN ('reference','regression')" :
+                request.Section == "negative-controls" ? " AND x.Role='negative'" : "";
+            filter += " AND EXISTS (SELECT 1 FROM ReviewReportMemberships x WHERE x.ReportId=c.ReportId AND x.CaseKey=c.CaseKey AND x.SetId IN (SELECT value FROM json_each($set))" + role + ")";
+        }
         if (request.Flag is not null) filter += " AND EXISTS (SELECT 1 FROM json_each(c.FactsJson,'$.flags') f WHERE f.value=$flag)";
         if (request.Filter == "changed") filter += " AND json_extract(c.FactsJson,'$.changed')=1";
         if (request.Filter == "unchanged") filter += " AND json_extract(c.FactsJson,'$.changed')=0";

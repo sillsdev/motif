@@ -160,6 +160,29 @@ public sealed class TrialReviewCommandsTests : IDisposable
         Assert.DoesNotContain(report.Summary.Flags, item => item.Id == ReviewFlagId.NewWordFailures);
     }
 
+    [Fact]
+    public async Task FailuresSetSelectionFiltersSamplesAndDrillDowns()
+    {
+        CreateInterrupted(configured: true);
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var commands = new TrialReviewCommands(_database);
+        var request = new ReviewReadRequest("project", _proposal.Value, ReportId: id.Value,
+            Detail: DetailLevel.Failures, Section: "incomplete");
+        var matching = Assert.IsType<AvailableTrialResult>(commands.Read(request with { Set = "reference-set" }).Value).Report;
+        Assert.All(Assert.Single(matching.Sections).Groups, group =>
+        {
+            Assert.NotEmpty(group.Samples);
+            Assert.Equal("reference-set", group.Link.Arguments!.Set);
+        });
+        Assert.NotEmpty(Assert.Single(matching.Sections).Groups);
+        var other = Assert.IsType<AvailableTrialResult>(commands.Read(request with { Set = "other" }).Value).Report;
+        Assert.Empty(Assert.Single(other.Sections).Groups);
+        var full = Assert.IsType<AvailableTrialResult>(commands.Read(request with
+            { Detail = DetailLevel.Full, Set = "other" }).Value).Report;
+        Assert.Empty(full.Page!.Items);
+        Assert.Equal(JsonSerializer.Serialize(matching.Summary, ReviewJson.Options), JsonSerializer.Serialize(other.Summary, ReviewJson.Options));
+    }
+
     [Theory]
     [InlineData("parser-work")]
     [InlineData("sampled-tokens")]
