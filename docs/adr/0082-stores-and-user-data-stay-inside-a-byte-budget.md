@@ -7,6 +7,11 @@ make and read a go or no-go decision.
 **Status:** accepted. Extends [ADR 0067](0067-proposal-difference-against-human-decisions.md) retention to the whole
 store and to files outside it. No store schema change: the budget and the sweep read existing tables.
 
+**Amended by [ADR 0093](0093-proposals-release-computed-data-on-close-and-after-seven-days-untouched.md):**
+release unneeded computed data at committed close and after seven days without Proposal activity, including for
+open Proposals. Historical citations no longer pin raw files indefinitely. The byte targets below remain
+housekeeping targets, not physical ceilings; ADR 0093 adds no project cap or budget-reservation subsystem.
+
 ## Decision
 
 1. **A project store has a byte budget of 100 MB** (`StorePruneCommand.StoreBudgetBytes`), counted as the pages in

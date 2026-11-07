@@ -329,11 +329,18 @@ the earlier content.
 _Avoid_: assessment, preview, plan, simulation
 
 **Store budget**:
-The bytes a project's Motif store may use, 100 MB ([ADR 0082](docs/adr/0082-stores-and-user-data-stay-inside-a-byte-budget.md)).
-When prune finds the store over it, the oldest evidence nothing still needs goes first, never the evidence of a
-Proposal that is still open; a decided Proposal keeps only its summary. The per-user folders of runs, sources and
-Baselines have a larger budget and lose what no live store references.
+The housekeeping target for a project's Motif store, 100 MB, with a larger target for the per-user folders of
+runs, sources and Baselines ([ADR 0082](docs/adr/0082-stores-and-user-data-stay-inside-a-byte-budget.md)); neither
+is a guaranteed physical ceiling. A Proposal releases unneeded computed evidence at committed close or after
+seven days without Proposal activity even while open, keeping authored content and written summaries with bounded
+examples ([ADR 0093](docs/adr/0093-proposals-release-computed-data-on-close-and-after-seven-days-untouched.md)).
 _Avoid_: quota, disk limit, cache size
+
+**Proposal activity**:
+An authored edit or a Dry Run, Trial or Assessment run against a Proposal; viewing or reading stored results
+does not count. It determines the seven-day retention of that Proposal's computed evidence, independently of its
+status ([ADR 0093](docs/adr/0093-proposals-release-computed-data-on-close-and-after-seven-days-untouched.md)).
+_Avoid_: last viewed, last opened, access time
 
 **Baseline**:
 A saved, minimal, file-backed copy of the project state from which Motif can make many independent
