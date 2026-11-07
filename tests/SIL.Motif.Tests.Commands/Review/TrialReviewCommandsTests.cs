@@ -328,6 +328,29 @@ public sealed class TrialReviewCommandsTests : IDisposable
     }
 
     [Fact]
+    public async Task PromotedWarningAppearsInFlaggedAndFailurePages()
+    {
+        CreateInterrupted();
+        var ledger = TrialReviewEvidence.ReadJob(_database, Job)!;
+        var subject = new GrammarWarningPart("subject", GrammarWarningPartRole.Object)
+            { SubjectGuid = "11111111-1111-1111-1111-111111111111" };
+        var warning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "label", [subject], [], "warning")
+            { Code = "promoted", Origin = GrammarFindingOrigin.Check };
+        var info = warning with { Severity = GrammarDiagnosticLevel.Information };
+        TrialReviewEvidence.Save(_database, ledger with { BeforeWarnings = [info], AfterWarnings = [warning] });
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var repository = new ReviewReportRepository(_database);
+        var page = repository.ReadPage(new ReviewPageRequest("project", id, "warnings")
+            { Flag = ReviewFlagId.NewWarningsOrParsimony });
+        var row = Assert.IsType<DiagnosticRow>(Assert.Single(page.Items));
+        Assert.Equal(DiagnosticChange.Changed, row.Change);
+        Assert.Equal("info", row.BeforeSeverity);
+        var failures = Assert.IsType<AvailableTrialResult>(new TrialReviewCommands(_database).Read(
+            new ReviewReadRequest("project", _proposal.Value, ReportId: id.Value, Detail: DetailLevel.Failures, Section: "warnings")).Value).Report;
+        Assert.Single(Assert.Single(failures.Sections).Groups);
+    }
+
+    [Fact]
     public async Task ConfiguredSetDescriptorsRemainAddressableFromEvidence()
     {
         CreateInterrupted(configured: true);

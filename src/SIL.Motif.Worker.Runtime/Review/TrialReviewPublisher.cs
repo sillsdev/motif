@@ -271,9 +271,11 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             var change = !hasBefore ? DiagnosticChange.Added : !hasAfter ? DiagnosticChange.Removed :
                 earlier.Diagnostic.Severity == later.Diagnostic.Severity ? DiagnosticChange.Unchanged : DiagnosticChange.Changed;
             var row = new DiagnosticRow(id, id, chosen.Diagnostic.Code, change, chosen.Diagnostic.Severity,
-                chosen.Diagnostic.SubjectIds ?? [], chosen.Warning.Description, "not-attributed", []);
+                chosen.Diagnostic.SubjectIds ?? [], chosen.Warning.Description, "not-attributed", [])
+            { BeforeSeverity = hasBefore ? earlier.Diagnostic.Severity : null };
             return new ReviewSectionItem("warnings", row, Group: chosen.Diagnostic.Code, Outcome: change.ToString().ToLowerInvariant(),
-                Flags: change == DiagnosticChange.Added && chosen.Diagnostic.Severity is "warning" or "error"
+                Flags: hasAfter && (later.Diagnostic.Severity is "warning" or "error") &&
+                    (!hasBefore || earlier.Diagnostic.Severity == "info")
                     ? [ReviewFlagId.NewWarningsOrParsimony] : [], Changed: change != DiagnosticChange.Unchanged);
         }).ToArray();
     }

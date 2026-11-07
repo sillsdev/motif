@@ -213,6 +213,10 @@ public sealed record DiagnosticRow(
     [JsonRequired]
     public string RowKind { get; init; } = "warning";
 
+    /// <summary>The previous severity when a paired diagnostic changed.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? BeforeSeverity { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

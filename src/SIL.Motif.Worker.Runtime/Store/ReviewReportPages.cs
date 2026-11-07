@@ -92,7 +92,7 @@ public sealed partial class ReviewReportRepository
         if (available.ExecuteScalar() is null) throw new ReviewDetailUnavailableException();
         using var command = PageCommand(connection, transaction,
             "SELECT json_extract(FactsJson,'$.group'),COUNT(*) FROM ReviewReportEvents " +
-            "WHERE ReportId=$report AND CaseKey=$case AND Ordinal>=0 AND json_extract(FactsJson,'$.outcome')='added' " +
+            "WHERE ReportId=$report AND CaseKey=$case AND Ordinal>=0 " +
             "AND EXISTS (SELECT 1 FROM json_each(FactsJson,'$.flags') WHERE value='new-warnings-or-parsimony') " +
             "GROUP BY json_extract(FactsJson,'$.group') ORDER BY 1;", ("$report", report.Value), ("$case", key));
         using var reader = command.ExecuteReader();
@@ -370,7 +370,7 @@ public sealed partial class ReviewReportRepository
             var prefix = request.Section == "warnings" ? "warning/" : request.Section == "parsimony" ? "parsimony/" : null;
             if (prefix is not null && request.Outcome.StartsWith(prefix, StringComparison.Ordinal))
             {
-                filter += " AND json_extract(FactsJson,'$.outcome')='added' AND json_extract(FactsJson,'$.group')=$group";
+                filter += " AND EXISTS (SELECT 1 FROM json_each(FactsJson,'$.flags') WHERE value='new-warnings-or-parsimony') AND json_extract(FactsJson,'$.group')=$group";
                 args.Add(("$group", request.Outcome[prefix.Length..]));
             }
             else { filter += " AND json_extract(FactsJson,'$.outcome') IN (SELECT value FROM json_each($outcome))"; args.Add(("$outcome", SelectorValues(request.Outcome))); }
