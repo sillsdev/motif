@@ -873,11 +873,39 @@ public sealed class ProposalRepository : IProposalRepository
     /// <inheritdoc />
     public StatusTransitionOutcome Transition(
         CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string? supersededBy = null)
+        => TransitionCore(proposalId, allowedFrom, to, supersededBy, null);
+
+    /// <summary>Records a person's Comment and moves the Proposal in the same transaction.</summary>
+    public StatusTransitionOutcome TransitionWithComment(
+        CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom, string to, string comment)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(comment);
+        return TransitionCore(proposalId, allowedFrom, to, null, comment);
+    }
+
+    private StatusTransitionOutcome TransitionCore(CanonicalId proposalId, IReadOnlyCollection<string> allowedFrom,
+        string to, string? supersededBy, string? comment)
     {
         ArgumentNullException.ThrowIfNull(allowedFrom);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         var placeholders = string.Join(", ", allowedFrom.Select((_, i) => "$from" + i));
+        if (comment is not null)
+        {
+            using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = $"""
+                INSERT INTO ProposalComments (ProposalId, Kind, AuthorLabel, PersonName, Text, IntentDigest, CreatedUtc)
+                SELECT ProposalId, 'standard', NULL, '', $text, CurrentIntentDigest, $now
+                FROM Proposals WHERE ProposalId = $id AND DraftName IS NULL AND Status IN ({placeholders});
+                """;
+            insert.Parameters.AddWithValue("$text", comment);
+            insert.Parameters.AddWithValue("$now", Now());
+            insert.Parameters.AddWithValue("$id", proposalId.Value);
+            var fromIndex = 0;
+            foreach (var from in allowedFrom) insert.Parameters.AddWithValue("$from" + fromIndex++, from);
+            insert.ExecuteNonQuery();
+        }
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = $"""

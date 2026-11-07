@@ -91,7 +91,7 @@ public static class ProposalLifecycleCommand
     public static CommandOutcome<ProposalStatusChangedResponse> Decline(DeclineProposalRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return Close(request.ProjectPath, request.ProposalId, ManifestStatus.Rejected);
+        return Close(request.ProjectPath, request.ProposalId, ManifestStatus.Rejected, request.Reason);
     }
 
     /// <summary>Withdraws a Proposal, finalizing a nonempty Draft and discarding an empty one first.</summary>
@@ -127,7 +127,7 @@ public static class ProposalLifecycleCommand
     internal const string ReviewDraftPrefix = "review/";
 
     private static CommandOutcome<ProposalStatusChangedResponse> Close(string projectPath, string proposalId,
-        string status)
+        string status, string? reason = null)
     {
         var version = MotifProductVersion.CurrentText;
         var read = ReadRecord(projectPath, proposalId);
@@ -153,7 +153,8 @@ public static class ProposalLifecycleCommand
         }
         var rejectRequest = new RejectRequest(projectPath, version, id);
         return status == ManifestStatus.Rejected
-            ? ProposalCommands.Reject(rejectRequest)
+            ? string.IsNullOrWhiteSpace(reason) ? ProposalCommands.Reject(rejectRequest)
+                : ProposalCommands.RejectWithComment(rejectRequest, reason.Trim())
             : ProposalCommands.Withdraw(rejectRequest);
     }
 

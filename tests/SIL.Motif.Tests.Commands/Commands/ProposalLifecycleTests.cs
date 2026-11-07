@@ -33,6 +33,35 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void DecliningWithAReasonSavesACommentAndFreezesIt()
+    {
+        var (path, id) = Finalized("declined-with-reason");
+
+        var declined = ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, id, "Needs another analysis."));
+
+        Assert.True(declined.Succeeded, declined.Refusal?.Message);
+        var shown = ProposalCommands.Show(new ShowProposalRequest(path, Version, id));
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        Assert.Equal("Needs another analysis.", Assert.Single(shown.Value!.Comments!).Markdown);
+        Assert.False(ProposalComments.Add(new AddCommentRequest(path, Version, id, "Too late", "")).Succeeded);
+    }
+
+    [Fact]
+    public void ARefusedDeclineDoesNotSaveItsReason()
+    {
+        var (path, id) = Finalized("already-applied");
+        using (var database = ProjectMotifDatabase.Open(path))
+            new ProposalRepository(database).SetStatus(CanonicalId.Parse(id), "applied", null);
+
+        var declined = ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, id, "Not applicable."));
+
+        Assert.False(declined.Succeeded);
+        var shown = ProposalCommands.Show(new ShowProposalRequest(path, Version, id));
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        Assert.Empty(shown.Value!.Comments!);
+    }
+
+    [Fact]
     public void ADraftIsFinalizedBeforeItIsDeclinedSoWhatWasDeclinedStaysReadable()
     {
         var path = NewProject();

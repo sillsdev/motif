@@ -868,6 +868,12 @@ public static partial class ProposalCommands
             RejectableFrom, null,
             (repository, id) => repository.Transition(id, RejectableFrom, ManifestStatus.Rejected));
 
+    /// <summary>Declines a Proposal and saves the person's reason as one store transaction.</summary>
+    public static CommandOutcome<ProposalStatusChangedResponse> RejectWithComment(RejectRequest request, string reason) =>
+        TransitionStatus(request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Rejected,
+            RejectableFrom, null,
+            (repository, id) => repository.TransitionWithComment(id, RejectableFrom, ManifestStatus.Rejected, reason));
+
     /// <summary>Moves an open Proposal to <c>withdrawn</c>: its author took it back; it can be reopened as a Draft.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Withdraw(RejectRequest request) =>
         TransitionStatus(
