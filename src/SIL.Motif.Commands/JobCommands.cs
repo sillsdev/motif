@@ -893,6 +893,21 @@ public static class JobCommands
                     "; there is nothing to cancel.",
                     Fact(("jobId", request.JobId), ("status", JobStatusJson.ToWire(changed.Status)))));
 
+            if (changed.Kind == TrialKind && changed.Status == JobStatus.Cancelled &&
+                TrialJobInput.Parse(changed.InputJson).ReviewInputs is not null)
+            {
+                try
+                {
+                    new SIL.Motif.Worker.Runtime.Review.TrialReviewPublisher(database).PublishAsync(
+                        new SIL.Motif.Worker.Runtime.Review.ReviewPublishRequest(changed.JobId), CancellationToken.None)
+                        .GetAwaiter().GetResult();
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    System.Diagnostics.Trace.TraceError("Could not publish the cancelled Trial review: {0}", exception.Message);
+                }
+            }
+
             return CommandOutcome<JobStatusResponse>.Success(new JobStatusResponse(changed.JobId, changed.ProjectKey,
                 true, changed.Kind, changed.Status, changed.Attempt, changed.UpdatedUtc,
                 changed.CancellationRequested, changed.FailureCategory, changed.Version));

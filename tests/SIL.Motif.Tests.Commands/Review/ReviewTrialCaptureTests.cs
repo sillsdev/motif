@@ -164,8 +164,14 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
             new ProposalRepository(database).SetStatus(SIL.Motif.Contract.Ids.CanonicalId.Parse(draft.Value.ProposalId),
                 "rejected", null);
             Assert.Single(Directory.GetFiles(directory, "*.json"));
-            new JobRepository(database).CancelActive(queued.Value!.JobId);
+            var cancelled = SIL.Motif.Commands.JobCommands.Cancel(new(path, queued.Value!.JobId, "1.0"));
+            Assert.True(cancelled.Succeeded, cancelled.Refusal?.Message);
             Assert.Empty(Directory.GetFiles(directory, "*.json"));
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM ReviewReports WHERE TrialJobId=$job";
+            command.Parameters.AddWithValue("$job", queued.Value.JobId);
+            Assert.Equal(1L, (long)command.ExecuteScalar()!);
         }
         finally { Directory.Delete(root, recursive: true); }
     }
