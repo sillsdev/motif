@@ -339,6 +339,9 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         using (var cache = new FwDataProjectLoader().LoadScratchCache(projectPath))
         {
             var fixture = BuildOwnerFixture(cache, pristine.Seed);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.GetInstance<IWfiWordformFactory>().Create(
+                    TsStringUtils.MakeString("ri", cache.DefaultVernWs)));
             AddNotebookRecordType(cache);
             retirement = ComposeIntent(cache, fixture,
             [
@@ -413,7 +416,7 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
 
         var trial = JobCommands.EnqueueTrial(new EnqueueTrialRequest(projectPath, productVersion,
-            proposalId, AssessmentScopeConfiguration.DefaultName, words));
+            proposalId, AssessmentScopeConfiguration.DefaultName, words, NegativeWords: ["ri"]));
         Assert.True(trial.Succeeded, trial.Refusal?.Message);
         runner.Start(projectPath);
         await runner.WhenIdleAsync().WaitAsync(TimeSpan.FromMinutes(5));
@@ -424,8 +427,11 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests(
         var trialAssessments = JobCommands.Assessments(new JobAssessmentsRequest(projectPath,
             trial.Value.JobId, productVersion));
         Assert.True(trialAssessments.Succeeded, trialAssessments.Refusal?.Message);
+        var storedTrial = Trials.Read(new ReadTrialRequest(projectPath, proposalId));
+        Assert.True(storedTrial.Succeeded, storedTrial.Refusal?.Message);
+        var afterId = storedTrial.Value!.AssessmentIds[AssessmentKinds.ParseTime];
         var afterAssessment = Assert.Single(trialAssessments.Value!.Assessments,
-            item => item.Kind == AssessmentKinds.ParseTime);
+            item => item.Kind == AssessmentKinds.ParseTime && item.AssessmentId == afterId);
         Assert.NotEqual(beforeAssessment.AssessmentId, afterAssessment.AssessmentId);
 
         var reopened = ProposalCommands.Reopen(new ReopenRequest(projectPath, productVersion,

@@ -119,8 +119,11 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests
         var trialAssessments = JobCommands.Assessments(new JobAssessmentsRequest(projectPath,
             trial.Value.JobId, productVersion));
         Assert.True(trialAssessments.Succeeded, trialAssessments.Refusal?.Message);
+        var storedTrial = Trials.Read(new ReadTrialRequest(projectPath, proposalId));
+        Assert.True(storedTrial.Succeeded, storedTrial.Refusal?.Message);
+        var afterId = storedTrial.Value!.AssessmentIds[AssessmentKinds.ParseTime];
         var afterAssessment = Assert.Single(trialAssessments.Value!.Assessments,
-            item => item.Kind == AssessmentKinds.ParseTime);
+            item => item.Kind == AssessmentKinds.ParseTime && item.AssessmentId == afterId);
         output.WriteLine("Trial kinds: " + string.Join(", ", trialAssessments.Value.Assessments.Select(item => item.Kind)));
 
         var candidateJob = ParsimonyCommands.EnqueueCandidate(new EnqueueParsimonyCandidateRequest(projectPath,
