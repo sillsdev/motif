@@ -71,6 +71,7 @@ public static class ReviewInputArtifacts
         if (!Directory.Exists(directory) || (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) return;
         var retained = new HashSet<string>(StringComparer.Ordinal);
         var protectedJobs = new HashSet<string>(StringComparer.Ordinal);
+        var publishedJobs = new HashSet<string>(StringComparer.Ordinal);
         var seenJobs = new HashSet<string>(StringComparer.Ordinal);
         using var connection = database.OpenConnection();
         using (var exists = connection.CreateCommand())
@@ -79,11 +80,12 @@ public static class ReviewInputArtifacts
             if (exists.ExecuteScalar() is not null)
             {
                 using var reports = connection.CreateCommand();
-                reports.CommandText = "SELECT TrialJobId, InputReferencesJson FROM ReviewReports " +
-                    "WHERE DetailAvailable=1 OR InputReferencesJson != '[]';";
+                reports.CommandText = "SELECT TrialJobId, InputReferencesJson, DetailAvailable FROM ReviewReports;";
                 using var reader = reports.ExecuteReader();
                 while (reader.Read())
                 {
+                    publishedJobs.Add(reader.GetString(0));
+                    if (reader.GetInt64(2) == 0 && reader.GetString(1) == "[]") continue;
                     protectedJobs.Add(reader.GetString(0));
                     foreach (var reference in JsonSerializer.Deserialize<string[]>(reader.GetString(1)) ?? [])
                     {
@@ -112,7 +114,7 @@ public static class ReviewInputArtifacts
                 if (input.ReviewInputs is not { } reference) continue;
                 var proposalId = ProposalJsonParser.Parse(input.ProposalJson).ProposalId.Value;
                 var active = !JobStateMachine.IsTerminal(JobStatusJson.Parse(reader.GetString(1)));
-                if (active || protectedJobs.Contains(reader.GetString(0)) ||
+                if (active || !publishedJobs.Contains(reader.GetString(0)) || protectedJobs.Contains(reader.GetString(0)) ||
                     statuses.TryGetValue(proposalId, out var status) && ProposalDifferenceRetention.KeepsWordDetail(status))
                     retained.Add(reference.Sha256);
             }

@@ -40,6 +40,34 @@ public sealed class ReviewReportRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task DecidedTrialKeepsInputsUntilTerminalPublication()
+    {
+        var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(),
+            proposalId = _proposal.Value, operations = Array.Empty<object>() });
+        var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [], []);
+        var artifact = new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>())
+        {
+            Baseline = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-11-07T00:00:00Z", "sha256:" + new string('b', 64))
+        };
+        var reference = ReviewInputArtifacts.Store(_database, artifact);
+        var input = new TrialJobInput(proposalJson, null, Words: ["word"], ReviewInputs: reference);
+        var jobs = new JobRepository(_database);
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        jobs.Create("trial", "project", "trial", JsonSerializer.Serialize(input, SIL.Motif.Contract.MotifJson.CreateOptions()), now);
+        var claim = new JobClaims(_database).Claim("project", "owner", now, TimeSpan.FromMinutes(5))!;
+        TrialReviewEvidence.Save(_database, new TrialReviewLedger("trial", reference, [], [], []));
+        new ProposalRepository(_database).SetStatus(_proposal, "rejected", null);
+        new AssessmentRepository(_database).RecordBatchForClaim([], claim.JobId, claim.ClaimToken!, "{}");
+        TrialScratchRetention.PruneProject(_database, "project", "trial");
+        var path = Path.Combine(_database.FullPath + ".review-inputs", reference.Sha256 + ".json");
+        Assert.True(File.Exists(path));
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest("trial"));
+        Assert.NotNull(_repository.ReadManifest(id));
+        Assert.False(File.Exists(path));
+    }
+
+    [Fact]
     public async Task RetainedReportProtectsInputsEvenWhenItsTrialRowIsMissing()
     {
         var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [], []);

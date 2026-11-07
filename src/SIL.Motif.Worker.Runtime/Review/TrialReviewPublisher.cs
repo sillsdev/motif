@@ -134,8 +134,10 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         { AvailableSections = sections,
             SectionItems = Sections(SetRows(inputs).Concat(warningRows ?? []).Concat(parsimony?.Rows ?? [])
                 .Concat(ruleWorkRows ?? []).ToArray(), ct) };
-        return await new ReviewReportRepository(_database).PublishAsync(publication,
+        var id = await new ReviewReportRepository(_database).PublishAsync(publication,
             Cases(inputs, before, after, ct), ct).ConfigureAwait(false);
+        TrialScratchRetention.TrySweepReviewInputs(_database);
+        return id;
     }
 
     private static (DryRunPin Pin, int Count)? ReadDryRun(string job, string? json, string intent)
