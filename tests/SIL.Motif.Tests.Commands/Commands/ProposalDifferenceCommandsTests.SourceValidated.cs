@@ -49,6 +49,24 @@ public sealed partial class ProposalDifferenceCommandsTests
     }
 
     [Fact]
+    public void UnappliedOrCandidateEvidenceCannotConfirmExpectation()
+    {
+        LoadAgentEvaluationKind();
+        using var fixture = new Fixture(_root);
+        fixture.StageComparedProposalAgentApproval(SitaAnalysis);
+        Assert.Empty(SourceValidatedDecisions.Read(fixture.Database).ReviewDecisions);
+
+        fixture.StageAppliedAgentApproval(SitaAnalysis);
+        var decision = Assert.Single(SourceValidatedDecisions.Read(fixture.Database).ReviewDecisions);
+        Assert.Equal(SitaAnalysis, decision.AnalysisId);
+        Assert.True(decision.Approved);
+        Assert.NotEqual(Guid.Empty, decision.AgentId);
+        Assert.False(string.IsNullOrEmpty(decision.ProposalId));
+        Assert.False(string.IsNullOrEmpty(decision.RevisionId));
+        Assert.False(string.IsNullOrEmpty(decision.OperationId));
+    }
+
+    [Fact]
     public void ASourceValidatedDifferenceSaysSoInItsSummaryNotesAndEachWordsEvidence()
     {
         LoadAgentEvaluationKind();

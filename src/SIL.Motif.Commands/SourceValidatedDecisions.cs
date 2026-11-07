@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Projection.Store;
+using SIL.Motif.Projection.Review;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Worker.Store;
 
@@ -32,12 +33,14 @@ internal sealed class SourceValidatedDecisions
 
     private SourceValidatedDecisions(Dictionary<(Guid AnalysisId, Guid AgentId), string> opinions,
         HashSet<Guid> incorrectWordforms, Dictionary<string, List<StagedEvidence>> evidence,
-        IReadOnlyList<ProposalDifferenceUnreadableEvidence> unreadable)
+        IReadOnlyList<ProposalDifferenceUnreadableEvidence> unreadable,
+        IReadOnlyList<ReviewSourceDecision> reviewDecisions)
     {
         Opinions = opinions;
         IncorrectWordforms = incorrectWordforms;
         _evidence = evidence;
         Unreadable = unreadable;
+        ReviewDecisions = reviewDecisions;
         var resolved = new Dictionary<Guid, string>();
         var conflicting = new HashSet<Guid>();
         foreach (var group in opinions.GroupBy(pair => pair.Key.AnalysisId))
@@ -61,6 +64,8 @@ internal sealed class SourceValidatedDecisions
 
     /// <summary>Applied Proposals whose revision could not be read; their decisions are left out.</summary>
     public IReadOnlyList<ProposalDifferenceUnreadableEvidence> Unreadable { get; }
+
+    internal IReadOnlyList<ReviewSourceDecision> ReviewDecisions { get; }
 
     /// <summary>Returns an opinion only when all staged agents agree; disagreements stay unknown.</summary>
     public string OpinionFor(Guid analysisId) => ResolvedOpinions.GetValueOrDefault(analysisId, "unknown");
@@ -146,7 +151,7 @@ internal sealed class SourceValidatedDecisions
     public static SourceValidatedDecisions Read(MotifDatabase database)
     {
         var appliedAt = new Dictionary<string, string>(StringComparer.Ordinal);
-        var applied = new List<(string Id, string? Label, string Revision)>();
+        var applied = new List<(string Id, string? Label, string Revision, string? Digest)>();
         using (var connection = database.OpenConnection())
         {
             using (var command = connection.CreateCommand())
@@ -163,14 +168,15 @@ internal sealed class SourceValidatedDecisions
                 while (reader.Read())
                     applied.Add((reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1),
                         $"{reader.GetString(0)}\n{(reader.IsDBNull(2) ? "" : reader.GetString(2))}\n" +
-                        appliedAt.GetValueOrDefault(reader.GetString(0), "")));
+                        appliedAt.GetValueOrDefault(reader.GetString(0), ""),
+                        reader.IsDBNull(2) ? null : reader.GetString(2)));
             }
         }
         var key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('\u001e', applied.Select(item => item.Revision)))));
         lock (CacheGate)
             if (Cache.TryGetValue(database.FullPath, out var kept) && kept.Key == key) return kept.Value;
 
-        var loaded = Load(database, applied.Select(item => (item.Id, item.Label)).ToArray(), appliedAt);
+        var loaded = Load(database, applied.Select(item => (item.Id, item.Label, item.Digest)).ToArray(), appliedAt);
         lock (CacheGate)
         {
             if (loaded.Unreadable.Count > 0) Cache.Remove(database.FullPath);
@@ -183,7 +189,7 @@ internal sealed class SourceValidatedDecisions
         return loaded;
     }
 
-    private static SourceValidatedDecisions Load(MotifDatabase database, (string Id, string? Label)[] listed,
+    private static SourceValidatedDecisions Load(MotifDatabase database, (string Id, string? Label, string? Digest)[] listed,
         Dictionary<string, string> appliedAt)
     {
         var repository = new ProposalRepository(database);
@@ -194,6 +200,7 @@ internal sealed class SourceValidatedDecisions
         var incorrect = new HashSet<Guid>();
         var evidenceBySubject = new Dictionary<string, List<StagedEvidence>>(StringComparer.Ordinal);
         var unreadable = new List<ProposalDifferenceUnreadableEvidence>();
+        var reviewDecisions = new Dictionary<(Guid AnalysisId, Guid AgentId), ReviewSourceDecision>();
         foreach (var record in applied)
         {
             Proposal envelope;
@@ -219,6 +226,10 @@ internal sealed class SourceValidatedDecisions
                     agentName = evaluation.Name;
                     agentId = evaluation.AgentId.ToGuid();
                     agentOpinion = evaluation.Approves ? "approves" : "disapproves";
+                    if (record.Digest is not null)
+                        reviewDecisions[(target.ToGuid(), evaluation.AgentId.ToGuid())] = new(
+                            target.ToGuid(), evaluation.AgentId.ToGuid(), evaluation.Approves,
+                            record.Id, record.Digest, operation.OperationId.Value);
                 }
                 else if (operation.Kind == DecisionEvidenceOperationKinds.Record)
                 {
@@ -232,6 +243,8 @@ internal sealed class SourceValidatedDecisions
                 list.Add(new StagedEvidence(evidence.Tier, agentName, agentOpinion, agentId));
             }
         }
-        return new SourceValidatedDecisions(opinions, incorrect, evidenceBySubject, unreadable);
+        return new SourceValidatedDecisions(opinions, incorrect, evidenceBySubject, unreadable,
+            Array.AsReadOnly(reviewDecisions.Values.OrderBy(item => item.AnalysisId)
+                .ThenBy(item => item.AgentId).ToArray()));
     }
 }
