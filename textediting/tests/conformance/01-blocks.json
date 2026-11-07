@@ -1,0 +1,40 @@
+[
+  {
+    "name": "a plain paragraph",
+    "markdown": "Hello world.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "Hello world.", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "vernacular span in an analysis paragraph",
+    "markdown": "The prefix [mang-]{.v}.\n",
+    "paragraphs": [
+      { "style": "Normal", "runs": [
+        { "text": "The prefix ", "ws": "en" },
+        { "text": "mang-", "ws": "ceb" },
+        { "text": ".", "ws": "en" }
+      ] }
+    ],
+    "canonical": null
+  },
+  {
+    "name": "headings one to three",
+    "markdown": "# One\n\n## Two\n\n### Three\n",
+    "paragraphs": [
+      { "style": "Heading 1", "runs": [ { "text": "One", "ws": "en" } ] },
+      { "style": "Heading 2", "runs": [ { "text": "Two", "ws": "en" } ] },
+      { "style": "Heading 3", "runs": [ { "text": "Three", "ws": "en" } ] }
+    ],
+    "canonical": null
+  },
+  {
+    "name": "an empty paragraph is a marker",
+    "markdown": "a\n\n[]{.empty}\n\nb\n",
+    "paragraphs": [
+      { "style": "Normal", "runs": [ { "text": "a", "ws": "en" } ] },
+      { "style": "Normal", "typingWs": "en" },
+      { "style": "Normal", "runs": [ { "text": "b", "ws": "en" } ] }
+    ],
+    "canonical": null
+  }
+]

@@ -52,8 +52,13 @@ internal static class GrammarDataHygiene
         var findings = new List<GrammarFinding>();
         var budget = new DecodeBudget();
         InspectCore(path, bytes.ToArray(), 0, budget, findings, true);
+        // ADR 0092: textediting/ conformance fixtures are placeholder records, not language data.
+        if (path.Replace('\\', '/').StartsWith(TextEditingConformanceFixtures, StringComparison.Ordinal))
+            findings.RemoveAll(f => f.Rule == "populated-grammar-structure");
         return findings.DistinctBy(f => (f.Rule, f.Severity)).ToArray();
     }
+
+    internal const string TextEditingConformanceFixtures = "textediting/tests/conformance/";
 
     public static int Run(string[] args)
     {

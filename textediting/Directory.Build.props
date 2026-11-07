@@ -1,0 +1,27 @@
+<Project>
+  <!-- Language version, nullable, warnings as errors and deterministic builds come from the host's shared-settings file, one of the
+       folder's two outside imports (ADR 0034). Pulling the folder out replaces this import with those four properties. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.Common.props" />
+
+  <PropertyGroup>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Work counters (Paragraph.TextReads, RunList.ElementReads) let a test count work instead of timing it. Only a build that is not Release
+         counts, so a release build carries no counting on its hot paths (issue 107); tests that read them sit inside #if TEXTEDITING_COUNTERS. -->
+    <DefineConstants Condition="'$(Configuration)' != 'Release'">$(DefineConstants);TEXTEDITING_COUNTERS</DefineConstants>
+    <!-- One tree for all outputs, so a Windows build and a WSL build never share obj state. -->
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)bin\$(MSBuildProjectName)\</BaseOutputPath>
+  </PropertyGroup>
+
+  <!-- net48 projects get their reference assemblies from a package, so no targeting pack has to be installed. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Local SIL packages: the host's LOCAL_NUGET_REPO mechanism, copied here because the host keeps it in its own root
+       Directory.Build.props (ADR 0034). Off unless LOCAL_NUGET_REPO names an existing folder; CI never sets it. -->
+  <PropertyGroup>
+    <TextEditingLocalPackagesActive Condition="'$(LOCAL_NUGET_REPO)' != '' and Exists('$(LOCAL_NUGET_REPO)')">true</TextEditingLocalPackagesActive>
+    <RestoreAdditionalProjectSources Condition="'$(TextEditingLocalPackagesActive)' == 'true'">$(RestoreAdditionalProjectSources);$(LOCAL_NUGET_REPO)</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+</Project>

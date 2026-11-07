@@ -1,0 +1,382 @@
+[
+  {
+    "name": "a link is a path with the GUID, the name form marks text that follows the target's name",
+    "project": "standard",
+    "markdown": "See [palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "See ", "ws": "en" },
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } },
+      { "text": ".", "ws": "en" }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a path with a space is written in angle brackets",
+    "project": "standard",
+    "markdown": "See [this rule](</grammar/phonological-rules/Nasal assimilation>){guid=0b1e2f3a-4c5d-4e6f-8a9b-0c1d2e3f4a5b}.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "See ", "ws": "en" },
+      { "text": "this rule", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "0b1e2f3a-4c5d-4e6f-8a9b-0c1d2e3f4a5b", "tool": "PhonologicalRuleEdit" } },
+      { "text": ".", "ws": "en" }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a link with no GUID is found by its path, and written with the GUID and the name flag",
+    "project": "standard",
+    "markdown": "[palit](/lexicon/palit(2))\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "siblings that share a name are told apart by eight GUID digits",
+    "project": "standard",
+    "markdown": "[x](/grammar/phonological-rules/Epenthesis(77e41a02))\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "77e41a02-0000-4000-8000-000000000003", "tool": "PhonologicalRuleEdit" } }
+    ] } ],
+    "canonical": "[x](/grammar/phonological-rules/Epenthesis(77e41a02)){guid=77e41a02-0000-4000-8000-000000000003}\n"
+  },
+  {
+    "name": "a homograph written with a subscript number is read as the number in parentheses",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit₂)\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "pandoc": "Pandoc leaves the subscript digit in the destination, which only this reader turns into a homograph number"
+  },
+  {
+    "name": "ok: fwmd.link.ambiguous a path that matches one object",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit(1))\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "a1b2c3d4-0000-4000-8000-000000000001", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/palit(1)){guid=a1b2c3d4-0000-4000-8000-000000000001}\n"
+  },
+  {
+    "name": "a path that matches several objects is an error with a choice for each",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit)\n",
+    "findings": [ { "id": "fwmd.link.ambiguous", "line": 1, "column": 1, "endLine": 1, "endColumn": 20,
+      "choices": [ "/lexicon/palit(2) (7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d)", "/lexicon/palit(1) (a1b2c3d4-0000-4000-8000-000000000001)" ] } ]
+  },
+  {
+    "name": "ok: fwmd.link.not-found a path that exists",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit(2))\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "a path that matches nothing is an error",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palt)\n",
+    "findings": [ { "id": "fwmd.link.not-found", "line": 1, "column": 1, "endLine": 1, "endColumn": 19 } ]
+  },
+  {
+    "name": "ok: fwmd.link.stale-path a path that is current",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "the GUID is the identity: an out-of-date path is information and the next write has the current path",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit(1)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "findings": [ { "id": "fwmd.link.stale-path", "severity": "suggestion", "line": 1, "column": 1, "endLine": 1, "endColumn": 66 } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "ok: fwmd.link.broken a GUID the project knows",
+    "project": "standard",
+    "markdown": "[x](/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d)\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "a GUID this project does not know is a warning, and the link is kept for an agent's text",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit(2)){guid=aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa", "tool": "lexiconEdit" } }
+    ] } ],
+    "findings": [ { "id": "fwmd.link.broken", "severity": "warning", "line": 1, "column": 1, "endLine": 1, "endColumn": 66 } ]
+  },
+  {
+    "name": "an interactive paste binds an unknown GUID by the one object at its path and says so",
+    "project": "standard",
+    "options": { "unknownGuids": "rebind" },
+    "markdown": "[x](/lexicon/palit(2)){guid=aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "findings": [ { "id": "fwmd.link.rebound", "severity": "suggestion", "line": 1, "column": 1, "endLine": 1, "endColumn": 66 } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "a link marked broken is a warning, and is written with the flag while the target stays deleted",
+    "project": "standard",
+    "markdown": "[gone](/lexicon/gone){.broken guid=deadbeef-0000-4000-8000-000000000005}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "gone", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "deadbeef-0000-4000-8000-000000000005", "tool": "lexiconEdit" } }
+    ] } ],
+    "findings": [ { "id": "fwmd.link.broken", "severity": "warning", "line": 1, "column": 1, "endLine": 1, "endColumn": 73 } ],
+    "canonical": "[gone](/objects/deadbeef-0000-4000-8000-000000000005){.name .broken}\n"
+  },
+  {
+    "name": "ok: fwmd.link.guid-mismatch one GUID",
+    "project": "standard",
+    "markdown": "[x](/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "a URL that names one GUID and guid= another is an error, not a guess",
+    "project": "standard",
+    "markdown": "[x](/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){guid=0b1e2f3a-4c5d-4e6f-8a9b-0c1d2e3f4a5b}\n",
+    "findings": [ { "id": "fwmd.link.guid-mismatch", "line": 1, "column": 1, "endLine": 1, "endColumn": 94 } ]
+  },
+  {
+    "name": "a link relative to the file needs a base",
+    "project": "standard",
+    "markdown": "[palit](../../lexicon/palit(2).fw.md){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "findings": [ { "id": "fwmd.link.relative-without-base", "line": 1, "column": 1, "endLine": 1, "endColumn": 81 } ],
+    "pandoc": false
+  },
+  {
+    "name": "ok: fwmd.link.relative-without-base a base is given",
+    "project": "standard",
+    "options": { "linkBase": "/lists/GDR/GDR-47.fw.md" },
+    "markdown": "[palit](../../lexicon/palit(2).fw.md){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "ok: fwmd.link.rebound a GUID the project knows is not rebound",
+    "project": "standard",
+    "options": { "unknownGuids": "rebind" },
+    "markdown": "[x](/lexicon/palit(1)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "findings": [ { "id": "fwmd.link.stale-path", "severity": "suggestion", "line": 1, "column": 1, "endLine": 1, "endColumn": 66 } ]
+  },
+  {
+    "name": "form C, a silfw back-link, is read and written as form A",
+    "project": "standard",
+    "markdown": "[palit](silfw://localhost/link?database%3dthis%24%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d){.name}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "form D, a motif back-link, is read and written as form A",
+    "project": "standard",
+    "options": { "projectName": "Sena3" },
+    "markdown": "[palit](motif://projects/Sena3/lexicon/palit(2)?guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){.name}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "the same link written in each of the five forms: A",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "the same link written in each of the five forms: B",
+    "project": "standard",
+    "options": { "linkForm": "B", "linkBase": "/lists/GDR/GDR-47.fw.md" },
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](../../lexicon/palit(2).fw.md){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "the same link written in each of the five forms: C",
+    "project": "standard",
+    "options": { "linkForm": "C" },
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](silfw://localhost/link?database%3dthis%24%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d){.name}\n"
+  },
+  {
+    "name": "the same link written in each of the five forms: D",
+    "project": "standard",
+    "options": { "linkForm": "D", "projectName": "Sena3" },
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](motif://projects/Sena3/lexicon/palit(2)?guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){.name}\n"
+  },
+  {
+    "name": "the same link written in each of the five forms: E",
+    "project": "standard",
+    "options": { "linkForm": "E" },
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[palit](/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){.name}\n"
+  },
+  {
+    "name": "a link to a target with no path is written as the GUID alias whatever form is asked for",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/objects/aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa){tool=lexiconEdit}\n"
+  },
+  {
+    "name": "a link into another project is not resolved here and keeps its URL",
+    "project": "standard",
+    "markdown": "[palit](silfw://localhost/link?database%3dOther%26tool%3dlexiconEdit%26guid%3d9c9c9c9c-1111-4111-8111-9c9c9c9c9c9c%26tag%3d){.name}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "9c9c9c9c-1111-4111-8111-9c9c9c9c9c9c", "tool": "lexiconEdit", "database": "Other" } }
+    ] } ],
+    "canonical": "[palit](/objects/9c9c9c9c-1111-4111-8111-9c9c9c9c9c9c){url=\"silfw://localhost/link?database%3dOther%26tool%3dlexiconEdit%26guid%3d9c9c9c9c-1111-4111-8111-9c9c9c9c9c9c%26tag%3d\"}\n"
+  },
+  {
+    "name": "a stored URL that FieldWorks wrote with extra parameters survives as url=",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" },
+        "link": { "url": "silfw://localhost/link?database%3dthis%24%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26server%3dx%26tag%3d" } }
+    ] } ],
+    "canonical": "[palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d url=\"silfw://localhost/link?database%3dthis%24%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26server%3dx%26tag%3d\"}\n"
+  },
+  {
+    "name": "ok: fwmd.link.url-rebuilt the stored URL names the same GUID",
+    "project": "standard",
+    "markdown": "[palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d url=\"silfw://localhost/link?database%3dthis%24%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26server%3dx%26tag%3d\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" },
+        "link": { "url": "silfw://localhost/link?database%3dthis%24%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26server%3dx%26tag%3d" } }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "an editor who changes guid= makes the stored URL stale: it is rebuilt from the new GUID",
+    "project": "standard",
+    "markdown": "[palit](/lexicon/palit(1)){.name guid=a1b2c3d4-0000-4000-8000-000000000001 url=\"silfw://localhost/link?database%3dthis%24%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26server%3dx%26tag%3d\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "a1b2c3d4-0000-4000-8000-000000000001", "tool": "lexiconEdit" } }
+    ] } ],
+    "findings": [ { "id": "fwmd.link.url-rebuilt", "severity": "suggestion", "line": 1, "column": 1, "endLine": 1, "endColumn": 213 } ],
+    "canonical": "[palit](/lexicon/palit(1)){.name guid=a1b2c3d4-0000-4000-8000-000000000001}\n"
+  },
+  {
+    "name": "a tool the path does not give is written as tool=",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "otherEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d tool=otherEdit}\n"
+  },
+  {
+    "name": "a field in the fragment is reserved: read, kept and written back",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit(2)#definition.en){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit", "tag": "definition.en" } }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a glossed example is a link to a text segment with the class example",
+    "project": "standard",
+    "markdown": "[(1)](/texts/Kuwento/3.2){.example guid=5b6c0e2a-1d3f-4c8e-9a71-0f2b3c4d5e6f}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "(1)", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "5b6c0e2a-1d3f-4c8e-9a71-0f2b3c4d5e6f", "tool": "interlinearEdit" } }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a GDR is linked by its abbreviation",
+    "project": "standard",
+    "markdown": "See [GDR-47](/lists/GDR/GDR-47){.name guid=c0ffee00-0000-4000-8000-000000000004}.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "See ", "ws": "en" },
+      { "text": "GDR-47", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "c0ffee00-0000-4000-8000-000000000004", "tool": "GDREdit" } },
+      { "text": ".", "ws": "en" }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "ok: fwmd.picture.unknown a picture the project holds",
+    "project": "standard",
+    "markdown": "![A hut](/files/pictures/hut.jpg){guid=1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "￼", "ws": "en", "picture": "1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a picture that is not in the project is an error",
+    "project": "standard",
+    "markdown": "![A hut](/files/pictures/no.jpg){guid=aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa}\n",
+    "findings": [ { "id": "fwmd.picture.unknown", "line": 1, "column": 1, "endLine": 1, "endColumn": 76 } ],
+    "pandoc": false
+  },
+  {
+    "name": "an external link is a Markdown link and keeps its URL",
+    "project": "standard",
+    "markdown": "[the site](https://example.org/a?b=1&c=2) and [more](<https://example.org/a b>)\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "the site", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004https://example.org/a?b=1&c=2" },
+      { "text": " and ", "ws": "en" },
+      { "text": "more", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004https://example.org/a b" }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "an external link takes the same attributes as any run, and .nostyle means no character style",
+    "project": "standard",
+    "markdown": "[a](https://x.org/){ws=ceb bold=on}[b](https://x.org/){.nostyle}[c](https://x.org/){custom-style=\"Emphasized Text\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a", "ws": "ceb", "props": { "s133": "Hyperlink", "bold": "on" }, "objData": "\u0004https://x.org/" },
+      { "text": "b", "ws": "en", "objData": "\u0004https://x.org/" },
+      { "text": "c", "ws": "en", "props": { "s133": "Emphasized Text" }, "objData": "\u0004https://x.org/" }
+    ] } ],
+    "canonical": "[a](https://x.org/){.v bold=on}[b](https://x.org/){.nostyle}[c](https://x.org/){custom-style=\"Emphasized Text\"}\n"
+  },
+  {
+    "name": "an address that cannot stand as a destination is carried in url=",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004https://x.org/a<b>c\\d" }
+    ] } ],
+    "canonical": "[x](<>){url=\"https://x.org/a<b>c\\\\d\"}\n"
+  },
+  {
+    "name": "a link in a table row escapes the pipe in its destination",
+    "project": "standard",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "H", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004https://x.org/a|b" } ] }
+    ],
+    "canonical": "| H |\n|---|\n| [x](https://x.org/a\\|b) |\n"
+  }
+]

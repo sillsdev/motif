@@ -102,9 +102,11 @@ public sealed class MediaManifestTests
         return result.Output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
     }
 
+    // ADR 0092: textediting/ is sealed; its images belong to SIL.TextEditing.
     private static bool IsMediaPath(string path) =>
-        path.EndsWith(".dc.html", StringComparison.OrdinalIgnoreCase)
-        || MediaExtensions.Contains(Path.GetExtension(path));
+        !path.StartsWith("textediting/", StringComparison.Ordinal)
+        && (path.EndsWith(".dc.html", StringComparison.OrdinalIgnoreCase)
+            || MediaExtensions.Contains(Path.GetExtension(path)));
 
     private static string Resolve(string root, string path) =>
         Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar));

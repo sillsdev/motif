@@ -1,5 +1,7 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)SilVersions.props" />
+  <!-- Language version, nullable, warnings as errors, deterministic: shared with textediting/ (ADR 0092). -->
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.Common.props" />
 
   <PropertyGroup Condition="'$(MOTIF_PACKAGE_INTERMEDIATE_ROOT)' != ''">
     <BaseIntermediateOutputPath>$(MOTIF_PACKAGE_INTERMEDIATE_ROOT)/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
@@ -12,9 +14,6 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RestorePackagesPath Condition="'$(RestorePackagesPath)' == '' and '$(NUGET_PACKAGES)' == '' and '$(USERPROFILE)' != ''">$(USERPROFILE)/.nuget/packages</RestorePackagesPath>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <IsPackable>false</IsPackable>
     <Authors>SIL Global</Authors>

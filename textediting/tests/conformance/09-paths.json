@@ -1,0 +1,86 @@
+[
+  {
+    "name": "a slash in a name is percent-encoded, so the path is split before it is decoded",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "AC/DC", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "00000006-0000-4000-8000-000000000006", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[AC/DC](/lexicon/AC%2FDC){.name guid=00000006-0000-4000-8000-000000000006}\n"
+  },
+  {
+    "name": "a path read with an encoded slash resolves to the one segment",
+    "project": "standard",
+    "markdown": "[x](/lexicon/AC%2FDC)\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "00000006-0000-4000-8000-000000000006", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/AC%2FDC){guid=00000006-0000-4000-8000-000000000006}\n"
+  },
+  {
+    "name": "a path is written in NFC and an NFD path still resolves, by canonical equivalence",
+    "project": "standard",
+    "markdown": "[x](/lexicon/café)\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "00000007-0000-4000-8000-000000000007", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/café){guid=00000007-0000-4000-8000-000000000007}\n"
+  },
+  {
+    "name": "a name that itself ends in a number in parentheses has those parentheses encoded, so it is not read as a homograph number",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x(2)", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "00000008-0000-4000-8000-000000000008", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x(2)](/lexicon/x%282%29){.name guid=00000008-0000-4000-8000-000000000008}\n"
+  },
+  {
+    "name": "balanced parentheses stay raw and a space puts the destination in angle brackets",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "Noun (common)", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "00000009-0000-4000-8000-000000000009", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[Noun (common)](</lexicon/Noun (common)>){.name guid=00000009-0000-4000-8000-000000000009}\n"
+  },
+  {
+    "name": "an unbalanced parenthesis is percent-encoded",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a(b", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "0000000a-0000-4000-8000-00000000000a", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[a(b](/lexicon/a%28b){.name guid=0000000a-0000-4000-8000-00000000000a}\n"
+  },
+  {
+    "name": "a percent sign is encoded",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "50%", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "0000000b-0000-4000-8000-00000000000b", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[50%](/lexicon/50%25){.name guid=0000000b-0000-4000-8000-00000000000b}\n"
+  },
+  {
+    "name": "a question mark, a hash and a backslash are encoded",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "q?#\\", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "0000000c-0000-4000-8000-00000000000c", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[q?#\\\\](/lexicon/q%3F%23%5C){.name guid=0000000c-0000-4000-8000-00000000000c}\n"
+  },
+  {
+    "name": "angle brackets around any destination are read, and the canonical form has them only where a space needs them",
+    "project": "standard",
+    "markdown": "[x](</lexicon/palit(2)>){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d} [y](<https://x.org/a>)\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } },
+      { "text": " ", "ws": "en" },
+      { "text": "y", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004https://x.org/a" }
+    ] } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d} [y](https://x.org/a)\n"
+  },
+  {
+    "name": "a path that is not under a top folder of the tree, with no GUID, is an external address",
+    "project": "standard",
+    "markdown": "[x](/other/place)\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004/other/place" } ] } ],
+    "canonical": null
+  }
+]

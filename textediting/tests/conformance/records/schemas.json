@@ -1,0 +1,357 @@
+{
+  "test": {
+    "id": "test.schema.json",
+    "types": [
+      {
+        "name": "entry",
+        "fields": [
+          {
+            "name": "lexeme-form",
+            "kind": "object",
+            "type": "allomorph"
+          },
+          {
+            "name": "citation-form",
+            "kind": "text",
+            "multi": true
+          },
+          {
+            "name": "allomorphs",
+            "kind": "sequence",
+            "item": {
+              "kind": "object",
+              "type": "allomorph"
+            }
+          },
+          {
+            "name": "senses",
+            "kind": "sequence",
+            "item": {
+              "kind": "object",
+              "type": "sense"
+            }
+          },
+          {
+            "name": "homograph-number",
+            "kind": "integer"
+          },
+          {
+            "name": "do-not-use-for-parsing",
+            "kind": "boolean"
+          },
+          {
+            "name": "comment",
+            "kind": "rich",
+            "multi": true
+          },
+          {
+            "name": "computed",
+            "kind": "object",
+            "type": "computed"
+          }
+        ]
+      },
+      {
+        "name": "allomorph",
+        "fields": [
+          {
+            "name": "class",
+            "kind": "text"
+          },
+          {
+            "name": "form",
+            "kind": "text",
+            "multi": true
+          },
+          {
+            "name": "morph-type",
+            "kind": "reference"
+          },
+          {
+            "name": "environments",
+            "kind": "sequence",
+            "item": {
+              "kind": "reference"
+            }
+          },
+          {
+            "name": "environment-strings",
+            "kind": "sequence",
+            "item": {
+              "kind": "notation",
+              "notation": "environment"
+            }
+          },
+          {
+            "name": "is-abstract",
+            "kind": "boolean"
+          }
+        ]
+      },
+      {
+        "name": "sense",
+        "fields": [
+          {
+            "name": "gloss",
+            "kind": "text",
+            "multi": true
+          },
+          {
+            "name": "definition",
+            "kind": "rich",
+            "multi": true
+          },
+          {
+            "name": "grammatical-info",
+            "kind": "reference"
+          },
+          {
+            "name": "semantic-domains",
+            "kind": "sequence",
+            "item": {
+              "kind": "reference"
+            }
+          },
+          {
+            "name": "examples",
+            "kind": "sequence",
+            "item": {
+              "kind": "object",
+              "type": "example"
+            }
+          },
+          {
+            "name": "scientific-name",
+            "kind": "rich"
+          },
+          {
+            "name": "features",
+            "kind": "notation",
+            "notation": "feature-structure"
+          },
+          {
+            "name": "senses",
+            "kind": "sequence",
+            "item": {
+              "kind": "object",
+              "type": "sense"
+            }
+          }
+        ]
+      },
+      {
+        "name": "example",
+        "fields": [
+          {
+            "name": "example",
+            "kind": "rich",
+            "multi": true
+          },
+          {
+            "name": "reference",
+            "kind": "rich"
+          },
+          {
+            "name": "translations",
+            "kind": "sequence",
+            "item": {
+              "kind": "object",
+              "type": "translation"
+            }
+          }
+        ]
+      },
+      {
+        "name": "translation",
+        "fields": [
+          {
+            "name": "type",
+            "kind": "reference"
+          },
+          {
+            "name": "translation",
+            "kind": "rich",
+            "multi": true
+          }
+        ]
+      },
+      {
+        "name": "computed",
+        "guid": false,
+        "fields": [
+          {
+            "name": "headword",
+            "kind": "text",
+            "ws": "vernacular"
+          },
+          {
+            "name": "homograph-number",
+            "kind": "integer"
+          },
+          {
+            "name": "variants",
+            "kind": "sequence",
+            "item": {
+              "kind": "reference"
+            }
+          }
+        ]
+      },
+      {
+        "name": "notebook-record",
+        "fields": [
+          {
+            "name": "title",
+            "kind": "rich"
+          },
+          {
+            "name": "type",
+            "kind": "reference"
+          },
+          {
+            "name": "date-of-event",
+            "kind": "text"
+          },
+          {
+            "name": "researchers",
+            "kind": "sequence",
+            "item": {
+              "kind": "reference"
+            }
+          },
+          {
+            "name": "conclusions",
+            "kind": "rich",
+            "paragraphs": true
+          },
+          {
+            "name": "description",
+            "kind": "rich",
+            "paragraphs": true
+          },
+          {
+            "name": "sub-records",
+            "kind": "sequence",
+            "item": {
+              "kind": "object",
+              "type": "notebook-record"
+            }
+          }
+        ]
+      },
+      {
+        "name": "list-item",
+        "fields": [
+          {
+            "name": "name",
+            "kind": "text",
+            "multi": true
+          },
+          {
+            "name": "abbreviation",
+            "kind": "text",
+            "multi": true
+          },
+          {
+            "name": "description",
+            "kind": "rich",
+            "multi": true
+          },
+          {
+            "name": "discussion",
+            "kind": "rich",
+            "paragraphs": true
+          },
+          {
+            "name": "guid-of-source",
+            "kind": "guid"
+          }
+        ]
+      }
+    ],
+    "kinds": [
+      {
+        "name": "lexicon/entry",
+        "root": "entry",
+        "pathSegments": 2
+      },
+      {
+        "name": "notebook/record",
+        "root": "notebook-record",
+        "pathSegments": 2,
+        "body": "description"
+      },
+      {
+        "name": "lists/item",
+        "root": "list-item",
+        "pathSegments": 3,
+        "body": "discussion"
+      }
+    ]
+  },
+  "blocks": {
+    "id": "blocks.schema.json",
+    "types": [
+      {
+        "name": "note",
+        "fields": [
+          {
+            "name": "title",
+            "kind": "rich"
+          },
+          {
+            "name": "plain",
+            "kind": "rich",
+            "paragraphs": true,
+            "blocks": []
+          },
+          {
+            "name": "lists-only",
+            "kind": "rich",
+            "paragraphs": true,
+            "blocks": [
+              "lists"
+            ]
+          },
+          {
+            "name": "no-tables",
+            "kind": "rich",
+            "paragraphs": true,
+            "blocks": [
+              "lists",
+              "headings"
+            ]
+          },
+          {
+            "name": "anything",
+            "kind": "rich",
+            "paragraphs": true
+          },
+          {
+            "name": "remarks",
+            "kind": "rich",
+            "multi": true,
+            "paragraphs": true,
+            "blocks": []
+          },
+          {
+            "name": "description",
+            "kind": "rich",
+            "paragraphs": true,
+            "blocks": [
+              "tables"
+            ]
+          }
+        ]
+      }
+    ],
+    "kinds": [
+      {
+        "name": "notebook/record",
+        "root": "note",
+        "pathSegments": 2,
+        "body": "description"
+      }
+    ]
+  }
+}

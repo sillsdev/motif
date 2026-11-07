@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Sample library: the shared playground UI both sample hosts and the integration tests use. Same target pattern as src/:
+       netstandard2.0 builds against Avalonia 11.3.17 (net48 hosts), net10.0 against Avalonia 12. Code-only UI, no XAML. -->
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing.Playground</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <AvaloniaSkipXamlCompilerValidation>true</AvaloniaSkipXamlCompilerValidation>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing\SIL.TextEditing.csproj" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing.Avalonia\SIL.TextEditing.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing.Markdown\SIL.TextEditing.Markdown.csproj" />
+  </ItemGroup>
+</Project>

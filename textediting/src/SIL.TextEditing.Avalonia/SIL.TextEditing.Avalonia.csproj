@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing.Avalonia</RootNamespace>
+    <AssemblyName>SIL.TextEditing.Avalonia</AssemblyName>
+    <Description>A rich text editor surface for Avalonia in which every run carries its FieldWorks writing system. One source tree for Avalonia 11.3 (netstandard2.0) and Avalonia 12 (net10.0).</Description>
+  </PropertyGroup>
+  <!-- Trimmable and AOT-compatible on net10.0 (Motif's target); CI proves it with tests/AotCheck. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <!-- One source tree, two Avalonia generations. The version per target framework comes from Directory.Packages.props. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="SIL.TextEditing.Avalonia.Tests" />
+    <InternalsVisibleTo Include="SIL.TextEditing.Playground.Tests" />
+    <InternalsVisibleTo Include="SIL.TextEditing.SecondDispatcher.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="SIL.WritingSystems" />
+    <ProjectReference Include="..\SIL.TextEditing\SIL.TextEditing.csproj" />
+  </ItemGroup>
+</Project>

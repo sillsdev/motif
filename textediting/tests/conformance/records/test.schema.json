@@ -1,0 +1,482 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "test.schema.json",
+  "title": "FieldWorks record file front matter",
+  "type": "object",
+  "properties": {
+    "fwmd": {
+      "const": 1
+    },
+    "record": {
+      "enum": ["lexicon/entry", "notebook/record", "lists/item"]
+    },
+    "schema": {
+      "const": "test.schema.json"
+    },
+    "root": {
+      "type": "string"
+    },
+    "base": {
+      "type": "string"
+    },
+    "analysis": {
+      "type": "string"
+    },
+    "vernacular": {
+      "type": "string"
+    },
+    "writingSystems": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "dir": {
+            "enum": ["ltr", "rtl"]
+          },
+          "font": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "record-data": {
+      "type": "object"
+    }
+  },
+  "required": ["fwmd", "record"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "record": {
+            "const": "lexicon/entry"
+          },
+          "root": {
+            "pattern": "^(/[^/#]+){2}$"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "record-data": {
+            "$ref": "#/definitions/entry"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record": {
+            "const": "notebook/record"
+          },
+          "root": {
+            "pattern": "^(/[^/#]+){2}$"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "record-data": {
+            "$ref": "#/definitions/notebook-record--frame"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record": {
+            "const": "lists/item"
+          },
+          "root": {
+            "pattern": "^(/[^/#]+){3}$"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "record-data": {
+            "$ref": "#/definitions/list-item--frame"
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "entry": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "lexeme-form": {
+          "$ref": "#/definitions/allomorph"
+        },
+        "citation-form": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/plain"
+          }
+        },
+        "allomorphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/allomorph"
+          }
+        },
+        "senses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/sense"
+          }
+        },
+        "homograph-number": {
+          "type": "integer"
+        },
+        "do-not-use-for-parsing": {
+          "type": "boolean"
+        },
+        "comment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "computed": {
+          "$ref": "#/definitions/computed"
+        }
+      },
+      "additionalProperties": false
+    },
+    "allomorph": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "class": {
+          "type": "string",
+          "contentMediaType": "text/plain"
+        },
+        "form": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/plain"
+          }
+        },
+        "morph-type": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "environment-strings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-environment"
+          }
+        },
+        "is-abstract": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sense": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "gloss": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/plain"
+          }
+        },
+        "definition": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "grammatical-info": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "semantic-domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/example"
+          }
+        },
+        "scientific-name": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "features": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-feature-structure"
+        },
+        "senses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/sense"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "example": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "reference": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "translations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/translation"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "translation": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "type": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "translation": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "computed": {
+      "type": "object",
+      "properties": {
+        "headword": {
+          "type": "string",
+          "contentMediaType": "text/plain"
+        },
+        "homograph-number": {
+          "type": "integer"
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "notebook-record": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "title": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "type": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "date-of-event": {
+          "type": "string",
+          "contentMediaType": "text/plain"
+        },
+        "researchers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "conclusions": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown"
+        },
+        "description": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown"
+        },
+        "sub-records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/notebook-record"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "list-item": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "name": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/plain"
+          }
+        },
+        "abbreviation": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/plain"
+          }
+        },
+        "description": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "discussion": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown"
+        },
+        "guid-of-source": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "notebook-record--frame": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "title": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "type": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "date-of-event": {
+          "type": "string",
+          "contentMediaType": "text/plain"
+        },
+        "researchers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "conclusions": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown"
+        },
+        "sub-records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/notebook-record"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "list-item--frame": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "name": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/plain"
+          }
+        },
+        "abbreviation": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/plain"
+          }
+        },
+        "description": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown-inline"
+          }
+        },
+        "guid-of-source": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

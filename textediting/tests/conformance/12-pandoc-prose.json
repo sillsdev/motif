@@ -1,0 +1,525 @@
+[
+  {
+    "name": "prose that Pandoc reads as text: M. Dixon describes the pattern",
+    "project": "standard",
+    "markdown": "M. Dixon describes the pattern\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "M. Dixon describes the pattern", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: M. Dixon describes the pattern",
+    "project": "standard",
+    "markdown": "The data show this pattern\nM. Dixon describes the pattern\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern M. Dixon describes the pattern", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: M. Dixon describes the pattern",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nM. Dixon describes the pattern\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "M. Dixon describes the pattern", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: X. Y. Smith (1999) argues",
+    "project": "standard",
+    "markdown": "X. Y. Smith (1999) argues\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "X. Y. Smith (1999) argues", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: X. Y. Smith (1999) argues",
+    "project": "standard",
+    "markdown": "The data show this pattern\nX. Y. Smith (1999) argues\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern X. Y. Smith (1999) argues", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: X. Y. Smith (1999) argues",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nX. Y. Smith (1999) argues\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "X. Y. Smith (1999) argues", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: L. Bloomfield wrote",
+    "project": "standard",
+    "markdown": "L. Bloomfield wrote\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "L. Bloomfield wrote", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: L. Bloomfield wrote",
+    "project": "standard",
+    "markdown": "The data show this pattern\nL. Bloomfield wrote\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern L. Bloomfield wrote", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: L. Bloomfield wrote",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nL. Bloomfield wrote\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "L. Bloomfield wrote", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: I. e. the form is",
+    "project": "standard",
+    "markdown": "I. e. the form is\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "I. e. the form is", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: I. e. the form is",
+    "project": "standard",
+    "markdown": "The data show this pattern\nI. e. the form is\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern I. e. the form is", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: I. e. the form is",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nI. e. the form is\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "I. e. the form is", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: C. f. the other form",
+    "project": "standard",
+    "markdown": "C. f. the other form\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "C. f. the other form", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: C. f. the other form",
+    "project": "standard",
+    "markdown": "The data show this pattern\nC. f. the other form\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern C. f. the other form", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: C. f. the other form",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nC. f. the other form\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "C. f. the other form", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: A. Consonants",
+    "project": "standard",
+    "markdown": "A. Consonants\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "A. Consonants", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: A. Consonants",
+    "project": "standard",
+    "markdown": "The data show this pattern\nA. Consonants\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern A. Consonants", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: A. Consonants",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nA. Consonants\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "A. Consonants", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: I. Introduction",
+    "project": "standard",
+    "markdown": "I. Introduction\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "I. Introduction", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: I. Introduction",
+    "project": "standard",
+    "markdown": "The data show this pattern\nI. Introduction\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern I. Introduction", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: I. Introduction",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nI. Introduction\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "I. Introduction", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: V. the variant forms",
+    "project": "standard",
+    "markdown": "V. the variant forms\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "V. the variant forms", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: V. the variant forms",
+    "project": "standard",
+    "markdown": "The data show this pattern\nV. the variant forms\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern V. the variant forms", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: V. the variant forms",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nV. the variant forms\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "V. the variant forms", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: Mix. of both forms",
+    "project": "standard",
+    "markdown": "Mix. of both forms\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "Mix. of both forms", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: Mix. of both forms",
+    "project": "standard",
+    "markdown": "The data show this pattern\nMix. of both forms\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern Mix. of both forms", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: Mix. of both forms",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nMix. of both forms\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "Mix. of both forms", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: Civil. The term",
+    "project": "standard",
+    "markdown": "Civil. The term\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "Civil. The term", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: Civil. The term",
+    "project": "standard",
+    "markdown": "The data show this pattern\nCivil. The term\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern Civil. The term", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: Civil. The term",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nCivil. The term\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "Civil. The term", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: Table: the forms are given in Appendix B.",
+    "project": "standard",
+    "markdown": "Table: the forms are given in Appendix B.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "Table: the forms are given in Appendix B.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: Table: the forms are given in Appendix B.",
+    "project": "standard",
+    "markdown": "The data show this pattern\nTable: the forms are given in Appendix B.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern Table: the forms are given in Appendix B.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: Table: the forms are given in Appendix B.",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nTable: the forms are given in Appendix B.\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "Table: the forms are given in Appendix B.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: +nasal spreads leftward.",
+    "project": "standard",
+    "markdown": "+nasal spreads leftward.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "+nasal spreads leftward.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: +nasal spreads leftward.",
+    "project": "standard",
+    "markdown": "The data show this pattern\n+nasal spreads leftward.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern +nasal spreads leftward.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: +nasal spreads leftward.",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\n+nasal spreads leftward.\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "+nasal spreads leftward.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: #palit# is the underlying form.",
+    "project": "standard",
+    "markdown": "#palit# is the underlying form.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "#palit# is the underlying form.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: #palit# is the underlying form.",
+    "project": "standard",
+    "markdown": "The data show this pattern\n#palit# is the underlying form.\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern #palit# is the underlying form.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: #palit# is the underlying form.",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\n#palit# is the underlying form.\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "#palit# is the underlying form.", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: |a| is the phoneme",
+    "project": "standard",
+    "markdown": "|a| is the phoneme\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "|a| is the phoneme", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: |a| is the phoneme",
+    "project": "standard",
+    "markdown": "The data show this pattern\n|a| is the phoneme\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern |a| is the phoneme", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: |a| is the phoneme",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\n|a| is the phoneme\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "|a| is the phoneme", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: :: marks extra length",
+    "project": "standard",
+    "markdown": ":: marks extra length\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": ":: marks extra length", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: :: marks extra length",
+    "project": "standard",
+    "markdown": "The data show this pattern\n:: marks extra length\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern :: marks extra length", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: :: marks extra length",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\n:: marks extra length\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": ":: marks extra length", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: : marks length",
+    "project": "standard",
+    "markdown": ": marks length\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": ": marks length", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: : marks length",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\n: marks length\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": ": marks length", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose that Pandoc reads as text: ~ indicates an alternation",
+    "project": "standard",
+    "markdown": "~ indicates an alternation\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "~ indicates an alternation", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose in an example div: ~ indicates an alternation",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\n~ indicates an alternation\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "~ indicates an alternation", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: 2. Nouns",
+    "project": "standard",
+    "markdown": "The data show this pattern\n2. Nouns\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern 2. Nouns", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line in an example div: 2. Nouns",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nThe data show this pattern\n2. Nouns\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "The data show this pattern 2. Nouns", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: 1990. That year",
+    "project": "standard",
+    "markdown": "The data show this pattern\n1990. That year\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern 1990. That year", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line in an example div: 1990. That year",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nThe data show this pattern\n1990. That year\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "The data show this pattern 1990. That year", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: a. palit 'change'",
+    "project": "standard",
+    "markdown": "The data show this pattern\na. palit 'change'\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern a. palit 'change'", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line in an example div: a. palit 'change'",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nThe data show this pattern\na. palit 'change'\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "The data show this pattern a. palit 'change'", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: (1) palit 'change'",
+    "project": "standard",
+    "markdown": "The data show this pattern\n(1) palit 'change'\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern (1) palit 'change'", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line in an example div: (1) palit 'change'",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nThe data show this pattern\n(1) palit 'change'\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "The data show this pattern (1) palit 'change'", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line: ii. the second",
+    "project": "standard",
+    "markdown": "The data show this pattern\nii. the second\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern ii. the second", "ws": "en" } ] } ]
+  },
+  {
+    "name": "prose on a wrapped line in an example div: ii. the second",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\nThe data show this pattern\nii. the second\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "The data show this pattern ii. the second", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a lowercase letter and a period at the start of a block is a list in Pandoc",
+    "project": "standard",
+    "markdown": "a. palit 'change'\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 1, "endLine": 1, "endColumn": 18, "fix": "a\\. palit 'change'" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a number in parentheses at the start of a block is a list in Pandoc",
+    "project": "standard",
+    "markdown": "(1) palit 'change'\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 1, "endLine": 1, "endColumn": 19, "fix": "\\(1) palit 'change'" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a roman numeral and a period at the start of a block is a list in Pandoc, even with one space",
+    "project": "standard",
+    "markdown": "II. the second\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 1, "endLine": 1, "endColumn": 15, "fix": "II\\. the second" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a capital letter and a period followed by two spaces is a list in Pandoc",
+    "project": "standard",
+    "markdown": "A.  Consonants\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 1, "endLine": 1, "endColumn": 15, "fix": "A\\.  Consonants" } ],
+    "pandoc": false
+  },
+  {
+    "name": "an example list marker and a hash-period marker are lists in Pandoc",
+    "project": "standard",
+    "markdown": "(@) one\n\n#. two\n",
+    "findings": [
+      { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 1, "endLine": 1, "endColumn": 8, "fix": "\\(@) one" },
+      { "id": "fwmd.syntax.unsupported-markup", "line": 3, "column": 1, "endLine": 3, "endColumn": 7, "fix": "#\\. two" }
+    ],
+    "pandoc": false
+  },
+  {
+    "name": "a bar and a space at the start of a block is a line block in Pandoc",
+    "project": "standard",
+    "markdown": "| x\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 1, "endLine": 1, "endColumn": 4, "fix": "\\| x" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a tilde and a space on the line after a term is a definition in Pandoc",
+    "project": "standard",
+    "markdown": "term\n~ meaning\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 1, "endLine": 2, "endColumn": 10, "fix": "\\~ meaning" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a grid table's border with a row under it is a table in Pandoc",
+    "project": "standard",
+    "markdown": "+---+---+\n| a | b |\n+---+---+\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 1, "endLine": 1, "endColumn": 10, "fix": "\\+---+---+" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a Table: line next to a pipe table is its caption in Pandoc",
+    "project": "standard",
+    "markdown": "| a |\n|---|\n| 1 |\n\nTable: the forms\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 5, "column": 1, "endLine": 5, "endColumn": 17, "fix": "Table\\: the forms" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a list marker in an example div is found as it is anywhere else",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\n(1) palit\n:::\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 1, "endLine": 2, "endColumn": 10, "fix": "\\(1) palit" } ],
+    "pandoc": false
+  },
+  {
+    "name": "math, a note, a citation and strikeout in an example div are found as they are anywhere else",
+    "project": "standard",
+    "markdown": "::: {custom-style=Example}\n$C V$ and See^[x] and @home and ~~palit~~\n:::\n",
+    "findings": [
+      { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 1, "endLine": 2, "endColumn": 6, "fix": "\\$C V\\$" },
+      { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 14, "endLine": 2, "endColumn": 16, "fix": "\\^[" },
+      { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 23, "endLine": 2, "endColumn": 24, "fix": "\\@" },
+      { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 33, "endLine": 2, "endColumn": 42, "fix": "\\~\\~palit\\~\\~" }
+    ],
+    "pandoc": false
+  }
+,
+  {
+    "name": "a wrapped line that starts with # marks a word boundary stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n# marks a word boundary\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern # marks a word boundary", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with ## marks a word boundary stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n## marks a word boundary\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern ## marks a word boundary", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with - um- is a prefix stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n- um- is a prefix\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern - um- is a prefix", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with + marks a word boundary stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n+ marks a word boundary\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern + marks a word boundary", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with * marks a word boundary stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n* marks a word boundary\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern * marks a word boundary", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with > means a word boundary stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n> means a word boundary\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern > means a word boundary", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with 1. The verb follows stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n1. The verb follows\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern 1. The verb follows", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with 1) The verb follows stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n1) The verb follows\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern 1) The verb follows", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with *** marks a word boundary stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n*** marks a word boundary\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern *** marks a word boundary", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with - - - marks a word boundary stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n- - - marks a word boundary\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern - - - marks a word boundary", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a wrapped line that starts with ___ marks a word boundary stays in its paragraph, as in Pandoc",
+    "project": "standard",
+    "markdown": "The data show this pattern\n___ marks a word boundary\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "The data show this pattern ___ marks a word boundary", "ws": "en" } ] } ]
+  },
+  {"name":"an empty list item that comes first is an empty paragraph in the list style, as in Pandoc","project":"standard","markdown":"-\n\nText\n","paragraphs":[{"style":"Bulleted List","typingWs":"en"},{"style":"Normal","runs":[{"text":"Text","ws":"en"}]}]},
+  {"name":"an empty numbered list item that comes first is an empty paragraph","project":"standard","markdown":"1.\n\nText\n","paragraphs":[{"style":"Numbered List","typingWs":"en"},{"style":"Normal","runs":[{"text":"Text","ws":"en"}]}]},
+  {"name":"an empty list item in the middle of a list is kept","project":"standard","markdown":"- a\n-\n- b\n","paragraphs":[{"style":"Bulleted List","runs":[{"text":"a","ws":"en"}]},{"style":"Bulleted List","typingWs":"en"},{"style":"Bulleted List","runs":[{"text":"b","ws":"en"}]}]},
+  {"name":"an empty numbered list item in the middle of a list is kept","project":"standard","markdown":"1. a\n2.\n3. b\n","paragraphs":[{"style":"Numbered List","runs":[{"text":"a","ws":"en"}]},{"style":"Numbered List","typingWs":"en"},{"style":"Numbered List","runs":[{"text":"b","ws":"en"}]}]},
+  {"name":"a file that holds only a hyphen is one empty paragraph","project":"standard","markdown":"-\n","paragraphs":[{"style":"Bulleted List","typingWs":"en"}]},
+  {"name":"a lone marker between paragraphs (a hyphen) is an empty list paragraph","project":"standard","markdown":"p\n\n-\n\nq\n","paragraphs":[{"style":"Normal","runs":[{"text":"p","ws":"en"}]},{"style":"Bulleted List","typingWs":"en"},{"style":"Normal","runs":[{"text":"q","ws":"en"}]}]},
+  {"name":"a file that holds only a star is one empty paragraph","project":"standard","markdown":"*\n","paragraphs":[{"style":"Bulleted List","typingWs":"en"}]},
+  {"name":"a lone marker between paragraphs (a star) is an empty list paragraph","project":"standard","markdown":"p\n\n*\n\nq\n","paragraphs":[{"style":"Normal","runs":[{"text":"p","ws":"en"}]},{"style":"Bulleted List","typingWs":"en"},{"style":"Normal","runs":[{"text":"q","ws":"en"}]}]},
+  {"name":"a file that holds only a plus is one empty paragraph","project":"standard","markdown":"+\n","paragraphs":[{"style":"Bulleted List","typingWs":"en"}]},
+  {"name":"a lone marker between paragraphs (a plus) is an empty list paragraph","project":"standard","markdown":"p\n\n+\n\nq\n","paragraphs":[{"style":"Normal","runs":[{"text":"p","ws":"en"}]},{"style":"Bulleted List","typingWs":"en"},{"style":"Normal","runs":[{"text":"q","ws":"en"}]}]},
+  {"name":"a file that holds only a number and a period is one empty paragraph","project":"standard","markdown":"1.\n","paragraphs":[{"style":"Numbered List","typingWs":"en"}]},
+  {"name":"a lone marker between paragraphs (a number and a period) is an empty list paragraph","project":"standard","markdown":"p\n\n1.\n\nq\n","paragraphs":[{"style":"Normal","runs":[{"text":"p","ws":"en"}]},{"style":"Numbered List","typingWs":"en"},{"style":"Normal","runs":[{"text":"q","ws":"en"}]}]},
+  {"name":"a file that holds only a number and a parenthesis is one empty paragraph","project":"standard","markdown":"1)\n","paragraphs":[{"style":"Numbered List","typingWs":"en"}]},
+  {"name":"a lone marker between paragraphs (a number and a parenthesis) is an empty list paragraph","project":"standard","markdown":"p\n\n1)\n\nq\n","paragraphs":[{"style":"Normal","runs":[{"text":"p","ws":"en"}]},{"style":"Numbered List","typingWs":"en"},{"style":"Normal","runs":[{"text":"q","ws":"en"}]}]},
+  {"name":"a div fence straight after a paragraph line is text in Pandoc: the fix is a blank line before it","project":"standard","markdown":"The data show this\n::: {custom-style=Example}\nx\n:::\n","findings":[{"id":"fwmd.syntax.unsupported-markup","line":2,"column":1,"endLine":2,"endColumn":27,"fix":"\n::: {custom-style=Example}"}],"pandoc":false},
+  {"name":"a reference definition at the start of a block is dropped by Pandoc","project":"standard","markdown":"[a]: the low vowel\n","findings":[{"id":"fwmd.syntax.unsupported-markup","line":1,"column":1,"endLine":1,"endColumn":19,"fix":"\\[a]: the low vowel"}],"pandoc":false},
+  {"name":"a double tilde is an empty subscript that Pandoc drops","project":"standard","markdown":"~~ marks x\n","findings":[{"id":"fwmd.syntax.unsupported-markup","line":1,"column":1,"endLine":1,"endColumn":3,"fix":"\\~\\~"}],"pandoc":false}
+]

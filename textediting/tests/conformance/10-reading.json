@@ -1,0 +1,91 @@
+[
+  {
+    "name": "a byte order mark at the start is ignored",
+    "frontMatter": "explicit",
+    "markdown": "﻿x\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a byte order mark in front of the front matter is ignored too",
+    "frontMatter": "explicit",
+    "markdown": "﻿---\nfwmd: 1\nanalysis: \"ceb\"\nvernacular: \"en\"\n---\n\nx\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb" } ] } ]
+  },
+  {
+    "name": "a soft line break is one space",
+    "markdown": "one\ntwo\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "one two", "ws": "en" } ] } ],
+    "canonical": "one two\n"
+  },
+  {
+    "name": "two trailing spaces are a hard break, as in Pandoc",
+    "markdown": "one  \ntwo\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "one two", "ws": "en" } ] } ],
+    "canonical": "one\\\ntwo\n"
+  },
+  {
+    "name": "a backslash at the end of a line is a line separator",
+    "markdown": "one\\\ntwo\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "one two", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a list item can hold a line separator",
+    "markdown": "- a\\\n  b\n",
+    "paragraphs": [ { "style": "Bulleted List", "runs": [ { "text": "a b", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a list item is one paragraph, so a nested list has no counterpart",
+    "markdown": "- a\n  - b\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 3, "endLine": 2, "endColumn": 6 } ],
+    "pandoc": false
+  },
+  {
+    "name": "an empty-paragraph marker must be the whole paragraph",
+    "markdown": "[]{.empty} more\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 4, "endLine": 1, "endColumn": 10 } ],
+    "pandoc": false
+  },
+  {
+    "name": "a heading that holds a line separator cannot be a hash heading",
+    "paragraphs": [ { "style": "Heading 2", "runs": [ { "text": "a b", "ws": "en" } ] } ],
+    "canonical": "::: {custom-style=\"Heading 2\"}\na\\\nb\n:::\n"
+  },
+  {
+    "name": "a table row with a line separator in a cell is left to a div",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "H", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "a b", "ws": "en" } ] }
+    ],
+    "canonical": "| H |\n|---|\n\n::: {custom-style=\"GDR Table Row\"}\na\\\nb\n:::\n"
+  },
+  {
+    "name": "a paragraph written on several lines is read as one paragraph",
+    "markdown": "a b\nc d\n\ne\n",
+    "paragraphs": [
+      { "style": "Normal", "runs": [ { "text": "a b c d", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "e", "ws": "en" } ] }
+    ],
+    "canonical": "a b c d\n\ne\n"
+  },
+  {
+    "name": "an object run with any other data is the generic span with the data in hex",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "￼", "ws": "en", "objData": "\u0005abc" } ] } ],
+    "canonical": "[&#xFFFC;]{s6x=0005006100620063}\n"
+  },
+  {
+    "name": "an object run with text other than the object character keeps its text",
+    "markdown": "[shown]{s6=q}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "shown", "ws": "en", "objData": "q" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a table row with an object that has a tab is left to a div",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "H", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "x\ty", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004http://e.org" } ] }
+    ],
+    "canonical": "| H |\n|---|\n\n::: {custom-style=\"GDR Table Row\"}\n[x&#x9;y](http://e.org)\n:::\n"
+  }
+]

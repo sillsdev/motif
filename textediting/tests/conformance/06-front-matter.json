@@ -1,0 +1,103 @@
+[
+  {
+    "name": "the front matter names the defaults: unmarked text is the analysis and .v is the vernacular",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "markdown": "---\nfwmd: 1\nanalysis: \"ceb\"\nvernacular: \"en\"\nwritingSystems:\n  ceb:\n    lang: \"ceb\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n  en:\n    lang: \"en\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n---\n\nunmarked [vernacular]{.v}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "unmarked ", "ws": "ceb" }, { "text": "vernacular", "ws": "en" } ] } ],
+    "canonical": "---\nfwmd: 1\nanalysis: \"en\"\nvernacular: \"ceb\"\nwritingSystems:\n  en:\n    lang: \"en\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n  ceb:\n    lang: \"ceb\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n---\n\n[unmarked&#x20;]{.v}vernacular\n",
+    "pandoc": true
+  },
+  {
+    "name": "the writing systems the text uses are listed with language, direction and font, the defaults first",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a", "ws": "ar" },
+      { "text": "b", "ws": "ceb-x-old" },
+      { "text": "c", "ws": "en" }
+    ] } ],
+    "canonical": "---\nfwmd: 1\nanalysis: \"en\"\nvernacular: \"ceb\"\nwritingSystems:\n  en:\n    lang: \"en\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n  ceb:\n    lang: \"ceb\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n  ar:\n    lang: \"ar\"\n    dir: \"rtl\"\n    font: \"Scheherazade New\"\n  ceb-x-old:\n    lang: \"ceb\"\n    dir: \"ltr\"\n    font: \"Doulos SIL\"\n---\n\n[a]{ws=ar}[b]{ws=ceb-x-old}c\n"
+  },
+  {
+    "name": "a text with no paragraphs is the front matter alone",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "paragraphs": [],
+    "canonical": "---\nfwmd: 1\nanalysis: \"en\"\nvernacular: \"ceb\"\nwritingSystems:\n  en:\n    lang: \"en\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n  ceb:\n    lang: \"ceb\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n---\n"
+  },
+  {
+    "name": "ok: fwmd.version.unsupported the version this reader knows",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "markdown": "---\nfwmd: 1\n---\n\nx\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en" } ] } ]
+  },
+  {
+    "name": "a newer version is refused with a finding and nothing is read",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "markdown": "---\nfwmd: 2\nanalysis: \"en\"\n---\n\nx\n",
+    "paragraphs": [],
+    "findings": [ { "id": "fwmd.version.unsupported", "line": 2, "column": 1, "endLine": 2, "endColumn": 8 } ],
+    "pandoc": false
+  },
+  {
+    "name": "values may be bare or single-quoted and are written double-quoted",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "markdown": "---\nfwmd: 1\nanalysis: en\nvernacular: 'ceb'\n---\n\n[x]{.v}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb" } ] } ],
+    "canonical": "---\nfwmd: 1\nanalysis: \"en\"\nvernacular: \"ceb\"\nwritingSystems:\n  en:\n    lang: \"en\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n  ceb:\n    lang: \"ceb\"\n    dir: \"ltr\"\n    font: \"Charis SIL\"\n---\n\n[x]{.v}\n"
+  },
+  {
+    "name": "a version that is not a number is malformed",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "markdown": "---\nfwmd: one\n---\n\nx\n",
+    "findings": [ { "id": "fwmd.syntax.malformed-attribute", "line": 2, "column": 1, "endLine": 2, "endColumn": 10 } ],
+    "pandoc": false
+  },
+  {
+    "name": "front matter without fwmd is some other YAML and is ignored",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "markdown": "---\ntitle: A title\n---\n\nx\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en" } ] } ]
+  },
+  {
+    "name": "text with no front matter takes the host's defaults",
+    "project": "standard",
+    "frontMatter": "explicit",
+    "markdown": "[x]{.v} y\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb" }, { "text": " y", "ws": "en" } ] } ]
+  },
+  {
+    "name": "run text is normalised to NFD on import and attribute values are not",
+    "project": "standard",
+    "markdown": "café [x]{fontFamily=\"café\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "café ", "ws": "en" }, { "text": "x", "ws": "en", "props": { "fontFamily": "café" } } ] } ],
+    "canonical": "café [x]{fontFamily=\"café\"}\n"
+  },
+  {
+    "name": "with normalisation off the text is as written",
+    "project": "standard",
+    "options": { "normalize": false },
+    "markdown": "café\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "café", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a link destination is written in NFC and compared under canonical equivalence",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/objects/aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa){tool=lexiconEdit}\n"
+  },
+  {"name": "a record file is not read as FieldWorks Markdown: one finding on its record line, and nothing else (owner decision R-9)", "project": "standard", "frontMatter": "explicit", "markdown": "---\nfwmd: 1\nrecord: \"notebook/record\"\nrecord-data:\n  title: |-\n    A title\n  researchers:\n    - \"[J. Cruz](/lists/people/x){guid=6d7e8f9a-0b1c-4d2e-9f3a-4b5c6d7e8f9a}\"\n---\n\nThe body.\n", "paragraphs": [], "findings": [{"id": "fwmd.record.record-file", "line": 3, "column": 1, "endLine": 3, "endColumn": 26}]},
+  {"name": "ok: fwmd.record.record-file a record: in the body or nested in the front matter does not make a record file", "project": "standard", "frontMatter": "explicit", "markdown": "---\nfwmd: 1\nanalysis: \"en\"\nvernacular: \"ceb\"\nwritingSystems:\n  en:\n    record: \"x\"\n---\n\nrecord: x\n", "paragraphs": [{"style": "Normal", "runs": [{"text": "record: x", "ws": "en"}]}]},
+  {"name": "a record file whose record key is quoted is a record file", "project": "standard", "frontMatter": "explicit", "markdown": "---\nfwmd: 1\n\"record\": \"lexicon/entry\"\n---\n", "paragraphs": [], "findings": [{"id": "fwmd.record.record-file", "line": 3, "column": 1, "endLine": 3, "endColumn": 26}]},
+  {"name": "a record file whose record key is followed by a tab is a record file", "project": "standard", "frontMatter": "explicit", "markdown": "---\nfwmd: 1\nrecord:\t\"lexicon/entry\"\n---\n", "paragraphs": [], "findings": [{"id": "fwmd.record.record-file", "line": 3, "column": 1, "endLine": 3, "endColumn": 24}]},
+  {"name": "a record file whose front matter is one flow mapping is a record file", "project": "standard", "frontMatter": "explicit", "markdown": "---\n{fwmd: 1, record: \"lexicon/entry\"}\n---\n", "paragraphs": [], "findings": [{"id": "fwmd.record.record-file", "line": 2, "column": 11, "endLine": 2, "endColumn": 35}]}
+]

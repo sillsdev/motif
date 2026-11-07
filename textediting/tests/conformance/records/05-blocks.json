@@ -1,0 +1,209 @@
+[
+  {
+    "name": "a table in a field that allows no blocks is an error, and its fix is one plain paragraph per row",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  plain: |\n    Intro.\n\n    | Name | Gloss |\n    |---|---|\n    | palit | buy |\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 9,
+        "column": 5,
+        "endLine": 11,
+        "endColumn": 20,
+        "fix": "Name | Gloss\n\n    palit | buy"
+      }
+    ]
+  },
+  {
+    "name": "a heading in a field that allows no blocks, fixed to a plain paragraph",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  plain: |\n    # Title\n\n    Text.\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 7,
+        "column": 5,
+        "endLine": 7,
+        "endColumn": 12,
+        "fix": "Title"
+      }
+    ]
+  },
+  {
+    "name": "a list is one finding, and its fix is one plain paragraph per item",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  plain: |\n    - one\n    - two\n\n    Text.\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 7,
+        "column": 5,
+        "endLine": 8,
+        "endColumn": 10,
+        "fix": "one\n\n    two"
+      }
+    ]
+  },
+  {
+    "name": "two lists are two findings",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  plain: |\n    1. one\n    2. two\n\n    Between.\n\n    - x\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 7,
+        "column": 5,
+        "endLine": 8,
+        "endColumn": 11,
+        "fix": "one\n\n    two"
+      },
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 12,
+        "column": 5,
+        "endLine": 12,
+        "endColumn": 8,
+        "fix": "x"
+      }
+    ]
+  },
+  {
+    "name": "a field that allows lists reports its heading and its table, not its list",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  lists-only: |\n    # Title\n\n    - one\n\n    | Name | Gloss |\n    |---|---|\n    | palit | buy |\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 7,
+        "column": 5,
+        "endLine": 7,
+        "endColumn": 12,
+        "fix": "Title"
+      },
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 11,
+        "column": 5,
+        "endLine": 13,
+        "endColumn": 20,
+        "fix": "Name | Gloss\n\n    palit | buy"
+      }
+    ]
+  },
+  {
+    "name": "ok: fwmd.record.block-not-allowed: a field that allows lists and headings may hold them, and a field with no setting holds every block",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  no-tables: |\n    # Title\n\n    - one\n\n    Text.\n  anything: |\n    # Title\n\n    - one\n\n    | Name | Gloss |\n    |---|---|\n    | palit | buy |\n\n    Text.\n---\n",
+    "findings": []
+  },
+  {
+    "name": "a table in a field that allows lists and headings",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  no-tables: |\n    Text.\n\n    | Name | Gloss |\n    |---|---|\n    | palit | buy |\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 9,
+        "column": 5,
+        "endLine": 11,
+        "endColumn": 20,
+        "fix": "Name | Gloss\n\n    palit | buy"
+      }
+    ]
+  },
+  {
+    "name": "ok: fwmd.record.block-not-allowed: plain paragraphs are allowed in a field that allows no blocks",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  plain: |\n    One.\n\n    Two with *emphasis*.\n---\n",
+    "findings": []
+  },
+  {
+    "name": "the body is a rich field of paragraphs with block features too: its heading is an error, its table is not",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  title: |-\n    Kaon\n---\n\n## Observations\n\n| a | b |\n|---|---|\n| c | d |\n",
+    "findings": [
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 10,
+        "column": 1,
+        "endLine": 10,
+        "endColumn": 16,
+        "fix": "Observations"
+      }
+    ]
+  },
+  {
+    "name": "a table in one writing system of a field that allows no blocks",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  remarks:\n    en: |\n      Intro.\n\n      | a | b |\n      |---|---|\n      | c | d |\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 10,
+        "column": 7,
+        "endLine": 12,
+        "endColumn": 16,
+        "fix": "a | b\n\n      c | d"
+      }
+    ]
+  },
+  {
+    "name": "a block in a one-paragraph field is block syntax, not a disallowed block",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  title: |-\n    # Title\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.field.block-syntax",
+        "line": 7,
+        "column": 5,
+        "endLine": 7,
+        "endColumn": 12,
+        "fix": null
+      }
+    ]
+  },
+  {
+    "name": "a block in a value that is not a literal block is reported with no fix",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  plain: \"# Title\"\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.yaml.scalar-style",
+        "severity": "suggestion",
+        "line": 6,
+        "column": 10,
+        "endLine": 6,
+        "endColumn": 19,
+        "fix": "|\n    # Title"
+      },
+      {
+        "id": "fwmd.record.block-not-allowed",
+        "line": 6,
+        "column": 11,
+        "endLine": 6,
+        "endColumn": 18,
+        "fix": null
+      }
+    ]
+  },
+  {
+    "name": "a record whose fields hold only the blocks they allow is canonical",
+    "schema": "blocks",
+    "project": "records-tables",
+    "file": "---\nfwmd: 1\nrecord: \"notebook/record\"\nschema: \"blocks.schema.json\"\nrecord-data:\n  title: |-\n    Kaon\n  plain: |\n    One.\n\n    Two.\n  lists-only: |\n    - one\n    - two\n  no-tables: |\n    # Title\n\n    Text.\n---\n\n| a | b |\n|---|---|\n| c | d |\n",
+    "findings": [],
+    "canonical": null
+  }
+]

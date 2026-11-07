@@ -1,0 +1,63 @@
+<Project>
+  <!-- SIL package versions come from the host's SilVersions.props, the folder's other outside import (ADR 0034). Pulling the folder
+       out replaces this import with SilLibPalasoVersion and SilLCModelPackageVersion set to the destination's pins. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\SilVersions.props" />
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- FieldWorks pins Avalonia 11.3.17 (net48 via netstandard2.0); Motif pins Avalonia 12.1.2 (net10.0). -->
+    <AvaloniaV11>11.3.17</AvaloniaV11>
+    <AvaloniaV12>12.1.2</AvaloniaV12>
+  </PropertyGroup>
+
+  <!-- Avalonia 12 for every net10.0 flavour; Avalonia 11 for net48 and netstandard2.0. These are item conditions, not
+       properties, so they see the project's final TargetFramework (a single-target project sets it after this file). -->
+  <ItemGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net10.0'))">
+    <PackageVersion Include="Avalonia" Version="$(AvaloniaV12)" />
+    <PackageVersion Include="Avalonia.Headless" Version="$(AvaloniaV12)" />
+    <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaV12)" />
+    <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaV12)" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaV12)" />
+  </ItemGroup>
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net10.0'))">
+    <PackageVersion Include="Avalonia" Version="$(AvaloniaV11)" />
+    <PackageVersion Include="Avalonia.Headless" Version="$(AvaloniaV11)" />
+    <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaV11)" />
+    <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaV11)" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="$(AvaloniaV11)" />
+    <PackageVersion Include="Avalonia.Win32.Interoperability" Version="$(AvaloniaV11)" />
+  </ItemGroup>
+
+  <!-- libpalaso (ADR 0002) at the host's version, from SilVersions.props (ADR 0034). -->
+  <ItemGroup>
+    <PackageVersion Include="SIL.WritingSystems" Version="$(SilLibPalasoVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
+  </ItemGroup>
+
+  <!-- liblcm (ADR 0016) at the host's version, from SilVersions.props (ADR 0034). SIL.LCModel, for the planned
+       SIL.TextEditing.Project (ADR 0031), takes the same property. -->
+  <ItemGroup>
+    <PackageVersion Include="SIL.LCModel.Core" Version="$(SilLCModelPackageVersion)" />
+  </ItemGroup>
+
+  <!-- ADR 0011: the Markdown parser; referenced by SIL.TextEditing.Markdown only. -->
+  <ItemGroup>
+    <PackageVersion Include="Markdig.Signed" Version="0.37.0" />
+  </ItemGroup>
+
+  <!-- ADR 0032 (owner decision R-2): the YAML parser of record files; its parser layer only, never the reflection serializer. Referenced by
+       SIL.TextEditing.Markdown only. -->
+  <ItemGroup>
+    <PackageVersion Include="YamlDotNet" Version="18.1.0" />
+  </ItemGroup>
+
+  <!-- Same test stack as Motif. -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+</Project>

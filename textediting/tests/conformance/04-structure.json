@@ -1,0 +1,291 @@
+[
+  {
+    "name": "adjacent list paragraphs are one tight list each",
+    "paragraphs": [
+      { "style": "Bulleted List", "runs": [ { "text": "a", "ws": "en" } ] },
+      { "style": "Bulleted List", "runs": [ { "text": "b", "ws": "en" } ] },
+      { "style": "Numbered List", "runs": [ { "text": "c", "ws": "en" } ] },
+      { "style": "Numbered List", "runs": [ { "text": "d", "ws": "en" } ] }
+    ],
+    "canonical": "- a\n- b\n\n1. c\n2. d\n"
+  },
+  {
+    "name": "a numbered list is read from any starting number and written from 1",
+    "markdown": "3. a\n4. b\n",
+    "paragraphs": [
+      { "style": "Numbered List", "runs": [ { "text": "a", "ws": "en" } ] },
+      { "style": "Numbered List", "runs": [ { "text": "b", "ws": "en" } ] }
+    ],
+    "canonical": "1. a\n2. b\n"
+  },
+  {
+    "name": "each block quote paragraph is its own block",
+    "paragraphs": [
+      { "style": "Block Quote", "runs": [ { "text": "q", "ws": "en" } ] },
+      { "style": "Block Quote", "runs": [ { "text": "r", "ws": "en" } ] }
+    ],
+    "canonical": "> q\n\n> r\n"
+  },
+  {
+    "name": "setext headings are read and written as hash headings",
+    "markdown": "Title\n=====\n\nSub\n---\n",
+    "paragraphs": [
+      { "style": "Heading 1", "runs": [ { "text": "Title", "ws": "en" } ] },
+      { "style": "Heading 2", "runs": [ { "text": "Sub", "ws": "en" } ] }
+    ],
+    "canonical": "# Title\n\n## Sub\n"
+  },
+  {
+    "name": "ok: fwmd.heading.too-deep three hashes",
+    "markdown": "### Three\n",
+    "paragraphs": [ { "style": "Heading 3", "runs": [ { "text": "Three", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a heading deeper than three has no style",
+    "markdown": "#### Four\n",
+    "findings": [ { "id": "fwmd.heading.too-deep", "line": 1, "column": 1, "endLine": 1, "endColumn": 10 } ]
+  },
+  {
+    "name": "empty paragraphs name their writing system in the marker",
+    "paragraphs": [
+      { "style": "Normal", "typingWs": "en" },
+      { "style": "Normal", "typingWs": "ceb" },
+      { "style": "Normal", "typingWs": "ceb-x-old" },
+      { "style": "Normal", "typingWs": "ar" }
+    ],
+    "canonical": "[]{.empty}\n\n[]{.v .empty}\n\n[]{.empty ws=ceb-x-old}\n\n[]{.empty ws=ar}\n"
+  },
+  {
+    "name": "an empty paragraph with a style is a div around the marker",
+    "paragraphs": [ { "style": "Heading 2", "typingWs": "en" } ],
+    "canonical": "::: {custom-style=\"Heading 2\"}\n[]{.empty}\n:::\n"
+  },
+  {
+    "name": "an empty paragraph with paragraph properties is a div around the marker",
+    "paragraphs": [ { "style": "Normal", "props": { "spaceBefore": "6000" }, "typingWs": "ceb" } ],
+    "canonical": "::: {spaceBefore=6000}\n[]{.v .empty}\n:::\n"
+  },
+  {
+    "name": "a marker that carries paragraph attributes is read as a styled empty paragraph and written as a div",
+    "markdown": "[]{.empty custom-style=\"Heading 2\"}\n",
+    "paragraphs": [ { "style": "Heading 2", "typingWs": "en" } ],
+    "canonical": "::: {custom-style=\"Heading 2\"}\n[]{.empty}\n:::\n"
+  },
+  {
+    "name": "a div holds paragraphs separated by blank lines, an empty one among them",
+    "markdown": "::: {custom-style=Example}\nThe prefix [mang-]{.v} becomes [mam-]{.v} before a labial.\n\n[]{.empty}\n\n\\# is written as text here.\n:::\n",
+    "paragraphs": [
+      { "style": "Example", "runs": [
+        { "text": "The prefix ", "ws": "en" }, { "text": "mang-", "ws": "ceb" }, { "text": " becomes ", "ws": "en" },
+        { "text": "mam-", "ws": "ceb" }, { "text": " before a labial.", "ws": "en" } ] },
+      { "style": "Example", "typingWs": "en" },
+      { "style": "Example", "runs": [ { "text": "# is written as text here.", "ws": "en" } ] }
+    ],
+    "canonical": null
+  },
+  {
+    "name": "a styled paragraph with only properties is a div with no custom-style",
+    "markdown": "::: {spaceBefore=6000}\nspaced\n:::\n",
+    "paragraphs": [ { "style": "Normal", "props": { "spaceBefore": "6000" }, "runs": [ { "text": "spaced", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a heading with extra properties is a div with the heading style, not a hash line",
+    "paragraphs": [ { "style": "Heading 2", "props": { "spaceBefore": "6000" }, "runs": [ { "text": "H", "ws": "en" } ] } ],
+    "canonical": "::: {custom-style=\"Heading 2\" spaceBefore=6000}\nH\n:::\n"
+  },
+  {
+    "name": "one div holds a maximal run of paragraphs with the same style and properties, and two runs make two divs",
+    "paragraphs": [
+      { "style": "Example", "runs": [ { "text": "a", "ws": "en" } ] },
+      { "style": "Example", "runs": [ { "text": "b", "ws": "en" } ] },
+      { "style": "Example", "props": { "spaceBefore": "6000" }, "runs": [ { "text": "c", "ws": "en" } ] }
+    ],
+    "canonical": "::: {custom-style=Example}\na\n\nb\n:::\n\n::: {custom-style=Example spaceBefore=6000}\nc\n:::\n"
+  },
+  {
+    "name": "paragraph properties in a div are in canonical order",
+    "markdown": "::: {spaceBefore=6000 custom-style=Example MarginTop=12000 firstIndent=-500}\nx\n:::\n",
+    "paragraphs": [ { "style": "Example", "props": { "spaceBefore": "6000", "MarginTop": "12000", "firstIndent": "-500" }, "runs": [ { "text": "x", "ws": "en" } ] } ],
+    "canonical": "::: {custom-style=Example firstIndent=-500 MarginTop=12000 spaceBefore=6000}\nx\n:::\n"
+  },
+  {
+    "name": "a soft line break in a div paragraph is one space",
+    "markdown": "::: {custom-style=Example}\nline one\nline two\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "line one line two", "ws": "en" } ] } ],
+    "canonical": "::: {custom-style=Example}\nline one line two\n:::\n"
+  },
+  {
+    "name": "ok: fwmd.syntax.unsupported-markup an escaped marker in a div",
+    "markdown": "::: {custom-style=Example}\n\\# x\n:::\n",
+    "paragraphs": [ { "style": "Example", "runs": [ { "text": "# x", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "an unescaped block marker in a styled div is an error with the escape as the fix",
+    "markdown": "::: {custom-style=Example}\n# x\n:::\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 1, "endLine": 2, "endColumn": 4, "fix": "\\# x" } ]
+  },
+  {
+    "name": "an unescaped list in a styled div is an error with the escape as the fix",
+    "markdown": "::: {custom-style=Example}\n1. x\n:::\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 1, "endLine": 2, "endColumn": 5, "fix": "1\\. x" } ]
+  },
+  {
+    "name": "a div that is never closed is an error",
+    "markdown": "::: {custom-style=Example}\nx\n",
+    "findings": [ { "id": "fwmd.syntax.unclosed-mark", "line": 1, "column": 1, "endLine": 1, "endColumn": 4 } ]
+  },
+  {
+    "name": "a table is a header row, a delimiter row and body rows, one paragraph per row with tab-separated cells",
+    "markdown": "| Form | Gloss |\n|---|---|\n| [palit]{.v} | change |\n| [mamalit]{.v custom-style=\"Emphasized Text\"} | buy \\| sell |\n",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "Form\tGloss", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "palit", "ws": "ceb" }, { "text": "\tchange", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "mamalit", "ws": "ceb", "props": { "s133": "Emphasized Text" } }, { "text": "\tbuy | sell", "ws": "en" } ] }
+    ],
+    "canonical": null
+  },
+  {
+    "name": "a one-column table with an empty cell",
+    "markdown": "| One |\n|---|\n|  |\n| x |\n",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "One", "ws": "en" } ] },
+      { "style": "GDR Table Row", "typingWs": "en" },
+      { "style": "GDR Table Row", "runs": [ { "text": "x", "ws": "en" } ] }
+    ],
+    "canonical": null
+  },
+  {
+    "name": "a table delimiter with spaces and a leading pipe missing is read and written as plain dashes",
+    "markdown": "A | B\n--- | ---\n1 | 2\n",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "A\tB", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "1\t2", "ws": "en" } ] }
+    ],
+    "canonical": "| A | B |\n|---|---|\n| 1 | 2 |\n"
+  },
+  {
+    "name": "an orphan table row is a div with the row style, its cells separated by tab references",
+    "paragraphs": [ { "style": "GDR Table Row", "runs": [ { "text": "a\tb", "ws": "en" } ] } ],
+    "canonical": "::: {custom-style=\"GDR Table Row\"}\na&#x9;b\n:::\n"
+  },
+  {
+    "name": "a table whose header cells are all empty cannot be a pipe table, because Pandoc reads such a header as no header",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "\t", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "a\tb", "ws": "en" } ] }
+    ],
+    "canonical": "::: {custom-style=\"GDR Table Header\"}\n&#x9;\n:::\n\n::: {custom-style=\"GDR Table Row\"}\na&#x9;b\n:::\n"
+  },
+  {
+    "name": "a tab that is not plain analysis text cannot be a cell separator, so that row is left to a div",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "x\ty", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "a\t", "ws": "ceb" }, { "text": "b", "ws": "en" } ] }
+    ],
+    "canonical": "| x | y |\n|---|---|\n\n::: {custom-style=\"GDR Table Row\"}\n[a&#x9;]{.v}b\n:::\n"
+  },
+  {
+    "name": "an empty row that types in another writing system than the default cannot be a table row",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "H", "ws": "en" } ] },
+      { "style": "GDR Table Row", "typingWs": "ar" }
+    ],
+    "canonical": "| H |\n|---|\n\n::: {custom-style=\"GDR Table Row\"}\n[]{.empty ws=ar}\n:::\n"
+  },
+  {
+    "name": "a header row in the middle of rows starts a new table",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "A\tB", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "1\t2", "ws": "en" } ] },
+      { "style": "GDR Table Header", "runs": [ { "text": "C\tD", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "3\t4", "ws": "en" } ] }
+    ],
+    "canonical": "| A | B |\n|---|---|\n| 1 | 2 |\n\n| C | D |\n|---|---|\n| 3 | 4 |\n"
+  },
+  {
+    "name": "every pipe that is not a cell separator is escaped in a row, in text and in a quoted value",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "H", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "a|b", "ws": "en" }, { "text": "c|d", "ws": "en", "props": { "fontFamily": "x|y z" } } ] }
+    ],
+    "canonical": "| H |\n|---|\n| a\\|b[c\\|d]{fontFamily=\"x\\|y z\"} |\n"
+  },
+  {
+    "name": "ok: fwmd.table.ragged a rectangular table",
+    "markdown": "| A | B |\n|---|---|\n| 1 | 2 |\n",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "A\tB", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "1\t2", "ws": "en" } ] }
+    ],
+    "canonical": null
+  },
+  {
+    "name": "a row with another number of cells than the header is an error",
+    "markdown": "| A | B | C |\n|---|---|---|\n| 1 | 2 |\n",
+    "findings": [ { "id": "fwmd.table.ragged", "line": 3, "column": 2, "endLine": 3, "endColumn": 9 } ],
+    "pandoc": false
+  },
+  {
+    "name": "a delimiter row of another width than the header is an error with the delimiter row as the fix",
+    "markdown": "| A | B |\n|---|\n| 1 | 2 |\n",
+    "findings": [ { "id": "fwmd.table.ragged", "line": 2, "column": 1, "endLine": 2, "endColumn": 6, "fix": "|---|---|" } ],
+    "pandoc": false
+  },
+  {
+    "name": "ok: fwmd.table.alignment plain dashes",
+    "markdown": "| A |\n|---|\n| 1 |\n",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "A", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "1", "ws": "en" } ] }
+    ],
+    "canonical": null
+  },
+  {
+    "name": "a column alignment has nowhere to be stored",
+    "markdown": "| A | B |\n|:---:|---|\n| 1 | 2 |\n",
+    "findings": [ { "id": "fwmd.table.alignment", "line": 2, "column": 2, "endLine": 2, "endColumn": 7, "fix": "---" } ],
+    "pandoc": false
+  },
+  {
+    "name": "ok: fwmd.table.tab-in-cell a cell with no tab",
+    "markdown": "| A |\n|---|\n| 1 |\n",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "A", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "1", "ws": "en" } ] }
+    ],
+    "canonical": null
+  },
+  {
+    "name": "a raw tab inside a cell cannot be stored either, although it would read as a space",
+    "markdown": "| A |\n|---|\n| 1\t2 |\n",
+    "findings": [ { "id": "fwmd.table.tab-in-cell", "line": 3, "column": 2, "endLine": 3, "endColumn": 7 } ],
+    "pandoc": false
+  },
+  {
+    "name": "a tab inside a cell cannot be stored",
+    "markdown": "| A |\n|---|\n| 1&#9;2 |\n",
+    "findings": [ { "id": "fwmd.table.tab-in-cell", "line": 3, "column": 2, "endLine": 3, "endColumn": 10 } ],
+    "pandoc": false
+  },
+  {
+    "name": "ok: fwmd.syntax.unsupported-markup text with the delimiters escaped",
+    "markdown": "a \\<b> \\`c\\`\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a <b> `c`", "ws": "en" } ] } ],
+    "canonical": "a \\<b> \\`c\\`\n"
+  },
+  {
+    "name": "raw HTML, code, a thematic break and a reference definition have no counterpart",
+    "markdown": "<b>x</b>\n\n`code`\n\n***\n\n[a]: http://x\n",
+    "findings": [
+      { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 1, "endLine": 1, "endColumn": 4 },
+      { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 5, "endLine": 1, "endColumn": 9 },
+      { "id": "fwmd.syntax.unsupported-markup", "line": 3, "column": 1, "endLine": 3, "endColumn": 7 },
+      { "id": "fwmd.syntax.unsupported-markup", "line": 5, "column": 1, "endLine": 5, "endColumn": 4 },
+      { "id": "fwmd.syntax.unsupported-markup", "line": 7, "column": 1, "endLine": 7, "endColumn": 14 }
+    ],
+    "pandoc": false
+  }
+]
