@@ -124,6 +124,21 @@ public sealed class ProposalLifecycleTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void WithdrawingAFinalizableDraftFinalizesAndWithdrawsItInOneStep()
+    {
+        var path = NewProject();
+        var id = Draft(path, "draft-withdrawn");
+
+        var withdrawn = ProposalLifecycleCommand.Withdraw(new WithdrawProposalRequest(path, id));
+
+        Assert.True(withdrawn.Succeeded, withdrawn.Refusal?.Message);
+        var record = Record(path, id);
+        Assert.Null(record.DraftName);
+        Assert.NotNull(record.IntentDigest);
+        Assert.Equal("withdrawn", record.Status);
+    }
+
+    [Fact]
     public void ASupersededProposalNamesItsReplacementInsteadOfReopening()
     {
         var (path, id) = Finalized("old");

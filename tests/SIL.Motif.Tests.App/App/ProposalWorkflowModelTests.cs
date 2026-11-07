@@ -202,6 +202,25 @@ public sealed class ProposalWorkflowModelTests
     }
 
     [Fact]
+    public void NamingWhatAnOperationMakesDependsOnItsKindNotOnTheEnglishOfItsTitle()
+    {
+        var namedKind = SIL.Motif.Commands.ChangeVocabulary.Of("grammar/phPhonemeSet/createPhonemes")
+            with { Title = "Ajouter un phonème" };
+        var otherKind = SIL.Motif.Commands.ChangeVocabulary.Of("analysis/wfiWordform/createAnalysis")
+            with { Title = "Ajouter une analyse" };
+        var named = ProposalOperationSentence.For(new ProposalOperationView("op/a",
+            "grammar/phPhonemeSet/createPhonemes", null, null, [], "{\"text\":\"ɸ\"}"), 0, namedKind);
+        var notMaking = ProposalOperationSentence.For(new ProposalOperationView("op/b",
+            "analysis/wfiWordform/createAnalysis", null, null, [], "{\"text\":\"ɸ\"}"), 0, otherKind);
+
+        Assert.Contains("ɸ", named);
+        Assert.DoesNotContain("ɸ", notMaking);
+        Assert.True(SIL.Motif.Commands.ChangeVocabulary.MakesNamedThing("lexical/lexEntry/createLexemeForm"));
+        Assert.False(SIL.Motif.Commands.ChangeVocabulary.MakesNamedThing("lexical/lexEntry/deleteLexemeForm"));
+        Assert.False(SIL.Motif.Commands.ChangeVocabulary.MakesNamedThing("unknown/kind"));
+    }
+
+    [Fact]
     public async Task AnOperationThatNamesWhatItMakesSaysSoAndOmitsAnUnknownCount()
     {
         var fake = NewFake();

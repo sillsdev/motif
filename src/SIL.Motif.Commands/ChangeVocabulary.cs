@@ -98,6 +98,20 @@ public static class ChangeVocabulary
             [WfiWordformSpellingStatusOperationKinds.SetSpellingStatus] = Spelling,
         };
 
+    // The kinds that make one new named thing, whatever language their titles are in.
+    private static readonly HashSet<string> NamedCreates = new(StringComparer.Ordinal)
+    {
+        "grammar/phPhonData/createPhonRules", "lexical/lexEntry/createLexemeForm",
+        "lexical/lexEntry/createAlternateForms", "grammar/phPhonData/createEnvironments",
+        "grammar/phPhonData/createNaturalClasses", "grammar/phPhonemeSet/createPhonemes",
+        "grammar/partOfSpeech/createAffixTemplates", "grammar/partOfSpeech/createAffixSlots",
+        "texts/langProject/createTexts", "analysis/langProject/createWordforms", "lexical/lexDb/createEntries",
+        "lists/cmPossibilityList/createPossibilities", "lists/cmPossibility/createSubPossibilities",
+    };
+
+    /// <summary>Whether an operation kind makes one new named thing, such as a rule or an allomorph.</summary>
+    public static bool MakesNamedThing(string operationKind) => NamedCreates.Contains(operationKind ?? string.Empty);
+
     // A pending word change names its action; these read after the word, as "cat: approve an analysis".
     private static readonly IReadOnlyDictionary<string, ChangeKind> ByWordAction =
         new Dictionary<string, ChangeKind>(StringComparer.Ordinal)

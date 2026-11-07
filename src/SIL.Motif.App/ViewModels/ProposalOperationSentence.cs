@@ -14,11 +14,12 @@ internal static class ProposalOperationSentence
     /// "Adds the allomorph -an (affects 12 words)." when the operation names what it makes, the kind's title when
     /// it does not, and no count phrase when no word is known to be affected.
     /// </summary>
-    internal static string For(ProposalOperationView operation, int affectedWords)
+    internal static string For(ProposalOperationView operation, int affectedWords) =>
+        For(operation, affectedWords, ChangeVocabulary.Of(operation.Kind, MemberOf(operation.AfterJson)));
+
+    internal static string For(ProposalOperationView operation, int affectedWords, ChangeKind kind)
     {
-        var kind = ChangeVocabulary.Of(operation.Kind, MemberOf(operation.AfterJson));
-        var name = kind.Key == ChangeVocabulary.GenericKey || !kind.Title.StartsWith("Add", StringComparison.Ordinal)
-            ? null : NameOf(operation.AfterJson);
+        var name = !ChangeVocabulary.MakesNamedThing(operation.Kind) ? null : NameOf(operation.AfterJson);
         var what = name is null ? kind.Title
             : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalOperationNamedFormat,
                 kind.Singular, name);
