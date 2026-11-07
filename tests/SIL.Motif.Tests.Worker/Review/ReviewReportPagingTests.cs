@@ -468,6 +468,34 @@ public sealed class ReviewReportPagingTests : IDisposable
     }
 
     [Fact]
+    public async Task FinalizeAndDeclineReleasesArtifactsOnlyAfterSuccessfulMove()
+    {
+        var reading = new ReadingRow("identity", Side.Before, IdentityState.Exact, [], true, [], []);
+        var id = await Publish("finalize-release", Sample(0, 0) with { Readings = [reading] });
+        var root = Path.Combine(_root, "project.motif.db.review-readings");
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "UPDATE Proposals SET DraftName='working', DraftJson='{}' WHERE ProposalId=$id;";
+            command.Parameters.AddWithValue("$id", _proposal.Value);
+            command.ExecuteNonQuery();
+        }
+        var proposals = new ProposalRepository(_database);
+        var json = $$"""{"proposalId":"{{_proposal.Value}}"}""";
+        var refused = proposals.Finalize("working", "sha256:new", json, "label",
+            null, new FinalizeMove(["applied"], "rejected", "Not wanted."));
+        Assert.Equal(DraftFinalizationResult.MoveRefused, refused);
+        Assert.Single(Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories));
+        Assert.Single(_repository.ReadPage(Request(id)).Items);
+
+        var moved = proposals.Finalize("working", "sha256:new", json, "label",
+            null, new FinalizeMove(["proposed"], "rejected", "Not wanted."));
+        Assert.Equal(DraftFinalizationResult.Amended, moved);
+        Assert.Empty(Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories));
+        Assert.Throws<ReviewDetailUnavailableException>(() => _repository.ReadPage(Request(id)));
+    }
+
+    [Fact]
     public async Task LimitMayChangeWithoutDuplicateOrMissingRows()
     {
         var id = await Publish("limits", Enumerable.Range(0, 17).Select(i => Sample(i, 0)).ToArray());
