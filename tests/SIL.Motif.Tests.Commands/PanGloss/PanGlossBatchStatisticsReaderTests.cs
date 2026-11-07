@@ -35,6 +35,54 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
     }
 
     [Fact]
+    public void WordOnlyReadMatchesFullReadAndDoesNotRequireObjectTables()
+    {
+        var path = Path.Combine(_root, "words-only.sqlite");
+        WriteCache(path);
+        var expected = PanGlossBatchStatisticsReader.Read(path, ["word"]).Words;
+        Assert.Equal(expected, PanGlossBatchStatisticsReader.ReadWords(path, ["word"]));
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "DROP TABLE fact; DROP TABLE object;";
+            command.ExecuteNonQuery();
+        }
+        Assert.Equal(expected, PanGlossBatchStatisticsReader.ReadWords(path, ["word"]));
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadWords(path, ["missing"]));
+        Assert.Throws<ArgumentException>(() => PanGlossBatchStatisticsReader.ReadWords(path, ["word", "word"]));
+    }
+
+    [Fact]
+    public void BoundedGroupingMatchesFullRowsForDuplicateObjectIdentities()
+    {
+        var path = Path.Combine(_root, "duplicate-objects.sqlite");
+        WriteCache(path);
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO object SELECT 4, key, kind, label, identity_quality FROM object WHERE object_id = 1;
+                INSERT INTO fact VALUES (1, 4, 'analysis', 3, 200, 4);
+                INSERT INTO fact VALUES (1, 1, 'analysis', 2, 300, 5);
+                """;
+            command.ExecuteNonQuery();
+        }
+        var full = PanGlossBatchStatisticsReader.Read(path, ["word"]);
+        var bounded = PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1);
+        Assert.Equal(full.TotalObjectTimingRows, bounded.TotalObjectTimingRows);
+        Assert.Equal(full.ObjectTimings, bounded.ObjectTimings);
+        var aggregate = Assert.Single(bounded.Aggregates, row => row.Key.Contains("entry-a", StringComparison.Ordinal)
+            && row.Direction == "analysis");
+        Assert.Equal(9, aggregate.Attempts);
+        Assert.Equal(9, aggregate.MaxAttempts);
+        Assert.Equal(180_500, aggregate.ElapsedNs);
+        Assert.Equal(180_500, aggregate.MaxElapsedNs);
+        Assert.Equal(9, aggregate.ParserWork);
+    }
+
+    [Fact]
     public void ObjectAndUnattributedParserWorkReconcileToTheWordTotal()
     {
         var path = Path.Combine(_root, "work.sqlite");
@@ -288,6 +336,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
 
         var error = Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.Read(path, ["word"]));
 
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadWords(path, ["word"]));
         Assert.Contains($"schema version {PanGlossInterfaceVersions.StatsCacheVersion - 1}", error.Message,
             StringComparison.Ordinal);
     }
@@ -331,6 +380,7 @@ public sealed class PanGlossBatchStatisticsReaderTests : IDisposable
 
         Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.Read(path, ["word"]));
         Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadBounded(path, ["word"], 1));
+        Assert.Throws<InvalidDataException>(() => PanGlossBatchStatisticsReader.ReadWords(path, ["word"]));
     }
 
     private static void WriteCache(string path, int version = PanGlossInterfaceVersions.StatsCacheVersion)

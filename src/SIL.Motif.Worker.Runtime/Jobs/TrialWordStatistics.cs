@@ -24,8 +24,7 @@ internal static class TrialWordStatistics
         {
             try
             {
-                statistics = PanGlossBatchStatisticsReader.Read(cache.Path, words, _ => 0,
-                    maxObjectTimingRows: 0).Words;
+                statistics = PanGlossBatchStatisticsReader.ReadWords(cache.Path, words);
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or
                 UnauthorizedAccessException or SqliteException or ArgumentException)

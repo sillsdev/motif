@@ -36,35 +36,7 @@ public static class PanGlossBatchStatisticsReader
     {
         ArgumentNullException.ThrowIfNull(convert);
         ArgumentOutOfRangeException.ThrowIfNegative(maxObjectTimingRows);
-        ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
-        ArgumentNullException.ThrowIfNull(expectedWords);
-        var expected = expectedWords.ToHashSet(StringComparer.Ordinal);
-        if (expected.Count != expectedWords.Count)
-            throw new ArgumentException("The resolved Selection must not contain duplicate words.", nameof(expectedWords));
-        if (!File.Exists(cachePath)) throw new FileNotFoundException("The PanGloss batch statistics cache is missing.", cachePath);
-
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-        {
-            DataSource = Path.GetFullPath(cachePath),
-            Mode = SqliteOpenMode.ReadOnly,
-            Pooling = false,
-        }.ToString());
-        connection.Open();
-
-        var schemaVersion = ReadSchemaVersion(connection);
-        if (schemaVersion != PanGlossInterfaceVersions.StatsCacheVersion)
-            throw new InvalidDataException(
-                $"The PanGloss batch statistics cache has schema version {schemaVersion}; " +
-                $"Motif requires version {PanGlossInterfaceVersions.StatsCacheVersion}.");
-        ValidateCounterSemantics(connection);
-
-        var words = ReadWords(connection);
-        var unexpected = words.Keys.FirstOrDefault(word => !expected.Contains(word));
-        if (unexpected is not null)
-            throw new InvalidDataException($"The batch statistics cache contains unrequested word '{unexpected}'.");
-        var missing = expected.FirstOrDefault(word => !words.ContainsKey(word));
-        if (missing is not null)
-            throw new InvalidDataException($"The batch statistics cache has no per-word row for selected word '{missing}'.");
+        using var connection = OpenValidated(cachePath, expectedWords, out var words);
 
         var (timings, total) = ReadObjectTimings(connection, words, convert, maxObjectTimingRows);
         return new PanGlossBatchStatistics<T>(words, timings, total);
@@ -79,29 +51,7 @@ public static class PanGlossBatchStatisticsReader
         IReadOnlyCollection<string> expectedWords, int detailWordLimit)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(detailWordLimit);
-        ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
-        ArgumentNullException.ThrowIfNull(expectedWords);
-        var expected = expectedWords.ToHashSet(StringComparer.Ordinal);
-        if (expected.Count != expectedWords.Count)
-            throw new ArgumentException("The resolved Selection must not contain duplicate words.", nameof(expectedWords));
-        if (!File.Exists(cachePath)) throw new FileNotFoundException("The PanGloss batch statistics cache is missing.", cachePath);
-        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
-        {
-            DataSource = Path.GetFullPath(cachePath), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
-        }.ToString());
-        connection.Open();
-        var version = ReadSchemaVersion(connection);
-        if (version != PanGlossInterfaceVersions.StatsCacheVersion)
-            throw new InvalidDataException($"The PanGloss batch statistics cache has schema version {version}; " +
-                $"Motif requires version {PanGlossInterfaceVersions.StatsCacheVersion}.");
-        ValidateCounterSemantics(connection);
-        var words = ReadWords(connection);
-        var unexpected = words.Keys.FirstOrDefault(word => !expected.Contains(word));
-        if (unexpected is not null)
-            throw new InvalidDataException($"The batch statistics cache contains unrequested word '{unexpected}'.");
-        var missing = expected.FirstOrDefault(word => !words.ContainsKey(word));
-        if (missing is not null)
-            throw new InvalidDataException($"The batch statistics cache has no per-word row for selected word '{missing}'.");
+        using var connection = OpenValidated(cachePath, expectedWords, out var words);
         var selected = words.OrderByDescending(pair => pair.Value.ParserWork.HasValue)
             .ThenByDescending(pair => pair.Value.ParserWork)
             .ThenByDescending(pair => pair.Value.ParserWork is null ? pair.Value.ElapsedNs : 0)
@@ -118,7 +68,7 @@ public static class PanGlossBatchStatisticsReader
         var kindWords = new Dictionary<string, (string Word, int Count)>(StringComparer.Ordinal);
         long total = 0;
         using var command = connection.CreateCommand();
-        command.CommandText = ObjectTimingsQuery;
+        command.CommandText = BoundedObjectTimingsQuery;
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -184,6 +134,55 @@ public static class PanGlossBatchStatisticsReader
             UnattributedNs = hasTimer ? unattributed : null,
             OverrunNs = hasTimer ? overrun : null,
         };
+    }
+
+    /// <summary>Reads validated per-word counters without reading object timing facts.</summary>
+    /// <param name="cachePath">The statistics cache written by the batch invocation.</param>
+    /// <param name="expectedWords">The exact Selection measured by the invocation.</param>
+    /// <returns>The per-word counters stored in the cache.</returns>
+    public static IReadOnlyDictionary<string, PanGlossWordStatistics> ReadWords(
+        string cachePath, IReadOnlyCollection<string> expectedWords)
+    {
+        using var connection = OpenValidated(cachePath, expectedWords, out var words);
+        return words;
+    }
+
+    private static SqliteConnection OpenValidated(string cachePath, IReadOnlyCollection<string> expectedWords,
+        out Dictionary<string, PanGlossWordStatistics> words)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cachePath);
+        ArgumentNullException.ThrowIfNull(expectedWords);
+        var expected = expectedWords.ToHashSet(StringComparer.Ordinal);
+        if (expected.Count != expectedWords.Count)
+            throw new ArgumentException("The resolved Selection must not contain duplicate words.", nameof(expectedWords));
+        if (!File.Exists(cachePath)) throw new FileNotFoundException("The PanGloss batch statistics cache is missing.", cachePath);
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = Path.GetFullPath(cachePath), Mode = SqliteOpenMode.ReadOnly, Pooling = false,
+        }.ToString());
+        try
+        {
+            connection.Open();
+            var version = ReadSchemaVersion(connection);
+            if (version != PanGlossInterfaceVersions.StatsCacheVersion)
+                throw new InvalidDataException($"The PanGloss batch statistics cache has schema version {version}; " +
+                    $"Motif requires version {PanGlossInterfaceVersions.StatsCacheVersion}.");
+            ValidateCounterSemantics(connection);
+            var loadedWords = ReadWords(connection);
+            var unexpected = loadedWords.Keys.FirstOrDefault(word => !expected.Contains(word));
+            if (unexpected is not null)
+                throw new InvalidDataException($"The batch statistics cache contains unrequested word '{unexpected}'.");
+            var missing = expected.FirstOrDefault(word => !loadedWords.ContainsKey(word));
+            if (missing is not null)
+                throw new InvalidDataException($"The batch statistics cache has no per-word row for selected word '{missing}'.");
+            words = loadedWords;
+            return connection;
+        }
+        catch
+        {
+            connection.Dispose();
+            throw;
+        }
     }
 
     private static int ReadSchemaVersion(SqliteConnection connection)
@@ -255,6 +254,27 @@ public static class PanGlossBatchStatisticsReader
         "SELECT w.form, o.key, o.identity_quality, o.kind, o.label, f.direction, " +
         "SUM(f.attempts), SUM(f.self_time_ns), SUM(f.work_steps)\n" + ObjectTimingsFrom +
         "\nORDER BY w.form, o.kind, o.key, f.direction;";
+
+    private const string BoundedObjectTimingsQuery = """
+        WITH canonical AS (
+            SELECT MIN(object_id) AS id, key, identity_quality, kind, label
+            FROM object GROUP BY key, identity_quality, kind, label
+        ), object_ids AS (
+            SELECT o.object_id, c.id FROM object o JOIN canonical c
+              ON o.key = c.key AND o.identity_quality = c.identity_quality
+              AND o.kind = c.kind AND o.label = c.label
+        ), grouped AS (
+            SELECT f.word_id, ids.id, f.direction, SUM(f.attempts) AS attempts,
+                   SUM(f.self_time_ns) AS elapsed, SUM(f.work_steps) AS work
+            FROM fact f JOIN object_ids ids ON ids.object_id = f.object_id
+            JOIN word w ON w.word_id = f.word_id
+            GROUP BY f.word_id, ids.id, f.direction
+        )
+        SELECT w.form, o.key, o.identity_quality, o.kind, o.label, g.direction,
+               g.attempts, g.elapsed, g.work
+        FROM grouped g JOIN word w ON w.word_id = g.word_id JOIN object o ON o.object_id = g.id
+        ORDER BY w.form, o.kind, o.key, g.direction;
+        """;
 
     private static (IReadOnlyList<T> Rows, long Total) ReadObjectTimings<T>(
         SqliteConnection connection, IReadOnlyDictionary<string, PanGlossWordStatistics> words,
