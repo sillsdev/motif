@@ -2,6 +2,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Worker.Store;
+using SIL.Motif.Worker.Runtime.Review;
 
 namespace SIL.Motif.Commands;
 
@@ -64,6 +65,6 @@ public static class TrialWorkComparison
                     pair.Before.ParserWork.Value)))
             .OrderByDescending(word => word.PercentMore).ThenBy(word => word.Word, StringComparer.Ordinal).Take(5).ToArray();
         return WithStops(new TrialWork(trial.Count, (long)oldTotal, (long)newTotal,
-            oldTotal == 0 ? null : (double)(100m * (newTotal - oldTotal) / oldTotal), increased, workStops, timeStops));
+            ReviewWorkComparison.PercentChange(oldTotal, newTotal), increased, workStops, timeStops));
     }
 }
