@@ -3,6 +3,7 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands.Baselines;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Contract.Responses;
@@ -44,16 +45,14 @@ public sealed class TraceFailureProjectTests(PristineProjectFixture pristine, IT
         var parser = PanGlossExecutable.TryLocate()!;
         var result = await CliInProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", "mtu", "--json");
         Assert.True(result.ExitCode == 0, result.Error);
-        var response = ProjectionJson.Deserialize<WordTraceResponse>(result.Output)!;
+        var response = ProjectionJson.Deserialize<StandaloneTraceProjection>(result.Output)!;
         Assert.True(response.Complete);
         Assert.False(response.InvalidShape);
         Assert.False(response.Parsed);
-        Assert.Equal(0, response.HostCapture!.LexiconEntryCount);
+        Assert.Equal(0, response.LexiconEntryCount);
         const string reason = "No lexical root matched 'mtu'; the traced grammar's lexicon has 0 entries.";
-        Assert.Equal(reason, Assert.Single(response.Reading.NoParseReasons));
-        var saved = Path.Combine(_root, "empty-mtu.trace.json");
-        File.WriteAllText(saved, response.DiagnosticJson);
-        var text = await CliInProcess.RunAsync(_root, null, false, "trace", "--load", saved);
+        Assert.Equal(reason, Assert.Single(response.NoParseReasons));
+        var text = await CliInProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", "mtu");
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains(reason, text.Output);
         output.WriteLine(text.Output);
@@ -87,25 +86,23 @@ public sealed class TraceFailureProjectTests(PristineProjectFixture pristine, IT
             reasons.Add(expected);
             var json = await CliInProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", word, "--json");
             Assert.True(json.ExitCode == 0, json.Error);
-            var response = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
+            var response = ProjectionJson.Deserialize<StandaloneTraceProjection>(json.Output)!;
             Assert.True(response.Complete);
             Assert.False(response.Parsed);
-            File.WriteAllText(Path.Combine(_root, word + ".trace.json"), response.DiagnosticJson);
             if (word == "baya")
-                Assert.Contains(Walk(response.Reading.Root), step => step.EventEvidence?.PartialParseCause == "ApplicableTemplatesNotApplied");
+                Assert.Contains(response.NodeDetails, detail => detail.PartialParseCause == "ApplicableTemplatesNotApplied");
             if (word == "nbaya")
             {
-                var failed = Assert.Single(response.Reading.Attempts, attempt => attempt.FailureReason == "SurfaceFormMismatch");
-                Assert.Contains(failed.RichMorphs, morph => morph.Form == "baya");
-                Assert.Contains(failed.RichMorphs, morph => morph.Form == "n");
-                Assert.Equal("nbaya", failed.FailureRequired);
-                Assert.Contains("m", failed.FailureActual);
+                var failed = Assert.Single(response.ClosestAttempts, attempt => attempt.FailureReason == "SurfaceFormMismatch");
+                Assert.Contains(failed.Morphs, morph => morph.Form == "baya");
+                Assert.Contains(failed.Morphs, morph => morph.Form == "n");
+                Assert.Contains(response.NodeDetails, detail => detail.Required == "nbaya");
             }
         }
         Assert.Equal(3, reasons.Distinct().Count());
         var control = await CliInProcess.RunAsync(_root, parser, false, "trace", "--project", project, "--word", "mbaya", "--json");
         Assert.True(control.ExitCode == 0, control.Error);
-        Assert.True(ProjectionJson.Deserialize<WordTraceResponse>(control.Output)!.Parsed);
+        Assert.True(ProjectionJson.Deserialize<StandaloneTraceProjection>(control.Output)!.Parsed);
         output.WriteLine("Recorded diagnostics: " + _root);
     }
 

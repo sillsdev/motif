@@ -6,6 +6,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.HumanJudgments;
 using SIL.Motif.Contract.Projects;
@@ -1414,7 +1415,7 @@ internal static class AgentTools
                 $"No Trial is recorded for '{proposal}'. Run motif_trial on it first; motif_try_word parses against the copy that Trial made.");
         if (!outcome.Succeeded) return ToolOutcome.Refused(outcome.Refusal!);
         var summary = detailed
-            ? (JsonObject)JsonNode.Parse(ProjectionJson.Serialize(outcome.Value!))!
+            ? (JsonObject)JsonNode.Parse(ProjectionJson.Serialize(StandaloneTraceProjection.From(outcome.Value!)))!
             : TryWordSummary.Concise(TryWordRuleNames.Named(projectPath, outcome.Value!, proposal));
         summary["tracedAgainst"] = proposal is null ? "baseline" : "proposal " + proposal + " (its latest Trial copy)";
         return ToolOutcome.From(CommandOutcome<JsonObject>.Success(summary));

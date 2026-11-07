@@ -1,6 +1,6 @@
 # Try a Word diagnostic JSON: guide for people and AI
 
-Motif reads only `pangloss.trace-details.v5`. Older and unknown future schemas are refused; update Motif and PanGloss together. PanGloss produces this document only for an explicitly requested, single-word JSON trace:
+This page describes the producer diagnostic accepted by Motif, not the cost-free projection exported in a Handoff. Motif reads only `pangloss.trace-details.v5`. Older and unknown future schemas are refused; update Motif and PanGloss together. PanGloss produces this document only for an explicitly requested, single-word JSON trace:
 
 ```text
 pangloss parse grammar.json word --trace=word.trace.json --trace-format=json --trace-details
@@ -8,7 +8,7 @@ pangloss parse grammar.json word --trace=word.trace.json --trace-format=json --t
 
 Use the trace file when running through a build or process wrapper: the wrapper's console messages are not JSON. Ordinary parsing and ordinary trace output remain separate interfaces.
 
-The producer contract is documented in [PanGloss trace details v5](https://github.com/sillsdev/PanGloss/blob/v0.16.2/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas must survive load and export.
+The producer contract is documented in [PanGloss trace details v5](https://github.com/sillsdev/PanGloss/blob/v0.16.2/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas survive internal loading; public exports use a bounded projection.
 
 ## How to interpret a diagnostic
 

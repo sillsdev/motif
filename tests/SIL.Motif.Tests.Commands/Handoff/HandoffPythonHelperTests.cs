@@ -53,7 +53,6 @@ public sealed class HandoffPythonHelperTests : IDisposable
         // Every subcommand this file actually implements, so --help cannot fall behind the code.
         Assert.Contains("outcome", help, StringComparison.Ordinal);
         Assert.Contains("word", help, StringComparison.Ordinal);
-        Assert.Contains("slowest", help, StringComparison.Ordinal);
         Assert.Contains("trace", help, StringComparison.Ordinal);
         Assert.Contains("text", help, StringComparison.Ordinal);
         Assert.Contains("words", help, StringComparison.Ordinal);
@@ -71,32 +70,6 @@ public sealed class HandoffPythonHelperTests : IDisposable
 
         var result = ToolProcess.Run(startInfo);
         Assert.True(result.ExitCode == 0, $"py_compile failed: {result.Error}");
-    }
-
-    [RequiresPythonFact]
-    public void SlowestRanksWordsByTheirParserWorkBeforeTheirTimeOnThisComputer()
-    {
-        var scriptPath = WriteScriptToDisk();
-        var results = Path.Combine(_root, "parse-results.json");
-        File.WriteAllText(results, """
-            [{"word":"quick-but-costly","parserWork":900,"elapsedMs":1},
-             {"word":"slow-but-cheap","parserWork":5,"elapsedMs":800},
-             {"word":"no-work-count","elapsedMs":9000},
-             {"word":"unmeasured"}]
-            """);
-        var startInfo = new ProcessStartInfo(PythonExecutable.Path!);
-        startInfo.ArgumentList.Add(scriptPath);
-        startInfo.ArgumentList.Add("--assessment");
-        startInfo.ArgumentList.Add(results);
-        startInfo.ArgumentList.Add("slowest");
-        startInfo.ArgumentList.Add("10");
-
-        var result = ToolProcess.Run(startInfo);
-
-        Assert.True(result.ExitCode == 0, $"python slowest exited {result.ExitCode}: {result.Error}");
-        var order = System.Text.Json.Nodes.JsonNode.Parse(result.Output)!.AsArray()
-            .Select(node => node!["word"]!.GetValue<string>()).ToArray();
-        Assert.Equal(["quick-but-costly", "slow-but-cheap", "no-work-count"], order);
     }
 
     private string WriteScriptToDisk()

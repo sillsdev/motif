@@ -42,7 +42,7 @@ public sealed class HandoffMarkdownTests
         Assert.Contains($"`{Path.GetFileName(tracePath)}`", markdown, StringComparison.Ordinal);
         Assert.DoesNotContain("`traces/", markdown, StringComparison.Ordinal);
         Assert.Contains("Completion is `complete` when the diagnostic records a finished search", markdown, StringComparison.Ordinal);
-        Assert.Contains("preserves its recorded parser fields", markdown, StringComparison.Ordinal);
+        Assert.Contains("preserves recorded linguistic facts", markdown, StringComparison.Ordinal);
         Assert.True(markdown.Split('\n').Length <= 100);
     }
 

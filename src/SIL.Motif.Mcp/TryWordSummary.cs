@@ -32,8 +32,6 @@ internal static class TryWordSummary
             ["parsed"] = response.Parsed,
             ["complete"] = response.Complete,
             ["searchStatus"] = response.SearchStatus,
-            ["parserWork"] = response.TotalParserWork,
-            ["elapsedMs"] = response.ElapsedMs,
         };
         if (response.LowercaseFailure is { } lowercaseFailure) result["lowercaseFailure"] = lowercaseFailure;
         if (response.Lowercase is { } lowercase)
@@ -98,8 +96,7 @@ internal static class TryWordSummary
             result["closestAttempts"] = closest;
         }
 
-        result["more"] = "Concise answer. Pass detail=detailed for the full trace: attempt trees, effort, "
-            + "writing systems, provenance and the saved diagnostic.";
+        result["more"] = "Concise answer. Pass detail=detailed for the full trace, including attempt nodes and recorded reasons.";
         return result;
     }
 }

@@ -127,7 +127,7 @@ public sealed class HandoffWriterTests : IDisposable
         var summary = trace.GetProperty("summary");
         using var rawTrace = JsonDocument.Parse(File.ReadAllText(tracePath));
         Assert.Equal(selectedWord, rawTrace.RootElement.GetProperty("word").GetString());
-        Assert.True(rawTrace.RootElement.GetProperty("search").GetProperty("completed").GetBoolean());
+        Assert.True(rawTrace.RootElement.GetProperty("complete").GetBoolean());
         Assert.Equal("complete", summary.GetProperty("completion").GetString());
     }
 
@@ -149,9 +149,8 @@ public sealed class HandoffWriterTests : IDisposable
 
         using var assessment = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "parse-results.json")));
         using var rawTrace = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "traces", "sagd.trace.json")));
-        var search = rawTrace.RootElement.GetProperty("search");
-        var expectedFromDiagnostic = search.GetProperty("invalidShape").GetBoolean() ? "not-run"
-            : search.GetProperty("completed").GetBoolean() ? "complete" : "incomplete";
+        var expectedFromDiagnostic = rawTrace.RootElement.GetProperty("invalidShape").GetBoolean() ? "not-run"
+            : rawTrace.RootElement.GetProperty("complete").GetBoolean() ? "complete" : "incomplete";
         var summary = Assert.Single(assessment.RootElement.EnumerateArray())
             .GetProperty("trace").GetProperty("summary");
 
@@ -160,7 +159,7 @@ public sealed class HandoffWriterTests : IDisposable
     }
 
     [Fact]
-    public void ASkippedWordHasNoParserWorkInItsRecordButASearchedWordKeepsThem()
+    public void AssessmentRecordsExcludeUnpairedParserWorkAndElapsedTime()
     {
         var root = Path.Combine(_root, "handoff-skipped-work");
         Directory.CreateDirectory(root);
@@ -174,7 +173,8 @@ public sealed class HandoffWriterTests : IDisposable
         using var assessment = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "parse-results.json")));
         var records = assessment.RootElement.EnumerateArray().ToArray();
         Assert.False(records[0].TryGetProperty("parserWork", out _));
-        Assert.Equal(120, records[1].GetProperty("parserWork").GetInt64());
+        Assert.False(records[1].TryGetProperty("parserWork", out _));
+        Assert.False(records[1].TryGetProperty("elapsedMs", out _));
     }
 
     [Fact]
@@ -193,10 +193,8 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
         Assert.Equal(1, invoker.TraceCalls);
         using var trace = JsonDocument.Parse(File.ReadAllText(Path.Combine(destination, "traces", "motifa.trace.json")));
-        var hostCapture = trace.RootElement.GetProperty("hostCapture");
-        var elapsed = hostCapture.GetProperty("wallElapsedMs");
-        Assert.True(elapsed.ValueKind == JsonValueKind.Null || elapsed.GetInt64() > 0,
-            "Host elapsed time must be measured or unavailable, never the unmeasured default zero.");
+        Assert.False(trace.RootElement.TryGetProperty("hostCapture", out _));
+        Assert.False(trace.RootElement.TryGetProperty("elapsedMs", out _));
     }
 
     [Fact]
@@ -255,12 +253,11 @@ public sealed class HandoffWriterTests : IDisposable
         Assert.Equal(0, traceCalls);
         var tracePath = Path.Combine(destination, HandoffWriter.TraceRelativePath(selectedWord)
             .Replace('/', Path.DirectorySeparatorChar));
-        Assert.Equal(selectedTrace.Value.DiagnosticJson, File.ReadAllText(tracePath));
         using var exported = JsonDocument.Parse(File.ReadAllText(tracePath));
-        Assert.True(exported.RootElement.GetProperty("producerExtension").GetProperty("preserve").GetBoolean());
-        Assert.False(exported.RootElement.GetProperty("search").GetProperty("completed").GetBoolean());
-        Assert.Equal(selectedTrace.Value.HostCapture!.WallElapsedMs,
-            exported.RootElement.GetProperty("hostCapture").GetProperty("wallElapsedMs").GetInt64());
+        Assert.False(exported.RootElement.TryGetProperty("producerExtension", out _));
+        Assert.False(exported.RootElement.GetProperty("complete").GetBoolean());
+        Assert.Equal(ProjectionJson.Serialize(SIL.Motif.Commands.Review.StandaloneTraceProjection.From(selectedTrace.Value)),
+            File.ReadAllText(tracePath));
         Assert.Equal(HandoffFileExpectations.OneWordTrace.Select(file => file.RelativePath.Replace(
             "<word>", selectedWord, StringComparison.Ordinal)), outcome.Value.Files);
     }
@@ -680,7 +677,7 @@ public sealed class HandoffWriterTests : IDisposable
         var wordRecord = Assert.Single(wordJson.RootElement.EnumerateArray());
         Assert.Equal("mirusi", wordRecord.GetProperty("word").GetString());
         Assert.Equal("analysed", wordRecord.GetProperty("outcome").GetString());
-        Assert.Equal(42, wordRecord.GetProperty("elapsedMs").GetInt32());
+        Assert.False(wordRecord.TryGetProperty("elapsedMs", out _));
 
         using var textJson = JsonDocument.Parse(RunPythonHelper(destination, "text", expectedKey));
         Assert.Equal(expectedKey, textJson.RootElement.GetProperty("key").GetString());

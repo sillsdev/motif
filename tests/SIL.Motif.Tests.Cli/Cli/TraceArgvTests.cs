@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -17,7 +18,6 @@ namespace SIL.Motif.Tests.Cli;
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposable
 {
-    private const string GoldenFile = "trace-motifa.golden.json";
     private readonly string _managedRoot = Path.Combine(
         Path.GetTempPath(), "motif-trace-argv-" + Guid.NewGuid().ToString("N"));
 
@@ -36,9 +36,9 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
 
         var json = await CliInProcess.RunAsync(_managedRoot, null, false, "trace", "--load", path, "--json");
         Assert.True(json.ExitCode == 0, json.Error);
-        var response = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
-        Assert.Equal("Producer name", Assert.Single(response.Reading.Refs).Label);
-        Assert.Equal("Vowel harmony", Assert.Single(response.Reading.Refs).CapturedFieldWorksLabel);
+        var response = ProjectionJson.Deserialize<StandaloneTraceProjection>(json.Output)!;
+        Assert.Equal("Producer name", Assert.Single(response.Refs).Label);
+        Assert.Equal("Vowel harmony", Assert.Single(response.Refs).CapturedFieldWorksLabel);
     }
 
     [Fact]
@@ -55,14 +55,12 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
 
             var json = await LoadTrace("zero-match-" + shape, diagnostic, asJson: true);
             Assert.True(json.ExitCode == 0, json.Error);
-            var response = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
-            var lookup = Assert.Single(Walk(response.Reading.Root),
-                step => step.EventEvidence?.LookupResult is not null)
-                .EventEvidence!.LookupResult!;
+            var response = ProjectionJson.Deserialize<StandaloneTraceProjection>(json.Output)!;
+            var lookup = Assert.Single(response.NodeDetails, detail => detail.LookupResult is not null).LookupResult!;
             Assert.True(lookup.Completed);
             Assert.Equal(0, lookup.MatchCount);
             Assert.Equal("zeroMatches", lookup.Status);
-            Assert.Contains(shape, response.DiagnosticJson, StringComparison.Ordinal);
+            Assert.Contains(response.NoParseReasons, reason => reason.Contains(shape, StringComparison.Ordinal));
         }
     }
 
@@ -121,16 +119,10 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
 
         var json = await LoadTrace("failure-codes", diagnostic, asJson: true);
         Assert.True(json.ExitCode == 0, json.Error);
-        var response = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
-        Assert.Equal(codes.Length, response.Reading.StopGroups.Count);
-        foreach (var group in response.Reading.StopGroups)
-        {
-            Assert.Null(group.Explanation);
-            var attempt = Assert.Single(group.Attempts);
-            Assert.Equal(TraceEvidenceAvailability.NotRecorded, attempt.ExplanationAvailability);
-            Assert.Equal("unavailable", attempt.FailureEvidence!.Status);
-            Assert.Equal(group.ReasonCode, attempt.FailureEvidence.ReasonCode);
-        }
+        var response = ProjectionJson.Deserialize<StandaloneTraceProjection>(json.Output)!;
+        Assert.Equal(codes.Length, response.StopGroups.Count);
+        Assert.All(response.StopGroups, group => Assert.Null(group.Explanation));
+        Assert.All(codes, code => Assert.Contains(response.StopGroups, group => group.ReasonCode == code));
     }
 
     [Fact]
@@ -153,14 +145,13 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         Assert.Contains("requestedShape", nbaya.Output, StringComparison.Ordinal);
         Assert.Contains("builtShape", nbaya.Output, StringComparison.Ordinal);
         Assert.Contains("m+?baya", nbaya.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("parserWork", nbaya.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("123456", nbaya.Output, StringComparison.Ordinal);
 
         var mismatchJson = await LoadTrace("nbaya-mismatch", Envelope("nbaya", SurfaceMismatchTree()), asJson: true);
         Assert.True(mismatchJson.ExitCode == 0, mismatchJson.Error);
-        var mismatch = ProjectionJson.Deserialize<WordTraceResponse>(mismatchJson.Output)!;
-        var evidence = Assert.Single(Walk(mismatch.Reading.Root),
-            step => step.FailureEvidence?.Payload is not null).FailureEvidence!.Payload!.Value;
-        Assert.Equal("nbaya", evidence.GetProperty("requestedShape").GetString());
-        Assert.Equal("m+?baya", evidence.GetProperty("builtShape").GetString());
+        var mismatch = ProjectionJson.Deserialize<StandaloneTraceProjection>(mismatchJson.Output)!;
+        Assert.Contains(mismatch.NodeDetails, detail => detail.RequestedShape == "nbaya" && detail.BuiltShape == "m+?baya");
     }
 
     [Fact]
@@ -177,8 +168,8 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
 
         var json = await LoadTrace("scoped-stratum", diagnostic, asJson: true);
         Assert.True(json.ExitCode == 0, json.Error);
-        var loaded = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!;
-        var reference = Assert.Single(loaded.Reading.Refs);
+        var loaded = ProjectionJson.Deserialize<StandaloneTraceProjection>(json.Output)!;
+        var reference = Assert.Single(loaded.Refs);
         var sourceReference = Assert.Single(WordTraceQuery.LoadDiagnostic(diagnostic).Value!.Reading.Refs);
         Assert.Equal(sourceReference.Id, reference.Id);
         Assert.Contains("grammarHash", reference.Id, StringComparison.Ordinal);
@@ -196,7 +187,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
 
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.True(json.ExitCode == 0, json.Error);
-        var baseline = ProjectionJson.Deserialize<WordTraceResponse>(json.Output)!.HostCapture!.Baseline!;
+        var baseline = ProjectionJson.Deserialize<StandaloneTraceProjection>(json.Output)!.Baseline!;
         Assert.Equal(1, Count(text.Output, baseline.Token.CapturedUtc.ToString()));
         Assert.Equal(1, Count(text.Output, baseline.SourceLastWriteUtc.ToString("O")));
         Assert.DoesNotContain(baseline.CaptureDescription, text.Output, StringComparison.Ordinal);
@@ -224,7 +215,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         var traceResult = await CliInProcess.RunAsync(_managedRoot, null, false,
             "trace", "--project", project, "--word", SeededProject.FirstForm, "--json");
         Assert.True(traceResult.ExitCode == 0, traceResult.Error);
-        Assert.True(ProjectionJson.Deserialize<WordTraceResponse>(traceResult.Output)!.Parsed);
+        Assert.True(ProjectionJson.Deserialize<StandaloneTraceProjection>(traceResult.Output)!.Parsed);
     }
 
     [Fact]
@@ -236,15 +227,11 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
             "trace", "--project", project, "--word", SeededProject.FirstForm, "--json");
 
         Assert.True(result.ExitCode == 0, result.Error);
-        var actual = Normalize(result.Output, baseline);
-        var golden = Path.Combine(AppContext.BaseDirectory, "TestFixtures", GoldenFile);
-        var expected = File.Exists(golden) ? File.ReadAllText(golden) : string.Empty;
-        if (actual != expected.ReplaceLineEndings("\n"))
-        {
-            var written = Path.Combine(Path.GetTempPath(), $"{Environment.ProcessId}-{GoldenFile}");
-            File.WriteAllText(written, actual);
-            Assert.Fail($"motif trace --json no longer matches {GoldenFile}; the new output is at {written}.");
-        }
+        var trace = ProjectionJson.Deserialize<StandaloneTraceProjection>(result.Output)!;
+        Assert.True(trace.Parsed);
+        Assert.Equal(baseline.Token, trace.Baseline!.Token);
+        Assert.DoesNotContain("parserWork", result.Output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("elapsedMs", result.Output, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -272,18 +259,10 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
         var result = await CliInProcess.RunAsync(_managedRoot, null, false, "trace", "--load", path, "--json");
 
         Assert.True(result.ExitCode == 0, result.Error);
-        var loaded = ProjectionJson.Deserialize<WordTraceResponse>(result.Output)!;
+        var loaded = ProjectionJson.Deserialize<StandaloneTraceProjection>(result.Output)!;
         var window = WordTraceQuery.LoadDiagnostic(File.ReadAllText(path)).Value!;
-        using var json = JsonDocument.Parse(result.Output);
-        Assert.False(json.RootElement.TryGetProperty("root", out _));
-        Assert.False(json.RootElement.TryGetProperty("candidates", out _));
-        Assert.False(json.RootElement.TryGetProperty("analyses", out _));
-        var authority = json.RootElement.GetProperty("reading");
-        Assert.Equal(JsonValueKind.Object, authority.GetProperty("root").ValueKind);
-        Assert.Equal(JsonValueKind.Array, authority.GetProperty("attempts").ValueKind);
-        Assert.Equal(JsonValueKind.Array, authority.GetProperty("analyses").ValueKind);
-        Assert.Equal(ProjectionJson.Serialize(window.Reading!), ProjectionJson.Serialize(loaded.Reading!));
-        Assert.NotEmpty(loaded.Reading!.Refs);
+        Assert.Equal(ProjectionJson.Serialize(StandaloneTraceProjection.From(window)), ProjectionJson.Serialize(loaded));
+        Assert.NotEmpty(loaded.Refs);
     }
 
     [Fact]
@@ -405,7 +384,7 @@ public sealed class TraceArgvTests(PristineProjectFixture pristine) : IDisposabl
                     ["kind"] = "surfaceComparison", ["source"] = "surface-check",
                     ["reasonCode"] = "SurfaceFormMismatch", ["status"] = "unavailable",
                     ["unavailableReason"] = "owner-detail-not-captured",
-                    ["evidence"] = new JsonObject { ["requestedShape"] = "nbaya", ["builtShape"] = "m+?baya" },
+                    ["evidence"] = new JsonObject { ["requestedShape"] = "nbaya", ["builtShape"] = "m+?baya", ["parserWork"] = 123456 },
                 },
                 ["children"] = new JsonArray(),
             }),

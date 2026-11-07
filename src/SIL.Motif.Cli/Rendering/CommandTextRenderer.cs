@@ -14,6 +14,7 @@ using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Host.PanGloss;
 using ProjectionText = SIL.Motif.Projection.Rendering.CommandTextRenderer;
@@ -1305,7 +1306,7 @@ public static class CommandTextRenderer
 
     private static string ShortHash(string? value) => value is null ? "unknown" : value[..Math.Min(8, value.Length)] + "…";
 
-    private static string TraceJson(WordTraceResponse response) => ProjectionJson.Serialize(response);
+    private static string TraceJson(WordTraceResponse response) => ProjectionJson.Serialize(StandaloneTraceProjection.From(response));
 
     // The reading the window shows, in the same order: the answer, why attempts stopped, the path, then every name.
     private static string RenderTrace(WordTraceResponse response)
@@ -1320,14 +1321,12 @@ public static class CommandTextRenderer
         text.AppendLine(response.Complete
             ? "  Search: complete"
             : "  Search: stopped early. " + (response.StopReason ?? "The parser did not finish."));
-        if (response.TotalParserWork is { } parserWork)
-            text.AppendLine($"  Parser work: {parserWork:N0} parser work" + (response.Lowercase is null ? string.Empty : " (with the lowercase form)"));
         if (response.LowercaseFailure is { } lowercaseFailure)
             text.AppendLine("  " + lowercaseFailure);
         if (response.Lowercase is { } lowercase)
             text.AppendLine($"  Lowercase form {lowercase.Word}: " + (lowercase.Parsed
                 ? $"parsed, {lowercase.Reading.Analyses.Count:N0} {(lowercase.Reading.Analyses.Count == 1 ? "analysis" : "analyses")}"
-                : "no parse") + (lowercase.ParserWork is { } lowerWork ? $", parser work {lowerWork:N0} parser work" : string.Empty));
+                : "no parse"));
         if (response.Provenance is { Warning.Length: > 0 } provenance)
             text.AppendLine("  Warning: " + provenance.Warning);
         if (response.HostCapture?.Baseline is { } baseline)
@@ -1362,8 +1361,17 @@ public static class CommandTextRenderer
                     $"(steps {string.Join(", ", rule.StepIds)})");
         }
         foreach (var step in Walk(reading.Root))
-            foreach (var detail in TraceEvidenceDisplay.Details(step))
+        {
+            foreach (var detail in TraceEvidenceDisplay.Details(step).Where(detail =>
+                !detail.StartsWith("Recorded template slot:", StringComparison.Ordinal) &&
+                !detail.StartsWith("Phonological non-unapplication:", StringComparison.Ordinal) &&
+                !detail.StartsWith("Typed rejection operands", StringComparison.Ordinal)))
                 text.AppendLine($"  Recorded event {step.EventEvidence?.ProducerStepId ?? step.StepId}: {detail}");
+            if (step.FailureEvidence?.Payload is { ValueKind: JsonValueKind.Object } payload)
+                foreach (var name in new[] { "requestedShape", "builtShape" })
+                    if (payload.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String)
+                        text.AppendLine($"  Recorded {name}: {value.GetString()}");
+        }
         if (reading.Refs.Count > 0)
         {
             text.AppendLine("  Names:");

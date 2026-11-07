@@ -9,6 +9,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Review;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Texts;
 
@@ -164,7 +165,7 @@ public static class HandoffWriter
 
     /// <summary>
     /// Writes <c>parse-results.json</c>: every Assessment word, each record carrying its own <c>word</c> field.
-    /// A one-word Handoff adds its raw trace file and summary to that word's record.
+    /// A one-word Handoff adds its trace projection and summary to that word's record.
     /// </summary>
     internal static void WriteAssessmentJson(
         string incomingRoot, IReadOnlyList<AssessedWordStatistics> words, WordTraceResponse? trace = null)
@@ -190,11 +191,11 @@ public static class HandoffWriter
     {
         ArgumentNullException.ThrowIfNull(trace);
         if (string.IsNullOrWhiteSpace(trace.DiagnosticJson))
-            throw new InvalidOperationException("The Handoff trace has no raw diagnostic to write.");
+            throw new InvalidOperationException("The Handoff trace has no diagnostic to project.");
         var tracePath = Path.Combine(incomingRoot, TraceRelativePath(trace.Word)
             .Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(tracePath)!);
-        File.WriteAllText(tracePath, trace.DiagnosticJson);
+        File.WriteAllText(tracePath, ProjectionJson.Serialize(StandaloneTraceProjection.From(trace)));
     }
 
     private static JsonObject BuildAssessedWordRecord(AssessedWordStatistics word, WordTraceResponse? trace)
@@ -205,8 +206,6 @@ public static class HandoffWriter
         if (refusal is not null)
             value["refusal"] = new JsonObject { ["code"] = refusal.Code, ["reason"] = refusal.Reason };
         if (word.Morphology is { } morphology) value["analysisCount"] = morphology.Analyses.Count;
-        if (word.ParserWork is { } parserWork && word.Outcome != "skipped") value["parserWork"] = parserWork;
-        if (word.ElapsedMs is { } elapsed) value["elapsedMs"] = elapsed;
         if (!string.IsNullOrEmpty(word.RawSignature)) value["signature"] = word.RawSignature;
         if (trace is not null)
         {
@@ -277,17 +276,17 @@ public static class HandoffWriter
         ArgumentException.ThrowIfNullOrWhiteSpace(sampleTextKey);
 
         var assessmentManifestLine = hasAssessment
-            ? "- `parse-results.json` — whether PanGloss accepted each Selection word, and how long it took."
+            ? "- `parse-results.json` — whether PanGloss accepted each Selection word."
             : "- No Assessment was run for this Handoff, so `parse-results.json` is not included.";
 
         // Derived from the manifest's own condition: a literal count drifted from the list it introduced.
         var fileCount = hasTrace ? hasAssessment ? "six" : "five" : hasAssessment ? "five" : "four";
         var traceFileName = Uri.EscapeDataString(sampleWord) + ".trace.json";
         var traceManifestLine = hasTrace
-            ? $"- `{traceFileName}` — the {(selectedTrace ? "selected" : "recorded")} trace diagnostic and Motif's host capture for `{sampleWord}`."
+            ? $"- `{traceFileName}` — the {(selectedTrace ? "selected" : "recorded")} cost-free trace projection for `{sampleWord}`."
             : string.Empty;
         var traceEvidenceDescription = selectedTrace
-            ? "This is the exact diagnostic selected from Try a Word, kept unchanged with the Baseline it records. " +
+            ? "This projects the diagnostic selected from Try a Word into cost-free linguistic evidence. " +
               "No Assessment or replacement trace was run for this Handoff."
             : "The matching `trace.summary` in `parse-results.json` gives recorded analysis attempts and failure reasons. " +
               "Completion is `complete` when the diagnostic records a finished search, `incomplete` when it records " +
@@ -297,7 +296,7 @@ public static class HandoffWriter
 
                 ## {traceFileName}
 
-                The diagnostic for `{sampleWord}` preserves its recorded parser fields and Motif's host capture.
+                The trace for `{sampleWord}` preserves recorded linguistic facts and bounded attempt nodes.
                 {traceEvidenceDescription}
 
                 ```
@@ -312,9 +311,9 @@ public static class HandoffWriter
                 ## parse-results.json
 
                 One record per Selection word, each carrying its own `word` field: the outcome PanGloss
-                reported (`analysed`, `no-analysis`, `capped`, `memory-capped`, `timed-out`, or `skipped`) and how long the
-                batch pass took. A one-word Handoff also links its raw trace file and summary from that
-                word's record. Its completion follows the raw diagnostic: `complete`, `incomplete`, `not-run` for
+                reported (`analysed`, `no-analysis`, `capped`, `memory-capped`, `timed-out`, or `skipped`).
+                A one-word Handoff also links its trace file and summary from that
+                word's record. Its completion follows the diagnostic: `complete`, `incomplete`, `not-run` for
                 invalid shape, or `unknown` when no completion fact was recorded. See
                 https://raw.githubusercontent.com/sillsdev/motif/{MotifRef}/docs/handoff/assessment-format.md.
 
@@ -343,7 +342,7 @@ public static class HandoffWriter
             # Handoff
 
             The {fileCount} files listed below describe one FieldWorks project as of its captured Baseline. A
-            one-word Handoff adds that word's raw diagnostic in the traces folder; the core files stay
+            one-word Handoff adds that word's trace projection in the traces folder; the core files stay
             at the top level.
 
             Every JSON file here is valid JSON with **one record per line** — pretty-printed down to the

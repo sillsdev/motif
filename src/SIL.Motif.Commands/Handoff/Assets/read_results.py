@@ -17,7 +17,7 @@ all four of them and is the right place to start:
                        own FLExText structure: paragraphs, phrases, words, and each analysed
                        word's morphemes. See docs/handoff/flextext-json-format.md.
     parse-results.json    Present only when someone ran an Assessment. One record per Selection
-                        word: whether PanGloss accepted it, how long that took, and -- for
+                        word: whether PanGloss accepted it, and -- for
                         whichever words were chosen for closer study -- the parser's own
                         derivation trace. See docs/handoff/assessment-format.md.
     handoff.md          Orientation: what these files are, one grep example and one Python call
@@ -46,7 +46,7 @@ WHAT THIS FILE PROVIDES
 Every routine below has an obvious name and does one small thing:
 
   * Loading         load_grammar, load_texts, load_assessment
-  * parse-results.json  words_by_outcome, word_records, slowest_words
+  * parse-results.json  words_by_outcome, word_records
   * texts.json       get_text, iter_paragraphs, iter_phrases, iter_words, iter_morphemes,
                      surface_form, word_pos, analysis_status, phrase_translation,
                      morpheme_form, morpheme_gloss
@@ -182,28 +182,6 @@ def words_by_outcome(records: list, outcome: str) -> list:
 def word_records(records: list, surface_form: str) -> list:
     """Every word record whose ``word`` field equals ``surface_form``, exactly as a grep would find."""
     return [record for record in records if record.get("word") == surface_form]
-
-
-def slowest_words(records: list, count: int) -> list:
-    """The ``count`` word records that cost the parser the most, descending.
-
-    Cost is ``parserWork``, the parser's work for the word, which does not depend on how busy the
-    computer was. A record with neither ``parserWork`` nor the older ``workSteps`` is ranked by ``elapsedMs`` (time on this computer)
-    after every record that has work, and a record with neither is excluded rather than sorted
-    arbitrarily against the ones that were measured.
-    """
-    def work_of(record):
-        # An older results file keeps the work under "workSteps".
-        for key in ("parserWork", "workSteps"):
-            if isinstance(record.get(key), (int, float)):
-                return record[key]
-        return None
-
-    worked = [record for record in records if work_of(record) is not None]
-    timed = [record for record in records
-             if work_of(record) is None and isinstance(record.get("elapsedMs"), (int, float))]
-    return (sorted(worked, key=work_of, reverse=True)
-            + sorted(timed, key=lambda record: record["elapsedMs"], reverse=True))[:count]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -485,7 +463,7 @@ which introduces the other four and is the right place to start reading.
   texts.json        Every selected Text: paragraphs, phrases, words, and each word's morphemes,
                      carried over from FieldWorks' own FLExText structure.
   parse-results.json   One record per Selection word: whether PanGloss accepted it (its outcome),
-                     how long that took, and -- for words chosen for closer study -- the
+                     and -- for words chosen for closer study -- the
                      parser's own derivation trace.
   handoff.md        Orientation for all four of the above; read it first.
 
@@ -503,7 +481,6 @@ _EPILOG = """\
 examples:
   python read_results.py outcome capped
   python read_results.py word mirusi
-  python read_results.py slowest 10
   python read_results.py trace mirusi
   python read_results.py text example-00000000-0000-0000-0000-000000000001
   python read_results.py words example-00000000-0000-0000-0000-000000000001
@@ -536,10 +513,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "word", help="Show one parse-results.json word's own record by its surface form.")
     word.add_argument("word")
 
-    slowest = subcommands.add_parser(
-        "slowest", help="Show the N parse-results.json words with the most parserWork (then by elapsedMs).")
-    slowest.add_argument("n", type=int)
-
     trace = subcommands.add_parser(
         "trace",
         help="Show a traced word's derived summary, or its verbatim tree with --tree.")
@@ -571,10 +544,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "word":
         _print_json(word_records(load_assessment(args.assessment), args.word))
-        return 0
-
-    if args.command == "slowest":
-        _print_json(slowest_words(load_assessment(args.assessment), args.n))
         return 0
 
     if args.command == "trace":
