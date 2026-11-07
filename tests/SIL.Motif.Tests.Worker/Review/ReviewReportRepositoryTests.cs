@@ -68,6 +68,35 @@ public sealed class ReviewReportRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task DecidedTrialReleasesBeforeAndLedgerAfterPublication()
+    {
+        var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(),
+            proposalId = _proposal.Value, operations = Array.Empty<object>() });
+        var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [], []);
+        var reference = ReviewInputArtifacts.Store(_database, new ReviewInputArtifact(inputs, new Dictionary<string, byte[]>())
+        {
+            Baseline = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-11-07T00:00:00Z", "sha256:" + new string('b', 64))
+        });
+        var before = TrialReviewEvidence.StoreBefore(_database, []);
+        var input = new TrialJobInput(proposalJson, null, Words: ["word"], ReviewInputs: reference, ReviewBeforePartial: before);
+        var jobs = new JobRepository(_database);
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        jobs.Create("trial", "project", "trial", JsonSerializer.Serialize(input, SIL.Motif.Contract.MotifJson.CreateOptions()), now);
+        var claim = new JobClaims(_database).Claim("project", "owner", now, TimeSpan.FromMinutes(5))!;
+        TrialReviewEvidence.Save(_database, new TrialReviewLedger("trial", reference, [], [], []));
+        new ProposalRepository(_database).SetStatus(_proposal, "rejected", null);
+        new AssessmentRepository(_database).RecordBatchForClaim([], claim.JobId, claim.ClaimToken!, "{}");
+        ReviewInputArtifacts.Sweep(_database);
+        Assert.Single(Directory.GetFiles(_database.FullPath + ".review-before", "*.json"));
+        Assert.Single(Directory.GetFiles(_database.FullPath + ".review-evidence", "*.json"));
+        await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest("trial"));
+        jobs.DeleteArchived("trial");
+        Assert.Empty(Directory.GetFiles(_database.FullPath + ".review-before", "*.json"));
+        Assert.Empty(Directory.GetFiles(_database.FullPath + ".review-evidence", "*.json"));
+    }
+
+    [Fact]
     public async Task RetainedReportProtectsInputsEvenWhenItsTrialRowIsMissing()
     {
         var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [], []);

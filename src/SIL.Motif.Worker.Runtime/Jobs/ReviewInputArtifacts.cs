@@ -68,11 +68,13 @@ public static class ReviewInputArtifacts
     internal static void SweepUnderLease(MotifDatabase database)
     {
         var directory = Path.GetFullPath(database.FullPath) + ".review-inputs";
-        if (!Directory.Exists(directory) || (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) return;
+        if (Directory.Exists(directory) && (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) return;
         var retained = new HashSet<string>(StringComparer.Ordinal);
         var protectedJobs = new HashSet<string>(StringComparer.Ordinal);
         var publishedJobs = new HashSet<string>(StringComparer.Ordinal);
         var seenJobs = new HashSet<string>(StringComparer.Ordinal);
+        var before = new HashSet<string>(StringComparer.Ordinal);
+        var ledgers = new HashSet<string>(StringComparer.Ordinal);
         using var connection = database.OpenConnection();
         using (var exists = connection.CreateCommand())
         {
@@ -116,10 +118,17 @@ public static class ReviewInputArtifacts
                 var active = !JobStateMachine.IsTerminal(JobStatusJson.Parse(reader.GetString(1)));
                 if (active || !publishedJobs.Contains(reader.GetString(0)) || protectedJobs.Contains(reader.GetString(0)) ||
                     statuses.TryGetValue(proposalId, out var status) && ProposalDifferenceRetention.KeepsWordDetail(status))
+                {
                     retained.Add(reference.Sha256);
+                    if (input.ReviewBeforePartial is { } partial) before.Add(partial);
+                    ledgers.Add(Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(reader.GetString(0)))));
+                }
             }
         }
         if (protectedJobs.Except(seenJobs, StringComparer.Ordinal).Any()) return;
+        SweepSidecars(Path.GetFullPath(database.FullPath) + ".review-before", before);
+        SweepSidecars(Path.GetFullPath(database.FullPath) + ".review-evidence", ledgers);
+        if (!Directory.Exists(directory)) return;
         foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
         {
             var digest = Path.GetFileNameWithoutExtension(path);
@@ -130,6 +139,16 @@ public static class ReviewInputArtifacts
             var parts = Path.GetFileName(path).Split('.');
             if (parts.Length == 3 && parts[0].Length == 64 && parts[0].All(Uri.IsHexDigit) &&
                 Guid.TryParseExact(parts[1], "N", out _)) File.Delete(path);
+        }
+    }
+
+    private static void SweepSidecars(string directory, HashSet<string> retained)
+    {
+        if (!Directory.Exists(directory) || (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) return;
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
+        {
+            var key = Path.GetFileNameWithoutExtension(path);
+            if (key.Length == 64 && key.All(Uri.IsHexDigit) && !retained.Contains(key)) File.Delete(path);
         }
     }
 
