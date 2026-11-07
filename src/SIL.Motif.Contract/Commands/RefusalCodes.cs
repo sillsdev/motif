@@ -235,6 +235,8 @@ public static class RefusalCodes
     public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
     /// <summary>The Trial's frozen review inputs could not be captured or read.</summary>
     public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
+    /// <summary>The exact inputs needed for a report-bound diagnostic trace are unavailable.</summary>
+    public const string TrialTraceUnavailable = "trial.trace-unavailable";
     /// <summary>The Proposal or its Draft was discarded, deleted or finalized while its Trial was being queued.</summary>
     public const string TrialProposalGone = "trial.proposal-gone";
     /// <summary>A Motif update is being installed, so no Trial can be queued until it finishes.</summary>

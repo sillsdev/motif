@@ -80,7 +80,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var dryRun = ReadDryRun(job.JobId, job.DryRunJson, IntentDigest.Compute(proposal));
         var pins = new ReportPins(inputs.ProjectKey, inputs.ProposalId, null, IntentDigest.Compute(proposal), input.ReviewRevision,
             (input.Prerequisites ?? []).Select(item => new PrerequisitePin(item.ProposalId, item.IntentDigest)).ToArray(),
-            job.JobId, baseline, new CandidatePin(job.JobId, null, null), dryRun?.Pin, checkpoints, inputs.Sets.Count,
+            job.JobId, baseline, new CandidatePin(job.JobId, ledger.CandidateFileDigest, null), dryRun?.Pin, checkpoints, inputs.Sets.Count,
             Digest(inputs.Sets), Digest(inputs.Cases.Select(item => item.Assertions)), new WarningCheckPins(null, null),
             parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, "review-v1");
         var summary = BuildSummary(facts, inputs, ledger, overlappingLosses.Count, negativeSets.Order(StringComparer.Ordinal).ToArray(), hasWarnings);
@@ -117,7 +117,8 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             limitations, DetailAvailability.Available, [], null, null, null, []);
         var estimate = Math.Min(100_000_001L, checked((long)manifestBytes.Length * 12 + (long)inputs.Cases.Count * 20_000 + 100_000));
         var references = (input.BaselineAssessmentIds ?? []).Concat(input.ReviewBaselines?.SelectMany(part => part.AssessmentIds) ?? [])
-            .Concat(AfterAssessments(job.ResultJson)).Concat(parsimony?.Pins.SelectMany(pair => new[] { pair.BeforeReportId, pair.AfterReportId }).OfType<string>() ?? [])
+            .Concat(AfterAssessments(job.ResultJson)).Concat(["sha256:" + reference.Sha256])
+            .Concat(parsimony?.Pins.SelectMany(pair => new[] { pair.BeforeReportId, pair.AfterReportId }).OfType<string>() ?? [])
             .Distinct(StringComparer.Ordinal).ToArray();
         var warningRows = hasWarnings ? WarningRows(ledger.BeforeWarnings!, ledger.AfterWarnings!) : null;
         var sections = new List<string> { "evidence" };

@@ -38,6 +38,8 @@ public sealed record TrialReviewLedger(string JobId, ReviewInputReference Inputs
     public IReadOnlyList<GrammarWarning>? BeforeWarnings { get; init; }
     /// <summary>Candidate diagnostics paired with the retained Baseline diagnostics.</summary>
     public IReadOnlyList<GrammarWarning>? AfterWarnings { get; init; }
+    /// <summary>The saved candidate file's exact bytes used for diagnostic trace binding.</summary>
+    public string? CandidateFileDigest { get; init; }
 }
 
 /// <summary>Persists a Trial's attributed evidence independently of its terminal status.</summary>

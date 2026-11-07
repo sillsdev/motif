@@ -229,6 +229,13 @@ internal sealed class TrialJobHandler
             Ledger = Ledger with { BeforeWarnings = before.Findings.ToArray(), AfterWarnings = after.Findings.ToArray() };
             Save();
         }
+        public void BindCandidate(string path)
+        {
+            if (!File.Exists(path)) return;
+            using var stream = File.OpenRead(path);
+            Ledger = Ledger with { CandidateFileDigest = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(stream)) };
+            Save();
+        }
         public void Interrupt(string code)
         {
             Ledger = TrialReviewEvidence.Interrupt(Ledger, Inputs, "after", code);
@@ -288,6 +295,7 @@ internal sealed class TrialJobHandler
                 scopeConfiguration, words, input.AllWords, input.Limits, baseline.FwDataPath,
                 scratchRoot, reviewArtifact is null ? null : ReviewInputPartitions.Create(reviewArtifact.Inputs),
                 cancellationToken).ConfigureAwait(false);
+            review?.BindCandidate(candidate.GrammarPath);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

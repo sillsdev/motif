@@ -165,8 +165,11 @@ internal static class ReviewTrialCapture
                 if (!applied.ReviewDecisions.SequenceEqual(appliedAfter.ReviewDecisions) ||
                     !applied.Unreadable.SequenceEqual(appliedAfter.Unreadable))
                     throw new InvalidOperationException("Applied source decisions changed during review capture.");
+                using var baselineBytes = File.OpenRead(evidence.Baseline.FwDataPath);
+                var baselineFileDigest = "sha256:" + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(baselineBytes));
                 var reference = ReviewInputArtifacts.Store(database, new ReviewInputArtifact(inputs, sources)
-                    { Baseline = evidence.Baseline.Token, Scope = scope });
+                    { Baseline = evidence.Baseline.Token, Scope = scope, Limits = limits, BaselineFile = evidence.Baseline.FwDataPath,
+                        BaselineFileDigest = baselineFileDigest });
                 return CommandOutcome<EnqueueTrialRequest>.Success(request with
                 {
                     Words = inputs.Cases.Select(item => item.Word).Distinct(StringComparer.Ordinal).ToArray(),

@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Config;
@@ -22,6 +23,12 @@ public sealed record ReviewInputArtifact(FrozenReviewInputs Inputs, IReadOnlyDic
     public BaselineToken? Baseline { get; init; }
     /// <summary>The captured Assessment scope used for the candidate.</summary>
     public AssessmentScopeConfiguration? Scope { get; init; }
+    /// <summary>The Trial limits captured for an exact diagnostic rerun.</summary>
+    public TrialLimits? Limits { get; init; }
+    /// <summary>The retained Baseline file and its bytes at capture, when available for a diagnostic trace.</summary>
+    public string? BaselineFile { get; init; }
+    /// <summary>The SHA-256 of the captured Baseline file.</summary>
+    public string? BaselineFileDigest { get; init; }
 }
 
 /// <summary>Stores and verifies a Trial's immutable review input artifact.</summary>

@@ -49,6 +49,16 @@ public static class TrialReviewTextRenderer
             if (page.NextCursor is not null) text.AppendLine("Next cursor: " + page.NextCursor);
         }
         if (report.Word is { } word) text.AppendLine(Row(word.Row));
+        if (report.Trace is { } trace)
+        {
+            text.AppendLine($"Trace {trace.TraceId} ({trace.Side}, {trace.Origin}, {trace.Completion})");
+            foreach (var node in trace.Nodes)
+                text.AppendLine($"  {node.Id}: {node.Label}" + (node.ReasonCode is null ? "" : $" — {node.ReasonCode}"));
+            if (trace.NextCursor is not null) text.AppendLine("Next cursor: " + trace.NextCursor);
+            if (!trace.CaptureComplete) text.AppendLine("Trace capture was truncated: " + trace.TruncationReason);
+            if (trace.ReadingAgreement == ReadingAgreement.Different)
+                text.AppendLine("The diagnostic readings differ from the saved Trial evidence.");
+        }
         return text.ToString();
     }
 

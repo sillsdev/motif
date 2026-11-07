@@ -25,6 +25,21 @@ public sealed class TrialReviewRenderingTests
         Assert.True(text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length <= 24);
     }
 
+    [Fact]
+    public void ExplicitTraceShowsNodesAndContinuationWithoutRawCost()
+    {
+        var report = (ReportView)Create(typeof(ReportView));
+        var trace = new TracePage("trace", "report", "case", Side.After, TraceOrigin.DiagnosticRerun,
+            "parser", "grammar", "scope", "schema", "complete", false, "capture-limit", ReadingAgreement.Different,
+            [new TraceNode("1", null, "rule", "A rule", "reason", [], null)], "next", []);
+        var text = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with { Trace = trace }));
+        Assert.Contains("A rule", text, StringComparison.Ordinal);
+        Assert.Contains("Next cursor: next", text, StringComparison.Ordinal);
+        Assert.Contains("truncated", text, StringComparison.Ordinal);
+        Assert.Contains("differ", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("elapsed", text, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static object Create(Type type)
     {
         if (type == typeof(BaselineToken)) return new BaselineToken("project", "sha256:" + new string('a', 64), "v1",

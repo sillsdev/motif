@@ -20,7 +20,17 @@ public sealed class TrialReviewCommands(MotifDatabase database)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Validate() is { } problem) return Invalid(problem);
-        if (request.Trace) return Invalid("Trace requires the explicit trace command.");
+        if (request.Trace)
+        {
+            var read = Read(request with { Trace = false, Side = null, Cursor = null });
+            if (!read.Succeeded) return read;
+            if (read.Value is not AvailableTrialResult { Report.Word: { } word } available) return read;
+            var trace = new ReviewTraceCommands(_database).Produce(new ReviewTraceRequest(request.ProjectKey,
+                new ReviewReportId(available.Report.ReportId), word.Row.CaseKey, request.EffectiveSide!.Value,
+                request.Cursor, request.Limit ?? 50));
+            return trace.Succeeded ? CommandOutcome<TrialReviewResult>.Success(new AvailableTrialResult(
+                available.Report with { Trace = trace.Value })) : CommandOutcome<TrialReviewResult>.Refused(trace.Refusal!);
+        }
         if (request.ReportId?.StartsWith("legacy/", StringComparison.Ordinal) == true)
         {
             var legacyJob = SelectJob(request.ProjectKey, request.ProposalId, request.ReportId[7..]);

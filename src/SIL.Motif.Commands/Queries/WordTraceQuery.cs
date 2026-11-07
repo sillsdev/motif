@@ -19,6 +19,24 @@ namespace SIL.Motif.Commands.Queries;
 /// <summary>Runs a live trace or loads a saved trace without requiring a parser for the latter.</summary>
 public static class WordTraceQuery
 {
+    /// <summary>Traces one word against an already verified, explicitly named grammar and parser.</summary>
+    public static CommandOutcome<WordTraceResponse> QueryExact(string grammarPath, string word, string parserPath,
+        CancellationToken cancellationToken = default, SIL.Motif.Contract.Assess.ParserWorkLimit? workLimit = null,
+        TimeSpan? timeout = null)
+    {
+        using var invoker = new PanGlossInvoker(parserPath);
+        return QueryExact(grammarPath, word, new PanGlossTracer(invoker, workLimit), cancellationToken, timeout);
+    }
+
+    internal static CommandOutcome<WordTraceResponse> QueryExact(string grammarPath, string word, IPanGlossTracer tracer,
+        CancellationToken cancellationToken, TimeSpan? timeout = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(grammarPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(word);
+        var outcome = tracer.TraceAsync(grammarPath, word, cancellationToken, timeout).GetAwaiter().GetResult();
+        return Shape(outcome, new WordTraceRequest(grammarPath, word), 0);
+    }
+
     public static CommandOutcome<WordTraceResponse> LoadDiagnostic(string json, int elapsedMs = 0, TraceHostCapture? current = null) =>
         WordTraceDiagnosticReader.Read(json, elapsedMs, current);
 

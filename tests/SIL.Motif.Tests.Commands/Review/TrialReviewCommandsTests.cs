@@ -377,6 +377,21 @@ public sealed class TrialReviewCommandsTests : IDisposable
             JsonSerializer.Serialize(repository.ReadManifest(firstId)!.Summary, ReviewJson.Options));
     }
 
+    [Fact]
+    public async Task TraceWithoutPinnedParserDoesNotUseTheCurrentParserOrChangeTheReport()
+    {
+        CreateInterrupted();
+        var id = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var repository = new ReviewReportRepository(_database);
+        var before = JsonSerializer.Serialize(repository.ReadManifest(id)!.Summary, ReviewJson.Options);
+        var command = new ReviewTraceCommands(_database);
+        var trace = command.Produce(new ReviewTraceRequest("project", id, "case", Side.After));
+        Assert.False(trace.Succeeded);
+        Assert.Equal(RefusalCodes.TrialTraceUnavailable, trace.Refusal!.Code);
+        Assert.Contains("pin", trace.Refusal.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(before, JsonSerializer.Serialize(repository.ReadManifest(id)!.Summary, ReviewJson.Options));
+    }
+
     private void CreateInterrupted(IReadOnlyList<FrozenProposalRevision>? prerequisites = null, ParseAnalysis? analysis = null,
         bool configured = false)
     {
