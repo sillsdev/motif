@@ -95,15 +95,22 @@ public sealed class ReviewInputCaptureTests
     [Fact]
     public async Task NamedMembershipDoesNotHideAmbiguousTouchedWord()
     {
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
         var identities = new[]
         {
-            new ReviewProjectWordIdentity("cat", "qaa", "qaa", "first", "first-key"),
-            new ReviewProjectWordIdentity("cat", "qab", "qab", "second", "second-key"),
+            new ReviewProjectWordIdentity("cat", "qaa", "qaa", SIL.Motif.Contract.Ids.CanonicalId.FromGuid(first).Value, "first-key"),
+            new ReviewProjectWordIdentity("cat", "qab", "qab", SIL.Motif.Contract.Ids.CanonicalId.FromGuid(second).Value, "second-key"),
         };
+        ReviewAssertion Approved(string id, Guid wordform) => new(id, id,
+            new ApprovedMorphology([]) { SourceWordformGuid = wordform.ToString("D") },
+            ReferenceAuthority.Human, "person", "revision", true, false, true, []);
         var result = await ReviewInputCapture.CaptureAsync("project", "proposal", null,
             [Set("a", "reference", Member("one", "cat") with { WritingSystemId = "qac" })], null,
-            ["cat"], identities, [], []);
+            ["cat"], identities, [Approved("first", first), Approved("second", second)], []);
         Assert.Equal(new[] { "qaa", "qab", "qac" }, result.Cases.Select(item => item.WritingSystemId).Order().ToArray());
+        Assert.Equal("first", Assert.Single(Assert.Single(result.Cases, item => item.WordKey == "first-key").Assertions).Id);
+        Assert.Equal("second", Assert.Single(Assert.Single(result.Cases, item => item.WordKey == "second-key").Assertions).Id);
     }
 
     [Fact]
