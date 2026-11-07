@@ -21,6 +21,8 @@ public static class ReviewCaseClassifier
         var limitations = new List<string>();
         if (!before.Complete) limitations.Add("before-incomplete");
         if (!after.Complete) limitations.Add("after-incomplete");
+        if (facts.Assertions.Any(item => item.WholeWordNegative && item.Context is not null && !item.Eligible))
+            limitations.Add("negative-context-unavailable");
 
         var losses = new Dictionary<string, (bool Approved, bool Reference, HashSet<string> Ids)>(StringComparer.Ordinal);
         foreach (var assertion in facts.Assertions.Where(a => a.Eligible && !a.WholeWordNegative))
@@ -93,6 +95,8 @@ public static class ReviewCaseClassifier
         var matched = new List<string>();
         var missing = new List<string>();
         var unknown = new List<string>();
+        unknown.AddRange(assertions.Where(a => a.WholeWordNegative && a.Context is not null && !a.Eligible)
+            .Select(a => a.Id));
         foreach (var assertion in assertions.Where(a => a.Eligible && !a.WholeWordNegative))
         {
             if (assertion.Morphology is null || !Exact(assertion.Morphology)) { unknown.Add(assertion.Id); continue; }

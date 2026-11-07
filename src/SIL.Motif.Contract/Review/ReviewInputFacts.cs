@@ -6,7 +6,11 @@ namespace SIL.Motif.Contract.Review;
 public sealed record ReviewAssertion(
     string Id, string ReadingIdentity, ApprovedMorphology? Morphology, ReferenceAuthority Authority,
     string ActorId, string RevisionId, bool Approved, bool WholeWordNegative, bool Eligible,
-    IReadOnlyList<string> SourceRefs);
+    IReadOnlyList<string> SourceRefs)
+{
+    /// <summary>The recorded context of a surface-negative assertion, when present.</summary>
+    public string? Context { get; init; }
+}
 
 /// <summary>A frozen membership of a word in a project-named review set.</summary>
 public sealed record ReviewMembership(

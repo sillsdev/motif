@@ -78,6 +78,57 @@ public sealed class ReviewInputCaptureTests
     }
 
     [Fact]
+    public async Task TouchedWordKeepsApprovedAssertionsWhenNamedMembershipHasNoReferences()
+    {
+        var wordform = Guid.NewGuid();
+        var wordformId = SIL.Motif.Contract.Ids.CanonicalId.FromGuid(wordform).Value;
+        var morphology = new ApprovedMorphology([]) { SourceWordformGuid = wordform.ToString("D") };
+        var assertion = new ReviewAssertion("approved", "reading", morphology, ReferenceAuthority.Human,
+            "person", "revision", true, false, true, []);
+        var identity = new ReviewProjectWordIdentity("cat", "qaa", "qaa", wordformId, "word-key");
+        var member = Member("one", "cat") with { WordformId = wordformId };
+        var result = await ReviewInputCapture.CaptureAsync("project", "proposal", null,
+            [Set("a", "reference", member)], null, ["cat"], [identity], [assertion], []);
+        Assert.Equal("approved", Assert.Single(Assert.Single(result.Cases).Assertions).Id);
+    }
+
+    [Fact]
+    public async Task NamedMembershipDoesNotHideAmbiguousTouchedWord()
+    {
+        var identities = new[]
+        {
+            new ReviewProjectWordIdentity("cat", "qaa", "qaa", "first", "first-key"),
+            new ReviewProjectWordIdentity("cat", "qab", "qab", "second", "second-key"),
+        };
+        var result = await ReviewInputCapture.CaptureAsync("project", "proposal", null,
+            [Set("a", "reference", Member("one", "cat") with { WritingSystemId = "qac" })], null,
+            ["cat"], identities, [], []);
+        Assert.Equal(new[] { "qaa", "qab", "qac" }, result.Cases.Select(item => item.WritingSystemId).Order().ToArray());
+    }
+
+    [Fact]
+    public async Task ContextualNegativesRemainDistinctAndUnavailableToAnUnqualifiedParse()
+    {
+        var member = Member("one", "cat") with { ExpectationRefs = ["n1", "n2"] };
+        var first = new ReviewAssertion("n1", "", null, ReferenceAuthority.Human,
+            "person", "revision", false, true, true, []);
+        var second = first with { Id = "n2" };
+        var captured = await ReviewInputCapture.CaptureAsync("project", "proposal", null,
+            [Set("a", "negative", member)], null, [], [], [],
+            [new("one", "cat", "qaa", "before", null, first),
+             new("one", "cat", "qaa", "after", null, second)]);
+        var assertions = Assert.Single(captured.Cases).Assertions;
+        Assert.Equal(new[] { "before", "after" }, assertions.Select(item => item.Context).ToArray());
+        Assert.All(assertions, item => Assert.False(item.Eligible));
+        var result = SIL.Motif.Worker.Runtime.Review.ReviewCaseClassifier.Compare(new(
+            "case", "word", "cat", "qaa", null, null, assertions, Assert.Single(captured.Cases).Memberships)
+            { IdentityAvailable = true });
+        Assert.Contains("negative-context-unavailable", result.Limitations);
+        Assert.Equal(new[] { "n1", "n2" }, result.Before.UnknownExpectationIds);
+        Assert.False(result.NewlyAcceptedNegative);
+    }
+
+    [Fact]
     public async Task TouchedSpellingInMultipleWritingSystemsKeepsEveryIdentity()
     {
         var identities = new[] { new ReviewProjectWordIdentity("cat", "qaa", "qaa", "wordform/a", "key/a"),
