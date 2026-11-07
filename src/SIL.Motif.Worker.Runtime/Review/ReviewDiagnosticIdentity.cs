@@ -19,7 +19,9 @@ public static class ReviewDiagnosticIdentity
         foreach (var part in warning.Subject ?? [])
         {
             if (part is null) { unresolved = true; continue; }
-            if (part.Role == GrammarWarningPartRole.Value) { unresolved = true; continue; }
+            if (part.Role == GrammarWarningPartRole.Value ||
+                (part.Role == GrammarWarningPartRole.Text && part.Status == GrammarSubjectStatus.Object))
+            { unresolved = true; continue; }
             if (part.Role is not (GrammarWarningPartRole.Object or GrammarWarningPartRole.Missing)) continue;
             var id = new[] { part.SubjectGuid, part.FieldWorksGuid, part.ObjectId }
                 .Select(value => Guid.TryParse(value, out var guid) ? guid : Guid.Empty)

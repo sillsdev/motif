@@ -1,4 +1,6 @@
 using SIL.Motif.Contract.Review;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Tests.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Worker.Runtime.Review;
 using Xunit;
@@ -27,6 +29,23 @@ public sealed class ReviewFindingComparisonTests
         Assert.Equal(first, second);
         var unresolved = warning with { Subject = [subject with { SubjectGuid = null }] };
         Assert.False(ReviewDiagnosticIdentity.TryCreate(ReviewDiagnosticIdentity.FromGrammarWarning(unresolved), out _));
+    }
+
+    [Fact]
+    public void ReaderObjectsWithoutIdentityCannotCreateWarningDifferences()
+    {
+        ReviewDiagnostic Read(string title) => ReviewDiagnosticIdentity.FromGrammarWarning(Assert.Single(
+            GrammarHealthReportReader.ReadResponse(GrammarHealthReports.With(("code", [new("entry", title)]))).Findings));
+        var first = Read("first");
+        var second = Read("second");
+        Assert.Null(first.SubjectIds);
+        var changed = ReviewFindingComparison.Compare(Inputs([first], [second]));
+        Assert.NotEmpty(changed.Limitations);
+        Assert.Empty(changed.AddedWarnings);
+        Assert.Empty(changed.RemovedWarnings);
+        var added = ReviewFindingComparison.Compare(Inputs([], [second]));
+        Assert.NotEmpty(added.Limitations);
+        Assert.Empty(added.AddedWarnings);
     }
 
     [Fact]
