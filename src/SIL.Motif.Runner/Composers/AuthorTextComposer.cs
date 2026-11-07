@@ -56,11 +56,11 @@ public static class AuthorTextComposer
         var parsed = new List<IStTxtPara>();
         NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
         {
-            var text = scratch.ServiceLocator.GetInstance<ITextFactory>().Create();
-            text.ContentsOA = scratch.ServiceLocator.GetInstance<IStTextFactory>().Create();
             // Fresh paragraphs bind against the complete inventory that the Proposal creates before the Text.
             for (var pass = 0; pass < 2; pass++)
             {
+                var text = scratch.ServiceLocator.GetInstance<ITextFactory>().Create();
+                text.ContentsOA = scratch.ServiceLocator.GetInstance<IStTextFactory>().Create();
                 foreach (var paragraph in intent.Paragraphs)
                 {
                     var para = scratch.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
