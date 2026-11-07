@@ -10,6 +10,7 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Analysis;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
+using ReviewWordRow = SIL.Motif.Contract.Review.WordRow;
 
 namespace SIL.Motif.Worker.Runtime.Review;
 
@@ -53,6 +54,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         var work = TrialReviewWork.Read(_database, input, job.ResultJson, inputs, baseline, ledger);
         if (work is not null) accumulator.SetWork(work);
         var ruleWorkRows = TrialReviewRuleWork.Read(_database, input, job.ResultJson, inputs, work);
+        var wordWorkRows = WordWorkRows(inputs, before, after, work);
         var overlappingLosses = new HashSet<(string Word, string Reading)>();
         var negativeSets = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in Classify(inputs, before, after))
@@ -86,7 +88,8 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, "review-v2");
         var summary = BuildSummary(facts, inputs, ledger, overlappingLosses.Count, negativeSets.Order(StringComparer.Ordinal).ToArray(), hasWarnings);
         summary = summary with { SectionCounts = summary.SectionCounts.Select(section => section.Section == "parser-work"
-            ? new SectionCount("parser-work", ruleWorkRows?.Count, "rows", ruleWorkRows?.Count) : section).ToArray() };
+            ? new SectionCount("parser-work", wordWorkRows is null ? null : wordWorkRows.Count + (ruleWorkRows?.Count ?? 0), "rows",
+                wordWorkRows is null ? null : wordWorkRows.Count + (ruleWorkRows?.Count ?? 0)) : section).ToArray() };
         if (dryRun is not null) summary = summary with { Effects = new EffectsSummary(dryRun.Value.Count, true) };
         var limitations = facts.Limitations.Select(code => new Limitation(code,
             code == "negative-context-unavailable" ? ["negative-controls"] :
@@ -136,17 +139,45 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             .Distinct(StringComparer.Ordinal).ToArray();
         var warningRows = hasWarnings ? WarningRows(ledger.BeforeWarnings!, ledger.AfterWarnings!) : null;
         var sections = new List<string> { "evidence" };
-        if (ruleWorkRows is not null) sections.Add("parser-work");
+        if (wordWorkRows is not null || ruleWorkRows is not null) sections.Add("parser-work");
         if (warningRows is not null) sections.Add("warnings");
         if (parsimony is not null) sections.Add("parsimony");
         var publication = new ReviewReportPublication(inputs.ProjectKey, inputs.ProposalId, job.JobId, digest, report, references, estimate)
         { AvailableSections = sections,
             SectionItems = Sections(SetRows(inputs).Concat(warningRows ?? []).Concat(parsimony?.Rows ?? [])
-                .Concat(ruleWorkRows ?? []).ToArray(), ct) };
+                .Concat(wordWorkRows ?? []).Concat(ruleWorkRows ?? []).ToArray(), ct) };
         var id = await new ReviewReportRepository(_database).PublishAsync(publication,
             Cases(inputs, before, after, ct), ct).ConfigureAwait(false);
         TrialScratchRetention.TrySweepReviewInputs(_database);
         return id;
+    }
+
+    private static IReadOnlyList<ReviewSectionItem>? WordWorkRows(FrozenReviewInputs inputs,
+        IReadOnlyDictionary<string, TrialReviewObservation> before, IReadOnlyDictionary<string, TrialReviewObservation> after,
+        ReviewWorkInputs? work)
+    {
+        if (work is null) return null;
+        var cases = inputs.Cases.ToDictionary(item => item.CaseKey, StringComparer.Ordinal);
+        var old = work.Before.ToDictionary(item => item.CaseKey, StringComparer.Ordinal);
+        var current = work.After.ToDictionary(item => item.CaseKey, StringComparer.Ordinal);
+        WordSide Side(TrialReviewObservation? observation) => new(observation?.Completion ?? Completion.NotMeasured,
+            observation?.StopReasons ?? [], observation?.Morphology?.Analyses.Count, null, null, null, null, null, null, null, null);
+        return work.RequiredCases.Select(key =>
+        {
+            var item = cases[key];
+            var matchingCases = inputs.Cases.Where(candidate => candidate.WritingSystemId == item.WritingSystemId && candidate.Word == item.Word).ToArray();
+            var memberships = matchingCases.SelectMany(candidate => candidate.Memberships).ToArray();
+            before.TryGetValue(key, out var b);
+            after.TryGetValue(key, out var a);
+            var comparison = ReviewWorkComparison.Compare(work with { RequiredCases = [key],
+                Before = old.TryGetValue(key, out var one) ? [one] : [],
+                After = current.TryGetValue(key, out var two) ? [two] : [] });
+            var row = new ReviewWordRow(key, item.WordKey, item.Word, item.WritingSystemId, Side(b), Side(a), [], [],
+                memberships.Select(member => member.SetId).Distinct(StringComparer.Ordinal).ToArray(),
+                memberships.Length, matchingCases.Sum(candidate => candidate.Assertions.Count), comparison, Attribution.NotAttributed, []);
+            return new ReviewSectionItem("parser-work", row, Changed: comparison.PercentChange is not null and not 0);
+        }).OrderByDescending(item => ((ReviewWordRow)item.Row).Work.PercentChange ?? double.NegativeInfinity)
+            .ThenBy(item => ((ReviewWordRow)item.Row).CaseKey, StringComparer.Ordinal).ToArray();
     }
 
     private static (DryRunPin Pin, int Count)? ReadDryRun(string job, string? json, string intent)

@@ -389,6 +389,10 @@ public sealed record ExpectationRow(
     [JsonRequired]
     public string RowKind { get; init; } = "expectation";
 
+    /// <summary>The context of a contextual assertion, when captured.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Context { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

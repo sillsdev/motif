@@ -94,13 +94,14 @@ public static class TrialReviewTextRenderer
     {
         RuleWorkRow rule => rule.Name + ": " + (rule.PercentChange is { } percent
             ? percent.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) + "%" : rule.Status),
-        WordRow word => word.Word + " (" + word.CaseKey + ")",
+        WordRow word => word.Word + " (" + word.CaseKey + ")" +
+            (word.Work.PercentChange is { } change ? " " + change.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) + "%" : ""),
         ReadingRow reading => $"{reading.Side} reading {reading.IdentityDigest} ({reading.IdentityState}): " +
             string.Join("; ", reading.Morphs.Select(morph => $"{morph.Form} [{morph.FormId}, {morph.MsaId}] {morph.Gloss}")) +
             " expectations: " + string.Join(", ", reading.ExpectationIds) + " sources: " + string.Join(", ", reading.SourceRefs),
         ExpectationRow expectation => $"{expectation.Id} ({expectation.Assertion}, {expectation.Reference}; " +
             $"{expectation.ActorId}, {expectation.RevisionId}): {expectation.Before} before; {expectation.After} after; " +
-            "reading " + expectation.ReadingIdentityDigest + "; sources: " + string.Join(", ", expectation.SourceRefs),
+            "reading " + expectation.ReadingIdentityDigest + "; context: " + expectation.Context + "; sources: " + string.Join(", ", expectation.SourceRefs),
         SourceRow source => $"{source.Id}: {source.Citation} {source.Locator} {source.Excerpt} ({source.ActorId})",
         DiagnosticRow warning => warning.Code + ": " + warning.Description,
         FindingRow finding => finding.MeasureId + ": " + finding.FindingId,

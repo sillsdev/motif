@@ -364,7 +364,7 @@ public sealed partial class ReviewReportRepository
         const string source = " FROM ReviewReportEvents WHERE ReportId=$report AND CaseKey=$case AND Ordinal>=0";
         var total = Count(connection, transaction, "SELECT COUNT(*)" + source, args);
         var filter = "";
-        if (request.Set is not null) { filter += " AND json_extract(FactsJson,'$.set') IN (SELECT value FROM json_each($set))"; args.Add(("$set", SelectorValues(request.Set))); }
+        if (request.Set is not null) { filter += " AND (json_extract(FactsJson,'$.set') IN (SELECT value FROM json_each($set)) OR EXISTS (SELECT 1 FROM json_each(FactsJson,'$.sets') WHERE value IN (SELECT value FROM json_each($set))))"; args.Add(("$set", SelectorValues(request.Set))); }
         if (request.Outcome is not null)
         {
             var prefix = request.Section == "warnings" ? "warning/" : request.Section == "parsimony" ? "parsimony/" : null;
@@ -732,7 +732,8 @@ public sealed partial class ReviewReportRepository
                 "no-parse" => "(json_extract(c.FactsJson,'$.after.completion')='complete' AND json_extract(c.FactsJson,'$.after.parsed')=0)",
                 "new-no-parse" => "json_extract(c.FactsJson,'$.newNoParse')=1",
                 "approved-reading-lost" => "json_extract(c.FactsJson,'$.newApprovedLoss')=1",
-                "reference-reading-lost" => "EXISTS (SELECT 1 FROM ReviewReportEvents e WHERE e.ReportId=c.ReportId AND e.CaseKey=c.CaseKey AND json_extract(e.FactsJson,'$.referenceConfirmed')=1)",
+                "reference-reading-lost" => "EXISTS (SELECT 1 FROM ReviewReportEvents e WHERE e.ReportId=c.ReportId AND e.CaseKey=c.CaseKey AND json_extract(e.FactsJson,'$.referenceConfirmed')=1" +
+                    (request.Set is null ? "" : " AND EXISTS (SELECT 1 FROM ReviewReportMemberships m, json_each(m.FactsJson,'$.expectationIds') mi, json_each(e.FactsJson,'$.assertionIds') ei WHERE m.ReportId=c.ReportId AND m.CaseKey=c.CaseKey AND m.SetId IN (SELECT value FROM json_each($set)) AND m.Role IN ('reference','regression') AND mi.value=ei.value)") + ")",
                 "negative-now-parsing" => "json_extract(c.FactsJson,'$.newlyAcceptedNegative')=1",
                 "parsed" => "json_extract(c.FactsJson,'$.after.parsed')=1",
                 "unknown" => "json_extract(c.FactsJson,'$.after.parsed') IS NULL",

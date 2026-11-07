@@ -78,6 +78,7 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var page = repository.ReadChildren(new ReviewChildPageRequest("project", id, "expectations", "case"));
         var row = Assert.IsType<ExpectationRow>(Assert.Single(page.Items));
         Assert.Equal("actor", row.ActorId);
+        Assert.Equal("context", row.Context);
         Assert.Equal(ExpectationOutcome.Unknown, row.After);
     }
 

@@ -133,7 +133,8 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
                             assertion.WholeWordNegative ? ExpectationAssertion.WholeWordNegative : ExpectationAssertion.CorrectReading,
                             assertion.Authority, assertion.ActorId, assertion.RevisionId,
                             string.IsNullOrEmpty(assertion.ReadingIdentity) ? null : assertion.ReadingIdentity, assertion.SourceRefs,
-                            ExpectationState(assertion, item.Before), ExpectationState(assertion, item.After));
+                            ExpectationState(assertion, item.Before), ExpectationState(assertion, item.After))
+                        { Context = assertion.Context };
                         if (!AddArtifact("expectation", row)) { available = false; break; }
                     }
                     if (!available) break;
@@ -167,7 +168,8 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
                             throw new InvalidDataException("A section row does not match its captured section.");
                         var digest = ReviewRowArtifacts.Write(_database, reportId, item.Row);
                         var json = JsonSerializer.Serialize(new { kind = "section-row", digest, item.Set, item.Outcome,
-                            Flags = item.Flags ?? [], item.Changed, item.Incomplete, item.Group }, ReviewJson.Options);
+                            Flags = item.Flags ?? [], item.Changed, item.Incomplete, item.Group,
+                            Sets = item.Row is WordRow word ? word.SetIds : [] }, ReviewJson.Options);
                         detailBytes = checked(detailBytes + Cost(json));
                         if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
                         Execute(connection, transaction, "INSERT INTO ReviewReportEvents VALUES ($id,$case,$ordinal,$facts);",

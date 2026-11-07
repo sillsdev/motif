@@ -2735,6 +2735,9 @@
         "severity": {
           "type": "string"
         },
+        "beforeSeverity": {
+          "type": "string"
+        },
         "subjectIds": {
           "type": "array",
           "items": {
@@ -3010,6 +3013,9 @@
             }
           ]
         },
+        "context": {
+          "type": "string"
+        },
         "sourceRefs": {
           "type": "array",
           "items": {
@@ -3274,6 +3280,9 @@
               "type": "null"
             }
           ]
+        },
+        "detailTruncated": {
+          "type": "boolean"
         },
         "objectRefs": {
           "type": "array",

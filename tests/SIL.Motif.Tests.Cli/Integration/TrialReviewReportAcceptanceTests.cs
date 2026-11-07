@@ -89,6 +89,55 @@ public sealed class TrialReviewReportAcceptanceTests
     }
 
     [Fact]
+    public void WorkFailuresSectionIncludesTheMeasuredWordPercentage()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var reportId = fixture.CreateWorkOnlyReport(121);
+        var result = SIL.Motif.Commands.ProjectStoreCommand.Run<SIL.Motif.Contract.Review.TrialReviewResult>(
+            fixture.Project, SIL.Motif.Host.MotifProductVersion.CurrentText, (database, project) =>
+                new SIL.Motif.Commands.Review.TrialReviewCommands(database).Read(new ReviewReadRequest(
+                    fixture.ProjectKey, fixture.Proposal, ReportId: reportId, Section: "parser-work")));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        var report = Assert.IsType<AvailableTrialResult>(result.Value).Report;
+        Assert.Equal(21, report.Summary.ParserWork.PercentChange);
+        var section = Assert.Single(report.Sections);
+        var word = Assert.IsType<WordRow>(Assert.Single(Assert.Single(section.Groups).Samples));
+        Assert.Equal("work", word.Word);
+        Assert.Equal(21, word.Work.PercentChange);
+        Assert.NotEmpty(section.Links);
+    }
+
+    [Fact]
+    public async Task SelectedNegativeSetDoesNotIncludeReferenceLossAtEitherDetailLevel()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var failures = await Read(fixture, "--detail", "failures", "--section", "controls", "--set", "negatives");
+        var full = await Read(fixture, "--detail", "full", "--section", "controls", "--set", "negatives");
+        var section = Assert.Single(failures.GetProperty("sections").EnumerateArray());
+        Assert.Empty(section.GetProperty("groups").EnumerateArray());
+        Assert.Empty(full.GetProperty("page").GetProperty("items").EnumerateArray());
+        Assert.True(JsonElement.DeepEquals(failures.GetProperty("summary"), full.GetProperty("summary")));
+    }
+
+    [Fact]
+    public async Task WordTextShowsTheSameLostApprovedReadingsAsJson()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var json = await Read(fixture, "--word", "approved");
+        var (exit, output, error) = await Run(fixture, false, "--word", "approved");
+        Assert.True(exit == 0, error);
+        var word = json.GetProperty("word");
+        var readings = word.GetProperty("readings").GetProperty("items").EnumerateArray().ToArray();
+        Assert.True(readings.Length >= 3);
+        foreach (var reading in readings)
+            Assert.Contains(reading.GetProperty("identityDigest").GetString()!, output);
+        Assert.Contains("Before:", output);
+        Assert.Contains("After:", output);
+        foreach (var expectation in word.GetProperty("expectations").GetProperty("items").EnumerateArray())
+            Assert.Contains(expectation.GetProperty("id").GetString()!, output);
+    }
+
+    [Fact]
     public async Task SummaryFitsTwentyFourLinesAndStartsWithObservedFlags()
     {
         using var fixture = new ReviewAcceptanceFixture();
