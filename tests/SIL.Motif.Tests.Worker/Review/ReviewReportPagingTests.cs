@@ -66,6 +66,74 @@ public sealed class ReviewReportPagingTests : IDisposable
     }
 
     [Fact]
+    public void SampledPositionQueryWorkGrowsLinearlyForRepeatedPositions()
+    {
+        long Operations(int count)
+        {
+            using var connection = new SqliteConnection("Data Source=:memory:");
+            connection.Open();
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = """
+                    CREATE TABLE ReviewReportCases(ReportId TEXT,CaseKey TEXT,WordKey TEXT,FactsJson TEXT,PRIMARY KEY(ReportId,CaseKey));
+                    CREATE TABLE ReviewReportMemberships(ReportId TEXT,CaseKey TEXT,Ordinal INTEGER,SetId TEXT,Role TEXT,CellId TEXT,VariantId TEXT,FactsJson TEXT,PRIMARY KEY(ReportId,CaseKey,Ordinal));
+                    CREATE INDEX IX_ReviewReportMemberships_Cell ON ReviewReportMemberships(ReportId,Role,SetId,CellId,CaseKey,Ordinal);
+                    INSERT INTO ReviewReportCases VALUES('report','case','key','{}');
+                    """;
+                command.ExecuteNonQuery();
+                command.CommandText = """INSERT INTO ReviewReportMemberships VALUES('report','case',$ordinal,'set','sampled-tokens',NULL,NULL,'{"weight":1}');""";
+                var ordinal = command.Parameters.Add("$ordinal", SqliteType.Integer);
+                for (var i = 0; i < count; i++) { ordinal.Value = i; command.ExecuteNonQuery(); }
+            }
+            long operations = 0;
+            SQLitePCL.delegate_progress progress = _ => { operations++; return 0; };
+            SQLitePCL.raw.sqlite3_progress_handler(connection.Handle, 1, progress, null);
+            using (var query = connection.CreateCommand())
+            {
+                query.CommandText = ReviewReportRepository.SampledPositionQuery("", false);
+                query.Parameters.AddWithValue("$report", "report");
+                query.Parameters.AddWithValue("$case", DBNull.Value);
+                query.Parameters.AddWithValue("$weight", 0);
+                query.Parameters.AddWithValue("$ordinal", -1);
+                query.Parameters.AddWithValue("$limit", 6);
+                using var reader = query.ExecuteReader();
+                var returned = 0;
+                while (reader.Read()) returned++;
+                Assert.Equal(6, returned);
+            }
+            SQLitePCL.raw.sqlite3_progress_handler(connection.Handle, 0, null, null);
+            GC.KeepAlive(progress);
+            return operations;
+        }
+        var small = Operations(200);
+        var medium = Operations(400);
+        var large = Operations(800);
+        Assert.InRange(medium / (double)small, 1.8, 2.2);
+        Assert.InRange(large / (double)medium, 1.8, 2.2);
+    }
+
+    [Fact]
+    public async Task RepeatedSampledPositionsContinueAcrossPagesInWeightOrder()
+    {
+        var heavy = Sample(0, 8) with { Memberships = Enumerable.Range(0, 8)
+            .Select(i => new ReviewMembership("set", "heavy-" + i, "sampled-tokens", 100, null, null, [])).ToArray() };
+        var light = Sample(1, 1) with { Memberships = [new ReviewMembership("set", "light", "sampled-tokens", 450, null, null, [])] };
+        var id = await Publish("sample-continuation", heavy, light);
+        var rows = new List<TokenRow>();
+        string? cursor = null;
+        do
+        {
+            var page = _repository.ReadPage(Request(id) with { Section = "sampled-tokens", Limit = 3, Cursor = cursor });
+            rows.AddRange(page.Items.Cast<TokenRow>());
+            cursor = page.NextCursor;
+        } while (cursor is not null);
+        Assert.Equal(9, rows.Count);
+        Assert.All(rows.Take(8), row => Assert.StartsWith("heavy-", row.CaseId));
+        Assert.Equal("light", rows[^1].CaseId);
+        Assert.Equal(9, rows.Select(row => row.CaseId).Distinct().Count());
+    }
+
+    [Fact]
     public async Task RetainedSectionRowsAndEmptySectionsAreAddressable()
     {
         var effect = new EffectRow("operation", "change", new ReadTarget(TargetKind.Resource, "detail", "motif://detail", null, null));

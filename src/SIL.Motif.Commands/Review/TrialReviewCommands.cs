@@ -244,15 +244,29 @@ public sealed class TrialReviewCommands(MotifDatabase database)
             long? total = null;
             foreach (var outcome in outcomes)
             {
-                var page = repository.ReadPage(new ReviewPageRequest(report.Pins.ProjectKey,
-                    new ReviewReportId(report.ReportId), id, Set: set, Outcome: outcome, Limit: 5));
+                var request = new ReviewPageRequest(report.Pins.ProjectKey,
+                    new ReviewReportId(report.ReportId), id, Set: set, Outcome: outcome, Limit: Math.Max(1, Math.Min(5, remaining)));
+                var page = repository.ReadPage(request);
                 total = page.TotalInSection;
-                if (page.TotalMatching == 0) continue;
                 var link = new ReadTarget(TargetKind.Tool, outcome, null, "motif_difference",
                     new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
                         Detail: DetailLevel.Full, Section: id, Set: set, Outcome: outcome));
-                causes.Add(new CauseGroup(outcome, page.TotalMatching, page.Unit, page.Items,
-                    page.TotalMatching is null ? null : page.TotalMatching - page.Returned, link));
+                if (id == "sampled-tokens")
+                {
+                    var forms = repository.ReadSampledFailureForms(request, Math.Min(5, remaining));
+                    if (forms.Forms == 0) continue;
+                    remaining -= forms.Samples.Count;
+                    causes.Add(new CauseGroup(outcome, forms.Forms, "words", forms.Samples,
+                        forms.Forms - forms.Samples.Count, link) { SamplePositionsTotal = forms.Positions });
+                }
+                else
+                {
+                    if (page.TotalMatching == 0) continue;
+                    var samples = page.Items.Take(remaining).ToArray();
+                    remaining -= samples.Length;
+                    causes.Add(new CauseGroup(outcome, page.TotalMatching, page.Unit, samples,
+                        page.TotalMatching is null ? null : page.TotalMatching - samples.Length, link));
+                }
             }
             sections.Add(new SectionView(id, label, "Stored Trial evidence", report.Pins.EvidenceManifestDigest,
                 new SectionCounts(id == "sampled-tokens" ? "positions" : "cells", total, null, null), causes,
@@ -261,24 +275,61 @@ public sealed class TrialReviewCommands(MotifDatabase database)
                     new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
                         Detail: DetailLevel.Full, Section: id, Set: set))]));
         }
-        foreach (var (id, label) in new[]
+        if (selected == "parser-work" || selected is null &&
+            report.Summary.Flags.Any(flag => flag.Id == ReviewFlagId.ParserWorkIncrease))
         {
-            ("parser-work", "Parser work"), ("effects", "Changes to the project"), ("evidence", "What was measured")
-        }.Where(item => selected == item.Item1 || selected is null && item.Item1 == "parser-work" &&
-            report.Summary.Flags.Any(flag => flag.Id == ReviewFlagId.ParserWorkIncrease)))
+            const string id = "parser-work";
+            var limitations = report.Limitations.Where(item => item.SectionIds.Contains(id)).ToList();
+            var causes = new List<CauseGroup>();
+            long? total = null;
+            var outcomes = selected is null ? new[] { "work-increase" } :
+                new[] { "work-increase", "work-decrease", "work-unavailable" };
+            try
+            {
+                foreach (var outcome in outcomes)
+                {
+                    var page = repository.ReadPage(new ReviewPageRequest(report.Pins.ProjectKey,
+                        new ReviewReportId(report.ReportId), id, Set: set, Outcome: outcome,
+                        Limit: Math.Max(1, Math.Min(5, remaining))));
+                    total = page.TotalInSection;
+                    if (page.TotalMatching == 0) continue;
+                    var samples = page.Items.Take(remaining).ToArray();
+                    remaining -= samples.Length;
+                    var target = new ReadTarget(TargetKind.Tool, outcome, null, "motif_difference",
+                        new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
+                            Detail: DetailLevel.Full, Section: id, Set: set, Outcome: outcome));
+                    causes.Add(new CauseGroup(outcome, page.TotalMatching, page.Unit, samples,
+                        page.TotalMatching is null ? null : page.TotalMatching - samples.Length, target));
+                }
+                var full = new ReadTarget(TargetKind.Tool, "Parser work", null, "motif_difference",
+                    new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
+                        Detail: DetailLevel.Full, Section: id, Set: set));
+                sections.Add(new SectionView(id, "Parser work", "Stored Trial evidence", report.Pins.EvidenceManifestDigest,
+                    new SectionCounts("rows", total, null, null), causes, limitations, [full]));
+            }
+            catch (ReviewDetailUnavailableException)
+            {
+                limitations.Add(new Limitation("section-unavailable", [id], "This section was not retained.", []));
+                sections.Add(new SectionView(id, "Parser work", "Stored Trial evidence", report.Pins.EvidenceManifestDigest,
+                    new SectionCounts("rows", null, null, null), [], limitations, []));
+            }
+        }
+        foreach (var (id, label) in new[] { ("effects", "Changes to the project"), ("evidence", "What was measured") }
+            .Where(item => selected == item.Item1))
         {
-            var outcome = id == "parser-work" && selected is null ? "work-increase" : null;
             var target = new ReadTarget(TargetKind.Tool, label, null, "motif_difference",
                 new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
-                    Detail: DetailLevel.Full, Section: id, Set: set, Outcome: outcome));
+                    Detail: DetailLevel.Full, Section: id, Set: set));
             var limitations = report.Limitations.Where(item => item.SectionIds.Contains(id)).ToList();
             try
             {
                 var page = repository.ReadPage(new ReviewPageRequest(report.Pins.ProjectKey,
-                    new ReviewReportId(report.ReportId), id, Set: set, Outcome: outcome, Limit: 5));
+                    new ReviewReportId(report.ReportId), id, Set: set, Limit: Math.Max(1, Math.Min(5, remaining))));
+                var samples = page.Items.Take(remaining).ToArray();
+                remaining -= samples.Length;
                 var groupsForSection = page.TotalMatching == 0 ? Array.Empty<CauseGroup>() :
-                    [new CauseGroup(id == "parser-work" ? "work-increase" : id, page.TotalMatching,
-                        page.Unit, page.Items, page.TotalMatching is null ? null : page.TotalMatching - page.Returned, target)];
+                    [new CauseGroup(id, page.TotalMatching, page.Unit, samples,
+                        page.TotalMatching is null ? null : page.TotalMatching - samples.Length, target)];
                 sections.Add(new SectionView(id, label, "Stored Trial evidence", report.Pins.EvidenceManifestDigest,
                     new SectionCounts(page.Unit, page.TotalInSection, page.TotalMatching, null), groupsForSection, limitations, [target]));
             }

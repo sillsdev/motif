@@ -1126,12 +1126,16 @@ public sealed record CauseGroup(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] long? Remaining,
     [property: JsonRequired] ReadTarget Link) : IJsonOnDeserialized, IJsonOnSerializing
 {
+    /// <summary>The number of sampled positions represented by the affected forms in this group.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? SamplePositionsTotal { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 
     private void Validate()
     {
-        if (Cause is null ||
+        if (SamplePositionsTotal is < 0 or > 9007199254740991L || Cause is null ||
             Count is < 0 or > 9007199254740991L ||
             Unit is null ||
             Samples is null ||

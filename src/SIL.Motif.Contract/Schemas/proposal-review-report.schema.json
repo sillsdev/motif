@@ -2219,6 +2219,11 @@
             }
           ]
         },
+        "samplePositionsTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
         "link": {
           "$ref": "#/$defs/ReadTarget"
         }
@@ -2397,6 +2402,15 @@
         },
         "attribution": {
           "$ref": "#/$defs/Attribution"
+        },
+        "samplePositions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/TokenRow" }
+        },
+        "samplePositionsTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         },
         "links": {
           "type": "array",

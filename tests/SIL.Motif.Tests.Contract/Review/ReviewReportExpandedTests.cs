@@ -19,6 +19,8 @@ public sealed class ReviewReportExpandedTests
         foreach (var type in types)
         {
             var row = (ReviewRow)Create(type);
+            if (row is WordRow word)
+                row = word with { SamplePositions = [(TokenRow)Create(typeof(TokenRow))], SamplePositionsTotal = 1 };
             var json = JsonSerializer.Serialize(row, ReviewJson.Options);
             Assert.Equal(type, JsonSerializer.Deserialize<ReviewRow>(json, ReviewJson.Options)!.GetType());
             var invalid = JsonNode.Parse(json)!.AsObject();
@@ -26,6 +28,14 @@ public sealed class ReviewReportExpandedTests
             Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<ReviewRow>(invalid.ToJsonString(), ReviewJson.Options));
             AssertSchema(json, "ReviewRow");
         }
+    }
+
+    [Fact]
+    public void AffectedPositionCountsMatchTheSchema()
+    {
+        var group = new CauseGroup("no-parse", 1, "words", [], 1,
+            new ReadTarget(TargetKind.Resource, "detail", "motif://detail", null, null)) { SamplePositionsTotal = 6 };
+        AssertSchema(JsonSerializer.Serialize(group, ReviewJson.Options), "CauseGroup");
     }
 
     [Fact]
@@ -84,7 +94,7 @@ public sealed class ReviewReportExpandedTests
             ["FlagFact"] = "id text wordCount readingCount evidenceState sectionIds sampleEventIds facts",
             ["WorkChange"] = "kind percentChange wordCount scopeDigest comparison reasonCodes",
             ["RuleWorkRow"] = "rowKind kind key identityQuality scope name status percentChange unavailableReason",
-            ["WordRow"] = "rowKind caseKey wordKey word writingSystemId before after flagIds causes setIds membershipsTotal expectationsTotal work attribution links",
+            ["WordRow"] = "rowKind caseKey wordKey word writingSystemId before after flagIds causes setIds membershipsTotal expectationsTotal work attribution links samplePositions samplePositionsTotal",
             ["TokenRow"] = "rowKind caseId wordKey occurrenceId weight sourceLocator before after links",
             ["CellRow"] = "rowKind setId cellId lexemeId features variantCount before after links",
             ["DiagnosticRow"] = "rowKind eventId diagnosticKey code change severity beforeSeverity subjectIds description attribution links",

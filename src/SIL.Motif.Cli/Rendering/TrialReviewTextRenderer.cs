@@ -38,7 +38,8 @@ public static class TrialReviewTextRenderer
             text.AppendLine(section.Label + ":");
             foreach (var group in section.Groups)
             {
-                text.AppendLine($"  {group.Cause}: {Count(group.Count)} {group.Unit} ({Count(group.Remaining)} more)");
+                text.AppendLine($"  {group.Cause}: {Count(group.Count)} {group.Unit} ({Count(group.Remaining)} more)" +
+                    (group.SamplePositionsTotal is { } positions ? $"; {positions} sampled positions" : ""));
                 foreach (var sample in group.Samples) text.AppendLine("    " + Row(sample));
             }
         }
@@ -95,7 +96,9 @@ public static class TrialReviewTextRenderer
         RuleWorkRow rule => rule.Name + ": " + (rule.PercentChange is { } percent
             ? percent.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) + "%" : rule.Status),
         WordRow word => word.Word + " (" + word.CaseKey + ")" +
-            (word.Work.PercentChange is { } change ? " " + change.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) + "%" : ""),
+            (word.Work.PercentChange is { } change ? " " + change.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) + "%" : "") +
+            (word.SamplePositions is { } positions ? $"; {Count(word.SamplePositionsTotal)} positions: " +
+                string.Join(", ", positions.Select(position => position.OccurrenceId + " " + position.SourceLocator)) : ""),
         ReadingRow reading => $"{reading.Side} reading {reading.IdentityDigest} ({reading.IdentityState}): " +
             string.Join("; ", reading.Morphs.Select(morph => $"{morph.Form} [{morph.FormId}, {morph.MsaId}] {morph.Gloss}")) +
             " expectations: " + string.Join(", ", reading.ExpectationIds) + " sources: " + string.Join(", ", reading.SourceRefs),

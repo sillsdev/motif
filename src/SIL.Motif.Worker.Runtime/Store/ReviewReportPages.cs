@@ -77,6 +77,68 @@ public sealed partial class ReviewReportRepository
         return keys.Select(key => ReadWord(request.ProjectKey, request.ReportId, key, 1).Row).ToArray();
     }
 
+    /// <summary>Shortlists distinct affected forms by their sampled weight and retains bounded positions.</summary>
+    public (long Forms, long Positions, IReadOnlyList<ReviewWordRow> Samples) ReadSampledFailureForms(
+        ReviewPageRequest request, int limit)
+    {
+        if (request.Section != "sampled-tokens" || limit is < 0 or > 5)
+            throw new ArgumentException("Invalid sampled failure request.", nameof(request));
+        var keys = new List<(string Key, long Positions)>();
+        long forms, positions;
+        using (var lease = ReviewRowArtifacts.Acquire(_database, request.ReportId.Value))
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            RequireDetail(connection, transaction, request.ProjectKey, request.ReportId);
+            var args = FilterArguments(request).ToList();
+            args.Add(("$report", request.ReportId.Value));
+            var setFilter = request.Set is null ? "" : " AND m.SetId IN (SELECT value FROM json_each($set))";
+            var grouped = "WITH weights AS MATERIALIZED (SELECT m.CaseKey,COUNT(*) AS Positions," +
+                "SUM(json_extract(m.FactsJson,'$.weight')) AS Weight FROM ReviewReportMemberships m " +
+                "WHERE m.ReportId=$report AND m.Role='sampled-tokens'" + setFilter + " GROUP BY m.CaseKey) ";
+            var source = " FROM weights w JOIN ReviewReportCases c ON c.ReportId=$report AND c.CaseKey=w.CaseKey WHERE 1=1" + WordFilter(request);
+            using (var count = PageCommand(connection, transaction, grouped + "SELECT COUNT(*),COALESCE(SUM(w.Positions),0)" + source, args.ToArray()))
+            using (var reader = count.ExecuteReader())
+            {
+                reader.Read();
+                forms = reader.GetInt64(0);
+                positions = reader.GetInt64(1);
+            }
+            if (limit > 0)
+            {
+                args.Add(("$limit", limit));
+                using var command = PageCommand(connection, transaction, grouped + "SELECT c.CaseKey,w.Positions" + source +
+                    " ORDER BY w.Weight DESC,w.Positions DESC,c.WordSort,c.WritingSystemSort,c.CaseKey LIMIT $limit;", args.ToArray());
+                using var reader = command.ExecuteReader();
+                while (reader.Read()) keys.Add((reader.GetString(0), reader.GetInt64(1)));
+            }
+        }
+        var samples = new List<ReviewWordRow>();
+        foreach (var (key, total) in keys)
+        {
+            var word = ReadWord(request.ProjectKey, request.ReportId, key, 1).Row;
+            var examples = new List<TokenRow>();
+            using var connection = _database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT FactsJson FROM ReviewReportMemberships WHERE ReportId=$report AND CaseKey=$case AND Role='sampled-tokens'" +
+                (request.Set is null ? "" : " AND SetId IN (SELECT value FROM json_each($set))") + " ORDER BY Ordinal LIMIT 3;";
+            command.Parameters.AddWithValue("$report", request.ReportId.Value);
+            command.Parameters.AddWithValue("$case", key);
+            if (request.Set is not null) command.Parameters.AddWithValue("$set", SelectorValues(request.Set));
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                var member = JsonSerializer.Deserialize<ReviewMembership>(reader.GetString(0), ReviewJson.Options)
+                    ?? throw new InvalidDataException("Invalid membership index.");
+                examples.Add(new TokenRow(member.CaseId, word.WordKey, member.OccurrenceId ?? member.CaseId,
+                    member.Weight, member.SourceLocator ?? "", word.Before, word.After, word.Links));
+            }
+            samples.Add(word with { SamplePositions = examples, SamplePositionsTotal = total,
+                Links = word.Links.Append(ChildLink(request.ProjectKey, request.ReportId, key, "memberships")).ToArray() });
+        }
+        return (forms, positions, samples);
+    }
+
     /// <summary>Counts retained new warning or finding rows by their producer-backed group.</summary>
     public IReadOnlyList<(string Group, long Count)> ReadFailureEventGroups(string project, ReviewReportId report, string section)
     {
@@ -507,11 +569,7 @@ public sealed partial class ReviewReportRepository
             throw new ReviewCursorInvalidException();
         args.Add(("$ordinal", tuple is null ? -1 : int.Parse(tuple[2], CultureInfo.InvariantCulture)));
         args.Add(("$limit", request.Limit + 1));
-        var weight = "(SELECT SUM(json_extract(w.FactsJson,'$.weight')) FROM ReviewReportMemberships w " +
-            "WHERE w.ReportId=m.ReportId AND w.CaseKey=m.CaseKey AND w.Role='sampled-tokens'" +
-            (request.Set is null ? "" : " AND w.SetId IN (SELECT value FROM json_each($set))") + ")";
-        using var command = PageCommand(connection, transaction, "SELECT m.CaseKey,m.Ordinal,m.FactsJson,c.WordKey,c.FactsJson," + weight + source + filter +
-            " AND ($case IS NULL OR -" + weight + ">$weight OR (-" + weight + "=$weight AND (m.CaseKey,m.Ordinal)>($case,$ordinal))) ORDER BY -" + weight + ",m.CaseKey,m.Ordinal LIMIT $limit;", args.ToArray());
+        using var command = PageCommand(connection, transaction, SampledPositionQuery(filter, request.Set is not null), args.ToArray());
         using var reader = command.ExecuteReader();
         var items = new List<ReviewRow>();
         string? anchor = null;
@@ -547,6 +605,17 @@ public sealed partial class ReviewReportRepository
             request.Section, digest, 1, anchor!, null, null)) : null;
         return new ReviewPage(request.Section, digest, "positions", total, matching, items.Count, request.Limit, next,
             partial ? ListAvailability.Partial : ListAvailability.Complete, items);
+    }
+
+    internal static string SampledPositionQuery(string filter, bool selectedSet)
+    {
+        var weights = "WITH weights AS MATERIALIZED (SELECT CaseKey,SUM(json_extract(FactsJson,'$.weight')) AS Weight " +
+            "FROM ReviewReportMemberships WHERE ReportId=$report AND Role='sampled-tokens'" +
+            (selectedSet ? " AND SetId IN (SELECT value FROM json_each($set))" : "") + " GROUP BY CaseKey) ";
+        var source = " FROM ReviewReportMemberships m JOIN ReviewReportCases c ON c.ReportId=m.ReportId AND c.CaseKey=m.CaseKey " +
+            "JOIN weights w ON w.CaseKey=m.CaseKey WHERE m.ReportId=$report AND m.Role='sampled-tokens'";
+        return weights + "SELECT m.CaseKey,m.Ordinal,m.FactsJson,c.WordKey,c.FactsJson,w.Weight" + source + filter +
+            " AND ($case IS NULL OR -w.Weight>$weight OR (-w.Weight=$weight AND (m.CaseKey,m.Ordinal)>($case,$ordinal))) ORDER BY -w.Weight,m.CaseKey,m.Ordinal LIMIT $limit;";
     }
 
     private static ReviewPage ReadControlMemberships(SqliteConnection connection, SqliteTransaction transaction,

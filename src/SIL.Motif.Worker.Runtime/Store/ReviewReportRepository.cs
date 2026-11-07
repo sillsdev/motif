@@ -169,7 +169,8 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
                         var digest = ReviewRowArtifacts.Write(_database, reportId, item.Row);
                         var json = JsonSerializer.Serialize(new { kind = "section-row", digest, item.Set, item.Outcome,
                             Flags = item.Flags ?? [], item.Changed, item.Incomplete, item.Group,
-                            Sets = item.Row is WordRow word ? word.SetIds : [] }, ReviewJson.Options);
+                            Sets = item.Row is WordRow word ? word.SetIds : [],
+                            WorkPercent = item.Row is WordRow workWord ? workWord.Work.PercentChange : null }, ReviewJson.Options);
                         detailBytes = checked(detailBytes + Cost(json));
                         if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
                         Execute(connection, transaction, "INSERT INTO ReviewReportEvents VALUES ($id,$case,$ordinal,$facts);",
@@ -177,6 +178,26 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
                             ("$ordinal", ordinal), ("$facts", json));
                         sectionOrdinals[item.Section] = checked(ordinal + 1);
                     }
+            }
+            if (available && publication.AvailableSections.Contains("parser-work"))
+            {
+                var key = ReviewReportPages.SectionKey("parser-work");
+                Execute(connection, transaction, "UPDATE ReviewReportEvents SET Ordinal=-Ordinal-2 WHERE ReportId=$id AND CaseKey=$case AND Ordinal>=0;",
+                    ("$id", reportId.Value), ("$case", key));
+                Execute(connection, transaction, """
+                    WITH ranked AS MATERIALIZED (
+                      SELECT Ordinal,ROW_NUMBER() OVER (ORDER BY
+                        CASE json_extract(FactsJson,'$.outcome')
+                          WHEN 'work-increase' THEN 0 WHEN 'work-decrease' THEN 1
+                          WHEN 'work-unavailable' THEN 2 WHEN 'work-unchanged' THEN 3 ELSE 4 END,
+                        CASE WHEN json_extract(FactsJson,'$.outcome')='work-decrease'
+                          THEN json_extract(FactsJson,'$.workPercent') ELSE -json_extract(FactsJson,'$.workPercent') END,
+                        -Ordinal) - 1 AS NewOrdinal
+                      FROM ReviewReportEvents WHERE ReportId=$id AND CaseKey=$case AND Ordinal < -1
+                    )
+                    UPDATE ReviewReportEvents SET Ordinal=(SELECT NewOrdinal FROM ranked WHERE ranked.Ordinal=ReviewReportEvents.Ordinal)
+                    WHERE ReportId=$id AND CaseKey=$case AND Ordinal < -1;
+                    """, ("$id", reportId.Value), ("$case", key));
             }
             if (!available)
             {

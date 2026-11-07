@@ -119,6 +119,21 @@ public sealed class TrialReviewReportAcceptanceTests
     }
 
     [Fact]
+    public void DecreasedParserWorkIsNeverLabelledAsAnIncrease()
+    {
+        using var fixture = new ReviewAcceptanceFixture();
+        var reportId = fixture.CreateWorkOnlyReport(50);
+        var result = SIL.Motif.Commands.ProjectStoreCommand.Run<TrialReviewResult>(fixture.Project,
+            SIL.Motif.Host.MotifProductVersion.CurrentText, (database, _) =>
+                new SIL.Motif.Commands.Review.TrialReviewCommands(database).Read(new ReviewReadRequest(
+                    fixture.ProjectKey, fixture.Proposal, ReportId: reportId, Section: "parser-work")));
+        var report = Assert.IsType<AvailableTrialResult>(result.Value).Report;
+        var group = Assert.Single(Assert.Single(report.Sections).Groups);
+        Assert.Equal("work-decrease", group.Cause);
+        Assert.Equal(-50, Assert.IsType<WordRow>(Assert.Single(group.Samples)).Work.PercentChange);
+    }
+
+    [Fact]
     public async Task SelectedNegativeSetDoesNotIncludeReferenceLossAtEitherDetailLevel()
     {
         using var fixture = new ReviewAcceptanceFixture();

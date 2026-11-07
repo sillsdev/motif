@@ -179,7 +179,8 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
                 [new ReadTarget(TargetKind.Tool, "Word detail", null, "motif_difference",
                     new ReadArguments(Proposal: inputs.ProposalId, Detail: DetailLevel.Full, Case: key))]);
             yield return new ReviewSectionItem("parser-work", row,
-                Outcome: comparison.PercentChange > 0 ? "work-increase" : null,
+                Outcome: comparison.PercentChange switch { > 0 => "work-increase", < 0 => "work-decrease",
+                    0 => "work-unchanged", _ => "work-unavailable" },
                 Changed: comparison.PercentChange is not null and not 0);
         }
     }

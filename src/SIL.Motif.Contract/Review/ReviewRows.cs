@@ -26,6 +26,14 @@ public sealed record WordRow(
     [JsonRequired]
     public string RowKind { get; init; } = "word";
 
+    /// <summary>Bounded sampled positions contributing to this form's coverage.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TokenRow>? SamplePositions { get; init; }
+
+    /// <summary>The total sampled positions for this form in the selected scope.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? SamplePositionsTotal { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 
@@ -41,6 +49,9 @@ public sealed record WordRow(
             Causes.Any(item => item is null) ||
             SetIds is null ||
             SetIds.Any(item => item is null) ||
+            SamplePositionsTotal is < 0 or > 9007199254740991L ||
+            SamplePositions is not null && (SamplePositions.Any(item => item is null) || SamplePositionsTotal is null ||
+                SamplePositions.Count > SamplePositionsTotal) ||
             MembershipsTotal is < 0 or > 9007199254740991L ||
             ExpectationsTotal is < 0 or > 9007199254740991L ||
             Work is null ||

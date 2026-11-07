@@ -214,11 +214,12 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var summary = repository.ReadManifest(original)!.Summary;
         var cases = Enumerable.Range(0, 6).Select(i =>
         {
-            var affected = i == 5;
+            var affected = i >= 4;
             var expectation = "expectation-" + i;
-            var memberships = new[] {
-                new ReviewMembership("sentences", "token-" + i, "sampled-tokens", affected ? 1000 : 1, null, null, []),
-                new ReviewMembership("paradigm", "cell-" + i, "paradigm-cells", 1, "cell-" + i, "variant-" + i, [expectation]) };
+            var memberships = Enumerable.Range(0, i == 4 ? 5 : 1).Select(position =>
+                new ReviewMembership("sentences", "token-" + i + "-" + position, "sampled-tokens",
+                    i == 4 ? 100 : i == 5 ? 450 : 1, null, null, []))
+                .Append(new ReviewMembership("paradigm", "cell-" + i, "paradigm-cells", 1, "cell-" + i, "variant-" + i, [expectation])).ToArray();
             var before = new ReviewCaseSideFacts(Completion.Complete, true, [], [expectation], [], []);
             var after = affected ? new ReviewCaseSideFacts(Completion.Complete, false, [], [], [expectation], []) : before;
             return new ReviewCaseDelta("case-" + i, "key-" + i, "word-" + i, "ws", affected, false, false, [], [], memberships, [])
@@ -235,18 +236,86 @@ public sealed class TrialReviewCommandsTests : IDisposable
             "project", _proposal.Value, ReportId: id.Value, Section: section)).Value).Report;
         var tokenSection = Assert.Single(Read("sampled-tokens").Sections);
         var tokenGroup = Assert.Single(tokenSection.Groups, group => group.Cause == "new-no-parse");
-        var token = Assert.IsType<TokenRow>(Assert.Single(tokenGroup.Samples));
-        Assert.Equal(1000, token.Weight);
-        Assert.Equal("token-5", token.CaseId);
+        Assert.Equal(2, tokenGroup.Count);
+        Assert.Equal(6, tokenGroup.SamplePositionsTotal);
+        var forms = tokenGroup.Samples.Cast<SIL.Motif.Contract.Review.WordRow>().ToArray();
+        Assert.Equal(new[] { "word-4", "word-5" }, forms.Select(form => form.Word));
+        Assert.Equal(5, forms[0].SamplePositionsTotal);
+        Assert.Equal(3, forms[0].SamplePositions!.Count);
+        Assert.Equal(1, forms[1].SamplePositionsTotal);
+        Assert.Equal(450, Assert.Single(forms[1].SamplePositions!).Weight);
         Assert.Equal("new-no-parse", tokenGroup.Link.Arguments!.Outcome);
         var cellSection = Assert.Single(Read("paradigm-cells").Sections);
         var lost = Assert.Single(cellSection.Groups, group => group.Cause == "lost");
-        var cell = Assert.IsType<CellRow>(Assert.Single(lost.Samples));
+        Assert.Equal(2, lost.Count);
+        var cell = Assert.IsType<CellRow>(lost.Samples.Last());
         Assert.Equal("cell-5", cell.CellId);
         Assert.Equal(CellOutcome.Covered, cell.Before);
         Assert.Equal(CellOutcome.Uncovered, cell.After);
         Assert.DoesNotContain(cellSection.Groups.SelectMany(group => group.Samples).OfType<CellRow>(),
             item => item.CellId == "cell-0");
+    }
+
+    [Fact]
+    public async Task FailureWorkGroupsRankChangesAndShareTheSampleBudget()
+    {
+        CreateInterrupted();
+        var repository = new ReviewReportRepository(_database);
+        var original = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var summary = repository.ReadManifest(original)!.Summary;
+        var scopeWork = new WorkChange(21, 6, "scope", WorkComparison.Comparable, []);
+        var flag = new FlagFact(ReviewFlagId.ParserWorkIncrease, "Work increase", 6, null,
+            EvidenceState.Complete, ["parser-work"], [], scopeWork);
+        summary = summary with { Summary = summary.Summary with { Flags = [flag], ParserWork = scopeWork } };
+        var template = repository.ReadWord("project", original, "case", 1).Row;
+        var changes = new double?[] { 21, 21, 21, 21, 21, 100, -50, -10, 0, null };
+        var workRows = changes.Select((change, i) =>
+        {
+            var work = change is null ? new WorkChange(null, 1, "scope", WorkComparison.NotComparable, ["missing"]) :
+                new WorkChange(change, 1, "scope", WorkComparison.Comparable, []);
+            var outcome = change switch { > 0 => "work-increase", < 0 => "work-decrease", 0 => "work-unchanged", _ => "work-unavailable" };
+            return new ReviewSectionItem("parser-work", template with { CaseKey = "work" + i, Word = "word" + i, Work = work }, Outcome: outcome);
+        }).ToArray();
+        var cases = Enumerable.Range(0, 30).Select(i =>
+        {
+            var group = i / 5;
+            var stopped = group >= 4;
+            var members = group == 2 ? new[] { new ReviewMembership("reference", "r" + i, "reference", 1, null, null, []) } :
+                group == 3 ? new[] { new ReviewMembership("negative", "n" + i, "negative", 1, null, null, []) } : [];
+            return new ReviewCaseDelta("case" + i, "key" + i, "form" + i, "ws", group == 0, group == 1, group == 3,
+                group == 2 ? [new ReviewReadingLoss("reading", false, true, [])] : [], [], members, [])
+            { Before = new(Completion.Complete, group != 3, [], [], [], []),
+                After = new(stopped ? Completion.Stopped : Completion.Complete, stopped ? null : group != 0,
+                    stopped ? [group == 4 ? "work-limit" : "time-limit"] : [], [], [], []) };
+        }).ToArray();
+        async IAsyncEnumerable<ReviewCaseDelta> Cases()
+        {
+            foreach (var item in cases) { yield return item; await Task.Yield(); }
+        }
+        async IAsyncEnumerable<ReviewSectionItem> Sections()
+        {
+            foreach (var item in workRows) { yield return item; await Task.Yield(); }
+        }
+        var id = await repository.PublishAsync(new ReviewReportPublication("project", _proposal.Value, Job,
+            "sha256:mixed-work", summary, [], 5_000_000) { AvailableSections = ["parser-work"], SectionItems = Sections() }, Cases());
+        ReportView Read(string? section) => Assert.IsType<AvailableTrialResult>(new TrialReviewCommands(_database).Read(
+            new ReviewReadRequest("project", _proposal.Value, ReportId: id.Value, Detail: DetailLevel.Failures, Section: section)).Value).Report;
+        var explicitReport = Read("parser-work");
+        var groups = Assert.Single(explicitReport.Sections).Groups;
+        var increases = Assert.Single(groups, group => group.Cause == "work-increase");
+        Assert.Equal(6, increases.Count);
+        Assert.Equal(100, Assert.IsType<SIL.Motif.Contract.Review.WordRow>(increases.Samples[0]).Work.PercentChange);
+        var decreases = Assert.Single(groups, group => group.Cause == "work-decrease");
+        Assert.Equal(-50, Assert.IsType<SIL.Motif.Contract.Review.WordRow>(decreases.Samples[0]).Work.PercentChange);
+        Assert.Single(groups, group => group.Cause == "work-unavailable");
+        Assert.DoesNotContain(groups, group => group.Cause == "work-unchanged");
+        var defaults = Read(null);
+        Assert.Equal(30, defaults.Sections.Sum(section => section.Groups.Sum(group => group.Samples.Count)));
+        var omitted = Assert.Single(Assert.Single(defaults.Sections, section => section.Id == "parser-work").Groups);
+        Assert.Equal(6, omitted.Count);
+        Assert.Equal(6, omitted.Remaining);
+        Assert.Empty(omitted.Samples);
+        Assert.Equal("work-increase", omitted.Link.Arguments!.Outcome);
     }
 
     [Fact]
