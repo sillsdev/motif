@@ -1,5 +1,7 @@
 # Agent rules for SIL.TextEditing
 
+- **Issue numbers.** Issue and PR numbers from before the move (2026-11-06) refer to `sillsdev/SIL.TextEditing` (archived). Its
+  README maps the open issues that moved to Motif, where they carry the `textediting` label.
 - **Read first.** `GLOSSARY.md` for the words, `docs/adr/` for the decisions, `docs/reference/` for how it works. Don't reverse an ADR
   silently: propose a new one that supersedes it.
 - **Licence (ADR 0010).** This repository is MIT. FieldWorks code is LGPL. Never copy FieldWorks code here, not even
