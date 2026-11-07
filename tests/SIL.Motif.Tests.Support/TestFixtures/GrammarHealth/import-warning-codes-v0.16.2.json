@@ -1,6 +1,6 @@
 {
-  "tag": "v0.16.1",
-  "source": "PanGloss tag v0.16.1, commit 2bc7a30b8bd2d57736b42d3873651d6412f75fdb, rust/crates/pg-snapshot/src/warning.rs, every ImportWarningCode string",
+  "tag": "v0.16.2",
+  "source": "PanGloss tag v0.16.2, commit ee43e8cd46f53626bfdf15760e2e0860283580e8, rust/crates/pg-snapshot/src/warning.rs, every ImportWarningCode string",
   "codes": [
     "conversion.source-provenance-unknown",
     "conversion.unsegmentable-form",
