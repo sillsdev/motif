@@ -40,6 +40,30 @@ public sealed class TrialReviewRenderingTests
         Assert.DoesNotContain("elapsed", text, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void WordDetailRendersReadingsExpectationsAndContinuation()
+    {
+        var report = (ReportView)Create(typeof(ReportView));
+        var row = (WordRow)Create(typeof(WordRow));
+        var reading = new ReadingRow("reading-id", Side.Before, IdentityState.Exact,
+            [new Morph("form-id", "msa-id", [], "cat", "gloss")], true, ["approved"], ["source"]);
+        var expectation = new ExpectationRow("approved", ExpectationAssertion.CorrectReading, ReferenceAuthority.Human,
+            "actor", "revision", "reading-id", ["source"], ExpectationOutcome.Matched, ExpectationOutcome.Missing);
+        ReviewPage Page(string section, IReadOnlyList<ReviewRow> items, string? cursor = null) =>
+            new(section, "filter", "rows", items.Count, items.Count, items.Count, 10, cursor, ListAvailability.Complete, items);
+        var word = new WordView(row, Page("memberships", []), Page("expectations", [expectation]),
+            Page("readings", [reading], "next"), Page("sources", [new SourceRow("source", "citation", "line", null, false, "actor")]), null);
+        var result = new AvailableTrialResult(report with { Word = word });
+        var text = TrialReviewTextRenderer.Render(result);
+        Assert.Contains("reading-id", text, StringComparison.Ordinal);
+        Assert.Contains("form-id", text, StringComparison.Ordinal);
+        Assert.Contains("Matched before; Missing after", text, StringComparison.Ordinal);
+        Assert.Contains("actor", text, StringComparison.Ordinal);
+        Assert.Contains("citation", text, StringComparison.Ordinal);
+        Assert.Contains("readings next cursor: next", text, StringComparison.Ordinal);
+        Assert.Contains("reading-id", System.Text.Json.JsonSerializer.Serialize<ReviewRow>(reading, ReviewJson.Options), StringComparison.Ordinal);
+    }
+
     private static object Create(Type type)
     {
         if (type == typeof(BaselineToken)) return new BaselineToken("project", "sha256:" + new string('a', 64), "v1",

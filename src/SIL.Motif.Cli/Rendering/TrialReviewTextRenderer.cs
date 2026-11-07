@@ -48,7 +48,18 @@ public static class TrialReviewTextRenderer
             foreach (var item in page.Items) text.AppendLine("  " + Row(item));
             if (page.NextCursor is not null) text.AppendLine("Next cursor: " + page.NextCursor);
         }
-        if (report.Word is { } word) text.AppendLine(Row(word.Row));
+        if (report.Word is { } word)
+        {
+            text.AppendLine(Row(word.Row));
+            text.AppendLine("  Before: " + SideSummary(word.Row.Before));
+            text.AppendLine("  After: " + SideSummary(word.Row.After));
+            foreach (var childPage in new[] { word.Memberships, word.Expectations, word.Readings, word.SourceReferences })
+            {
+                text.AppendLine($"  {childPage.Section}: {Count(childPage.TotalMatching)} ({childPage.ListAvailability})");
+                foreach (var item in childPage.Items) text.AppendLine("    " + Row(item));
+                if (childPage.NextCursor is not null) text.AppendLine($"    {childPage.Section} next cursor: {childPage.NextCursor}");
+            }
+        }
         if (report.Trace is { } trace)
         {
             text.AppendLine($"Trace {trace.TraceId} ({trace.Side}, {trace.Origin}, {trace.Completion})");
@@ -75,11 +86,22 @@ public static class TrialReviewTextRenderer
     private static string Count(long? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "unknown";
     private static string Coverage(Coverage value) => Count(value.Numerator) + "/" + Count(value.Denominator) +
         (value.Precision == CoveragePrecision.LowerBound ? " (lower bound)" : "");
+    private static string SideSummary(WordSide side) =>
+        $"{side.Completion}; readings {Count(side.ObservedReadingCount)}; Approved matched {Count(side.ApprovedMatched)}, " +
+        $"missing {Count(side.ApprovedMissing)}, unknown {Count(side.ApprovedUnknown)}";
+
     private static string Row(ReviewRow row) => row switch
     {
         RuleWorkRow rule => rule.Name + ": " + (rule.PercentChange is { } percent
             ? percent.ToString("+0.##;-0.##;0", CultureInfo.InvariantCulture) + "%" : rule.Status),
         WordRow word => word.Word + " (" + word.CaseKey + ")",
+        ReadingRow reading => $"{reading.Side} reading {reading.IdentityDigest} ({reading.IdentityState}): " +
+            string.Join("; ", reading.Morphs.Select(morph => $"{morph.Form} [{morph.FormId}, {morph.MsaId}] {morph.Gloss}")) +
+            " expectations: " + string.Join(", ", reading.ExpectationIds) + " sources: " + string.Join(", ", reading.SourceRefs),
+        ExpectationRow expectation => $"{expectation.Id} ({expectation.Assertion}, {expectation.Reference}; " +
+            $"{expectation.ActorId}, {expectation.RevisionId}): {expectation.Before} before; {expectation.After} after; " +
+            "reading " + expectation.ReadingIdentityDigest + "; sources: " + string.Join(", ", expectation.SourceRefs),
+        SourceRow source => $"{source.Id}: {source.Citation} {source.Locator} {source.Excerpt} ({source.ActorId})",
         DiagnosticRow warning => warning.Code + ": " + warning.Description,
         FindingRow finding => finding.MeasureId + ": " + finding.FindingId,
         _ => row.ToString() ?? ""
