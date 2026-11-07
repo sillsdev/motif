@@ -11,6 +11,35 @@ namespace SIL.Motif.Commands.Assess;
 /// </summary>
 public static class AssessSummary
 {
+    /// <summary>Projects a complete Assessment response without publishing unpaired parser costs.</summary>
+    public static JsonObject Full(AssessCommandResponse response)
+    {
+        var result = ProjectionJson.ToNode(new
+        {
+            response.Baseline, response.Selection, response.AssessmentIds, response.SummaryMarkdown,
+            response.InvocationId, response.SelectionDescriptor, response.Counts, response.Measurements,
+            response.TimingOverrideAssessmentIds, response.CompletionSummary, response.CorrectnessStatus,
+            response.GrammarWarnings,
+        })!.AsObject();
+        result["words"] = new JsonArray(response.Words.Select(Detailed).ToArray());
+        result["costComparison"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "No paired Assessment was selected." };
+        return result;
+    }
+
+    /// <summary>Projects a Trial and its word evidence without unpaired parser costs.</summary>
+    public static JsonObject Trial(TrialRecord trial)
+    {
+        var result = ProjectionJson.ToNode(new
+        {
+            trial.JobId, trial.ProposalId, trial.IntentDigest, trial.Baseline, trial.DryRun, trial.AssessmentIds,
+            trial.Words, trial.AllWords, trial.Limits, trial.Status, trial.CompletedUtc, trial.Freshness,
+            trial.Label, trial.GrammarCheckId, trial.Work, trial.GrammarCheckWarning, trial.DroppedGrammar,
+            trial.Clean, trial.WordScope, trial.Standing, trial.DroppedGrammarNotChecked,
+        })!.AsObject();
+        result["wordResults"] = new JsonArray(trial.WordResults.Select(Detailed).ToArray());
+        return result;
+    }
+
     /// <summary>The page of a just-finished run.</summary>
     public static JsonObject Page(AssessCommandResponse response, int offset, int limit, bool detailed)
     {
@@ -28,6 +57,14 @@ public static class AssessSummary
     public static AssessmentCounts Counts(IReadOnlyList<AssessedWord> words) =>
         AssessmentCounts.Of(words.Select(AssessmentWordRows.FromRecorded));
 
+    /// <summary>Projects a recorded word without publishing unpaired parser costs.</summary>
+    public static JsonNode StoredWord(AssessedWord word)
+    {
+        var result = Detailed(AssessmentWordRows.FromRecorded(word)).AsObject();
+        result["analyses"] = ProjectionJson.ToNode(word.Analyses);
+        return result;
+    }
+
     private static JsonObject Build(string? assessmentId, IReadOnlyList<AssessmentWordResult> words,
         string? invocationId, int offset, int limit, bool detailed)
     {
@@ -43,6 +80,7 @@ public static class AssessSummary
             ["offset"] = offset,
             ["total"] = words.Count,
             ["nextOffset"] = end < words.Count ? end : null,
+            ["costComparison"] = new JsonObject { ["state"] = "unavailable", ["reason"] = "No paired Assessment was selected." },
         };
         if (!string.IsNullOrEmpty(invocationId)) result["invocation"] = invocationId;
         result["words"] = new JsonArray(page.Select(row => detailed ? Detailed(row) : Concise(row)).ToArray());
@@ -52,8 +90,6 @@ public static class AssessSummary
     private static JsonNode Concise(AssessmentWordResult row)
     {
         var node = new JsonObject { ["word"] = row.Word, ["outcome"] = row.Outcome };
-        // Work is the word's cost; a skipped word was never searched, so it has none. stoppedBy names the limit.
-        if (row.ParserWork is { } parserWork && row.Outcome != "skipped") node["parserWork"] = parserWork;
         if (row.StoppedBy is { } stoppedBy) node["stoppedBy"] = stoppedBy;
         if (row.Outcome == "analysed")
         {
@@ -63,6 +99,18 @@ public static class AssessSummary
         return node;
     }
 
-    private static JsonNode Detailed(AssessmentWordResult row) =>
-        ProjectionJson.ToNode(row)!;
+    private static JsonNode Detailed(AssessmentWordResult row) => ProjectionJson.ToNode(new
+    {
+        row.Word, row.WordWritingSystem, row.Outcome, row.IsIncomplete, row.CompletionStatus,
+        row.Comparison, row.AnalysisComparison, row.StoredAnalysesAvailable,
+        Morphology = row.Morphology is { } evidence ? new
+        {
+            evidence.Schema, evidence.Index, evidence.Word, evidence.Capped, evidence.TimedOut,
+            evidence.InvalidShape, evidence.Analyses, evidence.Unavailable, evidence.Refusal,
+        } : null,
+        row.Readings, row.StoredAnalyses, row.TryWordLink, row.HasNoWordform, row.Correctness,
+        row.ReadingGrades, row.ProjectStanding, row.MissedApproved, row.ExpectedAnalysis,
+        row.StoppedBy, row.Origin, row.OccurrenceCount, row.FixFirst, row.HasUnavailableEvidence,
+        row.EvidenceStatus, row.CorrectnessStatus,
+    })!;
 }

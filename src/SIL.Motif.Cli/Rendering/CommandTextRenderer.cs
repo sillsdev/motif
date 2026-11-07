@@ -12,6 +12,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Assess;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Host.PanGloss;
@@ -41,8 +42,11 @@ public static class CommandTextRenderer
     private static CommandResult RenderSuccess<T>(T value, bool asJson) where T : class?
     {
         if (asJson)
-            return new CommandResult(0, (value is WordTraceResponse trace ? TraceJson(trace) : value is TrialReviewResult review
-                ? JsonSerializer.Serialize(review, ReviewJson.Options) : ProjectionJson.Serialize(value)) +
+            return new CommandResult(0, (value is WordTraceResponse trace ? TraceJson(trace) :
+                value is TrialReviewResult review ? JsonSerializer.Serialize(review, ReviewJson.Options) :
+                value is AssessCommandResponse assessment ? AssessSummary.Full(assessment).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
+                value is TrialRecord trial ? AssessSummary.Trial(trial).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
+                ProjectionJson.Serialize(value)) +
                 Environment.NewLine);
 
         if (value is null)
@@ -134,21 +138,16 @@ public static class CommandTextRenderer
         }
         if (work.PercentChange is { } change)
             text.AppendLine((change == 0 ? "These words took the same parser work"
-                : $"These words took {Math.Abs(change):0.#}% {(change > 0 ? "more" : "less")} work to parse") +
-                $" ({work.BaselineWork:N0} parser work in the Baseline, {work.TrialParserWork:N0} in the Trial).");
+                : $"These words took {Math.Abs(change):0.#}% {(change > 0 ? "more" : "less")} work to parse") + ".");
         else text.AppendLine("Parser work cannot be compared for every Trial word.");
         if (work.WorkIncreaseWarning)
-            text.AppendLine("Warning: parser work increased by more than 5% over the Baseline.");
+            text.AppendLine("Parser work increased by more than 20% over the Baseline.");
         if (work.IncreasedWords.Count > 0) text.AppendLine("Words with more than 5% extra work:");
         foreach (var word in work.IncreasedWords)
-            text.AppendLine($"  {word.Word}: {word.BaselineWork:N0} to {word.TrialWork:N0} parser work " +
-                $"({word.Ratio:0.00}x, {word.PercentMore:0.#}% more work)");
+            text.AppendLine($"  {word.Word}: {word.PercentMore:0.#}% more work");
         text.AppendLine($"Stopped: {work.WorkLimitStops} at a parser limit; {work.TimeSafetyNetStops} at the time safety net.");
         if (work.WorkLimitWords.Count > 0) text.AppendLine("  Parser limit: " + string.Join(", ", work.WorkLimitWords));
         if (work.TimeSafetyNetWords.Count > 0) text.AppendLine("  Time safety net: " + string.Join(", ", work.TimeSafetyNetWords));
-        if (work.BaselineTimeMs is { } baselineMs && work.TrialTimeMs is { } trialMs)
-            text.AppendLine($"Time on this computer: {baselineMs:N0} ms in the Baseline, {trialMs:N0} ms in the Trial " +
-                "(it changes with machine load).");
         AppendWordResults(text, trial);
         return text.ToString();
     }
@@ -740,8 +739,8 @@ public static class CommandTextRenderer
         foreach (var word in page["words"]!.AsArray())
             text.AppendLine($"  {word!["word"]}: {word["outcome"]}" +
                 (word["reading"] is { } reading ? " (" + reading + ")" : string.Empty) +
-                (word["stoppedBy"] is { } stoppedBy ? ", stopped by " + stoppedBy : string.Empty) +
-                (word["parserWork"] is { } work ? ", " + work + " parser work" : string.Empty));
+                (word["stoppedBy"] is { } stoppedBy ? ", stopped by " + stoppedBy : string.Empty));
+        text.AppendLine("Parser work comparison unavailable: no paired Assessment was selected.");
         if (page["nextOffset"] is { } next)
             text.AppendLine($"More: motif assess <project> --summary --offset {next}");
         return new CommandResult(0, text.ToString());

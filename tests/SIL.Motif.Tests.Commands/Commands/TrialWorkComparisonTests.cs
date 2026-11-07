@@ -99,7 +99,7 @@ public sealed class TrialWorkComparisonTests
     }
 
     [Fact]
-    public void TheTrialWorkSerializesTheRatioTheStopKindsAndTheTimeOnThisComputer()
+    public void TheTrialWorkSerializesPercentAndStopKindsWithoutRawCosts()
     {
         var before = new[] { Word("a", 100) with { ElapsedMs = 5 }, Word("b", 10) with { ElapsedMs = 5 } };
         var after = new[] { Word("a", 150) with { ElapsedMs = 6 }, Word("b", 10) with { ElapsedMs = 6 } };
@@ -107,10 +107,13 @@ public sealed class TrialWorkComparisonTests
         var json = System.Text.Json.JsonSerializer.SerializeToNode(TrialWorkComparison.Compare(before, after),
             SIL.Motif.Contract.MotifJson.CreateOptions())!.AsObject();
 
-        Assert.Equal(160, json["TrialParserWork"]!.GetValue<long>());
-        Assert.Equal(1.5, json["IncreasedWords"]![0]!["Ratio"]!.GetValue<double>());
-        Assert.Equal(10, json["BaselineTimeMs"]!.GetValue<double>());
-        Assert.Equal(12, json["TrialTimeMs"]!.GetValue<double>());
+        Assert.Null(json["TrialParserWork"]);
+        Assert.Null(json["BaselineWork"]);
+        Assert.Null(json["IncreasedWords"]![0]!["Ratio"]);
+        Assert.Null(json["IncreasedWords"]![0]!["BaselineWork"]);
+        Assert.Null(json["BaselineTimeMs"]);
+        Assert.Null(json["TrialTimeMs"]);
+        Assert.Equal(50, json["IncreasedWords"]![0]!["PercentMore"]!.GetValue<double>());
         Assert.NotNull(json["WorkLimitWords"]);
         Assert.NotNull(json["TimeSafetyNetWords"]);
         Assert.DoesNotContain("Elapsed", json.ToJsonString(), StringComparison.Ordinal);
@@ -121,8 +124,10 @@ public sealed class TrialWorkComparisonTests
     [Theory]
     [InlineData(104L, false)]
     [InlineData(105L, false)]
-    [InlineData(106L, true)]
-    public void WarnsOnlyWhenTotalWorkRisesMoreThanFivePercent(long work, bool warning)
+    [InlineData(106L, false)]
+    [InlineData(120L, false)]
+    [InlineData(121L, true)]
+    public void WarnsOnlyWhenTotalWorkRisesMoreThanTwentyPercent(long work, bool warning)
     {
         var result = TrialWorkComparison.Compare([Word("word", 100)], [Word("word", work)]);
         Assert.Equal(warning, result.WorkIncreaseWarning);

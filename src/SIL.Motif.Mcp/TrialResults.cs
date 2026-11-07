@@ -212,8 +212,8 @@ internal static class TrialResults
             var rows = difference.Words!.Where(row => row.Outcome.StartsWith(category + ":", StringComparison.Ordinal)).ToArray();
             var items = rows.Skip(offset).Take(limit).Select(row => (JsonNode)new JsonObject
             {
-                ["word"] = row.Word, ["before"] = JsonSerializer.SerializeToNode(before[row.Word], Json),
-                ["after"] = JsonSerializer.SerializeToNode(after[row.Word], Json),
+                ["word"] = row.Word, ["before"] = AssessSummary.StoredWord(before[row.Word]),
+                ["after"] = AssessSummary.StoredWord(after[row.Word]),
             }).ToArray();
             return CommandOutcome<JsonObject>.Success(new JsonObject { ["difference"] = difference.AssessmentId,
                 ["category"] = category, ["total"] = rows.Length, ["offset"] = offset, ["returned"] = items.Length,

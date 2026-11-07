@@ -21,7 +21,11 @@ public static class TrialWorkComparison
             sameBaseline && before is not null && after is not null &&
             !string.IsNullOrWhiteSpace(before.ExecutableBytesSha256) &&
             before.ExecutableBytesSha256 == after.ExecutableBytesSha256 &&
-            before.PerWordParserWorkLimit == after.PerWordParserWorkLimit;
+            before.PerWordParserWorkLimit == after.PerWordParserWorkLimit &&
+            before.PerWordTimeoutMs == after.PerWordTimeoutMs &&
+            baseline.TokeniserName == trial.TokeniserName && baseline.TokeniserVersion == trial.TokeniserVersion &&
+            trial.Selection.Words.ToHashSet(StringComparer.Ordinal)
+                .SetEquals((trial.Words ?? []).Select(word => word.Word));
         return Compare(compatible ? baseline!.Words ?? [] : [], trial.Words ?? []);
     }
 

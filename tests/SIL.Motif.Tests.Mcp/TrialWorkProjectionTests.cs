@@ -107,8 +107,10 @@ public sealed class TrialWorkProjectionTests
             else
             {
                 Assert.NotNull(work);
-                Assert.Equal(comparable ? 100L : null, work!["baselineWork"]?.GetValue<long>());
-                Assert.Equal(comparable, work["workIncreaseWarning"]!.GetValue<bool>());
+                Assert.Null(work!["baselineWork"]);
+                Assert.Null(work["trialParserWork"]);
+                Assert.Equal(comparable ? 10d : null, work["percentChange"]?.GetValue<double>());
+                Assert.False(work["workIncreaseWarning"]!.GetValue<bool>());
             }
         }
         finally { Directory.Delete(root, true); }

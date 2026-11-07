@@ -65,7 +65,8 @@ public sealed class DifferencePagingTests
         {
             var words = new[] { "first", "second", "unfinished" };
             var before = words.Select(word => new AssessedWord(word, "analysed",
-                [new ParsedAnalysis(null, ["old-morph"], 0, "old-identity")])).ToArray();
+                [new ParsedAnalysis(null, ["old-morph"], 0, "old-identity")])
+                { ParserWork = 123, ElapsedMs = 456 }).ToArray();
             var after = words.Select(word => new AssessedWord(word, word == "unfinished" ? "incomplete" : "no-analysis", [])
                 { IsIncomplete = word == "unfinished" }).ToArray();
             var scope = ScopeCodec.Write(new StoredScope.Difference("before", "after", 3, 3, 3,
@@ -95,6 +96,8 @@ public sealed class DifferencePagingTests
             Assert.Equal("first", first["items"]![0]!["word"]!.GetValue<string>());
             Assert.Equal("old-identity", first["items"]![0]!["before"]!["analyses"]![0]!["identityDigest"]!.GetValue<string>());
             Assert.Empty(first["items"]![0]!["after"]!["analyses"]!.AsArray());
+            Assert.DoesNotContain("parserWork", first.ToJsonString(), StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("elapsedMs", first.ToJsonString(), StringComparison.OrdinalIgnoreCase);
             var second = Page("positives-lost", first["nextOffset"]!.GetValue<int>());
             Assert.Equal("second", second["items"]![0]!["word"]!.GetValue<string>());
             Assert.Null(second["nextOffset"]);

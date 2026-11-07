@@ -45,7 +45,7 @@ public sealed record TrialSummary(
     Paired<double?> TextCoveragePercent,
     Paired<int> ApprovedKept,
     Paired<int> ApprovedTotal,
-    Paired<double?> WordTimeMs,
+    [property: System.Text.Json.Serialization.JsonIgnore] Paired<double?> WordTimeMs,
     Paired<int?> WarningCount,
     int LostApproved,
     int NoLongerFits)
