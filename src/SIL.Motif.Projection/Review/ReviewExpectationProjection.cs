@@ -114,5 +114,5 @@ public static class ReviewExpectationProjection
 
     private static string Identity(ApprovedMorphology morphology) => "sha256:" + Convert.ToHexStringLower(
         SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(
-            morphology.Morphs.Select(morph => new { morph.Form, morph.Msa, morph.InflType })))));
+            morphology.Morphs.Select(morph => new { morph.Form, morph.Msa, morph.InflType, morph.Forms })))));
 }

@@ -50,6 +50,32 @@ public sealed class ReviewExpectationProjectionTests : IDisposable
     }
 
     [Fact]
+    public void GuessedFormAlternativesDistinguishApprovedReadings()
+    {
+        IWfiWordform word = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            word = _cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("example", _cache.DefaultVernWs));
+            foreach (var text in new[] { "a", "b" })
+            {
+                AddAnalysis(word, _seed.FirstLexemeFormId, _seed.FirstSenseId, Opinions.approves);
+                word.AnalysesOC.Last().MorphBundlesOS[0].Form.set_String(_cache.DefaultVernWs,
+                    TsStringUtils.MakeString(text, _cache.DefaultVernWs));
+            }
+        });
+        var assertions = ReviewExpectationProjection.ReadApproved(_cache)[word.Guid];
+        var a = Assert.Single(assertions, item => item.Morphology!.Morphs[0].Forms.Contains("a"));
+        var b = Assert.Single(assertions, item => item.Morphology!.Morphs[0].Forms.Contains("b"));
+        var morph = a.Morphology!.Morphs[0];
+        var actual = new SIL.Motif.Contract.Responses.ParseAnalysis(
+            [new SIL.Motif.Contract.Responses.ParseMorph(morph.Form, morph.Msa, morph.InflType, "a")]);
+        Assert.NotEqual(a.ReadingIdentity, b.ReadingIdentity);
+        Assert.True(SIL.Motif.Host.Analysis.AnalysisMorphologyMatcher.Matches(actual, a.Morphology));
+        Assert.False(SIL.Motif.Host.Analysis.AnalysisMorphologyMatcher.Matches(actual, b.Morphology!));
+    }
+
+    [Fact]
     public void MissingIdentityIsVisibleNotGuessed()
     {
         IWfiWordform word = null!;
