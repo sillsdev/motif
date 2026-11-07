@@ -23,9 +23,10 @@ internal static class TrialScratchRetention
     {
         var jobs = new JobRepository(database).ListByProjectAndKind(workspaceKey, TrialJobHandler.TrialKind);
         var proposals = ProposalStatuses(database);
+        var protectedJobs = ReviewReportRetention.ProtectedTrialJobs(database);
         var candidates = jobs.Where(job => job.JobId == currentJobId || JobStateMachine.IsTerminal(job.Status))
             .Where(job => Directory.Exists(TrialScratchPath.ForJob(job.JobId)))
-            .Where(job => !IsRetained(TrialScratchPath.ForJob(job.JobId)))
+            .Where(job => !IsRetained(TrialScratchPath.ForJob(job.JobId)) && !protectedJobs.Contains(job.JobId))
             .OrderByDescending(job => job.CreatedUtc, StringComparer.Ordinal)
             .ThenByDescending(job => job.JobId, StringComparer.Ordinal).ToArray();
         foreach (var job in candidates.Where(job => IsMarkedForDeletion(TrialScratchPath.ForJob(job.JobId)) || !CanKeep(job, proposals)))
@@ -131,11 +132,12 @@ internal static class TrialScratchRetention
         {
             var jobs = new JobRepository(database).ListByProjectAndKind(workspaceKey, TrialJobHandler.TrialKind);
             var proposals = ProposalStatuses(database);
+            var protectedJobs = ReviewReportRetention.ProtectedTrialJobs(database);
             foreach (var job in jobs)
             {
                 var name = Path.GetFileName(TrialScratchPath.ForJob(job.JobId));
                 known.Add(name);
-                if (!JobStateMachine.IsTerminal(job.Status)) active.Add(name);
+                if (!JobStateMachine.IsTerminal(job.Status) || protectedJobs.Contains(job.JobId)) active.Add(name);
             }
             foreach (var job in jobs.Where(job => JobStateMachine.IsTerminal(job.Status) && CanKeep(job, proposals))
                          .Where(job => Directory.Exists(Path.Combine(root, Path.GetFileName(TrialScratchPath.ForJob(job.JobId)))))

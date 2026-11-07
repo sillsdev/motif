@@ -974,7 +974,10 @@ public sealed class ProposalRepository : IProposalRepository
         string status)
     {
         if (!ProposalDifferenceRetention.KeepsWordDetail(status))
+        {
             ProposalDifferenceRetention.DropWordDetail(connection, transaction, proposalId, Now());
+            ReviewReportRetention.DropDetail(connection, transaction, proposalId, Now());
+        }
         ProposalDiscussionRepository.ClearRationaleHistoryIfDecided(connection, transaction, proposalId);
         if (ProposalLifecycle.IsTerminal(status))
             EvidenceArtifactRepository.ReleaseClosedProposalPins(connection, transaction, proposalId);

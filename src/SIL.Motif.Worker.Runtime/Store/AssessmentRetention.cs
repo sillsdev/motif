@@ -62,6 +62,9 @@ internal static class AssessmentRetention
             UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
             """));
         removable.ExceptWith(ReadFrozenReportAssessmentIds(connection, transaction));
+        removable.ExceptWith(ReadJsonReferences(connection, transaction,
+            "SELECT InputReferencesJson FROM ReviewReports WHERE InputReferencesJson != '[]';",
+            ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;")));
         var all = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;");
         removable.ExceptWith(ReadJsonReferences(connection, transaction,
             "SELECT InputJson FROM Jobs WHERE Kind IN ('trial', 'parsimony-report', 'parsimony-candidate') " +
@@ -184,6 +187,9 @@ internal static class AssessmentRetention
             UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
             """));
         removable.ExceptWith(ReadFrozenReportAssessmentIds(connection, transaction));
+        removable.ExceptWith(ReadJsonReferences(connection, transaction,
+            "SELECT InputReferencesJson FROM ReviewReports WHERE InputReferencesJson != '[]';",
+            ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;")));
         foreach (var sql in new[]
         {
             "SELECT ProposalJson FROM ProposalRevisions;",

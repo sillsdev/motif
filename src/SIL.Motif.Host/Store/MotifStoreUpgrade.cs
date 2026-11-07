@@ -1,4 +1,6 @@
 using System.Text;
+using System.Security.Cryptography;
+using SIL.Motif.Contract.Review;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Parsing;
@@ -13,7 +15,7 @@ public static class MotifStoreUpgrade
     private static readonly string[] Kept = ["Corpora", "CorpusDocuments", "Proposals", "ProposalRevisions",
         "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
         "Receipts", "AppliedIndex", "NamedSelections", "DefaultSelection", "ParsimonySelection", "ReviewMarks", "ReadOccurrences",
-        "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples"];
+        "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples", "ReviewReports"];
     private static readonly HashSet<string> Derived = new(StringComparer.Ordinal)
     {
         "ActiveParse", "AssessedWords", "AssessmentInvocations", "AssessmentObjectTimings", "AssessmentPins",
@@ -22,8 +24,37 @@ public static class MotifStoreUpgrade
         "ParserRefusals", "ParsimonyBuildClaims", "ParsimonyBundleReferences", "ParsimonyBundles", "ParsimonyFrozenViews", "ParsimonyReaderLeases",
         "PendingChangeFits", "PhonologyAssessmentBindings", "PhonologyAssessmentDependencies", "PhonologyAssessmentRows",
         "ProposalDifferenceBuckets", "ProposalDifferenceCases", "ProposalDifferenceOccurrences",
-        "Reports", "RetainedInvocationMembers", "RetainedInvocations"
+        "Reports", "RetainedInvocationMembers", "RetainedInvocations",
+        "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents"
     };
+
+    private static void ReleaseReviewReportDetails(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        var reports = new List<(string Id, string Json, string Digest)>();
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = "SELECT ReportId, SummaryJson, SummaryDigest FROM ReviewReports;";
+            using var reader = command.ExecuteReader();
+            while (reader.Read()) reports.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
+        }
+        foreach (var (id, json, digest) in reports)
+        {
+            if (Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(json))) != digest)
+                throw new InvalidDataException("Review summary digest does not match.");
+            var summary = JsonSerializer.Deserialize<ReportView>(json, ReviewJson.Options) ?? throw new InvalidDataException("Invalid review summary.");
+            summary = summary with { DetailAvailability = DetailAvailability.Unavailable, Page = null, Word = null, Trace = null,
+                Limitations = summary.Limitations.Concat([new Limitation("detail-released", [], "Report detail was released during store upgrade.", [])]).ToArray() };
+            var updated = JsonSerializer.Serialize(summary, ReviewJson.Options);
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "UPDATE ReviewReports SET SummaryJson=$json,SummaryDigest=$hash,InputReferencesJson='[]',DetailAvailable=0,DetailBytes=0 WHERE ReportId=$id;";
+            command.Parameters.AddWithValue("$id", id);
+            command.Parameters.AddWithValue("$json", updated);
+            command.Parameters.AddWithValue("$hash", Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(updated))));
+            command.ExecuteNonQuery();
+        }
+    }
 
     /// <summary>The first store schema whose Difference summaries have the shape current code reads (ADR 0067).</summary>
     internal const int FirstSummarySchema = 56;
@@ -131,6 +162,7 @@ public static class MotifStoreUpgrade
                 if (carried[table] != Scalar(destination, $"SELECT COUNT(*) FROM old.{Quote(table)}{where};", transaction))
                     throw new InvalidDataException(StoreUpgradeMessages.Format("CountChanged", table));
             }
+            ReleaseReviewReportDetails(destination, transaction);
             FoldNotesIntoComments(destination, transaction, tables, carried);
             // The word rows are not carried, so every carried summary says its word detail is gone.
             if (carriesSummaries) Execute(destination, "UPDATE main.ProposalDifferences SET WordDetailDroppedUtc = " +

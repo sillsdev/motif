@@ -52,7 +52,8 @@ internal static class ProposalDeletion
         RefuseIfRetainedByExampleSet(connection, transaction, proposalId);
         // Differences first: they cite Assessments by value only, and their rows hold the Proposal.
         foreach (var sql in new[] { "DELETE FROM Reports WHERE ProposalId = $id;",
-            "DELETE FROM ProposalDifferences WHERE ProposalId = $id;" })
+            "DELETE FROM ProposalDifferences WHERE ProposalId = $id;",
+            "DELETE FROM ReviewReports WHERE ProposalId = $id;" })
             Execute(connection, transaction, sql, proposalId);
         AssessmentRetention.SweepProposal(connection, transaction, proposalId, exceptAssessmentId: null);
         using (var check = connection.CreateCommand())
