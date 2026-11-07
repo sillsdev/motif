@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 62;
+    public const int CurrentSchema = 63;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -603,7 +603,7 @@ public static class MotifSchema
         "ProposalPictures" =>
         [C("PictureId", "INTEGER", false, 1), C("ProposalId", "TEXT", true), C("CommentId", "INTEGER"),
             C("MediaType", "TEXT", true), C("Width", "INTEGER", true), C("Height", "INTEGER", true),
-            C("Bytes", "BLOB", true), C("CreatedUtc", "TEXT", true)],
+            C("Bytes", "BLOB", true), C("CreatedUtc", "TEXT", true), C("Caption", "TEXT")],
         "Receipts" =>
         [C("ReceiptId", "TEXT", false, 1), C("ProposalId", "TEXT", true),
             C("IntentDigest", "TEXT", true), C("ReceiptJson", "TEXT", true), C("RecordedUtc", "TEXT", true)],
@@ -793,7 +793,8 @@ public static class MotifSchema
             Width INTEGER NOT NULL CHECK (Width > 0),
             Height INTEGER NOT NULL CHECK (Height > 0),
             Bytes BLOB NOT NULL,
-            CreatedUtc TEXT NOT NULL
+            CreatedUtc TEXT NOT NULL,
+            Caption TEXT NULL
         );
         CREATE INDEX IX_ProposalPictures_Proposal ON ProposalPictures(ProposalId, PictureId);
 

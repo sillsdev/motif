@@ -2,18 +2,22 @@ using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using SIL.Motif.Commands;
+using SkiaSharp;
 
 namespace SIL.Motif.App.Services;
 
 /// <summary>
-/// Scales a picture to fit <see cref="ProposalPictures.MaxBytes"/> with Avalonia's imaging, the only place a picture
-/// is decoded. A PNG or JPEG already small enough is kept byte for byte; anything else is decoded and written as a PNG
-/// (a JPEG stays a JPEG), made smaller step by step until it fits.
+/// Prepares a picture for a Proposal with Avalonia's imaging, the only place a picture is decoded: upright by its EXIF
+/// orientation, at most <see cref="LongestSide"/> pixels on the long side (never enlarged), stripped of metadata by
+/// being re-drawn, and written as WebP, lossless for a PNG and lossy at quality 80 for a JPEG. The original is not kept.
 /// </summary>
 public static class PictureScaler
 {
     /// <summary>The longest side a scaled picture keeps, in pixels.</summary>
-    public const int LongestSide = 2048;
+    public const int LongestSide = ProposalPictures.MaxSide;
+
+    /// <summary>The quality of a lossy WebP, and of the JPEG written when WebP cannot be.</summary>
+    public const int LossyQuality = 80;
 
     // Leaves room under the cap so one more encode is never the one that overflows.
     private const double Target = 0.9;
@@ -29,18 +33,12 @@ public static class PictureScaler
         if (!LooksLikeAPicture(source)) return new PictureIntakeResult(PictureIntakeStatus.Unsupported);
         // The header says how big the picture is; a small file can declare a size no machine should decode.
         if (DeclaredPixels(source) > MaxSourcePixels) return new PictureIntakeResult(PictureIntakeStatus.TooLarge);
-        // A JPEG with an orientation tag is always re-encoded, so a stored picture is upright with the tag gone.
-        if (source.Length <= maxBytes && PictureSniffer.Read(source) is { } known &&
-            (source[0] != 0xFF || ExifOrientation(source) == 1) && Math.Max(known.Width, known.Height) <= LongestSide)
-            return new PictureIntakeResult(PictureIntakeStatus.Ready, source);
         try
         {
             using var decoded = new Bitmap(new MemoryStream(source, writable: false));
             var size = decoded.PixelSize;
             if (size.Width < 1 || size.Height < 1) return new PictureIntakeResult(PictureIntakeStatus.Unreadable);
-            // A photograph keeps its JPEG form, which stays small; anything else is written as a PNG.
-            BitmapEncoderOptions options = source[0] == 0xFF ? new JpegBitmapEncoderOptions { Quality = 85 }
-                : PngBitmapEncoderOptions.Default;
+            var lossless = !IsLossy(source);
             // A phone photograph is stored sideways with a tag saying how to turn it; Avalonia ignores the tag.
             var orientation = source[0] == 0xFF ? ExifOrientation(source) : 1;
             var scale = Math.Min(1.0, (double)LongestSide / Math.Max(size.Width, size.Height));
@@ -51,13 +49,11 @@ public static class PictureScaler
                 using var scaled = width == size.Width && height == size.Height
                     ? null : decoded.CreateScaledBitmap(new PixelSize(width, height), BitmapInterpolationMode.HighQuality);
                 using var upright = orientation == 1 ? null : Turned(scaled ?? decoded, orientation);
-                using var output = new MemoryStream();
-                (upright ?? scaled ?? decoded).Save(output, options);
-                if (output.Length <= maxBytes * Target)
-                    return new PictureIntakeResult(PictureIntakeStatus.Ready, output.ToArray());
+                var encoded = Encode(upright ?? scaled ?? decoded, lossless);
+                if (encoded.Length <= maxBytes * Target) return new PictureIntakeResult(PictureIntakeStatus.Ready, encoded);
                 if (width == 1 && height == 1) break;
-                // PNG size follows pixel count, so shrink the sides by the square root of the overshoot.
-                scale *= Math.Min(0.85, Math.Sqrt(maxBytes * Target / output.Length));
+                // Size follows pixel count, so shrink the sides by the square root of the overshoot.
+                scale *= Math.Min(0.85, Math.Sqrt(maxBytes * Target / encoded.Length));
             }
             return new PictureIntakeResult(PictureIntakeStatus.TooLarge);
         }
@@ -68,6 +64,35 @@ public static class PictureScaler
         }
     }
 
+    // A JPEG, and a WebP that is not the lossless kind, are photographs; PNG, GIF and BMP are drawn pictures.
+    private static bool IsLossy(byte[] b) =>
+        b[0] == 0xFF || b[0] == 'R' && b.Length >= 16 && !(b[12] == 'V' && b[13] == 'P' && b[14] == '8' && b[15] == 'L');
+
+    // WebP through the SkiaSharp that Avalonia already bundles; PNG or JPEG q80 when this build cannot encode WebP.
+    private static byte[] Encode(Bitmap picture, bool lossless)
+    {
+        var size = picture.PixelSize;
+        var info = new SKImageInfo(size.Width, size.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+        var pixels = new byte[info.RowBytes * info.Height];
+        var handle = System.Runtime.InteropServices.GCHandle.Alloc(pixels, System.Runtime.InteropServices.GCHandleType.Pinned);
+        try
+        {
+            picture.CopyPixels(new PixelRect(size), handle.AddrOfPinnedObject(), pixels.Length, info.RowBytes);
+            using var pixmap = new SKPixmap(info, handle.AddrOfPinnedObject(), info.RowBytes);
+            using var stream = new SKDynamicMemoryWStream();
+            var options = new SKWebpEncoderOptions(
+                lossless ? SKWebpEncoderCompression.Lossless : SKWebpEncoderCompression.Lossy, lossless ? 100 : LossyQuality);
+            if (pixmap.Encode(stream, options)) return stream.CopyToData().ToArray();
+        }
+        finally
+        {
+            handle.Free();
+        }
+        using var fallback = new MemoryStream();
+        picture.Save(fallback, lossless ? PngBitmapEncoderOptions.Default : new JpegBitmapEncoderOptions { Quality = LossyQuality });
+        return fallback.ToArray();
+    }
+
     // The pixels a PNG, JPEG, GIF, BMP or WebP header declares, or 0 when it declares none this can read.
     private static long DeclaredPixels(byte[] b)
     {
@@ -75,17 +100,7 @@ public static class PictureScaler
         if (b[0] == 'G') return (long)(b[6] | b[7] << 8) * (b[8] | b[9] << 8);
         if (b[0] == 'B' && b.Length >= 26)
             return Math.Abs((long)BitConverter.ToInt32(b, 18)) * Math.Abs((long)BitConverter.ToInt32(b, 22));
-        if (b[0] != 'R' || b.Length < 30) return 0;
-        if (b[12] == 'V' && b[13] == 'P' && b[14] == '8' && b[15] == 'X')
-            return (long)((b[24] | b[25] << 8 | b[26] << 16) + 1) * ((b[27] | b[28] << 8 | b[29] << 16) + 1);
-        if (b[12] == 'V' && b[13] == 'P' && b[14] == '8' && b[15] == 'L')
-        {
-            var bits = (uint)(b[21] | b[22] << 8 | b[23] << 16) | (uint)b[24] << 24;
-            return (long)((bits & 0x3FFF) + 1) * (((bits >> 14) & 0x3FFF) + 1);
-        }
-        return b[12] == 'V' && b[13] == 'P' && b[14] == '8' && b[15] == ' '
-            ? (long)((b[26] | b[27] << 8) & 0x3FFF) * ((b[28] | b[29] << 8) & 0x3FFF)
-            : 0;
+        return 0;
     }
 
     /// <summary>The EXIF orientation (1 to 8) of a JPEG, 1 when it has none or it cannot be read.</summary>

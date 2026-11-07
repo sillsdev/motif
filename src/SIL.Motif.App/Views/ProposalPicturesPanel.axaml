@@ -14,7 +14,11 @@
   </UserControl.Styles>
   <Border Classes="inspectorSection">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-      <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.PicturesTitle}" />
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+        <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.PicturesTitle}" />
+        <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" VerticalAlignment="Center"
+                                 IsVisible="{Binding HasItems}" />
+      </StackPanel>
       <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.NoPicturesYet}"
                                IsVisible="{Binding IsEmpty}" />
       <ItemsControl x:Name="ProposalPictureItems" ItemsSource="{Binding Items}">
@@ -29,6 +33,7 @@
             <StackPanel Classes="proposalPictureItem">
               <Image Classes="proposalPicture" Source="{Binding Bytes, Converter={x:Static views:PictureBytesConverter.Instance}}"
                      AutomationProperties.Name="{Binding Description}" />
+              <views:CopyableTextBlock TextWrapping="Wrap" Text="{Binding Caption}" IsVisible="{Binding HasCaption}" />
               <views:CopyableTextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding Description}" />
               <Button Content="{x:Static app:MotifAppStrings.RemovePicture}"
                       Command="{Binding $parent[ItemsControl].((vm:ProposalPicturesViewModel)DataContext).RemoveCommand}"
@@ -56,6 +61,11 @@
       <views:CopyableTextBlock Classes="inspectorMeaning problem" TextWrapping="Wrap" Text="{Binding Problem}"
                                IsVisible="{Binding HasProblem}" />
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+      <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.PictureLimitReached}"
+                               IsVisible="{Binding ShowsLimit}" />
+      <TextBox x:Name="ProposalPictureCaption" Text="{Binding Caption}" MaxLength="200"
+               Watermark="{x:Static app:MotifAppStrings.PictureCaptionWatermark}" IsVisible="{Binding CanAdd}"
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.PictureCaptionWatermark}" />
       <Button x:Name="AddProposalPicture" Content="{x:Static app:MotifAppStrings.AddPicture}"
               IsVisible="{Binding CanAdd}" Command="{Binding AddCommand}"
               AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalPictureAdd}" />

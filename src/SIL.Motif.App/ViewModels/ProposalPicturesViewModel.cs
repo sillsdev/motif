@@ -3,6 +3,7 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -19,6 +20,7 @@ public sealed partial class ProposalPictureItem : ObservableObject
         ArgumentNullException.ThrowIfNull(view);
         PictureId = view.PictureId;
         Bytes = bytes;
+        Caption = view.Caption ?? "";
         Description = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PictureDescription,
             view.Width, view.Height, Math.Max(1, (view.ByteCount + 512) / 1024));
     }
@@ -26,8 +28,14 @@ public sealed partial class ProposalPictureItem : ObservableObject
     /// <summary>The picture's number in the store.</summary>
     public long PictureId { get; }
 
-    /// <summary>The stored PNG or JPEG bytes, which the thumbnail decodes.</summary>
+    /// <summary>The stored WebP, PNG or JPEG bytes, which the thumbnail decodes.</summary>
     public byte[] Bytes { get; }
+
+    /// <summary>The person's one-line caption; empty when it has none.</summary>
+    public string Caption { get; }
+
+    /// <summary>Whether the picture has a caption to show.</summary>
+    public bool HasCaption => Caption.Length > 0;
 
     /// <summary>Its size in pixels and in kilobytes, in words.</summary>
     public string Description { get; }
@@ -38,8 +46,8 @@ public sealed partial class ProposalPictureItem : ObservableObject
 }
 
 /// <summary>
-/// The pictures on the selected Proposal. A person adds one through the file picker, which scales it to about 1 MB
-/// before it is stored, and removes any; a decided Proposal shows its pictures and no longer changes them.
+/// The pictures on the selected Proposal. A person adds one through the file picker, which scales it to at most 1000 pixels
+/// and about 1 MB, as WebP, before it is stored, and removes any; a decided Proposal shows its pictures and no longer changes them.
 /// </summary>
 public sealed partial class ProposalPicturesViewModel : ObservableObject
 {
@@ -93,6 +101,7 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanAdd))]
     [NotifyPropertyChangedFor(nameof(CanRemove))]
+    [NotifyPropertyChangedFor(nameof(ShowsLimit))]
     private bool _canEdit;
 
     /// <summary>The words for a picture that could not be added; empty when none failed.</summary>
@@ -104,8 +113,22 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
     [ObservableProperty]
     private WindowRefusal? _shownRefusal;
 
-    /// <summary>Whether the Add Picture button is offered.</summary>
-    public bool CanAdd => CanEdit && _intake is not null;
+    /// <summary>The caption for the next picture added; cleared once it is stored.</summary>
+    [ObservableProperty]
+    private string _caption = "";
+
+    /// <summary>How many pictures the Proposal holds out of how many it may, as "3 of 10".</summary>
+    public string CountText => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.PictureCountFormat,
+        Items.Count, ProposalPictures.MaxPictures);
+
+    /// <summary>Whether the Proposal holds as many pictures as it may.</summary>
+    public bool IsFull => Items.Count >= ProposalPictures.MaxPictures;
+
+    /// <summary>Whether to say that one picture must go before another comes.</summary>
+    public bool ShowsLimit => CanEdit && IsFull;
+
+    /// <summary>Whether the Add Picture button and the caption box are offered.</summary>
+    public bool CanAdd => CanEdit && _intake is not null && !IsFull;
 
     /// <summary>Whether each picture offers Remove.</summary>
     public bool CanRemove => CanEdit;
@@ -120,6 +143,17 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
     public bool IsEmpty => IsVisible && Items.Count == 0;
 
     partial void OnCanEditChanged(bool value) => AddCommand.NotifyCanExecuteChanged();
+
+    private void CountChanged()
+    {
+        OnPropertyChanged(nameof(HasItems));
+        OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(CountText));
+        OnPropertyChanged(nameof(IsFull));
+        OnPropertyChanged(nameof(ShowsLimit));
+        OnPropertyChanged(nameof(CanAdd));
+        AddCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>Reads a Proposal's pictures; <paramref name="canEdit"/> is false once it is decided.</summary>
     public async Task LoadAsync(string projectPath, string proposalId, bool canEdit, CancellationToken cancellationToken = default)
@@ -146,7 +180,7 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
         _generation++;
         _projectPath = _proposalId = null;
         Items.Clear();
-        OnPropertyChanged(nameof(HasItems));
+        CountChanged();
         IsVisible = false;
         CanEdit = false;
         Problem = "";
@@ -181,8 +215,7 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
     {
         Items.Clear();
         foreach (var item in items) Items.Add(item);
-        OnPropertyChanged(nameof(HasItems));
-        OnPropertyChanged(nameof(IsEmpty));
+        CountChanged();
     }
 
     private async Task AddAsync()
@@ -203,9 +236,11 @@ public sealed partial class ProposalPicturesViewModel : ObservableObject
                 Problem = MotifAppStrings.PictureTooBig;
                 return;
             case PictureIntakeStatus.Ready when chosen.Bytes is { } bytes:
-                var added = await _add(new AddPictureRequest(path, MotifProductVersion.CurrentText, proposalId, bytes),
+                var added = await _add(new AddPictureRequest(path, MotifProductVersion.CurrentText, proposalId, bytes,
+                        Caption: Caption.Trim() is { Length: > 0 } caption ? caption : null),
                     CancellationToken.None).ConfigureAwait(true);
                 if (!added.Succeeded) ShownRefusal = WindowRefusal.From(added.Refusal!);
+                else Caption = "";
                 break;
             default:
                 Problem = MotifAppStrings.PictureNotRead;

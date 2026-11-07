@@ -1,3 +1,4 @@
+using System.Globalization;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
@@ -16,7 +17,16 @@ public static class ProposalPictures
     /// <summary>The most bytes one stored picture may take: 1 MiB.</summary>
     public const int MaxBytes = 1024 * 1024;
 
-    /// <summary>Adds a PNG or JPEG picture to an open Proposal, or to one of its Comments.</summary>
+    /// <summary>The longest side, in pixels, a stored picture may have; the window scales down to it on attach.</summary>
+    public const int MaxSide = 1000;
+
+    /// <summary>How many pictures one Proposal holds; a Proposal over it keeps what it has and takes no more.</summary>
+    public const int MaxPictures = ProposalPictureRepository.MaxPicturesPerProposal;
+
+    /// <summary>The most characters a picture's caption may have.</summary>
+    public const int MaxCaptionLength = 200;
+
+    /// <summary>Adds a WebP, PNG or JPEG picture to an open Proposal, or to one of its Comments.</summary>
     public static CommandOutcome<ProposalPictureChangedResponse> Add(AddPictureRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -24,15 +34,31 @@ public static class ProposalPictures
         {
             if (request.Bytes is not { Length: > 0 })
                 return Refuse(id, "A picture cannot be empty.");
-            if (request.Bytes.Length > MaxBytes)
-                return Refuse(id, $"A picture can be at most {MaxBytes} bytes; scale it down first.");
             if (PictureSniffer.Read(request.Bytes) is not var (mediaType, width, height))
-                return Refuse(id, "Only PNG and JPEG pictures can be added.");
-            var write = pictures.Add(id, request.CommentId, mediaType, width, height, request.Bytes);
+                return Refuse(id, "Only WebP, PNG and JPEG pictures can be added.");
+            if (Math.Max(width, height) > MaxSide)
+                return Refuse(id, string.Format(CultureInfo.InvariantCulture,
+                    "This picture is {0} x {1} pixels; Motif keeps pictures at most {2} pixels on the longest side. " +
+                    "Resize it (or attach it in the Motif window, which resizes for you) and try again.",
+                    width, height, MaxSide));
+            var stored = PictureMetadata.Strip(request.Bytes);
+            if (stored.Length > MaxBytes)
+                return Refuse(id, string.Format(CultureInfo.InvariantCulture,
+                    "This picture is {0} bytes; Motif keeps pictures at most {1} bytes. Make it smaller (or attach it " +
+                    "in the Motif window, which scales it for you) and try again.", stored.Length, MaxBytes));
+            var caption = request.Caption?.Trim();
+            if (caption?.Contains('\n') == true || caption?.Contains('\r') == true)
+                return Refuse(id, "A caption is one line; remove the line breaks and try again.");
+            if (caption is { Length: > MaxCaptionLength })
+                return Refuse(id, string.Format(CultureInfo.InvariantCulture,
+                    "This caption is {0} characters; a caption is at most {1}. Shorten it and try again.",
+                    caption.Length, MaxCaptionLength));
+            var write = pictures.Add(id, request.CommentId, mediaType, width, height, stored,
+                string.IsNullOrEmpty(caption) ? null : caption);
             return write.Outcome switch
             {
                 PictureWriteOutcome.TooMany => Refuse(id,
-                    $"A Proposal holds at most {ProposalPictureRepository.MaxPicturesPerProposal} pictures."),
+                    $"A Proposal holds at most {ProposalPictureRepository.MaxPicturesPerProposal} pictures. Remove one to add another."),
                 _ => Result(id, write, "added", pictures),
             };
         });
@@ -77,7 +103,7 @@ public static class ProposalPictures
     }
 
     private static PictureView View(ProposalPictureRecord record) => new(record.PictureId, record.CommentId,
-        record.MediaType, record.Width, record.Height, record.ByteCount, record.CreatedUtc);
+        record.MediaType, record.Width, record.Height, record.ByteCount, record.CreatedUtc, record.Caption);
 
     private delegate CommandOutcome<ProposalPictureChangedResponse> Step(ProposalPictureRepository pictures, CanonicalId id);
 

@@ -272,7 +272,8 @@ public static class ProposalCommandRenderer
         var sb = new StringBuilder($"Pictures on Proposal {response.ProposalId}:{Environment.NewLine}");
         foreach (var p in response.Pictures)
             sb.AppendLine($"  {p.PictureId}  {p.MediaType}  {p.Width}x{p.Height}  {p.ByteCount} bytes" +
-                (p.CommentId is { } c ? $"  on Comment {c}" : ""));
+                (p.CommentId is { } c ? $"  on Comment {c}" : "") +
+                (p.Caption is { } caption ? $"  \"{caption}\"" : ""));
         return sb.ToString();
     }
 

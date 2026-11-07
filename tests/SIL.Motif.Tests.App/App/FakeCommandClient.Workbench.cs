@@ -241,7 +241,7 @@ public sealed partial class FakeCommandClient
         var held = StoredPictures.TryGetValue(request.ProposalId, out var list) ? list : StoredPictures[request.ProposalId] = [];
         var sniffed = SIL.Motif.Commands.PictureSniffer.Read(request.Bytes)!.Value;
         var view = new PictureView(held.Count + 1, request.CommentId, sniffed.MediaType, sniffed.Width, sniffed.Height,
-            request.Bytes.Length, "2026-01-01T00:00:00Z");
+            request.Bytes.Length, "2026-01-01T00:00:00Z", request.Caption);
         held.Add((view, request.Bytes));
         return Task.FromResult(CommandOutcome<ProposalPictureChangedResponse>.Success(
             new ProposalPictureChangedResponse(request.ProposalId, view.PictureId, "added", view)));

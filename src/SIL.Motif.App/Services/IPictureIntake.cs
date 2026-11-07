@@ -17,7 +17,7 @@ public enum PictureIntakeStatus
 
 /// <summary>The outcome of choosing a picture, with its scaled bytes when it is ready.</summary>
 /// <param name="Status">What happened.</param>
-/// <param name="Bytes">A PNG or JPEG of at most the store's picture size; null unless <paramref name="Status"/> is Ready.</param>
+/// <param name="Bytes">A WebP of at most the store's picture size; null unless <paramref name="Status"/> is Ready.</param>
 public sealed record PictureIntakeResult(PictureIntakeStatus Status, byte[]? Bytes = null);
 
 /// <summary>

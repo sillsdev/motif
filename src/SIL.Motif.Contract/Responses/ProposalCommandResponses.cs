@@ -133,13 +133,15 @@ public sealed record ProposalStatusChangedResponse(string ProposalId, string Sta
 /// <summary>One picture attached to a Proposal, without its bytes.</summary>
 /// <param name="PictureId">The picture's number, which a remove or a read names.</param>
 /// <param name="CommentId">The Comment the picture is attached to; null when it is attached to the Proposal itself.</param>
-/// <param name="MediaType"><c>image/png</c> or <c>image/jpeg</c>.</param>
+/// <param name="MediaType"><c>image/webp</c>, <c>image/png</c> or <c>image/jpeg</c>.</param>
 /// <param name="Width">The picture's width in pixels.</param>
 /// <param name="Height">The picture's height in pixels.</param>
 /// <param name="ByteCount">How many bytes the stored picture takes, counted in the store's size budget.</param>
 /// <param name="CreatedUtc">When it was added.</param>
+/// <param name="Caption">The one-line caption the person gave it; null when it has none.</param>
 public sealed record PictureView(
-    long PictureId, long? CommentId, string MediaType, int Width, int Height, int ByteCount, string CreatedUtc);
+    long PictureId, long? CommentId, string MediaType, int Width, int Height, int ByteCount, string CreatedUtc,
+    string? Caption = null);
 
 /// <summary>A picture added to or removed from a Proposal.</summary>
 /// <param name="ProposalId">The Proposal's id.</param>

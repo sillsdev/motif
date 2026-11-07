@@ -59,17 +59,62 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
                 Assert.NotNull(sniffed);
                 Assert.True(Math.Max(sniffed.Value.Width, sniffed.Value.Height) <= PictureScaler.LongestSide);
             }
-            Assert.Equal("image/jpeg", PictureSniffer.Read(PictureScaler.Scale(jpeg).Bytes!)!.Value.MediaType);
+        });
+    }
+
+    private static bool Contains(byte[] bytes, string ascii) =>
+        bytes.AsSpan().IndexOf(System.Text.Encoding.ASCII.GetBytes(ascii)) >= 0;
+
+    [Fact]
+    public void APictureIsResizedToAThousandPixelsAndNeverEnlarged()
+    {
+        avalonia.Invoke(() =>
+        {
+            var big = PictureSniffer.Read(PictureScaler.Scale(RedAndBlue(2400, 1200)).Bytes!)!.Value;
+            var small = PictureSniffer.Read(PictureScaler.Scale(RedAndBlue(400, 200)).Bytes!)!.Value;
+
+            Assert.Equal((1000, 500), (big.Width, big.Height));
+            Assert.Equal((400, 200), (small.Width, small.Height));
         });
     }
 
     [Fact]
-    public void ASmallPictureIsKeptByteForByteAndAnythingUnreadableIsReportedNotThrown()
+    public void APngIsStoredAsLosslessWebpAndAJpegAsLossyWebp()
+    {
+        avalonia.Invoke(() =>
+        {
+            var fromPng = PictureScaler.Scale(Noise(300, 200, jpeg: false)).Bytes!;
+            var fromJpeg = PictureScaler.Scale(RedAndBlue(300, 200)).Bytes!;
+
+            Assert.Equal("image/webp", PictureSniffer.Read(fromPng)!.Value.MediaType);
+            Assert.Equal("image/webp", PictureSniffer.Read(fromJpeg)!.Value.MediaType);
+            Assert.True(Contains(fromPng, "VP8L"), "a PNG becomes a lossless WebP");
+            Assert.False(Contains(fromJpeg, "VP8L"), "a JPEG becomes a lossy WebP");
+        });
+    }
+
+    [Fact]
+    public void TheStoredCopyCarriesNoMetadataFromTheOriginal()
+    {
+        avalonia.Invoke(() =>
+        {
+            var tagged = WithOrientation(RedAndBlue(400, 200), 6, littleEndian: true);
+            Assert.True(Contains(tagged, "Exif"));
+
+            var stored = PictureScaler.Scale(tagged).Bytes!;
+
+            Assert.False(Contains(stored, "Exif"));
+            Assert.False(Contains(stored, "EXIF"));
+            Assert.False(Contains(stored, "XMP"));
+        });
+    }
+
+    [Fact]
+    public void AnythingUnreadableIsReportedNotThrown()
     {
         avalonia.Invoke(() =>
         {
             var small = Noise(40, 30, jpeg: false);
-            Assert.Equal(small, PictureScaler.Scale(small).Bytes);
 
             Assert.Equal(PictureIntakeStatus.Unsupported, PictureScaler.Scale("not a picture, just words"u8.ToArray()).Status);
             // A PNG header that claims a large picture, followed by nothing a decoder can read.
@@ -105,6 +150,19 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
             while (jpeg[frame - 1] != 0xFF) frame = Array.IndexOf(jpeg, (byte)0xC0, frame + 1);
             jpeg[frame + 4] = jpeg[frame + 6] = 0x3A; // 0x3Axx rows and columns: about 218 megapixels
             Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(jpeg).Status);
+        });
+    }
+
+    [Fact]
+    public void AWebpDeclaringMoreThanAHundredMegapixelsIsRefusedBeforeItIsDecoded()
+    {
+        avalonia.Invoke(() =>
+        {
+            // RIFF, WEBP, then a VP8X chunk declaring 16384 x 16384 (stored as size minus one) over 30 bytes.
+            byte[] webp = [(byte)'R', (byte)'I', (byte)'F', (byte)'F', 22, 0, 0, 0, (byte)'W', (byte)'E', (byte)'B', (byte)'P',
+                (byte)'V', (byte)'P', (byte)'8', (byte)'X', 10, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0x3F, 0, 0xFF, 0x3F, 0];
+
+            Assert.Equal(PictureIntakeStatus.TooLarge, PictureScaler.Scale(webp).Status);
         });
     }
 
@@ -191,7 +249,6 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
             var scaled = PictureScaler.Scale(small);
 
             Assert.Equal(PictureIntakeStatus.Ready, scaled.Status);
-            Assert.NotEqual(small, scaled.Bytes);
             Assert.Equal(1, PictureScaler.ExifOrientation(scaled.Bytes!));
             Assert.Equal((true, true, false), Turned(scaled.Bytes!));
         });
@@ -250,6 +307,31 @@ public sealed class ProposalPicturesTests(AvaloniaHeadlessFixture avalonia)
 
         Assert.Empty(model.Items);
         Assert.True(model.IsEmpty);
+    }
+
+    [Fact]
+    public async Task ACaptionTypedBeforeAddingGoesWithThePictureAndTheCountAndLimitFollowTheCap()
+    {
+        var fake = new FakeCommandClient();
+        var model = Model(fake, new FakeIntake(new PictureIntakeResult(PictureIntakeStatus.Ready, ProposalPicturesTests_Png())));
+        await model.LoadAsync(ProjectPath, "p/one", canEdit: true);
+        Assert.Equal("0 of 10", model.CountText);
+
+        model.Caption = "  The chart  ";
+        await model.AddCommand.ExecuteAsync(null);
+
+        Assert.Equal("The chart", Assert.Single(fake.AddPictureRequests).Caption);
+        Assert.Equal("The chart", Assert.Single(model.Items).Caption);
+        Assert.Equal("", model.Caption);
+        Assert.Equal("1 of 10", model.CountText);
+
+        for (var i = 1; i < 10; i++) await model.AddCommand.ExecuteAsync(null);
+
+        Assert.Equal("10 of 10", model.CountText);
+        Assert.True(model.ShowsLimit);
+        Assert.False(model.CanAdd);
+        Assert.Equal("Remove one to add another", MotifAppStrings.PictureLimitReached);
+        Assert.Null(fake.AddPictureRequests[1].Caption);
     }
 
     [Theory]

@@ -1200,6 +1200,18 @@
     <value>{0} × {1} pixels, {2} KB</value>
     <comment>Window text. {0} and {1} are the width and height in pixels, {2} the size in kilobytes.</comment>
   </data>
+  <data name="MotifApp.PictureCountFormat" xml:space="preserve">
+    <value>{0} of {1}</value>
+    <comment>Window text beside the Pictures heading. {0} is how many pictures the Proposal holds, {1} the most it may hold.</comment>
+  </data>
+  <data name="MotifApp.PictureLimitReached" xml:space="preserve">
+    <value>Remove one to add another</value>
+    <comment>Window text shown in place of Add Picture when the Proposal holds as many pictures as it may.</comment>
+  </data>
+  <data name="MotifApp.PictureCaptionWatermark" xml:space="preserve">
+    <value>Caption (Optional)</value>
+    <comment>Placeholder of the box where a person types a one-line caption before adding a picture.</comment>
+  </data>
   <data name="MotifApp.PicturesAccessibleName" xml:space="preserve">
     <value>Pictures on this Proposal</value>
     <comment>Window text.</comment>
@@ -5950,8 +5962,8 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Sentence the window shows when the command refuses with code C.ProposalCommentInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalPictureInvalid" xml:space="preserve">
-    <value>That picture could not be added. It must be a PNG or JPEG picture of about 1 MB or less, and a Proposal holds a limited number of pictures.</value>
-    <comment>Sentence the window shows when the command refuses with code C.ProposalPictureInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+    <value>That picture could not be added. It must be a WebP, PNG or JPEG picture of about 1 MB or less and at most {0} pixels on a side, and a Proposal holds at most {1} pictures. Remove one to add another.</value>
+    <comment>Sentence the window shows when the command refuses with code C.ProposalPictureInvalid. {0} is the longest side in pixels, {1} the most pictures. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProposalRationaleEmpty" xml:space="preserve">
     <value>These changes need an explanation of what they do before they can be finished.</value>

@@ -36,6 +36,15 @@ public sealed class ProposalPicturesTests(PristineProjectFixture pristine)
         return [.. bytes];
     }
 
+    // A header-only lossless WebP: RIFF, WEBP, one VP8L chunk with its signature byte and packed size.
+    internal static byte[] Webp(int width, int height)
+    {
+        var packed = (uint)(width - 1) | (uint)(height - 1) << 14;
+        return [(byte)'R', (byte)'I', (byte)'F', (byte)'F', 22, 0, 0, 0, (byte)'W', (byte)'E', (byte)'B', (byte)'P',
+            (byte)'V', (byte)'P', (byte)'8', (byte)'L', 10, 0, 0, 0, 0x2F, (byte)packed, (byte)(packed >> 8),
+            (byte)(packed >> 16), (byte)(packed >> 24), 0, 0, 0, 0, 0];
+    }
+
     private static byte[] BigEndian(int value) => [(byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value];
 
     [Fact]
@@ -43,6 +52,7 @@ public sealed class ProposalPicturesTests(PristineProjectFixture pristine)
     {
         Assert.Equal(("image/png", 640, 480), PictureSniffer.Read(Png(640, 480)));
         Assert.Equal(("image/jpeg", 300, 200), PictureSniffer.Read(Jpeg(300, 200)));
+        Assert.Equal(("image/webp", 640, 480), PictureSniffer.Read(Webp(640, 480)));
         Assert.Null(PictureSniffer.Read("GIF89a not supported"u8));
         Assert.Null(PictureSniffer.Read(Png(0, 10)));
         Assert.Null(PictureSniffer.Read(Png(PictureSniffer.MaxSide + 1, 10)));
@@ -104,12 +114,122 @@ public sealed class ProposalPicturesTests(PristineProjectFixture pristine)
         Assert.True(atTheCap.Succeeded, atTheCap.Refusal?.Message);
         Assert.Single(ProposalPictures.Show(new ShowPicturesRequest(path, Version, id)).Value!.Pictures);
 
+        Assert.Equal(10, ProposalPictureRepository.MaxPicturesPerProposal);
         for (var i = 1; i < ProposalPictureRepository.MaxPicturesPerProposal; i++)
             Assert.True(ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(5, 5))).Succeeded);
         var one = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(5, 5)));
         Assert.Equal("proposal.picture-invalid", one.Refusal?.Code);
-        Assert.Equal(ProposalPictureRepository.MaxPicturesPerProposal,
-            ProposalPictures.Show(new ShowPicturesRequest(path, Version, id)).Value!.Pictures.Count);
+        Assert.Contains("Remove one to add another", one.Refusal?.Message);
+        Assert.Equal(10, ProposalPictures.Show(new ShowPicturesRequest(path, Version, id)).Value!.Pictures.Count);
+    }
+
+    [Fact]
+    public void AProposalOverTheCapKeepsItsPicturesAndRefusesOnlyNewOnes()
+    {
+        var (path, id) = Finalized("over-cap");
+        ProjectStoreCommand.Run(path, Version, (database, _) =>
+        {
+            using var connection = database.OpenConnection();
+            using var insert = connection.CreateCommand();
+            insert.CommandText = "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 12) " +
+                "INSERT INTO ProposalPictures (ProposalId, MediaType, Width, Height, Bytes, CreatedUtc) " +
+                "SELECT $id, 'image/png', 5, 5, x'00', '2026-11-06T00:00:00Z' FROM n;";
+            insert.Parameters.AddWithValue("$id", id);
+            insert.ExecuteNonQuery();
+            return CommandOutcome<string>.Success("");
+        });
+
+        var added = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(5, 5)));
+
+        Assert.Equal("proposal.picture-invalid", added.Refusal?.Code);
+        Assert.Equal(12, ProposalPictures.Show(new ShowPicturesRequest(path, Version, id)).Value!.Pictures.Count);
+    }
+
+    [Fact]
+    public void APictureLongerThanAThousandPixelsIsRefusedAndOneOfExactlyThatIsKept()
+    {
+        var (path, id) = Finalized("side");
+
+        var tooWide = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Webp(1001, 10)));
+        var exact = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Webp(1000, 700)));
+
+        Assert.Equal("proposal.picture-invalid", tooWide.Refusal?.Code);
+        Assert.Contains("1000 pixels", tooWide.Refusal?.Message);
+        Assert.True(exact.Succeeded, exact.Refusal?.Message);
+        Assert.Equal("image/webp", exact.Value!.Picture!.MediaType);
+    }
+
+    private static byte[] Stored(string path, string id, long pictureId) => Convert.FromBase64String(
+        ProposalPictures.Show(new ShowPicturesRequest(path, Version, id, pictureId)).Value!.DataBase64!);
+
+    private static bool Has(byte[] bytes, string ascii) =>
+        bytes.AsSpan().IndexOf(System.Text.Encoding.ASCII.GetBytes(ascii)) >= 0;
+
+    [Fact]
+    public void AnAttachedPictureIsStoredWithoutItsMetadata()
+    {
+        var (path, id) = Finalized("metadata");
+        var jpeg = Jpeg(20, 10);
+        byte[] exif = [0xFF, 0xE1, 0, 16, .. "Exif\0\0GPS-HERE"u8.ToArray()];
+        byte[] comment = [0xFF, 0xFE, 0, 10, .. "camera-1"u8.ToArray()];
+        var taggedJpeg = (byte[])[.. jpeg[..4], 0, 4, 0, 0, .. exif, .. comment, .. jpeg[8..]];
+        var png = Png(8, 8, padding: 4);
+        byte[] text = [0, 0, 0, 8, .. "tEXt"u8.ToArray(), .. "GPS=1234"u8.ToArray(), 0, 0, 0, 0];
+        var taggedPng = (byte[])[.. png[..33], .. text, .. png[33..]];
+        var webp = Webp(30, 20);
+        byte[] webpExif = [.. "EXIF"u8.ToArray(), 4, 0, 0, 0, .. "GPS!"u8.ToArray()];
+        var taggedWebp = (byte[])[.. webp, .. webpExif];
+        taggedWebp[4] = (byte)(taggedWebp.Length - 8);
+
+        Assert.True(Has(taggedJpeg, "GPS-HERE") && Has(taggedPng, "GPS=") && Has(taggedWebp, "GPS!"));
+        foreach (var (bytes, marker) in new[] { (taggedJpeg, "GPS-HERE"), (taggedPng, "GPS="), (taggedWebp, "GPS!") })
+        {
+            var added = ProposalPictures.Add(new AddPictureRequest(path, Version, id, bytes));
+
+            Assert.True(added.Succeeded, added.Refusal?.Message);
+            var kept = Stored(path, id, added.Value!.PictureId);
+            Assert.False(Has(kept, marker), marker);
+            Assert.True(kept.Length < bytes.Length);
+            Assert.NotNull(PictureSniffer.Read(kept));
+        }
+        Assert.Equal(jpeg, PictureMetadata.Strip(taggedJpeg));
+        Assert.Equal(webp, PictureMetadata.Strip(taggedWebp));
+        Assert.Equal(png, PictureMetadata.Strip(taggedPng));
+    }
+
+    [Fact]
+    public void ARefusedPictureSaysItsSizeAndWhatToDo()
+    {
+        var (path, id) = Finalized("messages");
+
+        var wide = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(1920, 1080)));
+        var heavy = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(10, 10, ProposalPictures.MaxBytes)));
+        var lines = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(8, 8), Caption: "a\nb"));
+
+        Assert.Contains("1920 x 1080 pixels", wide.Refusal?.Message);
+        Assert.Contains("at most 1000 pixels", wide.Refusal?.Message);
+        Assert.Contains("Motif window", wide.Refusal?.Message);
+        Assert.Contains("bytes; Motif keeps pictures at most 1048576 bytes", heavy.Refusal?.Message);
+        Assert.Contains("caption is one line", lines.Refusal?.Message);
+    }
+
+    [Fact]
+    public void ACaptionIsStoredWithThePictureAndListedWithIt()
+    {
+        var (path, id) = Finalized("caption");
+
+        var captioned = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(8, 8), Caption: "  The chart  "));
+        var plain = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(8, 8), Caption: "  "));
+        var twoLines = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(8, 8), Caption: "one\ntwo"));
+        var tooLong = ProposalPictures.Add(new AddPictureRequest(path, Version, id, Png(8, 8),
+            Caption: new string('x', ProposalPictures.MaxCaptionLength + 1)));
+
+        Assert.Equal("The chart", captioned.Value!.Picture!.Caption);
+        Assert.Null(plain.Value!.Picture!.Caption);
+        Assert.Equal("proposal.picture-invalid", twoLines.Refusal?.Code);
+        Assert.Equal("proposal.picture-invalid", tooLong.Refusal?.Code);
+        var listed = ProposalPictures.Show(new ShowPicturesRequest(path, Version, id)).Value!.Pictures;
+        Assert.Equal(["The chart", null], listed.Select(picture => picture.Caption));
     }
 
     [Fact]

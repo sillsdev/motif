@@ -747,6 +747,9 @@ public static class MotifAppStrings
     public static string PictureNotSupported => Text("MotifApp.PictureNotSupported");
     public static string PictureTooBig => Text("MotifApp.PictureTooBig");
     public static string PictureDescription => Text("MotifApp.PictureDescription");
+    public static string PictureCountFormat => Text("MotifApp.PictureCountFormat");
+    public static string PictureLimitReached => Text("MotifApp.PictureLimitReached");
+    public static string PictureCaptionWatermark => Text("MotifApp.PictureCaptionWatermark");
     public static string PicturesAccessibleName => Text("MotifApp.PicturesAccessibleName");
     public static string ReadingProposals => Text("MotifApp.ReadingProposals");
 

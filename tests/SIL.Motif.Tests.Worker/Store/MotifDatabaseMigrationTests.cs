@@ -354,7 +354,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
                 "AuthorLabel|TEXT|0|0|", "PersonName|TEXT|1|0|", "Text|TEXT|1|0|", "IntentDigest|TEXT|0|0|",
                 "CreatedUtc|TEXT|1|0|", "EditedUtc|TEXT|0|0|"],
             ["ProposalPictures"] = ["PictureId|INTEGER|0|1|", "ProposalId|TEXT|1|0|", "CommentId|INTEGER|0|0|",
-                "MediaType|TEXT|1|0|", "Width|INTEGER|1|0|", "Height|INTEGER|1|0|", "Bytes|BLOB|1|0|", "CreatedUtc|TEXT|1|0|"],
+                "MediaType|TEXT|1|0|", "Width|INTEGER|1|0|", "Height|INTEGER|1|0|", "Bytes|BLOB|1|0|", "CreatedUtc|TEXT|1|0|", "Caption|TEXT|0|0|"],
             ["Receipts"] = ["ReceiptId|TEXT|0|1|", "ProposalId|TEXT|1|0|", "IntentDigest|TEXT|1|0|",
                 "ReceiptJson|TEXT|1|0|", "RecordedUtc|TEXT|1|0|"],
             ["Reports"] = ["ReportId|TEXT|0|1|", "ProposalId|TEXT|0|0|", "AssessmentId|TEXT|0|0|",

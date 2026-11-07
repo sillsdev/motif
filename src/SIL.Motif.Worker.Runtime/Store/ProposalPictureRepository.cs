@@ -15,9 +15,10 @@ namespace SIL.Motif.Worker.Store;
 /// <param name="Height">Height in pixels.</param>
 /// <param name="ByteCount">The size of the stored bytes.</param>
 /// <param name="CreatedUtc">When it was added.</param>
+/// <param name="Caption">The one-line caption the person gave it; null when it has none.</param>
 public sealed record ProposalPictureRecord(
     long PictureId, string ProposalId, long? CommentId, string MediaType, int Width, int Height, int ByteCount,
-    string CreatedUtc);
+    string CreatedUtc, string? Caption = null);
 
 /// <summary>What a picture write did.</summary>
 public enum PictureWriteOutcome
@@ -44,7 +45,7 @@ public readonly record struct PictureWrite(PictureWriteOutcome Outcome, long Pic
 public sealed class ProposalPictureRepository
 {
     /// <summary>How many pictures one Proposal holds; the budget cannot trim authored data, so the count is bounded.</summary>
-    public const int MaxPicturesPerProposal = 20;
+    public const int MaxPicturesPerProposal = 10;
 
     private readonly MotifDatabase _database;
     private readonly IJobClock _clock;
@@ -57,7 +58,8 @@ public sealed class ProposalPictureRepository
     }
 
     /// <summary>Adds a picture to an open Proposal, attached to one of its Comments when a Comment is named.</summary>
-    public PictureWrite Add(CanonicalId proposalId, long? commentId, string mediaType, int width, int height, byte[] bytes)
+    public PictureWrite Add(CanonicalId proposalId, long? commentId, string mediaType, int width, int height, byte[] bytes,
+        string? caption = null)
     {
         ArgumentNullException.ThrowIfNull(bytes);
         using var connection = _database.OpenConnection();
@@ -75,8 +77,8 @@ public sealed class ProposalPictureRepository
         using var insert = connection.CreateCommand();
         insert.Transaction = transaction;
         insert.CommandText = """
-            INSERT INTO ProposalPictures (ProposalId, CommentId, MediaType, Width, Height, Bytes, CreatedUtc)
-            VALUES ($id, $comment, $type, $width, $height, $bytes, $now);
+            INSERT INTO ProposalPictures (ProposalId, CommentId, MediaType, Width, Height, Bytes, CreatedUtc, Caption)
+            VALUES ($id, $comment, $type, $width, $height, $bytes, $now, $caption);
             SELECT last_insert_rowid();
             """;
         insert.Parameters.AddWithValue("$id", proposalId.Value);
@@ -85,6 +87,7 @@ public sealed class ProposalPictureRepository
         insert.Parameters.AddWithValue("$width", width);
         insert.Parameters.AddWithValue("$height", height);
         insert.Parameters.AddWithValue("$bytes", bytes);
+        insert.Parameters.AddWithValue("$caption", (object?)caption ?? DBNull.Value);
         insert.Parameters.AddWithValue("$now", _clock.UtcNow.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
         var pictureId = Convert.ToInt64(insert.ExecuteScalar(), CultureInfo.InvariantCulture);
         transaction.Commit();
@@ -115,7 +118,7 @@ public sealed class ProposalPictureRepository
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT PictureId, ProposalId, CommentId, MediaType, Width, Height, length(Bytes), CreatedUtc
+            SELECT PictureId, ProposalId, CommentId, MediaType, Width, Height, length(Bytes), CreatedUtc, Caption
             FROM ProposalPictures WHERE ProposalId = $id ORDER BY PictureId;
             """;
         command.Parameters.AddWithValue("$id", proposalId.Value);
@@ -124,7 +127,7 @@ public sealed class ProposalPictureRepository
         while (reader.Read())
             pictures.Add(new ProposalPictureRecord(reader.GetInt64(0), reader.GetString(1),
                 reader.IsDBNull(2) ? null : reader.GetInt64(2), reader.GetString(3), reader.GetInt32(4),
-                reader.GetInt32(5), reader.GetInt32(6), reader.GetString(7)));
+                reader.GetInt32(5), reader.GetInt32(6), reader.GetString(7), reader.IsDBNull(8) ? null : reader.GetString(8)));
         return pictures;
     }
 
