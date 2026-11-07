@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 67;
+    public const int CurrentSchema = 68;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -34,7 +34,7 @@ public static class MotifSchema
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
-                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl;
+                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl;
             command.ExecuteNonQuery();
         }
 
@@ -69,7 +69,8 @@ public static class MotifSchema
             "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets",
             "ReviewReports", "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents",
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
-            "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding"
+            "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
+            "Requests"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -85,7 +86,7 @@ public static class MotifSchema
             "IX_ProposalDifferences_ProposalText", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket",
             "IX_ReviewReports_ProjectManifest", "IX_ReviewReportCases_Order", "IX_ReviewReportMemberships_Cell",
             "IX_PhonologyExampleSets_Name", "IX_PhonologyExampleSetRevisions_SetRevision",
-            "IX_PhonologyExamples_RevisionExampleId"
+            "IX_PhonologyExamples_RevisionExampleId", "IX_Requests_Status"
         };
         var expectedTriggers = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -371,6 +372,7 @@ public static class MotifSchema
         "IX_PhonologyExampleSets_Name" => "PhonologyExampleSets",
         "IX_PhonologyExampleSetRevisions_SetRevision" => "PhonologyExampleSetRevisions",
         "IX_PhonologyExamples_RevisionExampleId" => "PhonologyExamples",
+        "IX_Requests_Status" => "Requests",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -421,6 +423,7 @@ public static class MotifSchema
         "IX_PhonologyExampleSets_Name" => ["Name"],
         "IX_PhonologyExampleSetRevisions_SetRevision" => ["SetId", "RevisionNumber"],
         "IX_PhonologyExamples_RevisionExampleId" => ["RevisionId", "ExampleId"],
+        "IX_Requests_Status" => ["Status", "CreatedUtc"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -624,7 +627,11 @@ public static class MotifSchema
             C("Label", "TEXT"), C("Rationale", "TEXT"), C("RationaleIntentDigest", "TEXT"),
             C("RationaleUpdatedUtc", "TEXT"),
             C("SupersededBy", "TEXT"), C("AnchorJson", "TEXT"),
-            C("ArchivedUtc", "TEXT"), C("DraftName", "TEXT"), C("DraftJson", "TEXT"), C("Role", "TEXT")],
+            C("ArchivedUtc", "TEXT"), C("DraftName", "TEXT"), C("DraftJson", "TEXT"), C("Role", "TEXT"), C("RequestId", "TEXT")],
+        "Requests" =>
+        [C("RequestId", "TEXT", false, 1), C("TargetKind", "TEXT", true), C("TargetId", "TEXT", true),
+            C("TargetLabel", "TEXT", true), C("Note", "TEXT"), C("Status", "TEXT", true, defaultValue: "'open'"),
+            C("CreatedUtc", "TEXT", true), C("ClosedUtc", "TEXT"), C("AskedAgainOf", "TEXT")],
         "ProposalRevisions" =>
         [C("ProposalId", "TEXT", true, 1), C("IntentDigest", "TEXT", true, 2),
             C("ProposalJson", "BLOB", true), C("CreatedUtc", "TEXT", true)],
@@ -783,7 +790,8 @@ public static class MotifSchema
             ArchivedUtc TEXT NULL,
             DraftName TEXT NULL,
             DraftJson TEXT NULL,
-            Role TEXT NULL CHECK (Role IS NULL OR Role = 'pending-changes')
+            Role TEXT NULL CHECK (Role IS NULL OR Role = 'pending-changes'),
+            RequestId TEXT NULL
         );
         CREATE UNIQUE INDEX IX_Proposals_DraftName ON Proposals(DraftName);
         CREATE UNIQUE INDEX IX_Proposals_OpenRole ON Proposals(Role) WHERE DraftName IS NOT NULL;
@@ -1241,6 +1249,21 @@ public static class MotifSchema
             FactsJson TEXT NOT NULL,
             PRIMARY KEY (ReportId, CaseKey, Ordinal)
         );
+        """;
+
+    private const string RequestDdl = """
+        CREATE TABLE Requests (
+            RequestId TEXT PRIMARY KEY,
+            TargetKind TEXT NOT NULL CHECK (TargetKind IN ('word', 'warning', 'matrix-cell')),
+            TargetId TEXT NOT NULL,
+            TargetLabel TEXT NOT NULL,
+            Note TEXT NULL,
+            Status TEXT NOT NULL DEFAULT 'open' CHECK (Status IN ('open', 'answered', 'withdrawn')),
+            CreatedUtc TEXT NOT NULL,
+            ClosedUtc TEXT NULL,
+            AskedAgainOf TEXT NULL
+        );
+        CREATE INDEX IX_Requests_Status ON Requests(Status, CreatedUtc);
         """;
 
     private const string ReviewMarkDdl = """

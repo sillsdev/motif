@@ -367,6 +367,8 @@
                         <Button Content="{x:Static app:MotifAppStrings.ParseTheseWordsAgain}" IsVisible="{Binding CanParseAgain}"
                                 Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.ReparseCommand}"
                                 CommandParameter="{Binding}" />
+                        <views:AskAssistantButton TargetKind="warning" TargetId="{Binding AskTargetId}"
+                                                  TargetLabel="{Binding Message}" />
                       </StackPanel>
 
                       <Border Classes="warningWorkflow" IsVisible="{Binding HasYourWords}">

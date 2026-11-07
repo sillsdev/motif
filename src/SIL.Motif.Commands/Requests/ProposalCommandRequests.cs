@@ -30,7 +30,9 @@ public sealed record AssessmentAnalysesRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="DraftName">The name of the Draft being authored.</param>
 /// <param name="Label">The short description a person reads while reviewing the Proposal.</param>
-public sealed record NewDraftRequest(string FwDataPath, string ProductVersion, string DraftName, string? Label);
+/// <param name="RequestId">The id of the open Request this Proposal answers, from list requests; leave out when it answers none. A Request is answered when the Proposal is finalized.</param>
+public sealed record NewDraftRequest(
+    string FwDataPath, string ProductVersion, string DraftName, string? Label, string? RequestId = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>

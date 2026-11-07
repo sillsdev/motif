@@ -744,6 +744,9 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
         (ProblemParts.Count != 1 || ProblemParts[0].Role != GrammarWarningPartRole.Text ||
             !string.Equals(ProblemParts[0].Text, Message, StringComparison.Ordinal));
     internal string? FindingIdentity { get; }
+
+    /// <summary>What a Request about this Warning names: the finding's identity, or its message when it has none.</summary>
+    public string AskTargetId => FindingIdentity ?? Message;
     public IRelayCommand ToggleOpenCommand { get; }
 
     [ObservableProperty]

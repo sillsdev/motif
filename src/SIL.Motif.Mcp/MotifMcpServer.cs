@@ -39,6 +39,8 @@ public sealed record McpLaunchOptions(
 public static class MotifMcpServer
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private const string ListRequestsTool = "motif_list_requests";
+    private const string OpenRequestsPromptName = "motif_work_on_open_requests";
     private const string AdvancedAiSetupPromptName = "motif_advanced_ai_setup";
     private const string AdvancedAiSetupPromptDescription =
         "Explain how to enable Motif tools after Advanced AI mode was off at server startup.";
@@ -59,7 +61,16 @@ public static class MotifMcpServer
         var includeReviewDrillDown = options.AdvancedAiModeEnabled && exposed.Any(tool => tool.Tool.Name == "motif_difference");
         var includeReviewResources = includeReviewDrillDown || options.AdvancedAiModeEnabled && exposed.Any(tool => tool.Tool.Name == "motif_trial");
         var prompts = options.AdvancedAiModeEnabled
-            ? Array.Empty<Prompt>()
+            ? new[]
+            {
+                new Prompt
+                {
+                    Name = OpenRequestsPromptName,
+                    Title = "Work on Open Requests",
+                    Description = "Answer the linguist's open Requests with one Proposal.",
+                    Arguments = [],
+                },
+            }
             : new[]
             {
                 new Prompt
@@ -99,6 +110,19 @@ public static class MotifMcpServer
                 }),
                 GetPromptHandler = (request, _) =>
                 {
+                    if (options.AdvancedAiModeEnabled && request.Params?.Name == OpenRequestsPromptName)
+                        return ValueTask.FromResult(new GetPromptResult
+                        {
+                            Description = "Answer the linguist's open Requests with one Proposal.",
+                            Messages =
+                            [
+                                new PromptMessage
+                                {
+                                    Role = Role.User,
+                                    Content = new TextContentBlock { Text = DefaultInstructions.OpenRequestsPrompt },
+                                },
+                            ],
+                        });
                     if (options.AdvancedAiModeEnabled || request.Params?.Name != AdvancedAiSetupPromptName)
                         throw new McpProtocolException("The requested prompt is not available.", McpErrorCode.InvalidParams);
                     return ValueTask.FromResult(new GetPromptResult
@@ -163,6 +187,7 @@ public static class MotifMcpServer
             outcome = await RunAsync(context, tool, args, cancellation);
             result = outcome.Refusal is { } refusal ? RefusalMapper.ToResult(refusal, tools, args) : Success(tool, outcome, args);
         }
+        result = OpenRequestsNotice.Apply(context, args, result);
         context.Activity.Record(new ActivityEntry(DateTimeOffset.UtcNow, tool?.Tool.Name ?? name, args,
             result.IsError == true, outcome.Refusal?.Code, ResultBytes(result), clock.ElapsedMilliseconds,
             outcome.JobId, context.Profile.Name, outcome.FindComposer,
@@ -201,7 +226,12 @@ public static class MotifMcpServer
                 context = context.ForProject(ProjectResolver.Resolve(toolArgs.Required("project"),
                     SIL.Motif.Worker.RunnerOptions.ResolveRoot()));
             if (gated) await context.ProjectGate.WaitAsync(cancellation);
-            try { return CommentsNotice.Apply(context, args, await tool.Tool.Run(context, toolArgs, cancellation)); }
+            try
+            {
+                var run = await tool.Tool.Run(context, toolArgs, cancellation);
+                return CommentsNotice.Apply(context, args,
+                    tool.Tool.Name == ListRequestsTool ? OpenRequestsNotice.QuoteNotes(run) : run);
+            }
             finally { if (gated) context.ProjectGate.Release(); }
         }
         catch (ProfileException exception)
@@ -309,6 +339,7 @@ internal sealed record ExposedTool(AgentTool Tool, string Name, string Descripti
     public Tool Describe() => new()
     {
         Name = Name,
+        Title = Tool.Title,
         Description = Description,
         InputSchema = JsonSerializer.SerializeToElement(Tool.InputSchema),
         OutputSchema = Tool.OutputSchema is null ? null : JsonSerializer.SerializeToElement(Tool.OutputSchema),

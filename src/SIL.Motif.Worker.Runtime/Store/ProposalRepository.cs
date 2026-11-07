@@ -1,3 +1,4 @@
+using SIL.Motif.Projection.Store;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -209,6 +210,13 @@ public sealed record ProposalRevisionRecord(
 /// <summary>A Draft's content is no longer what the caller read, so the change was refused.</summary>
 public sealed class DraftChangedException(string draftName)
     : InvalidOperationException($"Draft '{draftName}' changed. Reload it and try again.");
+
+/// <summary>Another open Proposal already answers this Request.</summary>
+public sealed class RequestProposalOpenException(string requestId) : InvalidOperationException
+{
+    /// <summary>The Request already answered by an open Proposal.</summary>
+    public string RequestId { get; } = requestId;
+}
 
 /// <summary>A Draft has authored content that automatic cleanup must preserve.</summary>
 internal sealed class DraftAuthoredContentException()
@@ -682,6 +690,7 @@ public sealed class ProposalRepository : IProposalRepository
             commit.ExecuteNonQuery();
         }
         ProposalDiscussionRepository.StampDigest(connection, transaction, proposalId, intentDigest);
+        RequestRepository.AnswerFor(connection, transaction, proposalId, Now());
         if (thenMove is not null &&
             !MoveInTransaction(connection, transaction, CanonicalId.Parse(proposalId), thenMove.AllowedFrom,
                 thenMove.To, null, thenMove.Comment).Moved)
@@ -954,6 +963,7 @@ public sealed class ProposalRepository : IProposalRepository
         if (update.ExecuteNonQuery() > 0)
         {
             DropWordDetailIfDecided(connection, transaction, proposalId.Value, to);
+            ReopenRequestIfUndecided(connection, transaction, proposalId.Value, to);
             return new StatusTransitionOutcome(true, to);
         }
 
@@ -980,12 +990,21 @@ public sealed class ProposalRepository : IProposalRepository
         update.Parameters.AddWithValue("$id", proposalId.Value);
         update.ExecuteNonQuery();
         DropWordDetailIfDecided(connection, transaction, proposalId.Value, status);
+        ReopenRequestIfUndecided(connection, transaction, proposalId.Value, status);
         transaction.Commit();
         if (!ProposalDifferenceRetention.KeepsWordDetail(status))
         {
             ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
             TrialScratchRetention.TrySweepReviewInputs(_database);
         }
+    }
+
+    // A decline keeps its Request answered; a withdrawal or replacement reopens it.
+    private static void ReopenRequestIfUndecided(SqliteConnection connection, SqliteTransaction transaction,
+        string proposalId, string status)
+    {
+        if (status is ManifestStatus.Withdrawn or ManifestStatus.Superseded)
+            RequestRepository.ReopenFor(connection, transaction, proposalId);
     }
 
     private void DropWordDetailIfDecided(SqliteConnection connection, SqliteTransaction transaction, string proposalId,
@@ -1091,6 +1110,8 @@ public sealed class ProposalRepository : IProposalRepository
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         RequireDraftNameFree(connection, transaction, draftName);
+        if (RequestRepository.ConflictingRequest(connection, transaction, proposalId.Value) is { } requestId)
+            throw new RequestProposalOpenException(requestId);
         using var update = connection.CreateCommand();
         update.Transaction = transaction;
         update.CommandText = """

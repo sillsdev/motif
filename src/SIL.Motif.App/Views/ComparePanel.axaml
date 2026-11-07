@@ -200,6 +200,10 @@
                                 IsVisible="{Binding Compare.ListMeaning, Converter={x:Static ObjectConverters.IsNotNull}}" />
               </StackPanel>
             </StackPanel>
+            <views:AskAssistantButton DockPanel.Dock="Right" TargetKind="matrix-cell"
+                                      TargetId="{Binding Compare.AskCellId}"
+                                      TargetLabel="{Binding Compare.AskCellLabel}"
+                                      IsVisible="{Binding Compare.HasAskCell}" />
             <DockPanel VerticalAlignment="Center">
               <views:CopyableTextBlock DockPanel.Dock="Left" Text="{Binding Compare.ListSummary}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.MatrixListSummary}"
                                        Margin="{DynamicResource Intent.Gap.AfterRelated}" />

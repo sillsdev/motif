@@ -6,6 +6,11 @@
   <Styles.Resources>
     <StaticResource x:Key="Component.Proposals.ActionsWidth" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.Proposals.DetailHeight" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.Proposals.RequestsHeight" ResourceKey="Primitive.Size.150" />
+    <StaticResource x:Key="Component.Proposals.RequestsGroupHeight" ResourceKey="Primitive.Size.190" />
+    <StaticResource x:Key="Component.Proposals.RequestsMinHeight" ResourceKey="Primitive.Size.48" />
+    <StaticResource x:Key="Component.Proposals.RequestsMargin" ResourceKey="Primitive.Inset.8_0_8_0" />
+    <StaticResource x:Key="Component.Proposals.ListMinHeight" ResourceKey="Primitive.Size.24" />
     <StaticResource x:Key="Component.Proposals.PageMargin" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.Proposals.DeleteSetApart" ResourceKey="Primitive.Inset.8_0_0_0" />
     <StaticResource x:Key="Component.Proposals.PictureThumbSize" ResourceKey="Primitive.Size.110" />

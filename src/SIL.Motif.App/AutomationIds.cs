@@ -282,6 +282,27 @@ public static class AutomationIds
     public static string ForProposalReopen(string proposalId) =>
         "motif-proposals-reopen-" + ProposalIdPart(proposalId);
 
+    /// <summary>Creates the identifier of Ask Again on one declined Proposal's card.</summary>
+    /// <param name="proposalId">The Proposal's canonical id.</param>
+    /// <returns>An ASCII identifier that stays with the Proposal.</returns>
+    public static string ForProposalAskAgain(string proposalId) =>
+        "motif-proposals-ask-again-" + ProposalIdPart(proposalId);
+
+    /// <summary>Creates the identifier of Withdraw Request on one open Request.</summary>
+    /// <param name="requestId">The Request's canonical id.</param>
+    /// <returns>An ASCII identifier that stays with the Request.</returns>
+    public static string ForRequestWithdraw(string requestId) =>
+        "motif-requests-withdraw-" + ProposalIdPart(requestId);
+
+    /// <summary>The Ask an Assistant to Fix This button and its note box.</summary>
+    public const string AskAssistantButton = "motif-ask-assistant";
+
+    /// <summary>The note box in the Ask an Assistant to Fix This flyout.</summary>
+    public const string AskAssistantNote = "motif-ask-assistant-note";
+
+    /// <summary>The Ask button in the Ask an Assistant to Fix This flyout.</summary>
+    public const string AskAssistantSend = "motif-ask-assistant-send";
+
     // Script ids are lower-case ASCII, so a Proposal's id becomes a fixed-length hash of itself.
     private static string ProposalIdPart(string proposalId)
     {

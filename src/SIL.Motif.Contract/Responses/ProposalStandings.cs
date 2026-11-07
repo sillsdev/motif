@@ -104,6 +104,8 @@ public sealed record ProposalCard(
 
     /// <summary>The earliest recorded revision time, if the Proposal has been finalized.</summary>
     public DateTimeOffset? FirstFinalizedUtc { get; init; }
+    /// <summary>The id of the Request this Proposal answers, or null.</summary>
+    public string? RequestId { get; init; }
 }
 
 /// <summary>A stored Proposal or Draft whose content cannot be read, so it has no card.</summary>

@@ -862,6 +862,13 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             await page.GrammarCheckedAsync(cancellationToken).ConfigureAwait(true);
     }
 
+    /// <summary>Notifies pages when a Request is created in this workspace.</summary>
+    public async Task PublishRequestsChangedAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var page in _pages.ToArray())
+            await page.RequestsChangedAsync(cancellationToken).ConfigureAwait(true);
+    }
+
     partial void OnCurrentPageChanged(WorkspacePage value)
     {
         if (MotifTrace.IsEnabled && !MotifTrace.SwitchIsTo("page", value.ToString()))

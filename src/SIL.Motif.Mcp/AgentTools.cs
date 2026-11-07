@@ -213,12 +213,16 @@ internal static class AgentTools
             AgentClass.Draft,
             Schema.Object([("draft", Schema.String("Short draft name, for example 'plural-s'."), true),
                 ("label", Schema.String("A one-line description a reviewer reads in Motif's window."), true),
-                ("rationale", Schema.String("What this Proposal changes and why, in Markdown: the evidence, in a few sentences."), true)]),
+                ("rationale", Schema.String("What this Proposal changes and why, in Markdown: the evidence, in a few sentences."), true),
+                ("request_id", Schema.String("The request_id from motif_list_requests of the open Request this Proposal answers. The Request is answered when the Proposal is finalized."), false)]),
             false,
             false,
             false,
             true,
-            (c, a, ct) => Task.FromResult(StartProposal(c, a))) { Requests = [typeof(NewDraftRequest)] },
+            (c, a, ct) => Task.FromResult(StartProposal(c, a)))
+        {
+            Requests = [typeof(NewDraftRequest)],
+        },
 
         new("motif_guide",
             string.Empty,
@@ -1340,7 +1344,7 @@ internal static class AgentTools
     {
         var draft = args.Required("draft");
         var created = ProposalCommands.New(new NewDraftRequest(
-            context.ProjectPath, context.ProductVersion, draft, args.Required("label")));
+            context.ProjectPath, context.ProductVersion, draft, args.Required("label"), args.Optional("request_id")));
         if (!created.Succeeded) return ToolOutcome.Refused(created.Refusal!);
         var written = ProposalTexts.SetRationale(new SetRationaleRequest(
             context.ProjectPath, context.ProductVersion, created.Value!.ProposalId, args.Required("rationale")));

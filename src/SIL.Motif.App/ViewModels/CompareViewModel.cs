@@ -406,6 +406,15 @@ public sealed partial class CompareViewModel : ObservableObject
     /// <summary>The one cell chosen, which the list's heading names with its marks; otherwise <see langword="null"/>.</summary>
     public CompareCellViewModel? ChosenCell => Cells.Where(cell => cell.IsSelected).Take(2).ToArray() is [var only] ? only : null;
 
+    /// <summary>Whether one cell is chosen, so a Request can name it.</summary>
+    public bool HasAskCell => ChosenCell is not null;
+
+    /// <summary>What a Request about the chosen cell names: its row and column.</summary>
+    public string? AskCellId => ChosenCell is { } cell ? $"{cell.Row}/{cell.Column}" : null;
+
+    /// <summary>A short label for the chosen cell, such as its row and column words.</summary>
+    public string? AskCellLabel => ChosenCell is { } cell ? $"{cell.RowLabel}, {cell.ColumnLabel}" : null;
+
     /// <summary>What the list holds, named for the chosen cells: the one cell's opinion and outcome, or how many.</summary>
     public string ListHeading
     {
@@ -666,6 +675,9 @@ public sealed partial class CompareViewModel : ObservableObject
         OnPropertyChanged(nameof(AnySelected));
         OnPropertyChanged(nameof(SelectionText));
         OnPropertyChanged(nameof(ChosenCell));
+        OnPropertyChanged(nameof(HasAskCell));
+        OnPropertyChanged(nameof(AskCellId));
+        OnPropertyChanged(nameof(AskCellLabel));
         OnPropertyChanged(nameof(ListHeading));
         OnPropertyChanged(nameof(ListExplanation));
         ApplyFilter();

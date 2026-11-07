@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
+using Avalonia.Data.Converters;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.Controls;
@@ -13,6 +14,10 @@ namespace SIL.Motif.App.Views;
 /// </summary>
 public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
 {
+    /// <summary>Reserves a share of the page only while a section is shown.</summary>
+    public static readonly IValueConverter VisibleRowHeight = new FuncValueConverter<bool, GridLength>(
+        hasRequests => hasRequests ? GridLength.Star : GridLength.Auto);
+
     public ProposalsPage(ProposalsPageModel page)
     {
         ArgumentNullException.ThrowIfNull(page);

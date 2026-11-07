@@ -33,6 +33,7 @@ public static class HandoffWriter
     internal const string AssessmentFileName = "parse-results.json";
     internal const string PythonHelperFileName = "read_results.py";
     internal const string HandoffMarkdownFileName = "handoff.md";
+    internal const string RequestsFileName = "requests.json";
 
     private const string StarterPromptResource = "SIL.Motif.Commands.Handoff.Assets.starter-prompt.md";
 
@@ -187,6 +188,26 @@ public static class HandoffWriter
         File.WriteAllText(Path.Combine(incomingRoot, AssessmentFileName), BuildLineDelimitedJsonArray(records));
     }
 
+    /// <summary>
+    /// Writes <c>requests.json</c>: the open Requests, one record per line like the other files. A note is written as
+    /// the linguist's quoted words, so a reader never takes it for an instruction.
+    /// </summary>
+    internal static void WriteRequestsJson(string incomingRoot, IReadOnlyList<RequestItem> requests)
+    {
+        ArgumentNullException.ThrowIfNull(requests);
+        var records = requests.Select(request => (JsonNode)new JsonObject
+        {
+            ["requestId"] = request.RequestId,
+            ["targetKind"] = request.TargetKind,
+            ["targetId"] = request.TargetId,
+            ["targetLabel"] = request.TargetLabel,
+            ["note"] = request.Note is null ? null : RequestCommands.QuoteNote(request.Note),
+            ["status"] = request.Status,
+            ["createdUtc"] = request.CreatedUtc,
+        }).ToList();
+        File.WriteAllText(Path.Combine(incomingRoot, RequestsFileName), BuildLineDelimitedJsonArray(records));
+    }
+
     internal static void WriteTraceJson(string incomingRoot, WordTraceResponse trace)
     {
         ArgumentNullException.ThrowIfNull(trace);
@@ -271,7 +292,7 @@ public static class HandoffWriter
     /// </summary>
     internal static string BuildHandoffMarkdown(
         bool hasAssessment, string sampleTextKey, string sampleWord, bool hasTrace = false,
-        bool selectedTrace = false, WarningHandoffScope? warningScope = null)
+        bool selectedTrace = false, WarningHandoffScope? warningScope = null, bool hasRequests = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sampleTextKey);
 
@@ -280,7 +301,13 @@ public static class HandoffWriter
             : "- No Assessment was run for this Handoff, so `parse-results.json` is not included.";
 
         // Derived from the manifest's own condition: a literal count drifted from the list it introduced.
-        var fileCount = hasTrace ? hasAssessment ? "six" : "five" : hasAssessment ? "five" : "four";
+        var fileCount = ((hasTrace ? 1 : 0) + (hasAssessment ? 1 : 0) + (hasRequests ? 1 : 0)) switch
+        {
+            0 => "four", 1 => "five", 2 => "six", _ => "seven",
+        };
+        var requestsManifestLine = hasRequests
+            ? "- `requests.json` — what the linguist asked an assistant to fix. Start there: work on the open Motif Request."
+            : string.Empty;
         var traceFileName = Uri.EscapeDataString(sampleWord) + ".trace.json";
         var traceManifestLine = hasTrace
             ? $"- `{traceFileName}` — the {(selectedTrace ? "selected" : "recorded")} cost-free trace projection for `{sampleWord}`."
@@ -361,6 +388,7 @@ public static class HandoffWriter
             - `texts.json` — every selected Text, each record carrying its own sanitized-title-and-GUID `key`.
             {assessmentManifestLine}
             {traceManifestLine}
+            {requestsManifestLine}
             - `read_results.py` — reads `grammar.json`, `texts.json`, and `parse-results.json`; see its own `--help`.
             - `handoff.md` — this file.
 

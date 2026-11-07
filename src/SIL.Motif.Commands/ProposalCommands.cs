@@ -275,6 +275,16 @@ public static partial class ProposalCommands
                 repository.CreateDraft(request.DraftName, proposalId, SerializeDraft(draft),
                     request.DraftName == PendingChanges.DraftName ? ProposalRoles.PendingChanges : null);
 
+                if (request.RequestId is { } requestId)
+                {
+                    var linked = new RequestRepository(database).Link(proposalId, requestId);
+                    if (linked != RequestWriteOutcome.Written)
+                    {
+                        repository.DiscardDraft(request.DraftName);
+                        return CommandOutcome<DraftCreatedResponse>.Refused(RequestLinkRefusal(requestId, linked));
+                    }
+                }
+
                 return CommandOutcome<DraftCreatedResponse>.Success(
                     new DraftCreatedResponse(request.DraftName, draft.ProposalId, request.Label));
             }
@@ -288,6 +298,18 @@ public static partial class ProposalCommands
             }
         });
     }
+
+    private static Refusal RequestLinkRefusal(string requestId, RequestWriteOutcome outcome) => outcome switch
+    {
+        RequestWriteOutcome.NotFound => new Refusal(RefusalCodes.RequestNotFound, FailureReason.NotFound,
+            $"Request '{requestId}' was not found. Use a requestId that list requests returns.", Fact(("requestId", requestId))),
+        RequestWriteOutcome.NotOpen => new Refusal(RefusalCodes.RequestNotOpen, FailureReason.Refused,
+            $"Request '{requestId}' is not open, so no new Proposal answers it. Call list requests for the open ones.",
+            Fact(("requestId", requestId))),
+        _ => new Refusal(RefusalCodes.RequestProposalOpen, FailureReason.Refused,
+            $"Another Proposal that is not yet decided already answers Request '{requestId}'. Finish or withdraw that " +
+            "one first.", Fact(("requestId", requestId))),
+    };
 
     /// <summary>
     /// Stages one sense gloss in a Draft. Writing the same sense and writing system again replaces the earlier
@@ -829,6 +851,10 @@ public static partial class ProposalCommands
 
                 return CommandOutcome<ReopenedResponse>.Success(new ReopenedResponse(
                     id, request.DraftName, manifest.CurrentIntentDigest, draft.Operations.Count));
+            }
+            catch (RequestProposalOpenException ex)
+            {
+                return CommandOutcome<ReopenedResponse>.Refused(RequestLinkRefusal(ex.RequestId, RequestWriteOutcome.ProposalOpen));
             }
             catch (KeyNotFoundException)
             {

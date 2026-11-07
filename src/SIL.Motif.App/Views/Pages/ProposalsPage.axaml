@@ -149,6 +149,8 @@
                       Command="{Binding AskToDeclineCommand}" CommandParameter="{Binding SelectedProposal}" />
               <Button Content="{x:Static app:MotifAppStrings.DecideLater}" IsVisible="{Binding SelectedProposal.CanDecideLater}"
                       Command="{Binding DecideLaterCommand}" CommandParameter="{Binding SelectedProposal}" />
+              <Button Content="{x:Static app:MotifAppStrings.AskAgain}" IsVisible="{Binding SelectedProposal.CanAskAgain}"
+                      Command="{Binding AskAgainCommand}" CommandParameter="{Binding SelectedProposal}" />
               <Button Classes="proposalDelete" Content="{x:Static app:MotifAppStrings.Delete}"
                       IsVisible="{Binding SelectedProposal.CanDelete}"
                       Command="{Binding AskToDeleteCommand}" CommandParameter="{Binding SelectedProposal}"
@@ -185,8 +187,17 @@
       </Border>
     </DataTemplate>
   </UserControl.Resources>
-  <Grid x:Name="ProposalsTableHost" RowDefinitions="Auto,Auto,4*,*,Auto"
+  <Grid x:Name="ProposalsTableHost"
         controls:DenseTable.IsWidthHost="True">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="{Binding Requests.HasRequests, Converter={x:Static views:ProposalsPage.VisibleRowHeight}}"
+                     MaxHeight="{DynamicResource Component.Proposals.RequestsGroupHeight}" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="4*" />
+      <RowDefinition Height="{Binding HasSelectedProposal, Converter={x:Static views:ProposalsPage.VisibleRowHeight}}" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
     <StackPanel Grid.Row="0" Grid.Column="0" Classes="proposalsPage">
       <StackPanel Classes="proposalsHeading">
         <StackPanel Classes="proposalTitleRow">
@@ -207,7 +218,39 @@
       </StackPanel>
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
     </StackPanel>
-    <Border Grid.Row="1" Grid.Column="0" Classes="denseTableColumnHeader" IsVisible="{Binding IsListed}">
+    <Grid x:Name="ProposalsRequestsGroup" Grid.Row="1" DataContext="{Binding Requests}"
+          IsVisible="{Binding HasRequests}" RowDefinitions="Auto,*"
+          MinHeight="{DynamicResource Component.Proposals.RequestsMinHeight}"
+          Margin="{DynamicResource Component.Proposals.RequestsMargin}">
+      <TextBlock Classes="denseTableGroupName" Text="{Binding Title}" />
+      <ScrollViewer x:Name="ProposalsRequestsScroll" Grid.Row="1" MaxHeight="{DynamicResource Component.Proposals.RequestsHeight}"
+                    VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+          <ItemsControl x:Name="ProposalsRequestsItems" ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:OpenRequestRowViewModel">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                  <StackPanel>
+                    <views:CopyableTextBlock Text="{Binding TargetText}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding NoteText}" IsVisible="{Binding HasNote}"
+                                             TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding AgeText}" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="denseTableAction" Content="{x:Static app:MotifAppStrings.WithdrawRequest}"
+                          Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).WithdrawRequestCommand}"
+                          CommandParameter="{Binding}" VerticalAlignment="Top"
+                          AutomationProperties.AutomationId="{Binding WithdrawAutomationId}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Content="{x:Static app:MotifAppStrings.ShowMoreRequests}" IsVisible="{Binding HasMore}"
+                  Classes="denseTableAction" HorizontalAlignment="Left"
+                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ShowMoreRequestsCommand}" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+    <Border Grid.Row="2" Grid.Column="0" Classes="denseTableColumnHeader" IsVisible="{Binding IsListed}">
       <Grid ColumnSpacing="{DynamicResource Intent.Space.Group}"
             controls:DenseTable.Columns="3* Narrow Narrow * * * * Component.Proposals.ActionsWidth"
             controls:DenseTable.CompactColumns="* 0 Narrow 0 0 0 0 Actions">
@@ -231,7 +274,8 @@
         <Border Grid.Column="7" />
       </Grid>
     </Border>
-    <ListBox x:Name="ProposalsRowsItems" Grid.Row="2" Grid.Column="0" Classes="denseTable"
+    <ListBox x:Name="ProposalsRowsItems" Grid.Row="3" Grid.Column="0" Classes="denseTable"
+             MinHeight="{DynamicResource Component.Proposals.ListMinHeight}"
              ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedProposal, Mode=TwoWay}"
              IsVisible="{Binding IsListed}" Focusable="True" IsTabStop="True"
              KeyboardNavigation.TabNavigation="Once"
@@ -341,6 +385,11 @@
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ReopenCommand}"
                                   CommandParameter="{Binding}" />
                           <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
+                                  Content="{x:Static app:MotifAppStrings.AskAgain}" IsVisible="{Binding CanAskAgain}"
+                                  Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).AskAgainCommand}"
+                                  CommandParameter="{Binding}"
+                                  AutomationProperties.AutomationId="{Binding AskAgainAutomationId}" />
+                          <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
                                   Content="{x:Static app:MotifAppStrings.Details}"
                                   Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).SelectProposalCommand}"
                                   CommandParameter="{Binding}" Click="OnRequestPageInspector"
@@ -365,7 +414,7 @@
         </DataTemplate>
       </ListBox.DataTemplates>
     </ListBox>
-    <ScrollViewer Grid.Row="3" Grid.Column="0" IsVisible="{Binding HasSelectedProposal}"
+    <ScrollViewer Grid.Row="4" Grid.Column="0" IsVisible="{Binding HasSelectedProposal}"
                   MaxHeight="{DynamicResource Component.Proposals.DetailHeight}"
                   HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
       <StackPanel Classes="proposalsPage">
@@ -400,11 +449,11 @@
         </views:ProgressiveItemsControl>
       </StackPanel>
     </ScrollViewer>
-    <Button Grid.Row="4" Grid.Column="0" Content="{Binding SetAsideLinkText}"
+    <Button Grid.Row="5" Grid.Column="0" Content="{Binding SetAsideLinkText}"
             IsVisible="{Binding HasSetAsideLink}" Command="{Binding ShowSetAsideCommand}"
             HorizontalAlignment="Left"
             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalsSetAside}" />
-    <Border Grid.Row="0" Grid.RowSpan="5" Classes="inspectorSection" HorizontalAlignment="Right" VerticalAlignment="Top"
+    <Border Grid.Row="0" Grid.RowSpan="6" Classes="inspectorSection" HorizontalAlignment="Right" VerticalAlignment="Top"
             IsVisible="{Binding DecisionNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
       <TextBlock Text="{Binding DecisionNotice}" />
     </Border>

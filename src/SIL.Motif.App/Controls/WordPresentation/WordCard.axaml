@@ -271,6 +271,7 @@
                               AutomationProperties.HelpText="{Binding MarkUnreadDisabledReason}"
                               ToolTip.Tip="{Binding MarkUnreadDisabledReason}" ToolTip.ShowOnDisabled="True"
                               views:ClearTipPlacement.IsEnabled="True" />
+                      <views:AskAssistantButton CardStyle="True" TargetKind="word" TargetId="{Binding Form}" TargetLabel="{Binding Form}" />
                       <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.CheckAgain}" Command="{Binding Actions.RecheckChangesCommand}"
                               IsVisible="{Binding Marking.IsUncertain}"
                               AutomationProperties.Name="{x:Static app:MotifAppStrings.CheckThisUncertainChangeAgainAccessibleName}" />

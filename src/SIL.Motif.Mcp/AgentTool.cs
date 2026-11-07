@@ -212,6 +212,9 @@ internal sealed record AgentTool(
 
     public bool NeedsProject { get; init; } = true;
 
+    /// <summary>The short human title a client may show beside the name, or <see langword="null"/> for none.</summary>
+    public string? Title { get; init; }
+
     /// <summary>The argument names the schema declares.</summary>
     public IEnumerable<string> ArgumentNames => ((JsonObject)InputSchema["properties"]!).Select(pair => pair.Key);
 }

@@ -4683,4 +4683,39 @@ public static class MotifAppStrings
     public static string OpenClaudePlugins => Text("MotifApp.OpenClaudePlugins");
 
     public static string LoadingProject => Text("MotifApp.LoadingProject");
+
+    public static string AskAnAssistantToFixThis => Text("MotifApp.AskAnAssistantToFixThis");
+
+    public static string AskAnAssistantNoteLabel => Text("MotifApp.AskAnAssistantNoteLabel");
+
+    public static string AskAnAssistantAsk => Text("MotifApp.AskAnAssistantAsk");
+
+    public static string RequestsGroupTitle => Text("MotifApp.RequestsGroupTitle");
+
+    public static string WithdrawRequest => Text("MotifApp.WithdrawRequest");
+
+    public static string AskAgain => Text("MotifApp.AskAgain");
+
+    public static string RequestAskedToday => Text("MotifApp.RequestAskedToday");
+
+    public static string RequestAskedDaysPattern => Text("MotifApp.RequestAskedDaysPattern");
+
+    public static string RequestAskedStatus => Text("MotifApp.RequestAskedStatus");
+
+    /// <summary>Loads more open Requests.</summary>
+    public static string ShowMoreRequests => Text("MotifApp.ShowMoreRequests");
+
+    public static string RequestKindWord => Text("MotifApp.RequestKindWord");
+
+    public static string RequestKindWarning => Text("MotifApp.RequestKindWarning");
+
+    public static string RequestKindMatrixCell => Text("MotifApp.RequestKindMatrixCell");
+
+    public static string RefusalRequestInvalid => Text("MotifApp.RefusalRequestInvalid");
+
+    public static string RefusalRequestNoRequest => Text("MotifApp.RefusalRequestNoRequest");
+
+    public static string RefusalRequestNotFound => Text("MotifApp.RefusalRequestNotFound");
+
+    public static string RefusalRequestNotOpen => Text("MotifApp.RefusalRequestNotOpen");
 }

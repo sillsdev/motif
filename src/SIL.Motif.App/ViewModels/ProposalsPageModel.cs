@@ -115,6 +115,7 @@ public sealed class ProposalCardViewModel : ObservableObject
         TryAgainAutomationId = AutomationIds.ForProposalTryAgain(card.ProposalId);
         DeleteAutomationId = AutomationIds.ForProposalDelete(card.ProposalId);
         ReopenAutomationId = AutomationIds.ForProposalReopen(card.ProposalId);
+        AskAgainAutomationId = AutomationIds.ForProposalAskAgain(card.ProposalId);
         ActionsAutomationId = AutomationIds.ForProposalActions(card.ProposalId);
         DetailsAutomationId = OpenAutomationId + "-details";
         InspectorOpenAutomationId = OpenAutomationId + "-inspector";
@@ -189,6 +190,8 @@ public sealed class ProposalCardViewModel : ObservableObject
     /// <summary>The automation id of this card's Reopen button.</summary>
     public string ReopenAutomationId { get; }
 
+    public string AskAgainAutomationId { get; }
+
     /// <summary>The automation id of this Proposal row's action menu.</summary>
     public string ActionsAutomationId { get; }
 
@@ -215,6 +218,8 @@ public sealed class ProposalCardViewModel : ObservableObject
 
     /// <summary>Whether a Ready Proposal can be left for a later decision.</summary>
     public bool CanDecideLater => !Card.IsPendingDraft && !Card.IsDraft && Card.Status == "proposed";
+    /// <summary>Whether the card offers Ask Again: a declined Proposal that answered a Request.</summary>
+    public bool CanAskAgain => !Card.IsDraft && Card.Status == "rejected" && Card.RequestId is not null;
 
     /// <summary>
     /// The Proposal's status in the window's words: Draft, Ready, Deferred, Applied, Declined, Superseded or
@@ -784,6 +789,8 @@ public sealed partial class ProposalsPageModel : PageModel
     protected override void OnProjectCleared()
     {
         _readGeneration++;
+        _requestGeneration++;
+        Requests.Show([], Context.Clock.GetUtcNow());
         _rereading = false;
         _includeSetAside = false;
         SelectedGroupFilter = null;
@@ -829,6 +836,7 @@ public sealed partial class ProposalsPageModel : PageModel
             }
             ShownRefusal = null;
             Apply(read.Value!, keepSelected);
+            await LoadRequestsAsync(projectPath, cancellationToken).ConfigureAwait(true);
         }
         finally
         {

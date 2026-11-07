@@ -9481,4 +9481,72 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.TimingRuleMissing" xml:space="preserve"><value>Missing</value></data>
   <data name="MotifApp.TimingRuleChanges" xml:space="preserve"><value>Rule work change (Trial Baseline → Proposal)</value></data>
   <data name="MotifApp.TimingRuleUnavailable" xml:space="preserve"><value>Rule work comparison is unavailable for the retained Trial and selected words.</value></data>
+  <data name="MotifApp.AskAnAssistantToFixThis" xml:space="preserve">
+    <value>Ask an Assistant to Fix This</value>
+    <comment>Button on a word card, a Warning row and the Matrix; it records a Request for an AI assistant.</comment>
+  </data>
+  <data name="MotifApp.AskAnAssistantNoteLabel" xml:space="preserve">
+    <value>Note for the Assistant (Optional)</value>
+    <comment>Label above the optional note a person writes when asking an assistant to fix something.</comment>
+  </data>
+  <data name="MotifApp.AskAnAssistantAsk" xml:space="preserve">
+    <value>Ask</value>
+    <comment>Button that sends the Request; the note box sits above it.</comment>
+  </data>
+  <data name="MotifApp.RequestsGroupTitle" xml:space="preserve">
+    <value>Asked, waiting for a Proposal</value>
+    <comment>Heading of the Proposals page group that lists Requests no Proposal has answered yet.</comment>
+  </data>
+  <data name="MotifApp.WithdrawRequest" xml:space="preserve">
+    <value>Withdraw Request</value>
+    <comment>Button that takes back a Request an assistant has not answered yet.</comment>
+  </data>
+  <data name="MotifApp.AskAgain" xml:space="preserve">
+    <value>Ask Again</value>
+    <comment>Button on a declined Proposal that makes a new Request for the same thing.</comment>
+  </data>
+  <data name="MotifApp.RequestAskedToday" xml:space="preserve">
+    <value>Asked today</value>
+    <comment>Age of a Request made today.</comment>
+  </data>
+  <data name="MotifApp.RequestAskedDaysPattern" xml:space="preserve">
+    <value>{0, plural, one {Asked # day ago} other {Asked # days ago}}</value>
+    <comment>Plural pattern: how many days ago a Request was made; # is the count.</comment>
+  </data>
+  <data name="MotifApp.ShowMoreRequests" xml:space="preserve">
+    <value>Show More Requests</value>
+    <comment>Button loading the next page of open Requests.</comment>
+  </data>
+  <data name="MotifApp.RequestAskedStatus" xml:space="preserve">
+    <value>Asked. An assistant will see this Request and can answer it with a Proposal.</value>
+    <comment>Message shown after a Request is recorded.</comment>
+  </data>
+  <data name="MotifApp.RequestKindWord" xml:space="preserve">
+    <value>Word</value>
+    <comment>Names a Request about a word.</comment>
+  </data>
+  <data name="MotifApp.RequestKindWarning" xml:space="preserve">
+    <value>Warning</value>
+    <comment>Names a Request about a Warning.</comment>
+  </data>
+  <data name="MotifApp.RequestKindMatrixCell" xml:space="preserve">
+    <value>Matrix cell</value>
+    <comment>Names a Request about a Matrix cell.</comment>
+  </data>
+  <data name="MotifApp.RefusalRequestInvalid" xml:space="preserve">
+    <value>The Request could not be recorded. Check the note's length and try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RequestInvalid.</comment>
+  </data>
+  <data name="MotifApp.RefusalRequestNoRequest" xml:space="preserve">
+    <value>That Proposal has no Request to ask again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RequestNoRequest.</comment>
+  </data>
+  <data name="MotifApp.RefusalRequestNotFound" xml:space="preserve">
+    <value>That Request is no longer there. Reopen the Proposals page to see what is asked.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RequestNotFound.</comment>
+  </data>
+  <data name="MotifApp.RefusalRequestNotOpen" xml:space="preserve">
+    <value>That Request is already answered or withdrawn.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RequestNotOpen.</comment>
+  </data>
 </root>

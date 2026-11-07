@@ -226,7 +226,7 @@
   },
   {
     "name": "motif_start_proposal",
-    "description": "Start a Proposal. Research first: motif_guide topic workflow; check best practice. Start one small Proposal per grammar question, then try it before anything else (guide workflow). Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.",
+    "description": "Start a Proposal. Research first: motif_guide topic workflow; check best practice. Start one small Proposal per grammar question, then try it before anything else (guide workflow). Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.\nRequestId: The id of the open Request this Proposal answers, from list requests; leave out when it answers none. A Request is answered when the Proposal is finalized.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -241,6 +241,10 @@
         "rationale": {
           "type": "string",
           "description": "What this Proposal changes and why, in Markdown: the evidence, in a few sentences."
+        },
+        "request_id": {
+          "type": "string",
+          "description": "The request_id from motif_list_requests of the open Request this Proposal answers. The Request is answered when the Proposal is finalized."
         },
         "project": {
           "type": "string",
@@ -1850,7 +1854,7 @@
   },
   {
     "name": "motif_finalize_proposal",
-    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.\nThenMove: A status move made in the same transaction; if it is refused the Draft stays a Draft.",
+    "description": "Finalize a Proposal. Finalizes a Draft as an immutable Proposal revision for a person to review. The Draft needs both a short label and a Rationale. Evidence for unchanged content on the same Baseline remains current.\nCommand: finalize. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nExpectedRevision: The required Draft revision for this write.",
     "inputSchema": {
       "type": "object",
       "properties": {

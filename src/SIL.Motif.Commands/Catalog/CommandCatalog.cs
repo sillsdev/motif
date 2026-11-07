@@ -315,6 +315,15 @@ public static class CommandCatalog
             CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("proposal looked-at", typeof(ReviewMarkRequest), typeof(ReviewMarkResponse),
             CommandSurface.Developer, AgentClass.HumanOnly),
+        // RequestCommands
+        new CommandDescriptor("list requests", typeof(ListRequestsRequest), typeof(RequestListResponse),
+            CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("request create", typeof(CreateRequestRequest), typeof(RequestCreatedResponse),
+            CommandSurface.Released, AgentClass.HumanOnly),
+        new CommandDescriptor("request withdraw", typeof(WithdrawRequestRequest), typeof(RequestWithdrawnResponse),
+            CommandSurface.Released, AgentClass.HumanOnly),
+        new CommandDescriptor("request ask-again", typeof(AskAgainRequest), typeof(RequestCreatedResponse),
+            CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("apply --proposal", typeof(ApplyProposalRequest), typeof(ApplyPendingResult),
             CommandSurface.Released, AgentClass.HumanOnly),
     };

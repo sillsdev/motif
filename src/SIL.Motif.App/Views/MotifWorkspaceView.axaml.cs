@@ -164,6 +164,8 @@ public sealed partial class MotifWorkspaceView : UserControl
             warningsStatus.DataContext = workspace.PageOf(WorkspacePage.Warnings);
 
         AddHandler(InspectLink.RequestedEvent, (_, e) => OnInspectRequested(workspace, e));
+        AddHandler(AskAssistantButton.AskedEvent, async (_, e) =>
+            ShowKeyboardStatus(await AskAssistantAction.RunAsync(workspace.Context, e.Target)));
         AddHandler(WorkspaceLayoutHost.PageInspectorRequestedEvent,
             (_, e) => OnPageInspectorRequested(workspace, e), RoutingStrategies.Bubble);
         workspace.Inspector.Closed += (_, _) => ReturnFocusFromInspector();

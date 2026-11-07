@@ -123,6 +123,9 @@ public static class CommandTextRenderer
             ProposalCommentChangedResponse r => ProposalCommandRenderer.RenderCommentChanged(r),
             ProposalPictureChangedResponse r => ProposalCommandRenderer.RenderPictureChanged(r),
             ProposalPicturesResponse r => ProposalCommandRenderer.RenderPictures(r),
+            RequestListResponse r => RequestRenderer.RenderList(r),
+            RequestCreatedResponse r => $"Request {r.Request.RequestId} is open: {r.Request.TargetLabel}.{Environment.NewLine}",
+            RequestWithdrawnResponse r => $"Request {r.RequestId} withdrawn.{Environment.NewLine}",
             _ => throw new NotSupportedException($"No text rendering registered for '{typeof(T)}'."),
         };
         return new CommandResult(0, text);

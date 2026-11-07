@@ -168,6 +168,25 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void UpgradeKeepsRequestsAndTheLinkFromAProposalToItsRequest()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+            Execute(old, """
+                INSERT INTO Requests (RequestId, TargetKind, TargetId, TargetLabel, Note, Status, CreatedUtc)
+                    VALUES ('request/1', 'word', 'kita', 'kita', 'Please look.', 'open', '2026-01-01T00:00:00Z');
+                INSERT INTO Proposals (ProposalId, Status, RequestId) VALUES ('open', 'proposed', 'request/1');
+                """);
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(1, report.Carried["Requests"]);
+        using var upgraded = Connect(Path.Combine(_root, "copy.db"));
+        Assert.Equal("Please look.", Text(upgraded, "SELECT Note FROM Requests WHERE RequestId = 'request/1';"));
+        Assert.Equal("request/1", Text(upgraded, "SELECT RequestId FROM Proposals WHERE ProposalId = 'open';"));
+    }
+
+    [Fact]
     public void UpgradeCarriesProposalPicturesWithTheirBytes()
     {
         CreateCurrentSchemaAsOld();

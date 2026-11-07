@@ -66,6 +66,13 @@ not combine unrelated changes, and belongs to exactly one project: the same chan
 two Proposals, each Applied on its own.
 _Avoid_: PR, change set, change group, patch, branch
 
+**Request**:
+Something a linguist asked an AI assistant to fix: a word, a Warning or a Matrix cell, with an optional note in
+the linguist's own words. A Proposal answers a Request; the Request is answered when that Proposal is
+finalized, and reopens if the Proposal is withdrawn or superseded before a decision
+([ADR 0094](docs/adr/0094-requests-how-a-linguist-asks-an-assistant-for-a-proposal.md)).
+_Avoid_: task, ticket, ask, job, inbox item
+
 **Draft**:
 A Proposal that is still being authored: it has an id and a name, and no committed revision yet.
 Finalizing does not move it anywhere — it commits the first immutable revision and changes the
@@ -721,9 +728,8 @@ wire protocol.
 _Avoid_: wire protocol, worker protocol, endpoint, RPC
 
 **Advanced AI mode**:
-An installation-wide choice a person makes to let AI agents work on their projects through Motif. While it
-is off, Motif offers agents no tools at all. An agent working under it may read, draft, Dry Run, Trial and
-Finalize, but never Apply: Apply is always a person's act.
+An installation-wide choice that lets AI assistants use Motif's MCP tools on a person's projects. An assistant
+may read, draft, Dry Run, Trial and Finalize, but never Apply: Apply is always a person's act.
 _Avoid_: AI mode, agent mode, MCP mode
 
 **MCP server**:

@@ -488,7 +488,8 @@ public sealed class ToolSurfaceTests
             Assert.Equal(CatalogTools.Describe(commands, tool.FieldNames), tool.Description);
             foreach (var command in commands)
                 foreach (var field in command.RequestType.GetProperties().Where(field =>
-                             field.Name is not ("ProjectPath" or "FwDataPath" or "ProductVersion")))
+                             field.Name is not ("ProjectPath" or "FwDataPath" or "ProductVersion") &&
+                             field.PropertyType.Name != "FinalizeMove"))
                 {
                     var shown = tool.FieldNames is null ? field.Name
                         : tool.FieldNames.TryGetValue(field.Name, out var named) ? named : field.Name;

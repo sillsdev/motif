@@ -73,6 +73,9 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
     /// <summary>Reloads this page's stored summary after a grammar check completed.</summary>
     protected virtual Task OnGrammarCheckedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
+    /// <summary>Reloads Requests after one is created in the workspace.</summary>
+    protected virtual Task OnRequestsChangedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
     /// <summary>Answers <paramref name="request"/> when it is addressed to this page; ignores it otherwise.</summary>
     protected virtual void OnRequested(PageRequest request)
     {
@@ -93,6 +96,8 @@ public abstract partial class PageModel : ObservableObject, IProjectStatePartici
         OnEvidencePublishedAsync(lens, cancellationToken);
 
     internal Task GrammarCheckedAsync(CancellationToken cancellationToken) => OnGrammarCheckedAsync(cancellationToken);
+
+    internal Task RequestsChangedAsync(CancellationToken cancellationToken) => OnRequestsChangedAsync(cancellationToken);
 
     internal void Requested(PageRequest request) => OnRequested(request);
 

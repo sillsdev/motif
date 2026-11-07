@@ -155,6 +155,11 @@ public static class RefusalCodes
     public const string ProposalClosed = "proposal.closed";
     public const string ProposalCommentInvalid = "proposal.comment-invalid";
     public const string ProposalPictureInvalid = "proposal.picture-invalid";
+    public const string RequestInvalid = "request.invalid";
+    public const string RequestNoRequest = "request.no-request";
+    public const string RequestNotFound = "request.not-found";
+    public const string RequestNotOpen = "request.not-open";
+    public const string RequestProposalOpen = "request.proposal-open";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";

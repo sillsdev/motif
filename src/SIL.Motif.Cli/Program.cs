@@ -242,10 +242,11 @@ try
 
         case "new":
             if (!flags.TryGetValue("project", out var newProject) || !flags.TryGetValue("draft", out var newDraftName))
-                return Usage("Usage: motif new --project <fwdata> --draft <name> [--label <text>]", asJson);
+                return Usage("Usage: motif new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>]", asJson);
             result = RenderProposal(
                 ProposalCommands.New(new NewDraftRequest(
-                    newProject, CliProductVersion(), newDraftName, flags.GetValueOrDefault("label"))),
+                    newProject, CliProductVersion(), newDraftName, flags.GetValueOrDefault("label"),
+                    flags.GetValueOrDefault("request"))),
                 successAsJson: false);
             break;
 
@@ -663,6 +664,16 @@ try
             break;
 
         case "list":
+            if (positionals is ["requests"])
+            {
+                if (!flags.TryGetValue("project", out var listRequestsProject) ||
+                    !int.TryParse(flags.GetValueOrDefault("offset") ?? "0", out var requestsOffset) ||
+                    !int.TryParse(flags.GetValueOrDefault("limit") ?? "25", out var requestsLimit))
+                    return Usage(UsageLineFor("list requests"), asJson);
+                result = RenderCommand(RequestCommands.List(new ListRequestsRequest(listRequestsProject,
+                    CliProductVersion(), flags.GetValueOrDefault("status"), requestsOffset, requestsLimit)));
+                break;
+            }
             if (!flags.TryGetValue("project", out var listProject) ||
                 flags.TryGetValue("status", out var listStatus) && string.IsNullOrWhiteSpace(listStatus))
                 return Usage("Usage: motif list --project <fwdata> [--all | --status <status>] [--json]", asJson);
@@ -1864,6 +1875,29 @@ try
             result = RenderCommand(ProposalStandingsCommand.Read(new ProposalStandingsRequest(
                 proposalsProject, flags.ContainsKey("include-set-aside"))));
             break;
+
+        case "request":
+            if (positionals.Count >= 1 && positionals[0] == "create")
+            {
+                if (positionals.Count != 1 || !flags.TryGetValue("project", out var createRequestProject) ||
+                    !flags.TryGetValue("kind", out var requestKind) || !flags.TryGetValue("target", out var requestTarget) ||
+                    !flags.TryGetValue("label", out var requestLabel))
+                    return Usage(UsageLineFor("request create"), asJson);
+                result = RenderCommand(RequestCommands.Create(new CreateRequestRequest(createRequestProject,
+                    CliProductVersion(), requestKind, requestTarget, requestLabel, flags.GetValueOrDefault("note"))));
+                break;
+            }
+            if (positionals.Count == 2 && positionals[0] is "withdraw" or "ask-again" &&
+                flags.TryGetValue("project", out var requestProject))
+            {
+                result = positionals[0] == "withdraw"
+                    ? RenderCommand(RequestCommands.Withdraw(
+                        new WithdrawRequestRequest(requestProject, CliProductVersion(), positionals[1])))
+                    : RenderCommand(RequestCommands.AskAgain(
+                        new AskAgainRequest(requestProject, CliProductVersion(), positionals[1])));
+                break;
+            }
+            return Usage("Usage: motif request (create | withdraw | ask-again) ... --project <fwdata>", asJson);
 
         case "warnings":
             if (!flags.TryGetValue("project", out var warningsProject) ||

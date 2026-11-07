@@ -74,7 +74,7 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor(
             "Commands", "new", "new",
-            new[] { "new --project <fwdata> --draft <name> [--label <text>]" }),
+            new[] { "new --project <fwdata> --draft <name> [--label <text>] [--request <requestId>]" }),
         new CliVerbDescriptor("Commands", "pending-changes", "pending-changes",
             new[] { "pending-changes --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "put-pending-change", "put-pending-change",
@@ -572,6 +572,18 @@ public static class CliVerbCatalog
             new[] { "proposal picture remove <proposalId> <pictureId> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal picture show",
             new[] { "proposal picture show <proposalId> [<pictureId> --out <path>] --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "list", "list requests",
+            new[] { "list requests --project <fwdata> [--status open|answered] [--offset <n>] [--limit <n>] [--json]" }),
+        new CliVerbDescriptor("Commands", "request", "request create",
+            new[]
+            {
+                "request create --project <fwdata> --kind word|warning|matrix-cell --target <id> --label <text> " +
+                "[--note <text>] [--json]",
+            }),
+        new CliVerbDescriptor("Commands", "request", "request withdraw",
+            new[] { "request withdraw <requestId> --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Commands", "request", "request ask-again",
+            new[] { "request ask-again <proposalId> --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "proposal", "proposal looked-at",
             new[]
             {

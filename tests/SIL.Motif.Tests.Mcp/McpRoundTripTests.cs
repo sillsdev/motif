@@ -1230,7 +1230,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var tools = await client.ListToolsAsync();
         Assert.NotEmpty(tools);
         Assert.Contains(tools, tool => tool.Name == "motif_grammar");
-        Assert.Empty(await client.ListPromptsAsync());
+        Assert.Equal("Work on Open Requests", Assert.Single(await client.ListPromptsAsync()).Title);
         Assert.DoesNotContain("Advanced AI mode is OFF", client.ServerInstructions ?? string.Empty,
             StringComparison.Ordinal);
 

@@ -458,9 +458,11 @@ public static class HandoffCommand
 
                     var sampleWord = handoffTrace?.Word ??
                         (selectionProjection.Words.Count > 0 ? selectionProjection.Words[0] : "word");
+                    var openRequests = ReadOpenRequests(new RequestRepository(database));
+                    if (openRequests.Length > 0) HandoffWriter.WriteRequestsJson(incoming, openRequests);
                     var handoffMarkdown = HandoffWriter.BuildHandoffMarkdown(
                         request.Assess, sampleTextKey ?? "text", sampleWord, handoffTrace is not null,
-                        request.SelectedTrace is not null, request.WarningScope);
+                        request.SelectedTrace is not null, request.WarningScope, openRequests.Length > 0);
                     File.WriteAllText(Path.Combine(incoming, HandoffWriter.HandoffMarkdownFileName), handoffMarkdown);
 
                     return null;
@@ -566,6 +568,17 @@ public static class HandoffCommand
         }
 
         return null;
+    }
+
+    internal static RequestItem[] ReadOpenRequests(RequestRepository repository)
+    {
+        var requests = new List<RequestItem>();
+        while (true)
+        {
+            var (page, total) = repository.List(RequestStatuses.Open, requests.Count, 200);
+            requests.AddRange(page.Select(RequestCommands.Item));
+            if (page.Count == 0 || requests.Count >= total) return [.. requests];
+        }
     }
 
     private static string ResolveProductVersion() => MotifProductVersion.CurrentText;

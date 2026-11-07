@@ -874,6 +874,13 @@
     "control": "ItemsControl"
   },
   {
+    "view": "Pages/ProposalsPage",
+    "name": "ProposalsRequestsItems",
+    "source": "Rows",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
     "view": "ProposalPicturesPanel",
     "name": "ProposalPictureItems",
     "source": "Items",

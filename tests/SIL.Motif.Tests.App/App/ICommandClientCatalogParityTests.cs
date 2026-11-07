@@ -64,6 +64,10 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.RemoveProposalPictureAsync)] = "proposal picture remove",
             [nameof(ICommandClient.ReadProposalDifferenceAsync)] = "difference show",
             [nameof(ICommandClient.ProduceProposalDifferenceAsync)] = "difference produce",
+            [nameof(ICommandClient.CreateRequestAsync)] = "request create",
+            [nameof(ICommandClient.ListRequestsAsync)] = "list requests",
+            [nameof(ICommandClient.WithdrawRequestAsync)] = "request withdraw",
+            [nameof(ICommandClient.AskAgainAsync)] = "request ask-again",
         };
 
     // A store-writing client method must map to a catalogued CLI verb.

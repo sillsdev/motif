@@ -69,6 +69,7 @@ public static class ProposalStandingsCommand
         var commentCounts = new ProposalDiscussionRepository(database).CommentCounts();
         var firstFinalized = ReadFirstFinalized(database);
         var readProposals = ReadSeenProposals(database);
+        var requestLinks = new RequestRepository(database).LinkedProposals();
         var cards = new List<ProposalCard>();
         foreach (var candidate in candidates)
         {
@@ -99,6 +100,7 @@ public static class ProposalStandingsCommand
                     Model = Metadata(candidate.Proposal, "model"),
                     Question = Metadata(candidate.Proposal, "question"),
                     FirstFinalizedUtc = firstFinalized.GetValueOrDefault(id),
+                    RequestId = requestLinks.GetValueOrDefault(id),
                 });
         }
 

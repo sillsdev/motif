@@ -9,6 +9,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Help;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Mcp;
 
@@ -78,7 +79,7 @@ internal static class CatalogTools
     {
         var entry = Help.Find(HelpEntryKind.Command, command.Name)
             ?? throw new InvalidOperationException($"Command '{command.Name}' needs shared Help text.");
-        var fields = command.RequestType.GetProperties().Where(property => !IsContext(property.Name))
+        var fields = command.RequestType.GetProperties().Where(property => !IsContext(property.Name) && !IsInternal(property))
             .Select(property => FieldDoc(command.RequestType, property, fieldNames)).Where(value => value.Length > 0);
         return entry.Title + ". " + GuidePrefix(entry) + entry.Description + "\nCommand: " + command.Name + ". " +
             "Agent class: " + command.Agent + ".\n" + string.Join("\n", fields);
@@ -115,6 +116,9 @@ internal static class CatalogTools
         return XDocument.Load(stream);
     }
 
+    // A property typed as a Worker move is lifecycle plumbing, never an argument an agent supplies.
+    private static bool IsInternal(PropertyInfo property) => property.PropertyType == typeof(FinalizeMove);
+
     private static bool IsContext(string name) => name is "ProjectPath" or "FwDataPath" or "ProductVersion";
 
     // Pages an agent should get smaller by default than the command's own default.
@@ -126,7 +130,7 @@ internal static class CatalogTools
     private static AgentTool Create(CommandDescriptor command)
     {
         _ = Handler(command);
-        var schema = Schema.Object(command.RequestType.GetProperties().Where(property => !IsContext(property.Name))
+        var schema = Schema.Object(command.RequestType.GetProperties().Where(property => !IsContext(property.Name) && !IsInternal(property))
             .Select(property => (JsonNamingPolicy.CamelCase.ConvertName(property.Name),
                 FieldSchema(property.PropertyType), Required(command.RequestType, property))).ToArray());
         if (PageLimits.TryGetValue(command.RequestType, out var page) && schema["properties"]?["limit"] is JsonObject limit)
@@ -138,8 +142,11 @@ internal static class CatalogTools
         return new AgentTool(Name(command), Describe([command]), command.Agent, schema,
             command.Agent == AgentClass.Read, command.Agent == AgentClass.Read, false, true,
             (context, args, cancellation) => Invoke(command, context, args, cancellation))
-        { Requests = [command.RequestType], NeedsProject = command.RequestType.GetProperties().Any(p =>
-            p.Name is "ProjectPath" or "FwDataPath") };
+        {
+            Requests = [command.RequestType],
+            NeedsProject = command.RequestType.GetProperties().Any(p => p.Name is "ProjectPath" or "FwDataPath"),
+            Title = command.Name == "list requests" ? Help.Find(HelpEntryKind.Command, command.Name)?.Title : null,
+        };
     }
 
     private static bool Required(Type type, PropertyInfo property) =>

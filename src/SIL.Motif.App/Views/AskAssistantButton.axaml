@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             x:Class="SIL.Motif.App.Views.AskAssistantButton">
+  <Button x:Name="AskButton"
+          Content="{x:Static app:MotifAppStrings.AskAnAssistantToFixThis}"
+          AutomationProperties.AutomationId="{x:Static app:AutomationIds.AskAssistantButton}">
+    <Button.Flyout>
+      <Flyout Placement="BottomEdgeAlignedLeft">
+        <StackPanel Classes="menu" Spacing="{DynamicResource Intent.Space.Compact}">
+          <TextBlock Text="{x:Static app:MotifAppStrings.AskAnAssistantNoteLabel}" />
+          <TextBox x:Name="NoteBox" AcceptsReturn="True" TextWrapping="Wrap" MaxLength="2000"
+                   AutomationProperties.Name="{x:Static app:MotifAppStrings.AskAnAssistantNoteLabel}"
+                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.AskAssistantNote}" />
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Compact}">
+            <Button Classes="Primary" Theme="{DynamicResource SolidButton}"
+                    Content="{x:Static app:MotifAppStrings.AskAnAssistantAsk}" Click="OnAskClick"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.AskAssistantSend}" />
+            <Button Content="{x:Static app:MotifAppStrings.Cancel}" Click="OnCancelClick" />
+          </StackPanel>
+        </StackPanel>
+      </Flyout>
+    </Button.Flyout>
+  </Button>
+</UserControl>
