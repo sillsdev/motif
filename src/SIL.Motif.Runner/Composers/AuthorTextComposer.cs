@@ -58,13 +58,22 @@ public static class AuthorTextComposer
         {
             var text = scratch.ServiceLocator.GetInstance<ITextFactory>().Create();
             text.ContentsOA = scratch.ServiceLocator.GetInstance<IStTextFactory>().Create();
-            foreach (var paragraph in intent.Paragraphs)
+            // Fresh paragraphs bind against the complete inventory that the Proposal creates before the Text.
+            for (var pass = 0; pass < 2; pass++)
             {
-                var para = scratch.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
-                text.ContentsOA.ParagraphsOS.Add(para);
-                para.Contents = TsStringUtils.MakeString(string.Join(" ", paragraph.Segments.Select(segment => segment.Text)), scratchWs);
-                ParagraphParser.ParseParagraph(para);
-                parsed.Add(para);
+                foreach (var paragraph in intent.Paragraphs)
+                {
+                    var para = scratch.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
+                    text.ContentsOA.ParagraphsOS.Add(para);
+                    para.Contents = TsStringUtils.MakeString(string.Join(" ", paragraph.Segments.Select(segment => segment.Text)), scratchWs);
+                    ParagraphParser.ParseParagraph(para);
+                    if (pass == 0)
+                    {
+                        foreach (var analysis in para.SegmentsOS.SelectMany(segment => segment.AnalysesRS))
+                            if (analysis.Wordform is not null) Word(analysis.Wordform.Form.get_String(scratchWs).Text);
+                    }
+                    else parsed.Add(para);
+                }
             }
         });
         var paragraphs = intent.Paragraphs.Select((paragraph, paragraphIndex) =>

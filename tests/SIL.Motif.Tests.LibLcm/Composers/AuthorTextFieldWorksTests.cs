@@ -21,6 +21,136 @@ namespace SIL.Motif.Tests.Composers;
 [Collection(LcmCacheParallelCollections.Group1)]
 public sealed class AuthorTextFieldWorksTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public void LaterExactCaseRefreshesEarlierBindingsAndSurvivesReopen()
+    {
+        using var cache = pristine.NewScratch();
+        var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var baselines = new[] { "kay", "Kay", "a Kay" };
+        var operations = AuthorTextDraftBuilder.Build(cache, Parse(new { title = "T", ws,
+            paragraphs = baselines.Select(text => new { segments = new[] { new { text } } }).ToArray() }));
+        var proposal = Proposal(operations);
+        var dryRun = ScratchDryRun.Of(cache, proposal);
+        ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "tester");
+        var textId = operations.Last().EntityId!.Value.ToGuid();
+        var loader = new FwDataProjectLoader();
+        loader.Save(cache);
+        using var reopened = loader.LoadScratchCache(cache.ProjectId.Path);
+        var text = reopened.ServiceLocator.GetInstance<ITextRepository>().GetObject(textId);
+        var paragraphs = text.ContentsOA.ParagraphsOS.Cast<IStTxtPara>().ToArray();
+        Assert.Equal(baselines, paragraphs.Select(p => p.Contents.Text));
+        var words = paragraphs.Select(p => p.SegmentsOS.SelectMany(s => s.AnalysesRS)
+            .Where(a => a.Wordform is not null).Select(a => a.Wordform).ToArray()).ToArray();
+        Assert.Equal("kay", words[0][0].Form.get_String(reopened.DefaultVernWs).Text);
+        Assert.Equal("Kay", words[1][0].Form.get_String(reopened.DefaultVernWs).Text);
+        Assert.Equal(words[1][0].Guid, words[2][1].Guid);
+        Assert.NotEqual(words[0][0].Guid, words[1][0].Guid);
+        var forms = reopened.ServiceLocator.GetInstance<IWfiWordformRepository>().AllInstances()
+            .Select(w => w.Form.get_String(reopened.DefaultVernWs).Text).ToArray();
+        Assert.Single(forms, form => form == "kay");
+        Assert.Single(forms, form => form == "Kay");
+    }
+
+    [Fact]
+    public void ExactCaseAddedAfterCompositionStillRefusesDrift()
+    {
+        using var cache = pristine.NewScratch();
+        var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var operations = AuthorTextDraftBuilder.Build(cache, Parse(new { title = "T", ws,
+            paragraphs = new[] { "kay", "Kay" }.Select(text => new { segments = new[] { new { text } } }).ToArray() }));
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            cache.ServiceLocator.GetInstance<IWfiWordformFactory>().Create(TsStringUtils.MakeString("Kay", cache.DefaultVernWs)));
+        var failure = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(cache, Proposal(operations)));
+        Assert.Contains("word bindings changed", failure.Message);
+    }
+
+    [Fact]
+    public void LateCaseVariantRefreshesA398ParagraphText()
+    {
+        using var cache = pristine.NewScratch();
+        var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var baselines = Enumerable.Repeat("filler.", 398).ToArray();
+        baselines[23] = "kay";
+        baselines[40] = "Kay";
+        baselines[397] = "a Kay";
+        var operations = AuthorTextDraftBuilder.Build(cache, Parse(new { title = "T", ws,
+            paragraphs = baselines.Select(text => new { segments = new[] { new { text } } }).ToArray() }));
+        var proposal = Proposal(operations);
+        var dryRun = ScratchDryRun.Of(cache, proposal);
+        ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "tester");
+        var text = cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(operations.Last().EntityId!.Value.ToGuid());
+        var paragraphs = text.ContentsOA.ParagraphsOS.Cast<IStTxtPara>().ToArray();
+        Assert.Equal(baselines, paragraphs.Select(p => p.Contents.Text));
+        var earlier = paragraphs[40].SegmentsOS[0].AnalysesRS.First(a => a.Wordform is not null).Wordform;
+        var later = paragraphs[397].SegmentsOS[0].AnalysesRS.Last(a => a.Wordform is not null).Wordform;
+        Assert.Equal(later.Guid, earlier.Guid);
+    }
+
+    [Theory]
+    [InlineData("kay|Kay|a Kay")]
+    [InlineData("Kay|a Kay")]
+    [InlineData("kay|a Kay")]
+    [InlineData("kay|Kay")]
+    [InlineData("kay|a Kay|Kay")]
+    [InlineData("kay|Kay|Kay|a Kay")]
+    public void CaseInventoryAndOrderControlsComposeAndDryRun(string input)
+    {
+        using var cache = pristine.NewScratch();
+        var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var baselines = input.Split('|');
+        var operations = AuthorTextDraftBuilder.Build(cache, Parse(new { title = "T", ws,
+            paragraphs = baselines.Select(text => new { segments = new[] { new { text } } }).ToArray() }));
+        var proposal = Proposal(operations);
+        var dryRun = ScratchDryRun.Of(cache, proposal);
+        ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "tester");
+        var text = cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(operations.Last().EntityId!.Value.ToGuid());
+        Assert.Equal(baselines, text.ContentsOA.ParagraphsOS.Cast<IStTxtPara>().Select(p => p.Contents.Text));
+        if (input == "kay|Kay|Kay|a Kay")
+        {
+            var paragraphs = text.ContentsOA.ParagraphsOS.Cast<IStTxtPara>().ToArray();
+            var first = paragraphs[1].SegmentsOS[0].AnalysesRS.First(a => a.Wordform is not null).Wordform.Guid;
+            var second = paragraphs[2].SegmentsOS[0].AnalysesRS.First(a => a.Wordform is not null).Wordform.Guid;
+            var last = paragraphs[3].SegmentsOS[0].AnalysesRS.Last(a => a.Wordform is not null).Wordform.Guid;
+            Assert.Equal(last, first);
+            Assert.Equal(last, second);
+        }
+    }
+
+    [Theory]
+    [InlineData("fr", "Kay.")]
+    [InlineData("fr", "\"Kay.")]
+    [InlineData("ceb", "Kay.")]
+    [InlineData("ceb", "\"Kay.")]
+    public void LaterSentencePreservesSegmentsAndAnnotations(string ws, string initial)
+    {
+        using var cache = pristine.NewScratch();
+        cache.ServiceLocator.WritingSystemManager.GetOrSet(ws, out var writingSystem);
+        if (!cache.ServiceLocator.WritingSystems.VernacularWritingSystems.Any(system => system.Id == ws))
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.ServiceLocator.WritingSystems.VernacularWritingSystems.Add(writingSystem));
+        cache.ServiceLocator.WritingSystemManager.Save();
+        new FwDataProjectLoader().Save(cache);
+        var operations = AuthorTextDraftBuilder.Build(cache, Parse(new { title = "T", ws,
+            paragraphs = new object[] {
+                new { segments = new[] { new { text = "kay" } } },
+                new { segments = new[] { new { text = initial } } },
+                new { segments = new[] { new { text = "a?", freeTranslation = "first", notes = new[] { "note" } },
+                    new { text = "Kay.", freeTranslation = "second", notes = Array.Empty<string>() } } } } }));
+        var proposal = Proposal(operations);
+        var dryRun = ScratchDryRun.Of(cache, proposal);
+        ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "tester");
+        var text = cache.ServiceLocator.GetInstance<ITextRepository>().GetObject(operations.Last().EntityId!.Value.ToGuid());
+        var paragraphs = text.ContentsOA.ParagraphsOS.Cast<IStTxtPara>().ToArray();
+        Assert.Equal(new[] { "kay", initial, "a? Kay." }, paragraphs.Select(p => p.Contents.Text));
+        Assert.Equal(2, paragraphs[2].SegmentsOS.Count);
+        Assert.Equal("first", paragraphs[2].SegmentsOS[0].FreeTranslation.get_String(cache.DefaultAnalWs).Text);
+        Assert.Equal("note", Assert.Single(paragraphs[2].SegmentsOS[0].NotesOS).Content.get_String(cache.DefaultAnalWs).Text);
+        Assert.Equal("second", paragraphs[2].SegmentsOS[1].FreeTranslation.get_String(cache.DefaultAnalWs).Text);
+        var earlier = paragraphs[1].SegmentsOS.SelectMany(s => s.AnalysesRS).First(a => a.Wordform is not null).Wordform;
+        var later = paragraphs[2].SegmentsOS[1].AnalysesRS.First(a => a.Wordform is not null).Wordform;
+        Assert.Equal(later.Guid, earlier.Guid);
+    }
+
     [Theory]
     [InlineData("alpha beta", "alpha beta.")]
     [InlineData("mag-ágaw", "mag-ágaw.")]
