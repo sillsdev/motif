@@ -48,14 +48,14 @@ namespace SIL.TextEditing.Avalonia
             var before = CaretRect();
             double page = PageHeight ?? VisibleBounds.Height;
             if (page < before.Height) page = before.Height;
-            double total = 0;
-            for (int i = 0; i < _layouts.Count; i++) total += ParagraphLayoutFor(i).Height;
+            double total = EstimatedHeight();
             double y = before.Y + before.Height / 2 + (down ? page : -page);
             y = Math.Max(0, Math.Min(total - 1, y));
             var target = Locate(new Point(before.X, y));
             _suppressScroll = true;
             try { Move(target.Position, extend, false, target.Hit); }
             finally { _suppressScroll = false; }
+            UpdateScrollLayout();
             var after = CaretRect();
             RequestScroll(ScrollReason.Page, after, after.Y - before.Y);
         }
@@ -80,9 +80,10 @@ namespace SIL.TextEditing.Avalonia
         void RequestCaretIntoView(ScrollReason reason = ScrollReason.Caret)
         {
             if (_suppressScroll) return;
-            // The caret's place costs the layout of the paragraphs above it, so it is worked out only when somebody can scroll: a
-            // host that listens, or a scroll viewer round the field.
+            // An unhosted field has nobody to consume a scroll request.
             if (ScrollRequested == null && !this.GetVisualAncestors().OfType<ScrollViewer>().Any()) return;
+            PrepareParagraph(Editor.Caret.Paragraph);
+            UpdateScrollLayout();
             var r = CaretRect();
             RequestScroll(reason, new Rect(r.X, r.Y - r.Height, Math.Max(r.Width, 1), r.Height * 3), 0);
         }
@@ -92,6 +93,8 @@ namespace SIL.TextEditing.Avalonia
         void RequestRangeIntoView(TextRange range)
         {
             if (ScrollRequested == null && !this.GetVisualAncestors().OfType<ScrollViewer>().Any()) return;
+            PrepareParagraph(range.Start.Paragraph);
+            UpdateScrollLayout();
             var layout = ParagraphLayoutFor(range.Start.Paragraph);
             double top = ParagraphTop(range.Start.Paragraph);
             Rect? union = null;
@@ -99,6 +102,22 @@ namespace SIL.TextEditing.Avalonia
                 union = union == null ? r : union.Value.Union(r);
             var target = union ?? CaretRect();
             RequestScroll(ScrollReason.FindMatch, union == null ? target : new Rect(target.X, target.Y + top, target.Width, target.Height), 0);
+        }
+
+        void UpdateScrollLayout()
+        {
+            var presenters = this.GetVisualAncestors().OfType<ScrollContentPresenter>().ToArray();
+            var offsets = new Vector[presenters.Length];
+            bool arrangeAgain;
+            do
+            {
+                for (int i = 0; i < presenters.Length; i++) offsets[i] = presenters[i].Offset;
+                UpdateLayout();
+                arrangeAgain = false;
+                // LayoutUpdated can move an anchor after arrange; BringIntoView needs that offset arranged first.
+                for (int i = 0; i < presenters.Length; i++)
+                    if (presenters[i].Offset != offsets[i] && !presenters[i].IsArrangeValid) arrangeAgain = true;
+            } while (arrangeAgain);
         }
 
         void RequestScroll(ScrollReason reason, Rect target, double delta)

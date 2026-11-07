@@ -35,7 +35,8 @@ namespace SIL.TextEditing.Playground.Tests
         [Fact]
         public void Dragging_across_paragraphs_and_pressing_delete_joins_them_and_keeps_the_first_identity() => Headless.Run(() =>
         {
-            using (var s = new Session(Scenarios.MixedBidi))
+            // Both drag endpoints must stay visible through the selection toolbar's layout.
+            using (var s = new Session(Scenarios.MixedBidi, width: 1600, height: 1000))
             {
                 var firstId = s.ParagraphKey(0);
                 int before = s.Editor.Document.Paragraphs.Count;

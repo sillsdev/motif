@@ -3,6 +3,29 @@
 What the field draws, and how. For the per-version Avalonia faults the layout works around, see
 [Avalonia versions](avalonia-versions.md#avalonia-faults-pinned-by-tests).
 
+## Long texts and the host viewport
+
+The host scrolls the field; it does not need to supply a new viewport API. The field follows Avalonia's effective viewport and the
+ScrollContentPresenters around it, including nested scroll viewers. Before those have been arranged, it uses the top-level height or
+the finite measure constraint (600 pixels when neither is known). Only the paragraphs in view plus one viewport of margin are laid out.
+Paragraphs visited earlier keep their cached layouts.
+
+An unseen paragraph starts with an estimated height of 24 pixels. Its measured height replaces that estimate when it comes into view;
+a discarded layout keeps its last height as an estimate. The scroll thumb and total extent therefore become more accurate as the user
+visits the text. Paragraph tops can include estimated heights; asking for a paragraph's layout realizes that paragraph alone.
+
+When an estimate changes above the visible caret, or above the first visible paragraph when the caret is elsewhere, the host scroll
+offset follows the height correction after arrange. That anchor stays at the same screen position. Scrolling to the bottom instead
+keeps the end of the text pinned while the last estimates are corrected. Caret navigation and find prepare
+the destination and a margin before asking the existing scroll-request hook to show it. Page navigation and mouse selection locate
+their destination through estimated heights rather than laying out every paragraph before it.
+
+Width changes, styles and explicit invalidation discard layouts; text edits discard the affected layouts and update paragraph and
+numbering dependencies. Only the visible region is rebuilt during measure and render. Spelling uses the same height estimates to
+find its visible work. A line limit needs the checked paragraph's exact layout. Find, Select All, Copy and the accessibility value
+read the document even when most paragraphs have no layout. The language service retains its single-paragraph model snapshot contract;
+its decorations are attached when that paragraph is laid out.
+
 ## Paragraph and character properties
 
 Drawn, with the host's `IStyleResolver` supplying named styles (ADR 0004).
