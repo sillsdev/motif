@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Commands.Catalog;
 
 namespace SIL.Motif.Mcp;
 
@@ -19,7 +20,9 @@ internal sealed record ToolOutcome(JsonNode? Value, Refusal? Refusal, string? Ne
     /// <summary>Converts a command's typed outcome using the same JSON the CLI prints with <c>--json</c>.</summary>
     public static ToolOutcome From<T>(CommandOutcome<T> outcome, Func<T, string?>? next = null) where T : class =>
         outcome.Succeeded
-            ? Ok(JsonNode.Parse(ProjectionJson.Serialize(outcome.Value!))!, ComposeHint(outcome.Value!, next?.Invoke(outcome.Value!)))
+            ? Ok(outcome.Value is OverviewResponse overview ? TimingPresentation.Overview(overview)
+                : outcome.Value is TimingResponse timing ? TimingPresentation.Timing(timing)
+                : JsonNode.Parse(ProjectionJson.Serialize(outcome.Value!))!, ComposeHint(outcome.Value!, next?.Invoke(outcome.Value!)))
             : Refused(outcome.Refusal!);
 
     private static string? ComposeHint<T>(T value, string? next) where T : class

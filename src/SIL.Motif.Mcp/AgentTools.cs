@@ -833,7 +833,14 @@ internal static class AgentTools
             false,
             false,
             false,
-            Trial) { Requests = [typeof(EnqueueTrialRequest), typeof(WaitForJobRequest)], OutputSchema = TrialReviewTools.OutputSchema },
+            Trial) { Requests = [typeof(EnqueueTrialRequest), typeof(WaitForJobRequest)], OutputSchema = TrialReviewTools.OutputSchema,
+                FieldNames = new Dictionary<string, string?>
+                {
+                    ["ProposalId"] = "proposal", ["Words"] = "words", ["NegativeWords"] = "negative_words",
+                    ["JobId"] = "job", ["Timeout"] = "wait_seconds", ["Scope"] = null, ["AllWords"] = null,
+                    ["ExpectedDraftRevision"] = null, ["Limits"] = null, ["BaselineAssessmentIds"] = null,
+                    ["ReviewSetIds"] = null,
+                } },
 
         new("motif_try_word",
             string.Empty,

@@ -137,6 +137,8 @@ public sealed record OverviewTiming(
     IReadOnlyList<SlowWordTiming> SlowestWords,
     int ParserWorkLimitedWordCount)
 {
+    /// <summary>Paired work change for these words, or an explanation when no pair is available.</summary>
+    public TimingCostComparison CostComparison { get; init; } = TimingCostComparison.Unavailable("No paired Assessment was selected.");
     /// <summary>Completeness of per-word object timing detail used by this result.</summary>
     public ObjectTimingDetail? ObjectTimingDetail { get; init; }
 

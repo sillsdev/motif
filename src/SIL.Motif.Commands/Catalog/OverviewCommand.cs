@@ -121,6 +121,10 @@ public static class OverviewCommand
                 ObjectTimingDetail = evidence.TimingDetail,
                 ParserWorkAggregates = evidence.TimingDetail.IsComplete
                     ? TimingAggregation.ParserWorkByObject(evidence.EffectiveObjectTimings, assessedWords) : [],
+                CostComparison = assessment is null
+                    ? TimingCostComparison.Unavailable("No paired Assessment was selected.")
+                    : TimingCostComparisonQuery.Read(database, evidence.Set?.Origin.JobId, assessment,
+                        assessedWords.Select(word => word.Word).ToArray(), evidence.EvidenceSet?.Components.Count != 1, "kind"),
             };
             if (!evidence.TimingDetail.IsComplete)
             {

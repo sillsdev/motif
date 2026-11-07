@@ -46,6 +46,8 @@ public static class CommandTextRenderer
                 value is TrialReviewResult review ? JsonSerializer.Serialize(review, ReviewJson.Options) :
                 value is AssessCommandResponse assessment ? AssessSummary.Full(assessment).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
                 value is TrialRecord trial ? AssessSummary.Trial(trial).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
+                value is TimingResponse timing ? TimingPresentation.Timing(timing).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
+                value is OverviewResponse overview ? TimingPresentation.Overview(overview).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
                 ProjectionJson.Serialize(value)) +
                 Environment.NewLine);
 

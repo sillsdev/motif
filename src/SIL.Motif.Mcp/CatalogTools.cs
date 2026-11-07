@@ -218,6 +218,8 @@ internal static class CatalogTools
                     ["nearestSubject"] = found.NearestSubjects?.FirstOrDefault()?.Id,
                 },
             };
+        if (value is TimingResponse timing) return ToolOutcome.Ok(TimingPresentation.Timing(timing));
+        if (value is OverviewResponse overview) return ToolOutcome.Ok(TimingPresentation.Overview(overview));
         return ToolOutcome.Ok(JsonNode.Parse(ProjectionJson.Serialize(value))!);
     }
 }

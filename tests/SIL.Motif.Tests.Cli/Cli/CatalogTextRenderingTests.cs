@@ -162,11 +162,11 @@ public sealed class CatalogTextRenderingTests
         Assert.Contains("Selection default: 1 text + 4 words = 135 words, 555 occurrences", rendered.Output);
         Assert.Contains("43/135 parse (72%)", rendered.Output);
         Assert.Contains("300/555 occurrences covered (12%)", rendered.Output);
-        Assert.DoesNotContain("43/135 parse (32%)", rendered.Output);
         Assert.Contains("33/115 approved kept  18 violations  63 unknown", rendered.Output);
         Assert.Contains("rejected analyses rebuilt 2  rejected words matched 1/9", rendered.Output);
-        Assert.Contains("Time on this computer     median 8 ms  p95 400 ms", rendered.Output);
-        Assert.DoesNotContain("Akjulule 1,007 ms", rendered.Output);
+        Assert.Contains("comparison unavailable", rendered.Output);
+        Assert.DoesNotContain(" ms", rendered.Output);
+
     }
 
     [Fact]
@@ -311,7 +311,7 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
-    public void OverviewTextCountsParserWorkFirstAndKeepsTheRunsTimeSecond()
+    public void OverviewTextDoesNotExposeUnpairedWorkOrTime()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var response = new OverviewResponse(
@@ -333,12 +333,10 @@ public sealed class CatalogTextRenderingTests
 
         var output = CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("Work       8,000 parser work in all for 2 words  median 4,000 parser work  p95 7,000 parser work  " +
-            "costliest Akjulule 7,000 parser work", output, StringComparison.Ordinal);
-        Assert.Contains("work by kind: morph_rule 75.0%, not attributed 25.0%", output, StringComparison.Ordinal);
-        Assert.Contains("Time on this computer     median 400 ms  p95 500 ms", output, StringComparison.Ordinal);
-        Assert.Contains("2 words, 0.8 s in all", output, StringComparison.Ordinal);
-        Assert.True(output.IndexOf("Work       ", StringComparison.Ordinal) < output.IndexOf("Time on this computer", StringComparison.Ordinal));
+        Assert.Contains("Work       comparison unavailable", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("8,000", output, StringComparison.Ordinal);
+        Assert.DoesNotContain(" ms", output, StringComparison.Ordinal);
+
     }
 
     [Fact]
@@ -354,12 +352,13 @@ public sealed class CatalogTextRenderingTests
 
         var output = CommandTextRenderer.Render(CommandOutcome<OverviewResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("Work       parser work not recorded for these words", output, StringComparison.Ordinal);
+        Assert.Contains("Work       comparison unavailable", output, StringComparison.Ordinal);
         Assert.DoesNotContain("1,007", output, StringComparison.Ordinal);
+
     }
 
     [Fact]
-    public void TimingTextSharesEveryRowOfTheWordsWorkAndKeepsTimeOnThisComputerAsASecondFigure()
+    public void TimingTextListsObjectsWithoutUnpairedWorkOrTime()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var response = new TimingResponse("assessment/1", "all", "rule", 2, 8, 400, [],
@@ -380,19 +379,17 @@ public sealed class CatalogTextRenderingTests
 
         var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
 
-        Assert.StartsWith("Parser work for 2 word(s)", output, StringComparison.Ordinal);
-        Assert.Contains("Work: 1,000 parser work in all for 2 word(s); median 500 parser work, p95 600 parser work a word", output, StringComparison.Ordinal);
-        Assert.Contains("Plural [morph_rule:guid-1]: 600 parser work (60.0%), 40 morph_rule calls, 2 words, 300.00 ms on this computer", output, StringComparison.Ordinal);
-        Assert.Contains("Plural [lex_entry:guid-2]: 300 parser work (30.0%), calls not counted, 1 words, 200.00 ms on this computer", output, StringComparison.Ordinal);
-        Assert.Contains("Not attributed: 100 parser work (10.0%), 302.00 ms on this computer", output, StringComparison.Ordinal);
-        Assert.Contains("Time on this computer: median 8 ms  p95 400 ms; 800.00 ms in all for 2 measured word(s)", output, StringComparison.Ordinal);
-        Assert.Contains("recorded 2.00 ms more than their words' own time on this computer", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("attempts", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("37.5%", output, StringComparison.Ordinal);
+        Assert.Contains("Parser work comparison for 2 word(s)", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [morph_rule:guid-1]: comparison unavailable", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [lex_entry:guid-2]: comparison unavailable", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("1,000", output, StringComparison.Ordinal);
+        Assert.DoesNotContain(" ms", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("60.0%", output, StringComparison.Ordinal);
+
     }
 
     [Fact]
-    public void TrialTextLeadsWithWorkNamesEachIncreasedWordAndSplitsTheStopsBeforeTimeOnThisComputer()
+    public void TrialTextShowsPercentAndStopsWithoutRawWorkOrTime()
     {
         var work = new TrialWork(3, 1000, 1180, 18,
             [new TrialWorkIncrease("mwalimu", 100, 150, 50), new TrialWorkIncrease("kitabu", 200, 220, 10)], 1, 2)
@@ -409,15 +406,15 @@ public sealed class CatalogTextRenderingTests
 
         var output = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), asJson: false).Output;
 
-        Assert.Contains("These words took 18% more work to parse (1,000 parser work in the Baseline, 1,180 in the Trial).", output, StringComparison.Ordinal);
-        Assert.Contains("Warning: parser work increased by more than 5% over the Baseline.", output, StringComparison.Ordinal);
-        Assert.Contains("  mwalimu: 100 to 150 parser work (1.50x, 50% more work)", output, StringComparison.Ordinal);
-        Assert.Contains("  kitabu: 200 to 220 parser work (1.10x, 10% more work)", output, StringComparison.Ordinal);
+        Assert.Contains("These words took 18% more work to parse.", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Warning: parser work increased", output, StringComparison.Ordinal);
+        Assert.Contains("mwalimu: 50% more work", output, StringComparison.Ordinal);
+        Assert.Contains("kitabu: 10% more work", output, StringComparison.Ordinal);
         Assert.Contains("Stopped: 1 at a parser limit; 2 at the time safety net.", output, StringComparison.Ordinal);
-        Assert.Contains("  Parser limit: hawajafika", output, StringComparison.Ordinal);
-        Assert.Contains("  Time safety net: a, b", output, StringComparison.Ordinal);
-        Assert.Contains("Time on this computer: 4,200 ms in the Baseline, 4,500 ms in the Trial", output, StringComparison.Ordinal);
-        Assert.True(output.IndexOf("parser work", StringComparison.Ordinal) < output.IndexOf("Time on this computer", StringComparison.Ordinal));
+        Assert.Contains("Parser limit: hawajafika", output, StringComparison.Ordinal);
+        Assert.Contains("Time safety net: a, b", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("4,200 ms", output, StringComparison.Ordinal);
+
     }
 
     [Fact]
@@ -473,7 +470,7 @@ public sealed class CatalogTextRenderingTests
         { DroppedGrammar = dropped }), asJson: false).Output;
 
     [Fact]
-    public void TimingTextMatchesARulesWorkByItsGuidWhateverItsCaseAndNeverShowsAMissingMatchAsZero()
+    public void TimingTextNamesUnpairedObjectsWithoutInventingWork()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         const string authored = "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA";
@@ -495,13 +492,14 @@ public sealed class CatalogTextRenderingTests
 
         var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("Plural [morph_rule:" + authored + "]: 600 parser work (60.0%)", output, StringComparison.Ordinal);
-        Assert.Contains("Past [morph_rule:" + other + "]: parser work not recorded", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("0 parser work (0.0%)", output, StringComparison.Ordinal);
+        Assert.Contains("Plural [morph_rule:" + authored + "]: comparison unavailable", output, StringComparison.Ordinal);
+        Assert.Contains("Past [morph_rule:" + other + "]: comparison unavailable", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("600 parser work", output, StringComparison.Ordinal);
+
     }
 
     [Fact]
-    public void TimingTextShowsTheParsersOwnWorkAsARowAndTheSharesAddUp()
+    public void TimingTextDoesNotPresentWorkSharesAsChanges()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var response = new TimingResponse("assessment/1", "all", "rule", 1, 8, 400, [],
@@ -521,12 +519,14 @@ public sealed class CatalogTextRenderingTests
 
         var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("parser [parser:parser:strata]: 30 parser work (30.0%)", output, StringComparison.Ordinal);
-        Assert.Contains("Not attributed: 10 parser work (10.0%)", output, StringComparison.Ordinal);
+        Assert.Contains("parser [parser:parser:strata]: comparison unavailable", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("30.0%", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("10 parser work", output, StringComparison.Ordinal);
+
     }
 
     [Fact]
-    public void AssessSummaryTextNamesTheLimitAndTheWorkOfAStoppedWord()
+    public void AssessSummaryTextNamesTheLimitWithoutRawWork()
     {
         var page = new System.Text.Json.Nodes.JsonObject
         {
@@ -539,7 +539,9 @@ public sealed class CatalogTextRenderingTests
 
         var text = CommandTextRenderer.RenderAssessSummary(page, asJson: false).Output;
 
-        Assert.Contains("big: capped, stopped by work-limit, 20000 parser work", text, StringComparison.Ordinal);
+        Assert.Contains("big: capped, stopped by work-limit", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("20000", text, StringComparison.Ordinal);
+
     }
 
     [Fact]
@@ -554,13 +556,14 @@ public sealed class CatalogTextRenderingTests
 
         var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("Parser work are not recorded for these words.", output, StringComparison.Ordinal);
-        Assert.Contains("Work by kind was not recorded for every one of these words", output, StringComparison.Ordinal);
-        Assert.Contains("morph_rule: parser work not recorded", output, StringComparison.Ordinal);
+        Assert.Contains("comparison unavailable", output, StringComparison.Ordinal);
+        Assert.Contains("morph_rule [morph_rule:morph_rule]", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("300", output, StringComparison.Ordinal);
+
     }
 
     [Fact]
-    public void TimingTextListsTheCostliestWordsByTheirParserWorkAndSaysWhenNoneWereRecorded()
+    public void TimingTextDoesNotExposeCostliestWordCounters()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
         var response = new TimingResponse("assessment/1", "all", "rule", 3, 8, 400, [], [],
@@ -574,15 +577,10 @@ public sealed class CatalogTextRenderingTests
 
         var output = CommandTextRenderer.Render(CommandOutcome<TimingResponse>.Success(response), asJson: false).Output;
 
-        Assert.Contains("mwalimu: 7,000 of its 9,000 parser work, 3 calls; time on this computer 5.00 ms of its 50.00 ms", output, StringComparison.Ordinal);
-        Assert.Contains("kitabu: all of the word's 900 parser work, 2 calls; time on this computer 40.00 ms", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("900 of its 900", output, StringComparison.Ordinal);
-        Assert.Contains("hawajafika: parser work not recorded, 1 calls; time on this computer 60.00 ms", output, StringComparison.Ordinal);
-        Assert.Contains("sikilizeni: 12 parser work (the word's total is not recorded), 4 calls", output, StringComparison.Ordinal);
-        Assert.Contains("tupu: 0 of its 0 parser work, 1 calls", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("all of the word's 0", output, StringComparison.Ordinal);
-        Assert.DoesNotContain("12 of its 12", output, StringComparison.Ordinal);
-        Assert.True(output.IndexOf("mwalimu", StringComparison.Ordinal) < output.IndexOf("kitabu", StringComparison.Ordinal));
+        Assert.Contains("comparison unavailable", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("7,000", output, StringComparison.Ordinal);
+        Assert.DoesNotContain(" ms", output, StringComparison.Ordinal);
+
     }
 
     [Fact]

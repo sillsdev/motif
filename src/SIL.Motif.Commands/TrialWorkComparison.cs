@@ -15,9 +15,18 @@ public static class TrialWorkComparison
 
     internal static TrialWork Compare(AssessmentRecord? baseline, AssessmentRecord trial, bool sameBaseline)
     {
+        return Compare(AreCompatible(baseline, trial, sameBaseline) ? baseline!.Words ?? [] : [], trial.Words ?? []);
+    }
+
+    /// <summary>Whether two recorded Assessments identify the same parser and comparison settings.</summary>
+    public static bool AreCompatible(AssessmentRecord? baseline, AssessmentRecord trial) =>
+        AreCompatible(baseline, trial, baseline?.BaselineToken == trial.BaselineToken);
+
+    private static bool AreCompatible(AssessmentRecord? baseline, AssessmentRecord trial, bool sameBaseline)
+    {
         var before = baseline?.Invocation;
         var after = trial.Invocation;
-        var compatible = baseline is not null && baseline.Assessor == trial.Assessor &&
+        return baseline is not null && baseline.Assessor == trial.Assessor &&
             sameBaseline && before is not null && after is not null &&
             !string.IsNullOrWhiteSpace(before.ExecutableBytesSha256) &&
             before.ExecutableBytesSha256 == after.ExecutableBytesSha256 &&
@@ -26,7 +35,6 @@ public static class TrialWorkComparison
             baseline.TokeniserName == trial.TokeniserName && baseline.TokeniserVersion == trial.TokeniserVersion &&
             trial.Selection.Words.ToHashSet(StringComparer.Ordinal)
                 .SetEquals((trial.Words ?? []).Select(word => word.Word));
-        return Compare(compatible ? baseline!.Words ?? [] : [], trial.Words ?? []);
     }
 
     /// <summary>Returns unknown totals if any requested word lacks complete, comparable evidence.</summary>

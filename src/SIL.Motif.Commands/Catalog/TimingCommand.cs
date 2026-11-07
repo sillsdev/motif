@@ -152,6 +152,17 @@ public static class TimingCommand
                 : currentEvidence.LastFieldWorksSaveUtc > measuredSave ? TimingEvidenceRelation.SavedSince
                 : TimingEvidenceRelation.Current;
             var namedAggregates = NameLexicalEntries(aggregates.Aggregates, measuredBaselinePath);
+            var comparison = request.ExplicitWords is { Count: > 0 } requestedWords &&
+                !NormalizeWords(requestedWords).SetEquals(selectedNames)
+                ? TimingCostComparison.Unavailable("The Assessment does not contain every requested word.")
+                : TimingCostComparisonQuery.Read(database, trialSet?.Origin.JobId, assessment,
+                    selectedWords.Select(word => word.Word).ToArray(), evidenceSet.Components.Count != 1, request.By);
+            comparison = comparison with
+            {
+                Objects = comparison.Objects.Where(item => namedAggregates.Any(row =>
+                    request.By == "kind" ? row.Key == item.Key : row.Kind == item.Kind &&
+                        ObjectIdentity.CanonicalKey(row.Key, row.IdentityQuality) == item.Key)).ToArray(),
+            };
             return CommandOutcome<TimingResponse>.Success(new TimingResponse(
                 assessment.AssessmentId, request.WordSet, request.By, selectedWords.Count,
                 summary.MedianMs, summary.Percentile95Ms, summary.SlowestWords,
@@ -174,6 +185,7 @@ public static class TimingCommand
                     word.Outcome == WordOutcome.TimedOut.ToStoredOutcome() || word.Morphology?.TimedOut == true ? TimingCompletion.TimeSafetyNet :
                     ParserRefusals.Of(word.Morphology, word.Outcome) is not null ? TimingCompletion.Refused : TimingCompletion.Finished)
                     { ElapsedNs = word.ElapsedNs, ParserWork = TimingAggregation.WorkOf(word), Origin = word.Origin }).ToArray(),
+                CostComparison = comparison,
             });
         });
     }

@@ -15,6 +15,8 @@ public sealed record TimingResponse(
     IReadOnlyList<TimingAggregateRow> Aggregates,
     IReadOnlyList<WordRuleTiming> CostliestWords)
 {
+    /// <summary>Paired work changes for the selected words, or an explanation when no pair is available.</summary>
+    public TimingCostComparison CostComparison { get; init; } = TimingCostComparison.Unavailable("No paired Assessment was selected.");
     /// <summary>Parser work attributed to objects and to the unattributed remainder.</summary>
     public IReadOnlyList<TimingWorkAggregate> ParserWorkAggregates { get; init; } = [];
 
