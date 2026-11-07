@@ -18,6 +18,7 @@ using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Runner.DryRun;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
@@ -52,7 +53,9 @@ public sealed record TrialJobInput(
     [property: JsonPropertyName("negativeWords")] IReadOnlyList<string>? NegativeWords = null,
     [property: JsonPropertyName("wordList")] JobWordList? WordList = null,
     [property: JsonPropertyName("reviewInputs")] ReviewInputReference? ReviewInputs = null,
-    [property: JsonPropertyName("reviewBaselines")] IReadOnlyList<ReviewBaselinePartition>? ReviewBaselines = null)
+    [property: JsonPropertyName("reviewBaselines")] IReadOnlyList<ReviewBaselinePartition>? ReviewBaselines = null,
+    [property: JsonPropertyName("reviewBeforeStopCode")] string? ReviewBeforeStopCode = null,
+    [property: JsonPropertyName("reviewBeforePartial")] string? ReviewBeforePartial = null)
 {
     /// <exception cref="InvalidOperationException">The input is not a well-formed Trial job input.</exception>
     public static TrialJobInput Parse(string inputJson) =>
@@ -157,6 +160,25 @@ internal sealed class TrialJobHandler
     /// <summary>Runs one claimed Trial job through to a terminal outcome, or parks it waiting for a Baseline.</summary>
     internal async Task<JobOutcome?> RunAsync(ClaimedJob claim, ProjectLocator project, CancellationToken cancellationToken)
     {
+        var input = TrialJobInput.Parse(claim.Job.InputJson);
+        ReviewEvidenceState? review = null;
+        if (input.ReviewInputs is { } reference)
+        {
+            var frozen = ReviewInputArtifacts.Read(claim.Database, reference).Inputs;
+            var ledger = TrialReviewEvidence.Open(claim.Database, claim.JobId, reference);
+            if (input.ReviewBeforePartial is { } partial)
+                ledger = ledger with { Before = TrialReviewEvidence.ReadBefore(claim.Database, partial) };
+            foreach (var partition in input.ReviewBaselines ?? [])
+            {
+                var words = partition.AssessmentIds.SelectMany(id => _assessments.Get(id).Words ?? []);
+                ledger = ledger with { Before = ledger.Before.Concat(TrialReviewEvidence.Observe(frozen, partition.CaseKeys, words))
+                    .GroupBy(item => item.CaseKey, StringComparer.Ordinal).Select(group => group.Last()).ToArray() };
+            }
+            if (input.ReviewBeforeStopCode is { } beforeStop)
+                ledger = TrialReviewEvidence.Interrupt(ledger, frozen, "before", beforeStop);
+            review = new ReviewEvidenceState(claim.Database, claim.CapturedClaimToken, frozen, ledger);
+            review.Save();
+        }
         var seconds = new NamedSelectionRepository(claim.Database).GetDefault()?.Limits.AssessBudgetSeconds ?? SIL.Motif.Contract.Requests.SelectionParsingLimits.DefaultAssessBudgetSeconds;
         var remaining = (BudgetDurationForTests.Value ?? TimeSpan.FromSeconds(seconds)) - claim.ClaimElapsed;
         using var budget = new CancellationTokenSource();
@@ -164,13 +186,14 @@ internal sealed class TrialJobHandler
         if (remaining <= TimeSpan.Zero) budget.Cancel();
         else budget.CancelAfter(remaining);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, budget.Token);
-        var progress = new BudgetProgress();
+        var progress = new BudgetProgress { Total = review?.Inputs.Cases.Count ?? 0 };
         try
         {
-            return await RunBudgetedAsync(claim, project, progress, linked.Token).ConfigureAwait(false);
+            return await RunBudgetedAsync(claim, project, progress, review, linked.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
+            review?.Interrupt(cancellationToken.IsCancellationRequested ? "cancelled" : RefusalCodes.AssessmentStoppedByBudget);
             if (!budget.IsCancellationRequested || cancellationToken.IsCancellationRequested)
                 return new JobOutcome(JobStatus.Cancelled, JobFailureCategory.Cancellation);
             var completed = Volatile.Read(ref progress.Done);
@@ -187,8 +210,27 @@ internal sealed class TrialJobHandler
 
     private sealed class BudgetProgress { public int Done; public int Total; }
 
+    private sealed class ReviewEvidenceState(MotifDatabase database, string? claimToken, Contract.Review.FrozenReviewInputs inputs,
+        TrialReviewLedger ledger)
+    {
+        public Contract.Review.FrozenReviewInputs Inputs { get; } = inputs;
+        public TrialReviewLedger Ledger { get; private set; } = ledger;
+        public void Save() => TrialReviewEvidence.SaveForClaim(database, Ledger, claimToken);
+        public void Add(IReadOnlyCollection<string> keys, IEnumerable<AssessedWord> words)
+        {
+            Ledger = Ledger with { After = Ledger.After.Concat(TrialReviewEvidence.Observe(Inputs, keys, words))
+                .GroupBy(item => item.CaseKey, StringComparer.Ordinal).Select(group => group.Last()).ToArray() };
+            Save();
+        }
+        public void Interrupt(string code)
+        {
+            Ledger = TrialReviewEvidence.Interrupt(Ledger, Inputs, "after", code);
+            Save();
+        }
+    }
+
     private async Task<JobOutcome?> RunBudgetedAsync(ClaimedJob claim, ProjectLocator project,
-        BudgetProgress progress, CancellationToken cancellationToken)
+        BudgetProgress progress, ReviewEvidenceState? review, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(claim);
@@ -215,7 +257,7 @@ internal sealed class TrialJobHandler
             ? ReviewInputArtifacts.Read(claim.Database, reviewInputs) : null;
         if (reviewArtifact is not null && reviewArtifact.Baseline != baseline.Token)
             throw new InvalidOperationException("The Trial's captured review Baseline is no longer current.");
-        progress.Total = input.Words?.Count ?? 0;
+        progress.Total = review?.Inputs.Cases.Count ?? input.Words?.Count ?? 0;
         var proposal = ProposalJsonParser.Parse(input.ProposalJson);
         var scopeConfiguration = reviewArtifact?.Scope ?? ResolveScope(_configuration.Read(project), input.Scope);
         var assessor = _assessors.Resolve(scopeConfiguration.Assessor);
@@ -323,10 +365,23 @@ internal sealed class TrialJobHandler
                     }
                     var produced = assessor is PanGlossAssessor panGloss
                         ? await panGloss.ProduceAsync(partition.Scope, candidate.ExportedDirectory, WordProgress,
-                            batchWait.Observe, cancellationToken, importedSnapshot).ConfigureAwait(false)
+                            batchWait.Observe, cancellationToken, importedSnapshot, rows =>
+                            {
+                                if (review is null) return;
+                                review.Add(partition.CaseKeys, rows.Select(row => new AssessedWord(row.Word,
+                                    row.InvalidShape ? "skipped" : row.TimedOut ? "timed-out" : row.Capped ? "stopped" :
+                                    row.Analyses.Count > 0 || row.Unavailable.Count > 0 ? "analysed" : "no-analysis", [])
+                                    { Morphology = row }));
+                            }).ConfigureAwait(false)
                         : await assessor.ProduceAsync(partition.Scope, candidate.ExportedDirectory, WordProgress,
                             batchWait.Observe, cancellationToken).ConfigureAwait(false);
                     producedGroups.Add((partition, produced));
+                    if (review is not null)
+                    {
+                        var measured = PrepareAll(produced, proposal, candidate.DryRun, partition.Selection, partition.Scope,
+                            scopeConfiguration, assessor.Name, baseline.Token, candidate.ProjectStandings);
+                        review.Add(partition.CaseKeys, measured.SelectMany(record => record.Words));
+                    }
                     artifactLeases.AddRange(produced.Select(item => item.ArtifactLease).OfType<AssessmentArtifactLease>()
                         .Where(lease => !artifactLeases.Contains(lease)));
                     completedEarlier += partition.Scope.ParsedWords.Count;
@@ -404,6 +459,8 @@ internal sealed class TrialJobHandler
         catch (OperationCanceledException) { throw; }
         catch (Exception exception)
         {
+            review?.Interrupt(exception is AssessorUnavailableException { MemoryKill: not null }
+                ? RefusalCodes.AssessParserMemoryLimit : "assess.unavailable");
             var detail = JobFailureDetail.Serialize(exception);
             return new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None, detail);
         }

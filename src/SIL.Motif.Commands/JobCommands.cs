@@ -241,16 +241,20 @@ public static class JobCommands
             var input = new TrialJobInput(proposalJson, request.Scope, wordList is null ? words : null, request.AllWords, prerequisites,
                 request.Limits ?? ResolveTrialLimits(database, project, request.Scope),
                 request.BaselineAssessmentIds, request.NegativeWords, WordList: wordList,
-                ReviewInputs: request.ReviewInputs, ReviewBaselines: request.ReviewBaselines);
+                ReviewInputs: request.ReviewInputs, ReviewBaselines: request.ReviewBaselines,
+                ReviewBeforeStopCode: request.ReviewBeforeStopCode,
+                ReviewBeforePartial: request.ReviewBeforePartial is { Count: > 0 } partial
+                    ? TrialReviewEvidence.StoreBefore(database, partial) : null);
             var inputJson = JsonSerializer.Serialize(input, MotifJson.CreateOptions());
             var stamped = JobParserPin.Stamp(inputJson, parserPath);
             if (stop is null)
                 return QueueTrial(jobs, record, jobId, workspaceKey, stamped, request.BaselineAssessmentIds, admission);
-            var stopped = jobs.RecordBudgetStop(jobId, workspaceKey, TrialKind, stamped,
+            var status = stop.Reason == FailureReason.StoppedByBudget ? JobStatus.StoppedByBudget :
+                stop.Reason == FailureReason.Cancelled ? JobStatus.Cancelled : JobStatus.Failed;
+            var stopped = jobs.RecordInterrupted(jobId, workspaceKey, TrialKind, stamped,
                 JsonSerializer.Serialize(new { code = stop.Code, message = stop.Message,
-                    wordsDone = int.Parse(stop.Facts["wordsDone"], System.Globalization.CultureInfo.InvariantCulture),
-                    wordsNotDone = int.Parse(stop.Facts["wordsNotDone"], System.Globalization.CultureInfo.InvariantCulture) }),
-                NowStamp());
+                    wordsDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsDone"), out var done) ? done : (int?)null,
+                    wordsNotDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsNotDone"), out var notDone) ? notDone : (int?)null }), NowStamp(), status);
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(stopped.JobId, TrialKind, workspaceKey));
         });

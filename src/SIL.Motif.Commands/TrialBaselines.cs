@@ -27,11 +27,12 @@ public static class TrialBaselines
     /// <summary>Measures the before words under the deterministic limits chosen for their Trial.</summary>
     internal static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
         string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits,
-        ProjectParseLease? admission = null, string? writingSystemId = null) =>
+        ProjectParseLease? admission = null, string? writingSystemId = null,
+        Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null) =>
         AssessCommand.AssessWithLimits(new AssessRequest(projectPath,
             words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
             managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits, recordBudgetStop: false,
-            admission: admission, reuseBefore: true, writingSystemId: writingSystemId);
+            admission: admission, reuseBefore: true, writingSystemId: writingSystemId, onPartial: onPartial);
 
     internal static CommandOutcome<T> WithAdmission<T>(EnqueueTrialRequest request,
         Func<ProjectParseLease?, Refusal?, CommandOutcome<T>> enqueue) where T : class?
@@ -61,8 +62,8 @@ public static class TrialBaselines
         string managedRoot, string? parserPath, CancellationToken cancellationToken,
         Action<string>? onBaselineUnavailable = null) =>
         WithAdmission(request, (admission, busy) => EnqueueWithBaseline(request,
-            (words, limits, writingSystem) => busy is null
-                ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem)
+            (words, limits, writingSystem, onPartial) => busy is null
+                ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial)
                 : CommandOutcome<AssessCommandResponse>.Refused(busy),
             onBaselineUnavailable, parserPath ?? PanGlossExecutable.TryLocate(), admission));
 
@@ -76,10 +77,10 @@ public static class TrialBaselines
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         Func<IReadOnlyList<string>, TrialLimits?, CommandOutcome<AssessCommandResponse>> assess,
         Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null, ProjectParseLease? admission = null) =>
-        EnqueueWithBaseline(request, (words, limits, _) => assess(words, limits), onBaselineUnavailable, expectedParserPath, admission);
+        EnqueueWithBaseline(request, (words, limits, _, _) => assess(words, limits), onBaselineUnavailable, expectedParserPath, admission);
 
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
-        Func<IReadOnlyList<string>, TrialLimits?, string?, CommandOutcome<AssessCommandResponse>> assess,
+        Func<IReadOnlyList<string>, TrialLimits?, string?, Action<IReadOnlyList<ParseWordEvidence>>?, CommandOutcome<AssessCommandResponse>> assess,
         Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null, ProjectParseLease? admission = null)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -99,23 +100,34 @@ public static class TrialBaselines
         if (partitions.Count == 0) partitions = [new ReviewParsePartition(null, words ?? [], [])];
         var assessmentIds = new List<string>();
         var baselines = new List<ReviewBaselinePartition>();
+        var partialRows = new List<TrialReviewObservation>();
         foreach (var partition in partitions)
         {
             CommandOutcome<AssessCommandResponse> before;
-            try { before = assess(partition.Words, request.Limits, partition.WritingSystemId); }
+            try { before = assess(partition.Words, request.Limits, partition.WritingSystemId, rows =>
+            {
+                if (request.ReviewSnapshot is not { } snapshot) return;
+                var measuredWords = rows.Select(row => new SIL.Motif.Host.Parser.AssessedWord(row.Word,
+                    row.InvalidShape ? "skipped" : row.TimedOut ? "timed-out" : row.Capped ? "stopped" :
+                    row.Analyses.Count > 0 || row.Unavailable.Count > 0 ? "analysed" : "no-analysis", []) { Morphology = row });
+                partialRows.AddRange(TrialReviewEvidence.Observe(snapshot, partition.CaseKeys, measuredWords));
+            }); }
             catch (Exception exception) when (onBaselineUnavailable is not null && exception is not OperationCanceledException)
             {
                 onBaselineUnavailable(exception.Message);
-                return JobCommands.EnqueueTrialAdmitted(request, expectedParserPath, admission);
+                return JobCommands.EnqueueTrialAdmitted(RetainBefore("assess.unavailable"), expectedParserPath, admission);
             }
             if (!before.Succeeded)
             {
                 if (before.Refusal!.Reason == FailureReason.StoppedByBudget)
-                    return JobCommands.EnqueueStoppedTrial(request with { Words = words }, expectedParserPath, before.Refusal);
+                    return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);
+                if (request.ReviewSnapshot is not null &&
+                    (before.Refusal.Reason == FailureReason.Cancelled || before.Refusal.Code == RefusalCodes.AssessParserMemoryLimit))
+                    return JobCommands.EnqueueStoppedTrial(RetainBefore(before.Refusal.Code) with { Words = words }, expectedParserPath, before.Refusal);
                 if (onBaselineUnavailable is null || before.Refusal.Reason == FailureReason.Cancelled)
                     return CommandOutcome<JobEnqueuedResponse>.Refused(before.Refusal);
                 onBaselineUnavailable(before.Refusal!.Message);
-                return JobCommands.EnqueueTrialAdmitted(request, expectedParserPath, admission);
+                return JobCommands.EnqueueTrialAdmitted(RetainBefore(before.Refusal.Code), expectedParserPath, admission);
             }
             assessmentIds.AddRange(before.Value!.AssessmentIds);
             baselines.Add(new(partition.WritingSystemId, partition.CaseKeys, before.Value.AssessmentIds));
@@ -126,5 +138,13 @@ public static class TrialBaselines
             BaselineAssessmentIds = assessmentIds,
             ReviewBaselines = request.ReviewSnapshot is null ? null : baselines,
         }, expectedParserPath, admission);
+
+        EnqueueTrialRequest RetainBefore(string code) => request.ReviewSnapshot is null ? request : request with
+        {
+            BaselineAssessmentIds = assessmentIds.ToArray(),
+            ReviewBaselines = baselines.ToArray(),
+            ReviewBeforeStopCode = code,
+            ReviewBeforePartial = partialRows.ToArray(),
+        };
     }
 }

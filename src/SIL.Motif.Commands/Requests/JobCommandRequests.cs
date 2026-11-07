@@ -34,6 +34,8 @@ public sealed record EnqueueTrialRequest(
     internal SIL.Motif.Worker.Jobs.ReviewInputReference? ReviewInputs { get; init; }
     internal SIL.Motif.Contract.Review.FrozenReviewInputs? ReviewSnapshot { get; init; }
     internal IReadOnlyList<SIL.Motif.Worker.Jobs.ReviewBaselinePartition>? ReviewBaselines { get; init; }
+    internal string? ReviewBeforeStopCode { get; init; }
+    internal IReadOnlyList<SIL.Motif.Worker.Jobs.TrialReviewObservation>? ReviewBeforePartial { get; init; }
 }
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>

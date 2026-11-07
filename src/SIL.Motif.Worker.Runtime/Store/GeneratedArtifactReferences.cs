@@ -1106,7 +1106,7 @@ internal static class GeneratedArtifactReferences
                 {
                     RequireObjectShape(json, "Trial job input",
                         ["proposalJson", "scope", "words", "allWords", "prerequisites", "limits",
-                            "baselineAssessmentIds", "negativeWords", "wordList", "reviewInputs", "reviewBaselines"], ["proposalJson", "scope"]);
+                            "baselineAssessmentIds", "negativeWords", "wordList", "reviewInputs", "reviewBaselines", "reviewBeforeStopCode", "reviewBeforePartial"], ["proposalJson", "scope"]);
                     var input = JsonSerializer.Deserialize<TrialJobInput>(json, StrictJsonOptions)
                         ?? throw new InvalidDataException("The Trial input is null.");
                     if (string.IsNullOrWhiteSpace(input.ProposalJson) ||

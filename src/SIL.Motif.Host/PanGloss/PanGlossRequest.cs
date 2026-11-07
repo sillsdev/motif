@@ -108,6 +108,9 @@ public abstract record PanGlossRequest
         /// <summary>Receives progress from the batch's flushed word rows.</summary>
         public Action<TrialWordProgress>? OnProgress { get; init; }
 
+        /// <summary>Receives validated, attributable morphology rows from an interrupted batch.</summary>
+        public Action<IReadOnlyList<SIL.Motif.Contract.Responses.ParseWordEvidence>>? OnPartial { get; init; }
+
         public override string Subcommand => "batch";
 
         internal override void Validate()

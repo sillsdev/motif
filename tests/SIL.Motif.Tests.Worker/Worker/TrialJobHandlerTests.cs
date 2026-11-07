@@ -848,6 +848,70 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
+    public void ReviewKeepsAnEarlierPartitionWhenTheNextBatchRunsOutOfMemory()
+    {
+        using var cache = new FwDataProjectLoader().LoadScratchCache(_baselines.GetCurrent(ProjectWorkspaceKey.Compute(_project))!.FwDataPath);
+        var writingSystem = cache.ServiceLocator.WritingSystems.DefaultVernacularWritingSystem.Id;
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "interrupted review");
+        SaveCommittedProposal(proposalId, proposalJson);
+        ReviewPlannedCase[] cases =
+        [
+            new("case-a", "word-a", UnanalysedWordform, null, null, [], []),
+            new("case-b", "word-b", UnanalysedWordform, writingSystem, null, [], []),
+        ];
+        var inputs = new FrozenReviewInputs("project", proposalId.Value, "scope", "evidence", null, [], [], cases);
+        var reference = ReviewInputArtifacts.Store(_database, new(inputs, new Dictionary<string, byte[]>()) { Baseline = _token });
+        var calls = 0;
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        var assessor = new FakeAssessor("pangloss", [AssessmentKind.Correctness], rawForScope: (_, _, _) =>
+        {
+            if (++calls == 2)
+                throw new AssessorUnavailableException("pangloss", "memory") { MemoryKill = new PanGlossMemoryKill(1024, null) };
+            var morphology = new ParseWordEvidence("fieldworks-parse-analysis/v1", 0, UnanalysedWordform, 1, false, false, false, [], []);
+            return new AssessmentRaw.WordMeasurements([new AssessedWord(UnanalysedWordform, "no-analysis", []) { Morphology = morphology }]);
+        });
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform], reviewInputs: reference);
+
+        var finished = RunAndFinish(BuildHandler(lanes, assessor), job);
+
+        Assert.Equal(JobStatus.CompletedWithAssessmentFailure, finished.Status);
+        var ledger = TrialReviewEvidence.ReadJob(_database, job.JobId)!;
+        Assert.Equal("case-a", Assert.Single(ledger.After).CaseKey);
+        var interruption = Assert.Single(ledger.Interruptions);
+        Assert.Equal("assess.parser-memory-limit", interruption.Code);
+        Assert.Equal("case-b", Assert.Single(interruption.PendingCaseKeys));
+    }
+
+    [Fact]
+    public void ReviewCancelledBeforeTheFirstWordKeepsThePlannedCases()
+    {
+        var proposalId = CanonicalId.Mint("proposal/");
+        var proposalJson = BuildSetGlossProposalJson(proposalId, _seed.FirstSenseId, "cancelled review");
+        SaveCommittedProposal(proposalId, proposalJson);
+        ReviewPlannedCase[] cases =
+        [
+            new("case-a", "word-a", UnanalysedWordform, null, null, [], []),
+            new("case-b", "word-b", "another", null, null, [], []),
+        ];
+        var inputs = new FrozenReviewInputs("project", proposalId.Value, "scope", "evidence", null, [], [], cases);
+        var reference = ReviewInputArtifacts.Store(_database, new(inputs, new Dictionary<string, byte[]>()) { Baseline = _token });
+        using var lanes = new ProjectLaneRegistry(_ => _token);
+        using var budget = new CancellationTokenSource();
+        budget.Cancel();
+        var job = CreateTrialJob(proposalJson, [UnanalysedWordform, "another"], reviewInputs: reference);
+        TrialJobHandler.BudgetStopForTests.Value = budget.Token;
+        try
+        {
+            var finished = RunAndFinish(BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness])), job);
+            Assert.Equal(JobStatus.StoppedByBudget, finished.Status);
+            var interruption = Assert.Single(TrialReviewEvidence.ReadJob(_database, job.JobId)!.Interruptions);
+            Assert.Equal(2, interruption.PendingCaseKeys.Count);
+        }
+        finally { TrialJobHandler.BudgetStopForTests.Value = null; }
+    }
+
+    [Fact]
     public void ATrialOfAComposedWordAsksTheParserAboutAndRecordsTheSameSelectionAnAssessOfItWould()
     {
         const string composed = "\u0BAA\u0BCA\u0BA9\u0BCD";

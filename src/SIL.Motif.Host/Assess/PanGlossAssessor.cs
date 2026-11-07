@@ -85,7 +85,8 @@ public sealed class PanGlossAssessor : IAssessor
     /// <summary>Measures this run's imported snapshot while retaining the original project as Assessment evidence.</summary>
     public async Task<IReadOnlyList<ProducedAssessment>> ProduceAsync(
         AssessmentScope scope, string exportedCandidate, Action<TrialWordProgress>? onProgress,
-        Action<bool>? onAdmissionWait, CancellationToken cancellationToken, PanGlossImportedSnapshot? importedSnapshot)
+        Action<bool>? onAdmissionWait, CancellationToken cancellationToken, PanGlossImportedSnapshot? importedSnapshot,
+        Action<IReadOnlyList<SIL.Motif.Contract.Responses.ParseWordEvidence>>? onPartial = null)
     {
         ArgumentNullException.ThrowIfNull(scope);
         if (scope is AssessmentScope.PhonologyExamples examples)
@@ -129,7 +130,7 @@ public sealed class PanGlossAssessor : IAssessor
         {
             var batch = new PanGlossRequest.Batch(
                 sources[0], requestedWords, wordsScope.PerWordLimit, cachePath, wordsScope.PerWordParserWorkLimit, directory)
-                { CollectAnalyses = true, OnProgress = onProgress, OnAdmissionWait = onAdmissionWait,
+                { CollectAnalyses = true, OnProgress = onProgress, OnPartial = onPartial, OnAdmissionWait = onAdmissionWait,
                     ImportedSnapshot = importedSnapshot, SharedArtifactDirectory = _paths.SharedArtifactDirectory };
             var outcome = await _invoker.RunAsync(batch,
                 "assess:batch", cancellationToken).ConfigureAwait(false);

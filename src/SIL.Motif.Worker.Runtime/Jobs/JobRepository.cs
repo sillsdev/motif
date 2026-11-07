@@ -136,12 +136,21 @@ public sealed class JobRepository
     /// <summary>Records an Assessment that stopped before it could publish evidence.</summary>
     public JobRecord RecordBudgetStop(string jobId, string projectKey, string kind, string inputJson,
         string resultJson, string createdUtc)
+        => RecordInterrupted(jobId, projectKey, kind, inputJson, resultJson, createdUtc, JobStatus.StoppedByBudget);
+
+    /// <summary>Records a Trial interrupted before its worker could be queued.</summary>
+    public JobRecord RecordInterrupted(string jobId, string projectKey, string kind, string inputJson,
+        string resultJson, string createdUtc, JobStatus status)
     {
+        if (status is not (JobStatus.StoppedByBudget or JobStatus.Cancelled or JobStatus.Failed))
+            throw new ArgumentOutOfRangeException(nameof(status));
         JobJson.ValidateStructured(inputJson, nameof(inputJson));
         JobJson.ValidateStructured(resultJson, nameof(resultJson));
         var timestamp = JobTimestamp.FormatUtc(ValidateUtc(createdUtc, nameof(createdUtc)));
-        var record = new JobRecord(jobId, projectKey, kind, JobStatus.StoppedByBudget, 1, inputJson,
-            resultJson, timestamp, timestamp, LineageId: jobId, ArchivedUtc: timestamp);
+        var record = new JobRecord(jobId, projectKey, kind, status, 1, inputJson,
+            resultJson, timestamp, timestamp, LineageId: jobId, ArchivedUtc: timestamp,
+            FailureCategory: status == JobStatus.Failed ? JobFailureCategory.ParserRefusal :
+                status == JobStatus.Cancelled ? JobFailureCategory.Cancellation : JobFailureCategory.None);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         Insert(connection, transaction, record);

@@ -288,6 +288,7 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                             "Parser termination could not be confirmed after requesting cancellation.", string.Empty)
                         { Cause = PanGlossIncompleteCause.Infrastructure };
                     }
+                    if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
                     return cancellationToken.IsCancellationRequested
                         ? new PanGlossOutcome.Cancelled()
                         : new PanGlossOutcome.TimedOut(cap,
@@ -297,9 +298,13 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                 var standardError = await stdErrTask.ConfigureAwait(false);
                 var standardOutput = await stdOutTask.ConfigureAwait(false);
                 if (process.ExitCode != 0 && process.MemoryKill is { } memoryKill)
+                {
+                    if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
                     return new PanGlossOutcome.MemoryLimit(memoryKill);
+                }
                 if (process.ExitCode != 0 && !request.AcceptsNonzeroExit(standardOutput))
                 {
+                    if (request is PanGlossRequest.Batch interrupted) PublishPartial(interrupted, scratch);
                     return new PanGlossOutcome.Refused(process.ExitCode, StandardError: standardError,
                         StandardOutput: standardOutput,
                         Detail: PanGlossCompileError.TryRead(standardError)?.Describe(request.Subcommand, process.ExitCode) ??
@@ -310,6 +315,8 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
                     return new PanGlossOutcome.Incomplete("The staged phonology inputs or executable changed during invocation.", standardError);
                 var outcome = request.Finish(scratch, standardOutput, standardError, clock.Elapsed,
                     out var batchFileDigests);
+                if (outcome is not PanGlossOutcome.Completed && request is PanGlossRequest.Batch incompleteBatch)
+                    PublishPartial(incompleteBatch, scratch);
                 if (process.ExitCode != 0 && outcome is not PanGlossOutcome.Completed)
                     return new PanGlossOutcome.Refused(process.ExitCode, standardError, standardOutput,
                         $"pangloss {request.Subcommand} exited {process.ExitCode}; {outcome.Message}" +
@@ -437,4 +444,32 @@ public sealed class PanGlossInvoker : IPanGlossInvoker, IDisposable
     }
 
     private static string MissingExecutableMessage => PanGlossExecutable.NotFoundMessage;
+
+    internal static void PublishPartial(PanGlossRequest.Batch batch, string scratch)
+    {
+        if (batch.OnPartial is null) return;
+        var path = Path.Combine(scratch, "analyses.jsonl");
+        if (!File.Exists(path)) return;
+        var text = File.ReadAllText(path);
+        var end = text.LastIndexOf('\n');
+        if (end < 0) return;
+        var rows = new Dictionary<int, SIL.Motif.Contract.Responses.ParseWordEvidence>();
+        var duplicates = new HashSet<int>();
+        foreach (var raw in text[..end].Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                var line = raw.TrimStart('\uFEFF');
+                var row = System.Text.Json.JsonSerializer.Deserialize<SIL.Motif.Contract.Responses.ParseWordEvidence>(line,
+                    SIL.Motif.Host.Parser.ParseMorphEvidence.JsonOptions);
+                if (row is null || row.Index < 0 || row.Index >= batch.Words.Count || row.Word != batch.Words[row.Index]) continue;
+                var normalized = System.Text.Json.JsonSerializer.Serialize(row with { Index = 0 }, SIL.Motif.Host.Parser.ParseMorphEvidence.JsonOptions);
+                _ = SIL.Motif.Host.Parser.ParseMorphEvidence.Read(normalized, [row.Word]);
+                if (!rows.TryAdd(row.Index, row)) duplicates.Add(row.Index);
+            }
+            catch (Exception exception) when (exception is System.Text.Json.JsonException or InvalidDataException or NotSupportedException) { }
+        }
+        foreach (var index in duplicates) rows.Remove(index);
+        if (rows.Count != 0) batch.OnPartial(rows.OrderBy(pair => pair.Key).Select(pair => pair.Value).ToArray());
+    }
 }
