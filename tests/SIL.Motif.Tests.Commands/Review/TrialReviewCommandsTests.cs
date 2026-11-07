@@ -106,6 +106,9 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var flag = Assert.Single(report.FlagEvidence, item => item.Id == ReviewFlagId.ConfirmedReadingsLost);
         Assert.Equal(EvidenceState.Partial, flag.State);
         Assert.Contains("expectation-identity-unavailable", flag.Reasons);
+        var word = repository.ReadWord("project", id, "case", 20);
+        Assert.Equal(1, word.Row.Before.ApprovedUnknown);
+        Assert.Equal(1, word.Row.After.ApprovedUnknown);
         var page = repository.ReadChildren(new ReviewChildPageRequest("project", id, "expectations", "case"));
         var row = Assert.IsType<ExpectationRow>(Assert.Single(page.Items));
         Assert.Equal("actor", row.ActorId);
@@ -200,6 +203,50 @@ public sealed class TrialReviewCommandsTests : IDisposable
         var selected = Assert.Single(report.Sections);
         Assert.Equal(section, selected.Id);
         Assert.True(selected.Links.Count > 0 || selected.Limitations.Count > 0);
+    }
+
+    [Fact]
+    public async Task CoverageFailuresSelectAffectedWeightedTokensAndUncoveredCells()
+    {
+        CreateInterrupted();
+        var original = await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest(Job));
+        var repository = new ReviewReportRepository(_database);
+        var summary = repository.ReadManifest(original)!.Summary;
+        var cases = Enumerable.Range(0, 6).Select(i =>
+        {
+            var affected = i == 5;
+            var expectation = "expectation-" + i;
+            var memberships = new[] {
+                new ReviewMembership("sentences", "token-" + i, "sampled-tokens", affected ? 1000 : 1, null, null, []),
+                new ReviewMembership("paradigm", "cell-" + i, "paradigm-cells", 1, "cell-" + i, "variant-" + i, [expectation]) };
+            var before = new ReviewCaseSideFacts(Completion.Complete, true, [], [expectation], [], []);
+            var after = affected ? new ReviewCaseSideFacts(Completion.Complete, false, [], [], [expectation], []) : before;
+            return new ReviewCaseDelta("case-" + i, "key-" + i, "word-" + i, "ws", affected, false, false, [], [], memberships, [])
+                { Before = before, After = after };
+        }).ToArray();
+        async IAsyncEnumerable<ReviewCaseDelta> Rows()
+        {
+            foreach (var item in cases) { yield return item; await Task.Yield(); }
+        }
+        var id = await repository.PublishAsync(new ReviewReportPublication("project", _proposal.Value, Job,
+            "sha256:coverage-failures", summary, [], 5_000_000), Rows());
+        var commands = new TrialReviewCommands(_database);
+        ReportView Read(string section) => Assert.IsType<AvailableTrialResult>(commands.Read(new ReviewReadRequest(
+            "project", _proposal.Value, ReportId: id.Value, Section: section)).Value).Report;
+        var tokenSection = Assert.Single(Read("sampled-tokens").Sections);
+        var tokenGroup = Assert.Single(tokenSection.Groups, group => group.Cause == "new-no-parse");
+        var token = Assert.IsType<TokenRow>(Assert.Single(tokenGroup.Samples));
+        Assert.Equal(1000, token.Weight);
+        Assert.Equal("token-5", token.CaseId);
+        Assert.Equal("new-no-parse", tokenGroup.Link.Arguments!.Outcome);
+        var cellSection = Assert.Single(Read("paradigm-cells").Sections);
+        var lost = Assert.Single(cellSection.Groups, group => group.Cause == "lost");
+        var cell = Assert.IsType<CellRow>(Assert.Single(lost.Samples));
+        Assert.Equal("cell-5", cell.CellId);
+        Assert.Equal(CellOutcome.Covered, cell.Before);
+        Assert.Equal(CellOutcome.Uncovered, cell.After);
+        Assert.DoesNotContain(cellSection.Groups.SelectMany(group => group.Samples).OfType<CellRow>(),
+            item => item.CellId == "cell-0");
     }
 
     [Fact]

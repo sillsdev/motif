@@ -105,6 +105,17 @@ public sealed class TrialReviewReportAcceptanceTests
         Assert.Equal("work", word.Word);
         Assert.Equal(21, word.Work.PercentChange);
         Assert.NotEmpty(section.Links);
+        var defaults = SIL.Motif.Commands.ProjectStoreCommand.Run<SIL.Motif.Contract.Review.TrialReviewResult>(
+            fixture.Project, SIL.Motif.Host.MotifProductVersion.CurrentText, (database, project) =>
+                new SIL.Motif.Commands.Review.TrialReviewCommands(database).Read(new ReviewReadRequest(
+                    fixture.ProjectKey, fixture.Proposal, ReportId: reportId, Detail: DetailLevel.Failures)));
+        var defaultReport = Assert.IsType<AvailableTrialResult>(defaults.Value).Report;
+        var workSection = Assert.Single(defaultReport.Sections, item => item.Id == "parser-work");
+        var group = Assert.Single(workSection.Groups);
+        Assert.Equal("work-increase", group.Cause);
+        Assert.Equal("parser-work", group.Link.Arguments!.Section);
+        var witness = Assert.IsType<WordRow>(Assert.Single(group.Samples));
+        Assert.Equal("work", Assert.Single(witness.Links).Arguments!.Case);
     }
 
     [Fact]

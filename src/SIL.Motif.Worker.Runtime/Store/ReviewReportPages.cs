@@ -400,6 +400,9 @@ public sealed partial class ReviewReportRepository
             using var reference = JsonDocument.Parse(reader.GetString(1));
             var artifact = reference.RootElement.GetProperty("digest").GetString() ?? throw new InvalidDataException("Invalid section reference.");
             var row = ReviewRowArtifacts.Read(_database, request.ReportId, artifact);
+            if (request.Section == "parser-work" && row is ReviewWordRow word)
+                row = word with { Links = word.Links.Select(link => link.Arguments is null ? link :
+                    link with { Arguments = link.Arguments with { Report = request.ReportId.Value } }).ToArray() };
             if (!ReviewReportPages.IsSectionRow(request.Section, row)) throw new InvalidDataException("A retained section row has the wrong type.");
             var size = JsonSerializer.SerializeToUtf8Bytes(row, ReviewJson.Options).Length;
             if (items.Count > 0 && bytes + size > PageBytes) { more = true; break; }
@@ -497,14 +500,18 @@ public sealed partial class ReviewReportRepository
         if (request.Set is not null) filter += " AND m.SetId IN (SELECT value FROM json_each($set))";
         var total = Count(connection, transaction, "SELECT COUNT(*)" + source, args);
         var matching = Count(connection, transaction, "SELECT COUNT(*)" + source + filter, args);
-        var tuple = last is null ? null : ReadTuple(last, 2);
-        args.Add(("$case", tuple?[0]));
-        if (tuple is not null && (!int.TryParse(tuple[1], NumberStyles.None, CultureInfo.InvariantCulture, out var ordinal) || ordinal < 0))
+        var tuple = last is null ? null : ReadTuple(last, 3);
+        args.Add(("$weight", tuple is null ? 0 : long.Parse(tuple[0], CultureInfo.InvariantCulture)));
+        args.Add(("$case", tuple?[1]));
+        if (tuple is not null && (!int.TryParse(tuple[2], NumberStyles.None, CultureInfo.InvariantCulture, out var ordinal) || ordinal < 0))
             throw new ReviewCursorInvalidException();
-        args.Add(("$ordinal", tuple is null ? -1 : int.Parse(tuple[1], CultureInfo.InvariantCulture)));
+        args.Add(("$ordinal", tuple is null ? -1 : int.Parse(tuple[2], CultureInfo.InvariantCulture)));
         args.Add(("$limit", request.Limit + 1));
-        using var command = PageCommand(connection, transaction, "SELECT m.CaseKey,m.Ordinal,m.FactsJson,c.WordKey,c.FactsJson" + source + filter +
-            " AND ($case IS NULL OR (m.CaseKey,m.Ordinal)>($case,$ordinal)) ORDER BY m.CaseKey,m.Ordinal LIMIT $limit;", args.ToArray());
+        var weight = "(SELECT SUM(json_extract(w.FactsJson,'$.weight')) FROM ReviewReportMemberships w " +
+            "WHERE w.ReportId=m.ReportId AND w.CaseKey=m.CaseKey AND w.Role='sampled-tokens'" +
+            (request.Set is null ? "" : " AND w.SetId IN (SELECT value FROM json_each($set))") + ")";
+        using var command = PageCommand(connection, transaction, "SELECT m.CaseKey,m.Ordinal,m.FactsJson,c.WordKey,c.FactsJson," + weight + source + filter +
+            " AND ($case IS NULL OR -" + weight + ">$weight OR (-" + weight + "=$weight AND (m.CaseKey,m.Ordinal)>($case,$ordinal))) ORDER BY -" + weight + ",m.CaseKey,m.Ordinal LIMIT $limit;", args.ToArray());
         using var reader = command.ExecuteReader();
         var items = new List<ReviewRow>();
         string? anchor = null;
@@ -534,7 +541,7 @@ public sealed partial class ReviewReportRepository
             }
             bytes += size;
             items.Add(row);
-            anchor = JsonSerializer.Serialize(new[] { reader.GetString(0), reader.GetInt32(1).ToString(CultureInfo.InvariantCulture) });
+            anchor = JsonSerializer.Serialize(new[] { (-reader.GetInt64(5)).ToString(CultureInfo.InvariantCulture), reader.GetString(0), reader.GetInt32(1).ToString(CultureInfo.InvariantCulture) });
         }
         var next = more ? ReviewReportCursor.Encode(new(1, request.ProjectKey, request.ReportId.Value,
             request.Section, digest, 1, anchor!, null, null)) : null;
@@ -651,6 +658,7 @@ public sealed partial class ReviewReportRepository
             conditions.Add(string.Join(" OR ", choices.Select(choice => choice switch
             {
                 "covered" => "AfterValue=1", "uncovered" => "AfterValue=0", "unknown" => "AfterValue IS NULL",
+                "lost" => "BeforeValue=1 AND AfterValue=0",
                 _ => throw new ArgumentException("Unknown cell outcome.")
             })));
         }

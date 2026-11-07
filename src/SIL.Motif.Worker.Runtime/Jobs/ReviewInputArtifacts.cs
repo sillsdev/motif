@@ -72,7 +72,6 @@ public static class ReviewInputArtifacts
         var retained = new HashSet<string>(StringComparer.Ordinal);
         var protectedJobs = new HashSet<string>(StringComparer.Ordinal);
         var publishedJobs = new HashSet<string>(StringComparer.Ordinal);
-        var seenJobs = new HashSet<string>(StringComparer.Ordinal);
         var before = new HashSet<string>(StringComparer.Ordinal);
         var ledgers = new HashSet<string>(StringComparer.Ordinal);
         using var connection = database.OpenConnection();
@@ -89,10 +88,12 @@ public static class ReviewInputArtifacts
                     publishedJobs.Add(reader.GetString(0));
                     if (reader.GetInt64(2) == 0 && reader.GetString(1) == "[]") continue;
                     protectedJobs.Add(reader.GetString(0));
+                    ledgers.Add(Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(reader.GetString(0)))));
                     foreach (var reference in JsonSerializer.Deserialize<string[]>(reader.GetString(1)) ?? [])
                     {
                         if (reference is null) throw new InvalidDataException("A retained report input reference is invalid.");
-                        retained.Add(reference.StartsWith("sha256:", StringComparison.Ordinal) ? reference[7..] : reference);
+                        if (reference.StartsWith("review-before:", StringComparison.Ordinal)) before.Add(reference[14..]);
+                        else retained.Add(reference.StartsWith("sha256:", StringComparison.Ordinal) ? reference[7..] : reference);
                     }
                 }
             }
@@ -111,7 +112,6 @@ public static class ReviewInputArtifacts
             using var reader = jobs.ExecuteReader();
             while (reader.Read())
             {
-                seenJobs.Add(reader.GetString(0));
                 var input = TrialJobInput.Parse(reader.GetString(2));
                 if (input.ReviewInputs is not { } reference) continue;
                 var proposalId = ProposalJsonParser.Parse(input.ProposalJson).ProposalId.Value;
@@ -125,7 +125,6 @@ public static class ReviewInputArtifacts
                 }
             }
         }
-        if (protectedJobs.Except(seenJobs, StringComparer.Ordinal).Any()) return;
         SweepSidecars(Path.GetFullPath(database.FullPath) + ".review-before", before);
         SweepSidecars(Path.GetFullPath(database.FullPath) + ".review-evidence", ledgers);
         if (!Directory.Exists(directory)) return;

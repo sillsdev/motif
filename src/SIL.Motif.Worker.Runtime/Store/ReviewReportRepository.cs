@@ -229,15 +229,15 @@ public sealed partial class ReviewReportRepository(MotifDatabase database)
             foreach (var group in assertions.GroupBy(assertion => string.IsNullOrWhiteSpace(assertion.ReadingIdentity)
                          ? "assertion:" + assertion.Id : assertion.ReadingIdentity, StringComparer.Ordinal))
             {
-                if (group.Any(assertion => assertion.Morphology is not null && !string.IsNullOrWhiteSpace(assertion.ReadingIdentity) &&
+                if (group.Any(assertion => assertion.Eligible && assertion.Morphology is not null && !string.IsNullOrWhiteSpace(assertion.ReadingIdentity) &&
                         side.MatchedExpectationIds.Contains(assertion.Id))) matched++;
-                else if (group.All(assertion => assertion.Morphology is not null && !string.IsNullOrWhiteSpace(assertion.ReadingIdentity) &&
+                else if (group.All(assertion => assertion.Eligible && assertion.Morphology is not null && !string.IsNullOrWhiteSpace(assertion.ReadingIdentity) &&
                              side.MissingExpectationIds.Contains(assertion.Id))) missing++;
                 else unknown++;
             }
             return (matched, missing, unknown);
         }
-        var eligible = item.Assertions.Where(assertion => assertion.Eligible && !assertion.WholeWordNegative);
+        var eligible = item.Assertions.Where(assertion => !assertion.WholeWordNegative);
         var approved = Count(eligible.Where(assertion => assertion.Approved), side);
         var reference = Count(eligible.Where(assertion => !assertion.Approved && referenceIds.Contains(assertion.Id)), side);
         return new(approved.Matched, approved.Missing, approved.Unknown, reference.Matched, reference.Missing, reference.Unknown);

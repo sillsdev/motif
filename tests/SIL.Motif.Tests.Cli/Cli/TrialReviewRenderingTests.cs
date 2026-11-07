@@ -45,6 +45,7 @@ public sealed class TrialReviewRenderingTests
     {
         var report = (ReportView)Create(typeof(ReportView));
         var row = (WordRow)Create(typeof(WordRow));
+        row = row with { Before = row.Before with { ApprovedUnknown = 1 }, After = row.After with { ApprovedUnknown = 1 } };
         var reading = new ReadingRow("reading-id", Side.Before, IdentityState.Exact,
             [new Morph("form-id", "msa-id", [], "cat", "gloss")], true, ["approved"], ["source"]);
         var expectation = new ExpectationRow("approved", ExpectationAssertion.CorrectReading, ReferenceAuthority.Human,
@@ -58,6 +59,7 @@ public sealed class TrialReviewRenderingTests
         Assert.Contains("reading-id", text, StringComparison.Ordinal);
         Assert.Contains("form-id", text, StringComparison.Ordinal);
         Assert.Contains("Matched before; Missing after", text, StringComparison.Ordinal);
+        Assert.Contains("unknown 1", text, StringComparison.Ordinal);
         Assert.Contains("actor", text, StringComparison.Ordinal);
         Assert.Contains("citation", text, StringComparison.Ordinal);
         Assert.Contains("readings next cursor: next", text, StringComparison.Ordinal);

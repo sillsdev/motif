@@ -235,20 +235,49 @@ public sealed class TrialReviewCommands(MotifDatabase database)
         }
         foreach (var (id, label) in new[]
         {
-            ("sampled-tokens", "Sampled example sentences"), ("paradigm-cells", "Verb paradigm cells"),
-            ("parser-work", "Parser work"), ("effects", "Changes to the project"), ("evidence", "What was measured")
+            ("sampled-tokens", "Sampled example sentences"), ("paradigm-cells", "Verb paradigm cells")
         }.Where(item => selected == item.Item1))
         {
+            var outcomes = id == "sampled-tokens" ? new[] { "new-no-parse", "approved-reading-lost", "incomplete" } :
+                new[] { "lost", "uncovered", "unknown" };
+            var causes = new List<CauseGroup>();
+            long? total = null;
+            foreach (var outcome in outcomes)
+            {
+                var page = repository.ReadPage(new ReviewPageRequest(report.Pins.ProjectKey,
+                    new ReviewReportId(report.ReportId), id, Set: set, Outcome: outcome, Limit: 5));
+                total = page.TotalInSection;
+                if (page.TotalMatching == 0) continue;
+                var link = new ReadTarget(TargetKind.Tool, outcome, null, "motif_difference",
+                    new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
+                        Detail: DetailLevel.Full, Section: id, Set: set, Outcome: outcome));
+                causes.Add(new CauseGroup(outcome, page.TotalMatching, page.Unit, page.Items,
+                    page.TotalMatching is null ? null : page.TotalMatching - page.Returned, link));
+            }
+            sections.Add(new SectionView(id, label, "Stored Trial evidence", report.Pins.EvidenceManifestDigest,
+                new SectionCounts(id == "sampled-tokens" ? "positions" : "cells", total, null, null), causes,
+                report.Limitations.Where(item => item.SectionIds.Contains(id)).ToArray(),
+                [new ReadTarget(TargetKind.Tool, label, null, "motif_difference",
+                    new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
+                        Detail: DetailLevel.Full, Section: id, Set: set))]));
+        }
+        foreach (var (id, label) in new[]
+        {
+            ("parser-work", "Parser work"), ("effects", "Changes to the project"), ("evidence", "What was measured")
+        }.Where(item => selected == item.Item1 || selected is null && item.Item1 == "parser-work" &&
+            report.Summary.Flags.Any(flag => flag.Id == ReviewFlagId.ParserWorkIncrease)))
+        {
+            var outcome = id == "parser-work" && selected is null ? "work-increase" : null;
             var target = new ReadTarget(TargetKind.Tool, label, null, "motif_difference",
                 new ReadArguments(Proposal: report.Pins.ProposalId, Report: report.ReportId,
-                    Detail: DetailLevel.Full, Section: id, Set: set));
+                    Detail: DetailLevel.Full, Section: id, Set: set, Outcome: outcome));
             var limitations = report.Limitations.Where(item => item.SectionIds.Contains(id)).ToList();
             try
             {
                 var page = repository.ReadPage(new ReviewPageRequest(report.Pins.ProjectKey,
-                    new ReviewReportId(report.ReportId), id, Set: set, Limit: 5));
+                    new ReviewReportId(report.ReportId), id, Set: set, Outcome: outcome, Limit: 5));
                 var groupsForSection = page.TotalMatching == 0 ? Array.Empty<CauseGroup>() :
-                    [new CauseGroup(id, page.TotalMatching,
+                    [new CauseGroup(id == "parser-work" ? "work-increase" : id, page.TotalMatching,
                         page.Unit, page.Items, page.TotalMatching is null ? null : page.TotalMatching - page.Returned, target)];
                 sections.Add(new SectionView(id, label, "Stored Trial evidence", report.Pins.EvidenceManifestDigest,
                     new SectionCounts(page.Unit, page.TotalInSection, page.TotalMatching, null), groupsForSection, limitations, [target]));

@@ -70,6 +70,22 @@ public sealed class ReviewReportRepositoryTests : IDisposable
     [Fact]
     public async Task DecidedTrialReleasesBeforeAndLedgerAfterPublication()
     {
+        var retainedProposal = CanonicalId.Mint("proposal/");
+        using (var connection = _database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "INSERT INTO Proposals (ProposalId,CurrentIntentDigest,Status) VALUES ($id,'intent','proposed');";
+            command.Parameters.AddWithValue("$id", retainedProposal.Value);
+            command.ExecuteNonQuery();
+        }
+        var retainedInputs = new FrozenReviewInputs("project", retainedProposal.Value, "retained", "manifest", null, [], [], []);
+        var retainedReference = ReviewInputArtifacts.Store(_database, new(retainedInputs, new Dictionary<string, byte[]>()));
+        var retainedBefore = TrialReviewEvidence.StoreBefore(_database, [new TrialReviewObservation("a", "a", "skipped", null)]);
+        TrialReviewEvidence.Save(_database, new TrialReviewLedger("archived-a", retainedReference, [], [], []));
+        var retainedReport = Report();
+        await _repository.PublishAsync(Publication("retained-a") with { ProposalId = retainedProposal.Value, TrialJobId = "archived-a",
+            Summary = retainedReport with { Pins = retainedReport.Pins with { ProposalId = retainedProposal.Value } },
+            InputReferences = ["sha256:" + retainedReference.Sha256, "review-before:" + retainedBefore] }, Cases(Case("a")));
         var proposalJson = JsonSerializer.Serialize(new { contractVersions = new Dictionary<string, string>(),
             proposalId = _proposal.Value, operations = Array.Empty<object>() });
         var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [], []);
@@ -88,12 +104,14 @@ public sealed class ReviewReportRepositoryTests : IDisposable
         new ProposalRepository(_database).SetStatus(_proposal, "rejected", null);
         new AssessmentRepository(_database).RecordBatchForClaim([], claim.JobId, claim.ClaimToken!, "{}");
         ReviewInputArtifacts.Sweep(_database);
-        Assert.Single(Directory.GetFiles(_database.FullPath + ".review-before", "*.json"));
-        Assert.Single(Directory.GetFiles(_database.FullPath + ".review-evidence", "*.json"));
+        Assert.Equal(2, Directory.GetFiles(_database.FullPath + ".review-before", "*.json").Length);
+        Assert.Equal(2, Directory.GetFiles(_database.FullPath + ".review-evidence", "*.json").Length);
         await new TrialReviewPublisher(_database).PublishAsync(new ReviewPublishRequest("trial"));
         jobs.DeleteArchived("trial");
-        Assert.Empty(Directory.GetFiles(_database.FullPath + ".review-before", "*.json"));
-        Assert.Empty(Directory.GetFiles(_database.FullPath + ".review-evidence", "*.json"));
+        Assert.Single(Directory.GetFiles(_database.FullPath + ".review-before", "*.json"));
+        Assert.Single(Directory.GetFiles(_database.FullPath + ".review-evidence", "*.json"));
+        Assert.True(File.Exists(Path.Combine(_database.FullPath + ".review-inputs", retainedReference.Sha256 + ".json")));
+        Assert.False(File.Exists(Path.Combine(_database.FullPath + ".review-inputs", reference.Sha256 + ".json")));
     }
 
     [Fact]
@@ -102,7 +120,7 @@ public sealed class ReviewReportRepositoryTests : IDisposable
         var inputs = new FrozenReviewInputs("project", _proposal.Value, "scope", "manifest", null, [], [], []);
         var reference = ReviewInputArtifacts.Store(_database, new(inputs, new Dictionary<string, byte[]>()));
         var path = Path.Combine(_database.FullPath + ".review-inputs", reference.Sha256 + ".json");
-        await _repository.PublishAsync(Publication("missing-trial"), Cases(Case("a")), CancellationToken.None);
+        await _repository.PublishAsync(Publication("missing-trial") with { InputReferences = ["sha256:" + reference.Sha256] }, Cases(Case("a")), CancellationToken.None);
 
         ReviewInputArtifacts.Sweep(_database);
         Assert.True(File.Exists(path));
@@ -226,8 +244,16 @@ public sealed class ReviewReportRepositoryTests : IDisposable
     [Fact]
     public async Task BudgetRefusalDoesNotAdvertiseCompleteDetail()
     {
-        var id = await _repository.PublishAsync(Publication("budget") with { EstimatedDetailBytes = 200_000_000 },
-            Cases(Case("a")), CancellationToken.None);
+        var enumerated = false;
+        async IAsyncEnumerable<ReviewSectionItem> Rows()
+        {
+            enumerated = true;
+            await Task.Yield();
+            yield break;
+        }
+        var id = await _repository.PublishAsync(Publication("budget") with { EstimatedDetailBytes = 200_000_000,
+            AvailableSections = ["parser-work"], SectionItems = Rows() }, Cases(Case("a")), CancellationToken.None);
+        Assert.False(enumerated);
         var result = _repository.ReadManifest(id)!;
         Assert.False(result.DetailAvailable);
         Assert.Equal(DetailAvailability.Unavailable, result.Summary.DetailAvailability);
