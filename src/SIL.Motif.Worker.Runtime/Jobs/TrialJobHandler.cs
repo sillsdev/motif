@@ -341,7 +341,7 @@ internal sealed class TrialJobHandler
                     {
                         response = await _grammarHealthWithSnapshot(path, name, snapshotPath, wait, token).ConfigureAwait(false);
                         if (response is not null) importedSnapshot = PanGlossImportedSnapshot.Capture(path, snapshotPath)
-                            with { TransferOwnership = !preserveScratch };
+                            with { TransferOwnership = !preserveScratch && candidate.Partitions.Count == 1 };
                     }
                     if (path == baseline.FwDataPath) pairedBaseline = response;
                     return response;

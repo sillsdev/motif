@@ -115,7 +115,8 @@ public sealed partial class AllomorphRuleRetirementAcceptanceTests
         var trialStatus = JobCommands.WaitForJob(new WaitForJobRequest(projectPath, trial.Value!.JobId,
             productVersion, TimeSpan.FromMinutes(1)));
         Assert.True(trialStatus.Succeeded, trialStatus.Refusal?.Message);
-        Assert.Equal(JobStatus.Completed, trialStatus.Value!.Status);
+        using (var inspect = ProjectMotifDatabase.Open(projectPath))
+            Assert.True(trialStatus.Value!.Status == JobStatus.Completed, new JobRepository(inspect).Get(trial.Value.JobId)!.ResultJson);
         var trialAssessments = JobCommands.Assessments(new JobAssessmentsRequest(projectPath,
             trial.Value.JobId, productVersion));
         Assert.True(trialAssessments.Succeeded, trialAssessments.Refusal?.Message);
