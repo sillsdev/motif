@@ -16,4 +16,14 @@ public sealed class TrialWordInputTests
 
         Assert.Equal("job.invalid-words", outcome.Refusal?.Code);
     }
+
+    [Theory]
+    [InlineData(" ")]
+    [InlineData(" padded ")]
+    public void AdmittedTrialRejectsInvalidWordsBeforeAccessingProject(string word)
+    {
+        var outcome = JobCommands.EnqueueTrialAdmitted(new EnqueueTrialRequest(
+            "absent.fwdata", "1.0", "draft/one", Words: [word]), null, null);
+        Assert.Equal("job.invalid-words", outcome.Refusal?.Code);
+    }
 }

@@ -147,22 +147,48 @@ public static class JobCommands
     public static CommandOutcome<JobEnqueuedResponse> EnqueueTrial(EnqueueTrialRequest request,
         string? parserPath = null)
     {
+        if (InvalidTrialWords(request) is { } invalid) return CommandOutcome<JobEnqueuedResponse>.Refused(invalid);
+        return WithReviewInputLease(request, leased => EnqueueTrialCaptured(leased, parserPath, null));
+    }
+
+    private static CommandOutcome<JobEnqueuedResponse> EnqueueTrialCaptured(EnqueueTrialRequest request,
+        string? parserPath, ProjectParseLease? admission)
+    {
+        var frozen = FreezeTrialProposal(request);
+        if (!frozen.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(frozen.Refusal!);
+        request = frozen.Value!;
         var words = ResolveTrialWords(request);
         if (!words.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(words.Refusal!);
         var captured = ReviewTrialCapture.Capture(request, words.Value, parserPath);
-        return captured.Succeeded ? EnqueueTrialCore(captured.Value!, parserPath, null)
+        return captured.Succeeded ? EnqueueTrialCore(captured.Value!, parserPath, null, admission)
             : CommandOutcome<JobEnqueuedResponse>.Refused(captured.Refusal!);
     }
 
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueTrialAdmitted(EnqueueTrialRequest request,
         string? parserPath, ProjectParseLease? admission)
     {
-        if (request.ReviewInputs is not null) return EnqueueTrialCore(request, parserPath, null, admission);
-        var words = ResolveTrialWords(request);
-        if (!words.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(words.Refusal!);
-        var captured = ReviewTrialCapture.Capture(request, words.Value, parserPath);
-        return captured.Succeeded ? EnqueueTrialCore(captured.Value!, parserPath, null, admission)
-            : CommandOutcome<JobEnqueuedResponse>.Refused(captured.Refusal!);
+        if (InvalidTrialWords(request) is { } invalid) return CommandOutcome<JobEnqueuedResponse>.Refused(invalid);
+        if (request.ReviewInputs is not null)
+            return WithReviewInputLease(request, leased => EnqueueTrialCore(leased, parserPath, null, admission));
+        return WithReviewInputLease(request, leased => EnqueueTrialCaptured(leased, parserPath, admission));
+    }
+
+    internal static CommandOutcome<JobEnqueuedResponse> WithReviewInputLease(EnqueueTrialRequest request,
+        Func<EnqueueTrialRequest, CommandOutcome<JobEnqueuedResponse>> action)
+    {
+        if (request.ReviewLeaseHeld) return action(request);
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            using var lease = ReviewInputArtifacts.Acquire(database.FullPath);
+            try { return action(request with { ReviewLeaseHeld = true }); }
+            finally
+            {
+                try { ReviewInputArtifacts.SweepUnderLease(database); }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+                    InvalidOperationException or JsonException or Microsoft.Data.Sqlite.SqliteException or ArgumentException or
+                    ContractParseException) { }
+            }
+        });
     }
 
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueStoppedTrial(EnqueueTrialRequest request,
@@ -171,11 +197,7 @@ public static class JobCommands
     private static CommandOutcome<JobEnqueuedResponse> EnqueueTrialCore(EnqueueTrialRequest request,
         string? parserPath, Refusal? stop, ProjectParseLease? admission = null)
     {
-        if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
-                !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
-            return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                "job.invalid-words", FailureReason.InvalidArgument,
-                "Trial words must be nonblank and have no surrounding whitespace."));
+        if (InvalidTrialWords(request) is { } invalid) return CommandOutcome<JobEnqueuedResponse>.Refused(invalid);
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);
@@ -198,6 +220,13 @@ public static class JobCommands
                     "The Draft changed after it was checked. Reload it before queueing a Trial.",
                     new Dictionary<string, string>(StringComparer.Ordinal) { ["draftName"] = record.DraftName }));
 
+            if (request.ReviewInputs is not null && (request.ReviewProposal is not { } capturedProposal ||
+                capturedProposal.DraftName != record.DraftName || capturedProposal.ProposalJson != record.ProposalJson ||
+                capturedProposal.IntentDigest != record.IntentDigest))
+                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
+                    RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused,
+                    "The Proposal changed after its review inputs were captured. Queue the Trial again."));
+
             var jobs = new JobRepository(database);
             var jobId = CanonicalId.Mint("job/").Value;
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
@@ -211,13 +240,13 @@ public static class JobCommands
                     if (ReviewInputArtifacts.Read(database, reviewInputs).Baseline !=
                         new BaselineRepository(database).GetCurrentPublished(workspaceKey)?.Token)
                         return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                            "trial.review-baseline-changed", FailureReason.Refused,
+                            RefusalCodes.TrialReviewBaselineChanged, FailureReason.Refused,
                             "The Baseline changed after the review inputs were captured. Queue the Trial again."));
                 }
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
                 {
                     return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(
-                        "trial.review-input-unavailable", FailureReason.Refused, exception.Message));
+                        RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused, exception.Message));
                 }
             }
             var proposalJson = CanonicalProposalJson(record);
@@ -253,27 +282,44 @@ public static class JobCommands
                 return QueueTrial(jobs, record, jobId, workspaceKey, stamped, request.BaselineAssessmentIds, admission);
             var status = stop.Reason == FailureReason.StoppedByBudget ? JobStatus.StoppedByBudget :
                 stop.Reason == FailureReason.Cancelled ? JobStatus.Cancelled : JobStatus.Failed;
-            var stopped = jobs.RecordInterrupted(jobId, workspaceKey, TrialKind, stamped,
-                JsonSerializer.Serialize(new { code = stop.Code, message = stop.Message,
-                    wordsDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsDone"), out var done) ? done : (int?)null,
-                    wordsNotDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsNotDone"), out var notDone) ? notDone : (int?)null }), NowStamp(), status);
-            if (input.ReviewInputs is not null)
+            try
             {
-                try
+                var stopped = jobs.RecordInterrupted(jobId, workspaceKey, TrialKind, stamped,
+                    JsonSerializer.Serialize(new { code = stop.Code, message = stop.Message,
+                        wordsDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsDone"), out var done) ? done : (int?)null,
+                        wordsNotDone = int.TryParse(stop.Facts?.GetValueOrDefault("wordsNotDone"), out var notDone) ? notDone : (int?)null }),
+                    NowStamp(), status, record.ProposalId, record.DraftName,
+                    record.DraftName is null ? null : record.ProposalJson,
+                    record.DraftName is null ? record.IntentDigest : null);
+                if (input.ReviewInputs is not null)
                 {
-                    new SIL.Motif.Worker.Runtime.Review.TrialReviewPublisher(database).PublishAsync(
-                        new SIL.Motif.Worker.Runtime.Review.ReviewPublishRequest(stopped.JobId), CancellationToken.None)
-                        .GetAwaiter().GetResult();
+                    try
+                    {
+                        new SIL.Motif.Worker.Runtime.Review.TrialReviewPublisher(database).PublishAsync(
+                            new SIL.Motif.Worker.Runtime.Review.ReviewPublishRequest(stopped.JobId), CancellationToken.None)
+                            .GetAwaiter().GetResult();
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        System.Diagnostics.Trace.TraceError("Could not publish the interrupted Trial review: {0}", exception.Message);
+                    }
                 }
-                catch (Exception exception) when (exception is not OperationCanceledException)
-                {
-                    System.Diagnostics.Trace.TraceError("Could not publish the interrupted Trial review: {0}", exception.Message);
-                }
+                return CommandOutcome<JobEnqueuedResponse>.Success(
+                    new JobEnqueuedResponse(stopped.JobId, TrialKind, workspaceKey));
             }
-            return CommandOutcome<JobEnqueuedResponse>.Success(
-                new JobEnqueuedResponse(stopped.JobId, TrialKind, workspaceKey));
+            catch (TrialProposalGoneException)
+            {
+                return CommandOutcome<JobEnqueuedResponse>.Refused(new Refusal(RefusalCodes.TrialProposalGone,
+                    FailureReason.NotFound, "The Proposal changed while the Trial was being recorded."));
+            }
         });
     }
+
+    internal static Refusal? InvalidTrialWords(EnqueueTrialRequest request) =>
+        request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
+            !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true
+            ? new Refusal(RefusalCodes.JobInvalidWords, FailureReason.InvalidArgument,
+                "Trial words must be nonblank and have no surrounding whitespace.") : null;
 
     // The job is inserted only if the Proposal, or the Draft the Trial was read from, still exists in that write.
     internal static CommandOutcome<JobEnqueuedResponse> QueueTrial(JobRepository jobs, ProposalRecord record,
@@ -283,7 +329,9 @@ public static class JobCommands
         try
         {
             var created = jobs.CreateTrial(jobId, workspaceKey, stampedInput, NowStamp(), requiredAssessments,
-                record.ProposalId, record.DraftName, admission);
+                record.ProposalId, record.DraftName, admission,
+                record.DraftName is null ? null : record.ProposalJson,
+                record.DraftName is null ? record.IntentDigest : null);
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(created.JobId, TrialKind, workspaceKey));
         }
@@ -328,14 +376,44 @@ public static class JobCommands
         return ParseRunLimits.Resolve(limits, ParseRunLimits.ReadRate(new AssessmentRepository(database)));
     }
 
+    internal static CommandOutcome<EnqueueTrialRequest> FreezeTrialProposal(EnqueueTrialRequest request)
+    {
+        if (request.ReviewProposal is not null) return CommandOutcome<EnqueueTrialRequest>.Success(request);
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            try
+            {
+                var repository = new ProposalRepository(database);
+                var id = CanonicalId.Parse(ProposalCommands.NormalizeId(request.ProposalId));
+                var record = repository.Get(id);
+                if (record.DraftName is null) (record, _) = repository.GetFinalized(id);
+                return CommandOutcome<EnqueueTrialRequest>.Success(request with { ReviewProposal = record });
+            }
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+            {
+                return CommandOutcome<EnqueueTrialRequest>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+            }
+        });
+    }
+
     /// <summary>The words a Trial request would measure: its own, or those its Proposal touches; null means all.</summary>
     internal static CommandOutcome<IReadOnlyList<string>?> ResolveTrialWords(EnqueueTrialRequest request)
     {
-        if (request.Words?.Any(word => string.IsNullOrWhiteSpace(word) ||
-                !string.Equals(word, word.Trim(), StringComparison.Ordinal)) == true)
-            return CommandOutcome<IReadOnlyList<string>?>.Refused(new Refusal(
-                "job.invalid-words", FailureReason.InvalidArgument,
-                "Trial words must be nonblank and have no surrounding whitespace."));
+        if (InvalidTrialWords(request) is { } invalid)
+            return CommandOutcome<IReadOnlyList<string>?>.Refused(invalid);
+        if (request.ReviewProposal is { } frozen)
+        {
+            try
+            {
+                var proposal = ProposalJsonParser.Parse(CanonicalProposalJson(frozen));
+                return CommandOutcome<IReadOnlyList<string>?>.Success(request.Words is not null || request.AllWords
+                    ? request.Words : DerivedTrialWords(proposal));
+            }
+            catch (Exception exception) when (exception is not ProjectWritingSystemsUnavailableException)
+            {
+                return CommandOutcome<IReadOnlyList<string>?>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
+            }
+        }
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var repository = new ProposalRepository(database);

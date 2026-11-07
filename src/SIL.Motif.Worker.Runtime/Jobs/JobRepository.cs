@@ -29,10 +29,11 @@ public sealed class JobRepository
         => Create(requested, null);
 
     internal JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments)
-        => Create(requested, requiredAssessments, null, null, null);
+        => Create(requested, requiredAssessments, null, null, null, null, null);
 
     private JobRecord Create(JobRecord requested, IReadOnlyList<string>? requiredAssessments,
-        CanonicalId? proposalId, string? draftName, ProjectParseLease? admission)
+        CanonicalId? proposalId, string? draftName, ProjectParseLease? admission,
+        string? expectedDraftJson, string? expectedIntentDigest)
     {
         var record = Normalize(requested);
         using var connection = _database.OpenConnection();
@@ -48,7 +49,8 @@ public sealed class JobRepository
                 check.Parameters.AddWithValue("$ids", JsonSerializer.Serialize(requiredAssessments));
                 if (check.ExecuteScalar() is string missing) throw new AssessmentExpiredException(missing);
             }
-            if (proposalId is { } id && !ProposalStillThere(connection, transaction, id, draftName))
+            if (proposalId is { } id && !ProposalStillThere(connection, transaction, id, draftName,
+                    expectedDraftJson, expectedIntentDigest))
                 throw new TrialProposalGoneException(id.Value, draftName);
             Insert(connection, transaction, record);
             admission?.ReleaseInTransaction(connection, transaction);
@@ -118,18 +120,23 @@ public sealed class JobRepository
     /// <exception cref="TrialProposalGoneException">The Proposal or its Draft no longer exists.</exception>
     internal JobRecord CreateTrial(string jobId, string projectKey, string inputJson, string createdUtc,
         IReadOnlyList<string>? requiredAssessments, CanonicalId proposalId, string? draftName,
-        ProjectParseLease? admission = null) => Create(
+        ProjectParseLease? admission = null, string? expectedDraftJson = null, string? expectedIntentDigest = null) => Create(
             new JobRecord(jobId, projectKey, TrialJobHandler.TrialKind, JobStatus.Queued, 1, inputJson, null,
-                createdUtc, createdUtc, null, null), requiredAssessments, proposalId, draftName, admission);
+                createdUtc, createdUtc, null, null), requiredAssessments, proposalId, draftName, admission,
+            expectedDraftJson, expectedIntentDigest);
 
     private static bool ProposalStillThere(SqliteConnection connection, SqliteTransaction transaction,
-        CanonicalId proposalId, string? draftName)
+        CanonicalId proposalId, string? draftName, string? expectedDraftJson, string? expectedIntentDigest)
     {
         using var find = connection.CreateCommand();
         find.Transaction = transaction;
-        find.CommandText = "SELECT 1 FROM Proposals WHERE ProposalId = $id AND ($draft IS NULL OR DraftName = $draft);";
+        find.CommandText = "SELECT 1 FROM Proposals WHERE ProposalId = $id AND " +
+            "(($draft IS NULL AND DraftName IS NULL AND ($intent IS NULL OR CurrentIntentDigest = $intent)) OR " +
+            "(DraftName = $draft AND ($json IS NULL OR DraftJson = $json)));";
         find.Parameters.AddWithValue("$id", proposalId.Value);
         find.Parameters.AddWithValue("$draft", (object?)draftName ?? DBNull.Value);
+        find.Parameters.AddWithValue("$json", (object?)expectedDraftJson ?? DBNull.Value);
+        find.Parameters.AddWithValue("$intent", (object?)expectedIntentDigest ?? DBNull.Value);
         return find.ExecuteScalar() is not null;
     }
 
@@ -140,7 +147,8 @@ public sealed class JobRepository
 
     /// <summary>Records a Trial interrupted before its worker could be queued.</summary>
     public JobRecord RecordInterrupted(string jobId, string projectKey, string kind, string inputJson,
-        string resultJson, string createdUtc, JobStatus status)
+        string resultJson, string createdUtc, JobStatus status, CanonicalId? proposalId = null,
+        string? draftName = null, string? expectedDraftJson = null, string? expectedIntentDigest = null)
     {
         if (status is not (JobStatus.StoppedByBudget or JobStatus.Cancelled or JobStatus.Failed))
             throw new ArgumentOutOfRangeException(nameof(status));
@@ -153,6 +161,9 @@ public sealed class JobRepository
                 status == JobStatus.Cancelled ? JobFailureCategory.Cancellation : JobFailureCategory.None);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
+        if (proposalId is { } id && !ProposalStillThere(connection, transaction, id, draftName,
+                expectedDraftJson, expectedIntentDigest))
+            throw new TrialProposalGoneException(id.Value, draftName);
         Insert(connection, transaction, record);
         transaction.Commit();
         return record;
@@ -415,6 +426,7 @@ public sealed class JobRepository
         else
             UpdateTransition(connection, transaction, changed);
         transaction.Commit();
+        if (JobStateMachine.IsTerminal(changed.Status)) TrialScratchRetention.TrySweepReviewInputs(_database);
         return changed;
     }
 
@@ -812,6 +824,7 @@ public sealed class JobRepository
         using var transaction = connection.BeginTransaction();
         DeleteArchived(connection, transaction, jobId);
         transaction.Commit();
+        TrialScratchRetention.TrySweepReviewInputs(_database);
     }
 
     /// <summary>Deletes one terminal job and releases its pin inside the caller's transaction.</summary>

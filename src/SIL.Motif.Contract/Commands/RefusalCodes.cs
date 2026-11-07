@@ -40,14 +40,14 @@ public static class RefusalCodes
     public const string OperationInvalidDependency = "operation.invalid-dependency";
     public const string ApplyReopenFailed = "apply.reopen-failed";
 
-    public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
-    public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
     public const string AssessBaselineChanged = "assess.baseline-changed";
     public const string AssessInvalidLimit = "assess.invalid-limit";
     public const string AssessInvocationInconsistent = "assess.invocation-inconsistent";
     public const string AssessMeasurementsIncomplete = "assess.measurements-incomplete";
     public const string AssessParserMemoryLimit = "assess.parser-memory-limit";
     public const string AssessParserUnavailable = "assess.parser-unavailable";
+    /// <summary>The Assessment could not provide usable evidence.</summary>
+    public const string AssessUnavailable = "assess.unavailable";
     public const string AssessTimingDetailSelection = "assess.timing-detail-selection";
     public const string AssessUnsupportedKind = "assess.unsupported-kind";
     public const string AssessWordsAmbiguous = "assess.words-ambiguous";
@@ -231,6 +231,10 @@ public static class RefusalCodes
     public const string TrialChangesChanged = "trial.changes-changed";
     public const string TrialMeasurementIncomplete = "trial.measurement-incomplete";
     public const string TrialNothingPending = "trial.nothing-pending";
+    /// <summary>The Baseline changed after the Trial's review inputs were captured.</summary>
+    public const string TrialReviewBaselineChanged = "trial.review-baseline-changed";
+    /// <summary>The Trial's frozen review inputs could not be captured or read.</summary>
+    public const string TrialReviewInputUnavailable = "trial.review-input-unavailable";
     /// <summary>The Proposal or its Draft was discarded, deleted or finalized while its Trial was being queued.</summary>
     public const string TrialProposalGone = "trial.proposal-gone";
     /// <summary>A Motif update is being installed, so no Trial can be queued until it finishes.</summary>

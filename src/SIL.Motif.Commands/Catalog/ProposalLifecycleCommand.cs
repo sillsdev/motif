@@ -71,6 +71,7 @@ public static class ProposalLifecycleCommand
             ProposalDeletion.Delete(connection, transaction, record.ProposalId);
             transaction.Commit();
             TrialScratchRetention.DeleteJobs(trials.Select(job => job.JobId));
+            TrialScratchRetention.TrySweepReviewInputs(database);
         }
         catch (ProposalRetainedByExampleSetException exception)
         {

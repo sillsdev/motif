@@ -687,6 +687,11 @@ public sealed class ProposalRepository : IProposalRepository
                 thenMove.To, null, thenMove.Comment).Moved)
             return DraftFinalizationResult.MoveRefused;
         transaction.Commit();
+        if (thenMove is not null && !ProposalDifferenceRetention.KeepsWordDetail(thenMove.To))
+        {
+            ReviewRowArtifacts.DeleteReleased(_database, proposalId);
+            TrialScratchRetention.TrySweepReviewInputs(_database);
+        }
         return wasAmend ? DraftFinalizationResult.Amended : DraftFinalizationResult.Finalized;
     }
 
@@ -905,7 +910,11 @@ public sealed class ProposalRepository : IProposalRepository
         if (outcome.Moved)
         {
             transaction.Commit();
-            if (!ProposalDifferenceRetention.KeepsWordDetail(to)) ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
+            if (!ProposalDifferenceRetention.KeepsWordDetail(to))
+            {
+                ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
+                TrialScratchRetention.TrySweepReviewInputs(_database);
+            }
         }
         return outcome;
     }
@@ -972,7 +981,11 @@ public sealed class ProposalRepository : IProposalRepository
         update.ExecuteNonQuery();
         DropWordDetailIfDecided(connection, transaction, proposalId.Value, status);
         transaction.Commit();
-        if (!ProposalDifferenceRetention.KeepsWordDetail(status)) ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
+        if (!ProposalDifferenceRetention.KeepsWordDetail(status))
+        {
+            ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
+            TrialScratchRetention.TrySweepReviewInputs(_database);
+        }
     }
 
     private void DropWordDetailIfDecided(SqliteConnection connection, SqliteTransaction transaction, string proposalId,

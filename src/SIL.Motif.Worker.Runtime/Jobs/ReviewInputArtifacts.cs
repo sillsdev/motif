@@ -5,6 +5,10 @@ using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Host.Config;
+using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Parsing;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Worker.Jobs;
 
@@ -23,6 +27,100 @@ public sealed record ReviewInputArtifact(FrozenReviewInputs Inputs, IReadOnlyDic
 /// <summary>Stores and verifies a Trial's immutable review input artifact.</summary>
 public static class ReviewInputArtifacts
 {
+    internal static WorkerMutexOwner Acquire(string databasePath)
+    {
+        var owner = NewOwner(databasePath);
+        try
+        {
+            while (!owner.TryAcquire()) Thread.Sleep(50);
+            return owner;
+        }
+        catch { owner.Dispose(); throw; }
+    }
+
+    private static WorkerMutexOwner NewOwner(string databasePath)
+    {
+        var path = Path.GetFullPath(databasePath);
+        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()) path = path.ToUpperInvariant();
+        var key = Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(path)));
+        return WorkerMutexOwner.ForRoot("Global\\Motif.ReviewInputs." + key);
+    }
+
+    internal static void Sweep(MotifDatabase database)
+    {
+        using var lease = Acquire(database.FullPath);
+        SweepUnderLease(database);
+    }
+
+    internal static void TrySweep(MotifDatabase database)
+    {
+        using var lease = NewOwner(database.FullPath);
+        if (lease.TryAcquire()) SweepUnderLease(database);
+    }
+
+    internal static void SweepUnderLease(MotifDatabase database)
+    {
+        var directory = Path.GetFullPath(database.FullPath) + ".review-inputs";
+        if (!Directory.Exists(directory) || (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) return;
+        var retained = new HashSet<string>(StringComparer.Ordinal);
+        var protectedJobs = new HashSet<string>(StringComparer.Ordinal);
+        using var connection = database.OpenConnection();
+        using (var exists = connection.CreateCommand())
+        {
+            exists.CommandText = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ReviewReports';";
+            if (exists.ExecuteScalar() is not null)
+            {
+                using var reports = connection.CreateCommand();
+                reports.CommandText = "SELECT TrialJobId, InputReferencesJson FROM ReviewReports " +
+                    "WHERE DetailAvailable=1 OR InputReferencesJson != '[]';";
+                using var reader = reports.ExecuteReader();
+                while (reader.Read())
+                {
+                    protectedJobs.Add(reader.GetString(0));
+                    foreach (var reference in JsonSerializer.Deserialize<string[]>(reader.GetString(1)) ?? [])
+                    {
+                        if (reference is null) throw new InvalidDataException("A retained report input reference is invalid.");
+                        retained.Add(reference.StartsWith("sha256:", StringComparison.Ordinal) ? reference[7..] : reference);
+                    }
+                }
+            }
+        }
+        var statuses = new Dictionary<string, string>(StringComparer.Ordinal);
+        using (var proposals = connection.CreateCommand())
+        {
+            proposals.CommandText = "SELECT ProposalId, Status FROM Proposals;";
+            using var reader = proposals.ExecuteReader();
+            while (reader.Read()) statuses[reader.GetString(0)] = reader.GetString(1);
+        }
+        using (var jobs = connection.CreateCommand())
+        {
+            jobs.CommandText = "SELECT JobId, Status, InputJson FROM Jobs WHERE Kind = $kind;";
+            jobs.Parameters.AddWithValue("$kind", TrialJobHandler.TrialKind);
+            using var reader = jobs.ExecuteReader();
+            while (reader.Read())
+            {
+                var input = TrialJobInput.Parse(reader.GetString(2));
+                if (input.ReviewInputs is not { } reference) continue;
+                var proposalId = ProposalJsonParser.Parse(input.ProposalJson).ProposalId.Value;
+                var active = !JobStateMachine.IsTerminal(JobStatusJson.Parse(reader.GetString(1)));
+                if (active || protectedJobs.Contains(reader.GetString(0)) ||
+                    statuses.TryGetValue(proposalId, out var status) && ProposalDifferenceRetention.KeepsWordDetail(status))
+                    retained.Add(reference.Sha256);
+            }
+        }
+        foreach (var path in Directory.EnumerateFiles(directory, "*.json"))
+        {
+            var digest = Path.GetFileNameWithoutExtension(path);
+            if (digest.Length == 64 && digest.All(Uri.IsHexDigit) && !retained.Contains(digest)) File.Delete(path);
+        }
+        foreach (var path in Directory.EnumerateFiles(directory, "*.tmp"))
+        {
+            var parts = Path.GetFileName(path).Split('.');
+            if (parts.Length == 3 && parts[0].Length == 64 && parts[0].All(Uri.IsHexDigit) &&
+                Guid.TryParseExact(parts[1], "N", out _)) File.Delete(path);
+        }
+    }
+
     /// <summary>Atomically stores the captured inputs and returns their digest.</summary>
     public static ReviewInputReference Store(MotifDatabase database, ReviewInputArtifact artifact)
     {

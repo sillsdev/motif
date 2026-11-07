@@ -113,7 +113,20 @@ public static class TrialBaselines
         Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null, ProjectParseLease? admission = null)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (JobCommands.InvalidTrialWords(request) is { } invalid)
+            return CommandOutcome<JobEnqueuedResponse>.Refused(invalid);
         if (request.BaselineAssessmentIds is not null) return JobCommands.EnqueueTrialAdmitted(request, expectedParserPath, admission);
+        return JobCommands.WithReviewInputLease(request, leased => EnqueueWithBaselineGuarded(leased, assess,
+            onBaselineUnavailable, expectedParserPath, admission));
+    }
+
+    private static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaselineGuarded(EnqueueTrialRequest request,
+        Func<IReadOnlyList<string>, TrialLimits?, string?, Action<IReadOnlyList<ParseWordEvidence>>?, CommandOutcome<AssessCommandResponse>> assess,
+        Action<string>? onBaselineUnavailable, string? expectedParserPath, ProjectParseLease? admission)
+    {
+        var proposal = JobCommands.FreezeTrialProposal(request);
+        if (!proposal.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(proposal.Refusal!);
+        request = proposal.Value!;
         var resolved = JobCommands.ResolveTrialWords(request);
         if (!resolved.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(resolved.Refusal!);
         var words = resolved.Value;
@@ -144,7 +157,7 @@ public static class TrialBaselines
             catch (Exception exception) when (onBaselineUnavailable is not null && exception is not OperationCanceledException)
             {
                 onBaselineUnavailable(exception.Message);
-                return JobCommands.EnqueueTrialAdmitted(RetainBefore("assess.unavailable"), expectedParserPath, admission);
+                return JobCommands.EnqueueTrialAdmitted(RetainBefore(RefusalCodes.AssessUnavailable), expectedParserPath, admission);
             }
             if (!before.Succeeded)
             {

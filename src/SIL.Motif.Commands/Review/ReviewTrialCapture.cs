@@ -181,7 +181,7 @@ internal static class ReviewTrialCapture
                 SIL.Motif.Projection.ProjectWritingSystemsUnavailableException))
             {
                 return CommandOutcome<EnqueueTrialRequest>.Refused(new Refusal(
-                    "trial.review-input-unavailable", FailureReason.Refused, exception.Message));
+                    RefusalCodes.TrialReviewInputUnavailable, FailureReason.Refused, exception.Message));
             }
         });
     }

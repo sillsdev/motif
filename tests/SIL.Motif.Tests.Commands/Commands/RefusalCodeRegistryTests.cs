@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Generator;
 using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Contract.Responses;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -61,6 +62,13 @@ public sealed class RefusalCodeRegistryTests
         var used = CodeLiteralsInSource();
 
         Assert.Empty(used.Where(code => !registered.Contains(code)).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void ReviewCaptureRefusalsHaveRegisteredRefusedContracts()
+    {
+        Assert.Equal(FailureReason.Refused, RefusalCatalog.Specs[RefusalCodes.TrialReviewBaselineChanged].DefaultReason);
+        Assert.Equal(FailureReason.Refused, RefusalCatalog.Specs[RefusalCodes.TrialReviewInputUnavailable].DefaultReason);
     }
 
     [Fact]

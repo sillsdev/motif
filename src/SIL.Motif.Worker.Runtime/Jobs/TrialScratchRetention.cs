@@ -34,6 +34,7 @@ internal static class TrialScratchRetention
         foreach (var job in candidates.Where(job => Directory.Exists(TrialScratchPath.ForJob(job.JobId)) &&
                      !IsMarkedForDeletion(TrialScratchPath.ForJob(job.JobId)) && CanKeep(job, proposals)).Skip(MaximumCount()))
             TryDelete(TrialScratchPath.ForJob(job.JobId));
+        TrySweepReviewInputs(database);
     }
 
     private static Dictionary<string, string> ProposalStatuses(MotifDatabase database)
@@ -90,6 +91,15 @@ internal static class TrialScratchRetention
         if (RetainRequested) return;
         try { DeleteJobs(JobsForProposal(database, proposalId)); }
         catch (Microsoft.Data.Sqlite.SqliteException) { }
+        TrySweepReviewInputs(database);
+    }
+
+    internal static void TrySweepReviewInputs(MotifDatabase database)
+    {
+        try { ReviewInputArtifacts.TrySweep(database); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
+            InvalidOperationException or JsonException or Microsoft.Data.Sqlite.SqliteException or ArgumentException or
+            ContractParseException) { }
     }
 
     internal static bool IsMarkedForDeletion(string directory) => File.Exists(Path.Combine(directory, RemoveMarker));

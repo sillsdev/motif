@@ -476,7 +476,7 @@ internal sealed class TrialJobHandler
         catch (Exception exception)
         {
             review?.Interrupt(exception is AssessorUnavailableException { MemoryKill: not null }
-                ? RefusalCodes.AssessParserMemoryLimit : "assess.unavailable");
+                ? RefusalCodes.AssessParserMemoryLimit : RefusalCodes.AssessUnavailable);
             var detail = JobFailureDetail.Serialize(exception);
             return new JobOutcome(JobStatus.CompletedWithAssessmentFailure, JobFailureCategory.None, detail);
         }
