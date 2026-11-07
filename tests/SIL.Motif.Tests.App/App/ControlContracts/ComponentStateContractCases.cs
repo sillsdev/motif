@@ -1042,6 +1042,12 @@ internal static class TooltipOwners
         {
             Pending = "the sample window has no scene on the Proposals page",
         },
+        new("Proposal decision facts", "Views/Pages/ProposalsPage.axaml", "{Binding DecisionFacts}", TooltipScene.Overview,
+            control => control is TextBlock text && text.DataContext is ProposalCardViewModel card &&
+                text.Text == card.DecisionFacts)
+        {
+            Pending = "the sample window has no scene on the Proposals page",
+        },
         new("Proposal Inspector number note", "Views/Pages/ProposalsPage.axaml", "{Binding Note}", TooltipScene.Overview,
             control => control is CopyableTextBlock { DataContext: ProposalNumber } && control.Classes.Contains("proposalNumber"))
         {
