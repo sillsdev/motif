@@ -12,7 +12,8 @@ internal static class TrialReviewRuleWork
     internal static IReadOnlyList<ReviewSectionItem>? Read(MotifDatabase database, TrialJobInput input,
         string? resultJson, FrozenReviewInputs inputs, ReviewWorkInputs? work)
     {
-        if (work is null || ReviewWorkComparison.Compare(work).Comparison != WorkComparison.Comparable ||
+        if (work is null || inputs.Cases.GroupBy(item => (item.WritingSystemId, item.Word)).Any(group => group.Count() > 1) ||
+            ReviewWorkComparison.Compare(work).Comparison != WorkComparison.Comparable ||
             input.ReviewBaselines is null || resultJson is null) return null;
         try
         {

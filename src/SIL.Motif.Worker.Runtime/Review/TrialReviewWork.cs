@@ -30,11 +30,29 @@ internal static class TrialReviewWork
             var before = Side(database, beforeParts, inputs, ledger.Before, baseline, input.ReviewCounterSemantics.Value);
             var after = Side(database, afterParts, inputs, ledger.After, baseline, input.ReviewCounterSemantics.Value);
             if (before is null || after is null) return null;
-            return new ReviewWorkInputs(before.Value.Scope, after.Value.Scope, inputs.Cases.Select(item => item.CaseKey).ToArray(),
-                before.Value.Cases, after.Value.Cases);
+            return DeduplicateRequests(inputs, new ReviewWorkInputs(before.Value.Scope, after.Value.Scope,
+                inputs.Cases.Select(item => item.CaseKey).ToArray(), before.Value.Cases, after.Value.Cases));
         }
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or InvalidOperationException or ArgumentException)
         { return null; }
+    }
+
+    internal static ReviewWorkInputs DeduplicateRequests(FrozenReviewInputs inputs, ReviewWorkInputs work)
+    {
+        var groups = inputs.Cases.GroupBy(item => (item.WritingSystemId, item.Word))
+            .Select(group => group.Select(item => item.CaseKey).Order(StringComparer.Ordinal).ToArray()).ToArray();
+        IReadOnlyList<ReviewWorkCase> Reduce(IReadOnlyList<ReviewWorkCase> side)
+        {
+            var index = side.ToDictionary(item => item.CaseKey, StringComparer.Ordinal);
+            return groups.Select(keys =>
+            {
+                var rows = keys.Select(key => index.GetValueOrDefault(key)).ToArray();
+                var value = rows[0]?.Work;
+                return new ReviewWorkCase(keys[0], rows.All(row => row is { Complete: true } && row.Work == value), value);
+            }).ToArray();
+        }
+        return work with { RequiredCases = groups.Select(keys => keys[0]).ToArray(),
+            Before = Reduce(work.Before), After = Reduce(work.After) };
     }
 
     private static (ReviewWorkScope Scope, IReadOnlyList<ReviewWorkCase> Cases)? Side(MotifDatabase database,
