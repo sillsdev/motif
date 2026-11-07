@@ -1,0 +1,102 @@
+name: textediting
+
+# The gate of textediting/, SIL.TextEditing (textediting/docs/adr/0034, ADR 0092): both Avalonia lines, the net10.0 and net48 tests of
+# SIL.TextEditing.sln, and a native AOT publish. Motif's own matrix and test.ps1 do not run these. This file moves out with the folder.
+# It also runs when a file the folder imports changes: the shared-settings file and SilVersions.props.
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'textediting/**'
+      - 'Directory.Build.Common.props'
+      - 'SilVersions.props'
+      - 'nuget.config'
+      - '.github/workflows/textediting.yml'
+  pull_request:
+    paths:
+      - 'textediting/**'
+      - 'Directory.Build.Common.props'
+      - 'SilVersions.props'
+      - 'nuget.config'
+      - '.github/workflows/textediting.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+defaults:
+  run:
+    working-directory: textediting
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Only the shared-settings file and SilVersions.props may be referenced from outside the folder.
+      - name: Check the folder is sealed
+        shell: pwsh
+        run: ./tools/Check-Sealed.ps1
+
+      # FieldWorks Markdown is a profile of Pandoc Markdown (ADR 0028). The Markdown tests read every conformance fixture and every generated document with
+      # Pandoc and compare what it sees with what the library reads, so Pandoc is installed here, pinned: its tree differs between versions. Record files
+      # (ADR 0032) are checked the same way. A missing Pandoc fails those tests in CI (the tests skip only on a machine that does not set CI).
+      - name: Install Pandoc
+        shell: pwsh
+        env:
+          PANDOC_VERSION: 3.9.0.2
+        run: |
+          Invoke-WebRequest "https://github.com/jgm/pandoc/releases/download/$env:PANDOC_VERSION/pandoc-$env:PANDOC_VERSION-windows-x86_64.zip" -OutFile "$env:RUNNER_TEMP/pandoc.zip"
+          Expand-Archive "$env:RUNNER_TEMP/pandoc.zip" -DestinationPath "$env:RUNNER_TEMP/pandoc"
+          # Wherever the zip put pandoc.exe: its folder goes on the PATH of the steps that follow.
+          $exe = Get-ChildItem "$env:RUNNER_TEMP/pandoc" -Recurse -Filter pandoc.exe | Select-Object -First 1
+          if (-not $exe) { throw "pandoc.exe is not in the downloaded zip" }
+          Add-Content $env:GITHUB_PATH $exe.DirectoryName
+
+      - name: Show the Pandoc version
+        run: pandoc --version
+
+      - name: Build everything (libraries, tests, samples)
+        run: dotnet build SIL.TextEditing.sln -c Release
+
+      # Each test project targets net48 (Avalonia 11.3.17 through netstandard2.0) and net10.0 (Avalonia 12), except the second-dispatcher tests, which are net10.0 only.
+      - name: Test both target frameworks
+        env:
+          PANDOC_VERSION: 3.9.0.2
+        run: dotnet test SIL.TextEditing.sln -c Release --no-build --logger trx --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: textediting-test-results
+          path: textediting/TestResults/*.trx
+
+  trim-and-aot:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Warnings are errors, so a trim or AOT warning in either library fails the publish.
+      - name: Publish a net10.0 app that references both libraries with NativeAOT
+        run: dotnet publish tests/AotCheck/AotCheck.csproj -c Release -r win-x64
+
+      # Run the published exe: it exercises libpalaso (SLDR init and JSON parsing), which trimming can break silently.
+      - name: Run the published app
+        run: bin/AotCheck/Release/net10.0/win-x64/publish/AotCheck.exe

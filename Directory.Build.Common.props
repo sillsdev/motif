@@ -1,0 +1,14 @@
+<Project>
+  <!--
+    The compiler settings Motif and textediting/ share (ADR 0092; textediting/docs/adr/0034). The root Directory.Build.props
+    and textediting/Directory.Build.props both import this file, and nothing else in it may depend on Motif: implicit usings,
+    Product, the output layout and the runtime identifier stay in the root file, because textediting/ builds netstandard2.0
+    and net48 too and keeps its own layout.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

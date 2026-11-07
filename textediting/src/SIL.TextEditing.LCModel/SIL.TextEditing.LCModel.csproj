@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing.LCModel</RootNamespace>
+    <AssemblyName>SIL.TextEditing.LCModel</AssemblyName>
+    <Description>Converts between FieldWorks ITsString and SIL.TextEditing runs, and reads and writes the TsString clipboard XML.</Description>
+  </PropertyGroup>
+  <!-- SIL.LCModel.Core's multi-targeting build target copies ConfigFiles to $(TargetDir), which the outer (no TargetFramework)
+       build leaves empty, so MSB3023 fails the solution build. Give the outer build a directory to copy nothing into. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == ''">
+    <TargetDir>$(MSBuildProjectDirectory)\</TargetDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- LiblcmRefusalSweepTests drive the real serializers through the same handle-to-factory shim the adapter uses.
+         If this assembly is ever strong-named, the friend assembly must be signed too and named with its public key here. -->
+    <InternalsVisibleTo Include="SIL.TextEditing.LCModel.Tests" />
+    <PackageReference Include="SIL.LCModel.Core" />
+    <!-- SIL.LCModel.Core asks for SIL.WritingSystems 17.0.0; reference it directly so the pinned 18 (ADR 0002) resolves. -->
+    <PackageReference Include="SIL.WritingSystems" />
+    <ProjectReference Include="..\SIL.TextEditing\SIL.TextEditing.csproj" />
+  </ItemGroup>
+</Project>

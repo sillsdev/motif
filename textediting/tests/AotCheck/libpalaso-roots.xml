@@ -1,0 +1,8 @@
+<!-- libpalaso PR pending: Sldr.ParseAllTagsJson deserialises AllTagEntry with Newtonsoft reflection, so AOT trims the
+     constructors and properties it needs. Keep them until libpalaso annotates AllTagEntry. -->
+<linker>
+  <assembly fullname="SIL.WritingSystems">
+    <type fullname="SIL.WritingSystems.AllTagEntry" preserve="all" />
+    <type fullname="SIL.WritingSystems.SingleStringToListOfStringConverter" preserve="all" />
+  </assembly>
+</linker>

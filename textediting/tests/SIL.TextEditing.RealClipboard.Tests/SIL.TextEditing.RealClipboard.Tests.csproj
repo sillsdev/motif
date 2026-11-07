@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net48;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing.RealClipboard.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <PlatformTarget>x64</PlatformTarget>
+    <AvaloniaSkipXamlCompilerValidation>true</AvaloniaSkipXamlCompilerValidation>
+  </PropertyGroup>
+  <!-- Tests against the real operating-system clipboard, through a real Avalonia window (Avalonia.Desktop), not Avalonia.Headless, whose clipboard is an
+       in-memory store that cannot show how bytes and text survive the OS. They run on Windows only and are skipped elsewhere, and they overwrite the
+       clipboard of whoever runs them. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing\SIL.TextEditing.csproj" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing.Avalonia\SIL.TextEditing.Avalonia.csproj" />
+    <Compile Include="..\Common\TestDocs.cs" Link="TestDocs.cs" />
+  </ItemGroup>
+</Project>

@@ -71,7 +71,7 @@ Then [open your project](src/SIL.Motif.Help/Content/en/guide/open-a-project.md),
 
 ## Build from source
 
-Install the .NET 10 SDK. The text editor library SIL.TextEditing is a git submodule in `external/SIL.TextEditing`, so clone with `--recurse-submodules`, or run `git submodule update --init` in an existing clone. Then, from the repository root:
+Install the .NET 10 SDK. The text editor library SIL.TextEditing is in `textediting/`, a folder with its own build and solution (ADR 0092). Then, from the repository root:
 
 ```powershell
 ./build.ps1    # comment and design-token checks, then compile

@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Not in the solution. CI runs: dotnet publish tests/AotCheck -r win-x64
+       Warnings are errors, so any trim or AOT warning in the three libraries fails the publish. All three are rooted whole,
+       so the analyzer sees all their code, not only what Program uses. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Our own assemblies report every warning in detail, so a warning in our code fails the publish. Only the
+         third-party assemblies listed in the target below collapse to one IL2104/IL3053 each, and only those two IDs
+         are suppressed. -->
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <!-- ADR 0002: libpalaso and what it pulls in warn until fixed upstream. Removed when the minimum libpalaso version
+         is raised to the fix.
+         libpalaso PR pending: Sldr.ParseAllTagsJson calls Newtonsoft JsonConvert.DeserializeObject (SIL.WritingSystems,
+           Newtonsoft.Json, and the System.Linq.Expressions / Microsoft.CSharp dynamic code they reach).
+         libpalaso PR pending: icu.net Icu.DllResolver.MapAndLoad / NativeMethods.DirectoryOfThisAssembly and
+           Microsoft.Extensions.DependencyModel DependencyContextLoader.LoadAssemblyContext use Assembly.Location;
+           reached through ICU initialisation. -->
+    <!-- IL3000 is reported per member and ILC cannot scope it to an assembly, so it is suppressed globally. -->
+    <NoWarn>$(NoWarn);IL2104;IL3053;IL3000</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Markdig.Signed" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing\SIL.TextEditing.csproj" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing.Avalonia\SIL.TextEditing.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing.Markdown\SIL.TextEditing.Markdown.csproj" />
+    <TrimmerRootAssembly Include="SIL.TextEditing" />
+    <TrimmerRootAssembly Include="SIL.TextEditing.Avalonia" />
+    <TrimmerRootAssembly Include="SIL.TextEditing.Markdown" />
+    <TrimmerRootAssembly Include="Markdig.Signed" />
+    <TrimmerRootDescriptor Include="libpalaso-roots.xml" />
+  </ItemGroup>
+  <Target Name="SingleWarnThirdParty" BeforeTargets="WriteIlcRspFileForCompilation">
+    <ItemGroup>
+      <ManagedAssemblyToLink Condition="'%(Filename)' == 'SIL.WritingSystems' or '%(Filename)' == 'SIL.Core' or '%(Filename)' == 'icu.net' or '%(Filename)' == 'Newtonsoft.Json' or '%(Filename)' == 'Microsoft.Extensions.DependencyModel' or '%(Filename)' == 'Spart' or '%(Filename)' == 'System.Linq.Expressions' or '%(Filename)' == 'Microsoft.CSharp'">
+        <TrimmerSingleWarn>true</TrimmerSingleWarn>
+      </ManagedAssemblyToLink>
+    </ItemGroup>
+  </Target>
+</Project>

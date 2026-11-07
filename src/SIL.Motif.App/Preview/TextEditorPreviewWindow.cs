@@ -100,10 +100,10 @@ public sealed class TextEditorPreviewWindow : Window
 
     private static WritingSystemRegistry CreateSampleWritingSystems() =>
         new WritingSystemRegistry()
-            .Add(new WritingSystemInfo("en", "Andika", 16))
-            .Add(new WritingSystemInfo("fr", "Andika", 16))
-            .Add(new WritingSystemInfo("ar", "Segoe UI", 18, rtl: true))
-            .Add(new WritingSystemInfo("swh", "Andika", 16));
+            .Add(WritingSystemRegistry.Define("en", "Andika", 16))
+            .Add(WritingSystemRegistry.Define("fr", "Andika", 16))
+            .Add(WritingSystemRegistry.Define("ar", "Segoe UI", 18, rtl: true))
+            .Add(WritingSystemRegistry.Define("swh", "Andika", 16));
 
     private static TextDocument CreateSampleDocument()
     {

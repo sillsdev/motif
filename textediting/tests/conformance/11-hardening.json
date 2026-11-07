@@ -1,0 +1,264 @@
+[
+  {
+    "name": "a motif link into another project keeps that project in the stored URL and is never taken for a link into this one",
+    "project": "standard",
+    "options": { "projectName": "Sena3" },
+    "markdown": "[palit](motif://projects/Other/lexicon/palit(2)?guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){.name url=\"silfw://localhost/link?database%3dOther%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit", "database": "Other" } }
+    ] } ],
+    "canonical": "[palit](/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){.name url=\"silfw://localhost/link?database%3dOther%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d\"}\n"
+  },
+  {
+    "name": "a cross-project link written as a motif link names its project and keeps the GUID",
+    "project": "standard",
+    "options": { "linkForm": "D", "projectName": "Sena3" },
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit", "database": "Other" } }
+    ] } ],
+    "canonical": "[palit](motif://projects/Other/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d?guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){.name url=\"silfw://localhost/link?database%3dOther%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d\"}\n"
+  },
+  {
+    "name": "a motif link into another project with only a path cannot be bound",
+    "project": "standard",
+    "options": { "projectName": "Sena3" },
+    "markdown": "[x](motif://projects/Other/lexicon/palit(2))\n",
+    "findings": [ { "id": "fwmd.link.not-found", "line": 1, "column": 1, "endLine": 1, "endColumn": 45 } ],
+    "pandoc": false
+  },
+  {
+    "name": "a motif alias link is read as the link it names, with no stale path",
+    "project": "standard",
+    "options": { "projectName": "Sena3" },
+    "markdown": "[x](motif://projects/Sena3/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d)\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n"
+  },
+  {
+    "name": "a motif alias whose query names another GUID is an error",
+    "project": "standard",
+    "options": { "projectName": "Sena3" },
+    "markdown": "[x](motif://projects/Sena3/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d?guid=0b1e2f3a-4c5d-4e6f-8a9b-0c1d2e3f4a5b)\n",
+    "findings": [ { "id": "fwmd.link.guid-mismatch", "line": 1, "column": 1, "endLine": 1, "endColumn": 115 } ]
+  },
+  {
+    "name": "a silfw link with neither a GUID nor a path is an error and the host is not asked",
+    "project": "standard",
+    "markdown": "see [x](silfw://localhost/link?tool=lexiconEdit) here\n",
+    "findings": [ { "id": "fwmd.link.not-found", "line": 1, "column": 5, "endLine": 1, "endColumn": 49 } ]
+  },
+  {
+    "name": "an external address with guid= is an error, not a link whose address is dropped",
+    "project": "standard",
+    "markdown": "[x](https://example.org/){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}\n",
+    "findings": [ { "id": "fwmd.link.guid-mismatch", "line": 1, "column": 1, "endLine": 1, "endColumn": 69 } ],
+    "pandoc": false
+  },
+  {
+    "name": "url= on a link to an object of the project must be a silfw URL",
+    "project": "standard",
+    "markdown": "[x](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d url=\"https://other.org\"}\n",
+    "findings": [ { "id": "fwmd.syntax.malformed-attribute", "line": 1, "column": 1, "endLine": 1, "endColumn": 90 } ],
+    "pandoc": false
+  },
+  {
+    "name": "object data that is a silfw URL with no tool, for an object the project names a tool for, keeps its URL in url=",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "palit", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "url": "silfw://localhost/link?database%3dthis%24%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d" } }
+    ] } ],
+    "canonical": "[palit](/lexicon/palit(2)){.name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d url=\"silfw://localhost/link?database%3dthis%24%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d\"}\n"
+  },
+  {
+    "name": "an external address that looks like a link into the project is written with the address in url=",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004/lexicon/x" },
+      { "text": "b", "ws": "ceb", "props": { "s133": "Hyperlink" }, "objData": "\u0004/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d" },
+      { "text": "c", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004../x.fw.md" },
+      { "text": "d", "ws": "ceb", "props": { "s133": "Hyperlink" }, "objData": "\u0004motif://projects/X/lexicon/a" },
+      { "text": "e", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004silfw://localhost/link?x=1" }
+    ] } ],
+    "canonical": "[a](<>){url=/lexicon/x}[b](<>){.v url=/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}[c](<>){url=../x.fw.md}[d](<>){.v url=motif://projects/X/lexicon/a}[e](<>){url=\"silfw://localhost/link?x=1\"}\n"
+  },
+  {
+    "name": "an address with a NUL is written as the generic span, with its data in hex",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "objData": "\u0004https://x.org/a\u0000b" } ] } ],
+    "canonical": "[x]{s6x=000400680074007400700073003A002F002F0078002E006F00720067002F006100000062}\n"
+  },
+  {
+    "name": "an address with a lone surrogate is written as the generic span too",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "objData": "\u0004a\ud800" } ] } ],
+    "canonical": "[x]{s6x=00040061D800}\n"
+  },
+  {
+    "name": "an address Pandoc would trim or change goes to url=",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004https://x.org/ " },
+      { "text": "b", "ws": "ceb", "props": { "s133": "Hyperlink" }, "objData": "\u0004 https://x.org/" }
+    ] } ],
+    "canonical": "[a](<>){url=\"https://x.org/ \"}[b](<>){.v url=\"&#x20;https://x.org/\"}\n"
+  },
+  {
+    "name": "form D keeps the field when the GUID has no path, with the query before the fragment",
+    "project": "standard",
+    "options": { "linkForm": "D", "projectName": "Sena3" },
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa", "tool": "lexiconEdit", "tag": "definition.en" } }
+    ] } ],
+    "canonical": "[x](motif://projects/Sena3/objects/aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa?guid=aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa#definition.en){tool=lexiconEdit}\n"
+  },
+  {
+    "name": "a segment that is only dots gets the eight GUID digits, so it is not a step in a relative path",
+    "project": "standard",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "dots", "ws": "en", "props": { "s133": "Hyperlink" }, "link": { "guid": "0000000d-0000-4000-8000-00000000000d", "tool": "lexiconEdit" } }
+    ] } ],
+    "canonical": "[dots](/lexicon/..(0000000d)){.name guid=0000000d-0000-4000-8000-00000000000d}\n"
+  },
+  {
+    "name": "a default writing system in the front matter that the project lacks is as unknown as one after ws=",
+    "project": "standard",
+    "markdown": "---\nfwmd: 1\nanalysis: \"en\"\nvernacular: \"zzz\"\n---\n\n[x]{.v}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "zzz" } ] } ],
+    "findings": [ { "id": "fwmd.ws.unknown", "line": 4, "column": 1, "endLine": 4, "endColumn": 18, "choices": [ "en", "ceb", "ceb-x-old", "ar" ] } ],
+    "pandoc": false
+  },
+  {
+    "name": "ok: fwmd.ws.unknown a front matter default the project has",
+    "project": "standard",
+    "markdown": "---\nfwmd: 1\nanalysis: \"ceb\"\nvernacular: \"ceb-x-old\"\n---\n\n[x]{.v}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb-x-old" } ] } ]
+  },
+  {
+    "name": "a front matter default that is empty is malformed, and unmarked text keeps the host's default",
+    "project": "standard",
+    "markdown": "---\nfwmd: 1\nanalysis: \"\"\n---\n\nx\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en" } ] } ],
+    "findings": [ { "id": "fwmd.syntax.malformed-attribute", "line": 3, "column": 1, "endLine": 3, "endColumn": 13 } ],
+    "pandoc": false
+  },
+  {
+    "name": "a front matter default that is a list is malformed",
+    "project": "standard",
+    "markdown": "---\nfwmd: 1\nanalysis: [en]\n---\n\nx\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en" } ] } ],
+    "findings": [ { "id": "fwmd.syntax.malformed-attribute", "line": 3, "column": 1, "endLine": 3, "endColumn": 15 } ],
+    "pandoc": false
+  },
+  {
+    "name": "a span that contains a link is a span, as Pandoc reads it",
+    "project": "standard",
+    "markdown": "[see [palit](/lexicon/palit(2)){guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d} here]{.v}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "see ", "ws": "ceb" },
+      { "text": "palit", "ws": "ceb", "props": { "s133": "Hyperlink" }, "link": { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "tool": "lexiconEdit" } },
+      { "text": " here", "ws": "ceb" }
+    ] } ],
+    "canonical": "[see&#x20;]{.v}[palit](/lexicon/palit(2)){.v .name guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d}[&#x20;here]{.v}\n"
+  },
+  {
+    "name": "a div inside a div has no counterpart and is an error with the escape as the fix",
+    "markdown": "::: {custom-style=Example}\n::: {custom-style=Normal}\nx\n:::\n:::\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 1, "endLine": 2, "endColumn": 26, "fix": "\\::: {custom-style=Normal}" }, { "id": "fwmd.syntax.unsupported-markup", "line": 5, "column": 1, "endLine": 5, "endColumn": 4, "fix": "\\:::" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a dollar sign is escaped when another one follows in a destination, because Pandoc pairs them across the line",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "costs $5 ", "ws": "en" },
+      { "text": "see", "ws": "en", "props": { "s133": "Hyperlink" }, "objData": "\u0004https://x.org/a$b" }
+    ] } ],
+    "canonical": "costs \\$5 [see](https://x.org/a$b)\n"
+  },
+  {
+    "name": "balanced brackets nested deeper than eight are escaped, which Pandoc 3.9 needs to finish",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "[[[[[[[[[[x]]]]]]]]]]", "ws": "en" } ] } ],
+    "canonical": "[[[[[[[[\\[\\[x\\]\\]]]]]]]]]\n"
+  },
+  {
+    "name": "a first line that starts with a percent sign is escaped, which Pandoc would read as a title block",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "% not a title", "ws": "en" } ] } ],
+    "canonical": "\\% not a title\n"
+  },
+  {
+    "name": "a tab in the front matter's indentation is malformed, because Pandoc refuses it",
+    "project": "standard",
+    "markdown": "---\nfwmd: 1\nwritingSystems:\n\ten:\n---\n\nx\n",
+    "findings": [ { "id": "fwmd.syntax.malformed-attribute", "line": 4, "column": 1, "endLine": 4, "endColumn": 5 } ],
+    "pandoc": false
+  },
+  {
+    "name": "an attribute block may continue on the next line, which is a space as in Pandoc",
+    "markdown": "a [x]{ws=ceb-x-old\nws2=1} b\n",
+    "findings": [ { "id": "fwmd.syntax.unknown-attribute", "line": 2, "column": 1, "endLine": 2, "endColumn": 6 } ],
+    "pandoc": false
+  },
+  {
+    "name": "a raw tab in text is a space, as in Pandoc, and a tab that is meant is a character reference",
+    "markdown": "a\tb&#9;c\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a b\tc", "ws": "en" } ] } ],
+    "canonical": "a b&#x9;c\n"
+  },
+  {
+    "name": "a multi-string field is one paragraph: a blank line is an error that asks for a hard line break",
+    "mode": "inline",
+    "project": "standard",
+    "markdown": "one\n\ntwo",
+    "findings": [ { "id": "fwmd.field.block-syntax", "line": 3, "column": 1, "endLine": 3, "endColumn": 4 } ],
+    "pandoc": false
+  },
+  {
+    "name": "a multi-string field can't hold a div",
+    "mode": "inline",
+    "project": "standard",
+    "markdown": "::: Example\nx\n:::",
+    "findings": [ { "id": "fwmd.field.block-syntax", "line": 1, "column": 1, "endLine": 3, "endColumn": 4 } ],
+    "pandoc": false
+  },
+  {
+    "name": "math between dollar signs is a finding, because Pandoc reads it and the notation has none",
+    "markdown": "cost $x$ here\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 6, "endLine": 1, "endColumn": 9, "fix": "\\$x\\$" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a citation is a finding",
+    "markdown": "see @doe now\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 5, "endLine": 1, "endColumn": 6, "fix": "\\@" } ],
+    "pandoc": false
+  },
+  {
+    "name": "an inline note is a finding",
+    "markdown": "a^[note] b\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 2, "endLine": 1, "endColumn": 4, "fix": "\\^[" } ],
+    "pandoc": false
+  },
+  {
+    "name": "double tildes are a finding, because Pandoc reads strikeout",
+    "markdown": "a ~~gone~~ b\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 3, "endLine": 1, "endColumn": 11, "fix": "\\~\\~gone\\~\\~" } ],
+    "pandoc": false
+  },
+  {
+    "name": "attributes at the end of a heading are a finding",
+    "markdown": "# Title {#id}\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 1, "column": 9, "endLine": 1, "endColumn": 14, "fix": "\\{#id}" } ],
+    "pandoc": false
+  },
+  {
+    "name": "a definition line is a finding",
+    "markdown": "term\n: meaning\n",
+    "findings": [ { "id": "fwmd.syntax.unsupported-markup", "line": 2, "column": 1, "endLine": 2, "endColumn": 10, "fix": "\\: meaning" } ],
+    "pandoc": false
+  },
+  {"name":"a motif link into a project, read with no project name from the host, is never taken for a link into this one","project":"standard","markdown":"[palit](motif://projects/Other/lexicon/palit(2)?guid=7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){.name url=\"silfw://localhost/link?database%3dOther%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d\"}\n","paragraphs":[{"style":"Normal","runs":[{"text":"palit","ws":"en","props":{"s133":"Hyperlink"},"link":{"guid":"7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d","tool":"lexiconEdit","database":"Other"}}]}],"canonical":"[palit](/objects/7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d){.name url=\"silfw://localhost/link?database%3dOther%26tool%3dlexiconEdit%26guid%3d7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d%26tag%3d\"}\n"},
+  {"name":"balanced brackets nested 8 deep are written so that Pandoc finishes and reads them as text","paragraphs":[{"style":"Normal","runs":[{"text":"[[[[[[[[x]]]]]]]]","ws":"en"}]}],"canonical":"[[[[[[[[x]]]]]]]]\n"},
+  {"name":"balanced brackets nested 9 deep are written so that Pandoc finishes and reads them as text","paragraphs":[{"style":"Normal","runs":[{"text":"[[[[[[[[[x]]]]]]]]]","ws":"en"}]}],"canonical":"[[[[[[[[\\[x\\]]]]]]]]]\n"},
+  {"name":"balanced brackets nested 50 deep are written so that Pandoc finishes and reads them as text","paragraphs":[{"style":"Normal","runs":[{"text":"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[x]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]","ws":"en"}]}],"canonical":"[[[[[[[[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[\\[x\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]\\]]]]]]]]]\n"}
+]

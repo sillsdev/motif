@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Sample: a plain Avalonia desktop app showing the playground. net10.0 runs Avalonia 12 (Motif's shape); net48 runs
+       Avalonia 11.3.17 through the netstandard2.0 build (FieldWorks' Avalonia, without WinForms). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFrameworks>net48;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing.Samples.PlaygroundDesktop</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <PlatformTarget>x64</PlatformTarget>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <AvaloniaSkipXamlCompilerValidation>true</AvaloniaSkipXamlCompilerValidation>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <ProjectReference Include="..\SIL.TextEditing.Playground\SIL.TextEditing.Playground.csproj" />
+    <Compile Include="..\Common\PlaygroundApp.cs" Link="PlaygroundApp.cs" />
+  </ItemGroup>
+</Project>

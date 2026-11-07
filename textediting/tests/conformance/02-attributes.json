@@ -1,0 +1,240 @@
+[
+  {
+    "name": "bold and italic written with stars",
+    "markdown": "**bold** and *italic* and ***both***\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "bold", "ws": "en", "props": { "bold": "on" } },
+      { "text": " and ", "ws": "en" },
+      { "text": "italic", "ws": "en", "props": { "italic": "on" } },
+      { "text": " and ", "ws": "en" },
+      { "text": "both", "ws": "en", "props": { "bold": "on", "italic": "on" } }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "one attribute block holds everything a run needs, in canonical order",
+    "markdown": "[mang-]{.v custom-style=\"Emphasized Text\" bold=on}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "mang-", "ws": "ceb", "props": { "s133": "Emphasized Text", "bold": "on" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "attributes are read in any order and written in canonical order",
+    "markdown": "[x]{italic=on bold=off ws=ceb-x-old}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb-x-old", "props": { "bold": "off", "italic": "on" } } ] } ],
+    "canonical": "[x]{ws=ceb-x-old bold=off italic=on}\n"
+  },
+  {
+    "name": "toggle values on off invert",
+    "markdown": "[a]{bold=on}[b]{bold=off}[c]{bold=invert}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a", "ws": "en", "props": { "bold": "on" } },
+      { "text": "b", "ws": "en", "props": { "bold": "off" } },
+      { "text": "c", "ws": "en", "props": { "bold": "invert" } }
+    ] } ],
+    "canonical": "**a**[b]{bold=off}[c]{bold=invert}\n"
+  },
+  {
+    "name": "a value is bare when it has only letters digits and - _ . : # /",
+    "markdown": "[x]{fontFamily=Charis-SIL_1.0:a/b forecolor=#ff0000}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "forecolor": "#ff0000", "fontFamily": "Charis-SIL_1.0:a/b" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "any other value is double-quoted",
+    "markdown": "[x]{fontFamily=\"Charis SIL\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "fontFamily": "Charis SIL" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a quoted value escapes only a double quote and a backslash",
+    "markdown": "[x]{fontFamily=\"a\\\"b\\\\c d}e=f'g\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "fontFamily": "a\"b\\c d}e=f'g" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "an ampersand is written as a reference only where it would read as one",
+    "markdown": "[x]{fontFamily=\"a & b &amp;amp; c &#x26;\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "fontFamily": "a & b &amp; c &" } } ] } ],
+    "canonical": "[x]{fontFamily=\"a & b &amp;amp; c &\"}\n"
+  },
+  {
+    "name": "a quoted value takes character references, as Pandoc does",
+    "markdown": "[x]{fontFamily=\"&quot;a&quot; &#65;\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "fontFamily": "\"a\" A" } } ] } ],
+    "canonical": "[x]{fontFamily=\"\\\"a\\\" A\"}\n"
+  },
+  {
+    "name": "a quoted value that starts with white space has that character written as a reference, which Pandoc needs to read it as quoted",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "fontFamily": " a b " } }, { "text": "y", "ws": "en", "props": { "s133": " c" } } ] } ],
+    "canonical": "[x]{fontFamily=\"&#x20;a b \"}[y]{custom-style=\"&#xA0;c\"}\n"
+  },
+  {
+    "name": "a control character in a value that is not a string property is written as a reference",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "y", "ws": "en", "props": { "s133": "a\tb" } } ] } ],
+    "canonical": "[y]{custom-style=\"a&#x9;b\"}\n"
+  },
+  {
+    "name": "single quotes and extra spaces are read, and written canonically",
+    "markdown": "[x]{  .v   fontFamily='Charis SIL' }\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb", "props": { "fontFamily": "Charis SIL" } } ] } ],
+    "canonical": "[x]{.v fontFamily=\"Charis SIL\"}\n"
+  },
+  {
+    "name": "a relative font size is written with its named keys and p6 is read",
+    "markdown": "[x]{p6=150:rel}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "fontsize": "150", "fontsizeUnit": "rel" } } ] } ],
+    "canonical": "[x]{fontsize=150 fontsizeUnit=rel}\n"
+  },
+  {
+    "name": "a font size in millipoints leaves out its default unit",
+    "markdown": "[x]{fontsize=14000}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "fontsize": "14000" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "numbered properties are p then the number, ascending, after the named ones",
+    "markdown": "[x]{bold=on p9999=3:enum p150=1:default s9998=y}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "bold": "on", "p9999": "3:enum", "p150": "1:default", "s9998": "y" } } ] } ],
+    "canonical": "[x]{bold=on p150=1:default p9999=3:enum s9998=y}\n"
+  },
+  {
+    "name": "a string with a control character is written as hex, four uppercase digits for each UTF-16 code unit",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "￼", "ws": "en", "objData": "\u0005ab" } ] } ],
+    "canonical": "[&#xFFFC;]{s6x=000500610062}\n"
+  },
+  {
+    "name": "a NUL is an empty span with the class nul",
+    "markdown": "a[]{.nul}b\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\u0000b", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "an unpaired surrogate is an empty span with the class surrogate and its code unit",
+    "markdown": "a[]{.surrogate x=D800}b\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\ud800b", "ws": "en" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a NUL and a surrogate inside a run's brackets",
+    "markdown": "[a[]{.surrogate x=DC00}b[]{.nul}]{.v}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\udc00b\u0000", "ws": "ceb" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a typed reference to NUL or a surrogate reads as the replacement character",
+    "markdown": "a&#x0;b &#xD800;\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a�b �", "ws": "en" } ] } ],
+    "canonical": "a�b �\n"
+  },
+  {
+    "name": "superscript and subscript are read as Pandoc reads them and written as attributes",
+    "markdown": "x^2^ and H~2~O\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "x", "ws": "en" },
+      { "text": "2", "ws": "en", "props": { "superscript": "super" } },
+      { "text": " and H", "ws": "en" },
+      { "text": "2", "ws": "en", "props": { "superscript": "sub" } },
+      { "text": "O", "ws": "en" }
+    ] } ],
+    "canonical": "x[2]{superscript=super} and H[2]{superscript=sub}O\n"
+  },
+  {
+    "name": "an inner span overrides an outer one, and the result is flat runs",
+    "markdown": "[a [b]{ws=ar} c]{.v}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a ", "ws": "ceb" }, { "text": "b", "ws": "ar" }, { "text": " c", "ws": "ceb" } ] } ],
+    "canonical": "[a&#x20;]{.v}[b]{ws=ar}[&#x20;c]{.v}\n"
+  },
+  {
+    "name": "an attribute inside a mark wins over the mark around it",
+    "markdown": "**[x]{bold=off}** and *[y]{italic=invert}*\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "bold": "off" } }, { "text": " and ", "ws": "en" }, { "text": "y", "ws": "en", "props": { "italic": "invert" } } ] } ],
+    "canonical": "[x]{bold=off} and [y]{italic=invert}\n"
+  },
+  {
+    "name": "ok: fwmd.syntax.unknown-attribute a known key",
+    "markdown": "[x]{ws=ceb-x-old}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb-x-old" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "an unknown key is an error with a hint",
+    "markdown": "[x]{wss=ceb}\n",
+    "findings": [ { "id": "fwmd.syntax.unknown-attribute", "line": 1, "column": 5, "endLine": 1, "endColumn": 12 } ]
+  },
+  {
+    "name": "an unknown class is an error",
+    "markdown": "[x]{.vern}\n",
+    "findings": [ { "id": "fwmd.syntax.unknown-attribute", "line": 1, "column": 5, "endLine": 1, "endColumn": 10 } ]
+  },
+  {
+    "name": "a bare word of the old spelling is an error that names the class",
+    "markdown": "[x]{v}\n",
+    "findings": [ { "id": "fwmd.syntax.unknown-attribute", "line": 1, "column": 5, "endLine": 1, "endColumn": 6 } ]
+  },
+  {
+    "name": "a key written as a class is an error",
+    "markdown": "[x]{.ws}\n",
+    "findings": [ { "id": "fwmd.syntax.unknown-attribute", "line": 1, "column": 5, "endLine": 1, "endColumn": 8 } ]
+  },
+  {
+    "name": "ok: fwmd.syntax.duplicate-attribute one writing system",
+    "markdown": "[x]{.v bold=on}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb", "props": { "bold": "on" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a repeated key is an error",
+    "markdown": "[x]{ws=ceb ws=en}\n",
+    "findings": [ { "id": "fwmd.syntax.duplicate-attribute", "line": 1, "column": 12, "endLine": 1, "endColumn": 17 } ]
+  },
+  {
+    "name": ".v and ws together name two writing systems",
+    "markdown": "[x]{.v ws=ceb}\n",
+    "findings": [ { "id": "fwmd.syntax.duplicate-attribute", "line": 1, "column": 5, "endLine": 1, "endColumn": 7 } ]
+  },
+  {
+    "name": "ok: fwmd.syntax.malformed-attribute a toggle value",
+    "markdown": "[x]{bold=invert}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "bold": "invert" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a value that does not fit its key is malformed",
+    "markdown": "[x]{bold=yes}\n",
+    "findings": [ { "id": "fwmd.syntax.malformed-attribute", "line": 1, "column": 5, "endLine": 1, "endColumn": 13 } ]
+  },
+  {
+    "name": "an empty attribute block is malformed",
+    "markdown": "[x]{}\n",
+    "findings": [ { "id": "fwmd.syntax.malformed-attribute", "line": 1, "column": 4, "endLine": 1, "endColumn": 6 } ]
+  },
+  {
+    "name": "an identifier is not part of the notation",
+    "markdown": "[x]{#id}\n",
+    "findings": [ { "id": "fwmd.syntax.malformed-attribute", "line": 1, "column": 4, "endLine": 1, "endColumn": 6 } ]
+  },
+  {
+    "name": "ok: fwmd.syntax.unclosed-mark a closed block",
+    "markdown": "[kaon]{ws=ceb-x-old}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "kaon", "ws": "ceb-x-old" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a block with no closing brace is an error with the closing brace as the fix",
+    "markdown": "[kaon]{ws=ceb-x-old\n",
+    "findings": [ { "id": "fwmd.syntax.unclosed-mark", "line": 1, "column": 7, "endLine": 1, "endColumn": 20, "fix": "{ws=ceb-x-old}" } ]
+  },
+  {
+    "name": "ok: fwmd.prop.unknown-number a known number",
+    "markdown": "[x]{p16=1:default}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "p16": "1:default" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a property number that is not known is kept with a warning",
+    "markdown": "[x]{p999=1:default}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "p999": "1:default" } } ] } ],
+    "findings": [ { "id": "fwmd.prop.unknown-number", "severity": "warning", "line": 1, "column": 5, "endLine": 1, "endColumn": 19 } ],
+    "canonical": null
+  }
+]

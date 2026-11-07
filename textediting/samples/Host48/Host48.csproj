@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Sample: FieldWorks' shape, a WinForms form on net48 hosting the playground (Avalonia 11.3.17) through WinFormsAvaloniaControlHost, between two WinForms TextBoxes. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RootNamespace>SIL.TextEditing.Samples.Host48</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <AvaloniaSkipXamlCompilerValidation>true</AvaloniaSkipXamlCompilerValidation>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Win32.Interoperability" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing.Avalonia\SIL.TextEditing.Avalonia.csproj" />
+    <ProjectReference Include="..\SIL.TextEditing.Playground\SIL.TextEditing.Playground.csproj" />
+    <Compile Include="..\Common\PlaygroundApp.cs" Link="PlaygroundApp.cs" />
+  </ItemGroup>
+</Project>

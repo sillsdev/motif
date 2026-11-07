@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing</RootNamespace>
+    <AssemblyName>SIL.TextEditing</AssemblyName>
+    <Description>UI-free rich text run model, edits, paragraph-identity rules and grapheme helpers, shaped like FieldWorks ITsString.</Description>
+  </PropertyGroup>
+  <!-- Trimmable and AOT-compatible on net10.0 (Motif's target); CI proves it with tests/AotCheck. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SIL.TextEditing.Tests" />
+    <InternalsVisibleTo Include="SIL.TextEditing.Avalonia" />
+    <InternalsVisibleTo Include="SIL.TextEditing.Avalonia.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,79 @@
+[
+  {
+    "name": "stars are used when the run has no other attribute and starts and ends with a letter or number",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a ", "ws": "en" },
+      { "text": "bold1", "ws": "en", "props": { "bold": "on" } },
+      { "text": " b ", "ws": "en" },
+      { "text": "it", "ws": "en", "props": { "italic": "on" } },
+      { "text": " ", "ws": "en" },
+      { "text": "both", "ws": "en", "props": { "bold": "on", "italic": "on" } }
+    ] } ],
+    "canonical": "a **bold1** b *it* ***both***\n"
+  },
+  {
+    "name": "a run inside a word may use stars",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "feas", "ws": "en" }, { "text": "ible", "ws": "en", "props": { "italic": "on" } }, { "text": "ness", "ws": "en" }
+    ] } ],
+    "canonical": "feas*ible*ness\n"
+  },
+  {
+    "name": "a run with a leading or trailing space or punctuation uses the attribute form",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": " x", "ws": "en", "props": { "bold": "on" } },
+      { "text": "; ", "ws": "en" },
+      { "text": "y.", "ws": "en", "props": { "bold": "on" } },
+      { "text": " ", "ws": "en" },
+      { "text": "(z)", "ws": "en", "props": { "italic": "on" } }
+    ] } ],
+    "canonical": "[&#x20;x]{bold=on}; [y.]{bold=on} [(z)]{italic=on}\n"
+  },
+  {
+    "name": "a run with another attribute uses the attribute form for bold too",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "mang-", "ws": "ceb", "props": { "bold": "on" } } ] } ],
+    "canonical": "[mang-]{.v bold=on}\n"
+  },
+  {
+    "name": "off and invert have only the attribute form",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a", "ws": "en", "props": { "bold": "off" } }, { "text": "b", "ws": "en", "props": { "italic": "invert" } }
+    ] } ],
+    "canonical": "[a]{bold=off}[b]{italic=invert}\n"
+  },
+  {
+    "name": "two star-written runs that touch make every bold and italic run of the paragraph use the attribute form",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a", "ws": "en", "props": { "bold": "on" } },
+      { "text": "b", "ws": "en", "props": { "italic": "on" } },
+      { "text": " and ", "ws": "en" },
+      { "text": "c", "ws": "en", "props": { "bold": "on" } }
+    ] } ],
+    "canonical": "[a]{bold=on}[b]{italic=on} and [c]{bold=on}\n"
+  },
+  {
+    "name": "a run before a combining mark does not use stars, so a grapheme is never split around a closing star",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "a", "ws": "en", "props": { "bold": "on" } }, { "text": "́b", "ws": "en" }
+    ] } ],
+    "canonical": "[a]{bold=on}́b\n"
+  },
+  {
+    "name": "a star-written run in a table cell",
+    "paragraphs": [
+      { "style": "GDR Table Header", "runs": [ { "text": "H", "ws": "en" } ] },
+      { "style": "GDR Table Row", "runs": [ { "text": "x", "ws": "en", "props": { "bold": "on" } } ] }
+    ],
+    "canonical": "| H |\n|---|\n| **x** |\n"
+  },
+  {
+    "name": "nested emphasis is read and flattened to one attribute block per run",
+    "markdown": "**[mang-]{.v}** and *[x]{.v bold=on}*\n",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "mang-", "ws": "ceb", "props": { "bold": "on" } },
+      { "text": " and ", "ws": "en" },
+      { "text": "x", "ws": "ceb", "props": { "bold": "on", "italic": "on" } }
+    ] } ],
+    "canonical": "[mang-]{.v bold=on} and [x]{.v bold=on italic=on}\n"
+  }
+]

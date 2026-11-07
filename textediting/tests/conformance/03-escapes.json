@@ -1,0 +1,186 @@
+[
+  {
+    "name": "no escape is needed for brackets, braces, slashes, arrows, underscores inside words, hyphens, a single tilde or an address",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "[ng] [+nasal] {a,b} /a/ C -> [+nasal] a_b -um- ~ -in- x@y.org", "ws": "en" } ] } ],
+    "canonical": "[ng] [+nasal] {a,b} /a/ C -> [+nasal] a_b -um- ~ -in- x@y.org\n"
+  },
+  {
+    "name": "a backslash, a backtick and a star are always escaped",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\\b c`d e*f", "ws": "en" } ] } ],
+    "canonical": "a\\\\b c\\`d e\\*f\n"
+  },
+  {
+    "name": "an underscore is escaped when it could open or close emphasis",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a _V and V_ b a_b __x", "ws": "en" } ] } ],
+    "canonical": "a \\_V and V\\_ b a_b \\_\\_x\n"
+  },
+  {
+    "name": "an angle bracket is escaped when it could start a tag, an autolink or a comment",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a <b c < d </e <!f <?g 1<2", "ws": "en" } ] } ],
+    "canonical": "a \\<b c < d \\</e \\<!f \\<?g 1<2\n"
+  },
+  {
+    "name": "an ampersand is escaped when it could read as a character reference",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "&#x20; &amp; a & b &c AT&T", "ws": "en" } ] } ],
+    "canonical": "\\&#x20; \\&amp; a & b &c AT&T\n"
+  },
+  {
+    "name": "a dollar sign is escaped when it occurs again in the paragraph",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "cost $5 and $6", "ws": "en" } ] } ],
+    "canonical": "cost \\$5 and \\$6\n"
+  },
+  {
+    "name": "ok: a single dollar sign stays bare",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "cost $5", "ws": "en" } ] } ],
+    "canonical": "cost $5\n"
+  },
+  {
+    "name": "a caret and a tilde are escaped when they occur again, and a caret before a bracket",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x^2 y^3 a~b c~d e^[f", "ws": "en" } ] } ],
+    "canonical": "x\\^2 y\\^3 a\\~b c\\~d e\\^\\[f\n"
+  },
+  {
+    "name": "an at sign is escaped unless a letter or number comes before it",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "@x see @ref a@b 3@4", "ws": "en" } ] } ],
+    "canonical": "\\@x see \\@ref a@b 3@4\n"
+  },
+  {
+    "name": "a literal bracket pair followed by a parenthesis, bracket or brace has both brackets escaped",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "[a](b) [c][d] [e]{f} [g] ]h[", "ws": "en" } ] } ],
+    "canonical": "\\[a\\](b) \\[c\\][d] \\[e\\]{f} [g] \\]h\\[\n"
+  },
+  {
+    "name": "a caret right after a bracket is escaped, so that it is not a footnote reference",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "^x", "ws": "ceb" } ] } ],
+    "canonical": "[\\^x]{.v}\n"
+  },
+  {
+    "name": "an exclamation mark before a bracket is escaped",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a ![b](c) wow!", "ws": "en" } ] } ],
+    "canonical": "a \\!\\[b\\](c) wow!\n"
+  },
+  {
+    "name": "an unbalanced bracket inside a run's own brackets is escaped",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a[b", "ws": "ceb" } ] } ],
+    "canonical": "[a\\[b]{.v}\n"
+  },
+  {
+    "name": "a block marker at the start of a paragraph is escaped",
+    "paragraphs": [
+      { "style": "Normal", "runs": [ { "text": "# not a heading", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "> not a quote", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "+ not a list", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "- not a list", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "-not a list either", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "--", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "| not a table", "ws": "en" } ] }
+    ],
+    "canonical": "\\# not a heading\n\n\\> not a quote\n\n\\+ not a list\n\n\\- not a list\n\n-not a list either\n\n\\--\n\n\\| not a table\n"
+  },
+  {
+    "name": "a colon or tilde at the start that could begin a definition or a div fence is escaped",
+    "paragraphs": [
+      { "style": "Normal", "runs": [ { "text": ": a definition", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "::: a fence", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "~ x", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": ":x", "ws": "en" } ] }
+    ],
+    "canonical": "\\: a definition\n\n\\::: a fence\n\n\\~ x\n\n:x\n"
+  },
+  {
+    "name": "a paragraph that starts Table: has the colon escaped",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "Table: of forms", "ws": "en" } ] } ],
+    "canonical": "Table\\: of forms\n"
+  },
+  {
+    "name": "a list marker at the start has its dot or parenthesis escaped",
+    "paragraphs": [
+      { "style": "Normal", "runs": [ { "text": "1. one", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "a) letter", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "(a) letter", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "iv. roman", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "2024. A year", "ws": "en" } ] },
+      { "style": "Normal", "runs": [ { "text": "1.5 is not a marker", "ws": "en" } ] }
+    ],
+    "canonical": "1\\. one\n\na\\) letter\n\n\\(a) letter\n\niv\\. roman\n\n2024\\. A year\n\n1.5 is not a marker\n"
+  },
+  {
+    "name": "a line that starts like a link reference definition has its bracket escaped",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "[a]: b", "ws": "en" } ] } ],
+    "canonical": "\\[a]: b\n"
+  },
+  {
+    "name": "a heading's closing hashes and a trailing attribute group are escaped",
+    "paragraphs": [
+      { "style": "Heading 2", "runs": [ { "text": "foo #", "ws": "en" } ] },
+      { "style": "Heading 2", "runs": [ { "text": "x {#id}", "ws": "en" } ] },
+      { "style": "Heading 2", "runs": [ { "text": "x {y", "ws": "en" } ] }
+    ],
+    "canonical": "## foo \\#\n\n## x \\{#id}\n\n## x {y\n"
+  },
+  {
+    "name": "leading, trailing and repeated spaces are written as references",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "  a  b ", "ws": "en" } ] } ],
+    "canonical": "&#x20;&#x20;a&#x20;&#x20;b&#x20;\n"
+  },
+  {
+    "name": "a no-break space is &nbsp;; a tab and a form feed outside a table are numeric references",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\u00a0b\tc\fd", "ws": "en" } ] } ],
+    "canonical": "a&nbsp;b&#x9;c&#xC;d\n"
+  },
+  {
+    "name": "an invisible character is a numeric reference, so that it can be seen: zero-width space, joiners, word joiner, soft hyphen, bidi marks and isolates, grapheme joiner",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\u200bb\u200cc\u200dd\u2060e\u00adf\u200eg\u200fh\u061ci\u2067j\u2069k\u202bl\u202cm\u034fn", "ws": "en" } ] } ],
+    "canonical": "a&#x200B;b&#x200C;c&#x200D;d&#x2060;e&#xAD;f&#x200E;g&#x200F;h&#x61C;i&#x2067;j&#x2069;k&#x202B;l&#x202C;m&#x34F;n\n"
+  },
+  {
+    "name": "a zero-width joiner inside an emoji sequence stays literal; one between letters is a reference",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "\ud83d\udc69\u200d\ud83d\udcbb \ud83c\udff3\ufe0f\u200d\ud83c\udf08 \u0915\u094d\u200d\u0937", "ws": "en" } ] } ],
+    "canonical": "\ud83d\udc69\u200d\ud83d\udcbb \ud83c\udff3\ufe0f\u200d\ud83c\udf08 \u0915\u094d&#x200D;\u0937\n"
+  },
+  {
+    "name": "the object replacement character outside an object run is a reference",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\ufffcb", "ws": "en" } ] } ],
+    "canonical": "a&#xFFFC;b\n"
+  },
+  {
+    "name": "a line separator is a backslash at the end of a line",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\u2028b", "ws": "en" } ] } ],
+    "canonical": "a\\\nb\n"
+  },
+  {
+    "name": "a line separator at the start or the end of a paragraph, or next to another, is a reference, because a line end there would be dropped",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": " a ", "ws": "en" } ] }, { "style": "Normal", "runs": [ { "text": "a  b", "ws": "en" } ] } ],
+    "canonical": "&#x2028;a&#x2028;\n\na&#x2028;&#x2028;b\n"
+  },
+  {
+    "name": "a literal backslash at the end of a paragraph is two",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\\", "ws": "en" } ] } ],
+    "canonical": "a\\\\\n"
+  },
+  {
+    "name": "a line after a line separator that looks like block markup is escaped",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\u2028# b\u20281. c\u2028==", "ws": "en" } ] } ],
+    "canonical": "a\\\n\\# b\\\n1\\. c\\\n\\==\n"
+  },
+  {
+    "name": "reading takes any spelling Pandoc reads to the same structure: an escaped character that needs none",
+    "markdown": "a \\[b\\] c \\# d \\<e\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a [b] c # d <e", "ws": "en" } ] } ],
+    "canonical": "a [b] c # d \\<e\n"
+  },
+  {
+    "name": "reading takes underscore emphasis, an asterisk bullet and a plus bullet",
+    "markdown": "__bold__ and _it_\n\n* one\n\n+ two\n",
+    "paragraphs": [
+      { "style": "Normal", "runs": [
+        { "text": "bold", "ws": "en", "props": { "bold": "on" } },
+        { "text": " and ", "ws": "en" },
+        { "text": "it", "ws": "en", "props": { "italic": "on" } }
+      ] },
+      { "style": "Bulleted List", "runs": [ { "text": "one", "ws": "en" } ] },
+      { "style": "Bulleted List", "runs": [ { "text": "two", "ws": "en" } ] }
+    ],
+    "canonical": "**bold** and *it*\n\n- one\n- two\n"
+  }
+]

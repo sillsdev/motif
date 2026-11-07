@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "blocks.schema.json",
+  "title": "FieldWorks record file front matter",
+  "type": "object",
+  "properties": {
+    "fwmd": {
+      "const": 1
+    },
+    "record": {
+      "enum": ["notebook/record"]
+    },
+    "schema": {
+      "const": "blocks.schema.json"
+    },
+    "root": {
+      "type": "string"
+    },
+    "base": {
+      "type": "string"
+    },
+    "analysis": {
+      "type": "string"
+    },
+    "vernacular": {
+      "type": "string"
+    },
+    "writingSystems": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "dir": {
+            "enum": ["ltr", "rtl"]
+          },
+          "font": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "record-data": {
+      "type": "object"
+    }
+  },
+  "required": ["fwmd", "record"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "record": {
+            "const": "notebook/record"
+          },
+          "root": {
+            "pattern": "^(/[^/#]+){2}$"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "record-data": {
+            "$ref": "#/definitions/note--frame"
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "note": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "title": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "plain": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown",
+          "x-fieldworks-blocks": []
+        },
+        "lists-only": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown",
+          "x-fieldworks-blocks": ["lists"]
+        },
+        "no-tables": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown",
+          "x-fieldworks-blocks": ["lists", "headings"]
+        },
+        "anything": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown"
+        },
+        "remarks": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown",
+            "x-fieldworks-blocks": []
+          }
+        },
+        "description": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown",
+          "x-fieldworks-blocks": ["tables"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "note--frame": {
+      "type": "object",
+      "properties": {
+        "guid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "title": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown-inline"
+        },
+        "plain": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown",
+          "x-fieldworks-blocks": []
+        },
+        "lists-only": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown",
+          "x-fieldworks-blocks": ["lists"]
+        },
+        "no-tables": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown",
+          "x-fieldworks-blocks": ["lists", "headings"]
+        },
+        "anything": {
+          "type": "string",
+          "contentMediaType": "text/x-fieldworks-markdown"
+        },
+        "remarks": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "contentMediaType": "text/x-fieldworks-markdown",
+            "x-fieldworks-blocks": []
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

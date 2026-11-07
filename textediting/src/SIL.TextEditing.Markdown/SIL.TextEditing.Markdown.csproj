@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing.Markdown</RootNamespace>
+    <AssemblyName>SIL.TextEditing.Markdown</AssemblyName>
+    <Description>Converts between SIL.TextEditing runs and FieldWorks Markdown, a strict profile of Pandoc Markdown: the parser, the writer, the front matter, the link grammar and the escaping (ADRs 0011 and 0028).</Description>
+  </PropertyGroup>
+  <!-- Trimmable and AOT-compatible on net10.0 (Motif's target); CI proves it with tests/AotCheck. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The tests compare the writer's escaping search with a reference implementation that uses the internal generator. -->
+    <InternalsVisibleTo Include="SIL.TextEditing.Markdown.Tests" />
+    <PackageReference Include="Markdig.Signed" />
+    <PackageReference Include="YamlDotNet" />
+    <ProjectReference Include="..\SIL.TextEditing\SIL.TextEditing.csproj" />
+  </ItemGroup>
+</Project>

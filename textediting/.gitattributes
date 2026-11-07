@@ -1,0 +1,2 @@
+# The conformance fixtures and the canonical Markdown they hold use LF (spec 6.1), whatever the checkout's autocrlf says (issue 61).
+tests/conformance/** text eol=lf

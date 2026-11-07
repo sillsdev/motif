@@ -1,0 +1,13 @@
+bin/
+obj/
+packages/
+.vs/
+*.user
+*.suo
+TestResults/
+*.binlog
+.idea/
+TestResults/
+
+# Copied here by the SIL.LCModel.Core package (contentFiles)
+src/SIL.TextEditing.LCModel/SIL.LCModel.Core.dll.config

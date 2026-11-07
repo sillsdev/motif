@@ -1,0 +1,59 @@
+{
+  "standard": {
+    "analysis": "en",
+    "vernacular": "ceb",
+    "writingSystems": {
+      "en": { "lang": "en", "dir": "ltr", "font": "Charis SIL" },
+      "ceb": { "lang": "ceb", "dir": "ltr", "font": "Charis SIL" },
+      "ceb-x-old": { "lang": "ceb", "dir": "ltr", "font": "Doulos SIL" },
+      "ar": { "lang": "ar", "dir": "rtl", "font": "Scheherazade New" }
+    },
+    "tableStyles": { "header": "GDR Table Header", "row": "GDR Table Row" },
+    "styles": {
+      "paragraph": [ "Normal", "Heading 1", "Heading 2", "Heading 3", "Bulleted List", "Numbered List", "Block Quote", "Example", "GDR Table Header", "GDR Table Row" ],
+      "character": [ "Hyperlink", "Emphasized Text" ]
+    },
+    "objects": [
+      { "guid": "7d2c9a10-3e4f-4a5b-8c6d-7e8f9a0b1c2d", "path": "/lexicon/palit(2)", "tool": "lexiconEdit", "name": "palit" },
+      { "guid": "a1b2c3d4-0000-4000-8000-000000000001", "path": "/lexicon/palit(1)", "tool": "lexiconEdit", "name": "palit" },
+      { "guid": "0b1e2f3a-4c5d-4e6f-8a9b-0c1d2e3f4a5b", "path": "/grammar/phonological-rules/Nasal assimilation", "tool": "PhonologicalRuleEdit", "name": "Nasal assimilation" },
+      { "guid": "3fa29b1c-0000-4000-8000-000000000002", "path": "/grammar/phonological-rules/Epenthesis(3fa29b1c)", "tool": "PhonologicalRuleEdit", "name": "Epenthesis" },
+      { "guid": "77e41a02-0000-4000-8000-000000000003", "path": "/grammar/phonological-rules/Epenthesis(77e41a02)", "tool": "PhonologicalRuleEdit", "name": "Epenthesis" },
+      { "guid": "5b6c0e2a-1d3f-4c8e-9a71-0f2b3c4d5e6f", "path": "/texts/Kuwento/3.2", "tool": "interlinearEdit", "name": "3.2", "example": true },
+      { "guid": "c0ffee00-0000-4000-8000-000000000004", "path": "/lists/GDR/GDR-47", "tool": "GDREdit", "name": "GDR-47" },
+      { "guid": "deadbeef-0000-4000-8000-000000000005", "path": "/lexicon/gone", "tool": "lexiconEdit", "name": "gone", "deleted": true },
+      { "guid": "1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9", "kind": "picture", "file": "/files/pictures/hut.jpg", "caption": "A hut" },
+      { "guid": "00000006-0000-4000-8000-000000000006", "path": "/lexicon/AC%2FDC", "tool": "lexiconEdit", "name": "AC/DC" },
+      { "guid": "00000007-0000-4000-8000-000000000007", "path": "/lexicon/café", "tool": "lexiconEdit", "name": "café" },
+      { "guid": "00000008-0000-4000-8000-000000000008", "path": "/lexicon/x%282%29", "tool": "lexiconEdit", "name": "x(2)" },
+      { "guid": "00000009-0000-4000-8000-000000000009", "path": "/lexicon/Noun (common)", "tool": "lexiconEdit", "name": "Noun (common)" },
+      { "guid": "0000000a-0000-4000-8000-00000000000a", "path": "/lexicon/a%28b", "tool": "lexiconEdit", "name": "a(b" },
+      { "guid": "0000000b-0000-4000-8000-00000000000b", "path": "/lexicon/50%25", "tool": "lexiconEdit", "name": "50%" },
+      { "guid": "0000000c-0000-4000-8000-00000000000c", "path": "/lexicon/q%3F%23%5C", "tool": "lexiconEdit", "name": "q?#\\" },
+      { "guid": "0000000d-0000-4000-8000-00000000000d", "path": "/lexicon/..", "tool": "lexiconEdit", "name": "dots" }
+    ]
+  },
+  "records": {
+    "analysis": "en",
+    "vernacular": "ceb",
+    "writingSystems": {
+      "en": { "lang": "en", "dir": "ltr", "font": "Charis SIL" },
+      "fr": { "lang": "fr", "dir": "ltr", "font": "Charis SIL" },
+      "ceb": { "lang": "ceb", "dir": "ltr", "font": "Charis SIL" },
+      "no": { "lang": "no", "dir": "ltr", "font": "Charis SIL" },
+      "ar": { "lang": "ar", "dir": "rtl", "font": "Scheherazade New" }
+    }
+  },
+  "records-tables": {
+    "analysis": "en",
+    "vernacular": "ceb",
+    "writingSystems": {
+      "en": { "lang": "en", "dir": "ltr", "font": "Charis SIL" },
+      "fr": { "lang": "fr", "dir": "ltr", "font": "Charis SIL" },
+      "ceb": { "lang": "ceb", "dir": "ltr", "font": "Charis SIL" },
+      "no": { "lang": "no", "dir": "ltr", "font": "Charis SIL" },
+      "ar": { "lang": "ar", "dir": "rtl", "font": "Scheherazade New" }
+    },
+    "tableStyles": { "header": "Table Header", "row": "Table Row" }
+  }
+}

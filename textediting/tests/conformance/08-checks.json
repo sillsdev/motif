@@ -1,0 +1,79 @@
+[
+  {
+    "name": "ok: fwmd.ws.unknown a writing system the project has",
+    "project": "standard",
+    "markdown": "[x]{ws=ceb-x-old}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb-x-old" } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a writing system the project does not have is an error with the project's systems as choices",
+    "project": "standard",
+    "markdown": "[x]{ws=ceb-x-oldd}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "ceb-x-oldd" } ] } ],
+    "findings": [ { "id": "fwmd.ws.unknown", "line": 1, "column": 5, "endLine": 1, "endColumn": 18, "choices": [ "en", "ceb", "ceb-x-old", "ar" ], "nearest": [ "ceb-x-old" ] } ],
+    "pandoc": false
+  },
+  {
+    "name": "an empty paragraph's writing system is checked too",
+    "project": "standard",
+    "markdown": "[]{.empty ws=zzz}\n",
+    "paragraphs": [ { "style": "Normal", "typingWs": "zzz" } ],
+    "findings": [ { "id": "fwmd.ws.unknown", "line": 1, "column": 11, "endLine": 1, "endColumn": 17, "choices": [ "en", "ceb", "ceb-x-old", "ar" ] } ],
+    "pandoc": false
+  },
+  {
+    "name": "ok: fwmd.style.unknown a character style the project has",
+    "project": "standard",
+    "markdown": "[x]{custom-style=\"Emphasized Text\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "s133": "Emphasized Text" } } ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a character style the project does not have is an error with the nearest names",
+    "project": "standard",
+    "markdown": "[x]{custom-style=\"Emphasised Text\"}\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "x", "ws": "en", "props": { "s133": "Emphasised Text" } } ] } ],
+    "findings": [ { "id": "fwmd.style.unknown", "line": 1, "column": 5, "endLine": 1, "endColumn": 35, "nearest": [ "Emphasized Text" ] } ],
+    "pandoc": false
+  },
+  {
+    "name": "a paragraph style the project does not have is an error with the nearest names",
+    "project": "standard",
+    "markdown": "::: {custom-style=Exampel}\nx\n:::\n",
+    "paragraphs": [ { "style": "Exampel", "runs": [ { "text": "x", "ws": "en" } ] } ],
+    "findings": [ { "id": "fwmd.style.unknown", "line": 1, "column": 6, "endLine": 1, "endColumn": 26, "nearest": [ "Example" ] } ],
+    "pandoc": false
+  },
+  {
+    "name": "ok: fwmd.syntax.too-deep a short nest of quotes",
+    "markdown": "> x\n",
+    "paragraphs": [ { "style": "Block Quote", "runs": [ { "text": "x", "ws": "en" } ] } ],
+    "canonical": "> x\n"
+  },
+  {
+    "name": "text nested deeper than the reader allows is one finding and its lines are kept as text",
+    "markdown": "> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > x\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "> > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > > x", "ws": "en" } ] } ],
+    "findings": [ { "id": "fwmd.syntax.too-deep", "line": 1, "column": 1, "endLine": 1, "endColumn": 262 } ],
+    "pandoc": false
+  },
+  {
+    "name": "ok: fwmd.field.block-syntax inline text only",
+    "mode": "inline",
+    "project": "standard",
+    "markdown": "The [palit]{.v} **abstract**.",
+    "paragraphs": [ { "style": "Normal", "runs": [
+      { "text": "The ", "ws": "en" }, { "text": "palit", "ws": "ceb" }, { "text": " ", "ws": "en" }, { "text": "abstract", "ws": "en", "props": { "bold": "on" } }, { "text": ".", "ws": "en" }
+    ] } ],
+    "canonical": null
+  },
+  {
+    "name": "a multi-string field takes inline grammar only: a heading is an error",
+    "mode": "inline",
+    "project": "standard",
+    "markdown": "# Heading\n\nbody",
+    "findings": [ { "id": "fwmd.field.block-syntax", "line": 1, "column": 1, "endLine": 1, "endColumn": 10 } ],
+    "pandoc": false
+  }
+]
