@@ -233,7 +233,7 @@ public static class CliVerbCatalog
             new[] { "dry-run --project <fwdata> <proposalId> --wait [--wait-timeout-ms <ms>] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial",
-            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--wait] [--json]" }),
+            new[] { "trial --project <fwdata> <proposalId> [--scope <name>] [--words <file>|--all-words] [--review-set <ids>|none] [--wait] [--json]" }),
         new CliVerbDescriptor(
             "Commands", "trial", "trial --wait",
             new[]
@@ -415,7 +415,7 @@ public static class CliVerbCatalog
             "Project", "overview", "overview",
             new[] { "overview --project <fwdata> [--proposal <id>] [--json]" }),
         new CliVerbDescriptor("Commands", "proposal trial", "proposal trial",
-            new[] { "proposal trial --project <fwdata> <proposalId> [--json] [--word-results]" }),
+            new[] { "proposal trial --project <fwdata> <proposalId> [--job <id>|--report <id>] [--detail summary|failures|full] [--section <id>] [--json]" }),
         new CliVerbDescriptor(
             "Project", "warnings", "warnings",
             new[] { "warnings --project <fwdata> [--proposal <id>] [--kind <code>] [--left-out] [--json]" }),

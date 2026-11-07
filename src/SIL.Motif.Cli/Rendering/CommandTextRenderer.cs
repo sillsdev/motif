@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
@@ -40,7 +41,8 @@ public static class CommandTextRenderer
     private static CommandResult RenderSuccess<T>(T value, bool asJson) where T : class?
     {
         if (asJson)
-            return new CommandResult(0, (value is WordTraceResponse trace ? TraceJson(trace) : ProjectionJson.Serialize(value)) +
+            return new CommandResult(0, (value is WordTraceResponse trace ? TraceJson(trace) : value is TrialReviewResult review
+                ? JsonSerializer.Serialize(review, ReviewJson.Options) : ProjectionJson.Serialize(value)) +
                 Environment.NewLine);
 
         if (value is null)
@@ -76,6 +78,7 @@ public static class CommandTextRenderer
             ParsimonyExpectationProjection p => RenderParsimonyExpectations(p),
             FindComposerResponse r => RenderFindComposer(r),
             TrialRecord r => RenderTrial(r),
+            TrialReviewResult r => TrialReviewTextRenderer.Render(r),
             ReviewNumbersResponse r => RenderReviewNumbers(r),
             MeasurePendingResult r => RenderReviewNumbers(r.Numbers),
             CompareResponse r => RenderCompare(r),

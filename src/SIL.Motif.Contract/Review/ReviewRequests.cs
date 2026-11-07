@@ -34,7 +34,7 @@ public sealed record ReviewReadRequest(
         if (Trace && Word is null && Case is null) return "trace requires a word or case";
         if ((Word is not null || Case is not null || Trace) && Detail is not null and not DetailLevel.Full)
             return "word, case and trace require full detail";
-        if ((Cursor is not null || Filter is not null || Outcome is not null || Flag is not null) &&
+        if ((Cursor is not null || Limit is not null || Filter is not null || Outcome is not null || Flag is not null) &&
             EffectiveDetail != DetailLevel.Full) return "cursor and list filters require full detail";
         if (Limit is < 1 or > 200) return "limit must be between 1 and 200";
         if (Filter is not null and not ("all" or "changed" or "unchanged" or "review" or "incomplete"))

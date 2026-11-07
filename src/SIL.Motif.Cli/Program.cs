@@ -32,6 +32,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Projection.Usage;
@@ -906,6 +907,12 @@ try
                     "[--words <file>|--all-words] [--wait] [--json]", asJson);
             }
             IReadOnlyList<string>? trialWords = null;
+            IReadOnlyList<string>? reviewSets = null;
+            if (flags.TryGetValue("review-set", out var reviewSetText))
+            {
+                reviewSets = reviewSetText == "none" ? [] : reviewSetText.Split(',', StringSplitOptions.TrimEntries);
+                if (reviewSets.Any(string.IsNullOrWhiteSpace)) return Usage("Invalid review set selection.", asJson);
+            }
             if (flags.TryGetValue("words", out var trialWordsPath))
             {
                 if (flags.ContainsKey("all-words"))
@@ -930,7 +937,7 @@ try
                 var queued = TrialWorkflow.Enqueue(
                     new EnqueueTrialRequest(
                         trialProject, CliProductVersion(), positionals[0], flags.GetValueOrDefault("scope"),
-                        Words: trialWords, AllWords: flags.ContainsKey("all-words")),
+                        Words: trialWords, AllWords: flags.ContainsKey("all-words")) { ReviewSetIds = reviewSets },
                     ResolveRoot(), null, BaselineMode.BestEffort, cancellationToken);
                 if (queued.Value?.BaselineWarning is { } reason)
                     error.WriteLine(
@@ -1636,11 +1643,47 @@ try
             if (positionals.Count != 2 || positionals[0] != "trial" ||
                 !flags.TryGetValue("project", out var trialReadProject))
                 return Usage("Usage: motif proposal trial --project <fwdata> <proposalId> [--json] [--word-results]", asJson);
-            var trialRead = Trials.Read(new ReadTrialRequest(trialReadProject, positionals[1],
-                flags.ContainsKey("word-results")));
-            result = RenderCommand(trialRead);
-            if (!asJson && flags.ContainsKey("word-results") && trialRead is { Succeeded: true, Value.WordResults.Count: 0 })
-                result = result with { Output = result.Output.TrimEnd('\n') + "\nNo word results are available for this Trial.\n" };
+            DetailLevel? reviewDetail = flags.GetValueOrDefault("detail") switch
+            {
+                null => flags.ContainsKey("word-results") ? DetailLevel.Full : null,
+                "summary" => DetailLevel.Summary, "failures" => DetailLevel.Failures, "full" => DetailLevel.Full,
+                _ => (DetailLevel)(-1)
+            };
+            if (flags.ContainsKey("word-results") && reviewDetail != DetailLevel.Full)
+                return Usage("--word-results requires full detail.", asJson);
+            ReviewFlagId? reviewFlag = null;
+            if (flags.TryGetValue("flag", out var reviewFlagText))
+            {
+                try { reviewFlag = JsonSerializer.Deserialize<ReviewFlagId>(JsonSerializer.Serialize(reviewFlagText), ReviewJson.Options); }
+                catch (JsonException) { return Usage("Unknown Trial review flag.", asJson); }
+            }
+            Side? reviewSide = flags.GetValueOrDefault("side") switch
+            { null => null, "before" => Side.Before, "after" => Side.After, _ => (Side)(-1) };
+            int? reviewLimit = null;
+            if (flags.TryGetValue("limit", out var reviewLimitText))
+            {
+                if (!int.TryParse(reviewLimitText, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedLimit))
+                    return Usage("Invalid Trial review limit.", asJson);
+                reviewLimit = parsedLimit;
+            }
+            var reviewRequest = new ReviewReadRequest("project", positionals[1], flags.GetValueOrDefault("job"),
+                flags.GetValueOrDefault("report"), reviewDetail, flags.GetValueOrDefault("section"), flags.GetValueOrDefault("set"),
+                flags.GetValueOrDefault("outcome"), reviewFlag, flags.GetValueOrDefault("filter"), flags.GetValueOrDefault("word"),
+                flags.GetValueOrDefault("case"), flags.ContainsKey("trace"), reviewSide, flags.GetValueOrDefault("cursor"), reviewLimit);
+            if (reviewRequest.Validate() is { } reviewProblem) return Usage(reviewProblem, asJson);
+            var refresh = flags.ContainsKey("refresh-report");
+            if (refresh && (reviewRequest.Section is not null || reviewRequest.Set is not null || reviewRequest.Outcome is not null ||
+                reviewRequest.Flag is not null || reviewRequest.Filter is not null || reviewRequest.Word is not null || reviewRequest.Case is not null ||
+                reviewRequest.Trace || reviewRequest.Side is not null || reviewRequest.Cursor is not null || reviewRequest.Limit is not null ||
+                reviewRequest.Detail is not null)) return Usage("Refresh cannot be combined with detail selectors.", asJson);
+            var reviewRead = ProjectStoreCommand.Run<TrialReviewResult>(trialReadProject, CliProductVersion(), (database, project) =>
+            {
+                var commands = new TrialReviewCommands(database);
+                var key = ProjectWorkspaceKey.Compute(project);
+                return refresh ? commands.ProduceAsync(new ReviewProduceRequest(key, positionals[1], reviewRequest.JobId,
+                        reviewRequest.ReportId)).GetAwaiter().GetResult() : commands.Read(reviewRequest with { ProjectKey = key });
+            });
+            result = RenderCommand(reviewRead);
             break;
 
         case "writing-systems":
@@ -2890,7 +2933,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name == "word-results")
+            if (name is "word-results" or "refresh-report" or "trace")
             {
                 flags[name] = "true";
                 continue;
