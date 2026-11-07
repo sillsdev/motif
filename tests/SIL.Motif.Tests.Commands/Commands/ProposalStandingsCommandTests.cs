@@ -129,6 +129,33 @@ public sealed class ProposalStandingsCommandTests : IDisposable
     }
 
     [Fact]
+    public void FinalizedProposalReportsItsFirstRecordedRevisionTime()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        fixture.SaveProposal();
+
+        var card = Assert.Single(Read(fixture).Proposals);
+
+        Assert.NotNull(card.FirstFinalizedUtc);
+        Assert.Null(card.Builder);
+        Assert.Null(card.Model);
+        Assert.Null(card.Question);
+    }
+
+    [Fact]
+    public void AProposalRemainsUnreadUntilItsReadMarkIsStored()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        var proposal = fixture.SaveProposal();
+
+        Assert.True(Assert.Single(Read(fixture).Proposals).IsUnread);
+        SIL.Motif.Commands.Review.ReviewMarks.Put(fixture.Database, proposal.Id.Value,
+            ReviewMarkKeys.ProposalRead, "sha256:read", "none");
+
+        Assert.False(Assert.Single(Read(fixture).Proposals).IsUnread);
+    }
+
+    [Fact]
     public void EachCardCarriesTheStandingTheSharedRuleGivesItsTrial()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root);

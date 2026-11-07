@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
@@ -66,6 +67,8 @@ public static class ProposalStandingsCommand
         var changedWords = candidates.ToDictionary(candidate => candidate.Record.ProposalId.Value,
             candidate => ChangedWordsOf(candidate), StringComparer.Ordinal);
         var commentCounts = new ProposalDiscussionRepository(database).CommentCounts();
+        var firstFinalized = ReadFirstFinalized(database);
+        var readProposals = ReadSeenProposals(database);
         var cards = new List<ProposalCard>();
         foreach (var candidate in candidates)
         {
@@ -91,6 +94,11 @@ public static class ProposalStandingsCommand
                     RationaleNew = candidate.Record.Rationale is not null && !ProposalCommands.RationaleLookedAt(
                         database, ProposalRecordMapping.ToManifest(candidate.Record)),
                     HasNote = commentCounts.ContainsKey(id),
+                    IsUnread = !candidate.IsPendingDraft && !readProposals.Contains(id),
+                    Builder = Metadata(candidate.Proposal, "builtBy"),
+                    Model = Metadata(candidate.Proposal, "model"),
+                    Question = Metadata(candidate.Proposal, "question"),
+                    FirstFinalizedUtc = firstFinalized.GetValueOrDefault(id),
                 });
         }
 
@@ -98,6 +106,36 @@ public static class ProposalStandingsCommand
         return CommandOutcome<ProposalStandings>.Success(new ProposalStandings(
             cards.OrderBy(card => card.Group).ThenBy(card => card.Label, StringComparer.CurrentCultureIgnoreCase)
                 .ToArray(), setAside) { Unreadable = unreadable });
+    }
+
+    private static string? Metadata(ContractProposal proposal, string name) =>
+        proposal.Extensions is { ValueKind: JsonValueKind.Object } extension &&
+        extension.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() : null;
+
+    private static HashSet<string> ReadSeenProposals(MotifDatabase database)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT ProposalId FROM ReviewMarks WHERE EntryKey = $key;";
+        command.Parameters.AddWithValue("$key", ReviewMarkKeys.ProposalRead);
+        using var reader = command.ExecuteReader();
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        while (reader.Read()) ids.Add(reader.GetString(0));
+        return ids;
+    }
+
+    private static IReadOnlyDictionary<string, DateTimeOffset?> ReadFirstFinalized(MotifDatabase database)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT ProposalId, MIN(CreatedUtc) FROM ProposalRevisions GROUP BY ProposalId;";
+        using var reader = command.ExecuteReader();
+        var dates = new Dictionary<string, DateTimeOffset?>(StringComparer.Ordinal);
+        while (reader.Read())
+            dates[reader.GetString(0)] = DateTimeOffset.TryParse(reader.GetString(1), CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind, out var date) ? date : null;
+        return dates;
     }
 
     private static string ReasonOf(Exception exception)

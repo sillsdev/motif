@@ -86,6 +86,21 @@ public sealed record ProposalCard(
 
     /// <summary>Whether the person left a note.</summary>
     public bool HasNote { get; init; }
+
+    /// <summary>Whether the Proposal has not yet been viewed on the Proposals page.</summary>
+    public bool IsUnread { get; init; }
+
+    /// <summary>The builder recorded in the Proposal's non-semantic metadata, if supplied.</summary>
+    public string? Builder { get; init; }
+
+    /// <summary>The model recorded in the Proposal's non-semantic metadata, if supplied.</summary>
+    public string? Model { get; init; }
+
+    /// <summary>The question recorded in the Proposal's non-semantic metadata, if supplied.</summary>
+    public string? Question { get; init; }
+
+    /// <summary>The earliest recorded revision time, if the Proposal has been finalized.</summary>
+    public DateTimeOffset? FirstFinalizedUtc { get; init; }
 }
 
 /// <summary>A stored Proposal or Draft whose content cannot be read, so it has no card.</summary>
