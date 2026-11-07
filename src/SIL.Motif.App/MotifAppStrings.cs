@@ -774,6 +774,102 @@ public static class MotifAppStrings
     /// <summary>The row action that enters the selected Proposal's lens.</summary>
     public static string ViewWithThisProposal => Text("MotifApp.ViewWithThisProposal");
 
+    /// <summary>The heading for a Proposal's explanation.</summary>
+    public static string ProposalRationale => Text("MotifApp.ProposalRationale");
+
+    /// <summary>The heading for a Proposal's operations.</summary>
+    public static string ProposalWhatItChanges => Text("MotifApp.ProposalWhatItChanges");
+
+    /// <summary>Warns that a Proposal's Rationale describes older content.</summary>
+    public static string ProposalRationaleOutOfDate => Text("MotifApp.ProposalRationaleOutOfDate");
+
+    /// <summary>Says an operation's affected word count is unavailable.</summary>
+    public static string ProposalWordCountUnavailable => Text("MotifApp.ProposalWordCountUnavailable");
+
+    /// <summary>Formats an operation description and its word count.</summary>
+    public static string ProposalOperationSentenceFormat => Text("MotifApp.ProposalOperationSentenceFormat");
+
+    /// <summary>The heading for optional Proposal checks.</summary>
+    public static string ProposalOptionalChecks => Text("MotifApp.ProposalOptionalChecks");
+
+    /// <summary>Opens the confirmation for declining a Proposal.</summary>
+    public static string DeclineProposalPrompt => Text("MotifApp.DeclineProposalPrompt");
+
+    /// <summary>Leaves a Proposal for a later decision.</summary>
+    public static string DecideLater => Text("MotifApp.DecideLater");
+
+    /// <summary>Labels an optional reason for declining.</summary>
+    public static string ProposalDeclineReason => Text("MotifApp.ProposalDeclineReason");
+
+    /// <summary>Confirms that a Proposal was declined.</summary>
+    public static string ProposalDeclinedNotice => Text("MotifApp.ProposalDeclinedNotice");
+
+    /// <summary>Names the stages of Proposal review.</summary>
+    public static string ProposalStatusStrip => Text("MotifApp.ProposalStatusStrip");
+
+    /// <summary>Formats the Trial's approved readings kept and lost.</summary>
+    public static string ProposalVerdictFormat => Text("MotifApp.ProposalVerdictFormat");
+
+    /// <summary>Says no approved readings were lost.</summary>
+    public static string ProposalLosesNone => Text("MotifApp.ProposalLosesNone");
+
+    /// <summary>Names the person as the builder of their own pending changes.</summary>
+    public static string ProposalBuilderYou => Text("MotifApp.ProposalBuilderYou");
+
+    /// <summary>Used when a Proposal's builder was not recorded.</summary>
+    public static string ProposalBuilderUnknown => Text("MotifApp.ProposalBuilderUnknown");
+
+    /// <summary>Formats the builder in a Proposal header.</summary>
+    public static string ProposalBuiltByFormat => Text("MotifApp.ProposalBuiltByFormat");
+
+    /// <summary>Used when a Proposal's age is unknown.</summary>
+    public static string ProposalAgeUnknown => Text("MotifApp.ProposalAgeUnknown");
+
+    /// <summary>Used for a Proposal finalized today.</summary>
+    public static string ProposalAgeToday => Text("MotifApp.ProposalAgeToday");
+
+    /// <summary>Plural pattern for days since a Proposal was finalized.</summary>
+    public static string ProposalAgeDaysPattern => Text("MotifApp.ProposalAgeDaysPattern");
+
+    /// <summary>Formats the date of a Proposal's earliest finalized revision.</summary>
+    public static string ProposalFinalizedFormat => Text("MotifApp.ProposalFinalizedFormat");
+
+    /// <summary>Formats the facts on a Proposal row.</summary>
+    public static string ProposalDecisionFactsFormat => Text("MotifApp.ProposalDecisionFactsFormat");
+
+    /// <summary>Shown when no model was recorded for a Proposal.</summary>
+    public static string ProposalModelUnknown => Text("MotifApp.ProposalModelUnknown");
+
+    /// <summary>Formats a Proposal's recorded model.</summary>
+    public static string ProposalModelFormat => Text("MotifApp.ProposalModelFormat");
+
+    /// <summary>Shown when no question was recorded for a Proposal.</summary>
+    public static string ProposalQuestionUnknown => Text("MotifApp.ProposalQuestionUnknown");
+
+    /// <summary>Formats a Proposal's recorded question.</summary>
+    public static string ProposalQuestionFormat => Text("MotifApp.ProposalQuestionFormat");
+
+    /// <summary>The state of a missing Rationale.</summary>
+    public static string ProposalRationaleMissing => Text("MotifApp.ProposalRationaleMissing");
+
+    /// <summary>The state of a Rationale not yet read.</summary>
+    public static string ProposalUnread => Text("MotifApp.ProposalUnread");
+
+    /// <summary>The state of a Rationale already read.</summary>
+    public static string ProposalReadState => Text("MotifApp.ProposalReadState");
+
+    /// <summary>Says a Proposal was applied.</summary>
+    public static string ProposalApplied => Text("MotifApp.ProposalApplied");
+
+    /// <summary>Says a Proposal was not applied.</summary>
+    public static string ProposalNotApplied => Text("MotifApp.ProposalNotApplied");
+
+    /// <summary>Formats how many review entries were looked at.</summary>
+    public static string ProposalReviewProgressFormat => Text("MotifApp.ProposalReviewProgressFormat");
+
+    /// <summary>Formats the current states shown below the Proposal workflow stages.</summary>
+    public static string ProposalStageStatesFormat => Text("MotifApp.ProposalStageStatesFormat");
+
     public static string Reopen => Text("MotifApp.Reopen");
 
     public static string Delete => Text("MotifApp.Delete");

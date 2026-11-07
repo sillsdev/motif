@@ -243,7 +243,7 @@ public sealed class ProposalsWorkspacePaneTests
             {
                 Card("p/pending", "Your changes", ProposalGroup.NotAppliedYet, pending: true),
                 Card("p/ready", "Nasal assimilation before /p/", ProposalGroup.WaitingForYou),
-                Card("p/stale", "Reduplicated forms", ProposalGroup.NeedsAnotherTry),
+                Card("p/stale", "Reduplicated forms", ProposalGroup.NeedsAnotherTry) with { IsUnread = true },
                 Card("p/new", "Try meN- before vowels", ProposalGroup.NotTried),
                 Card("p/closed", "Old nasal rule", ProposalGroup.SetAside) with { Status = "withdrawn" },
             };
@@ -322,6 +322,7 @@ public sealed class ProposalsWorkspacePaneTests
                 var staleLabel = Assert.Single(proposalCell.Children.OfType<TextBlock>(), text =>
                     text.Classes.Contains("denseTableItem"));
                 Assert.Equal(staleCard.Label, ToolTip.GetTip(staleLabel));
+                Assert.Equal(Avalonia.Media.FontWeight.Bold, staleLabel.FontWeight);
                 var tableWidthHost = page.FindControl<Grid>("ProposalsTableHost")!;
                 Assert.True(DenseTable.GetIsWidthHost(tableWidthHost));
                 Assert.Equal(DenseTable.GetColumns(headerGrid), DenseTable.GetColumns(rowGrid));
@@ -342,6 +343,12 @@ public sealed class ProposalsWorkspacePaneTests
                 Assert.True(staleTryAgain.IsEffectivelyVisible);
                 Assert.True(staleMenu.IsEffectivelyVisible);
                 Assert.Equal(staleCard.ActionsAutomationId, AutomationProperties.GetAutomationId(staleMenu));
+                standalone.Width = 1000;
+                PageScreenshots.Settle(standalone);
+                Assert.False(staleOpen.IsEffectivelyVisible);
+                Assert.True(staleMenu.IsEffectivelyVisible);
+                standalone.Width = 2400;
+                PageScreenshots.Settle(standalone);
                 RaiseLeftPointerPress(staleTryAgain, standalone);
                 Assert.Same(initiallySelected, model.SelectedProposal);
 
@@ -356,6 +363,8 @@ public sealed class ProposalsWorkspacePaneTests
                 Assert.Contains(standaloneHost.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetAutomationId(button) == staleCard.InspectorOpenAutomationId &&
                     Equals(button.Content, MotifAppStrings.OpenInReviewChanges));
+                Assert.Contains(standaloneHost.GetVisualDescendants().OfType<Button>(), button =>
+                    button.IsEffectivelyVisible && Equals(button.Content, MotifAppStrings.OpenInReviewChanges));
 
                 var staleFlyout = Assert.IsType<Flyout>(staleMenu.Flyout);
                 staleFlyout.ShowAt(staleMenu);

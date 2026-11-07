@@ -95,13 +95,17 @@ internal static class ProposalNumberText
 public sealed class ProposalCardViewModel : ObservableObject
 {
     private bool _isSelected;
+    private bool _isUnread;
+    private readonly TimeProvider _clock;
 
     public ProposalCardViewModel(ProposalCard card, IReadOnlyDictionary<string, string>? labels = null,
         TrialStanding? standing = null, WindowRefusal? refusal = null, string? baselineNotice = null,
-        string? workNotice = null)
+        string? workNotice = null, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(card);
+        _clock = clock ?? TimeProvider.System;
         Card = card;
+        _isUnread = card.IsUnread;
         Standing = standing ?? card.Standing;
         ShownRefusal = refusal;
         BaselineNotice = baselineNotice;
@@ -158,6 +162,15 @@ public sealed class ProposalCardViewModel : ObservableObject
 
     public string Label => Card.Label;
 
+    /// <summary>Whether this Proposal has not been viewed on the Proposals page.</summary>
+    public bool IsUnread
+    {
+        get => _isUnread;
+        private set => SetProperty(ref _isUnread, value);
+    }
+
+    internal void MarkRead() => IsUnread = false;
+
     /// <summary>The automation id of this row.</summary>
     public string RowAutomationId => AutomationIds.ForProposalRow(Card.ProposalId);
 
@@ -193,6 +206,12 @@ public sealed class ProposalCardViewModel : ObservableObject
 
     /// <summary>Whether the card offers Reopen: a declined or withdrawn Proposal opens again as a Draft.</summary>
     public bool CanReopen => !Card.IsDraft && Card.Status is "rejected" or "withdrawn";
+
+    /// <summary>Whether this open Proposal can be declined.</summary>
+    public bool CanDecide => !Card.IsPendingDraft && (Card.IsDraft || Card.Status is "proposed" or "deferred");
+
+    /// <summary>Whether a Ready Proposal can be left for a later decision.</summary>
+    public bool CanDecideLater => !Card.IsPendingDraft && !Card.IsDraft && Card.Status == "proposed";
 
     /// <summary>
     /// The Proposal's status in the window's words: Draft, Ready, Deferred, Applied, Declined, Superseded or
@@ -303,6 +322,13 @@ public sealed class ProposalCardViewModel : ObservableObject
 
     public bool HasStatus => StatusText.Length > 0;
 
+    /// <summary>The latest Trial's verdict, or its standing when no comparable result exists.</summary>
+    public string VerdictText => Card.Trial is { ApprovedKept.HasAfter: true, ApprovedTotal.HasBefore: true } trial
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalVerdictFormat,
+            trial.ApprovedKept.After, trial.ApprovedTotal.Before,
+            trial.LostApproved == 0 ? MotifAppStrings.ProposalLosesNone : trial.LostApproved.ToString(CultureInfo.CurrentCulture))
+        : Words.Sentence;
+
     /// <summary>Whether this Proposal supplies the details currently shown beside the list.</summary>
     public bool IsSelected
     {
@@ -317,7 +343,49 @@ public sealed class ProposalCardViewModel : ObservableObject
     public string AccessibleRowName => IsSelected ? $"{Label}, selected" : Label;
 
     /// <summary>The person shown as the author of this row.</summary>
-    public string AuthorText => Card.IsPendingDraft ? "You" : "An assistant";
+    public string AuthorText => Card.IsPendingDraft ? MotifAppStrings.ProposalBuilderYou :
+        string.IsNullOrWhiteSpace(Card.Builder) ? MotifAppStrings.ProposalBuilderUnknown : Card.Builder;
+
+    /// <summary>Labels the recorded builder in the Proposal header.</summary>
+    public string BuiltByText => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalBuiltByFormat, AuthorText);
+
+    /// <summary>The time since the earliest available finalized revision.</summary>
+    public string AgeText
+    {
+        get
+        {
+            if (Card.FirstFinalizedUtc is not { } created) return MotifAppStrings.ProposalAgeUnknown;
+            var days = Math.Max(0, (int)(_clock.GetUtcNow() - created).TotalDays);
+            return days == 0 ? MotifAppStrings.ProposalAgeToday :
+                PluralText.Format(MotifAppStrings.ProposalAgeDaysPattern, days);
+        }
+    }
+
+    /// <summary>The decision facts shown in a Proposal row.</summary>
+    public string DecisionFacts => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalDecisionFactsFormat,
+        AuthorText, ChangeCountText, VerdictText, AgeText);
+
+    /// <summary>The earliest finalized revision date, when one exists.</summary>
+    public string FinalizedText => Card.FirstFinalizedUtc is { } created
+        ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalFinalizedFormat,
+            WindowTimeText.FormatWithDate(created, _clock))
+        : MotifAppStrings.ProposalAgeUnknown;
+
+    /// <summary>The model the builder recorded, or a clear absence.</summary>
+    public string ModelText => string.IsNullOrWhiteSpace(Card.Model) ? MotifAppStrings.ProposalModelUnknown :
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalModelFormat, Card.Model);
+
+    /// <summary>The question the builder recorded, or a clear absence.</summary>
+    public string QuestionText => string.IsNullOrWhiteSpace(Card.Question) ? MotifAppStrings.ProposalQuestionUnknown :
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalQuestionFormat, Card.Question);
+
+    /// <summary>The saved reading state of the Rationale.</summary>
+    public string RationaleStatus => !Card.HasRationale ? MotifAppStrings.ProposalRationaleMissing :
+        Card.RationaleNew ? MotifAppStrings.ProposalUnread : MotifAppStrings.ProposalReadState;
+
+    /// <summary>Whether the Proposal has been applied, without predicting Apply readiness.</summary>
+    public string AppliedStatus => Card.Status == "applied" ? MotifAppStrings.ProposalApplied :
+        MotifAppStrings.ProposalNotApplied;
 
     /// <summary>The status shown beside the Proposal details.</summary>
     public string DetailsStatusText => Card.IsPendingDraft ? "Not applied yet" : StatusWord;
@@ -431,6 +499,10 @@ public sealed partial class ProposalsPageModel : PageModel
         AskToDeleteCommand = new RelayCommand<ProposalCardViewModel>(AskToDelete);
         KeepProposalCommand = new RelayCommand(() => SetDeleteQuestion(null));
         ReopenCommand = new AsyncRelayCommand<ProposalCardViewModel>(ReopenAsync);
+        AskToDeclineCommand = new RelayCommand<ProposalCardViewModel>(AskToDecline);
+        CancelDeclineCommand = new RelayCommand(CancelDecline);
+        DeclineCommand = new AsyncRelayCommand<ProposalCardViewModel>(DeclineAsync);
+        DecideLaterCommand = new AsyncRelayCommand<ProposalCardViewModel>(DecideLaterAsync);
         SelectGroupFilterCommand = new AsyncRelayCommand<ProposalListFilter>(SelectGroupFilterAsync);
         SelectProposalCommand = new RelayCommand<ProposalCardViewModel>(SelectProposal);
         Difference = new ProposalDifferenceViewModel(
@@ -452,6 +524,11 @@ public sealed partial class ProposalsPageModel : PageModel
         Context.Selection.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(SelectionViewModel.TextCount)) Difference.RefreshTexts();
+        };
+        Context.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) && Context.CurrentPage == WorkspacePage.Proposals)
+                MarkSelectedRead();
         };
         Context.TrialRun.PropertyChanged += (_, e) =>
         {
@@ -788,7 +865,7 @@ public sealed partial class ProposalsPageModel : PageModel
         return new ProposalCardViewModel(card, labels, standing, run.IsRunning ? null : run.ShownRefusal,
             run.IsRunning ? null : run.BaselineNotice,
             run.IsRunning ? null : run.JobId is not null && run.JobId == card.Trial?.JobId
-                ? run.WorkNotice : TrialWorkNotice.For(card.Trial?.Work));
+                ? run.WorkNotice : TrialWorkNotice.For(card.Trial?.Work), Context.Clock);
     }
 
     private async Task SelectGroupFilterAsync(ProposalListFilter filter)
@@ -847,6 +924,8 @@ public sealed partial class ProposalsPageModel : PageModel
     partial void OnSelectedProposalChanged(ProposalCardViewModel? value)
     {
         value?.SetSelected(true);
+        if (value?.ProposalId != _declineProposalId) CancelDecline();
+        ReadDetail(value);
         if (value?.ProposalId != _deleteQuestionId) SetDeleteQuestion(null);
         else OnPropertyChanged(nameof(IsConfirmingDelete));
         OnPropertyChanged(nameof(DeleteQuestion));

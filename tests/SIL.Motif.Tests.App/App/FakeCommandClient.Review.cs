@@ -7,6 +7,24 @@ namespace SIL.Motif.Tests.App;
 
 public sealed partial class FakeCommandClient
 {
+    public ProposalDetailProjection? ProposalDetail { get; set; }
+    public Func<ShowProposalRequest, CancellationToken, Task<CommandOutcome<ProposalDetailProjection>>>?
+        ShowProposalHandler { get; set; }
+
+    public Task<CommandOutcome<ProposalDetailProjection>> ShowProposalAsync(
+        ShowProposalRequest request, CancellationToken cancellationToken) =>
+        ShowProposalHandler?.Invoke(request, cancellationToken) ??
+        Completed(ProposalDetail ?? new ProposalDetailProjection(request.ProposalId, "proposed", null, null, null, []));
+
+    public List<DeferRequest> DeferProposalRequests { get; } = [];
+
+    public Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(
+        DeferRequest request, CancellationToken cancellationToken)
+    {
+        DeferProposalRequests.Add(request);
+        return Completed(new ProposalStatusChangedResponse(request.ProposalId, "deferred", null));
+    }
+
     public List<ProposalReviewRequest> ProposalReviewRequests { get; } = [];
     public List<ProposalReviewRequest> ProposalReviewEntryCountRequests { get; } = [];
     public List<ReviewMarkRequest> ReviewMarkRequests { get; } = [];

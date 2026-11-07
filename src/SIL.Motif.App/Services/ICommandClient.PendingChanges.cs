@@ -7,6 +7,14 @@ namespace SIL.Motif.App.Services;
 
 public partial interface ICommandClient
 {
+    /// <summary>Reads a Proposal's Rationale and operations.</summary>
+    Task<CommandOutcome<ProposalDetailProjection>> ShowProposalAsync(
+        ShowProposalRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Moves a Proposal to Deferred.</summary>
+    Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(
+        DeferRequest request, CancellationToken cancellationToken);
+
     Task<CommandOutcome<MeasurePendingResult>> MeasurePendingAsync(
         MeasurePendingRequest request, IProgress<MeasureProgress> progress, CancellationToken cancellationToken);
     Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(

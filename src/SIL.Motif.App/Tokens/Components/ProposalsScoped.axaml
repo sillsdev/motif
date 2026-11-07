@@ -29,6 +29,9 @@
   <Style Selector=":is(TextBlock).proposalNumber.moved">
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
+  <Style Selector=":is(TextBlock).denseTableCell.unread">
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
 
   <Style Selector="Image.proposalPicture">
     <Setter Property="MaxWidth" Value="{DynamicResource Component.Proposals.PictureThumbSize}" />

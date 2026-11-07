@@ -5,6 +5,7 @@
 
   <Styles.Resources>
     <StaticResource x:Key="Component.Proposals.ActionsWidth" ResourceKey="Primitive.Size.320" />
+    <StaticResource x:Key="Component.Proposals.DetailHeight" ResourceKey="Primitive.Size.240" />
     <StaticResource x:Key="Component.Proposals.PageMargin" ResourceKey="Intent.Inset.Page" />
     <StaticResource x:Key="Component.Proposals.DeleteSetApart" ResourceKey="Primitive.Inset.8_0_0_0" />
     <StaticResource x:Key="Component.Proposals.PictureThumbSize" ResourceKey="Primitive.Size.110" />

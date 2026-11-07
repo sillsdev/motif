@@ -10,6 +10,14 @@ namespace SIL.Motif.App.Services;
 
 public sealed partial class CommandClient
 {
+    public Task<CommandOutcome<ProposalDetailProjection>> ShowProposalAsync(
+        ShowProposalRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalCommands.Show(request), cancellationToken);
+
+    public Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(
+        DeferRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalCommands.Defer(request), cancellationToken);
+
     public Task<CommandOutcome<ApplyPendingResult>> ApplyPendingAsync(
         ApplyPendingRequest request, CancellationToken cancellationToken) =>
         // An already-cancelled token never starts the workflow.

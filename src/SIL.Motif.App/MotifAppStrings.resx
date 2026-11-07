@@ -1248,6 +1248,38 @@
     <value>What It Would Do to the Numbers</value>
     <comment>Section heading above how the Proposal would change the project numbers.</comment>
   </data>
+  <data name="MotifApp.DeclineProposalPrompt" xml:space="preserve"><value>Decline...</value><comment>Opens a confirmation before declining a Proposal.</comment></data>
+  <data name="MotifApp.DecideLater" xml:space="preserve"><value>Decide Later</value><comment>Defers a Proposal while keeping it open.</comment></data>
+  <data name="MotifApp.ProposalDeclineReason" xml:space="preserve"><value>Say why (optional)</value><comment>Label for an optional Comment saved before a Proposal is declined.</comment></data>
+  <data name="MotifApp.ProposalDeclinedNotice" xml:space="preserve"><value>Declined.</value><comment>Temporary confirmation that a Proposal was declined.</comment></data>
+  <data name="MotifApp.ProposalStatusStrip" xml:space="preserve"><value>Read why · Trial · Parsimony · Review · Apply</value><comment>Stages of the Proposal review workflow. Trial and Parsimony are Motif terms.</comment></data>
+  <data name="MotifApp.ProposalVerdictFormat" xml:space="preserve"><value>Keeps {0} of {1} approved, loses {2}.</value><comment>Trial verdict. {0} is the number kept, {1} the approved total, and {2} the number lost.</comment></data>
+  <data name="MotifApp.ProposalLosesNone" xml:space="preserve"><value>none</value><comment>Used for zero approved readings lost in a Proposal verdict.</comment></data>
+  <data name="MotifApp.ProposalBuilderYou" xml:space="preserve"><value>You</value><comment>Builder of the person's own pending changes.</comment></data>
+  <data name="MotifApp.ProposalBuilderUnknown" xml:space="preserve"><value>Unknown</value><comment>A Proposal did not record its builder.</comment></data>
+  <data name="MotifApp.ProposalBuiltByFormat" xml:space="preserve"><value>Built by: {0}</value><comment>{0} is the Proposal's builder, or Unknown when not recorded.</comment></data>
+  <data name="MotifApp.ProposalAgeUnknown" xml:space="preserve"><value>Age unknown</value><comment>No finalized revision date is recorded for this Proposal.</comment></data>
+  <data name="MotifApp.ProposalAgeToday" xml:space="preserve"><value>Finalized today</value><comment>Age of a Proposal finalized less than a day ago.</comment></data>
+  <data name="MotifApp.ProposalAgeDaysPattern" xml:space="preserve"><value>{0, plural, one {Finalized # day ago} other {Finalized # days ago}}</value><comment>Plural pattern for days since the earliest finalized revision.</comment></data>
+  <data name="MotifApp.ProposalFinalizedFormat" xml:space="preserve"><value>Finalized: {0}</value><comment>{0} is the date and time of the earliest finalized revision.</comment></data>
+  <data name="MotifApp.ProposalDecisionFactsFormat" xml:space="preserve"><value>{0} · {1} · {2} · {3}</value><comment>Proposal row facts: {0} builder, {1} change count, {2} Trial verdict, {3} age.</comment></data>
+  <data name="MotifApp.ProposalModelUnknown" xml:space="preserve"><value>Model not recorded</value><comment>Shown when the Proposal does not name the model used by its builder.</comment></data>
+  <data name="MotifApp.ProposalModelFormat" xml:space="preserve"><value>Model: {0}</value><comment>{0} is the model recorded by the Proposal's builder.</comment></data>
+  <data name="MotifApp.ProposalQuestionUnknown" xml:space="preserve"><value>Question not recorded</value><comment>Shown when the Proposal does not record a question.</comment></data>
+  <data name="MotifApp.ProposalQuestionFormat" xml:space="preserve"><value>Question: {0}</value><comment>{0} is the question recorded by the Proposal's builder.</comment></data>
+  <data name="MotifApp.ProposalRationaleMissing" xml:space="preserve"><value>Not written</value><comment>State of a Proposal with no Rationale.</comment></data>
+  <data name="MotifApp.ProposalUnread" xml:space="preserve"><value>Unread</value><comment>State of a Rationale not yet read.</comment></data>
+  <data name="MotifApp.ProposalReadState" xml:space="preserve"><value>Read</value><comment>State of a Rationale already read.</comment></data>
+  <data name="MotifApp.ProposalApplied" xml:space="preserve"><value>Applied</value><comment>State of a Proposal already applied.</comment></data>
+  <data name="MotifApp.ProposalNotApplied" xml:space="preserve"><value>Not applied</value><comment>State of a Proposal not yet applied.</comment></data>
+  <data name="MotifApp.ProposalReviewProgressFormat" xml:space="preserve"><value>{0} of {1} looked at</value><comment>{0} review entries looked at; {1} total entries.</comment></data>
+  <data name="MotifApp.ProposalStageStatesFormat" xml:space="preserve"><value>{0} · {1} · {2} · {3} · {4}</value><comment>States of the Rationale, Trial, Parsimony, review and Apply stages, respectively.</comment></data>
+  <data name="MotifApp.ProposalRationale" xml:space="preserve"><value>Rationale</value><comment>Heading for the builder's explanation of a Proposal.</comment></data>
+  <data name="MotifApp.ProposalWhatItChanges" xml:space="preserve"><value>What It Changes</value><comment>Heading for a Proposal's operation descriptions.</comment></data>
+  <data name="MotifApp.ProposalRationaleOutOfDate" xml:space="preserve"><value>Out of date</value><comment>Marker on a Rationale written for older Proposal content.</comment></data>
+  <data name="MotifApp.ProposalWordCountUnavailable" xml:space="preserve"><value>word count not available</value><comment>Shown when an operation's affected words were not recorded.</comment></data>
+  <data name="MotifApp.ProposalOperationSentenceFormat" xml:space="preserve"><value>{0} ({1}).</value><comment>One operation and its affected word count. {0} is its description; {1} is the count or an unavailable message.</comment></data>
+  <data name="MotifApp.ProposalOptionalChecks" xml:space="preserve"><value>More checks (optional)</value><comment>Heading for optional Proposal checks.</comment></data>
   <data name="MotifApp.ViewWithThisProposal" xml:space="preserve">
     <value>View with This Proposal</value>
     <comment>Action on a Proposal row to enter the Proposal lens.</comment>
