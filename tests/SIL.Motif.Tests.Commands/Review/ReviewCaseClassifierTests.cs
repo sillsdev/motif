@@ -111,6 +111,15 @@ public sealed class ReviewCaseClassifierTests
         Assert.Contains(ReviewFlagId.ConfirmedReadingsLost, delta.Flags);
     }
 
+    [Fact]
+    public void ReadingChangeRequiresCompleteComparableIdentities()
+    {
+        Assert.False(ReviewCaseClassifier.Compare(Facts([Form1, Form2], [Form2, Form1], [])).Changed);
+        Assert.True(ReviewCaseClassifier.Compare(Facts([Form1], [Form2], [])).Changed);
+        var incomplete = Facts([Form1], [], []) with { After = Evidence([], true) };
+        Assert.Null(ReviewCaseClassifier.Compare(incomplete).Changed);
+    }
+
     private static ReviewCaseFacts Facts(string[] before, string[] after, ReviewAssertion[] assertions) =>
         new("case", "word", "word", "ws", Evidence(before), Evidence(after), assertions,
             assertions.Where(a => !a.Approved && !a.WholeWordNegative && a.Eligible)

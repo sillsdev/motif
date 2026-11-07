@@ -10,13 +10,24 @@ namespace SIL.Motif.Worker.Store;
 
 /// <summary>The frozen manifest, summary and estimated index cost for one report publication.</summary>
 public sealed record ReviewReportPublication(string ProjectKey, string ProposalId, string TrialJobId,
-    string ManifestDigest, ReportView Summary, IReadOnlyList<string> InputReferences, long EstimatedDetailBytes);
+    string ManifestDigest, ReportView Summary, IReadOnlyList<string> InputReferences, long EstimatedDetailBytes)
+{
+    /// <summary>Sections whose complete rows the producer captured, including explicitly empty sections.</summary>
+    public IReadOnlyList<string> AvailableSections { get; init; } = [];
+
+    /// <summary>Rows from retained report evidence in their deterministic section order.</summary>
+    public IAsyncEnumerable<ReviewSectionItem>? SectionItems { get; init; }
+}
+
+/// <summary>One retained section row and the scalar selectors used to find it.</summary>
+public sealed record ReviewSectionItem(string Section, ReviewRow Row, string? Set = null, string? Outcome = null,
+    IReadOnlyList<ReviewFlagId>? Flags = null, bool Changed = false, bool Incomplete = false);
 
 /// <summary>The stored summary and retained input references for a report.</summary>
 public sealed record StoredReviewReport(ReportView Summary, bool DetailAvailable, IReadOnlyList<string> InputReferences);
 
 /// <summary>Publishes immutable review summaries and complete detail indexes in one transaction.</summary>
-public sealed class ReviewReportRepository(MotifDatabase database)
+public sealed partial class ReviewReportRepository(MotifDatabase database)
 {
     private const long Budget = 100_000_000;
     private readonly MotifDatabase _database = database ?? throw new ArgumentNullException(nameof(database));
@@ -42,58 +53,151 @@ public sealed class ReviewReportRepository(MotifDatabase database)
             status = proposal.ExecuteScalar() as string ?? throw new InvalidOperationException("Proposal does not exist.");
         var released = !ProposalDifferenceRetention.KeepsWordDetail(status);
         var reportId = new ReviewReportId("review-report/" + Guid.NewGuid().ToString("N"));
-        var available = !released && publication.EstimatedDetailBytes <= Budget - Math.Min(Budget, AssessmentRetention.BytesInUse(connection, transaction));
-        var summary = publication.Summary with { ReportId = reportId.Value, ReportDigest = publication.ManifestDigest };
-        var summaryJson = JsonSerializer.Serialize(summary, ReviewJson.Options);
-        Execute(connection, transaction, "INSERT INTO ReviewReports (ReportId,ProjectKey,ProposalId,TrialJobId,ManifestDigest,SummaryJson,SummaryDigest,InputReferencesJson,DetailAvailable,DetailBytes,CreatedUtc) VALUES ($id,$project,$proposal,$job,$manifest,$summary,$hash,$refs,$available,0,$created);",
-            ("$id", reportId.Value), ("$project", publication.ProjectKey), ("$proposal", publication.ProposalId),
-            ("$job", publication.TrialJobId), ("$manifest", publication.ManifestDigest), ("$summary", summaryJson),
-            ("$hash", Hash(summaryJson)), ("$refs", JsonSerializer.Serialize(released ? [] : publication.InputReferences)),
-            ("$available", available ? 1 : 0), ("$created", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)));
-        long detailBytes = 0;
-        if (available)
+        var committed = false;
+        try
         {
-            await foreach (var item in cases.WithCancellation(cancellationToken))
+            var remaining = Budget - Math.Min(Budget, AssessmentRetention.BytesInUse(connection, transaction));
+            var available = !released && publication.EstimatedDetailBytes <= remaining;
+            var summary = publication.Summary with { ReportId = reportId.Value, ReportDigest = publication.ManifestDigest };
+            var summaryJson = JsonSerializer.Serialize(summary, ReviewJson.Options);
+            Execute(connection, transaction, "INSERT INTO ReviewReports (ReportId,ProjectKey,ProposalId,TrialJobId,ManifestDigest,SummaryJson,SummaryDigest,InputReferencesJson,DetailAvailable,DetailBytes,CreatedUtc) VALUES ($id,$project,$proposal,$job,$manifest,$summary,$hash,$refs,$available,0,$created);",
+                ("$id", reportId.Value), ("$project", publication.ProjectKey), ("$proposal", publication.ProposalId),
+                ("$job", publication.TrialJobId), ("$manifest", publication.ManifestDigest), ("$summary", summaryJson),
+                ("$hash", Hash(summaryJson)), ("$refs", JsonSerializer.Serialize(released ? [] : publication.InputReferences)),
+                ("$available", available ? 1 : 0), ("$created", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)));
+            long detailBytes = 0;
+            if (available)
             {
-                var facts = JsonSerializer.Serialize(new { item.NewNoParse, item.NewApprovedLoss, item.NewlyAcceptedNegative,
-                    item.Flags, item.Limitations, item.Before, item.After }, ReviewJson.Options);
-                var memberships = item.Memberships.Select(m => JsonSerializer.Serialize(m, ReviewJson.Options)).ToArray();
-                var events = item.ReadingLosses.Select(e => JsonSerializer.Serialize(e, ReviewJson.Options)).ToArray();
-                detailBytes = checked(detailBytes + Cost(item.CaseKey, item.WordKey, item.Word, item.WritingSystemId, facts)
-                    + memberships.Sum(m => Cost(m)) + events.Sum(e => Cost(e)));
-                if (detailBytes > publication.EstimatedDetailBytes ||
-                    detailBytes > Budget - Math.Min(Budget, AssessmentRetention.BytesInUse(connection, transaction)))
+                await foreach (var item in cases.WithCancellation(cancellationToken))
                 {
-                    available = false;
-                    break;
+                    if (item.CaseKey.StartsWith("\u001f", StringComparison.Ordinal))
+                        throw new InvalidDataException("The review case key uses a reserved prefix.");
+                    var referenceIds = item.Memberships.Where(member => member.Role is "reference" or "regression")
+                        .SelectMany(member => member.ExpectationIds).ToHashSet(StringComparer.Ordinal);
+                    var beforeCounts = CountSide(item, item.Before, referenceIds);
+                    var afterCounts = CountSide(item, item.After, referenceIds);
+                    var facts = JsonSerializer.Serialize(new { item.NewNoParse, item.NewApprovedLoss, item.NewlyAcceptedNegative,
+                        item.Flags, item.Limitations, item.Before, item.After, BeforeCounts = beforeCounts, AfterCounts = afterCounts,
+                        ReadingsAvailable = item.Readings is not null,
+                        ExpectationsAvailable = item.AssertionsCaptured || item.Assertions.Count > 0,
+                        SourcesAvailable = item.Sources is not null,
+                        Changed = item.Changed ?? (item.NewNoParse || item.NewApprovedLoss || item.NewlyAcceptedNegative ||
+                            item.ReadingLosses.Count > 0 ? true : null) }, ReviewJson.Options);
+                    detailBytes = checked(detailBytes + Cost(item.CaseKey, item.WordKey, item.Word, item.WritingSystemId, facts));
+                    if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
+                    Execute(connection, transaction, "INSERT INTO ReviewReportCases VALUES ($id,$case,$wordkey,$word,$ws,$wordSort,$wsSort,$facts);",
+                        ("$id", reportId.Value), ("$case", item.CaseKey), ("$wordkey", item.WordKey),
+                        ("$word", item.Word), ("$ws", item.WritingSystemId),
+                        ("$wordSort", Encoding.BigEndianUnicode.GetBytes(item.Word.Normalize(NormalizationForm.FormD))),
+                        ("$wsSort", Encoding.BigEndianUnicode.GetBytes(item.WritingSystemId ?? "")), ("$facts", facts));
+                    var ordinal = 0;
+                    foreach (var membership in item.Memberships)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var json = JsonSerializer.Serialize(membership, ReviewJson.Options);
+                        detailBytes = checked(detailBytes + Cost(json));
+                        if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
+                        Execute(connection, transaction, "INSERT INTO ReviewReportMemberships VALUES ($id,$case,$ordinal,$set,$role,$cell,$variant,$facts);",
+                            ("$id", reportId.Value), ("$case", item.CaseKey), ("$ordinal", ordinal++),
+                            ("$set", membership.SetId), ("$role", membership.Role), ("$cell", membership.CellId),
+                            ("$variant", membership.VariantId), ("$facts", json));
+                    }
+                    if (!available) break;
+                    ordinal = 0;
+                    foreach (var reading in item.ReadingLosses)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var json = JsonSerializer.Serialize(reading, ReviewJson.Options);
+                        detailBytes = checked(detailBytes + Cost(json));
+                        if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
+                        Execute(connection, transaction, "INSERT INTO ReviewReportEvents VALUES ($id,$case,$ordinal,$facts);",
+                            ("$id", reportId.Value), ("$case", item.CaseKey), ("$ordinal", ordinal++), ("$facts", json));
+                    }
+                    if (!available) break;
+                    bool AddArtifact(string kind, ReviewRow row)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var digest = ReviewRowArtifacts.Write(_database, reportId, row);
+                        var id = row switch { ExpectationRow expectation => expectation.Id, SourceRow source => source.Id, _ => null };
+                        var side = row is ReadingRow observed ? observed.Side : (Side?)null;
+                        var json = JsonSerializer.Serialize(new { kind, digest, id, side }, ReviewJson.Options);
+                        detailBytes = checked(detailBytes + Cost(json));
+                        if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) return false;
+                        Execute(connection, transaction, "INSERT INTO ReviewReportEvents VALUES ($id,$case,$ordinal,$facts);",
+                            ("$id", reportId.Value), ("$case", item.CaseKey), ("$ordinal", ordinal++), ("$facts", json));
+                        return true;
+                    }
+                    foreach (var assertion in item.Assertions.Where(assertion => assertion.Eligible))
+                    {
+                        var row = new ExpectationRow(assertion.Id,
+                            assertion.WholeWordNegative ? ExpectationAssertion.WholeWordNegative : ExpectationAssertion.CorrectReading,
+                            assertion.Authority, assertion.ActorId, assertion.RevisionId,
+                            string.IsNullOrEmpty(assertion.ReadingIdentity) ? null : assertion.ReadingIdentity, assertion.SourceRefs,
+                            ExpectationState(assertion, item.Before), ExpectationState(assertion, item.After));
+                        if (!AddArtifact("expectation", row)) { available = false; break; }
+                    }
+                    if (!available) break;
+                    if (item.Sources is not null)
+                        foreach (var source in item.Sources)
+                            if (!AddArtifact("source", source)) { available = false; break; }
+                    if (!available) break;
+                    if (item.Readings is not null)
+                        foreach (var reading in item.Readings)
+                            if (!AddArtifact("reading", reading)) { available = false; break; }
+                    if (!available) break;
                 }
-                Execute(connection, transaction, "INSERT INTO ReviewReportCases VALUES ($id,$case,$wordkey,$word,$ws,$facts);",
-                    ("$id", reportId.Value), ("$case", item.CaseKey), ("$wordkey", item.WordKey),
-                    ("$word", item.Word), ("$ws", item.WritingSystemId), ("$facts", facts));
-                for (var i = 0; i < memberships.Length; i++)
-                    Execute(connection, transaction, "INSERT INTO ReviewReportMemberships VALUES ($id,$case,$ordinal,$set,$role,$facts);",
-                        ("$id", reportId.Value), ("$case", item.CaseKey), ("$ordinal", i),
-                        ("$set", item.Memberships[i].SetId), ("$role", item.Memberships[i].Role), ("$facts", memberships[i]));
-                for (var i = 0; i < events.Length; i++)
-                    Execute(connection, transaction, "INSERT INTO ReviewReportEvents VALUES ($id,$case,$ordinal,$facts);",
-                        ("$id", reportId.Value), ("$case", item.CaseKey), ("$ordinal", i), ("$facts", events[i]));
             }
+            if (available)
+            {
+                var sectionOrdinals = new Dictionary<string, int>(StringComparer.Ordinal);
+                foreach (var section in publication.AvailableSections)
+                {
+                    if (!ReviewReportPages.IsEventSection(section) || !sectionOrdinals.TryAdd(section, 0))
+                        throw new ArgumentException("Unknown or duplicate retained review section.", nameof(publication));
+                    var key = ReviewReportPages.SectionKey(section);
+                    detailBytes = checked(detailBytes + Cost(key));
+                    if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
+                    Execute(connection, transaction, "INSERT INTO ReviewReportEvents VALUES ($id,$case,-1,$facts);",
+                        ("$id", reportId.Value), ("$case", key), ("$facts", "{}"));
+                }
+                if (available && publication.SectionItems is not null)
+                    await foreach (var item in publication.SectionItems.WithCancellation(cancellationToken))
+                    {
+                        if (!sectionOrdinals.TryGetValue(item.Section, out var ordinal) || !ReviewReportPages.IsSectionRow(item.Section, item.Row))
+                            throw new InvalidDataException("A section row does not match its captured section.");
+                        var digest = ReviewRowArtifacts.Write(_database, reportId, item.Row);
+                        var json = JsonSerializer.Serialize(new { kind = "section-row", digest, item.Set, item.Outcome,
+                            Flags = item.Flags ?? [], item.Changed, item.Incomplete }, ReviewJson.Options);
+                        detailBytes = checked(detailBytes + Cost(json));
+                        if (detailBytes > publication.EstimatedDetailBytes || detailBytes > remaining) { available = false; break; }
+                        Execute(connection, transaction, "INSERT INTO ReviewReportEvents VALUES ($id,$case,$ordinal,$facts);",
+                            ("$id", reportId.Value), ("$case", ReviewReportPages.SectionKey(item.Section)),
+                            ("$ordinal", ordinal), ("$facts", json));
+                        sectionOrdinals[item.Section] = checked(ordinal + 1);
+                    }
+            }
+            if (!available)
+            {
+                ReviewReportRetention.DeleteRows(connection, transaction, reportId.Value);
+                summary = summary with { DetailAvailability = DetailAvailability.Unavailable, Page = null, Word = null, Trace = null,
+                    Limitations = summary.Limitations.Concat([new Limitation(released ? "detail-released" : "store-budget", [],
+                        released ? "Report detail was released after the Proposal decision." : "Complete report detail exceeds the store budget.", [])]).ToArray() };
+                summaryJson = JsonSerializer.Serialize(summary, ReviewJson.Options);
+                Execute(connection, transaction, "UPDATE ReviewReports SET SummaryJson=$summary,SummaryDigest=$hash,DetailAvailable=0,DetailBytes=0 WHERE ReportId=$id;",
+                    ("$summary", summaryJson), ("$hash", Hash(summaryJson)), ("$id", reportId.Value));
+            }
+            else Execute(connection, transaction, "UPDATE ReviewReports SET DetailBytes=$bytes WHERE ReportId=$id;",
+                ("$bytes", detailBytes), ("$id", reportId.Value));
+            cancellationToken.ThrowIfCancellationRequested();
+            transaction.Commit();
+            committed = true;
+            if (!available) ReviewRowArtifacts.Delete(_database, reportId.Value);
+            return reportId;
         }
-        if (!available)
+        finally
         {
-            ReviewReportRetention.DeleteRows(connection, transaction, reportId.Value);
-            summary = summary with { DetailAvailability = DetailAvailability.Unavailable, Page = null, Word = null, Trace = null,
-                Limitations = summary.Limitations.Concat([new Limitation(released ? "detail-released" : "store-budget", [],
-                    released ? "Report detail was released after the Proposal decision." : "Complete report detail exceeds the store budget.", [])]).ToArray() };
-            summaryJson = JsonSerializer.Serialize(summary, ReviewJson.Options);
-            Execute(connection, transaction, "UPDATE ReviewReports SET SummaryJson=$summary,SummaryDigest=$hash,DetailAvailable=0,DetailBytes=0 WHERE ReportId=$id;",
-                ("$summary", summaryJson), ("$hash", Hash(summaryJson)), ("$id", reportId.Value));
+            if (!committed) ReviewRowArtifacts.Delete(_database, reportId.Value);
         }
-        else Execute(connection, transaction, "UPDATE ReviewReports SET DetailBytes=$bytes WHERE ReportId=$id;",
-            ("$bytes", detailBytes), ("$id", reportId.Value));
-        cancellationToken.ThrowIfCancellationRequested();
-        transaction.Commit();
-        return reportId;
     }
 
     /// <summary>Reads a frozen summary, rejecting damaged stored summary bytes.</summary>
@@ -109,6 +213,42 @@ public sealed class ReviewReportRepository(MotifDatabase database)
         if (Hash(json) != reader.GetString(1)) throw new InvalidDataException("Review summary digest does not match.");
         return new StoredReviewReport(JsonSerializer.Deserialize<ReportView>(json, ReviewJson.Options)!, reader.GetInt64(2) != 0,
             JsonSerializer.Deserialize<string[]>(reader.GetString(3))!);
+    }
+
+    private sealed record SideTotals(long ApprovedMatched, long ApprovedMissing, long ApprovedUnknown,
+        long ReferenceMatched, long ReferenceMissing, long ReferenceUnknown);
+
+    private static SideTotals? CountSide(ReviewCaseDelta item, ReviewCaseSideFacts side, HashSet<string> referenceIds)
+    {
+        if (!item.AssertionsCaptured && item.Assertions.Count == 0) return null;
+        static (long Matched, long Missing, long Unknown) Count(IEnumerable<ReviewAssertion> assertions, ReviewCaseSideFacts side)
+        {
+            long matched = 0, missing = 0, unknown = 0;
+            foreach (var group in assertions.GroupBy(assertion => string.IsNullOrWhiteSpace(assertion.ReadingIdentity)
+                         ? "assertion:" + assertion.Id : assertion.ReadingIdentity, StringComparer.Ordinal))
+            {
+                if (group.Any(assertion => assertion.Morphology is not null && !string.IsNullOrWhiteSpace(assertion.ReadingIdentity) &&
+                        side.MatchedExpectationIds.Contains(assertion.Id))) matched++;
+                else if (group.All(assertion => assertion.Morphology is not null && !string.IsNullOrWhiteSpace(assertion.ReadingIdentity) &&
+                             side.MissingExpectationIds.Contains(assertion.Id))) missing++;
+                else unknown++;
+            }
+            return (matched, missing, unknown);
+        }
+        var eligible = item.Assertions.Where(assertion => assertion.Eligible && !assertion.WholeWordNegative);
+        var approved = Count(eligible.Where(assertion => assertion.Approved), side);
+        var reference = Count(eligible.Where(assertion => !assertion.Approved && referenceIds.Contains(assertion.Id)), side);
+        return new(approved.Matched, approved.Missing, approved.Unknown, reference.Matched, reference.Missing, reference.Unknown);
+    }
+
+    private static ExpectationOutcome ExpectationState(ReviewAssertion assertion, ReviewCaseSideFacts side)
+    {
+        if (assertion.WholeWordNegative)
+            return side.Parsed == true ? ExpectationOutcome.Missing : side.Completion == Completion.Complete && side.Parsed == false
+                ? ExpectationOutcome.Matched : ExpectationOutcome.Unknown;
+        if (side.MatchedExpectationIds.Contains(assertion.Id)) return ExpectationOutcome.Matched;
+        if (side.MissingExpectationIds.Contains(assertion.Id)) return ExpectationOutcome.Missing;
+        return ExpectationOutcome.Unknown;
     }
 
     private static long Cost(params string?[] values) => 512 + values.Sum(value => (long)Encoding.UTF8.GetByteCount(value ?? "") * 4);

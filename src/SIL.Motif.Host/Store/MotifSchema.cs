@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 66;
+    public const int CurrentSchema = 67;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -83,7 +83,7 @@ public static class MotifSchema
             "IX_ParsimonyBundles_ProjectCreated", "IX_ParsimonyReaderLeases_BundleExpiry",
             "IX_ParsimonyBuildClaims_Project", "IX_GrammarChecks_Project", "IX_GrammarChecks_Proposal",
             "IX_ProposalDifferences_ProposalText", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket",
-            "IX_ReviewReports_ProjectManifest",
+            "IX_ReviewReports_ProjectManifest", "IX_ReviewReportCases_Order", "IX_ReviewReportMemberships_Cell",
             "IX_PhonologyExampleSets_Name", "IX_PhonologyExampleSetRevisions_SetRevision",
             "IX_PhonologyExamples_RevisionExampleId"
         };
@@ -363,6 +363,8 @@ public static class MotifSchema
         "IX_ParsimonyBuildClaims_Project" => "ParsimonyBuildClaims",
         "IX_GrammarChecks_Project" or "IX_GrammarChecks_Proposal" => "GrammarChecks",
         "IX_ReviewReports_ProjectManifest" => "ReviewReports",
+        "IX_ReviewReportCases_Order" => "ReviewReportCases",
+        "IX_ReviewReportMemberships_Cell" => "ReviewReportMemberships",
         "IX_ProposalDifferences_ProposalText" => "ProposalDifferences",
         "IX_ProposalDifferenceOccurrences_Order" => "ProposalDifferenceOccurrences",
         "IX_ProposalDifferenceBuckets_Bucket" => "ProposalDifferenceBuckets",
@@ -411,6 +413,8 @@ public static class MotifSchema
         "IX_GrammarChecks_Project" => ["BaselineToken"],
         "IX_GrammarChecks_Proposal" => ["BaselineToken", "ProposalId", "IntentDigest"],
         "IX_ReviewReports_ProjectManifest" => ["ProjectKey", "ManifestDigest"],
+        "IX_ReviewReportCases_Order" => ["ReportId", "WordSort", "WritingSystemSort", "CaseKey"],
+        "IX_ReviewReportMemberships_Cell" => ["ReportId", "Role", "SetId", "CellId", "CaseKey", "Ordinal"],
         "IX_ProposalDifferences_ProposalText" => ["ProposalId", "TextId", "Reference"],
         "IX_ProposalDifferenceOccurrences_Order" => ["DifferenceId", "TextId", "LineNumber", "OccurrenceIndex"],
         "IX_ProposalDifferenceBuckets_Bucket" => ["DifferenceId", "Bucket", "CaseKey"],
@@ -587,10 +591,12 @@ public static class MotifSchema
             C("DetailAvailable", "INTEGER", true), C("DetailBytes", "INTEGER", true), C("CreatedUtc", "TEXT", true)],
         "ReviewReportCases" =>
         [C("ReportId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("WordKey", "TEXT", true),
-            C("Word", "TEXT", true), C("WritingSystemId", "TEXT"), C("FactsJson", "TEXT", true)],
+            C("Word", "TEXT", true), C("WritingSystemId", "TEXT"), C("WordSort", "BLOB", true),
+            C("WritingSystemSort", "BLOB", true), C("FactsJson", "TEXT", true)],
         "ReviewReportMemberships" =>
         [C("ReportId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Ordinal", "INTEGER", true, 3),
-            C("SetId", "TEXT", true), C("Role", "TEXT", true), C("FactsJson", "TEXT", true)],
+            C("SetId", "TEXT", true), C("Role", "TEXT", true), C("CellId", "TEXT"), C("VariantId", "TEXT"),
+            C("FactsJson", "TEXT", true)],
         "ReviewReportEvents" =>
         [C("ReportId", "TEXT", true, 1), C("CaseKey", "TEXT", true, 2), C("Ordinal", "INTEGER", true, 3),
             C("FactsJson", "TEXT", true)],
@@ -1209,18 +1215,25 @@ public static class MotifSchema
             WordKey TEXT NOT NULL,
             Word TEXT NOT NULL,
             WritingSystemId TEXT,
+            WordSort BLOB NOT NULL,
+            WritingSystemSort BLOB NOT NULL,
             FactsJson TEXT NOT NULL,
             PRIMARY KEY (ReportId, CaseKey)
         );
+        CREATE INDEX IX_ReviewReportCases_Order ON ReviewReportCases(ReportId, WordSort, WritingSystemSort, CaseKey);
         CREATE TABLE ReviewReportMemberships (
             ReportId TEXT NOT NULL REFERENCES ReviewReports(ReportId) ON DELETE CASCADE,
             CaseKey TEXT NOT NULL,
             Ordinal INTEGER NOT NULL,
             SetId TEXT NOT NULL,
             Role TEXT NOT NULL,
+            CellId TEXT,
+            VariantId TEXT,
             FactsJson TEXT NOT NULL,
             PRIMARY KEY (ReportId, CaseKey, Ordinal)
         );
+        CREATE INDEX IX_ReviewReportMemberships_Cell
+            ON ReviewReportMemberships(ReportId, Role, SetId, CellId, CaseKey, Ordinal);
         CREATE TABLE ReviewReportEvents (
             ReportId TEXT NOT NULL REFERENCES ReviewReports(ReportId) ON DELETE CASCADE,
             CaseKey TEXT NOT NULL,

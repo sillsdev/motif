@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Analysis;
@@ -67,7 +68,23 @@ public static class ReviewCaseClassifier
             Before = SideFacts(facts.Before, before, facts.Assertions),
             After = SideFacts(facts.After, after, facts.Assertions),
             Assertions = facts.Assertions,
+            AssertionsCaptured = true,
+            Changed = CompareReadings(before, after),
         };
+    }
+
+    private static bool? CompareReadings((IReadOnlyList<ParseAnalysis> Readings, bool Complete) before,
+        (IReadOnlyList<ParseAnalysis> Readings, bool Complete) after)
+    {
+        if (!before.Complete || !after.Complete) return null;
+        static string Identity(ParseAnalysis reading) => JsonSerializer.Serialize(reading.Morphs.Select(morph => new
+        {
+            Form = Guid.Parse(morph.Form!).ToString("D"), Msa = Guid.Parse(morph.Msa!).ToString("D"),
+            InflType = morph.InflType is null ? null : Guid.Parse(morph.InflType).ToString("D"),
+            Guess = morph.GuessedString?.Normalize(NormalizationForm.FormD),
+        }));
+        var previous = before.Readings.Select(Identity).ToHashSet(StringComparer.Ordinal);
+        return !previous.SetEquals(after.Readings.Select(Identity));
     }
 
     private static ReviewCaseSideFacts SideFacts(ParseWordEvidence? evidence,

@@ -45,6 +45,18 @@ public sealed record ReviewCaseDelta(
     public ReviewCaseSideFacts Before { get; init; } = ReviewCaseSideFacts.NotMeasured;
     public ReviewCaseSideFacts After { get; init; } = ReviewCaseSideFacts.NotMeasured;
     public IReadOnlyList<ReviewAssertion> Assertions { get; init; } = [];
+
+    /// <summary>Whether the complete frozen assertion list was captured.</summary>
+    public bool AssertionsCaptured { get; init; }
+
+    /// <summary>Frozen observed readings; null means their complete list was not captured.</summary>
+    public IReadOnlyList<ReadingRow>? Readings { get; init; }
+
+    /// <summary>Frozen source projections; null means their complete list was not captured.</summary>
+    public IReadOnlyList<SourceRow>? Sources { get; init; }
+
+    /// <summary>Whether exact complete reading identities changed, or null when that cannot be established.</summary>
+    public bool? Changed { get; init; }
 }
 
 /// <summary>Observed presence and the expectations that one side could establish.</summary>

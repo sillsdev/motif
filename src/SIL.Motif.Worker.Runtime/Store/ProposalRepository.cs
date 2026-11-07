@@ -902,7 +902,11 @@ public sealed class ProposalRepository : IProposalRepository
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         var outcome = MoveInTransaction(connection, transaction, proposalId, allowedFrom, to, supersededBy, comment);
-        if (outcome.Moved) transaction.Commit();
+        if (outcome.Moved)
+        {
+            transaction.Commit();
+            if (!ProposalDifferenceRetention.KeepsWordDetail(to)) ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
+        }
         return outcome;
     }
 
@@ -968,6 +972,7 @@ public sealed class ProposalRepository : IProposalRepository
         update.ExecuteNonQuery();
         DropWordDetailIfDecided(connection, transaction, proposalId.Value, status);
         transaction.Commit();
+        if (!ProposalDifferenceRetention.KeepsWordDetail(status)) ReviewRowArtifacts.DeleteReleased(_database, proposalId.Value);
     }
 
     private void DropWordDetailIfDecided(SqliteConnection connection, SqliteTransaction transaction, string proposalId,
@@ -1036,6 +1041,7 @@ public sealed class ProposalRepository : IProposalRepository
             drift.ExecuteNonQuery();
         }
         transaction.Commit();
+        ReviewRowArtifacts.DeleteReleased(_database, receipt.ProposalId.Value);
         TrialScratchRetention.DeleteProposal(_database, receipt.ProposalId);
     }
 
