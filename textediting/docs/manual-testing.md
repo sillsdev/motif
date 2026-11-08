@@ -81,11 +81,11 @@ Add the input methods under Settings, Time and language, Language: Japanese (Mic
 | # | Steps | Expected | D10 | D48 | W48 | Notes |
 |---|---|---|---|---|---|---|
 | 3.1 | Type a sentence of English, French accents (AltGr or a French layout) and punctuation. | Everything appears as typed; dead keys compose (`e` after `^`); no doubled or lost letters. | | | | |
-| 3.2 | Japanese IME: in the *Empty* scenario type `nihongo`. | The composition shows inline with an underline; the candidate window sits at the caret; Space cycles candidates; Enter commits the text into the field; the Model tab shows it only after the commit. | | | | |
-| 3.3 | Same, then press Esc during composition. | The composition disappears and nothing is inserted. | | | | |
+| 3.2 | Japanese IME: in the *Empty* scenario type `nihongo`. | The composition shows inline with an underline; the candidate window sits at the caret; Space cycles candidates; Enter commits the text into the field; the Model tab shows it only after the commit. | | | | automated: ScriptedInputMethodTests (model and undo; live keyboard and window checks remain manual) |
+| 3.3 | Same, then press Esc during composition. | The composition disappears and nothing is inserted. | | | | automated: ScriptedInputMethodTests (model and undo; live keyboard and window checks remain manual) |
 | 3.4 | Chinese Pinyin: type `zhongwen`. | Same as 3.2. | | | | |
-| 3.5 | Compose while the caret is inside Arabic text, then in the RTL paragraph. | The composition appears at the caret, the candidate window is not left behind, the committed text lands at the caret. | | | | |
-| 3.6 | Compose with text selected. | The selection is replaced on commit, not on the first keystroke. | | | | |
+| 3.5 | Compose while the caret is inside Arabic text, then in the RTL paragraph. | The composition appears at the caret, the candidate window is not left behind, the committed text lands at the caret. | | | | automated: ScriptedInputMethodTests (model and undo; live keyboard and window checks remain manual) |
+| 3.6 | Compose with text selected. | The selection is replaced on commit, not on the first keystroke. | | | | automated: ScriptedInputMethodTests (model and undo; live keyboard and window checks remain manual) |
 | 3.7 | Move the window while a composition is open. | The candidate window follows the caret. | | | | |
 
 ## 4. Keyman (all hosts; needs Keyman Desktop and a keyboard that reorders or deletes, such as Khmer or Tamil 99)
@@ -93,7 +93,7 @@ Add the input methods under Settings, Time and language, Language: Japanese (Mic
 | # | Steps | Expected | D10 | D48 | W48 | Notes |
 |---|---|---|---|---|---|---|
 | 4.1 | Select the Keyman keyboard, type a sequence in the *Empty* scenario. | The result matches typing the same keys in Notepad. | | | | |
-| 4.2 | Type a sequence in which a later key rewrites earlier characters (reorder, or replace the last syllable). | The earlier characters are changed correctly: the field reports its surrounding text to the keyboard. Check the Model tab for stray characters. | | | | |
+| 4.2 | Type a sequence in which a later key rewrites earlier characters (reorder, or replace the last syllable). | The earlier characters are changed correctly: the field reports its surrounding text to the keyboard. Check the Model tab for stray characters. | | | | automated: ScriptedInputMethodTests (model and undo; live keyboard and window checks remain manual) |
 | 4.3 | Move the caret into the middle of existing text and type the same sequence. | Same result as at the end of the text. | | | | |
 
 ## 5. Right-to-left: caret and selection by mouse and arrows (all hosts)
