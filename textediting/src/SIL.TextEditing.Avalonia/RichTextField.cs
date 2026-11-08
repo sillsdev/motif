@@ -31,6 +31,8 @@ namespace SIL.TextEditing.Avalonia
         {
             /// <summary>The resolved paragraph format; it depends only on the paragraph itself.</summary>
             public ParaFormat? Format;
+            /// <summary>The measured height, or an estimate until the paragraph is laid out at the current width.</summary>
+            public double Height = EstimatedParagraphHeight;
             /// <summary>The paragraph's place in its numbered run, or <see cref="NoNumber"/> until worked out.</summary>
             public int Number = NoNumber;
             /// <summary>The bullet or number text, or null until worked out.</summary>
@@ -90,6 +92,8 @@ namespace SIL.TextEditing.Avalonia
                 RefreshSystemColours();
             };
             HookContextRequests();
+            EffectiveViewportChanged += ViewportChanged;
+            LayoutUpdated += CorrectScrollAnchor;
         }
 
         /// <summary>The dispatcher the field belongs to. Avalonia 12 lets a control live on a dispatcher other than the main UI
@@ -290,6 +294,8 @@ namespace SIL.TextEditing.Avalonia
         void OnDocumentChanged(int start, int removed, int added)
         {
             var spelling = SpellBeforeChange(start, removed);
+            double oldAnchorTop = StoredParagraphTop(_heightAnchor);
+            var oldHeights = _info.Skip(start).Take(removed).Select(info => info.Height).ToArray();
             for (int i = 0; i < removed && start < _layouts.Count; i++)
             {
                 _layouts[start]?.Dispose();
@@ -297,7 +303,15 @@ namespace SIL.TextEditing.Avalonia
                 Unwatch(_info[start]);
                 _info.RemoveAt(start);
             }
-            for (int i = 0; i < added; i++) { _layouts.Insert(start, null); _info.Insert(start, new ParaInfo()); }
+            for (int i = 0; i < added; i++)
+            {
+                _layouts.Insert(start + i, null);
+                _info.Insert(start + i, new ParaInfo { Height = i < oldHeights.Length ? oldHeights[i] : EstimatedParagraphHeight });
+            }
+            if (_heightAnchor >= start + removed) _heightAnchor += added - removed;
+            else if (_heightAnchor >= start) _heightAnchor = start;
+            _heightAnchor = Math.Max(0, Math.Min(_heightAnchor, _info.Count));
+            if (_onScreen) _anchorShift += StoredParagraphTop(_heightAnchor) - oldAnchorTop;
             for (int i = 0; i < added && start + i < Editor.Document.Paragraphs.Count; i++) Watch(_info[start + i], Editor.Document.Paragraphs[start + i]);
             LanguageAfterChange(start, removed, added);
             SpellAfterChange(start, added, spelling);
@@ -395,15 +409,18 @@ namespace SIL.TextEditing.Avalonia
             var layout = ParagraphLayout.Build(Editor.Document.Paragraphs[index], _layoutWidth > 0 ? _layoutWidth : PreferredWidth, WritingSystems, ObjectImage, LayoutForeground, ObjectAsGlyph, preeditAt, preedit, template, _styles, label, above);
             _layouts[index] = layout;
             LayoutCount++;
+            RememberHeight(index, layout.Height);
             ApplySpelling(index, layout);
             ApplyDiagnostics(index, layout);
             return layout;
         }
 
+        /// <summary>The paragraph's top in field coordinates. Unvisited paragraphs above it contribute estimated heights;
+        /// resolving a destination's layout does not lay out its prefix.</summary>
         public double ParagraphTop(int index)
         {
             double y = 0;
-            for (int k = 0; k < index; k++) y += ParagraphLayoutFor(k).Height;
+            for (int k = 0; k < index; k++) y += ParagraphHeight(k);
             return y;
         }
 
@@ -413,7 +430,7 @@ namespace SIL.TextEditing.Avalonia
             {
                 _layouts[i]?.Dispose();
                 _layouts[i] = null;
-                _info[i] = new ParaInfo { Watched = _info[i].Watched };
+                _info[i] = new ParaInfo { Watched = _info[i].Watched, Height = _info[i].Height };
             }
             InvalidateMeasure();
             InvalidateVisual();
@@ -428,6 +445,8 @@ namespace SIL.TextEditing.Avalonia
             UnwatchAll();
             _layouts.Clear();
             _info.Clear();
+            _heightAnchor = 0;
+            _anchorShift = 0;
             FindDocumentChanged();   // the highlight and the current match were worked out from the old text
             for (int i = 0; i < Editor.Document.Paragraphs.Count; i++) { _layouts.Add(null); _info.Add(new ParaInfo()); }
             WatchAll();
@@ -453,8 +472,9 @@ namespace SIL.TextEditing.Avalonia
                     _layouts[i] = null;
                 }
             }
-            double h = 0;
-            for (int i = 0; i < _layouts.Count; i++) h += ParagraphLayoutFor(i).Height;
+            _measureHeight = double.IsInfinity(availableSize.Height) ? InitialViewportHeight : availableSize.Height;
+            LayoutVisibleParagraphs();
+            double h = EstimatedHeight();
             return new Size(w, Math.Max(h + 2, 24));
         }
 
@@ -486,12 +506,14 @@ namespace SIL.TextEditing.Avalonia
             var selectionBrush = Editor.HasSelection ? ResolveSelectionBrush() : null;
             var selectedText = Editor.HasSelection ? SelectedTextColour() : null;
             double y = 0;
-            var clip = new Rect(Bounds.Size);
-            for (int i = 0; i < _layouts.Count; i++)
+            var clip = new Rect(Bounds.Size).Intersect(LayoutViewport());
+            for (int i = 0; i < _layouts.Count && y <= clip.Bottom + 1; i++)
             {
+                double height = ParagraphHeight(i);
+                if (y + height < clip.Top) { y += height; continue; }
                 var pl = ParagraphLayoutFor(i);
                 DropStaleSpelling(i, pl);
-                if (y + pl.Height >= 0 && y <= clip.Bottom + 1)
+                if (y + pl.Height >= clip.Top && y <= clip.Bottom + 1)
                 {
                     List<Rect>? selection = null;
                     pl.DrawBox(context, y);
@@ -538,7 +560,8 @@ namespace SIL.TextEditing.Avalonia
                 }
                 y += pl.Height;
             }
-            if (IsFocused || ShowCaretAlways) context.DrawRectangle(ResolveCaretBrush(), null, CaretRect());
+            if ((IsFocused || ShowCaretAlways) && _layouts[Editor.Caret.Paragraph] != null)
+                context.DrawRectangle(ResolveCaretBrush(), null, CaretRect());
             ScheduleSpellingIfWanted();
             ScheduleLanguageIfWanted();
         }
@@ -616,6 +639,9 @@ namespace SIL.TextEditing.Avalonia
         protected override void OnDetachedFromVisualTree(global::Avalonia.VisualTreeAttachmentEventArgs e)
         {
             _onScreen = false;
+            _effectiveViewport = null;
+            _anchorShift = 0;
+            _heightAnchor = 0;
             CancelBatch();   // a worker that is asking the host's checker stops: the field is going away
             LanguageDetached();
             if (_platformSettings != null) _platformSettings.ColorValuesChanged -= OnPlatformColoursChanged;
@@ -767,6 +793,7 @@ namespace SIL.TextEditing.Avalonia
             var r = pl.CaretRect(c.Offset, false, hit);
             double gx = _goalX >= 0 ? _goalX : r.X;
             int li = pl.LineIndexOf(c.Offset, hit);
+            if (!down && li == 0 && c.Paragraph > 0) ParagraphLayoutFor(c.Paragraph - 1);
             double top = ParagraphTop(c.Paragraph);
             double y;
             if (down)
@@ -805,8 +832,12 @@ namespace SIL.TextEditing.Avalonia
 
         Located Locate(Point point)
         {
-            double y = 0;
-            for (int i = 0; i < _layouts.Count; i++)
+            int first = ParagraphAtHeight(point.Y);
+            double oldTop = ParagraphTop(first);
+            PrepareParagraph(first);
+            double y = ParagraphTop(first);
+            point = new Point(point.X, point.Y + y - oldTop);
+            for (int i = first; i < _layouts.Count; i++)
             {
                 var pl = ParagraphLayoutFor(i);
                 if (point.Y < y + pl.Height || i == _layouts.Count - 1)

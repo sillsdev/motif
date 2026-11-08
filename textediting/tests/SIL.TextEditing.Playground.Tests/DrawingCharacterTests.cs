@@ -355,7 +355,8 @@ namespace SIL.TextEditing.Playground.Tests
         [Fact]
         public void A_squiggled_run_that_wraps_over_lines_is_squiggled_on_each_of_them() => Headless.Run(() =>
         {
-            using (var s = new Session(Scenarios.Drawing, 330, 700))
+            // Every inspected line needs to be in the viewport for the pixel capture.
+            using (var s = new Session(Scenarios.Drawing, 330, 1800))
             {
                 var pl = s.Field.ParagraphLayoutFor(4);
                 const string Token = "a squiggled run that is long enough to wrap onto a second line";

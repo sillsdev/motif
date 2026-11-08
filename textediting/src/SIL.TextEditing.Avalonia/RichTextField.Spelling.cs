@@ -656,7 +656,7 @@ namespace SIL.TextEditing.Avalonia
             double y = 0;
             for (int i = 0; i < _layouts.Count && i < Editor.Document.Paragraphs.Count; i++)
             {
-                double height = ParagraphLayoutFor(i).Height;
+                double height = ParagraphHeight(i);
                 if (y + height >= top && y <= bottom && NeedsSpelling(i)) return i;
                 y += height;
                 if (y > bottom) break;

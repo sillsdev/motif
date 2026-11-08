@@ -626,9 +626,10 @@ namespace SIL.TextEditing.Playground.Tests
                     s.Editor.Document.Paragraphs[q].Props.SetStr(TextPropertyNumbers.BulNumTxtBefore, "Chapter number and then some more words ");
                 s.Field.RefreshFromDocument();
                 Headless.Pump();
-                var shot = new Shot(s);
                 foreach (int p in new[] { WideLabel, ArabicWideLabel })
                 {
+                    s.Caret(p, 0);
+                    var shot = new Shot(s);
                     var pl = s.Field.ParagraphLayoutFor(p);
                     var label = pl.LabelRect;
                     Assert.True(label.Width - 24 > pl.ContentWidth, "the label (less its hang) " + label.Width + " is wider than the line " + pl.ContentWidth);
