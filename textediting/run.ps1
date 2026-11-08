@@ -2,21 +2,26 @@
 .SYNOPSIS
   Builds and starts one of the sample hosts.
 .EXAMPLE
-  .\run.ps1 desktop10                       # plain Avalonia desktop app, net10.0, Avalonia 12
-  .\run.ps1 desktop48                       # plain Avalonia desktop app, net48, Avalonia 11.3.17
-  .\run.ps1 winforms48                      # WinForms form on net48 hosting the playground between two TextBoxes
-  .\run.ps1 desktop10 --scenario "Inline picture (ORC)"
-  .\run.ps1 winforms48 --minimized          # start minimized without taking focus (smoke run)
+  .\run.ps1 desktop10 -InteractiveDesktop
+  .\run.ps1 desktop48 -InteractiveDesktop
+  .\run.ps1 winforms48 -InteractiveDesktop
+  .\run.ps1 desktop10 -InteractiveDesktop --scenario "Inline picture (ORC)"
+  .\run.ps1 winforms48 -InteractiveDesktop --minimized
 #>
 param(
     [Parameter(Mandatory = $true, Position = 0)]
     [ValidateSet('desktop10', 'desktop48', 'winforms48')]
     [string]$Target,
+    [switch]$InteractiveDesktop,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$HostArgs
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $InteractiveDesktop) {
+    Write-Host 'Skipped: the sample opens a desktop window; pass -InteractiveDesktop to run it.'
+    return
+}
 $root = $PSScriptRoot
 switch ($Target) {
     'desktop10'  { $project = 'samples\Playground.Desktop\Playground.Desktop.csproj'; $framework = 'net10.0'; $exe = 'bin\Playground.Desktop\Debug\net10.0\Playground.Desktop.exe' }

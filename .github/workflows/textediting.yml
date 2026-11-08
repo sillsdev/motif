@@ -74,7 +74,8 @@ jobs:
       - name: Test both target frameworks
         env:
           PANDOC_VERSION: 3.9.0.2
-        run: dotnet test SIL.TextEditing.sln -c Release --no-build --logger trx --results-directory TestResults
+        shell: pwsh
+        run: ./test.ps1 -Configuration Release -NoBuild -ResultsDirectory TestResults
 
       # Real window, real Windows input: the playground host is launched and typed into with SendInput. When the runner gives no usable foreground
       # desktop the tests skip with the reason (shown here), they do not fail.

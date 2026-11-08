@@ -5,14 +5,19 @@
   Builds and starts each host through run.ps1, waits for its window, moves it to a fixed place and size, copies those screen pixels (System.Drawing, no extra software), saves a PNG
   into docs/images and closes the host. It needs an unlocked interactive Windows desktop and no window covering the host's place on the screen.
 .EXAMPLE
-  powershell -NoProfile -ExecutionPolicy Bypass -File docs\images\capture-hosts.ps1
+  powershell -NoProfile -ExecutionPolicy Bypass -File docs\images\capture-hosts.ps1 -InteractiveDesktop
 #>
 param(
+    [switch]$InteractiveDesktop,
     [string]$Scenario = 'Latin and Arabic',
     [int]$Width = 1280,
     [int]$Height = 700   # fits a 768-pixel-high screen at y=20; a window that runs off the screen copies blank pixels
 )
 $ErrorActionPreference = 'Stop'
+if (-not $InteractiveDesktop) {
+    Write-Host 'Skipped: capturing host windows needs -InteractiveDesktop and an interactive Windows desktop.'
+    return
+}
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $out = $PSScriptRoot
 
@@ -38,7 +43,7 @@ public static class Win
 function Capture([string]$Target, [string]$File, [string[]]$HostArgs) {
     # run.cmd (run.ps1) says "Started <target> as process <id>"; that id, never a process name, is the host this call owns and closes.
     $quoted = ($HostArgs | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
-    $started = (& cmd.exe /c ("`"" + (Join-Path $root 'run.cmd') + "`" $Target $quoted") 2>&1) | Out-String
+    $started = (& cmd.exe /c ("`"" + (Join-Path $root 'run.cmd') + "`" $Target -InteractiveDesktop $quoted") 2>&1) | Out-String
     if ($started -notmatch 'as process (\d+)') { throw "run.cmd did not report a process id for ${Target}: $started" }
     $hostId = [int]$Matches[1]
     try {

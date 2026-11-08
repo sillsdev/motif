@@ -30,7 +30,7 @@ namespace SIL.TextEditing.Playground.Tests
 
     /// <summary>Regenerates the screenshots in docs/images: the playground in a headless Skia window of a fixed size with the Fluent theme and the playground's own
     /// fixed fonts, one PNG per scenario that shows what the editor does. Run it with
-    /// <c>$env:TEXTEDITING_SCREENSHOTS=1; dotnet test tests\SIL.TextEditing.Playground.Tests -c Release -f net10.0 --filter ScreenshotGenerator</c>.</summary>
+    /// <c>$env:TEXTEDITING_SCREENSHOTS=1; pwsh ./test.ps1 -Project tests\SIL.TextEditing.Playground.Tests -Configuration Release -Framework net10.0 -Filter ScreenshotGenerator</c>.</summary>
     public class ScreenshotGenerator
     {
         const double W = 1280, H = 800;

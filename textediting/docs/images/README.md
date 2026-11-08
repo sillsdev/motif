@@ -7,7 +7,7 @@ Pictures of the playground (`samples/SIL.TextEditing.Playground`) for the README
 Rendered by `tests/SIL.TextEditing.Playground.Tests/ScreenshotGenerator.cs`: a 1280 x 800 headless Avalonia 12 window (net10.0, Skia, Fluent light theme, the playground's own fonts: Segoe UI, Nirmala UI, Leelawadee UI), cropped to the field and the tabs beside it (Markdown, or Model for the run dump). The test is skipped unless `TEXTEDITING_SCREENSHOTS=1`, so the normal test run never writes here.
 
 ```powershell
-$env:TEXTEDITING_SCREENSHOTS=1; dotnet test tests\SIL.TextEditing.Playground.Tests -c Release -f net10.0 --filter ScreenshotGenerator
+$env:TEXTEDITING_SCREENSHOTS=1; pwsh ./test.ps1 -Project tests\SIL.TextEditing.Playground.Tests -Configuration Release -Framework net10.0 -Filter ScreenshotGenerator
 ```
 
 - `bidi-selection.png`: Latin and Arabic in one paragraph, one selection running across the direction changes ("Latin and Arabic" scenario), the selection bar over it, and the same text as FieldWorks Markdown beside it.
@@ -30,7 +30,7 @@ $env:TEXTEDITING_SCREENSHOTS=1; dotnet test tests\SIL.TextEditing.Playground.Tes
 `capture-hosts.ps1` builds and starts each host through `run.ps1`, moves its window to a fixed place and size on the screen, copies those pixels with `System.Drawing`, saves the PNG and closes the host. It needs an unlocked interactive desktop; the window is made topmost so nothing else is in the pixels. Run it from the repository root:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File docs\images\capture-hosts.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File docs\images\capture-hosts.ps1 -InteractiveDesktop
 ```
 
 - `host-winforms-fieldworks-shape.png`: `samples/Host48`, FieldWorks' shape: a WinForms form on net48 (Avalonia 11.3.17) with the playground between two WinForms TextBoxes.

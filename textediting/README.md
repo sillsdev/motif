@@ -95,19 +95,20 @@ Windows, the .NET 10 SDK and the .NET Framework 4.8 targeting pack:
 
 ```
 dotnet build SIL.TextEditing.sln
-dotnet test  SIL.TextEditing.sln
+pwsh ./test.ps1
 ```
 
 Try it:
 
 ```
-run desktop10     # Avalonia desktop window on .NET 10, Avalonia 12
-run desktop48     # the same window on .NET Framework 4.8, Avalonia 11.3.17
-run winforms48    # WinForms form: TextBox, playground, TextBox (FieldWorks' shape)
-run desktop10 --scenario "Inline picture (ORC)"
+run desktop10 -InteractiveDesktop     # Avalonia desktop window on .NET 10, Avalonia 12
+run desktop48 -InteractiveDesktop     # the same window on .NET Framework 4.8, Avalonia 11.3.17
+run winforms48 -InteractiveDesktop    # WinForms form: TextBox, playground, TextBox (FieldWorks' shape)
+run desktop10 -InteractiveDesktop --scenario "Inline picture (ORC)"
 ```
 
-`run.cmd` and `run.ps1` build the host and start it. The playground shows what a person writing sees: a scenario picker, the field, and
+`test.ps1` clears Linux display variables before running tests; select `-Framework net10.0` on Linux.
+`run.cmd` and `run.ps1` build and start a host when `-InteractiveDesktop` is supplied. The playground shows what a person writing sees: a scenario picker, the field, and
 beside it the field as FieldWorks Markdown, which you can edit and apply. Select some text and a small bar appears over it: bold, italic,
 underline, writing system and character style, and under **More** the paragraph style and a picture. **Developer mode** (the check box, or
 `--dev`) adds every switch, the model's runs and the event log. The scenarios: bidi, Indic and Thai shaping, NFD, inline pictures, unknown

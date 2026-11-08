@@ -134,6 +134,12 @@ if ($IsWindows) {
     [void][Motif.ErrorMode]::SetErrorMode([Motif.ErrorMode]::GetErrorMode() -bor 0x8003)
 }
 
+# ADR 0075 makes headless checks the UI gate, so Linux tests must not connect to a desktop.
+if ($IsLinux) {
+    Remove-Item Env:DISPLAY -ErrorAction SilentlyContinue
+    Remove-Item Env:WAYLAND_DISPLAY -ErrorAction SilentlyContinue
+}
+
 $repoRoot = $PSScriptRoot
 $solution = Join-Path $repoRoot 'Motif.sln'
 $testsRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'tests')) + [IO.Path]::DirectorySeparatorChar

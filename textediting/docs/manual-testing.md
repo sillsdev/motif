@@ -19,11 +19,11 @@ From the repository root on Windows (the .NET 10 SDK and the .NET Framework 4.8 
 
 | Command | What it is | Avalonia |
 |---|---|---|
-| `run desktop10` | Plain Avalonia desktop window on .NET 10: Motif's shape | 12.1.2 |
-| `run desktop48` | The same window on .NET Framework 4.8 | 11.3.17 |
-| `run winforms48` | A WinForms form: WinForms TextBox, the playground, WinForms TextBox. FieldWorks' shape | 11.3.17 |
+| `run desktop10 -InteractiveDesktop` | Plain Avalonia desktop window on .NET 10: Motif's shape | 12.1.2 |
+| `run desktop48 -InteractiveDesktop` | The same window on .NET Framework 4.8 | 11.3.17 |
+| `run winforms48 -InteractiveDesktop` | A WinForms form: WinForms TextBox, the playground, WinForms TextBox. FieldWorks' shape | 11.3.17 |
 
-`run <host> --scenario "Inline picture (ORC)"` opens a scenario directly. The first run builds the host.
+`run <host> -InteractiveDesktop --scenario "Inline picture (ORC)"` opens a scenario directly. The first run builds the host.
 
 Where a step says **all hosts**, do it on each of the three and write one result per host (D10, D48, W48). Steps for
 `W48` only need the WinForms host.
@@ -138,7 +138,7 @@ only by the playground and the tests) and plain text. A FieldWorks host also cop
 | 8.1 | Select text in *Latin and Arabic* that crosses the English/Arabic boundary, Copy, paste into Notepad. | The plain text arrives, in logical order, with paragraph breaks as line breaks. | another application (Notepad) reads the clipboard | | | | |
 | 8.2 | Same, paste into Word. | The text arrives. (Formatting need not.) | another application (Word) reads the clipboard | | | | |
 | 8.3 | Type text in Notepad and in Word (with some Arabic), copy it, Paste in the field. | The text appears at the caret in the active writing system; the Model tab shows it as one run; a selection is replaced. | another application (Notepad, Word) writes the clipboard | | | | |
-| 8.6 | Copy in one host window, paste in another (run `run desktop10` and `run desktop48`). | The runs and properties arrive. | two host processes and the real clipboard (the clipboard tests use one process) | | | | |
+| 8.6 | Copy in one host window, paste in another (run `run desktop10 -InteractiveDesktop` and `run desktop48 -InteractiveDesktop`). | The runs and properties arrive. | two host processes and the real clipboard (the clipboard tests use one process) | | | | |
 | 8.8 | From a FieldWorks build, if you have one: copy styled text out of a FieldWorks field, paste here, and the reverse. | Record what arrives; FieldWorks does not read our format yet. | needs a FieldWorks build | | | | |
 
 ## 9. Look and feel (all hosts)
