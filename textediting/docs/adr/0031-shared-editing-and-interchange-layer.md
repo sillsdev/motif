@@ -33,7 +33,7 @@ Motif it is Proposals, MCP, the GDR template and checker, and the AI-authoring p
 - **Q53:** it is the shared editing and interchange layer; this ADR widens ADR 0001 and supersedes ADR 0011's split. Work
   runs in two streams: records, and boxes (text, then text with a language service, then chips, then cells).
 - **Q54′:** the split is by dependency, unchanged by Motif already loading liblcm.
-- **Q55′:** environments and other notations stay text boxes with a language service and decoration chips; rule formulas
+- **Q55′:** environments and other notations stay boxes with a language service and decoration chips; rule formulas
   become cells whose chips are GUID references.
 - **Q56:** rule vocabulary is liblcm's `lcm-grammar`. All checking of model validity lives here; only the GDR checker and
   the AI-authoring profile stay in Motif.

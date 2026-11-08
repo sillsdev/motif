@@ -14,3 +14,7 @@ This is a small usability improvement allowed under ADR 0001: grouping is hard t
 Views path and easy here.
 
 Owner decision, 2026-11-03.
+
+Amended 2026-11-07 (owner): backspaces that a keyboard sends as part of a replacement don't end the group. Keyman's
+legacy output, Backspaces followed at once by the replacement text, joins the typing group it is in, so one rule's
+output is never more than one undo step, as an input-method composition is in FieldWorks.

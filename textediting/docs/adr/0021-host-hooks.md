@@ -11,3 +11,7 @@ exposes hooks:
   view belongs to the host.
 
 Owner decision, 2026-11-03.
+
+Amended 2026-11-07 (owner): **entering the field** is the library's job. When the host toolkit gives focus to the
+control that holds the field (Tab into a WinForms `WinFormsAvaloniaControlHost`, for example), the field takes keyboard
+focus itself; a host does not have to forward it.

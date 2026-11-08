@@ -27,7 +27,7 @@ A picture, link or other object that sits inline in a run as a single placeholde
 _Avoid_: ORC (in prose)
 
 **Box**:
-An inline object the field lays out with its own content, such as the environment box or a rule box with cells.
+A small field holding one notation, such as the environment box or a rule box. A box may add a language service, chips or cells.
 _Avoid_: text box (that word is avoided for a field), widget
 
 **Hard line break**:
