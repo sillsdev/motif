@@ -17,5 +17,6 @@
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <ProjectReference Include="..\SIL.TextEditing.Playground\SIL.TextEditing.Playground.csproj" />
     <Compile Include="..\Common\PlaygroundApp.cs" Link="PlaygroundApp.cs" />
+    <Compile Include="..\Common\TestChannel.cs" Link="TestChannel.cs" />
   </ItemGroup>
 </Project>
