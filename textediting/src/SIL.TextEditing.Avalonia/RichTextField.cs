@@ -634,6 +634,7 @@ namespace SIL.TextEditing.Avalonia
             base.OnAttachedToVisualTree(e);
             WatchScrolling();
             LanguageAttached();
+            WatchHostFocus();
         }
 
         protected override void OnDetachedFromVisualTree(global::Avalonia.VisualTreeAttachmentEventArgs e)

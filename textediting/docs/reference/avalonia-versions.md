@@ -30,6 +30,7 @@ Keep any future per-version difference small, behind `#if NET10_0_OR_GREATER`, a
 - **`RichTextField`'s dispatcher.** Avalonia 12 lets a control live on a dispatcher other than the main UI thread's, so on net10.0 the
   field uses its own `Dispatcher` (and the typing-pause timer is created on it); Avalonia 11 has only `Dispatcher.UIThread`.
 - **`RichTextField.ContextMenu.cs`** has one extra `using Avalonia.Input` on net10.0.
+- **`RichTextField.HostFocus.cs`** overrides `OnGotFocus` with `FocusChangedEventArgs` on net10.0 and `GotFocusEventArgs` on netstandard2.0.
 
 ## Packages used by the samples only
 
