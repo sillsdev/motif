@@ -5,7 +5,7 @@
     <IsPackable>false</IsPackable>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <!-- Launches the playground's plain desktop host (net10.0, Avalonia 12) as its own process, types into its window through the Windows input
+  <!-- Launches the playground's hosts (plain desktop on net10.0 with Avalonia 12 and on net48 with 11.3, and the WinForms host on net48) as its own process, types into its window through the Windows input
        APIs and reads the field's model back over the host's opt-in test pipe. Windows only; skipped, with the reason, when the machine gives no
        usable foreground desktop. The host is built first but not referenced as an assembly. -->
   <ItemGroup>
@@ -16,5 +16,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <ProjectReference Include="..\..\samples\Playground.Desktop\Playground.Desktop.csproj" ReferenceOutputAssembly="false" SetTargetFramework="TargetFramework=net10.0" />
+    <ProjectReference Include="..\..\samples\Host48\Host48.csproj" ReferenceOutputAssembly="false" SetTargetFramework="TargetFramework=net48" />
   </ItemGroup>
+  <!-- The net48 build of the plain desktop host is not what the reference above builds, so build it here too. -->
+  <Target Name="BuildDesktop48Host" BeforeTargets="Build">
+    <MSBuild Projects="..\..\samples\Playground.Desktop\Playground.Desktop.csproj" Properties="TargetFramework=net48" Targets="Build" />
+  </Target>
 </Project>

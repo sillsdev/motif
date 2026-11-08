@@ -50,6 +50,13 @@ namespace SIL.TextEditing.Samples.Host48
             return view.Field.WantsKey(key, mods);
         }
 
+        // Tab into the host gives WinForms focus to the control but leaves Avalonia with no focused element, so the field is asked for it.
+        protected override void OnGotFocus(EventArgs e)
+        {
+            base.OnGotFocus(e);
+            if (Content is PlaygroundView view) global::Avalonia.Threading.Dispatcher.UIThread.Post(() => view.Field.Focus());
+        }
+
         protected override bool IsInputKey(Keys keyData) => ((IsArrow(keyData) && ContainsFocus) || FieldWants(keyData)) || base.IsInputKey(keyData);
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData) => !((IsArrow(keyData) && ContainsFocus) || FieldWants(keyData)) && base.ProcessCmdKey(ref msg, keyData);
@@ -57,8 +64,25 @@ namespace SIL.TextEditing.Samples.Host48
 
     static class Program
     {
+        /// <summary>What the test channel adds for this host: which control has focus, each TextBox's text and every control's screen rectangle. Runs on the UI thread.</summary>
+        static System.Collections.Generic.IEnumerable<string> HostLines(Form form, Control host, TextBox before, TextBox after)
+        {
+            var active = form.ActiveControl;
+            // The control host does not always move the form's ActiveControl when the Avalonia field takes keyboard focus, so the field's own focus counts first.
+            var view = (PlaygroundView)((WinFormsAvaloniaControlHost)host).Content!;
+            yield return "focus " + (view.Field.IsFocused ? "field" : active == before ? "before" : active == after ? "after" : active == host ? "host" : "none");
+            yield return "avalonia " + (global::Avalonia.Controls.TopLevel.GetTopLevel(view)?.FocusManager?.GetFocusedElement()?.GetType().Name ?? "none") + " " + host.ContainsFocus;
+            yield return "box before " + TestChannel.Escape(before.Text);
+            yield return "box after " + TestChannel.Escape(after.Text);
+            foreach (var pair in new[] { ("before", (Control)before), ("after", after), ("field", host) })
+            {
+                var r = pair.Item2.RectangleToScreen(pair.Item2.ClientRectangle);
+                yield return "rect " + pair.Item1 + " " + r.X + " " + r.Y + " " + r.Width + " " + r.Height;
+            }
+        }
+
         /// <summary>FieldWorks' shape: a WinForms form, the playground embedded between two WinForms TextBoxes, to try Tab
-        /// and key handoff and focus. Options: <c>--scenario "name"</c>, <c>--dev</c> (developer mode), <c>--minimized</c>.</summary>
+        /// and key handoff and focus. Options: <c>--scenario "name"</c>, <c>--dev</c> (developer mode), <c>--minimized</c>, <c>--test-channel "pipe name"</c> (see <see cref="TestChannel"/>).</summary>
         [STAThread]
         static void Main(string[] args)
         {
@@ -77,6 +101,8 @@ namespace SIL.TextEditing.Samples.Host48
             form.Controls.Add(after);
             form.Controls.Add(before);
             if (args.Contains("--minimized")) form.WindowState = FormWindowState.Minimized;
+            var channel = TestChannel.NameFrom(args);
+            if (channel != null) TestChannel.Start(channel, view, () => HostLines(form, host, before, after));
             System.Windows.Forms.Application.Run(form);
         }
     }
