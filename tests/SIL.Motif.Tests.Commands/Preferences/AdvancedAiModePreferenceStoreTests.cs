@@ -6,13 +6,16 @@ namespace SIL.Motif.Tests.Commands.Preferences;
 public sealed class AdvancedAiModePreferenceStoreTests
 {
     [Fact]
-    public void MissingPreferenceDefaultsOffAndUpdatesPersistAcrossStoreInstances()
+    public void MissingPreferenceDefaultsOnAndUpdatesPersistAcrossStoreInstances()
     {
         var path = Path.Combine(Path.GetTempPath(), "motif-advanced-ai-tests", Guid.NewGuid().ToString("N"),
             "advanced-ai-mode.json");
         var store = new FileAdvancedAiModePreferenceStore(path);
 
-        Assert.False(store.IsEnabled);
+        Assert.True(store.IsEnabled);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "{}");
+        Assert.True(store.IsEnabled);
         store.SetEnabled(true);
         Assert.True(new FileAdvancedAiModePreferenceStore(path).IsEnabled);
         new FileAdvancedAiModePreferenceStore(path).SetEnabled(false);

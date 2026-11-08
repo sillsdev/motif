@@ -14,6 +14,7 @@
   </Styles.Resources>
   <Style Selector="ToolTip">
     <Setter Property="MaxWidth" Value="{DynamicResource Component.ToolTip.MaxWidth}" />
+    <Setter Property="IsHitTestVisible" Value="False" />
     <Setter Property="Template">
       <ControlTemplate>
         <LayoutTransformControl LayoutTransform="{DynamicResource App.ZoomTransform}">

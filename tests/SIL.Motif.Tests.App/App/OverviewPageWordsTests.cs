@@ -247,8 +247,8 @@ public sealed class OverviewPageWordsTests
     }
 
     [Theory]
-    [InlineData(1, 45, 0.045, "1 word · 45 parser work in total", "Took 45 ms on this computer")]
-    [InlineData(9, 8_000, 0.8, "9 words · 8,000 parser work in total", "Took 800 ms on this computer")]
+    [InlineData(1, 45, 0.045, "1 word · 45 parser work in total", "Took <0.1 s on this computer")]
+    [InlineData(9, 8_000, 0.8, "9 words · 8,000 parser work in total", "Took 0.8 s on this computer")]
     [InlineData(1318, 6_124_000, 612.4, "1,318 words · 6,124,000 parser work in total", "Took 612.4 s on this computer")]
     public async Task TheSpeedHeadlineCountsParserWorkAndKeepsTheRunsElapsedTimeApart(int words, long work,
         double seconds, string expectedMain, string expectedElapsed)

@@ -244,10 +244,17 @@ public sealed class ProposalSidesTests
             RailOf(WorkspacePage.Texts, "+3", "3 more words are Same with this Proposal than today"));
 
         context.OpenPage(WorkspacePage.Timing);
-        await VisitAsync("Timing", timingNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
-            async () => await Wait.UntilAsync(() => timing.HeadlineTotal.Contains(Arrow)),
-            view => DrawTiming(timing, view, faults), context, fake, faults,
-            RailOf(WorkspacePage.Timing, "+30%", "30% more parser work with this Proposal than today"));
+        context.ShowProposalView(MarkupView.TodayToProposal);
+        await Wait.UntilAsync(() => timing.HeadlineTotal == "About 30% more parser work than the Baseline");
+        var timingReads = ReadCounts(fake);
+        foreach (var view in Flips)
+        {
+            context.ShowProposalView(view);
+            RailOf(WorkspacePage.Timing, "+30%", "30% more parser work with this Proposal than today")(view);
+            Assert.Equal(view == MarkupView.Today ? TimingShare.FormatParserWork(10_000)
+                : "About 30% more parser work than the Baseline", timing.HeadlineTotal);
+        }
+        Assert.Equal(timingReads, ReadCounts(fake));
 
         context.OpenPage(WorkspacePage.Warnings);
         await VisitAsync("Warnings", warningsNumbers, () => context.ShowProposalView(MarkupView.TodayToProposal),
@@ -276,7 +283,9 @@ public sealed class ProposalSidesTests
         var (_, context, _, _, timing, _, _) = await OpenedAsync(fiveWords);
         context.OpenPage(WorkspacePage.Timing);
         context.ShowProposalView(MarkupView.Proposal);
-        await Wait.UntilAsync(() => timing.HeadlineTotal == TimingShare.FormatParserWork(13_700));
+        await Wait.UntilAsync(() => timing.HeadlineTotalCaption ==
+            string.Format(MotifAppStrings.TimingCaptionAllWordsFormat, "5"));
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, timing.HeadlineTotal);
 
         var faults = new List<string>();
         Expect(faults, "Proposal caption", string.Format(MotifAppStrings.TimingCaptionAllWordsFormat, "5"), timing.HeadlineTotalCaption);

@@ -18,6 +18,7 @@ public sealed class ResponsivePageLayoutTests(ResponsivePageLayoutTests.SampleWi
         {
             foreach (var entry in PageRegistry.Entries)
             {
+                if (entry.Page == WorkspacePage.AiHandoff) continue;
                 if (entry.Page == WorkspacePage.Parsimony)
                 {
                     yield return ["parsimony-enabled", entry.Page, TextsTab.Matrix];

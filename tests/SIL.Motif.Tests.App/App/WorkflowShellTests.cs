@@ -150,6 +150,12 @@ public sealed class WorkflowShellTests
             new BaselineToken("p", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64)),
             DateTimeOffset.UtcNow, false));
         fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+        fake.OnCheckGrammar((_, _) =>
+        {
+            var result = new GrammarCheckResponse([], HasBaseline: true);
+            fake.StoredGrammarCheckIs(result);
+            return Task.FromResult(CommandOutcome<GrammarCheckResponse>.Success(result));
+        });
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = NewComposedWindow(fake);
@@ -159,6 +165,9 @@ public sealed class WorkflowShellTests
                 await workspace.SetProjectAsync(@"C:\projects\one.fwdata");
                 workspace.Context.Setup?.SkipCommand.Execute(null);
                 workspace.CurrentPage = WorkspacePage.Warnings;
+                await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(
+                    () => workspace.PageModel<WarningsPageModel>().Grammar.HasChecked,
+                    "The automatic grammar check did not finish.", TimeSpan.FromMinutes(1));
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -177,7 +186,7 @@ public sealed class WorkflowShellTests
             {
                 window.Close();
             }
-        }, TimeSpan.FromSeconds(10));
+        }, TimeSpan.FromMinutes(2));
     }
 
     [Fact]
@@ -194,7 +203,7 @@ public sealed class WorkflowShellTests
                     workspace.CurrentPage = page;
 
                     var visible = PageHosts.Where(name => Host(window, name).IsVisible).ToList();
-                    Assert.Equal([$"{page}Page"], visible);
+                    Assert.Equal([$"{(page == WorkspacePage.AiHandoff ? WorkspacePage.AiAssistants : page)}Page"], visible);
                 }
             }
             finally
@@ -217,8 +226,8 @@ public sealed class WorkflowShellTests
 
                 var entries = SidebarEntries(window);
                 Assert.Equal(
-                    ["Overview page", "Proposals page", "Texts page", "Try a Word page", "Timing page",
-                        "Warnings page", "Parsimony page", "Review Changes page", "AI Handoff page",
+                    ["Overview page", "Proposals page", "Texts page", "Try a Word page", "Parser Work page",
+                        "Warnings page", "Parsimony page", "Review Changes page",
                         "AI Assistants page"],
                     entries.Select(AutomationProperties.GetName));
 
@@ -273,7 +282,7 @@ public sealed class WorkflowShellTests
             try
             {
                 workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Approve, "kitabu", "kitabu"));
-                window.Width = 1240;
+                window.Width = 1279;
                 window.Show();
                 window.UpdateLayout();
 
@@ -282,6 +291,15 @@ public sealed class WorkflowShellTests
                 Assert.Equal(44, sidebar.Bounds.Width);
                 Assert.All(SidebarEntries(window), entry => Assert.False(Label(entry).IsEffectivelyVisible));
                 Assert.Equal(workspace.VisiblePages.Select(page => (object)page.Title), SidebarEntries(window).Select(entry => ToolTip.GetTip(entry)));
+
+                window.Width = 1280;
+                PageScreenshots.Settle(window);
+                Assert.False(workspace.IsSidebarCollapsed);
+                Assert.Equal(190, sidebar.Bounds.Width);
+                Assert.All(SidebarEntries(window), entry => Assert.True(Label(entry).IsEffectivelyVisible));
+                Assert.Equal(workspace.VisiblePages.Select(page => (object)page.Title), SidebarEntries(window).Select(entry => ToolTip.GetTip(entry)));
+                Assert.True(Entry(SidebarEntries(window), WorkspacePage.Review).GetVisualDescendants().OfType<Border>()
+                    .Single(border => border.Classes.Contains("pageBadge")).IsEffectivelyVisible);
 
                 window.Width = 900;
                 window.UpdateLayout();
@@ -311,6 +329,29 @@ public sealed class WorkflowShellTests
             {
                 window.Close();
             }
+        });
+    }
+
+    [Fact]
+    public void TechDemoVersionIsAlwaysAvailableInTheStatusBar()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (_, window) = NewComposedWindow();
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                var label = Assert.IsType<Button>(window.FindInWindowOrWorkspace<Button>("StatusTechDemo"));
+                Assert.StartsWith("Tech demo · v", Assert.IsType<string>(label.Content), StringComparison.Ordinal);
+                Assert.NotNull(label.Flyout);
+                Assert.True(label.IsEffectivelyVisible);
+                window.Width = 640;
+                window.UpdateLayout();
+                Assert.StartsWith("Tech demo · v", Assert.IsType<string>(label.Content), StringComparison.Ordinal);
+                Assert.True(label.IsEffectivelyVisible);
+            }
+            finally { window.Close(); }
         });
     }
 
@@ -809,6 +850,7 @@ public sealed class WorkflowShellTests
                 workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"));
                 workspace.PageModel<AiHandoffPageModel>().Handoff.OutputDirectory = @"C:\handoff";
                 workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
+                SettingsTestAccess.Model(window).ShowHandoffByCopyingFiles = true;
                 workspace.CurrentPage = WorkspacePage.AiHandoff;
                 window.Show();
                 window.UpdateLayout();

@@ -900,6 +900,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens <paramref name="page"/> as it stands; a page this window does not offer stays closed.</summary>
     public void OpenPage(WorkspacePage page)
     {
+        if (page == WorkspacePage.AiHandoff) page = WorkspacePage.AiAssistants;
         if (!CanOpenPage(page)) return;
         if (MotifTrace.IsEnabled && page != CurrentPage)
             MotifTrace.BeginSwitch("page", CurrentPage.ToString(), page.ToString());
@@ -916,7 +917,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             if (MotifTrace.IsEnabled && request.Page != CurrentPage)
                 MotifTrace.BeginSwitch("page", CurrentPage.ToString(), request.Page.ToString());
             using var span = MotifTrace.BeginInSwitch("switch.open-page");
-            CurrentPage = request.Page;
+            CurrentPage = request.Page == WorkspacePage.AiHandoff ? WorkspacePage.AiAssistants : request.Page;
         }
         var version = ++_pageRequestVersion;
         var publication = EvidencePublication;

@@ -576,9 +576,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                         PageScreenshots.Settle(listsWindow);
                         PageScreenshots.Settle(reviewWindow);
                         var apply = Disabled(reviewWindow, "Apply to FieldWorks project", failures);
-                        var whole = lists.HandOffListUnavailable
-                            ? DisabledByAutomationId(listsWindow, SIL.Motif.App.AutomationIds.HandOffList, failures) : null;
-                        var owners = new[] { apply, whole }.OfType<Button>().ToList();
+                        var owners = new[] { apply }.OfType<Button>().ToList();
                         var reasons = new List<(string What, TextBlock Text)>();
                         foreach (var owner in owners.Where(owner => ToolTip.GetTip(owner) is not null))
                             reasons.AddRange(ControlContracts.TooltipScenes.OpenTipTexts(owner)
@@ -587,7 +585,7 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
                             .Select(text => ("the reason under the AI Handoff buttons", text)));
                         reasons.AddRange(Shown(reviewWindow, [review.ApplyBlockedTitle, review.ApplyDisabledReason ?? string.Empty])
                             .Select(text => ("the reasons Apply is blocked", text)));
-                        var minimumReasons = lists.HandOffListUnavailable ? 3 : 2;
+                        var minimumReasons = 2;
                         if (reasons.Count < minimumReasons)
                             failures.Add($"{theme} {state}: only {reasons.Count} reasons showed");
                         foreach (var (what, text) in reasons)

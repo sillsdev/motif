@@ -551,12 +551,16 @@ public sealed class ComparePanelTests(AvaloniaHeadlessFixture avalonia)
                 compare.Words.First().IsChecked = true;
                 window.UpdateLayout();
 
-                Control Named(string name) => Assert.Single(window.GetVisualDescendants().OfType<Control>(), control =>
-                    AutomationProperties.GetName(control) == name && control.IsEffectivelyVisible);
+                Control Named(string name)
+                {
+                    var matches = window.GetVisualDescendants().OfType<Control>().Where(control =>
+                        AutomationProperties.GetName(control) == name && control.IsEffectivelyVisible).ToArray();
+                    Assert.True(matches.Length == 1, $"Expected one visible control named '{name}', found {matches.Length}.");
+                    return matches[0];
+                }
                 var controls = new[]
                 {
                     Named("Order the listed words"), Named("Search the listed words"),
-                    Named("AI Handoff for the listed words"),
                     Named("Add checked words as Unknown"), Named("Mark checked words as incorrect spelling"),
                     Named("Parse the stopped and unparsed words again"),
                 };

@@ -68,10 +68,16 @@ public sealed class TimingProposalViewTests
                 word.Stopped ? TimingCompletion.WorkLimit : "Finished") { ParserWork = word.Steps })],
             Work = new WordWorkSummary(words.Length, total, median, null),
             ParserWorkAggregates = request.By == "kind" ? kinds : [],
-            CostComparison = request.By == "rule" && request.ProposalId is not null
-                ? new TimingCostComparison(new TimingCostChange(-10, null), [])
+            CostComparison = request.ProposalId is not null
+                ? new TimingCostComparison(new TimingCostChange(words.FirstOrDefault()?.Name == "z" ? -29
+                    : words.FirstOrDefault()?.Steps <= 100 ? -90 : words.Sum(word => word.Steps) >= 13_000 ? 30
+                    : words.FirstOrDefault() is { Name: "a", Steps: > 1_000 } ? 10 : -10, null), [])
                 {
-                    Objects = [new TimingObjectCostChange("morph_rule", "one", "Rule one", new TimingCostChange(-25, null))
+                    Objects = request.By == "kind" ?
+                        [new TimingObjectCostChange("morph_rule", "morph_rule", "morph_rule", new TimingCostChange(-25, null)),
+                         new TimingObjectCostChange("affix", "affix", "affix", TimingCostChange.Unavailable("missing")) { Status = "missing" },
+                         new TimingObjectCostChange("synth_rule", "synth_rule", "synth_rule", TimingCostChange.Unavailable("new")) { Status = "new" }] :
+                        [new TimingObjectCostChange("morph_rule", "one", "Rule one", new TimingCostChange(-25, null))
                         { Status = "paired" },
                         new TimingObjectCostChange("morph_rule", "two", "Rule two", TimingCostChange.Unavailable("new"))
                         { Status = "new" },
@@ -160,8 +166,13 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal(Pair("10,000 parser work", "9,000 parser work"), page.HeadlineTotal);
-        Assert.Equal(Pair("2,500 parser work", "2,250 parser work"), page.HeadlineMedian);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineMedian);
+        Assert.False(page.ShowBaselineWorkDetails);
+        Assert.False(page.ShowStatistics);
+        Assert.False(page.HasKindCalls);
+        Assert.False(page.ShowBaselineKindCalls);
+        Assert.Empty(page.ShareDenominatorText);
         Assert.Equal(Pair("0", "0"), page.HeadlineStopped);
         Assert.Equal(MotifAppStrings.TimingProposalPairedNote, page.ProposalNote);
         Assert.Equal(1, ProposalReads(fake));
@@ -179,6 +190,15 @@ public sealed class TimingProposalViewTests
     }
 
     [Fact]
+    public async Task TotalWorkUsesTheRetainedTrialPairRatherThanTodaysAssessment()
+    {
+        var side = new Side { Proposals = _ => [new("a", 500), new("b", 1_000), new("c", 1_500), new("d", 2_000)] };
+        var (_, context, page) = await OpenedAsync(side);
+        context.ShowProposalView(MarkupView.TodayToProposal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
+    }
+
+    [Fact]
     public async Task AKindOnlyOneSideHasReadsAsNoneOnTheOtherNeverAsZero()
     {
         var (_, context, page) = await OpenedAsync();
@@ -188,10 +208,10 @@ public sealed class TimingProposalViewTests
         var synthesis = page.KindShares.Single(row => row.Kind == "synth_rule");
         var morph = page.KindShares.Single(row => row.Kind == "morph_rule");
 
-        Assert.EndsWith(MotifAppStrings.ProposalPageNone, affix.ShownWorkText);
-        Assert.StartsWith(MotifAppStrings.TimingNoneToday, synthesis.ShownWorkText);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, affix.ShownWorkText);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, synthesis.ShownWorkText);
         Assert.True(synthesis.IsProposalOnly);
-        Assert.Equal(Pair("6,000 parser work", "4,500 parser work"), morph.ShownWorkText);
+        Assert.Equal("About 25% less parser work than the Baseline", morph.ShownWorkText);
     }
 
     [Fact]
@@ -224,7 +244,7 @@ public sealed class TimingProposalViewTests
         context.ShowProposalView(MarkupView.TodayToProposal);
 
         Assert.Equal(1, ProposalReads(fake));
-        Assert.Equal(Pair("10,000 parser work", "9,000 parser work"), page.HeadlineTotal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     [Fact]
@@ -234,10 +254,10 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.Proposal);
 
-        Assert.Equal("9,000 parser work", page.HeadlineTotal);
-        Assert.Equal("2,250 parser work", page.HeadlineMedian);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineMedian);
         Assert.Equal("0", page.HeadlineStopped);
-        Assert.Equal(["morph_rule", "synth_rule"],
+        Assert.Equal(["morph_rule", "affix", "synth_rule"],
             page.KindShares.Where(row => !row.IsNotAttributed).Select(row => row.Kind));
         Assert.Equal(MotifAppStrings.TimingProposalViewNote, page.ProposalNote);
     }
@@ -250,8 +270,8 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal("10,000 parser work", page.HeadlineTotal);
-        Assert.Equal("2,500 parser work", page.HeadlineMedian);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineMedian);
         Assert.Equal(Pair("1", "2"), page.HeadlineStopped);
         Assert.DoesNotContain(page.KindShares, row => row.ProposalShareText is not null);
         Assert.Equal(MotifAppStrings.TimingProposalStoppedOnlyNote, page.ProposalNote);
@@ -265,8 +285,8 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.Proposal);
 
-        Assert.Equal(MotifAppStrings.ProposalPageNone, page.HeadlineTotal);
-        Assert.Equal(MotifAppStrings.ProposalPageNone, page.HeadlineMedian);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineMedian);
         Assert.Equal("2", page.HeadlineStopped);
         Assert.Empty(page.KindShares);
         Assert.Equal(MotifAppStrings.TimingProposalViewNotComparableNote, page.ProposalNote);
@@ -280,7 +300,7 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal("10,000 parser work", page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
         Assert.Equal("0", page.HeadlineStopped);
         Assert.DoesNotContain(page.KindShares, row => row.ProposalShareText is not null);
         Assert.Equal(MotifAppStrings.TimingProposalDifferentWordsNote, page.ProposalNote);
@@ -295,7 +315,7 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.TodayToProposal);
 
-        Assert.Equal("10,000 parser work", page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
         Assert.Equal(MotifAppStrings.TimingProposalDifferentWordsNote, page.ProposalNote);
     }
 
@@ -306,7 +326,7 @@ public sealed class TimingProposalViewTests
         context.ShowProposalView(MarkupView.TodayToProposal);
         page.SlowestCount = 2;
         await page.SelectWordSetCommand.ExecuteAsync("slowest");
-        Assert.Equal(Pair("7,000 parser work", "6,300 parser work"), page.HeadlineTotal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
 
         var (_, otherContext, otherPage) = await OpenedAsync(new Side
         {
@@ -315,7 +335,7 @@ public sealed class TimingProposalViewTests
         otherContext.ShowProposalView(MarkupView.TodayToProposal);
         otherPage.SlowestCount = 2;
         await otherPage.SelectWordSetCommand.ExecuteAsync("slowest");
-        Assert.Equal("7,000 parser work", otherPage.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, otherPage.HeadlineTotal);
         Assert.Equal(MotifAppStrings.TimingProposalDifferentWordsNote, otherPage.ProposalNote);
     }
 
@@ -325,7 +345,7 @@ public sealed class TimingProposalViewTests
         var side = new Side();
         var (_, context, page) = await OpenedAsync(side);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("9,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
         var todayGate = new TaskCompletionSource<CommandOutcome<TimingResponse>>();
         var proposalGate = new TaskCompletionSource<CommandOutcome<TimingResponse>>();
         side.Hold = request => request.WordSet != "parser-work-limit"
@@ -344,9 +364,9 @@ public sealed class TimingProposalViewTests
         Assert.Equal(MotifAppStrings.OverviewProposalReading, page.HeadlineTotal);
 
         proposalGate.SetResult(CommandOutcome<TimingResponse>.Success(
-            Respond(new TimingRequest(ProjectPath, null, "parser-work-limit"), [new Word("z", 500, true)], ("morph_rule", 1))));
+            Respond(new TimingRequest(ProjectPath, null, "parser-work-limit", ProposalId: "proposal/one"), [new Word("z", 500, true)], ("morph_rule", 1))));
         await selecting;
-        Assert.Equal("500 parser work", page.HeadlineTotal);
+        Assert.Equal("About 29% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     [Fact]
@@ -357,7 +377,7 @@ public sealed class TimingProposalViewTests
         context.ShowProposalView(MarkupView.Proposal);
         await Task.Delay(50);
 
-        Assert.Equal("9,000 parser work", page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
         Assert.Equal(1, ProposalReads(fake));
     }
 
@@ -369,7 +389,7 @@ public sealed class TimingProposalViewTests
         var twoGate = new TaskCompletionSource<CommandOutcome<TimingResponse>>();
         var (_, context, page) = await OpenedAsync(side);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("9,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
         side.Hold = request => request.ProposalId == "proposal/two" ? twoGate.Task
             : Task.FromResult(CommandOutcome<TimingResponse>.Success(request.ProposalId is null
                 ? Respond(request, side.Today, ("morph_rule", 1)) : Respond(request, ProposalCalm, ("morph_rule", 1))));
@@ -380,13 +400,13 @@ public sealed class TimingProposalViewTests
         Assert.Equal(MotifAppStrings.OverviewProposalReading, page.HeadlineTotal);
         Assert.Empty(page.KindShares);
         context.ShowProposalView(MarkupView.TodayToProposal);
-        Assert.DoesNotContain("9,000", page.HeadlineTotal);
+        Assert.DoesNotContain("10%", page.HeadlineTotal);
 
         twoGate.SetResult(CommandOutcome<TimingResponse>.Success(
-            Respond(new TimingRequest(ProjectPath), side.Proposals("proposal/two"), ("morph_rule", 1))));
+            Respond(new TimingRequest(ProjectPath, ProposalId: "proposal/two"), side.Proposals("proposal/two"), ("morph_rule", 1))));
         await opening;
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("1,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 90% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     [Fact]
@@ -404,12 +424,12 @@ public sealed class TimingProposalViewTests
 
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("1,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 90% less parser work than the Baseline", page.HeadlineTotal);
         oneGate.SetResult(CommandOutcome<TimingResponse>.Success(
             Respond(new TimingRequest(ProjectPath), ProposalCalm, ("morph_rule", 1))));
         await Task.Delay(50);
 
-        Assert.Equal("1,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 90% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     [Fact]
@@ -431,13 +451,13 @@ public sealed class TimingProposalViewTests
         await Task.Delay(100);
         await context.OpenProposalAsync("proposal/one", CancellationToken.None);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("2,700 parser work", page.HeadlineTotal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
 
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
         context.ShowProposalView(MarkupView.Proposal);
 
         Assert.True(context.Evidence.Assessment!.IsStored);
-        Assert.Equal("300 parser work", page.HeadlineTotal);
+        Assert.Equal("About 90% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     internal static CurrentEvidenceSnapshot StoredSnapshot()
@@ -473,10 +493,10 @@ public sealed class TimingProposalViewTests
 
         context.ShowProposalView(MarkupView.Proposal);
 
-        Assert.Equal(MotifAppStrings.ProposalPageNone, page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
         Assert.Empty(page.KindShares);
         context.ShowProposalView(MarkupView.TodayToProposal);
-        Assert.Equal("10,000 parser work", page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
         Assert.Contains(string.Format(MotifAppStrings.ProposalPageUnreadableFormat, MotifAppStrings.TimingNoun), page.ProposalNote);
     }
 
@@ -489,13 +509,13 @@ public sealed class TimingProposalViewTests
         await Task.Delay(50);
         Assert.True(page.ShowPageBody);
         Assert.False(page.ShowParsePromptCard);
-        Assert.Equal("9,000 parser work", page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
         Assert.True(page.ShowHeadlineCard);
         Assert.True(page.ShowKindCard);
 
         context.ShowProposalView(MarkupView.TodayToProposal);
-        Assert.Equal(Pair(MotifAppStrings.TimingNoneToday, "9,000 parser work"), page.HeadlineTotal);
-        Assert.All(page.KindShares.Where(row => !row.IsNotAttributed), row => Assert.True(row.IsProposalOnly));
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
+        Assert.Empty(page.KindShares);
 
         context.ShowProposalView(MarkupView.Today);
         Assert.False(page.ShowPageBody);
@@ -574,13 +594,15 @@ public sealed class TimingProposalViewTests
                     note.GetVisualDescendants().OfType<TextBlock>().First().Text);
                 var texts = window.GetVisualDescendants().OfType<TimingPage>().Single().GetVisualDescendants()
                     .OfType<TextBlock>().Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
-                Assert.Contains(Pair("10,000 parser work", "9,000 parser work"), texts);
+                Assert.Contains("About 10% less parser work than the Baseline", texts);
+                Assert.Contains(MotifAppStrings.TimingRuleChanges, texts);
+                Assert.Contains("-25%", texts);
 
                 workspace.Context.ShowProposalView(MarkupView.Today);
                 PageScreenshots.Settle(window);
                 var today = window.GetVisualDescendants().OfType<TimingPage>().Single().GetVisualDescendants()
                     .OfType<TextBlock>().Where(block => block.IsEffectivelyVisible).Select(block => block.Text).ToArray();
-                Assert.DoesNotContain(Pair("10,000 parser work", "9,000 parser work"), today);
+                Assert.DoesNotContain("About 10% less parser work than the Baseline", today);
                 Assert.Contains("10,000 parser work", today);
             }
             finally { window.Close(); }

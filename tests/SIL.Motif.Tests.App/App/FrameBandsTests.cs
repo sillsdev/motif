@@ -76,8 +76,7 @@ public sealed class FrameBandsTests
         (WorkspacePage.Texts, "Parse all words in the Selection"),
         (WorkspacePage.TryAWord, "Try the word"),
         (WorkspacePage.Review, MotifAppStrings.GoToAnalyzeTexts),
-        (WorkspacePage.AiHandoff, "Write the AI Handoff folder"),
-        (WorkspacePage.AiAssistants, "Turn On Advanced AI Mode"),
+        (WorkspacePage.AiAssistants, "Let Assistants Use Motif's Tools"),
     ];
 
     [Theory]
@@ -144,7 +143,7 @@ public sealed class FrameBandsTests
                 PageScreenshots.Settle(window);
                 var band = window.FindInWindowOrWorkspace<Border>("TechDemoNotice")!;
                 Assert.True(notice.IsVisible && band.IsEffectivelyVisible);
-                Assert.False(preferences.Current.HasSeenTechDemoNotice);
+                Assert.True(preferences.Current.HasSeenTechDemoNotice);
                 Assert.True(window.FindInWindowOrWorkspace<Button>("ProjectChip")!.Focus());
                 window.KeyPress(Key.LeftAlt, RawInputModifiers.Alt, PhysicalKey.AltLeft, null);
                 window.KeyPressQwerty(PhysicalKey.G, RawInputModifiers.Alt);

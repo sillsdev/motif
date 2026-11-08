@@ -150,6 +150,7 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("F1", "F1", "Window"), ("Escape", "Esc", "Window"), ("?", "Shift+/", "Window"),
             ("F or E or V or T or H", "Alt+F or Alt+E or Alt+V or Alt+T or Alt+H", "Window"),
             (",", "Ctrl+,", "Window"),
+            ("O", "Ctrl+O", "Window"),
             ("= or Keypad +", "Ctrl+= or Ctrl+Shift+= or Ctrl+Keypad +", "Window"),
             ("- or Keypad -", "Ctrl+- or Ctrl+Keypad -", "Window"),
             ("0 or Keypad 0", "Ctrl+0 or Ctrl+Keypad 0", "Window"),

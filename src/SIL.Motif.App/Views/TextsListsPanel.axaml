@@ -75,16 +75,15 @@
                 AutomationProperties.HelpText="{Binding Lists.ParseAgainHelpText}"
                 ToolTip.Tip="{Binding Lists.ParseAgainHelpText}" views:ClearTipPlacement.IsEnabled="True" />
         <Button Content="{Binding Lists.HandOffCheckedWordsLabel}"
-                IsVisible="{Binding Lists.HasCheckedWordsForHandoff}"
+                IsVisible="False"
                 Command="{Binding Lists.HandOffCheckedWordsCommand}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandOffCheckedWords}"
                 AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForTickedWordsInThisList}"
                 AutomationProperties.HelpText="{Binding Lists.HandOffCheckedWordsHelpText}" />
-        <Button Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
+        <Button IsVisible="False" Content="{Binding Lists.HandOffListLabel}" Command="{Binding Lists.HandOffListCommand}"
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.HandOffList}"
                 AutomationProperties.Name="{Binding Lists.HandOffListLabel}"
-                AutomationProperties.HelpText="{Binding Lists.HandOffListHelpText}"
-                ToolTip.Tip="{Binding Lists.HandOffListHelpText}" views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" />
+                AutomationProperties.HelpText="{Binding Lists.HandOffListHelpText}" />
     </WrapPanel>
 
     <views:WordListSlot Grid.Row="3" Classes="textsListsWords" Schema="{Binding Lists.Compare.WordListSchema}"

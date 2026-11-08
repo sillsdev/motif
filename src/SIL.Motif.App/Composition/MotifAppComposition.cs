@@ -58,9 +58,9 @@ public sealed record MotifAppOptions(
     /// <summary>Creates session-owned preferences when no caller-owned store is supplied.</summary>
     internal Func<FileUserPreferencesStore>? OwnedUserPreferencesFactory { get; init; }
 
-    /// <summary>The command surface the window may show for the current preference choice.</summary>
+    /// <summary>The command surface the window may show independently of the MCP tools preference.</summary>
     public CommandSurfacePolicy SurfacePolicy =>
-        new(developerCommandsEnabled: false, advancedAiModeEnabled: AdvancedAiModePreferences?.IsEnabled ?? false);
+        new(developerCommandsEnabled: false, advancedAiModeEnabled: true);
 
     /// <summary>
     /// The installed window's inputs: the root, parser and runner the command line would use

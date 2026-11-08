@@ -195,7 +195,7 @@
                                       Command="{Binding $parent[views:GrammarPanel].OpenFindingDetailsCommand}"
                                       CommandParameter="{Binding}" />
                               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
-                                      Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}"
+                                      IsVisible="False" Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}"
                                       Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
                                       CommandParameter="{Binding}" />
                               <Button Classes="menuEntry" Theme="{DynamicResource BorderlessButton}"
@@ -362,7 +362,7 @@
                       </StackPanel>
 
                       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                        <Button Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}" Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
+                        <Button IsVisible="False" Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}" Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.HandOffCommand}"
                                 CommandParameter="{Binding}" />
                         <Button Content="{x:Static app:MotifAppStrings.ParseTheseWordsAgain}" IsVisible="{Binding CanParseAgain}"
                                 Command="{Binding $parent[views:GrammarPanel].Grammar.Warnings.ReparseCommand}"

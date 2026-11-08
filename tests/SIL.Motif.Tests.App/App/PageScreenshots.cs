@@ -450,8 +450,8 @@ public sealed class PageScreenshots
         ("3-try-a-word", WorkspacePage.TryAWord, TextsTab.Matrix),
         ("4-timing", WorkspacePage.Timing, TextsTab.Matrix),
         ("5-warnings", WorkspacePage.Warnings, TextsTab.Matrix),
+        ("5a-parsimony", WorkspacePage.Parsimony, TextsTab.Matrix),
         ("6-review", WorkspacePage.Review, TextsTab.Matrix),
-        ("7-ai-handoff", WorkspacePage.AiHandoff, TextsTab.Matrix),
         ("8-ai-assistants", WorkspacePage.AiAssistants, TextsTab.Matrix),
         ("9-proposals", WorkspacePage.Proposals, TextsTab.Matrix),
         ("10-settings", WorkspacePage.Settings, TextsTab.Matrix),
@@ -996,6 +996,7 @@ public sealed class PageScreenshots
         if (!parse)
         {
             await workspace.Context.EvidencePublication;
+            workspace.CurrentPage = WorkspacePage.Overview;
             return sample;
         }
         Record("select-texts");

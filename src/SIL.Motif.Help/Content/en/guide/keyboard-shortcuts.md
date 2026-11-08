@@ -144,6 +144,7 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | F1 | F1 | F1 | Window | Open Help for This Page |
 | Escape | Esc | Esc | Window | Step Back in the Inspector or Leave the Proposal |
 | ? | Shift+/ | Shift+/ | Window | Show Keyboard Shortcuts |
+| O | Ctrl+O | Ctrl+O | Window | Open a Project |
 | , | Ctrl+, | ⌘+, | Window | Open Settings |
 | = or Keypad + | Ctrl+= or Ctrl+Shift+= or Ctrl+Keypad + | ⌘+= or ⌘+Shift+= or ⌘+Keypad + | Window | Zoom In |
 | - or Keypad - | Ctrl+- or Ctrl+Keypad - | ⌘+- or ⌘+Keypad - | Window | Zoom Out |

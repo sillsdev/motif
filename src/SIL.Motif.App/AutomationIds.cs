@@ -21,6 +21,10 @@ public static class AutomationIds
     public const string ProjectMenu = "motif-project-menu";
     public const string HelpButton = "motif-help-button";
     public const string SettingsButton = "motif-settings-button";
+    /// <summary>The setting that makes the file Handoff section available.</summary>
+    public const string SettingsShowHandoff = "motif-settings-show-handoff";
+    /// <summary>The button that leaves Settings.</summary>
+    public const string SettingsClose = "motif-settings-close";
     /// <summary>The automation identifier of one finding's row on the Parsimony page.</summary>
     public static string ForParsimonyFinding(string findingId) => "motif-parsimony-finding-" + findingId;
 

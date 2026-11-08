@@ -62,6 +62,7 @@
   "shortcut-open-help": {"titleResource":"MotifApp.ShortcutOpenHelp","description":"Show Help for the current page.","source":"Motif interface text"},
   "shortcut-step-back": {"titleResource":"MotifApp.ShortcutStepBack","description":"Return to the preceding Inspector level; with nothing else using Esc, leave the open Proposal.","source":"Motif interface text"},
   "shortcut-show-shortcuts": {"titleResource":"MotifApp.ShortcutShowShortcuts","description":"Open the keyboard shortcut list.","source":"Motif interface text"},
+  "shortcut-open-project": {"titleResource":"MotifApp.ShortcutOpenProject","description":"Choose a FieldWorks project to open.","source":"Motif interface text"},
   "shortcut-open-settings": {"titleResource":"MotifApp.ShortcutOpenSettings","description":"Open Settings at its last group.","source":"Motif interface text"},
   "shortcut-zoom-in": {"titleResource":"MotifApp.ShortcutZoomIn","description":"Increase the App's display zoom.","source":"Motif interface text"},
   "shortcut-zoom-out": {"titleResource":"MotifApp.ShortcutZoomOut","description":"Decrease the App's display zoom.","source":"Motif interface text"},

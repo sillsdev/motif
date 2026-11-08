@@ -85,7 +85,7 @@ public sealed class ProposalNumberEmphasisTests
 
     private static void CheckEmphasis(TextBlock text, ProposalNumber number, List<string> failures)
     {
-        Assert.True(text.IsEffectivelyVisible);
+        Assert.True(text.IsEffectivelyVisible, $"{number.Label} ({text.Text}) is hidden; parent: {text.Parent}.");
         Assert.True(text.Bounds.Width > 0 && text.Bounds.Height > 0);
         if ((text.FontWeight == FontWeight.Bold) != number.Moved)
             failures.Add($"{number.Label} ({number.Value}): Moved={number.Moved}, rendered weight={text.FontWeight}.");

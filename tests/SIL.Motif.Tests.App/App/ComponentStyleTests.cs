@@ -759,7 +759,7 @@ public sealed partial class ComponentStyleTests
         yield return new("Sidebar", "a utility button", host => Add(host, Press("sidebarUtility")),
             Button.HeightProperty, "Component.Menu.ButtonHeight");
         yield return new("Sidebar", "a collapsed utility button", host => SidebarUtility(host, collapsed: true),
-            Button.WidthProperty, "Component.Sidebar.ItemWidth");
+            Button.WidthProperty, "Component.Sidebar.ItemWidthCollapsed");
         yield return new("Sidebar", "the help glyph", host => Add(host, Text("sidebarUtilityGlyph")),
             TextBlock.FontSizeProperty, "Intent.Type.Navigation");
         yield return new("Sidebar", "the help label", host => Add(host, Text("sidebarUtilityLabel")),

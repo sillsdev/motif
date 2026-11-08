@@ -9,7 +9,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class AssistantConnectionsPageTests
 {
     [Fact]
-    public async Task AdvancedAiModePersistsAndOnlyConnectsCheckedAssistantsThroughTheFake()
+    public async Task AssistantConnectionsRemainAvailableWhenToolsAreOff()
     {
         var preferences = new FakeAdvancedAiPreferences();
         var connections = new FakeAssistantConnections();
@@ -17,17 +17,18 @@ public sealed class AssistantConnectionsPageTests
             WorkspaceContextTests.NewContext(new FakeCommandClient(), preferences, connections));
 
         Assert.False(page.IsEnabled);
-        Assert.False(page.ShowsAssistantList);
+        Assert.True(page.ShowsAssistantList);
         Assert.Equal(2, page.Assistants.Count);
 
-        page.IsEnabled = true;
         page.Assistants[1].IsSelected = true;
         await page.ConnectSelectedCommand.ExecuteAsync(null);
 
-        Assert.True(preferences.IsEnabled);
+        Assert.False(preferences.IsEnabled);
         Assert.True(page.ShowsAssistantList);
         Assert.Equal([AssistantClient.Codex], connections.Connected);
         Assert.Contains("Connected Codex", page.StatusMessage, StringComparison.Ordinal);
+        page.IsEnabled = true;
+        Assert.True(preferences.IsEnabled);
     }
 
     [Theory]

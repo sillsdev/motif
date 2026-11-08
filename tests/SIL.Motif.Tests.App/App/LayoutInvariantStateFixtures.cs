@@ -8,7 +8,8 @@ namespace SIL.Motif.Tests.App;
 
 internal static class LayoutInvariantStateFixtures
 {
-    internal static async Task VisitAsync(FakeCommandClient fake, WorkspaceShellViewModel workspace, Action<string> inspect)
+    internal static async Task VisitAsync(FakeCommandClient fake, WorkspaceShellViewModel workspace, SettingsViewModel settings,
+        Action<string> inspect)
     {
         var refusal = new Refusal(RefusalCodes.StoreOtherVersion, FailureReason.Refused, "Store belongs to another version.");
         var proposals = workspace.PageModel<ProposalsPageModel>();
@@ -30,6 +31,7 @@ internal static class LayoutInvariantStateFixtures
             () => warnings.CheckGrammarCommand.ExecuteAsync(null),
             () => warnings.Grammar.IsLoading, () => warnings.Grammar.ShowRefused);
 
+        settings.ShowHandoffByCopyingFiles = true;
         var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
         await Pending<HandoffCommandResponse>(WorkspacePage.AiHandoff, task => fake.OnHandoff((_, _, _) => task),
             () => handoff.RunCommand.ExecuteAsync(null), () => handoff.IsActive, () => handoff.ShownRefusal is not null);

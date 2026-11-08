@@ -8,7 +8,8 @@ public sealed class MatrixSceneCoverageTests
     [Fact]
     public void StandardScenesCoverEveryPageAvailableWithoutAdvancedAi()
     {
-        var expected = Enum.GetValues<WorkspacePage>().Where(page => !WorkspacePages.RequiresAdvancedAi(page));
+        var expected = Enum.GetValues<WorkspacePage>().Where(page =>
+            !WorkspacePages.RequiresAdvancedAi(page) && page != WorkspacePage.AiHandoff);
         var actual = PageScreenshots.Views().Select(view => view.Page).Distinct();
 
         Assert.Equal(expected.Order(), actual.Order());

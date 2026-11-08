@@ -269,7 +269,7 @@
                               IsVisible="{Binding $parent[word:WordCard].Header, Converter={x:Static conv:ObjectConverters.IsNull}}"
                               AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkThisOccurrenceAsUnreadAccessibleName}"
                               AutomationProperties.HelpText="{Binding MarkUnreadDisabledReason}"
-                              ToolTip.Tip="{Binding MarkUnreadDisabledReason}" ToolTip.ShowOnDisabled="True"
+                              ToolTip.Tip="{Binding MarkUnreadTip}" ToolTip.ShowOnDisabled="True"
                               views:ClearTipPlacement.IsEnabled="True" />
                       <views:AskAssistantButton CardStyle="True" TargetKind="word" TargetId="{Binding Form}" TargetLabel="{Binding Form}" />
                       <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.CheckAgain}" Command="{Binding Actions.RecheckChangesCommand}"

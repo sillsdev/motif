@@ -105,7 +105,7 @@ public sealed class RefusedWordsWalkthroughTests(PristineProjectFixture pristine
                     WalkthroughSteps.Remaining(deadline), "the refused-word timing selection did not load");
                 Assert.False(timing.RerunWordsCommand.CanExecute(null));
 
-                workspace.CurrentPage = WorkspacePage.AiHandoff;
+                walkthrough.ShowPage(WorkspacePage.AiHandoff);
                 walkthrough.Click("Write the AI Handoff folder");
                 var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
                 walkthrough.WaitUntil(() => handoff.State is RunState.Completed or RunState.Refused,

@@ -669,7 +669,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     var timeLimit = page.GetVisualDescendants().OfType<NumericUpDown>()
                         .Single(control => AutomationProperties.GetName(control) == "Time limit per word in seconds");
                     var useEstimate = Button(page, "Use Motif's estimate");
-                    var noParserWorkLimit = Assert.Single(page.GetVisualDescendants().OfType<CheckBox>());
+                    var noParserWorkLimit = Assert.Single(page.GetVisualDescendants().OfType<CheckBox>(),
+                        control => Equals(control.Content, MotifAppStrings.NoParserWorkLimit));
                     Assert.Equal(workspace.Selection.PerWordParserWorkLimit, parserWorkLimit.Value);
                     Assert.Equal(workspace.Selection.PerWordParserWorkLimitUnbounded, noParserWorkLimit.IsChecked);
 

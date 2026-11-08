@@ -18,12 +18,11 @@
       <TextBox x:Name="WordListSearch" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
                Width="{DynamicResource Component.TextsPage.WordListSearchWidth}"
                Grid.Column="1" AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchWordsAccessibleName}" />
-      <Button Content="{Binding Words.HandOffCheckedWordsLabel}"
+      <Button IsVisible="False" Content="{Binding Words.HandOffCheckedWordsLabel}"
               Command="{Binding Words.HandOffCheckedWordsCommand}"
               AutomationProperties.Name="{Binding Words.HandOffCheckedWordsLabel}"
               AutomationProperties.HelpText="{Binding Words.HandOffCheckedWordsHelpText}"
-              ToolTip.Tip="{Binding Words.HandOffCheckedWordsHelpText}"
-              views:ClearTipPlacement.IsEnabled="True" ToolTip.ShowOnDisabled="True" Grid.Column="2" />
+              Grid.Column="2" />
     </Grid>
 
     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">

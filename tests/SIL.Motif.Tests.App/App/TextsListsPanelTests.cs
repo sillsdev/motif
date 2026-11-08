@@ -193,7 +193,7 @@ public sealed class TextsListsPanelTests(AvaloniaHeadlessFixture avalonia)
                 var controls = panel.FindControl<Control>("ListControls")!;
                 var shown = controls.GetVisualDescendants().OfType<Control>()
                     .Where(control => control is Button or ComboBox && control.IsEffectivelyVisible).ToArray();
-                Assert.Equal(3, shown.Length);
+                Assert.Equal(2, shown.Length);
                 var middles = shown.Select(control =>
                     control.TranslatePoint(new Point(0, control.Bounds.Height / 2), controls)!.Value.Y).ToArray();
                 Assert.All(middles, middle => Assert.InRange(middle, middles[0] - 1, middles[0] + 1));

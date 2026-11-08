@@ -7,8 +7,7 @@ function Get-MotifHelpGoldenPath {
     Join-Path $RepoRoot 'tests/SIL.Motif.Tests.Cli/Golden/help-all-current.json'
 }
 
-# Runs `motif help --all --json` as the golden test does: developer commands off, Advanced AI mode off
-# (an absent preference file reads as disabled). Returns the standard output with LF newlines.
+# Runs `motif help --all --json` with developer commands and Advanced AI mode off.
 function Invoke-MotifOffModeHelp {
     param(
         [Parameter(Mandatory)][string] $RepoRoot,
@@ -17,6 +16,8 @@ function Invoke-MotifOffModeHelp {
     $cli = Join-Path $RepoRoot "bin/$Configuration/$(if ($IsWindows) { 'motif.exe' } else { 'motif' })"
     if (-not (Test-Path -LiteralPath $cli)) { throw "The CLI was not built at $cli." }
     $scratch = Join-Path ([IO.Path]::GetTempPath()) ('motif-help-golden-' + [Guid]::NewGuid().ToString('N'))
+    [void] [IO.Directory]::CreateDirectory($scratch)
+    [IO.File]::WriteAllText((Join-Path $scratch 'advanced-ai-mode.json'), '{"advancedAiMode":false}')
     $start = [Diagnostics.ProcessStartInfo]::new($cli)
     foreach ($argument in 'help', '--all', '--json') { $start.ArgumentList.Add($argument) }
     $start.RedirectStandardOutput = $true

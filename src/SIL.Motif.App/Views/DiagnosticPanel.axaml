@@ -165,7 +165,7 @@
                              IsVisible="{Binding FailureActual, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
                   <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Small}" Text="{Binding FailureEnvironment, StringFormat='Environment: {0}'}"
                              IsVisible="{Binding FailureEnvironment, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                  <Expander Header="Steps on this path" IsExpanded="False" IsVisible="{Binding Steps.Count}">
+                  <Expander Header="{x:Static app:MotifAppStrings.TraceEventsOnPath}" IsExpanded="False" IsVisible="{Binding Steps.Count}">
                     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
                     <views:CopyableTextBlock Classes="muted" FontSize="{DynamicResource Intent.Type.Label}" TextWrapping="Wrap"
                                              Text="{Binding ParserCode, StringFormat='Code from the parser: {0}'}"
@@ -239,7 +239,7 @@
       <Expander Header="Full derivation" IsVisible="{Binding $parent[views:DiagnosticPanel].ShowFullDerivation}" IsExpanded="False" AutomationProperties.Name="Full derivation tree">
         <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
           <Grid ColumnDefinitions="2*,*,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Snug}">
-            <TextBox Text="{Binding SearchText}" PlaceholderText="Search all recorded steps..."
+            <TextBox Text="{Binding SearchText}" PlaceholderText="{x:Static app:MotifAppStrings.TraceSearchEvents}"
                      AutomationProperties.Name="Search diagnostic trace" />
             <TextBox Grid.Column="1" Text="{Binding RuleFilter}" PlaceholderText="Rule"
                      AutomationProperties.Name="Filter diagnostic trace by rule" />
@@ -326,7 +326,7 @@
             <Border x:Name="DetailHost" Grid.Column="1" Classes="card"
                     IsVisible="{Binding SelectedStep, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
               <StackPanel Spacing="{DynamicResource Intent.Space.Snug}" DataContext="{Binding SelectedStep}">
-                <views:CopyableTextBlock Text="Selected step" FontSize="{DynamicResource Intent.Type.Section}"
+                <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TraceSelectedEvent}" FontSize="{DynamicResource Intent.Type.Section}"
                                          FontWeight="{DynamicResource Intent.Weight.Section}" />
                 <views:CopyableTextBlock Text="{Binding RecordedOutcomeText}" Classes="status" TextWrapping="WrapWithOverflow" />
                 <views:CopyableTextBlock Text="{Binding Type}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
@@ -377,7 +377,7 @@
                            IsVisible="{Binding SourceIdentityId, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"
                            TextWrapping="Wrap" />
                 <views:CopyableTextBlock Classes="muted"
-                           Text="Category statistics are aggregate parser statistics; they are not time for this step."
+                           Text="{x:Static app:MotifAppStrings.TraceCategoryStatisticsNote}"
                            TextWrapping="Wrap" />
 
               </StackPanel>

@@ -119,11 +119,8 @@ using var usageAction = usageRecorder.BeginAction(
     CliUsageArgumentShapes(usageCommand, usageVerb, usageArguments.Item1,
         usageArguments.Item2, usageArguments.Item3));
 
-var advancedAiModeEnabled = environment.TryGetValue(
-        FileAdvancedAiModePreferenceStore.PathEnvironmentVariable, out var preferencePath) &&
-    new FileAdvancedAiModePreferenceStore(preferencePath!).IsEnabled;
 var commandPolicy = CommandSurfacePolicy.FromEnvironment(
-    environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable), advancedAiModeEnabled);
+    environment.GetValueOrDefault(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable), advancedAiModeEnabled: true);
 
 if (args.Length > 0 && args[0] == "help")
     return HelpCommand.Run(args[1..], commandPolicy, output, error);

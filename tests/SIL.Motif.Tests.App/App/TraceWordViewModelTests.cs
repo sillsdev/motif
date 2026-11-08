@@ -96,6 +96,36 @@ public sealed class TraceWordViewModelTests
     }
 
     [Fact]
+    public async Task AProposalTraceWithoutAPairedBaselineDoesNotShowAbsoluteParserWork()
+    {
+        using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
+        var fake = new FakeCommandClient();
+        fake.TraceWordCompletesWith(MatinluTrace() with
+        {
+            ParserWork = 1234,
+            Effort = [new TraceEffort("Rules", 2, 2, 0, 0, 0, 1, null) { ParserWork = 5678 }],
+        });
+        string? proposal = "proposal/one";
+        var trace = new TraceWordViewModel(fake) { WordToTry = "word", ProposalIdSource = () => proposal };
+        trace.SetProjectPath(ProjectPath);
+
+        await trace.TryCommand.ExecuteAsync(null);
+
+        Assert.Equal("Parser work comparison unavailable", trace.ParserWorkText);
+        Assert.Contains("Parser work comparison unavailable", trace.SummaryText);
+        Assert.DoesNotContain("1,234", trace.SummaryText);
+        Assert.Equal("Parser work comparison unavailable", Assert.Single(trace.Effort).Time);
+        Assert.Equal(0, Assert.Single(trace.Effort).TimeHeat);
+        proposal = null;
+        Assert.Equal("Parser work comparison unavailable", trace.ParserWorkText);
+
+        await trace.TryCommand.ExecuteAsync(null);
+        Assert.Contains("1,234", trace.ParserWorkText);
+        Assert.Equal("5,678 parser work", Assert.Single(trace.Effort).Time);
+        Assert.True(Assert.Single(trace.Effort).TimeHeat > 0);
+    }
+
+    [Fact]
     public void AMissingParserWorkCountSaysSoInsteadOfShowingTheRecordedMilliseconds()
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -286,7 +316,8 @@ public sealed class TraceWordViewModelTests
 
         Assert.True(trace.HasResult);
         Assert.Contains("No parse", trace.SummaryText, StringComparison.Ordinal);
-        Assert.Contains("2,345 parser work in the parser, 1.5 s overall", trace.SummaryText, StringComparison.Ordinal);
+        Assert.Contains("2,345 parser work", trace.SummaryText, StringComparison.Ordinal);
+        Assert.DoesNotContain("1.5 s", trace.SummaryText, StringComparison.Ordinal);
         AssertNoMilliseconds(trace.SummaryText);
         Assert.Equal("The parser stopped at a search limit.", trace.StopReason);
         var root = Assert.Single(trace.Effort);

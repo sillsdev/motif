@@ -62,11 +62,11 @@ public sealed class FileAdvancedAiModePreferenceStore : IAdvancedAiModePreferenc
         {
             try
             {
-                if (!File.Exists(_path)) return false;
+                if (!File.Exists(_path)) return true;
                 using var document = JsonDocument.Parse(File.ReadAllText(_path));
                 return document.RootElement.ValueKind == JsonValueKind.Object &&
-                    document.RootElement.TryGetProperty("advancedAiMode", out var value) &&
-                    value.ValueKind == JsonValueKind.True;
+                    (!document.RootElement.TryGetProperty("advancedAiMode", out var value) ||
+                     value.ValueKind == JsonValueKind.True);
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or
                 JsonException or ArgumentException or NotSupportedException or System.Security.SecurityException)

@@ -41,20 +41,18 @@ public sealed class ParsimonyPageModelTests
         MeasureCatalog.All.First(measure => measure.Axis == ParsimonyAxis.Restrictiveness).Id;
 
     [Fact]
-    public async Task PageIsOffWhenAdvancedAiModeIsOff_ItReadsNothingAndCannotBeOpened()
+    public async Task ParsimonyRemainsAvailableWhenAssistantToolsAreOff()
     {
         var fake = new FakeCommandClient();
+        ExpectNoReport(fake);
         var (context, page) = Build(fake, advancedAi: false);
 
         await context.OpenProjectAsync(ProjectA);
-
-        Assert.Equal(ParsimonyPageState.Off, page.State);
-        Assert.Equal("Parsimony is available when Advanced AI mode is on.", page.UnavailableText);
-        Assert.Empty(fake.ReadLatestParsimonyRequests);
-        Assert.Empty(fake.ShowParsimonyReportRequests);
-        Assert.False(context.CanOpenPage(WorkspacePage.Parsimony));
         context.OpenPage(WorkspacePage.Parsimony);
-        Assert.Equal(WorkspacePage.Overview, context.CurrentPage);
+
+        Assert.True(context.CanOpenPage(WorkspacePage.Parsimony));
+        Assert.NotEqual(ParsimonyPageState.Off, page.State);
+        Assert.Equal(WorkspacePage.Parsimony, context.CurrentPage);
     }
 
     [Fact]

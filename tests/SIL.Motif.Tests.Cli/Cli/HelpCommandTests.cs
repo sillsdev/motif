@@ -66,8 +66,7 @@ public sealed class HelpCommandTests
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("Advanced AI commands", result.Output, StringComparison.Ordinal);
-        Assert.Contains("motif settings advanced-ai on", result.Output, StringComparison.Ordinal);
-        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Advanced AI commands (enabled)", result.Output, StringComparison.Ordinal);
         Assert.Contains("label", result.Output, StringComparison.Ordinal);
         Assert.Contains("parsimony show", result.Output, StringComparison.Ordinal);
         Assert.Contains("store delete-refused", result.Output, StringComparison.Ordinal);
@@ -132,7 +131,6 @@ public sealed class HelpCommandTests
     }
 
     [Theory]
-    [InlineData("label", "motif settings advanced-ai on", "MOTIF_ADVANCED_AI_MODE_PATH")]
     [InlineData("pending-changes", "MOTIF_DEVELOPER_COMMANDS=1", "")]
     public void HelpForAnUnavailableCommandExplainsItsEnablement(string command, string instruction, string pathHint)
     {
@@ -358,7 +356,7 @@ public sealed class HelpCommandTests
         var commands = entries.Where(entry => entry.GetProperty("kind").GetString() == "command").ToArray();
         var guides = entries.Where(entry => entry.GetProperty("kind").GetString() == "guide").ToArray();
         Assert.Equal(
-            CommandCatalog.All.Where(command => command.Surface == CommandSurface.Released)
+            CommandCatalog.All.Where(command => command.Surface is CommandSurface.Released or CommandSurface.AdvancedAi)
                 .Select(command => command.Name).Order(StringComparer.Ordinal),
             commands.Select(entry => entry.GetProperty("code").GetString()!).Order(StringComparer.Ordinal));
         Assert.All(entries, entry =>
@@ -374,7 +372,9 @@ public sealed class HelpCommandTests
         Assert.All(commands, entry =>
         {
             Assert.True(entry.TryGetProperty("usage", out _));
-            Assert.Equal("Released", entry.GetProperty("surface").GetString());
+            var code = entry.GetProperty("code").GetString();
+            Assert.Equal(CommandCatalog.All.Single(command => command.Name == code).Surface.ToString(),
+                entry.GetProperty("surface").GetString());
         });
         var catalogGuides = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"))
             .Entries.Where(entry => entry.Kind == HelpEntryKind.Guide)
@@ -421,7 +421,7 @@ public sealed class HelpCommandTests
             .Where(entry => entry.GetProperty("kind").GetString() == "command")
             .Select(entry => entry.GetProperty("code").GetString()!)
             .Order(StringComparer.Ordinal);
-        Assert.Equal(releasedNames, CommandCatalog.All.Where(command => command.Surface == CommandSurface.Released)
+        Assert.Equal(releasedNames, CommandCatalog.All.Where(command => command.Surface is CommandSurface.Released or CommandSurface.AdvancedAi)
             .Select(command => command.Name).Order(StringComparer.Ordinal));
     }
 

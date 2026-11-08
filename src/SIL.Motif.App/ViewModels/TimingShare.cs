@@ -34,8 +34,7 @@ public sealed record TimingShare(string Label, string Kind, long? ParserWork, do
         IsProposalOnly ? MotifAppStrings.TimingNoneToday : ShareText, ProposalShareText);
 
     /// <summary>The parser work, then the Proposal's when paired.</summary>
-    public string ShownWorkText => ProposalWorkText is null ? WorkText : Pair(
-        IsProposalOnly ? MotifAppStrings.TimingNoneToday : WorkText, ProposalWorkText);
+    public string ShownWorkText => ProposalWorkText ?? WorkText;
 
     /// <summary>Why one side of a paired share is missing, for a tooltip and accessible name; null when both show.</summary>
     public string? ShownShareNote
@@ -145,15 +144,13 @@ public sealed record TimingShare(string Label, string Kind, long? ParserWork, do
     public static string FormatParserWork(double parserWork) =>
         PluralText.Format(MotifAppStrings.ParserWorkPattern, (long)Math.Round(parserWork, MidpointRounding.AwayFromZero));
 
-    /// <summary>Formats recorded times as whole milliseconds, tenths below ten, and seconds from ten seconds.</summary>
+    /// <summary>Formats a recorded elapsed time in seconds; the window never shows milliseconds.</summary>
     /// <param name="milliseconds">The measured time.</param>
     public static string FormatDuration(double milliseconds)
     {
         var culture = CultureInfo.CurrentCulture;
-        if (Math.Round(milliseconds) >= 10_000) return (milliseconds / 1000).ToString("N1", culture) + " s";
-        if (milliseconds >= 10) return milliseconds.ToString("N0", culture) + " ms";
-        if (milliseconds > 0 && milliseconds < 0.05) return "<0.1 ms";
-        return milliseconds.ToString("#,0.#", culture) + " ms";
+        if (milliseconds > 0 && milliseconds < 50) return "<0.1 s";
+        return (milliseconds / 1000).ToString("#,0.0", culture) + " s";
     }
 
     /// <summary>Shows whole percentages, with positive shares below one percent shown as less than one percent.</summary>

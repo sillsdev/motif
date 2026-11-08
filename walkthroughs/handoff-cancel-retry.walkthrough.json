@@ -4,8 +4,11 @@
   "steps": [
     { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
     { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
-    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "visible", "timeoutMs": 30000 },
-    { "id": "open-handoff", "kind": "click", "automationId": "motif-page-ai-handoff" },
+    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
+    { "id": "open-settings", "kind": "click", "automationId": "motif-settings-button" },
+    { "id": "show-handoff", "kind": "click", "automationId": "motif-settings-show-handoff" },
+    { "id": "close-settings", "kind": "click", "automationId": "motif-settings-close" },
+    { "id": "open-handoff", "kind": "click", "automationId": "motif-page-ai-assistants" },
     { "id": "wait-for-write", "kind": "waitFor", "automationId": "motif-write-handoff", "condition": "enabled", "timeoutMs": 30000 },
     { "id": "write-handoff", "kind": "click", "automationId": "motif-write-handoff" },
     { "id": "wait-for-files", "kind": "waitFor", "automationId": "motif-handoff-files", "condition": "visible", "timeoutMs": 30000 },

@@ -83,6 +83,8 @@ public enum ShortcutKey
     H,
     /// <summary>The U key.</summary>
     U,
+    /// <summary>The O key.</summary>
+    O,
     /// <summary>The C key.</summary>
     C,
     /// <summary>The Y key.</summary>

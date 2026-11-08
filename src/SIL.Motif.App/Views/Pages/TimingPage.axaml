@@ -27,7 +27,7 @@
                 <views:CopyableTextBlock Classes="muted" Text="{Binding RerunMeasurementsText}"
                                          IsVisible="{Binding HasRerunMeasurements}" />
               </StackPanel>
-              <StackPanel>
+              <StackPanel IsVisible="{Binding ShowBaselineWorkDetails}">
                 <views:CopyableTextBlock Classes="timingHeadlineValue" Text="{Binding HeadlineMedian}" />
                 <views:CopyableTextBlock Classes="timingHeadlineCaption" Text="{x:Static app:MotifAppStrings.MedianWordTime}" />
               </StackPanel>
@@ -97,7 +97,7 @@
                 </Flyout>
               </Button.Flyout>
             </Button>
-            <Button Content="{x:Static app:MotifAppStrings.AIHandoffForTheseWords}" Command="{Binding HandOffWordsCommand}"
+            <Button IsVisible="False" Content="{x:Static app:MotifAppStrings.AIHandoffForTheseWords}" Command="{Binding HandOffWordsCommand}"
                     AutomationProperties.Name="{x:Static app:MotifAppStrings.AIHandoffForTheseWordsAccessibleName}" />
             <Button x:Name="MoreWordsButton" Content="{x:Static app:MotifAppStrings.More}" AutomationProperties.Name="{x:Static app:MotifAppStrings.MoreWaysToChooseWordsAccessibleName}">
               <Button.Flyout>
@@ -180,6 +180,7 @@
                   <views:CopyableTextBlock Classes="muted" Text="{Binding ShareDenominatorText}" TextWrapping="Wrap"
                                            AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatEveryShareIsOfAccessibleName}" />
                   <views:TimingKindBar x:Name="KindBar" Rows="{Binding KindShares}"
+                                       IsVisible="{Binding ShowBaselineWorkDetails}"
                                        Height="{DynamicResource Component.Timing.BarHeight}"
                                        AutomationProperties.Name="{x:Static app:MotifAppStrings.ShareOfTotalWordTimeByKindAccessibleName}" />
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
@@ -208,7 +209,7 @@
                             Command="{Binding ToggleKindCallsCommand}" IsVisible="{Binding HasKindCalls}"
                             AutomationProperties.Name="{Binding KindCallsButtonName}" />
                   </Grid>
-                  <ItemsControl x:Name="TimingPageKindCallSharesItems" ItemsSource="{Binding KindCallShares}" IsVisible="{Binding ShowKindCalls}"
+                  <ItemsControl x:Name="TimingPageKindCallSharesItems" ItemsSource="{Binding KindCallShares}" IsVisible="{Binding ShowBaselineKindCalls}"
                                 AutomationProperties.Name="{x:Static app:MotifAppStrings.CallsByKindAccessibleName}">
                     <ItemsControl.ItemsPanel>
                       <ItemsPanelTemplate>
@@ -228,10 +229,11 @@
                 </StackPanel>
               </Border>
 
-              <Border Classes="card">
+              <Border Classes="card" IsVisible="{Binding HasProposalRuleNote}">
+                <views:CopyableTextBlock Text="{Binding ProposalRuleNote}" TextWrapping="Wrap" />
+              </Border>
+              <Border Classes="card" IsVisible="{Binding HasProposalRuleChanges}">
                 <StackPanel>
-                  <views:CopyableTextBlock Text="{Binding ProposalRuleNote}" IsVisible="{Binding HasProposalRuleNote}" TextWrapping="Wrap" />
-                  <StackPanel IsVisible="{Binding HasProposalRuleChanges}">
                     <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TimingRuleChanges}" FontWeight="{DynamicResource Intent.Weight.Strong}" />
                     <views:ProgressiveItemsControl x:Name="TimingPageProposalRuleChangesItems" FullItemsSource="{Binding ProposalRuleChanges}">
                       <ItemsControl.ItemTemplate>
@@ -244,7 +246,10 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </views:ProgressiveItemsControl>
-                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <Border Classes="card" IsVisible="{Binding ShowBaselineWorkDetails}">
+                <StackPanel>
                   <Grid Classes="timingTableHeader timingColumns">
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="2*" />
@@ -331,14 +336,14 @@
 
             </StackPanel>
 
-            <StackPanel x:Name="TimingSidePanel" Classes="timingSidePanel" Grid.Column="1"
+            <StackPanel x:Name="TimingSidePanel" Classes="timingSidePanel" Grid.Column="1" IsVisible="{Binding ShowBaselineWorkDetails}"
                         Spacing="{DynamicResource Intent.Space.Group}">
               <Border Classes="card" IsVisible="{Binding HasRule}">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
                   <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRuleName}"
                                             TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedRuleName}" />
                   <views:CopyableTextBlock Text="{Binding RuleSummary}" TextWrapping="Wrap" />
-                  <Button Content="{x:Static app:MotifAppStrings.AIHandoffForThisRule}" Command="{Binding HandOffRuleCommand}" />
+                  <Button IsVisible="False" Content="{x:Static app:MotifAppStrings.AIHandoffForThisRule}" Command="{Binding HandOffRuleCommand}" />
                 </StackPanel>
               </Border>
 
@@ -346,7 +351,7 @@
           </Grid>
 
           <!-- The word lists take the page's full width, so each row keeps its columns while the column minimums fit and stacks beneath that. -->
-          <Border Classes="card" IsVisible="{Binding HasRule}">
+          <Border Classes="card" IsVisible="{Binding ShowBaselineRuleDetails}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Classes="section-title" Text="{Binding RuleWordsTitle}" TextWrapping="Wrap" />
               <views:WordListSlot Schema="{x:Static word:WordListSchemas.Timing}">
@@ -369,7 +374,7 @@
             </StackPanel>
           </Border>
 
-          <Border Classes="card" IsVisible="{Binding HasSelectedWords}">
+          <Border Classes="card" IsVisible="{Binding ShowBaselinePercentiles}">
             <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
               <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.HowLongTheWordsTook}" />
               <views:CopyableTextBlock Text="{Binding PercentileSummary}" TextWrapping="Wrap" />

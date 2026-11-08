@@ -8,9 +8,8 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class TimingPageModel
 {
     // Only what the page shows is kept from the Proposal's read; its per-word rows are dropped with the response.
-    private sealed record ProposalTiming(WordWorkSummary Work, IReadOnlyList<TimingWorkAggregate> ParserWorkAggregates,
-        IReadOnlyList<TimingAggregateRow> Aggregates, int StoppedWords, WordSetDigest Words,
-        TimingCostComparison RuleComparison);
+    private sealed record ProposalTiming(WordWorkSummary Work, int StoppedWords, WordSetDigest Words,
+        TimingCostComparison KindComparison, TimingCostComparison RuleComparison);
 
     // What a held read belongs to; the chosen words count by reference, as changing them replaces the list.
     private sealed record ProposalTimingKey(string Project, string ProposalId, string TrialId, string WordSet, int Top,
@@ -50,6 +49,15 @@ public sealed partial class TimingPageModel
 
     private bool OffToday => Context.Lens is not null && ProposalViewScope.ViewOf(Context) != MarkupView.Today;
 
+    /// <summary>Whether absolute Baseline work details are appropriate for the current view.</summary>
+    public bool ShowBaselineWorkDetails => !OffToday;
+
+    /// <summary>Whether the selected rule's absolute Baseline work is shown.</summary>
+    public bool ShowBaselineRuleDetails => !OffToday && HasRule;
+
+    /// <summary>Whether the Baseline-only percentile card is shown.</summary>
+    public bool ShowBaselinePercentiles => !OffToday && HasSelectedWords;
+
     private bool ProposalMeasured => Held is { Work.MeasuredWordCount: > 0 };
 
     // Hashed on first use after today's words change, by version so no response is kept and none is stale.
@@ -73,12 +81,7 @@ public sealed partial class TimingPageModel
     // The Proposals page pairs two work totals only when it can compare them; so does this page.
     private bool WorkComparable => !HasHeadline || ProposalNumberText.HasWorkComparison(Context.Lens?.Trial?.Work);
 
-    private bool WorkIsPaired => SameWords && WorkComparable;
-
-    private string? ProposalTotal => ProposalMeasured ? TimingShare.FormatParserWork(Held!.Work.TotalParserWork) : null;
-
-    private string? ProposalMedian => ProposalMeasured && Held!.Work.MedianParserWork is { } median
-        ? TimingShare.FormatParserWork(median) : null;
+    private bool WorkIsPaired => SameWords && WordsChecked && WorkComparable;
 
     private string? ProposalStopped => ProposalMeasured ? Held!.StoppedWords.ToString("N0", CultureInfo.CurrentCulture) : null;
 
@@ -95,8 +98,10 @@ public sealed partial class TimingPageModel
     public bool ShowKindCard => HasSelectedWords || (OffToday && ProposalMeasured && (ShowsPairs || WorkComparable));
 
     /// <summary>The work by kind: today's, paired with the Proposal's, or the Proposal's alone in its own view.</summary>
-    public IReadOnlyList<TimingShare> KindShares => ShowsProposalAlone ? WorkComparable ? ProposalKindShares() : []
-        : WorkIsPaired ? PairedKindShares(TodayKindShares, ProposalKindShares()) : TodayKindShares;
+    public IReadOnlyList<TimingShare> KindShares => OffToday
+        ? WorkIsPaired || (ShowsProposalAlone && WordsChecked && WorkComparable)
+            ? PairedKindShares() : []
+        : TodayKindShares;
 
     /// <summary>The note saying what is paired, what stays today's and why the Proposal may have nothing to show.</summary>
     public string? ProposalNote => ProposalPageNote.For(Context, new ProposalPageNote.Parts(
@@ -136,6 +141,19 @@ public sealed partial class TimingPageModel
     private string AloneNote() => WorkComparable
         ? MotifAppStrings.TimingProposalViewNote : MotifAppStrings.TimingProposalViewNotComparableNote;
 
+    private string WorkHeadline => ProposalReading
+        ? MotifAppStrings.OverviewProposalReading
+        : WordsChecked && WorkComparable ? WorkComparison(Held?.KindComparison.Total.PercentChange)
+        : MotifAppStrings.ProposalWorkNotComparable;
+
+    private static string WorkComparison(double? change)
+    {
+        if (change is null) return MotifAppStrings.ProposalWorkNotComparable;
+        var whole = TrialWorkNotice.WholePercent(change.Value);
+        return whole == 0 ? MotifAppStrings.ParserWorkComparisonSame : string.Format(CultureInfo.CurrentCulture,
+            change > 0 ? MotifAppStrings.ParserWorkComparisonMoreFormat : MotifAppStrings.ParserWorkComparisonLessFormat, whole);
+    }
+
     private string ProposalHeadline(string today, string? proposal, bool work)
     {
         var none = MotifAppStrings.ProposalPageNone;
@@ -159,29 +177,11 @@ public sealed partial class TimingPageModel
                 count.ToString("N0", CultureInfo.CurrentCulture));
     }
 
-    private IReadOnlyList<TimingShare> ProposalKindShares() => ProposalMeasured && Held!.ParserWorkAggregates.Count > 0
-        ? TimingShare.ByKind(Held.ParserWorkAggregates, Held.Work.TotalParserWork,
-            Held.Aggregates, MotifAppStrings.TimingNotAttributedLabel, 0, alwaysShowUnattributed: true)
-        : [];
-
-    // A kind one side lacks reads as none on that side, never as zero work.
-    private static IReadOnlyList<TimingShare> PairedKindShares(IReadOnlyList<TimingShare> today,
-        IReadOnlyList<TimingShare> proposal)
-    {
-        TimingShare? Match(TimingShare row) => proposal.FirstOrDefault(other =>
-            other.IsNotAttributed == row.IsNotAttributed && other.Kind == row.Kind);
-        var paired = today.Select(row => Match(row) is { } other
-            ? row with { ProposalShareText = other.ShareText, ProposalWorkText = other.WorkText }
-            : row with { ProposalShareText = MotifAppStrings.ProposalPageNone, ProposalWorkText = MotifAppStrings.ProposalPageNone })
-            .ToList();
-        paired.AddRange(proposal.Where(other => !today.Any(row => row.IsNotAttributed == other.IsNotAttributed &&
-            row.Kind == other.Kind)).Select(other => other with
-            {
-                ProposalShareText = other.ShareText, ProposalWorkText = other.WorkText, IsProposalOnly = true,
-                Share = null, ParserWork = null,
-            }));
-        return paired;
-    }
+    private IReadOnlyList<TimingShare> PairedKindShares() => Held?.KindComparison.Objects.Select(row =>
+        new TimingShare(TimingShare.KindName(row.Kind), row.Kind, null, null, 0, null)
+        {
+            ProposalWorkText = WorkComparison(row.Change.PercentChange), IsProposalOnly = row.Status == "new",
+        }).ToArray() ?? [];
 
     // Reads the open Proposal's timing only while this page is shown and the held read is for another key.
     private Task EnsureProposalSideAsync(CancellationToken cancellationToken)
@@ -235,9 +235,9 @@ public sealed partial class TimingPageModel
                 .ConfigureAwait(true);
             var comparison = rules.Succeeded && rules.Value is { } value ? value.CostComparison
                 : TimingCostComparison.Unavailable("Rule detail is unavailable.");
-            return (new ProposalTiming(response.Work, response.ParserWorkAggregates, response.Aggregates,
+            return (new ProposalTiming(response.Work,
                 response.Words.Count(word => word.Completion is TimingCompletion.WorkLimit or TimingCompletion.MemoryLimit),
-                WordSetDigest.Of(response.Words.Select(word => word.Word)), comparison), false);
+                WordSetDigest.Of(response.Words.Select(word => word.Word)), response.CostComparison, comparison), false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { return null; }
         catch (Exception ex) when (ex is not OperationCanceledException) { return (null, true); }
@@ -254,10 +254,8 @@ public sealed partial class TimingPageModel
     }
 
     // The Proposal's work for the words both sides measured, as a whole percent of today's, or null.
-    private int? WorkChangePercent => Held is { Work.MeasuredWordCount: > 0 } held && KindTiming is { } today &&
-        HasHeadline && WordsChecked && WorkComparable && today.Work.TotalParserWork > 0
-        ? (int)Math.Round((held.Work.TotalParserWork - today.Work.TotalParserWork) * 100.0 / today.Work.TotalParserWork,
-            MidpointRounding.AwayFromZero) : null;
+    private int? WorkChangePercent => WordsChecked && WorkComparable && Held?.KindComparison.Total.PercentChange is { } change
+        ? (int)Math.Round(change, MidpointRounding.AwayFromZero) : null;
 
     private void RaiseProposalTiming()
     {
@@ -268,6 +266,8 @@ public sealed partial class TimingPageModel
             nameof(ShowHeadlineCard), nameof(ShowKindCard), nameof(ShowPageBody), nameof(ShowParsePromptCard), nameof(KindShares),
             nameof(ProposalNote), nameof(HasProposalNote), nameof(ProposalRuleChanges), nameof(HasProposalRuleChanges),
             nameof(ProposalRuleNote), nameof(HasProposalRuleNote),
+            nameof(ShowBaselineWorkDetails), nameof(ShowBaselineRuleDetails), nameof(ShowBaselinePercentiles),
+            nameof(ShowStatistics), nameof(HasKindCalls), nameof(ShowBaselineKindCalls),
             nameof(ShareDenominatorText), nameof(ScopeLabel),
         }) OnPropertyChanged(name);
     }

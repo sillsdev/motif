@@ -210,17 +210,14 @@ public sealed class ReleaseSurfaceTests : IDisposable
     [Fact]
     public void AdvancedAiHelpIdentifiesHumanOnlyCommands()
     {
-        var result = Run("help \"project initialize\"", developerCommands: false);
+        var result = Run("help \"project initialize\" --full", developerCommands: false);
 
         Assert.Equal(0, result.ExitCode);
-        Assert.Contains("Advanced AI mode", result.Output, StringComparison.Ordinal);
-        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", result.Output, StringComparison.Ordinal);
-        Assert.Contains("human-only", result.Output, StringComparison.Ordinal);
-        Assert.Contains("MCP tool", result.Output, StringComparison.Ordinal);
+        Assert.Contains("available in the CLI", result.Output, StringComparison.Ordinal);
+        Assert.Contains("never exposed as an MCP tool", result.Output, StringComparison.Ordinal);
         var json = Run("help \"project initialize\" --json", developerCommands: false);
-        var enablement = System.Text.Json.Nodes.JsonNode.Parse(json.Output)!["enablement"]!.GetValue<string>();
-        Assert.Contains("human-only", enablement, StringComparison.Ordinal);
-        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", enablement, StringComparison.Ordinal);
+        var helpPage = System.Text.Json.Nodes.JsonNode.Parse(json.Output)!["helpPage"]!.GetValue<string>();
+        Assert.Contains("never exposed as an MCP tool", helpPage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -244,26 +241,11 @@ public sealed class ReleaseSurfaceTests : IDisposable
     }
 
     [Fact]
-    public void AdvancedAiRefusalNamesTheSettingAndSandboxPreferencePath()
+    public void AdvancedAiPreferenceDoesNotDisableCliCommands()
     {
-        var result = Run("new --project p --draft proposal", developerCommands: false);
-
-        Assert.Equal(FailureEnvelope.ExitCodeFor(FailureReason.Refused), result.ExitCode);
-        Assert.Contains("motif settings advanced-ai on", result.Error, StringComparison.Ordinal);
-        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", result.Error, StringComparison.Ordinal);
-
-        var json = Run("new --project p --draft proposal --json", developerCommands: false);
-        var envelope = ProjectionJson.Deserialize<FailureEnvelope>(json.Error)!;
-        Assert.Equal("command.advanced-ai-mode-required", envelope.Code);
-        Assert.Contains("motif settings advanced-ai on", envelope.Message, StringComparison.Ordinal);
-        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", envelope.Message, StringComparison.Ordinal);
-        var humanOnly = Run("project initialize --project p --confirm x", developerCommands: false);
-        Assert.Contains("human-only", humanOnly.Error, StringComparison.Ordinal);
-        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", humanOnly.Error, StringComparison.Ordinal);
-        var humanOnlyJson = Run("project initialize --project p --confirm x --json", developerCommands: false);
-        var humanOnlyEnvelope = ProjectionJson.Deserialize<FailureEnvelope>(humanOnlyJson.Error)!;
-        Assert.Contains("human-only", humanOnlyEnvelope.Message, StringComparison.Ordinal);
-        Assert.Contains("MOTIF_ADVANCED_AI_MODE_PATH", humanOnlyEnvelope.Message, StringComparison.Ordinal);
+        var result = Run("new", developerCommands: false);
+        Assert.Contains("Usage: motif new", result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("advanced-ai-mode-required", result.Error, StringComparison.Ordinal);
     }
 
     [Fact]

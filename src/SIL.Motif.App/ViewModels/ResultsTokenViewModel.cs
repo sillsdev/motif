@@ -601,6 +601,7 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     public string? MarkUnreadDisabledReason => Occurrence is null
         ? "Choose a word occurrence in Analyze texts first."
         : null;
+    public string MarkUnreadTip => MarkUnreadDisabledReason ?? MotifAppStrings.MarkAsUnreadTip;
     public Guid? WordformId { get; }
     public int OccurrenceIndex { get; }
     public bool HasWordLink => WordLink is not null;

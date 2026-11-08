@@ -193,7 +193,7 @@ public sealed partial class MainWindow : Window
         if (_workspaceView is not { } view || !view.UpdateLayoutViewport(this, width)) return;
         if (DataContext is WorkspaceShellViewModel workspace)
         {
-            workspace.IsSidebarCollapsed = true;
+            workspace.UpdateWindowWidth(ClientSize.Width);
             workspace.IsChromeCompact = width < (double)this.FindResource("Component.TopBar.CompactWidth")!;
         }
         if (this.FindControl<Border>("TopBar") is { } topBar)
@@ -322,7 +322,7 @@ public sealed partial class MainWindow : Window
     }
 
     [KeyboardShortcutHandler(
-        "Window:ShowHelp", "Window:Back", "Window:ShowShortcuts", "Window:OpenSettings",
+        "Window:ShowHelp", "Window:Back", "Window:ShowShortcuts", "Window:OpenSettings", "Window:OpenProject",
         "Window:ZoomIn", "Window:ZoomOut", "Window:ResetZoom", "Window:Copy", "Window:Undo", "Window:Redo",
         "TextReader:FocusWordSearch", "WordList:FocusWordSearch", "Lists:FocusWordSearch", "Matrix:FocusWordSearch")]
     private async void OnKeyDown(object? sender, KeyEventArgs e)
@@ -347,6 +347,13 @@ public sealed partial class MainWindow : Window
         {
             e.Handled = true;
             _workspaceView?.OpenKeyboardShortcuts();
+            return;
+        }
+        if (entry?.Behavior == KeyboardShortcutBehavior.OpenProject &&
+            DataContext is WorkspaceShellViewModel { ProjectSwitchEnabled: true } workspace)
+        {
+            e.Handled = true;
+            await workspace.SelectNewProjectCommand.ExecuteAsync(null).ConfigureAwait(true);
             return;
         }
         if (entry?.Behavior == KeyboardShortcutBehavior.OpenSettings)

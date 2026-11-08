@@ -38,8 +38,7 @@ public sealed class SettingsPageTests
         var help = new HelpPopupViewModel(new SettingsUriLauncher());
         help.ShowForPage(WorkspacePage.Settings);
         Assert.Equal("Settings", help.Title);
-        Assert.All(PageRegistry.Entries.Where(item => item.Page != WorkspacePage.Settings),
-            item => Assert.True(item.ShowInRail));
+        Assert.False(PageRegistry.For(WorkspacePage.AiHandoff).ShowInRail);
     }
 
     [Theory]
@@ -70,6 +69,17 @@ public sealed class SettingsPageTests
                 Assert.Same(settings, page.Navigation.DataContext);
                 Assert.DoesNotContain(workspace.VisiblePages, item => item.Page == WorkspacePage.Settings);
                 var display = page.FindControl<StackPanel>("SettingsDisplaySection")!;
+                var handoff = Assert.IsType<CheckBox>(page.FindControl<CheckBox>("ShowHandoffByCopyingFiles"));
+                Assert.False(handoff.IsChecked);
+                var assistantPage = Assert.IsType<AssistantConnectionsPage>(
+                    PageRegistry.For(WorkspacePage.AiAssistants).CreateView(workspace.PageOf(WorkspacePage.AiAssistants).Model));
+                assistantPage.ConfigureHandoff(settings, workspace.PageModel<AiHandoffPageModel>());
+                var handoffSection = assistantPage.FindControl<ContentControl>("HandoffSection")!;
+                Assert.False(handoffSection.IsVisible);
+                settings.ShowHandoffByCopyingFiles = true;
+                Assert.True(handoffSection.IsVisible);
+                Assert.True(preferences.GetExpanded(SettingsExpanderKeys.ShowHandoff));
+                Assert.True(new SettingsViewModel(workspace, preferences).ShowHandoffByCopyingFiles);
                 var themeReset = display.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Reset theme to match the operating system");
                 var zoomReset = display.GetVisualDescendants().OfType<Button>().Single(button =>

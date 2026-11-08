@@ -1135,6 +1135,7 @@ public sealed class WorkspaceShellViewModelTests
         fake.DefaultSelectionCompletesWith(new NamedSelectionProjection(
             "Default", [TextId], [], string.Empty, string.Empty, 1000, ParserWorkLimit.Default));
         fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(TextId, "Alpha")], HasBaseline: true));
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse([], HasBaseline: true));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
 
         var texts = workspace.PageModel<TextsPageModel>();
@@ -1169,7 +1170,7 @@ public sealed class WorkspaceShellViewModelTests
         workspace.CurrentPage = WorkspacePage.TryAWord;
         Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
         workspace.CurrentPage = WorkspacePage.AiHandoff;
-        Assert.Equal(WorkspacePage.AiHandoff, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.AiAssistants, workspace.CurrentPage);
         workspace.CurrentPage = WorkspacePage.Review;
         Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);
     }

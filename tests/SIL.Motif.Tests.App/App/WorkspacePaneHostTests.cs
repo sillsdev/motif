@@ -172,6 +172,8 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
+                workspace.CurrentPage = WorkspacePage.Overview;
+                PageScreenshots.Settle(window);
                 var texts = window.PageView<TextsPage>();
                 var selection = texts.FindControl<ContentControl>("SelectionHost")!;
                 Assert.Null(selection.Parent);

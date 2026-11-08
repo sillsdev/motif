@@ -205,8 +205,11 @@ public static class HelpCommand
         output.WriteLine(string.Join("  ", commands));
     }
 
-    private static string EnablementText(CommandDescriptor command) =>
-        CommandAvailabilityText.Render(CommandAvailabilityFacts.For(command));
+    private static string EnablementText(CommandDescriptor command) => command.Surface == CommandSurface.AdvancedAi
+        ? command.Agent == AgentClass.HumanOnly
+            ? "Available in the CLI. This command is human-only and is never exposed as an MCP tool."
+            : "Available in the CLI. Assistants need Advanced AI mode enabled to use this MCP tool."
+        : CommandAvailabilityText.Render(CommandAvailabilityFacts.For(command));
 
     private static object BuildEntry(HelpEntry entry, bool command)
     {

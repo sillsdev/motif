@@ -2,7 +2,7 @@
 
 The **Parsimony** page lists grammar-tidiness findings from the latest stored check of the grammar. Each finding names what was counted and how strong the evidence is. The page reads what the check stored. Opening it, or coming back to it, never starts a check, and it writes nothing to the project.
 
-The page appears only while Advanced AI mode is on. Without a stored check, ask an AI assistant with Motif tools to run every Parsimony measure for this project, or run `motif parsimony --project "<project.fwdata>" --measure all --wait` in the CLI after replacing `<project.fwdata>` with the project file path. [Run every Parsimony measure](cmd:parsimony%20--measure%20all%20--wait) describes the command. Then come back here. Opening or returning to this page never starts a check.
+Without a stored check, ask an AI assistant with Motif tools to run every Parsimony measure for this project, or run `motif parsimony --project "<project.fwdata>" --measure all --wait` in the CLI after replacing `<project.fwdata>` with the project file path. [Run every Parsimony measure](cmd:parsimony%20--measure%20all%20--wait) describes the command. Then come back here. Opening or returning to this page never starts a check.
 
 The page has two tabs. **Active** lists the findings still to review. **Suppressed** lists the findings you kept or deferred, each with its reason, or with "No reason given" when you gave none. Each tab shows its count.
 

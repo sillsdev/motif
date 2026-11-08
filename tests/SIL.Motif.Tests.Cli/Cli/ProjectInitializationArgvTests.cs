@@ -26,15 +26,15 @@ public sealed class ProjectInitializationArgvTests : IDisposable
     }
 
     [Fact]
-    public async Task InitializationRequiresAdvancedAiMode()
+    public async Task InitializationStillRequiresConfirmationWhenAssistantToolsAreOff()
     {
         new FileAdvancedAiModePreferenceStore(PreferencePath).SetEnabled(false);
         var before = File.ReadAllBytes(Project);
         var result = await Run("project", "initialize", "--project", Project,
-            "--confirm", Confirmation, "--json");
+            "--json");
 
-        Assert.Equal(2, result.ExitCode);
-        Assert.Contains("command.advanced-ai-mode-required", result.Error, StringComparison.Ordinal);
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("initialization.confirmation-required", result.Error, StringComparison.Ordinal);
         Assert.Equal(before, File.ReadAllBytes(Project));
     }
 
@@ -71,7 +71,7 @@ public sealed class ProjectInitializationArgvTests : IDisposable
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains(Confirmation, result.Output, StringComparison.Ordinal);
-        Assert.Contains("Advanced AI mode", result.Output, StringComparison.Ordinal);
+        Assert.Contains("available in the CLI", result.Output, StringComparison.Ordinal);
     }
 
     private async Task<(int ExitCode, string Output, string Error)> Run(params string[] arguments) =>

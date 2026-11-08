@@ -459,7 +459,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
             () => stage.Named<Button>("Try a Word tools"), "Try a Word tools"))
         { Setup = stage => stage.TryTheSampleWord() };
         yield return new("try-a-word", "recorded-step-focus", stage => stage.FocusFromKeyboard(WorkspacePage.TryAWord,
-            () => stage.Named<ListBox>("Plain trace steps"), "the recorded trace"))
+            () => stage.Named<ListBox>("Plain trace events"), "the recorded trace"))
         { Setup = stage => stage.TryTheSampleWord() };
         yield return new("try-a-word", "steps-expanded", async stage =>
         {
@@ -1491,7 +1491,7 @@ public sealed class TryWordReviewScreenshots
                 PageScreenshots.Settle(window);
                 trace.SelectedStep = trace.ExpertEvents.Single(step => step.RecordedStep.StepId == address);
                 PageScreenshots.Settle(window);
-                var list = Named<ListBox>("Plain trace steps");
+                var list = Named<ListBox>("Plain trace events");
                 var step = trace.PlainSteps.Single(step => step.RecordedStep.StepId == address);
                 list.SelectedItem = step;
                 PageScreenshots.Settle(window);

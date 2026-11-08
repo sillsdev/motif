@@ -337,13 +337,16 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
-    public async Task TheBadgeCountsWaitingForYou()
+    public async Task TheBadgeCountsReadyProposalsRegardlessOfTrialStanding()
     {
         var (_, _, page) = await OpenAsync(Standings(
-            Card("p/a", "A", ProposalGroup.WaitingForYou), Card("p/b", "B", ProposalGroup.WaitingForYou),
-            Card("p/c", "C", ProposalGroup.NeedsAnotherTry)));
+            Card("p/a", "A", ProposalGroup.WaitingForYou),
+            Card("p/b", "B", ProposalGroup.NeedsAnotherTry),
+            Card("p/c", "C", ProposalGroup.NotTried),
+            Card("p/d", "D", ProposalGroup.WaitingForYou) with { Status = "deferred" },
+            Card("p/e", "E", ProposalGroup.NotTried) with { IsDraft = true }));
 
-        Assert.Equal("2", page.Badge);
+        Assert.Equal("3", page.Badge);
     }
 
     [Fact]
@@ -712,6 +715,24 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/declined", Assert.Single(fake.DeleteProposalRequests).ProposalId);
         Assert.Equal(reads + 1, fake.ProposalStandingsRequests.Count);
         Assert.Null(page.ShownRefusal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DeleteRetriesABusyProjectOnce(bool retrySucceeds)
+    {
+        var (fake, _, page) = await OpenAsync(new ProposalStandings(
+            [Card("p/declined", "Declined", ProposalGroup.SetAside) with { Status = "rejected" }], 1));
+        fake.OnDeleteProposal(request => retrySucceeds && fake.DeleteProposalRequests.Count == 2
+            ? CommandOutcome<ProposalDeletedResponse>.Success(new ProposalDeletedResponse(request.ProposalId, 0))
+            : CommandOutcome<ProposalDeletedResponse>.Refused(new Refusal("project.busy", FailureReason.Busy, "Busy.")));
+
+        await page.DeleteCommand.ExecuteAsync(page.Groups[0].Cards[0]);
+
+        Assert.Equal(2, fake.DeleteProposalRequests.Count);
+        if (retrySucceeds) Assert.Null(page.ShownRefusal);
+        else Assert.Equal("Motif is busy. Try again in a moment.", page.ShownRefusal?.Sentence);
     }
 
     [Fact]

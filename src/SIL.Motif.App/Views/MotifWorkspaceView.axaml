@@ -10,10 +10,10 @@
   <Grid RowDefinitions="*,Auto">
     <shell:WorkspaceLayoutHost x:Name="WorkspaceLayout" Grid.Row="0">
       <shell:WorkspaceLayoutHost.Rail>
-<Border x:Name="Sidebar" Classes="sidebar collapsed">
+<Border x:Name="Sidebar" Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}">
         <Grid RowDefinitions="*,Auto">
           <ListBox x:Name="PageList"
-                   Classes="sidebar collapsed"
+                   Classes="sidebar" Classes.collapsed="{Binding IsSidebarCollapsed}"
                    ItemsSource="{Binding VisiblePages}"
                    SelectedItem="{Binding SelectedPage}"
                    ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -25,14 +25,14 @@
                 <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}" />
                 <Setter Property="AutomationProperties.AutomationId" Value="{Binding AutomationId}" />
               </Style>
-              <Style Selector="ListBox.collapsed ListBoxItem" x:DataType="vm:PageViewModel">
+              <Style Selector="ListBoxItem" x:DataType="vm:PageViewModel">
                 <Setter Property="ToolTip.Tip" Value="{Binding RailTip}" />
                 <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
               </Style>
             </ListBox.Styles>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:PageViewModel">
-                <Grid ColumnDefinitions="*,Auto,Auto">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                   <Viewbox Classes="pageIcon" VerticalAlignment="Center">
                     <Canvas Width="{DynamicResource Component.Sidebar.IconCanvasSize}"
                             Height="{DynamicResource Component.Sidebar.IconCanvasSize}">
@@ -40,14 +40,14 @@
                             Stroke="{Binding $parent[ListBoxItem].Foreground}" />
                     </Canvas>
                   </Viewbox>
-                  <views:CopyableTextBlock Classes="pageLabel" Text="{Binding Title}"
+                  <views:CopyableTextBlock Grid.Column="1" Classes="pageLabel" Text="{Binding Title}"
                                            AutomationProperties.AutomationId="{x:Static app:AutomationIds.SidebarPageLabel}"
                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                  <Border Grid.Column="1" Classes="pageBadge" IsVisible="{Binding HasBadge}" ToolTip.Tip="{Binding BadgeTip}"
+                  <Border Grid.Column="2" Classes="pageBadge" IsVisible="{Binding HasBadge}" ToolTip.Tip="{Binding BadgeTip}"
                           AutomationProperties.Name="{Binding BadgeTip}" views:ClearTipPlacement.IsEnabled="True">
                     <views:CopyableTextBlock Text="{Binding Badge}" />
                   </Border>
-                  <Border Grid.Column="2" Classes="proposalDelta" IsVisible="{Binding HasDeltaBadge}"
+                  <Border Grid.Column="3" Classes="proposalDelta" IsVisible="{Binding HasDeltaBadge}"
                           AutomationProperties.Name="{Binding DeltaBadgeName}">
                     <views:CopyableTextBlock Text="{Binding DeltaBadge}" />
                   </Border>
@@ -55,8 +55,8 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
-          <StackPanel x:Name="SidebarFooter" Grid.Row="1" Classes="sidebarFooter collapsed">
-            <StackPanel x:Name="SidebarUtilities" Classes="sidebarUtilities collapsed">
+          <StackPanel x:Name="SidebarFooter" Grid.Row="1" Classes="sidebarFooter" Classes.collapsed="{Binding IsSidebarCollapsed}">
+            <StackPanel x:Name="SidebarUtilities" Classes="sidebarUtilities" Classes.collapsed="{Binding IsSidebarCollapsed}">
               <Button x:Name="HelpButton" Theme="{DynamicResource BorderlessButton}"
                       Classes="Tertiary sidebarUtility"
                       AutomationProperties.Name="Help for the current page"
@@ -77,7 +77,8 @@
                       Classes="Tertiary settingsGear sidebarUtility"
                       AutomationProperties.Name="Settings"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.SettingsButton}"
-                      ToolTip.Tip="Settings (Ctrl+,)" views:ClearTipPlacement.IsEnabled="True" Click="OnSettingsClick">
+                      ToolTip.Tip="Settings (Ctrl+,)" views:ClearTipPlacement.IsEnabled="True"
+                      views:ClearTipPlacement.Anchor="{Binding #SidebarUtilities}" Click="OnSettingsClick">
                 <Path Classes="settingsGearGlyph"
                       Data="M19.73 9.93 L21.98 9.88 L21.98 14.12 L19.73 14.07 L18.93 16.0 L20.55 17.56 L17.56 20.55 L16.0 18.93 L14.07 19.73 L14.12 21.98 L9.88 21.98 L9.93 19.73 L8.0 18.93 L6.44 20.55 L3.45 17.56 L5.07 16.0 L4.27 14.07 L2.02 14.12 L2.02 9.88 L4.27 9.93 L5.07 8.0 L3.45 6.44 L6.44 3.45 L8.0 5.07 L9.93 4.27 L9.88 2.02 L14.12 2.02 L14.07 4.27 L16.0 5.07 L17.56 3.45 L20.55 6.44 L18.93 8.0 Z M12 8.5 A3.5 3.5 0 1 0 12 15.5 A3.5 3.5 0 1 0 12 8.5 Z" />
               </Button>
@@ -162,8 +163,6 @@
     <Border x:Name="StatusBar" Grid.Row="1" Classes="statusBar">
       <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
         <StackPanel Classes="statusGroup" Orientation="Horizontal">
-          <views:CopyableTextBlock Classes="statusFull statusTip" Text="{x:Static app:MotifAppStrings.TechDemoStatus}"
-                     ToolTip.Tip="{x:Static app:MotifAppStrings.TechDemoStatusTip}" />
           <Button Classes="statusCompact statusTip" Content="{x:Static app:MotifAppStrings.TechDemoCompact}" Click="OnStatusReportProblemClick"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportProblemAccessibleName}"
                   ToolTip.Tip="{x:Static app:MotifAppStrings.TechDemoCompactTip}" />
@@ -203,7 +202,6 @@
             <StackPanel Classes="statusGroup" Orientation="Horizontal">
               <TextBlock Text="{Binding ActiveParseProgress.StatusText}" Classes="statusFull"
                          MaxWidth="{DynamicResource Component.StatusBar.ProgressTextWidth}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Text="{x:Static app:MotifAppStrings.Parsing}" Classes="statusCompact" />
               <ProgressBar Classes="statusProgress" Minimum="0" Maximum="1"
                            Value="{Binding ActiveParseProgress.Fraction}"
                            IsIndeterminate="{Binding ActiveParseProgress.IsIndeterminate}" />
@@ -259,6 +257,13 @@
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ParseNoProgress}" />
         </StackPanel>
       </Border>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button x:Name="StatusTechDemo" Classes="statusTip">
+            <Button.Flyout>
+              <Flyout Placement="TopEdgeAlignedRight">
+                <views:CopyableTextBlock Text="{x:Static vm:TechDemoNoticeViewModel.NoticeText}" TextWrapping="Wrap" />
               </Flyout>
             </Button.Flyout>
           </Button>

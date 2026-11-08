@@ -342,7 +342,14 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                     Assert.True(workspace.Assess.State == RunState.Completed, "The Assessment did not complete: " +
                         workspace.Assess.Refusal?.Code + " " + workspace.Assess.Refusal?.Message);
                     stage = "Handoff";
-                    await ShowPageAsync(session, WorkspacePage.AiHandoff);
+                    // Handoff is hidden behind a Settings choice, so the test makes that choice as a person would.
+                    Click(session.Window, session.Window.GetVisualDescendants().OfType<Button>()
+                        .Single(button => button.Name == "SettingsButton"));
+                    await Wait.UntilAsync(() => session.Workspace.CurrentPage == WorkspacePage.Settings, "Settings did not open");
+                    session.Window.UpdateLayout();
+                    session.Window.GetVisualDescendants().OfType<CheckBox>()
+                        .Single(box => box.Name == "ShowHandoffByCopyingFiles").IsChecked = true;
+                    await ShowPageAsync(session, WorkspacePage.AiAssistants);
                     var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
                     await handoff.RunCommand.ExecuteAsync(null);
                     Assert.True(handoff.State == RunState.Completed, "The Handoff was not written: " +
@@ -437,9 +444,12 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 stage = "no-op Refresh";
                 var refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
+                var previousRefresh = workspace.RefreshCommand.ExecutionTask;
                 Click(session.Window, refresh);
-                await Wait.UntilAsync(() => !workspace.RefreshCommand.IsRunning,
-                    "the no-op Refresh did not finish");
+                var firstRefresh = workspace.RefreshCommand.ExecutionTask;
+                Assert.NotNull(firstRefresh);
+                Assert.NotSame(previousRefresh, firstRefresh);
+                await firstRefresh;
                 Assert.False(workspace.Context.NeedsAssessment,
                     "a Refresh that reused the Baseline should keep its stored Assessment");
                 Assert.True(workspace.Context.Evidence.HasAssessment);
@@ -449,7 +459,19 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 stage = "Refresh after a FieldWorks save";
                 refresh = session.Window.GetLogicalDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Refresh the project" && button.IsEffectivelyVisible);
+                previousRefresh = workspace.RefreshCommand.ExecutionTask;
+                ToolTip.SetPlacement(refresh, PlacementMode.Center);
+                ToolTip.SetIsOpen(refresh, true);
+                Assert.True(ToolTip.GetIsOpen(refresh));
+                session.Window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                var refreshPoint = refresh.TranslatePoint(new Point(refresh.Bounds.Width / 2, refresh.Bounds.Height / 2), session.Window);
+                var refreshHit = refreshPoint is { } point ? session.Window.InputHitTest(point) : null;
+                Assert.True(refreshHit is Visual hit &&
+                    (ReferenceEquals(hit, refresh) || hit.GetVisualAncestors().Contains(refresh)),
+                    $"Refresh is not reachable at {refreshPoint}; hit {refreshHit}.");
                 Click(session.Window, refresh);
+                Assert.NotSame(previousRefresh, workspace.RefreshCommand.ExecutionTask);
                 await Wait.UntilAsync(() => !workspace.RefreshCommand.IsRunning && workspace.Context.NeedsAssessment,
                     detail: () => "Refresh after a FieldWorks save did not leave the new Baseline unparsed; " +
                         $"refresh running={workspace.RefreshCommand.IsRunning}, " +

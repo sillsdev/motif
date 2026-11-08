@@ -9,7 +9,7 @@
     <comment>Top-level menu: project commands. The underscore marks the access key (Alt+F).</comment>
   </data>
   <data name="MotifApp.MenuSelectNew" xml:space="preserve">
-    <value>_Select New…</value>
+    <value>_Open...</value>
     <comment>File menu command: pick another project file. The ellipsis means it asks for more input.</comment>
   </data>
   <data name="MotifApp.MenuOpenRecent" xml:space="preserve">
@@ -145,8 +145,8 @@
     <comment>Tooltip of the status bar tech demo notice.</comment>
   </data>
   <data name="MotifApp.TechDemoCompact" xml:space="preserve">
-    <value>Tech Demo</value>
-    <comment>Status bar button shown when the window is too narrow for the full notice.</comment>
+    <value>Report</value>
+    <comment>Compact status bar button for reporting a problem.</comment>
   </data>
   <data name="MotifApp.TechDemoCompactTip" xml:space="preserve">
     <value>Tech demo: writes nothing until you press Apply. Report a problem.</value>
@@ -263,6 +263,10 @@
   <data name="MotifApp.ProposalWorkNotComparable" xml:space="preserve">
     <value>Parser work cannot be compared for this Trial</value>
     <comment>Tooltip and accessible name of a blank Work number in the Proposals table and Inspector, where the Trial's parser work and today's cannot be compared.</comment>
+  </data>
+  <data name="MotifApp.ParserWorkComparisonUnavailable" xml:space="preserve">
+    <value>Parser work comparison unavailable</value>
+    <comment>Shown when a Proposal result has no verified matching Baseline measurement for comparison.</comment>
   </data>
   <data name="MotifApp.TrialWorkNoticeAccessibleName" xml:space="preserve">
     <value>Trial parsing work increased</value>
@@ -2650,7 +2654,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Key for FieldWorks opinions, parser outcomes and the built mark in a trace.</comment>
   </data>
   <data name="MotifApp.ProposalsWaitingBadgePattern" xml:space="preserve">
-    <value>{0, plural, one {# Proposal waiting for you} other {# Proposals waiting for you}}</value>
+    <value>{0, plural, one {# Proposal waiting for your decision} other {# Proposals waiting for your decision}}</value>
     <comment>Sidebar tooltip explaining the number of Proposals in the Waiting for You group.</comment>
   </data>
   <data name="MotifApp.SetupNextTexts" xml:space="preserve">
@@ -3646,8 +3650,8 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Accessible name (read aloud by screen readers) of a region on the Try a Word page: "Recorded trace context". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.PlainTraceStepsAccessibleName" xml:space="preserve">
-    <value>Plain trace steps</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Plain trace steps". Not visible on screen.</comment>
+    <value>Plain trace events</value>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word page: "Plain trace events". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TimeFromAnEarlierParseAccessibleName" xml:space="preserve">
     <value>Work from an earlier parse</value>
@@ -3662,7 +3666,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Heading above the details of the parser attempt selected on the Try a Word page.</comment>
   </data>
   <data name="MotifApp.TryWordAttemptInspectorEmpty" xml:space="preserve">
-    <value>Choose a row in the attempts table, or a path in Expert, to read its recorded steps.</value>
+    <value>Choose a row in the attempts table, or a path in Expert, to read its recorded events.</value>
     <comment>Sentence shown on the Try a Word attempt inspector. It is read as a complete message; keep it a complete sentence.</comment>
   </data>
   <data name="MotifApp.TryWordMembershipNotRecorded" xml:space="preserve">
@@ -3674,12 +3678,12 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word attempt inspector: "Recorded search word". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.StepsOnTheSelectedAttemptAccessibleName" xml:space="preserve">
-    <value>Steps on the selected attempt</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word attempt inspector: "Steps on the selected attempt". Not visible on screen.</comment>
+    <value>Events on the selected attempt</value>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word attempt inspector: "Events on the selected attempt". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.SelectedRecordedStepDetailsAccessibleName" xml:space="preserve">
-    <value>Selected recorded step details</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word attempt inspector: "Selected recorded step details". Not visible on screen.</comment>
+    <value>Selected recorded event details</value>
+    <comment>Accessible name (read aloud by screen readers) of a control on the Try a Word attempt inspector: "Selected recorded event details". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.TheParsersCodeAccessibleName" xml:space="preserve">
     <value>The parser's code</value>
@@ -3758,7 +3762,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Heading or field label on the Expert view of the Try a Word trace: "Environment not recorded".</comment>
   </data>
   <data name="MotifApp.EveryStep" xml:space="preserve">
-    <value>Every Step</value>
+    <value>Every Event</value>
     <comment>Button or command label on the Try a Word expert trace.</comment>
   </data>
   <data name="MotifApp.ExpertEveryStepTip" xml:space="preserve">
@@ -5876,7 +5880,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Name of a parser trace step kind: the step was blocked.</comment>
   </data>
   <data name="MotifApp.TraceKindStep" xml:space="preserve">
-    <value>Step</value>
+    <value>Event</value>
     <comment>Name used for a parser trace step whose kind was not recorded.</comment>
   </data>
   <data name="MotifApp.StoreDeletionWarning" xml:space="preserve">
@@ -6368,7 +6372,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Sentence the window shows when the command refuses with code C.ProjectBackupUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectBusy" xml:space="preserve">
-    <value>Another Motif task is using this project. Try again in a moment.</value>
+    <value>Motif is busy. Try again in a moment.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProjectBusy. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
   <data name="MotifApp.RefusalProjectInUse" xml:space="preserve">
@@ -6684,11 +6688,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Hint inside the empty box that searches the words of the Matrix cell chosen on the Compare panel.</comment>
   </data>
   <data name="MotifApp.ExpertMoreRuleStepsPattern" xml:space="preserve">
-    <value>{0, plural, one {# more rule step · open in Expert} other {# more rule steps · open in Expert}}</value>
-    <comment>Note under the Plain trace. # is how many rule steps of the trace are folded away; a trace step is one recorded event of the parser's trace, not parser work; Expert is the name of a view of the trace.</comment>
+    <value>{0, plural, one {# more rule event · open in Expert} other {# more rule events · open in Expert}}</value>
+    <comment>Note under the Plain trace. # is how many rule events are folded away; Expert is the name of a view of the trace.</comment>
   </data>
   <data name="MotifApp.ExpertShowingEveryStep" xml:space="preserve">
-    <value>Showing every step</value>
+    <value>Showing every event</value>
     <comment>Note above the Expert trace tree when it shows every recorded step of every attempt.</comment>
   </data>
   <data name="MotifApp.ExpertShowingAttemptPathFormat" xml:space="preserve">
@@ -7322,11 +7326,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Try a Word filter description for the morph filter. {0} is the text typed.</comment>
   </data>
   <data name="MotifApp.TraceFilterAllSteps" xml:space="preserve">
-    <value>all recorded steps</value>
+    <value>all recorded events</value>
     <comment>Try a Word filter description when no filter is set.</comment>
   </data>
   <data name="MotifApp.TraceStepsHiddenPattern" xml:space="preserve">
-    <value>{0, plural, one {# step hidden by filters} other {# steps hidden by filters}}</value>
+    <value>{0, plural, one {# event hidden by filters} other {# events hidden by filters}}</value>
     <comment>Count sentence on the Try a Word filter description when only counts apply. # is the number of steps hidden.</comment>
   </data>
   <data name="MotifApp.TraceFilterHiddenSuffixPattern" xml:space="preserve">
@@ -8721,13 +8725,25 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Parser Work</value>
     <comment>Label beside the Proposal's parser work against the Baseline in the Parsimony section.</comment>
   </data>
+  <data name="MotifApp.ParserWorkComparisonMoreFormat" xml:space="preserve">
+    <value>About {0}% more parser work than the Baseline</value>
+    <comment>Parser work of a Trial against the Baseline in the Parsimony section; {0} is the whole-number percent.</comment>
+  </data>
   <data name="MotifApp.ProposalParsimonyParserWorkMoreFormat" xml:space="preserve">
     <value>About {0}% more parser work than the Baseline</value>
+    <comment>Parser work of a Trial against the Baseline in the Parsimony section; {0} is the whole-number percent.</comment>
+  </data>
+  <data name="MotifApp.ParserWorkComparisonLessFormat" xml:space="preserve">
+    <value>About {0}% less parser work than the Baseline</value>
     <comment>Parser work of a Trial against the Baseline in the Parsimony section; {0} is the whole-number percent.</comment>
   </data>
   <data name="MotifApp.ProposalParsimonyParserWorkLessFormat" xml:space="preserve">
     <value>About {0}% less parser work than the Baseline</value>
     <comment>Parser work of a Trial against the Baseline in the Parsimony section; {0} is the whole-number percent.</comment>
+  </data>
+  <data name="MotifApp.ParserWorkComparisonSame" xml:space="preserve">
+    <value>About the same parser work as the Baseline</value>
+    <comment>Parser work of a Trial against the Baseline in the Parsimony section when the change rounds to nothing.</comment>
   </data>
   <data name="MotifApp.ProposalParsimonyParserWorkSame" xml:space="preserve">
     <value>About the same parser work as the Baseline</value>
@@ -9122,32 +9138,32 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>The word for what the Warnings page shows, put into a note such as 'This page shows today's findings.' Lower case.</comment>
   </data>
   <data name="MotifApp.TimingProposalPairedNote" xml:space="preserve">
-    <value>The total word time, the median, the words stopped at the work limit and the work by kind read today's parser work, then the parser work with this Proposal, for the same words. Rule changes use the retained paired Trial evidence. The bar and other details are today's.</value>
-    <comment>Note on the Timing page while a Proposal is open and its parser work are shown beside today's.</comment>
+    <value>Parser work is shown as a percentage change from the Baseline for the same words. Rule changes use retained paired Trial evidence. The stopped-word counts show both tries.</value>
+    <comment>Note on the Parser Work page when the same words have comparable Baseline and Proposal results.</comment>
   </data>
   <data name="MotifApp.TimingProposalViewNote" xml:space="preserve">
-    <value>The total word time, the median, the words stopped at the work limit and the work by kind read the parser work with this Proposal. The rule table, its times and everything else on this page are today's.</value>
-    <comment>Note on the Timing page when the bar's view is Proposal and the Proposal has parser work.</comment>
+    <value>Parser work is shown as a percentage change from the Baseline when the tries can be compared. The stopped-word count is this Proposal's.</value>
+    <comment>Note on the Parser Work page when the Proposal view is selected.</comment>
   </data>
   <data name="MotifApp.TimingProposalStoppedOnlyNote" xml:space="preserve">
-    <value>Only the words stopped at the work limit are paired, over the same words. The parser work of the two tries cannot be compared, so the total word time, the median and the work by kind are today's. The bar, the rule table, its times and everything else on this page are today's.</value>
-    <comment>Note on the Timing page when the two sides cover the same words but their parser work cannot be compared.</comment>
+    <value>Only the stopped-word counts are paired for the same words. The parser work of the two tries cannot be compared.</value>
+    <comment>Note on the Parser Work page when both tries cover the same words but their work cannot be compared.</comment>
   </data>
   <data name="MotifApp.TimingNoneToday" xml:space="preserve">
     <value>None today</value>
     <comment>What the Timing page shows for today's side of a pair when only the open Proposal has a value, such as a kind of work only the Proposal's try recorded.</comment>
   </data>
   <data name="MotifApp.TimingNoun" xml:space="preserve">
-    <value>timing</value>
-    <comment>The word for what the Timing page shows, put into a note such as 'This page shows today's timing.' Lower case.</comment>
+    <value>parser work</value>
+    <comment>What the Parser Work page shows, used in a sentence. Lower case.</comment>
   </data>
   <data name="MotifApp.TimingProposalDifferentWordsNote" xml:space="preserve">
-    <value>The Proposal's words are not the same as today's for this choice of words, so nothing is paired and the page shows today's numbers.</value>
-    <comment>Note on the Timing page when today's words and the open Proposal's differ for the chosen words, so no pair is shown.</comment>
+    <value>The Proposal's words differ from the Baseline for this selection, so parser work cannot be compared.</value>
+    <comment>Note on the Parser Work page when the Baseline and Proposal cover different words.</comment>
   </data>
   <data name="MotifApp.TimingProposalViewNotComparableNote" xml:space="preserve">
-    <value>The parser work of the two tries cannot be compared, so the Proposal's total word time, median and work by kind are not shown; the words stopped at the work limit are the Proposal's. The rule table, its times and everything else on this page are today's.</value>
-    <comment>Note on the Timing page when the Proposal view cannot show parser work because the two tries cannot be compared.</comment>
+    <value>The parser work of the two tries cannot be compared. The stopped-word count is this Proposal's.</value>
+    <comment>Note on the Parser Work page when the Proposal's work cannot be compared with the Baseline.</comment>
   </data>
   <data name="MotifApp.WarningsGoneWithProposalStatus" xml:space="preserve">
     <value>Today's check has this finding and this Proposal's does not.</value>
@@ -9178,7 +9194,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>A finding's accessible name followed by how it stands against the open Proposal; {0} is the name, {1} the standing.</comment>
   </data>
   <data name="MotifApp.PageTiming" xml:space="preserve">
-    <value>Timing</value>
+    <value>Parser Work</value>
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.WarningsProposalReadingNote" xml:space="preserve">
@@ -9450,7 +9466,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Explanatory sentence under the Advanced AI mode heading.</comment>
   </data>
   <data name="MotifApp.TurnOnAdvancedAiMode" xml:space="preserve">
-    <value>Turn On Advanced AI Mode</value>
+    <value>Let Assistants Use Motif's Tools</value>
     <comment>Checkbox that turns Advanced AI mode on or off.</comment>
   </data>
   <data name="MotifApp.ChooseAssistantsTitle" xml:space="preserve">
@@ -9588,4 +9604,34 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.CorpusEditorPhrase26" xml:space="preserve"><value>Completions</value><comment>CodeMirror phrase: Completions</comment></data>
   <data name="MotifApp.CorpusEditorPhrase27" xml:space="preserve"><value>Diagnostics</value><comment>CodeMirror phrase: Diagnostics</comment></data>
   <data name="MotifApp.CorpusEditorPhrase28" xml:space="preserve"><value>No diagnostics</value><comment>CodeMirror phrase: No diagnostics</comment></data>
+  <data name="MotifApp.MarkAsUnreadTip" xml:space="preserve">
+    <value>Only in Motif. The word stays coloured until you look at it again.</value>
+    <comment>Tooltip explaining the Motif-only unread state of a word.</comment>
+  </data>
+  <data name="MotifApp.TraceCategoryStatisticsNote" xml:space="preserve">
+    <value>Category statistics summarize the parser's work across events.</value>
+  </data>
+  <data name="MotifApp.ShowHandoffByCopyingFiles" xml:space="preserve">
+    <value>Show Hand Off by Copying Files</value>
+  </data>
+  <data name="MotifApp.TechDemoVersionFormat" xml:space="preserve">
+    <value>Tech demo · v{0}</value>
+    <comment>Status bar label; {0} is the running Motif version.</comment>
+  </data>
+  <data name="MotifApp.ShortcutOpenProject" xml:space="preserve">
+    <value>Open a Project</value>
+    <comment>Keyboard shortcut for choosing a FieldWorks project.</comment>
+  </data>
+  <data name="MotifApp.TraceEventsOnPath" xml:space="preserve">
+    <value>Events on This Path</value>
+    <comment>Heading for recorded events on a path through a trace.</comment>
+  </data>
+  <data name="MotifApp.TraceSearchEvents" xml:space="preserve">
+    <value>Search all recorded events...</value>
+    <comment>Placeholder for searching the recorded trace.</comment>
+  </data>
+  <data name="MotifApp.TraceSelectedEvent" xml:space="preserve">
+    <value>Selected Event</value>
+    <comment>Heading for details of the selected recorded event.</comment>
+  </data>
 </root>

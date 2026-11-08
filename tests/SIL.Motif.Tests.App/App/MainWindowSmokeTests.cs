@@ -410,7 +410,8 @@ public sealed class MainWindowSmokeTests
                 Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>()).Lists);
             Assert.Same(
                 workspace.PageModel<TimingPageModel>().Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
-            Assert.Same(workspace.PageModel<AiHandoffPageModel>().Handoff, Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>()).Handoff);
+            Assert.Contains(window.GetLogicalDescendants().OfType<HandoffPanel>(),
+                panel => ReferenceEquals(workspace.PageModel<AiHandoffPageModel>().Handoff, panel.Handoff));
         });
     }
 
@@ -449,8 +450,8 @@ public sealed class MainWindowSmokeTests
 
                 var status = Assert.IsType<Border>(window.FindInWindowOrWorkspace<Border>("StatusBar"));
                 Assert.True(status.IsEffectivelyVisible);
-                Assert.Contains("Tech demo: writes nothing until you press Apply",
-                    status.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text));
+                Assert.Contains(status.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text?.StartsWith("Tech demo · v", StringComparison.Ordinal) == true);
                 Assert.Contains(status.GetVisualDescendants().OfType<Button>(), button =>
                     button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "Report a problem");
             }
@@ -1667,13 +1668,15 @@ public sealed class MainWindowSmokeTests
                 };
                 foreach (var file in files) workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(file);
                 workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
-                workspace.CurrentPage = WorkspacePage.AiHandoff;
+                SettingsTestAccess.Model(window).ShowHandoffByCopyingFiles = true;
+                workspace.CurrentPage = WorkspacePage.AiAssistants;
 
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>());
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<HandoffPanel>(),
+                    item => item.IsEffectivelyVisible);
                 var tiles = panel.GetLogicalDescendants().OfType<Border>()
                     .Where(tile => AutomationProperties.GetName(tile)?.StartsWith("Drag ", StringComparison.Ordinal)
                         == true)

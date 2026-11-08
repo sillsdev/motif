@@ -386,6 +386,7 @@ public sealed class MotifDatabaseMigrationTests : IDisposable
         {
             ["CorpusDocuments"] = ["Corpora|CorpusId|CorpusId|NO ACTION|NO ACTION|NONE"],
             ["NamedSelections"] = [],
+            ["Requests"] = [],
             ["DefaultSelection"] = ["NamedSelections|SelectionName|SelectionName|NO ACTION|NO ACTION|NONE"],
             ["ParsimonySelection"] = ["NamedSelections|SelectionName|SelectionName|NO ACTION|NO ACTION|NONE"],
             ["ProposalRationaleRevisions"] = ["Proposals|ProposalId|ProposalId|NO ACTION|NO ACTION|NONE"],

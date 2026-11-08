@@ -335,7 +335,7 @@ public sealed class TryWordPageTests
                 PageScreenshots.SettleLayout(window);
                 Assert.Equal("No analysis found", TraceStepKinds.Describe("Failed"));
                 var list = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(), control =>
-                    AutomationProperties.GetName(control) == "Plain trace steps");
+                    AutomationProperties.GetName(control) == "Plain trace events");
                 Assert.DoesNotContain(list.Items.Cast<TraceStepViewModel>(), step =>
                     step.KindText is "Rule level" or "Lexical lookup");
                 var failure = page.Trace.ExpertEvents.First(step => step.IsFailure && step.Type.Contains("Rule"));
@@ -755,7 +755,7 @@ public sealed class TryWordPageTests
                 window.Show();
                 PageScreenshots.SettleLayout(window);
                 var texts = VisibleTexts(view).ToArray();
-                Assert.Contains("Showing every step", texts);
+                Assert.Contains("Showing every event", texts);
                 Assert.DoesNotContain("Input not recorded", texts);
                 Assert.DoesNotContain("Output not recorded", texts);
                 Assert.DoesNotContain("Subrule not recorded", texts);
@@ -820,7 +820,7 @@ public sealed class TryWordPageTests
                 window.Show();
                 PageScreenshots.SettleLayout(window);
                 var plain = window.GetVisualDescendants().OfType<ListBox>().Single(list =>
-                    AutomationProperties.GetName(list) == "Plain trace steps");
+                    AutomationProperties.GetName(list) == "Plain trace events");
                 page.Trace.SelectedStep = page.Trace.ExpertEvents.Single(step => step.Source == "Vowel harmony");
                 PageScreenshots.SettleLayout(window);
                 plain.SelectedItem = page.Trace.PlainSteps.Single(step => step.Source == "Vowel harmony");
@@ -950,7 +950,7 @@ public sealed class TryWordPageTests
                 PageScreenshots.SettleLayout(window);
                 Assert.Contains("Search incomplete: limit", VisibleTexts(window));
                 var list = window.GetLogicalDescendants().OfType<ListBox>().Single(control =>
-                    AutomationProperties.GetName(control) == "Plain trace steps");
+                    AutomationProperties.GetName(control) == "Plain trace events");
                 var step = Assert.IsType<TraceStepViewModel>(Assert.Single(list.Items));
                 Assert.Same(page.Trace.Reading!.Root.Children[0], step.RecordedStep);
 
@@ -1759,7 +1759,7 @@ public sealed class TryWordPageTests
             Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
 
             page.HandOffCommand.Execute(null);
-            Assert.Equal(WorkspacePage.AiHandoff, context.CurrentPage);
+            Assert.Equal(WorkspacePage.AiAssistants, context.CurrentPage);
             Assert.Equal(["typed-only"], handoff.Handoff.ChosenWords);
         });
     }

@@ -44,6 +44,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
     private IReadOnlyList<TraceStepViewModel> _filteredRoots = [];
     private IReadOnlyList<TraceStopGroupViewModel> _stopGroups = [];
     private string? _diagnosticJson;
+    private WordTraceResponse? _proposalResult;
 
     public TraceWordViewModel(ICommandClient? commandClient = null, ITraceViewPreferences? preferences = null, TimeProvider? clock = null)
     {
@@ -158,7 +159,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         _closestAttempts = _reading?.ClosestAttempts.Select(candidate => candidateViews[candidate.AttemptId!]).ToArray() ?? [];
         ShowDroppedPaths = false;
         ShowParserRecord = false;
-        Effort = TraceEffortViewModel.Table(value?.Effort ?? []);
+        Effort = TraceEffortViewModel.Table(value?.Effort ?? [], IsProposalResult);
         OnPropertyChanged(nameof(Effort));
         OnPropertyChanged(nameof(InspectorTrace));
         OnPropertyChanged(nameof(HasEffort));
@@ -212,8 +213,9 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public string SummaryText => Result is not { } result ? string.Empty : Summarize(result);
 
-    /// <summary>The parser work for this trace as a count of parser work, or a note that none was recorded; blank for a refused trace, which did no parser work.</summary>
+    /// <summary>The parser work for this trace, or why it cannot be compared or was not recorded.</summary>
     public string ParserWorkText => Result is not { InvalidShape: false } result ? string.Empty
+        : IsProposalResult ? MotifAppStrings.ParserWorkComparisonUnavailable
         : result.ParserWork is { } steps
             ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.ParserWorkFormat,
                 PluralText.Format(MotifAppStrings.ParserWorkPattern, steps))
@@ -227,35 +229,20 @@ public sealed partial class TraceWordViewModel : ObservableObject
 
     public bool HasEffort => Effort.Count > 0;
 
-    private static string Summarize(WordTraceResponse result)
+    private bool IsProposalResult => Result is not null && ReferenceEquals(Result, _proposalResult);
+
+    private string Summarize(WordTraceResponse result)
     {
         var parts = new List<string> { result.Parsed ? MotifAppStrings.TraceParsed : result.InvalidShape ? ParserRefusals.Title : MotifAppStrings.OutcomeNoParse };
         if (result.Guessed) parts.Add(MotifAppStrings.TraceGuessed);
-        var overall = result.HostCapture?.WallElapsedMs is { } capturedElapsed
-            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceOverallFormat, FormatMs(capturedElapsed))
-            : result.ElapsedMs > 0 ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceOverallFormat, FormatMs(result.ElapsedMs))
-            : MotifAppStrings.TraceOverallNotRecorded;
-        if (result.InvalidShape)
-            parts.Add(overall);
+        if (!result.InvalidShape && IsProposalResult)
+            parts.Add(MotifAppStrings.ParserWorkComparisonUnavailable);
         else if (result.ParserWork is { } work)
-        {
-            parts.Add(string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TraceInParserFormat,
-                PluralText.Format(MotifAppStrings.ParserWorkPattern, work), overall));
-        }
-        else
-        {
+            parts.Add(PluralText.Format(MotifAppStrings.ParserWorkPattern, work));
+        else if (!result.InvalidShape)
             parts.Add(MotifAppStrings.ParserWorkNotRecorded);
-            parts.Add(overall);
-        }
         return string.Join("  ·  ", parts);
     }
-
-    internal static string FormatMs(double ms) => ms switch
-    {
-        >= 1000 => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DurationSecondsFormat, ms / 1000),
-        >= 10 => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DurationMillisecondsFormat, ms),
-        _ => string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.DurationSubMillisecondsFormat, ms),
-    };
 
     private static string? DeepestRuleStepId(TraceStep root)
     {
@@ -577,7 +564,6 @@ public sealed partial class TraceWordViewModel : ObservableObject
             if (result.GrammarSourceAvailability == TraceEvidenceAvailability.NotRecorded)
                 parts.Add(MotifAppStrings.TraceGrammarSourceNotRecorded);
             if (capture?.CapturedUtc is { } capturedUtc) parts.Add(TraceText.Format(MotifAppStrings.TraceCapturedAtFormat, capturedUtc));
-            if (capture?.WallElapsedMs is { } elapsed) parts.Add(TraceText.Format(MotifAppStrings.TraceHostElapsedFormat, elapsed.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)));
             return parts.Count == 0 ? MotifAppStrings.TraceCaptureDetailsNotRecorded : string.Join(" · ", parts);
         }
     }
@@ -712,6 +698,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         IsLoading = false;
         Refusal = null;
         Result = null;
+        _proposalResult = null;
         _diagnosticJson = null;
         SelectedStep = null;
         SelectedCandidate = null;
@@ -747,6 +734,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         if (IsLoading || ParseProgress.IsActive || TryCommand.IsRunning || _projectPath is not { } path) return;
         var word = WordToTry.Trim();
         if (word.Length == 0) return;
+        var proposalId = ProposalIdSource?.Invoke();
         // Trying a word asks to read its story, which needs the full width, not the analyses beside it.
         IsFocused = true;
 
@@ -782,7 +770,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
         });
         using var grammarWatch = WatchGrammarLoad(TryWordSessions, path);
         var outcome = await ParseProgress.TrackAsync(() =>
-            _commandClient.TraceWordAsync(new WordTraceRequest(path, word, ProposalIdSource?.Invoke()), running.Token, progress))
+            _commandClient.TraceWordAsync(new WordTraceRequest(path, word, proposalId), running.Token, progress))
             .ConfigureAwait(true);
         if (ReferenceEquals(_running, running)) _running = null;
         if (generation != _generation) return;
@@ -799,6 +787,7 @@ public sealed partial class TraceWordViewModel : ObservableObject
             return;
         }
 
+        _proposalResult = proposalId is not null ? outcome.Value : null;
         Result = outcome.Value;
         OnPropertyChanged(nameof(Candidates));
         OnPropertyChanged(nameof(Analyses));
@@ -1255,9 +1244,9 @@ public sealed class TraceCandidateViewModel : ObservableObject
 /// <summary>One row of aggregate parser effort, explicitly separated from selected-step details.</summary>
 public sealed class TraceEffortViewModel
 {
-    public TraceEffortViewModel(TraceEffort effort) : this(effort, effort) { }
+    public TraceEffortViewModel(TraceEffort effort) : this(effort, effort, false) { }
 
-    private TraceEffortViewModel(TraceEffort effort, TraceEffort largest)
+    private TraceEffortViewModel(TraceEffort effort, TraceEffort largest, bool comparisonUnavailable)
     {
         ArgumentNullException.ThrowIfNull(effort);
         Kind = effort.Kind == "Unattributed" ? MotifAppStrings.TimingNotAttributedLabel : effort.Kind;
@@ -1270,7 +1259,8 @@ public sealed class TraceEffortViewModel
         if (effort.NoRoot > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortNoRootFormat, effort.NoRoot.ToString("N0")));
         if (effort.SurfaceMismatch > 0) misses.Add(TraceText.Format(MotifAppStrings.TraceEffortSurfaceMismatchFormat, effort.SurfaceMismatch.ToString("N0")));
         Missed = string.Join(", ", misses);
-        Time = effort.ParserWork is { } steps ? PluralText.Format(MotifAppStrings.ParserWorkPattern, steps) : MotifAppStrings.ParserWorkNotRecorded;
+        Time = comparisonUnavailable ? MotifAppStrings.ParserWorkComparisonUnavailable
+            : effort.ParserWork is { } steps ? PluralText.Format(MotifAppStrings.ParserWorkPattern, steps) : MotifAppStrings.ParserWorkNotRecorded;
 
         WorkHeat = Shade(effort.Work, largest.Work);
         UsesHeat = Shade(effort.Uses, largest.Uses);
@@ -1278,11 +1268,11 @@ public sealed class TraceEffortViewModel
         ProducedHeat = Shade(effort.Outputs, largest.Outputs);
         MissedHeat = Shade(effort.NotApplied + effort.NoRoot + effort.SurfaceMismatch,
             largest.NotApplied + largest.NoRoot + largest.SurfaceMismatch);
-        TimeHeat = Shade(effort.ParserWork ?? 0, largest.ParserWork ?? 0);
+        TimeHeat = comparisonUnavailable ? 0 : Shade(effort.ParserWork ?? 0, largest.ParserWork ?? 0);
     }
 
     /// <summary>The rows of the effort table, each cell shaded against the largest value in its own column.</summary>
-    public static IReadOnlyList<TraceEffortViewModel> Table(IReadOnlyList<TraceEffort> rows)
+    public static IReadOnlyList<TraceEffortViewModel> Table(IReadOnlyList<TraceEffort> rows, bool comparisonUnavailable = false)
     {
         ArgumentNullException.ThrowIfNull(rows);
         if (rows.Count == 0) return [];
@@ -1299,7 +1289,7 @@ public sealed class TraceEffortViewModel
             Work = rows.Max(row => row.Work),
             ParserWork = rows.Max(row => row.ParserWork ?? 0),
         };
-        return rows.Select(row => new TraceEffortViewModel(row, largest)).ToArray();
+        return rows.Select(row => new TraceEffortViewModel(row, largest, comparisonUnavailable)).ToArray();
     }
 
     /// <summary>How strongly a cell is shaded, from 0 for nothing to 1 for its column's largest value.</summary>

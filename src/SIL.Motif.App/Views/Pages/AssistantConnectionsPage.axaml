@@ -17,8 +17,6 @@
             <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.AdvancedAiModeExplanation}"
                                       TextWrapping="Wrap" />
             <CheckBox Content="{x:Static app:MotifAppStrings.TurnOnAdvancedAiMode}" IsChecked="{Binding IsEnabled}" />
-            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ParsimonyRequiresAdvancedAi}"
-                                     TextWrapping="Wrap" IsVisible="{Binding !IsEnabled}" />
           </StackPanel>
         </Border>
 
@@ -51,6 +49,7 @@
             </StackPanel>
           </StackPanel>
         </Border>
+        <ContentControl x:Name="HandoffSection" />
       </StackPanel>
     </ScrollViewer>
   </Grid>

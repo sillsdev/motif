@@ -206,7 +206,7 @@ public sealed class TryWordHLayoutTests
                 PageScreenshots.Settle(window);
                 Assert.True(inspector.IsEffectivelyVisible);
                 Assert.Equal(model.Trace.Result!.Word, Named<CopyableTextBlock>(inspector, "Recorded search word").Text);
-                var steps = Named<ListBox>(inspector, "Steps on the selected attempt");
+                var steps = Named<ListBox>(inspector, "Events on the selected attempt");
                 Assert.Same(attempt.Steps, steps.ItemsSource);
                 Assert.Same(expertOccurrence, model.Trace.SelectedStep);
                 Assert.Same(attempt.Steps.Last(), steps.SelectedItem);
@@ -257,7 +257,7 @@ public sealed class TryWordHLayoutTests
                 PageScreenshots.Settle(window);
                 model.Trace.SelectedStep = model.Trace.ExpertEvents.Single(step => step.RecordedStep.StepId == "0.2.0.3.1");
                 PageScreenshots.Settle(window);
-                var list = Named<ListBox>(page, "Plain trace steps");
+                var list = Named<ListBox>(page, "Plain trace events");
                 list.SelectedItem = model.Trace.PlainSelectedStep;
                 list.BringIntoView();
                 PageScreenshots.Settle(window);
@@ -366,7 +366,7 @@ public sealed class TryWordHLayoutTests
                 ((LayoutTransformControl)window.Content!).Child = null;
                 window.Content = Zoom(inspector, zoom);
                 PageScreenshots.Settle(window);
-                var steps = Named<ListBox>(inspector, "Steps on the selected attempt");
+                var steps = Named<ListBox>(inspector, "Events on the selected attempt");
                 steps.SelectedIndex = 0;
                 PageScreenshots.Settle(window);
                 var firstStep = Assert.IsType<ListBoxItem>(steps.ContainerFromIndex(0));
@@ -377,7 +377,7 @@ public sealed class TryWordHLayoutTests
                 Assert.NotNull(model.Trace.SelectedStep);
                 Assert.Same(steps.SelectedItem, model.Trace.SelectedAttemptStep);
                 var details = inspector.GetVisualDescendants().OfType<CopyableTextBlock>().Single(block =>
-                    block.IsEffectivelyVisible && AutomationProperties.GetName(block) == "Selected recorded step details");
+                    block.IsEffectivelyVisible && AutomationProperties.GetName(block) == "Selected recorded event details");
                 Assert.Equal(model.Trace.SelectedAttemptStep!.ReadableText, details.Text);
                 details.BringIntoView();
                 PageScreenshots.Settle(window);

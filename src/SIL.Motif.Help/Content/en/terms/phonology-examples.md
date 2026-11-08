@@ -6,7 +6,7 @@ A set is advisory evidence. A [Phonology Check](cmd:phonology-examples%20results
 
 ## Commands
 
-- `phonology-examples save` records a new revision of a set. It is an advanced AI command, off until Advanced AI mode is on.
+- `phonology-examples save` records a new revision of a set. Assistants need Advanced AI mode to use it as an MCP tool.
 - [List phonology examples](cmd:phonology-examples%20list) shows the current revision of each saved set.
 - [Show phonology examples](cmd:phonology-examples%20show) reads the examples of one saved revision, a page at a time.
 - `phonology-examples check` queues a check of a saved revision against the current Baseline. It is an advanced AI command and needs a captured Baseline.

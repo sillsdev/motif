@@ -259,7 +259,7 @@
                                       Command="{Binding Actions.MarkTokenUnreadCommand}" CommandParameter="{Binding}"
                                       AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkThisOccurrenceAsUnreadAccessibleName}"
                                       AutomationProperties.HelpText="{Binding MarkUnreadDisabledReason}"
-                                      ToolTip.Tip="{Binding MarkUnreadDisabledReason}" ToolTip.ShowOnDisabled="True"
+                                      ToolTip.Tip="{Binding MarkUnreadTip}" ToolTip.ShowOnDisabled="True"
                                       views:ClearTipPlacement.IsEnabled="True" />
                             </WrapPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

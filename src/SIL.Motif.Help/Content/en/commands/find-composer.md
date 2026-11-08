@@ -19,4 +19,4 @@ Each result carries the command name, a short title, when to reach for it, the S
 
 A search that names both a goal and a Subject, or neither, is refused with `composer.goal-or-subject`. An unknown Subject is refused with `composer.unknown-subject`, and a detail level other than concise or detailed with `composer.invalid-detail`.
 
-This command is available when Advanced AI mode is on. The MCP tool is `motif_find_composer`, with `goal`, `subject` and `detail` arguments, and is off unless a profile selects it.
+The MCP tool is `motif_find_composer`, with `goal`, `subject` and `detail` arguments; it requires Advanced AI mode and a profile that selects it.

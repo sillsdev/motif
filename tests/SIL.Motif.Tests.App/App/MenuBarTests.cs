@@ -97,7 +97,7 @@ public sealed class MenuBarTests
         Assert.Equal(TopLevel, top);
         Assert.Equal(["Corpus", "Options…", "Writing Systems and Fonts"], tools);
         Assert.Equal(["Help Topics", "Keyboard Shortcuts", "Report a Problem…"], help);
-        Assert.Equal(["Select New…", "Open Recent", "Refresh", "Configure…", "Exit"], file);
+        Assert.Equal(["Open...", "Open Recent", "Refresh", "Configure…", "Exit"], file);
     }
 
     [Fact]
@@ -146,9 +146,11 @@ public sealed class MenuBarTests
         var gestures = OnWindow(window => new[]
         {
             "UndoMenuItem", "RedoMenuItem", "CopyMenuItem", "ZoomInMenuItem", "ZoomOutMenuItem", "ResetZoomMenuItem",
-            "OptionsMenuItem", "HelpTopicsMenuItem", "KeyboardShortcutsMenuItem",
+            "OptionsMenuItem", "HelpTopicsMenuItem", "KeyboardShortcutsMenuItem", "SelectNewMenuItem",
         }.ToDictionary(name => name, name => window.FindInWindowOrWorkspace<MenuItem>(name)!.InputGesture));
         Assert.All(gestures, pair => Assert.True(pair.Value is not null, pair.Key + " shows no shortcut"));
+        Assert.Equal(Key.O, gestures["SelectNewMenuItem"]!.Key);
+        Assert.Equal(KeyModifiers.Control, gestures["SelectNewMenuItem"]!.KeyModifiers);
         Assert.Equal(Key.F1, gestures["HelpTopicsMenuItem"]!.Key);
         Assert.Equal(Key.Z, gestures["UndoMenuItem"]!.Key);
         Assert.Equal(Key.OemComma, gestures["OptionsMenuItem"]!.Key);

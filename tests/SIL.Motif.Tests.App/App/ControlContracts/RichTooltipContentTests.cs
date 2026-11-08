@@ -390,10 +390,7 @@ internal sealed class TooltipScenes
                 await InText.ReadStateRefresh;
                 PageScreenshots.Settle(Window);
                 Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
-                await Until(() => Visible<Button>().Any(button =>
-                    button.FindAncestorOfType<TextWordsPanel>() is not null &&
-                    AutomationProperties.GetName(button)?.StartsWith("AI Handoff", StringComparison.Ordinal) == true &&
-                    ToolTip.GetTip(button) is not null), "the Analyze texts word list handoff tooltip");
+                await Until(() => Visible<TextWordsPanel>().Any(), "the Analyze texts word list");
                 await Workspace.PageModel<TextsPageModel>().Words.SettleVisibleDetailsAsync();
                 PageScreenshots.Settle(Window);
                 break;
@@ -493,6 +490,7 @@ internal sealed class TooltipScenes
                 // At the sample's width the table is compact and hides its named-words column, so this scene widens the window.
                 Window.Width = 1800;
                 Show(WorkspacePage.Warnings);
+                await Until(() => !Workspace.IsSidebarCollapsed, "the expanded sidebar");
                 await Until(() => !Grammar.IsLoading && Grammar.HasChecked &&
                     Visible<GrammarPanel>().Any(panel => panel.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
                         text.IsEffectivelyVisible && ToolTip.GetTip(text) as string == MotifAppStrings.WarningsReachUnavailable)),
@@ -511,7 +509,10 @@ internal sealed class TooltipScenes
                     button.Classes.Contains("warningEntryAction") && button.Content is string text &&
                     text == entry.Label), $"the finding's named FieldWorks entry '{entry.Entry}'");
                 break;
-            case TooltipScene.Handoff: Show(WorkspacePage.AiHandoff); break;
+            case TooltipScene.Handoff:
+                SettingsTestAccess.Model(Window).ShowHandoffByCopyingFiles = true;
+                Show(WorkspacePage.AiAssistants);
+                break;
             case TooltipScene.ReviewStaged: Show(WorkspacePage.Review); break;
             case TooltipScene.FrameStatus:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);

@@ -398,6 +398,7 @@ public static class MotifAppStrings
     public static string PairedTodayNotMeasuredNote => Text("MotifApp.PairedTodayNotMeasuredNote");
 
     public static string ProposalWorkNotComparable => Text("MotifApp.ProposalWorkNotComparable");
+    public static string ParserWorkComparisonUnavailable => Text("MotifApp.ParserWorkComparisonUnavailable");
 
     public static string TrialWorkNoticeAccessibleName => Text("MotifApp.TrialWorkNoticeAccessibleName");
 
@@ -2247,6 +2248,13 @@ public static class MotifAppStrings
     public static string OpenTheWarning => Text("MotifApp.OpenTheWarning");
 
     public static string MarkAsUnread => Text("MotifApp.MarkAsUnread");
+
+    public static string MarkAsUnreadTip => Text("MotifApp.MarkAsUnreadTip");
+
+    public static string TechDemoVersionFormat => Text("MotifApp.TechDemoVersionFormat");
+    public static string ShortcutOpenProject => Text("MotifApp.ShortcutOpenProject");
+    public static string TraceCategoryStatisticsNote => Text("MotifApp.TraceCategoryStatisticsNote");
+    public static string ShowHandoffByCopyingFiles => Text("MotifApp.ShowHandoffByCopyingFiles");
 
     public static string WordCardChangeSentenceAccessibleName => Text("MotifApp.WordCardChangeSentenceAccessibleName");
 
@@ -4385,10 +4393,13 @@ public static class MotifAppStrings
 
     public static string ProposalParsimonyParserWorkLabel => Text("MotifApp.ProposalParsimonyParserWorkLabel");
 
+    public static string ParserWorkComparisonMoreFormat => Text("MotifApp.ParserWorkComparisonMoreFormat");
     public static string ProposalParsimonyParserWorkMoreFormat => Text("MotifApp.ProposalParsimonyParserWorkMoreFormat");
 
+    public static string ParserWorkComparisonLessFormat => Text("MotifApp.ParserWorkComparisonLessFormat");
     public static string ProposalParsimonyParserWorkLessFormat => Text("MotifApp.ProposalParsimonyParserWorkLessFormat");
 
+    public static string ParserWorkComparisonSame => Text("MotifApp.ParserWorkComparisonSame");
     public static string ProposalParsimonyParserWorkSame => Text("MotifApp.ProposalParsimonyParserWorkSame");
 
     public static string ProposalParsimonyWallTimeSecondsPattern => Text("MotifApp.ProposalParsimonyWallTimeSecondsPattern");
@@ -4829,4 +4840,10 @@ public static class MotifAppStrings
     public static string RefusalRequestNotFound => Text("MotifApp.RefusalRequestNotFound");
 
     public static string RefusalRequestNotOpen => Text("MotifApp.RefusalRequestNotOpen");
+
+    public static string TraceEventsOnPath => Text("MotifApp.TraceEventsOnPath");
+
+    public static string TraceSearchEvents => Text("MotifApp.TraceSearchEvents");
+
+    public static string TraceSelectedEvent => Text("MotifApp.TraceSelectedEvent");
 }

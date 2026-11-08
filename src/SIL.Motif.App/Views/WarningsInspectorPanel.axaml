@@ -169,7 +169,7 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
-                  <Button Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}" Command="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.HandOffCommand}"
+                  <Button IsVisible="False" Content="{x:Static app:MotifAppStrings.AIHandoffForThisWarning}" Command="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.HandOffCommand}"
                           CommandParameter="{Binding}" />
                   <Button Content="{x:Static app:MotifAppStrings.ParseTheseWordsAgain}" IsVisible="{Binding CanParseAgain}"
                           Command="{Binding $parent[views:WarningsInspectorPanel].Grammar.Warnings.ReparseCommand}"

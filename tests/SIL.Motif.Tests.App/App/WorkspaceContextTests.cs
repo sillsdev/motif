@@ -1367,7 +1367,7 @@ public sealed class WorkspaceContextTests
 
         context.HandOff(["dogs", "cats"]);
 
-        Assert.Equal(WorkspacePage.AiHandoff, context.CurrentPage);
+        Assert.Equal(WorkspacePage.AiAssistants, context.CurrentPage);
         Assert.Equal(["dogs", "cats"], handoff.Handoff.ChosenWords);
     }
 

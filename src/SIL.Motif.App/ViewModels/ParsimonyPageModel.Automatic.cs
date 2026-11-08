@@ -24,6 +24,9 @@ public sealed partial class ParsimonyPageModel
 
     internal Task AutomaticWork => _automaticWork;
 
+    /// <summary>Whether opening a project or capturing a Baseline starts the Report; a test that never looks at it turns this off.</summary>
+    internal bool AutomaticProduction { get; set; } = true;
+
     protected override void OnProjectOpenCompleted()
     {
         _openCompleted = true;
@@ -32,7 +35,7 @@ public sealed partial class ParsimonyPageModel
 
     protected override async Task OnBaselineCapturedAsync(CancellationToken cancellationToken)
     {
-        if (!Context.AdvancedAiModeEnabled || Context.ProjectPath is not { } path) return;
+        if (Context.ProjectPath is not { } path) return;
         if (!_automaticWork.IsCompleted && _operationPath == path && _operationBaseline == Context.Baseline?.Token)
             return;
         ++_readGeneration;
@@ -55,7 +58,7 @@ public sealed partial class ParsimonyPageModel
 
     private Task StartAutomatic(bool retry = false)
     {
-        if (!Context.AdvancedAiModeEnabled || !_openCompleted || !_canProduce || Context.ProjectPath is not { } path ||
+        if (!AutomaticProduction || !_openCompleted || !_canProduce || Context.ProjectPath is not { } path ||
             Context.Baseline is not { HasBaseline: true, Token: { } token } || _reusableBaseline == token)
             return Task.CompletedTask;
         if (!_automaticWork.IsCompleted) return _automaticWork;
@@ -160,7 +163,7 @@ public sealed partial class ParsimonyPageModel
 
     private bool IsCurrentOperation(string path, BaselineToken token, int generation, CancellationToken cancellationToken) =>
         !cancellationToken.IsCancellationRequested && generation == _operationGeneration &&
-        Context.AdvancedAiModeEnabled && Context.ProjectPath == path && Context.Baseline?.Token == token;
+        Context.ProjectPath == path && Context.Baseline?.Token == token;
 
     private async Task StopAutomaticAsync()
     {

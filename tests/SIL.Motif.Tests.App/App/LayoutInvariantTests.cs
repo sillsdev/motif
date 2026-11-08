@@ -19,7 +19,7 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
     [Fact]
     public void EveryRegisteredPageHasAnExplicitFixture()
     {
-        Assert.Equal(PageRegistry.Entries.Select(entry => entry.Page).Order(),
+        Assert.Equal(PageRegistry.Entries.Select(entry => entry.Page).Where(page => page != WorkspacePage.AiHandoff).Order(),
             LayoutInvariantFixtures.RegisteredPages.Order());
         Assert.Equal(LayoutInvariantFixtures.RegisteredPages.Count,
             LayoutInvariantFixtures.RegisteredPages.Distinct().Count());
@@ -28,9 +28,9 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
     [Fact]
     public void EveryRegisteredPageHasAnEmptySceneFixture()
     {
-        Assert.Equal(PageRegistry.Entries.Select(entry => $"{entry.Page}/empty").Order(),
+        Assert.Equal(PageRegistry.Entries.Where(entry => entry.Page != WorkspacePage.AiHandoff).Select(entry => $"{entry.Page}/empty").Order(),
             LayoutInvariantFixtures.EmptyScenes.Order());
-        Assert.Equal(PageRegistry.Entries.Count(), LayoutInvariantFixtures.EmptyScenes.Distinct().Count());
+        Assert.Equal(PageRegistry.Entries.Count(entry => entry.Page != WorkspacePage.AiHandoff), LayoutInvariantFixtures.EmptyScenes.Distinct().Count());
     }
 
     [Fact]
@@ -83,7 +83,7 @@ public sealed class LayoutInvariantTests(ITestOutputHelper output)
                 foreach (var cell in LayoutInvariantFixtures.QuickCells)
                     if (data.Visits is null)
                     {
-                        foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
+                        foreach (var page in LayoutInvariantFixtures.RegisteredPages)
                         {
                             workspace.CurrentPage = page;
                             run.Inspect(window, $"{page}/populated", cell, quick: true, workspace);

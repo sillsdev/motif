@@ -36,7 +36,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public const string ConfigureNeedsBaselineText = "Refresh first to choose Texts";
 
     /// <summary>Below this window width the sidebar shows icons alone, with each label as a tooltip.</summary>
-    public const double SidebarCollapseWidth = 1100;
+    public const double SidebarCollapseWidth = 1280;
 
     private readonly ICommandClient _commandClient;
     private readonly ReplacingObservableCollection<RecentProjectViewModel> _recentProjects = [];
@@ -596,6 +596,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             if (captureFirstBaseline && openedProjectIsCurrent &&
                 !Baseline.HasBaseline && Baseline.ShownRefusal is null)
                 await RefreshAsync().ConfigureAwait(true);
+            if (openedProjectIsCurrent && openGeneration == Volatile.Read(ref _projectOpenGeneration))
+                Context.OpenPage(PageModel<ProposalsPageModel>().BadgeCount > 0
+                    ? WorkspacePage.Proposals : WorkspacePage.Texts);
         }
         finally
         {

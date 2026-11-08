@@ -19,6 +19,7 @@ public sealed partial class TechDemoNoticeViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(preferences);
         _preferences = preferences;
         IsVisible = !preferences.HasSeenTechDemoNotice;
+        if (IsVisible) preferences.MarkTechDemoNoticeSeen();
     }
 
     /// <summary>Whether the notice is still waiting for acknowledgment.</summary>

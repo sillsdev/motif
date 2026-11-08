@@ -91,7 +91,7 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                     {
                         if (populated) await LayoutInvariantFixtures.PreparePopulated(workspace);
                         run.Setup(populated ? "populated" : "empty", setup.Elapsed.TotalMilliseconds);
-                        foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
+                        foreach (var page in LayoutInvariantFixtures.RegisteredPages)
                         {
                             workspace.CurrentPage = page;
                             PageScreenshots.SettleLayout(window);
@@ -145,7 +145,7 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                         finally { tracePending.SetResult(CommandOutcome<WordTraceResponse>.Refused(refusal)); await tracing; }
                         Assert.NotNull(workspace.Assess.Trace.ShownRefusal);
                         InspectGrid("TryAWord/refused");
-                        await LayoutInvariantStateFixtures.VisitAsync(fake, workspace, scene => InspectGrid(scene));
+                        await LayoutInvariantStateFixtures.VisitAsync(fake, workspace, SettingsTestAccess.Model(window), scene => InspectGrid(scene));
                         workspace.CurrentPage = WorkspacePage.Overview;
                         fake.CurrentBaselineRefusesWith(refusal);
                         fake.CaptureBaselineRefusesWith(refusal);

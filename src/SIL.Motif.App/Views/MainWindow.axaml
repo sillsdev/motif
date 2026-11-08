@@ -36,7 +36,7 @@
               AutomationProperties.AutomationId="{x:Static app:AutomationIds.MainMenu}">
           <MenuItem x:Name="FileMenu" Header="{x:Static app:MotifAppStrings.MenuFile}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectMenu}">
-            <MenuItem x:Name="SelectNewMenuItem" Header="{x:Static app:MotifAppStrings.MenuSelectNew}"
+            <MenuItem x:Name="SelectNewMenuItem" Tag="OpenProject" Header="{x:Static app:MotifAppStrings.MenuSelectNew}"
                       IsEnabled="{Binding ProjectSwitchEnabled}" Command="{Binding SelectNewProjectCommand}"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.SelectNewProject}" />
             <MenuItem x:Name="OpenRecentMenuItem" Header="{x:Static app:MotifAppStrings.MenuOpenRecent}">

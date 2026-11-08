@@ -171,13 +171,12 @@ public sealed partial class CompareViewModel
             return (new WordProposalCell(null, MotifAppStrings.TextsWordNotMeasured, _proposalView == MarkupView.Proposal), null);
         var (_, column) = ProposalWordIndex.Unpack(proposed.Cell);
         var cell = new WordProposalCell(Mark.Of(WindowWords.OutcomeOf(column)), ColumnLabelOf(column), _proposalView == MarkupView.Proposal);
-        return (cell, _proposalView == MarkupView.Proposal ? StepsText(proposed) : null);
+        return (cell, _proposalView == MarkupView.Proposal ? ProposalWorkText(proposed) : null);
     }
 
-    private static string StepsText(ProposalWordFacts proposed) =>
+    private static string ProposalWorkText(ProposalWordFacts proposed) =>
         proposed.HidesSteps ? string.Empty
-        : proposed.ParserWork is { } steps ? PluralText.Format(MotifAppStrings.ParserWorkPattern, steps)
-        : MotifAppStrings.ParserWorkNotRecorded;
+        : MotifAppStrings.ParserWorkComparisonUnavailable;
 
     private void ShowProposalOn(CompareWordViewModel word)
     {

@@ -75,10 +75,10 @@ public sealed class TimingSharesTests
     }
 
     [Theory]
-    [InlineData(795, "795 ms")]
-    [InlineData(1140.942292, "1,141 ms")]
-    [InlineData(6.080588, "6.1 ms")]
-    [InlineData(0.004, "<0.1 ms")]
+    [InlineData(795, "0.8 s")]
+    [InlineData(1140.942292, "1.1 s")]
+    [InlineData(6.080588, "<0.1 s")]
+    [InlineData(0.004, "<0.1 s")]
     [InlineData(9999.6, "10.0 s")]
     [InlineData(10000, "10.0 s")]
     [InlineData(10832, "10.8 s")]

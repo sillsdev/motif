@@ -25,6 +25,15 @@ public sealed class TechDemoNoticeViewModelTests
     }
 
     [Fact]
+    public void TheBannerAppearsOnlyOnTheFirstRunEvenWithoutAcknowledgment()
+    {
+        var preferences = new MemoryTechDemoNoticePreferences();
+
+        Assert.True(new TechDemoNoticeViewModel(preferences).IsVisible);
+        Assert.False(new TechDemoNoticeViewModel(preferences).IsVisible);
+    }
+
+    [Fact]
     public void FilePreferencesRoundTripAndTreatCorruptJsonAsUnseen()
     {
         var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.TechDemoNotice", Guid.NewGuid().ToString("N"));

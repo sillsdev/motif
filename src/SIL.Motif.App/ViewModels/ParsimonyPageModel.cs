@@ -329,7 +329,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         DeferCommand = new AsyncRelayCommand(() => StageDecisionAsync("defer"), CanStageFinding);
         AskCommand = new AsyncRelayCommand(() => StageDecisionAsync("ask"), CanStageFinding);
         ReturnToActiveCommand = new AsyncRelayCommand(ReturnToActiveAsync, CanReturnSelected);
-        State = context.AdvancedAiModeEnabled ? ParsimonyPageState.NoProject : ParsimonyPageState.Off;
+        State = ParsimonyPageState.NoProject;
         _suppressedItems.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasSuppressedItems));
     }
 
@@ -603,7 +603,6 @@ public sealed partial class ParsimonyPageModel : PageModel
     /// <summary>Reads the stored Report again for the open project.</summary>
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
-        if (!Context.AdvancedAiModeEnabled) return;
         if (Context.ProjectPath is not { } path)
         {
             ClearReport();
@@ -698,7 +697,6 @@ public sealed partial class ParsimonyPageModel : PageModel
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken)
     {
-        if (!Context.AdvancedAiModeEnabled) return Task.CompletedTask;
         return LoadAsync(projectPath, cancellationToken);
     }
 
@@ -1444,7 +1442,7 @@ public sealed partial class ParsimonyPageModel : PageModel
         _stagedByFinding.Clear();
         _stagedReturns.Clear();
         ClearShown();
-        State = Context.AdvancedAiModeEnabled ? ParsimonyPageState.NoProject : ParsimonyPageState.Off;
+        State = ParsimonyPageState.NoProject;
     }
 
     private void ClearShown()

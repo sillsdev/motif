@@ -91,6 +91,9 @@ public sealed partial class MotifWorkspaceView : UserControl
         _host = host;
         var workspace = host.Workspace;
         var settings = host.Settings;
+        var techDemo = this.FindControl<Button>("StatusTechDemo")!;
+        techDemo.Content = TechDemoLabel(host);
+        Avalonia.Automation.AutomationProperties.SetName(techDemo, TechDemoLabel(host));
         if (HelpPopup is { } helpView)
             helpView.DataContext = new HelpPopupViewModel(host.UriLauncher);
         foreach (var name in new[] { "NoticeDetailsButton", "StatusParseProgress" })
@@ -179,11 +182,18 @@ public sealed partial class MotifWorkspaceView : UserControl
         return true;
     }
 
+    private static string TechDemoLabel(MotifWorkspaceHost host) => string.Format(
+        System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.TechDemoVersionFormat,
+        host.ApplicationFacts.MotifVersion);
+
     /// <summary>Applies the status bar and rail classes that depend on the window's width and height.</summary>
     internal void UpdateChromeClasses(double width, double height)
     {
         if (this.FindControl<Border>("StatusBar") is { } status)
-            status.Classes.Set("compact", width < (double)this.FindResource("Component.StatusBar.CompactWidth")!);
+        {
+            var compact = width < (double)this.FindResource("Component.StatusBar.CompactWidth")!;
+            status.Classes.Set("compact", compact);
+        }
         var shortRail = height < (double)this.FindResource("Component.Sidebar.ShortHeight")!;
         this.FindControl<ListBox>("PageList")?.Classes.Set("shortRail", shortRail);
         this.FindControl<StackPanel>("SidebarFooter")?.Classes.Set("shortRail", shortRail);
@@ -358,6 +368,8 @@ public sealed partial class MotifWorkspaceView : UserControl
         _pageHost!.Children.Add(view);
         _pageViews[page] = view;
         if (view is SettingsPage settingsPage) ConfigureSettingsPage(settingsPage, host);
+        if (view is AssistantConnectionsPage assistants)
+            assistants.ConfigureHandoff(host.Settings, workspace.PageModel<AiHandoffPageModel>());
         return view;
     }
 

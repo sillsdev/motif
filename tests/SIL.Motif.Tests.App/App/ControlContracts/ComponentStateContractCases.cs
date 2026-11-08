@@ -717,9 +717,6 @@ internal static class TooltipOwners
             control => control is MenuItem && AutomationProperties.GetAutomationId(control) == AutomationIds.MenuButton),
         new("configure detail", "Views/MainWindow.axaml", "{Binding ConfigureDetailText}", TooltipScene.OpenRecent,
             control => control is MenuItem && control.Name == "ConfigureMenuItem"),
-        new("backup promise", "Views/MotifWorkspaceView.axaml", "Keep a FieldWorks backup. Motif writes only when you press Apply.",
-            TooltipScene.FrameStatus, control => control is CopyableTextBlock &&
-                ToolTip.GetTip(control) as string == "Keep a FieldWorks backup. Motif writes only when you press Apply."),
         new("project notice", "Views/MotifWorkspaceView.axaml", "See project notices", TooltipScene.FrameNotice,
             control => control is Button && Name(control) == "See project notices"),
         new("tech demo promise", "Views/MotifWorkspaceView.axaml", "Tech demo: writes nothing until you press Apply. Report a problem.",
@@ -750,7 +747,7 @@ internal static class TooltipOwners
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.SettingsButton),
         new("collapsed sidebar entry", "Views/MotifWorkspaceView.axaml", "{Binding RailTip}", TooltipScene.CollapsedSidebar,
             control => control is ListBoxItem && control.FindAncestorOfType<ListBox>() is { } list &&
-                list.Classes.Contains("sidebar") && list.Classes.Contains("collapsed")),
+                list.Classes.Contains("sidebar")),
         new("recent project", "Views/MainWindow.axaml.cs", "recent.FullFwDataPath", TooltipScene.OpenRecent,
             control => control is MenuItem && control.Name != "ConfigureMenuItem" &&
                 AutomationProperties.GetAutomationId(control) != AutomationIds.MenuButton),
@@ -848,11 +845,11 @@ internal static class TooltipOwners
             control => control is HyperlinkButton &&
                 control.GetVisualAncestors().OfType<WordCard>().Any(card => card.IsEffectivelyVisible) &&
                 AutomationProperties.GetName(control) == "Open alikula in Word Analyses"),
-        new("mark unread without a text occurrence", "Views/ResultsInTextPanel.axaml", "{Binding MarkUnreadDisabledReason}",
+        new("mark unread without a text occurrence", "Views/ResultsInTextPanel.axaml", "{Binding MarkUnreadTip}",
             TooltipScene.WordCardWithoutOccurrence,
             control => control is Button && Name(control) == "Mark this occurrence as unread" &&
                 control.FindAncestorOfType<WordCard>()?.Header is not null),
-        new("mark unread on a shared word card", "Controls/WordPresentation/WordCard.axaml", "{Binding MarkUnreadDisabledReason}",
+        new("mark unread on a shared word card", "Controls/WordPresentation/WordCard.axaml", "{Binding MarkUnreadTip}",
             TooltipScene.WordCardWithoutOccurrence,
             control => control is Button && Name(control) == "Mark this occurrence as unread" &&
                 control.FindAncestorOfType<WordCard>() is { Header: null })
@@ -901,19 +898,9 @@ internal static class TooltipOwners
         {
             Pending = "the Lists scene opens a list with no stopped or unparsed words, so Parse again is hidden",
         },
-        new("checked words to AI Handoff in Analyze texts", "Views/TextWordsPanel.axaml", "{Binding Words.HandOffCheckedWordsHelpText}",
-            TooltipScene.AnalyzeWordList, control => control is Button &&
-                Name(control) is { } name && name.StartsWith("AI Handoff", StringComparison.Ordinal) &&
-                control.FindAncestorOfType<TextWordsPanel>() is not null),
         new("word list summary", "Views/TextWordsPanel.axaml", "{Binding Words.SummaryText}", TooltipScene.AnalyzeWordList,
             control => control is CopyableTextBlock && control.Classes.Contains("wordListSummary") &&
                 control.FindAncestorOfType<TextWordsPanel>() is not null),
-        new("whole list to AI Handoff", "Views/TextsListsPanel.axaml", "{Binding Lists.HandOffListHelpText}",
-            TooltipScene.Lists, control => control is Button &&
-                AutomationProperties.GetAutomationId(control) == AutomationIds.HandOffList)
-        {
-            Gap = "in the Today view a list that can go to AI Handoff has no help text, and an empty tooltip still opens; in the pair view, when the two sides cover different words, a word only the Proposal measured is counted but not sent",
-        },
         new("Review count title", "Views/ReviewPanel.axaml", "{Binding CountText}", TooltipScene.ReviewStaged,
             control => control is CopyableTextBlock &&
                 AutomationProperties.GetAutomationId(control) == AutomationIds.ReviewCountTitle)

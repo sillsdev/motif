@@ -236,7 +236,7 @@ public sealed class ParsimonyArgvTests : IDisposable
     }
 
     [Fact]
-    public async Task ParsimonyCommandRefusesWhenAdvancedAiModeIsOff()
+    public async Task ParsimonyCommandReachesProjectValidationWhenAssistantToolsAreOff()
     {
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(false);
         var start = StartWithParser(_preferencePath, "missing-pangloss",
@@ -244,10 +244,10 @@ public sealed class ParsimonyArgvTests : IDisposable
 
         var result = await CliInProcess.RunAsync(start);
 
-        Assert.Equal(2, result.ExitCode);
+        Assert.NotEqual(0, result.ExitCode);
         Assert.Empty(result.Output);
         using var refusal = JsonDocument.Parse(result.Error);
-        Assert.Equal("command.advanced-ai-mode-required", refusal.RootElement.GetProperty("code").GetString());
+        Assert.Equal("project.not-found", refusal.RootElement.GetProperty("code").GetString());
     }
 
     [Fact]

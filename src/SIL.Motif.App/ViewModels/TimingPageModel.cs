@@ -89,7 +89,7 @@ public sealed partial class TimingPageModel : PageModel
 
     public bool ShowNoEvidence => Context.NeedsAssessment && Focus is null;
 
-    public bool ShowStatistics => !Context.NeedsAssessment && Context.HasEvidence && Focus is null;
+    public bool ShowStatistics => !OffToday && !Context.NeedsAssessment && Context.HasEvidence && Focus is null;
 
     /// <summary>Whether to show the stored timing while no in-memory Assessment or focused request is active.</summary>
     public bool ShowStoredTiming => !Context.NeedsAssessment && Context.Evidence.StoredAssessmentId is not null &&
@@ -173,7 +173,8 @@ public sealed partial class TimingPageModel : PageModel
     public bool HasHeadline => MeasuredWords.Count > 0;
 
     /// <summary>The chosen words' summed parser work, as PanGloss counted it.</summary>
-    public string HeadlineTotal => ProposalHeadline(TodayHeadlineTotal, ProposalTotal, work: true);
+    public string HeadlineTotal => OffToday ? WorkHeadline
+        : TodayHeadlineTotal;
 
     private string TodayHeadlineTotal => HasHeadline && KindTiming is { } timing
         ? TimingShare.FormatParserWork(timing.Work.TotalParserWork) : string.Empty;
@@ -191,8 +192,8 @@ public sealed partial class TimingPageModel : PageModel
             MeasuredWords.Count.ToString("N0", CultureInfo.CurrentCulture));
 
     /// <summary>The chosen words' median parser work.</summary>
-    public string HeadlineMedian => ProposalHeadline(HasHeadline && KindTiming?.Work.MedianParserWork is { } median
-        ? TimingShare.FormatParserWork(median) : string.Empty, ProposalMedian, work: true);
+    public string HeadlineMedian => OffToday ? MotifAppStrings.ProposalWorkNotComparable
+        : HasHeadline && KindTiming?.Work.MedianParserWork is { } median ? TimingShare.FormatParserWork(median) : string.Empty;
 
     /// <summary>How many of the chosen words stopped at the work limit.</summary>
     public string HeadlineStopped => ProposalHeadline(KindTiming?.Words
@@ -287,7 +288,7 @@ public sealed partial class TimingPageModel : PageModel
     {
         get
         {
-            if (KindTiming is null || ShowsProposalAlone) return string.Empty;
+            if (KindTiming is null || OffToday) return string.Empty;
             if (!HasHeadline) return MotifAppStrings.TimingNoSharesShown;
             if (WorkByObject(KindTiming) is null)
                 return KindTiming.ObjectTimingAggregatesAvailable
@@ -486,6 +487,7 @@ public sealed partial class TimingPageModel : PageModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(KindCallsButtonText))]
     [NotifyPropertyChangedFor(nameof(KindCallsButtonName))]
+    [NotifyPropertyChangedFor(nameof(ShowBaselineKindCalls))]
     private bool _showKindCalls;
 
     public string KindCallsButtonText => ShowKindCalls ? MotifAppStrings.TimingHideCalls : MotifAppStrings.TimingShowCalls;
@@ -493,7 +495,10 @@ public sealed partial class TimingPageModel : PageModel
     public string KindCallsButtonName => ShowKindCalls
         ? MotifAppStrings.TimingHideCallsAccessibleName : MotifAppStrings.TimingShowCallsAccessibleName;
 
-    public bool HasKindCalls => KindCallShares.Count > 0;
+    public bool HasKindCalls => !OffToday && KindCallShares.Count > 0;
+
+    /// <summary>Whether Baseline-only call counts are visible.</summary>
+    public bool ShowBaselineKindCalls => !OffToday && ShowKindCalls;
 
     public string RerunProgressText => RerunWord is null
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.TimingRerunProgressFormat, RerunCompleted, RerunTotal)
@@ -923,8 +928,8 @@ public sealed partial class TimingPageModel : PageModel
             nameof(IsAllSelected), nameof(SelectedRule), nameof(SelectedRuleName), nameof(SelectedRuleRow), nameof(RuleRows), nameof(CostliestRuleWords),
             nameof(AllWordsButtonText), nameof(StoppedWordsButtonText),
             nameof(SelectedWords),
-            nameof(HasTiming), nameof(HasSelectedWords),
-            nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail),
+            nameof(HasTiming), nameof(HasSelectedWords), nameof(ShowBaselinePercentiles),
+            nameof(ShowEmptySelection), nameof(HasRule), nameof(HasRuleDetail), nameof(ShowBaselineRuleDetails),
             nameof(HasTimingRefusal), nameof(ShowStaleTiming), nameof(HasStoppedWords), nameof(StoppedWordsAdviceText), nameof(ScopeLabel),
             nameof(EmptySelectionText), nameof(CanShowAllWords),
             nameof(PercentileSummary), nameof(RuleSummary), nameof(IsLoadingTiming),

@@ -103,18 +103,18 @@ public sealed class ProposalReadFailureTests
         var opening = context.OpenProposalAsync("proposal/two", CancellationToken.None);
         await Task.Delay(50);
         context.ShowProposalView(MarkupView.Proposal);
-        gateA.SetResult(await Ok(TimingProposalViewTests.Respond(new TimingRequest(TimingProposalViewTests.ProjectPath),
+        gateA.SetResult(await Ok(TimingProposalViewTests.Respond(new TimingRequest(TimingProposalViewTests.ProjectPath, ProposalId: "proposal/one"),
             TimingProposalViewTests.ProposalCalm, ("morph_rule", 1))));
         await Task.Delay(50);
 
         Assert.Equal(MotifAppStrings.OverviewProposalReading, page.HeadlineTotal);
         context.ShowProposalView(MarkupView.TodayToProposal);
-        Assert.DoesNotContain("9,000", page.HeadlineTotal);
-        gateB.SetResult(await Ok(TimingProposalViewTests.Respond(new TimingRequest(TimingProposalViewTests.ProjectPath),
+        Assert.DoesNotContain("10%", page.HeadlineTotal);
+        gateB.SetResult(await Ok(TimingProposalViewTests.Respond(new TimingRequest(TimingProposalViewTests.ProjectPath, ProposalId: "proposal/two"),
             side.Proposals("proposal/two"), ("morph_rule", 1))));
         await opening;
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("1,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 90% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public sealed class ProposalReadFailureTests
         var (fake, context, page) = await TimingProposalViewTests.OpenedAsync(side);
 
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal(MotifAppStrings.ProposalPageNone, page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
         context.ShowProposalView(MarkupView.TodayToProposal);
         Assert.Contains(Unreadable, page.ProposalNote);
         Assert.Equal(1, TimingProposalViewTests.ProposalReads(fake));
@@ -135,7 +135,7 @@ public sealed class ProposalReadFailureTests
 
         Assert.Equal(2, TimingProposalViewTests.ProposalReads(fake));
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal("9,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     [Fact]
@@ -144,13 +144,13 @@ public sealed class ProposalReadFailureTests
         var side = FailingOnce(Refused);
         var (fake, context, page) = await TimingProposalViewTests.OpenedAsync(side);
         context.ShowProposalView(MarkupView.Proposal);
-        Assert.Equal(MotifAppStrings.ProposalPageNone, page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
 
         context.PublishEvidence(new WorkspaceEvidence(TimingProposalViewTests.Assessment(), DateTimeOffset.Now, WasRerun: false));
         await context.EvidencePublication;
 
         Assert.Equal(2, TimingProposalViewTests.ProposalReads(fake));
-        Assert.Equal("9,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public sealed class ProposalReadFailureTests
         context.ShowProposalView(MarkupView.Proposal);
 
         Assert.Equal(2, TimingProposalViewTests.ProposalReads(fake));
-        Assert.Equal("9,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 10% less parser work than the Baseline", page.HeadlineTotal);
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public sealed class ProposalReadFailureTests
         context.Open(new OpenTimingRequest(["c"], null));
         await Task.Delay(100);
 
-        Assert.Equal("2,700 parser work", page.HeadlineTotal);
+        Assert.Equal(MotifAppStrings.ProposalWorkNotComparable, page.HeadlineTotal);
         todayGate.SetResult(CommandOutcome<TimingResponse>.Refused(new Refusal("none", FailureReason.Refused, "none")));
     }
 

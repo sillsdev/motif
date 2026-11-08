@@ -328,6 +328,7 @@ public sealed class ProposalViewSwitchTests
             request.ProposalId is null ? OverviewProposalViewTests.Today() : OverviewProposalViewTests.Proposal())));
         var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
         await workspace.Context.OpenProposalAsync(ProposalId, CancellationToken.None, label);
+        workspace.CurrentPage = WorkspacePage.Overview;
         PageScreenshots.Settle(window);
         return (workspace, window);
     }

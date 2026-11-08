@@ -277,7 +277,7 @@
                   </Flyout>
                 </SplitButton.Flyout>
               </SplitButton>
-              <Button Content="{x:Static app:MotifAppStrings.AiHandoffHeading}" Command="{Binding Compare.HandOffCommand}"
+              <Button IsVisible="False" Content="{x:Static app:MotifAppStrings.AiHandoffHeading}" Command="{Binding Compare.HandOffCommand}"
                       Margin="{DynamicResource Component.TextsPage.CompareControlMargin}"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.AIHandoffForTheListedWordsAccessibleName}" />
               <Button Content="{x:Static app:MotifAppStrings.AddAsUnknown}" Command="{Binding Compare.ProposeCommand}" CommandParameter="add-candidate"

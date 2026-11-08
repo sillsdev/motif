@@ -17,7 +17,7 @@ public sealed partial class AssistantConnectionsPageModel : PageModel
     {
         _connections = context.AssistantConnections;
         _launcher = context.UriLauncher;
-        _isEnabled = context.AdvancedAiModePreferences?.IsEnabled ?? false;
+        _isEnabled = context.AdvancedAiModePreferences?.IsEnabled ?? true;
         foreach (var assistant in _connections.FindAssistants())
         {
             var choice = new AssistantChoiceViewModel(assistant);
@@ -36,20 +36,18 @@ public sealed partial class AssistantConnectionsPageModel : PageModel
 
     /// <summary>Whether Advanced AI mode is enabled for this installation.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsAssistantList))]
     private bool _isEnabled;
 
     partial void OnIsEnabledChanged(bool value)
     {
         Context.AdvancedAiModePreferences?.SetEnabled(value);
-        ConnectSelectedCommand.NotifyCanExecuteChanged();
         StatusMessage = value
             ? "Advanced AI mode is on. Choose the assistants that may use Motif's tools."
             : "Advanced AI mode is off for new Motif sessions. Restart connected assistants to update open sessions.";
     }
 
     /// <summary>Whether the assistant choices should appear.</summary>
-    public bool ShowsAssistantList => IsEnabled;
+    public bool ShowsAssistantList => true;
 
     /// <summary>Whether any supported assistant was found.</summary>
     public bool HasAssistants => Assistants.Count > 0;
@@ -83,7 +81,7 @@ public sealed partial class AssistantConnectionsPageModel : PageModel
     public bool HasStatusMessage => StatusMessage.Length > 0;
 
     /// <summary>Whether at least one selected assistant can be connected.</summary>
-    public bool CanConnectSelected => IsEnabled && HasSelectedAssistants;
+    public bool CanConnectSelected => HasSelectedAssistants;
 
     /// <summary>The bundled plugin ZIP to upload in Claude Desktop.</summary>
     public string PluginZipPath => _connections.PluginZipPath;

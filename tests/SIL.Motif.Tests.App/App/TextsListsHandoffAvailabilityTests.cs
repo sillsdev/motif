@@ -44,7 +44,7 @@ public sealed class TextsListsHandoffAvailabilityTests
                     AutomationProperties.GetHelpText(checkedWordsButton));
                 Assert.False(checkedWordsButton.IsEffectivelyVisible);
                 Assert.Null(ToolTip.GetTip(checkedWordsButton));
-                Assert.Equal(lists.HandOffListHelpText, ToolTip.GetTip(wholeListButton));
+                Assert.False(wholeListButton.IsEffectivelyVisible);
                 Assert.Equal(lists.HandOffListHelpText, AutomationProperties.GetHelpText(wholeListButton));
                 Assert.Empty(VisibleReasons(window, lists.HandOffListDisabledReason,
                     lists.HandOffCheckedWordsHelpText));

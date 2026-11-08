@@ -66,7 +66,7 @@ public sealed class ExpertTraceReadingTests
         trace.ExpertWholeTree = true;
         Assert.Equal(["0.0", "0.1"], trace.ExpertPhonologicalEvents.Select(row => row.RecordedStep.StepId));
         Assert.Equal(["Tried", "Applied"], trace.ExpertPhonologicalEvents.Select(row => row.RecordedOutcomeText));
-        Assert.Equal("Showing every step", trace.ExpertScopeText);
+        Assert.Equal("Showing every event", trace.ExpertScopeText);
         trace.SelectedStep = trace.ExpertPhonologicalEvents[0];
         Assert.Contains("Tried", trace.ExpertReadableText);
         Assert.DoesNotContain("Applied", trace.ExpertReadableText);

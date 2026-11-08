@@ -182,6 +182,8 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
                 new BaselineViewModel(client), selection, new AssessViewModel(client, selection),
                 new NoFolderPicker(), new NoDragSource(), client);
             Workspace.Baseline.Refreshed += (_, _) => Refreshes++;
+            // This test is about the Review check; a real parser would spend minutes on a Parsimony Report.
+            Workspace.PageModel<ParsimonyPageModel>().AutomaticProduction = false;
         }
 
         public CommandClient Client { get; }

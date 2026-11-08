@@ -34,6 +34,7 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
                 var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
+                walkthrough.ShowPage(WorkspacePage.AiHandoff);
                 walkthrough.Click("Write the AI Handoff folder");
                 var handoffDeadline = WalkthroughSteps.DeadlineIn(180);
                 walkthrough.WaitUntil(

@@ -69,6 +69,7 @@ internal static class SettingsExpanderKeys
     public const string ReportIncludes = "Settings.ReportIncludes";
     public const string VernacularDetails = "Settings.VernacularDetails";
     public const string AnalysisDetails = "Settings.AnalysisDetails";
+    public const string ShowHandoff = "Settings.ShowHandoff";
 }
 
 internal sealed class WritingSystemSettingsRow : ObservableObject
@@ -226,6 +227,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         _selectedGroup = MapSettingsGroup(saved.LastSettingsGroup);
         _shortcutListShown = Remembered(SettingsExpanderKeys.ShortcutList);
         _reportIncludesExpanded = Remembered(SettingsExpanderKeys.ReportIncludes);
+        _showHandoffByCopyingFiles = Remembered(SettingsExpanderKeys.ShowHandoff);
         RefreshNavigationOptions(SelectedGroup);
         ApplyTheme();
         _preferences.Changed += OnPreferencesChanged;
@@ -1056,6 +1058,11 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     partial void OnReportIncludesExpandedChanged(bool value) => Remember(SettingsExpanderKeys.ReportIncludes, value);
 
+    [ObservableProperty]
+    private bool _showHandoffByCopyingFiles;
+
+    partial void OnShowHandoffByCopyingFilesChanged(bool value) => Remember(SettingsExpanderKeys.ShowHandoff, value);
+
     private bool Remembered(string key) => _preferences.GetExpanded(key) ?? false;
 
     private void Remember(string key, bool expanded)
@@ -1101,6 +1108,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
             ZoomPercent = UserPreferences.Defaults.ZoomPercent;
             ThemeChoice = WindowThemeChoice.System;
             SelectedGroup = SettingsGroup.Display;
+            ShowHandoffByCopyingFiles = false;
         }
         finally
         {

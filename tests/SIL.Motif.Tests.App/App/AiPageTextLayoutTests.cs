@@ -14,7 +14,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class AiPageTextLayoutTests(AiPageLayoutSample fixture) : IClassFixture<AiPageLayoutSample>
 {
     [Fact]
-    public void AdvancedAiSettingsExplainWhyParsimonyIsUnavailable()
+    public void ParsimonyRemainsAvailableWhenAssistantToolsAreOff()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -28,9 +28,10 @@ public sealed class AiPageTextLayoutTests(AiPageLayoutSample fixture) : IClassFi
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
                 var page = window.PageView<AssistantConnectionsPage>();
-                Assert.Contains(page.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                Assert.DoesNotContain(page.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.IsEffectivelyVisible &&
                         text.Text == "Parsimony is available when Advanced AI mode is on.");
+                Assert.True(workspace.Context.CanOpenPage(WorkspacePage.Parsimony));
             }
             finally
             {

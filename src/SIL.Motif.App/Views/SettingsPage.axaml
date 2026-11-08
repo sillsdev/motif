@@ -15,7 +15,7 @@
     <Border Classes="settingsHeader">
       <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">
         <views:CopyableTextBlock Classes="settingsHeaderTitle" Text="{x:Static app:MotifAppStrings.Settings}" />
-        <Button x:Name="SettingsClose" Grid.Column="1" Content="{x:Static app:MotifAppStrings.Back}" Click="OnCloseRequested" AutomationProperties.Name="{x:Static app:MotifAppStrings.LeaveSettingsAccessibleName}" />
+        <Button x:Name="SettingsClose" Grid.Column="1" Content="{x:Static app:MotifAppStrings.Back}" Click="OnCloseRequested" AutomationProperties.Name="{x:Static app:MotifAppStrings.LeaveSettingsAccessibleName}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SettingsClose}" />
       </Grid>
     </Border>
     <ScrollViewer x:Name="SettingsListScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" SizeChanged="OnSettingsContentSizeChanged">
@@ -23,6 +23,8 @@
       <StackPanel Classes="settingsList">
 <StackPanel x:Name="SettingsDisplaySection" Classes="settingsPage">
               <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.Display}" />
+              <CheckBox x:Name="ShowHandoffByCopyingFiles" Content="{x:Static app:MotifAppStrings.ShowHandoffByCopyingFiles}"
+                        IsChecked="{Binding ShowHandoffByCopyingFiles}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.SettingsShowHandoff}" />
               <views:CopyableTextBlock Classes="settingsPersistenceRefusal" Text="{Binding PreferenceProblemText}"
                          IsVisible="{Binding HasPreferenceProblem}" TextWrapping="Wrap" />
               <Button Classes="settingsAction" Content="{x:Static app:MotifAppStrings.ResetSavedPreferences}"

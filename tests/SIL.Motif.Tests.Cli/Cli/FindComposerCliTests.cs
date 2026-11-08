@@ -66,10 +66,11 @@ public sealed class FindComposerCliTests : IDisposable
     }
 
     [Fact]
-    public void TheVerbNeedsAdvancedAiMode()
+    public void TheVerbWorksWhenAssistantToolsAreOff()
     {
         var result = Run("find-composer --goal plural --json", advancedAi: false);
 
-        Assert.Equal("command.advanced-ai-mode-required", JsonNode.Parse(result.Error)!["code"]!.GetValue<string>());
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal("goal", JsonNode.Parse(result.Output)!["mode"]!.GetValue<string>());
     }
 }

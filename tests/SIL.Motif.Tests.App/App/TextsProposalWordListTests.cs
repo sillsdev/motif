@@ -172,7 +172,7 @@ public sealed class TextsProposalWordListTests
     }
 
     [Fact]
-    public async Task TheProposalViewTimesAndOrdersTheWordsByTheProposalsOwnParserWork()
+    public async Task TheProposalViewOrdersByItsWorkButDoesNotCompareItWithUnpairedTodayValues()
     {
         var reads = new Reads { Trials = _ => [Approved("a", false, 90), Approved("b", false, 20)] };
         var (context, page, _) = await OpenedAsync(today: [Approved("a", false, 1), Approved("b", false, 50)], reads: reads);
@@ -184,10 +184,20 @@ public sealed class TextsProposalWordListTests
         context.ShowProposalView(MarkupView.Proposal);
 
         Assert.Equal(["a", "b"], compare.Words.Select(word => word.Word));
-        Assert.Contains("90", compare.Words[0].MatrixPresentation.TimeText);
-        Assert.Contains("20", compare.Words[1].MatrixPresentation.TimeText);
+        Assert.All(compare.Words, word => Assert.Equal("Parser work comparison unavailable", word.MatrixPresentation.TimeText));
         context.ShowProposalView(MarkupView.Today);
         Assert.Equal(["b", "a"], compare.Words.Select(word => word.Word));
+    }
+
+    [Fact]
+    public async Task TheProposalViewSaysComparisonIsUnavailableWhenBaselineWorkWasNotRecorded()
+    {
+        var reads = new Reads { Trials = _ => [Approved("a", false, 90)] };
+        var (context, page, _) = await OpenedAsync(today: [Approved("a")], reads: reads);
+
+        context.ShowProposalView(MarkupView.Proposal);
+
+        Assert.Equal("Parser work comparison unavailable", Assert.Single(page.Assess.Compare.Words).MatrixPresentation.TimeText);
     }
 
     [Fact]

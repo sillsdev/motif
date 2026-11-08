@@ -67,8 +67,8 @@ public sealed class OverviewTraceSentenceResourceTests
         { "TraceFilterSucceeded", "succeeded" },
         { "TraceFilterRuleFormat", "rule: {0}" },
         { "TraceFilterMorphFormat", "morph: {0}" },
-        { "TraceFilterAllSteps", "all recorded steps" },
-        { "TraceStepsHiddenPattern", "{0, plural, one {# step hidden by filters} other {# steps hidden by filters}}" },
+        { "TraceFilterAllSteps", "all recorded events" },
+        { "TraceStepsHiddenPattern", "{0, plural, one {# event hidden by filters} other {# events hidden by filters}}" },
         { "TraceFilterHiddenSuffixPattern", "{0, plural, one {# hidden} other {# hidden}}" },
         { "TraceRecordedTimesPattern", "{0, plural, =2 {Recorded twice} other {Recorded # times}}" },
         { "OverviewApprovedDifferentEntryPattern", "{0, plural, one {# approved word is built from a different entry with the same form and gloss.} other {# approved words are built from a different entry with the same form and gloss.}}" },
@@ -317,9 +317,9 @@ public sealed class OverviewTraceSentenceResourceTests
     [InlineData("OverviewWarningInformationPattern", 5, "5 information findings")]
     [InlineData("ParserWorkPattern", 1, "1 parser work")]
     [InlineData("ParserWorkPattern", 1234, "1,234 parser work")]
-    [InlineData("ExpertMoreRuleStepsPattern", 1, "1 more rule step · open in Expert")]
-    [InlineData("ExpertMoreRuleStepsPattern", 2, "2 more rule steps · open in Expert")]
-    [InlineData("ExpertMoreRuleStepsPattern", 1234, "1,234 more rule steps · open in Expert")]
+    [InlineData("ExpertMoreRuleStepsPattern", 1, "1 more rule event · open in Expert")]
+    [InlineData("ExpertMoreRuleStepsPattern", 2, "2 more rule events · open in Expert")]
+    [InlineData("ExpertMoreRuleStepsPattern", 1234, "1,234 more rule events · open in Expert")]
     public void CountSentencesGoThroughThePluralHelper(string accessor, int count, string expected)
     {
         using var culture = new CultureScope(CultureInfo.GetCultureInfo("en-US"));
@@ -350,7 +350,7 @@ public sealed class OverviewTraceSentenceResourceTests
             "No parse times recorded", "No parser work recorded", "on this computer", "analysis attempt", "tried and dropped", "choose a group to see",
             "Show the other", "Search incomplete", "Search complete", "hidden by filters", "Recorded twice",
             "Parser time", "} overall", "overall time not recorded", "got furthest", "source records",
-            "\"Parsed", "\"guessed\"", "\"1 attempt\"", "? \"failed\" : \"succeeded\"", "all recorded steps",
+            "\"Parsed", "\"guessed\"", "\"1 attempt\"", "? \"failed\" : \"succeeded\"", "all recorded events",
         ];
         Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
     }

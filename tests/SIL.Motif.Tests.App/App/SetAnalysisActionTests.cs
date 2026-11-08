@@ -74,7 +74,8 @@ public sealed class SetAnalysisActionTests
                 var card = await SurfaceAsync(workspace, window, "review", "Sungura");
                 var actions = card.GetVisualDescendants().OfType<Button>().Where(button => button.IsEffectivelyVisible).ToArray();
                 Assert.Single(actions, button => Equals(button.Content, MotifAppStrings.TryAWord));
-                Assert.Single(actions, button => Equals(button.Content, MotifAppStrings.MarkAsUnread));
+                var unread = Assert.Single(actions, button => Equals(button.Content, MotifAppStrings.MarkAsUnread));
+                Assert.Equal("Only in Motif. The word stays coloured until you look at it again.", ToolTip.GetTip(unread));
                 Assert.NotNull(PartButton(card, "fix"));
                 var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
                 Assert.Single(fake.PendingPutRequests);

@@ -78,13 +78,13 @@ public sealed class WorkspacePageTests
                 WorkspacePage.AiHandoff, WorkspacePage.AiAssistants, WorkspacePage.Settings],
             workspace.Pages.Select(page => page.Page));
         Assert.Equal(
-            ["Overview", "Proposals", "Texts", "Try a Word", "Timing", "Warnings", "Parsimony", "Review Changes",
+            ["Overview", "Proposals", "Texts", "Try a Word", "Parser Work", "Warnings", "Parsimony", "Review Changes",
                 "AI Handoff", "AI Assistants", "Settings"],
             workspace.Pages.Select(page => page.Title));
         Assert.Equal(workspace.Pages.Single(page => page.Page == WorkspacePage.AiAssistants).Title,
             MotifAppStrings.AiAssistantsTitle);
         Assert.DoesNotContain(workspace.VisiblePages, page => page.Page == WorkspacePage.Settings);
-        Assert.Equal(workspace.Pages.Where(page => page.IsAvailable && page.Page != WorkspacePage.Settings),
+        Assert.Equal(workspace.Pages.Where(page => page.IsAvailable && page.Page is not (WorkspacePage.Settings or WorkspacePage.AiHandoff)),
             workspace.VisiblePages);
         Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
         Assert.All(workspace.Pages, page => Assert.False(page.HasBadge));
@@ -98,7 +98,6 @@ public sealed class WorkspacePageTests
     [InlineData(WorkspacePage.Timing)]
     [InlineData(WorkspacePage.Warnings)]
     [InlineData(WorkspacePage.Review)]
-    [InlineData(WorkspacePage.AiHandoff)]
     [InlineData(WorkspacePage.AiAssistants)]
     public void ShowingAPageMovesTheCurrentMarkerToThatPageAlone(WorkspacePage page)
     {
@@ -167,7 +166,7 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task ChoosingAProjectFromAnotherPageNamesItAndReturnsToOverview()
+    public async Task ChoosingAProjectFromAnotherPageNamesItAndOpensTexts()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         workspace.ShowPageCommand.Execute(WorkspacePage.AiHandoff);
@@ -176,7 +175,24 @@ public sealed class WorkspacePageTests
 
         Assert.True(workspace.HasProject);
         Assert.Equal("one.fwdata", workspace.ProjectName);
-        Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+    }
+
+    [Theory]
+    [InlineData(true, WorkspacePage.Proposals)]
+    [InlineData(false, WorkspacePage.Texts)]
+    public async Task OpeningAProjectShowsReadyProposalsOrTexts(bool ready, WorkspacePage expected)
+    {
+        var (fake, picker, workspace) = NewWorkspace();
+        var cards = ready
+            ? new[] { new ProposalCard("p/ready", "Ready", "proposed", ProposalGroup.NotTried, false,
+                [], TrialStanding.NotTried, null, []) }
+            : Array.Empty<ProposalCard>();
+        fake.ProposalStandingsCompleteWith(new ProposalStandings(cards, 0));
+
+        await ChooseProjectAsync(fake, picker, workspace);
+
+        Assert.Equal(expected, workspace.CurrentPage);
     }
 
     [Fact]
@@ -242,7 +258,7 @@ public sealed class WorkspacePageTests
         Assert.Equal("2 warnings", warnings.BadgeTip);
         var proposals = workspace.PageOf(WorkspacePage.Proposals);
         proposals.BadgeCount = 2;
-        Assert.Equal("2 Proposals waiting for you", proposals.BadgeTip);
+        Assert.Equal("2 Proposals waiting for your decision", proposals.BadgeTip);
         Assert.True(warnings.HasBadge);
         Assert.Empty(fake.AssessRequests);
     }
@@ -280,8 +296,8 @@ public sealed class WorkspacePageTests
 
     [Theory]
     [InlineData(900, true)]
-    [InlineData(WorkspaceShellViewModel.SidebarCollapseWidth - 1, true)]
-    [InlineData(WorkspaceShellViewModel.SidebarCollapseWidth, false)]
+    [InlineData(1279, true)]
+    [InlineData(1280, false)]
     [InlineData(1400, false)]
     public void TheSidebarCollapsesToIconsBelowItsWidthThreshold(double width, bool collapsed)
     {
@@ -606,7 +622,7 @@ public sealed class WorkspacePageTests
             Assert.Single(fake.CheckGrammarRequests);
             Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.IsLoading);
             Assert.False(workspace.Context.IsOpeningProject);
-            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
             Assert.Empty(fake.AssessRequests);
         }
         finally
@@ -685,7 +701,7 @@ public sealed class WorkspacePageTests
         {
             await ChooseProjectAsync(fake, projectPicker, workspace).WaitAsync(testLifetime.Token);
             Assert.True(workspace.Baseline.HasBaseline);
-            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
             Assert.Equal(ProjectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
             Assert.True(grammar.IsLoading);
             Assert.False(grammar.HasChecked);
@@ -701,7 +717,7 @@ public sealed class WorkspacePageTests
             Assert.Equal("fwdata.dropped-entry", Assert.Single(grammar.Warnings.Findings).Code);
             Assert.Equal("1", workspace.PageOf(WorkspacePage.Warnings).Badge);
             Assert.Equal("fwdata.dropped-entry", Assert.Single(workspace.Context.GrammarSummary!.Findings).Code);
-            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
             Assert.Empty(fake.AssessRequests);
             Assert.Null(workspace.Context.Evidence.Assessment);
         }
@@ -748,7 +764,7 @@ public sealed class WorkspacePageTests
             await switching.WaitAsync(testLifetime.Token);
 
             Assert.Equal(otherPath, workspace.Context.ProjectPath);
-            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
             Assert.Equal(oldOverviewReads,
                 fake.OverviewRequests.Count(request => request.ProjectPath == ProjectPath));
             var grammar = workspace.PageModel<WarningsPageModel>().Grammar;

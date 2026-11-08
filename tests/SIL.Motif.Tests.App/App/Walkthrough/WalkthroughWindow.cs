@@ -110,6 +110,8 @@ public sealed class WalkthroughWindow : IDisposable
         }, startGate);
         Window = composition.Window;
         Workspace = composition.Workspace;
+        // A real parser would spend minutes producing a Parsimony Report that most walkthroughs never look at.
+        Workspace.PageModel<ParsimonyPageModel>().AutomaticProduction = advancedAiModePreferences?.IsEnabled == true;
     }
 
     public MainWindow Window { get; }
@@ -752,6 +754,11 @@ public sealed class WalkthroughWindow : IDisposable
     /// <summary>Opens a page the way a person does, by its entry in the sidebar.</summary>
     public void ShowPage(WorkspacePage page)
     {
+        if (page == WorkspacePage.AiHandoff)
+        {
+            SettingsTestAccess.Model(Window).ShowHandoffByCopyingFiles = true;
+            page = WorkspacePage.AiAssistants;
+        }
         if (Workspace.CurrentPage == page) return;
 
         var name = Workspace.PageOf(page).AutomationName;

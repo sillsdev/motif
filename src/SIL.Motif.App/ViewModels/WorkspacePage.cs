@@ -46,8 +46,8 @@ public enum WorkspacePage
 /// <summary>Which pages exist only while Advanced AI mode is on; the sidebar omits them and opening one does nothing.</summary>
 public static class WorkspacePages
 {
-    /// <summary>Whether <paramref name="page"/> is shown only for a person who has turned Advanced AI mode on.</summary>
-    public static bool RequiresAdvancedAi(WorkspacePage page) => page == WorkspacePage.Parsimony;
+    /// <summary>Whether <paramref name="page"/> requires the assistant tools setting.</summary>
+    public static bool RequiresAdvancedAi(WorkspacePage page) => false;
 }
 
 /// <summary>The views of the Texts page, each one a tab.</summary>

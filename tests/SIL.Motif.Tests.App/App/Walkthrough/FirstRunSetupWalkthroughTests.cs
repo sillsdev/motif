@@ -38,7 +38,8 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             var setup = walkthrough.Workspace.Context.Setup!;
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextTexts);
 
-            var textChoiceCheckBoxes = walkthrough.Window.GetLogicalDescendants().OfType<CheckBox>()
+            var textChoiceCheckBoxes = walkthrough.Window.GetLogicalDescendants().OfType<SetupDialog>().Single()
+                .GetLogicalDescendants().OfType<CheckBox>()
                 .Where(checkBox => checkBox.IsEffectivelyVisible && checkBox.DataContext is TextChoiceViewModel)
                 .ToArray();
             Assert.Equal(setup.Selection.Texts.Count, textChoiceCheckBoxes.Length);

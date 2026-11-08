@@ -41,6 +41,7 @@ public sealed class CancelHandoffWalkthroughTests(PristineProjectFixture pristin
                 var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
                 FakeParser.BehaveBesideExecutable(parserPath, new { heartbeatPath, processIdPath });
+                walkthrough.ShowPage(WorkspacePage.AiHandoff);
                 walkthrough.Click("Write the AI Handoff folder");
                 walkthrough.WaitUntil(
                     () => File.Exists(heartbeatPath) && File.Exists(processIdPath) &&

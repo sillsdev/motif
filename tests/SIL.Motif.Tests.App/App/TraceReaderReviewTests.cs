@@ -123,12 +123,12 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
         {
             window.Width = width;
             foreach (var expander in window.GetVisualDescendants().OfType<Expander>()
-                         .Where(expander => expander.Header?.ToString() == "Steps on this path"))
+                         .Where(expander => expander.Header?.ToString() == "Events on This Path"))
                 expander.IsExpanded = true;
             PageScreenshots.Settle(window);
             var rows = window.GetVisualDescendants().OfType<CopyableTextBlock>()
                 .Where(block => block.IsEffectivelyVisible && block.DataContext is TraceStepViewModel step &&
-                    block.Text == step.Label && block.FindAncestorOfType<Expander>()?.Header?.ToString() == "Steps on this path")
+                    block.Text == step.Label && block.FindAncestorOfType<Expander>()?.Header?.ToString() == "Events on This Path")
                 .ToArray();
             Assert.NotEmpty(rows);
             foreach (var name in rows)
@@ -202,7 +202,7 @@ public sealed class TraceReaderReviewTests(AvaloniaHeadlessFixture avalonia)
         {
             var candidate = Assert.Single(model.ClosestAttempts);
             if (!ancestor) candidate.IsTreeContextExpanded = true;
-            var header = ancestor ? "Steps on this path" : MotifAppStrings.TryWordRecordedTreeContextHeading;
+            var header = ancestor ? "Events on This Path" : MotifAppStrings.TryWordRecordedTreeContextHeading;
             var expander = window.GetVisualDescendants().OfType<Expander>()
                 .Single(control => control.Header?.ToString() == header);
             expander.IsExpanded = true;

@@ -237,22 +237,18 @@ public sealed class ParsimonyPageIntegrationTests(PristineProjectFixture pristin
     }
 
     [Fact]
-    public async Task AdvancedAiModeOffDoesNotStartHiddenParsimonyWork()
+    public async Task ParsimonyRemainsAvailableWithAssistantToolsOff()
     {
         using var scenario = await CreateScenarioAsync(includeEditedJudgment: false, createReport: false);
         await using var runner = new HeldRunner(new JobRunnerLaunchOptions(scenario.ManagedRoot, scenario.ParserPath));
         var client = RealCommandClient.Create(scenario.ManagedRoot, scenario.ParserPath, runner);
         var (context, page) = CreatePage(client, advancedAi: false);
+        page.AutomaticProduction = false;
         try
         {
             await context.OpenProjectAsync(scenario.ProjectPath);
-            await page.ReloadAsync();
-            await context.StopPageWorkAsync();
-            Assert.Equal(ParsimonyPageState.Off, page.State);
-            Assert.Equal(WorkspacePage.Overview, context.CurrentPage);
-            Assert.Empty(ParsimonyJobs(scenario.ProjectPath));
-            Assert.False(runner.Started.IsCompleted);
-            AssertNoAssessments(scenario.ProjectPath);
+            Assert.NotEqual(ParsimonyPageState.Off, page.State);
+            Assert.True(context.CanOpenPage(WorkspacePage.Parsimony));
         }
         finally
         {

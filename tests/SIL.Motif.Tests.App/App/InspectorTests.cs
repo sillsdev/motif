@@ -206,7 +206,7 @@ public sealed class InspectorTests
                 Assert.Equal(rule.InspectSubject!.TimingKey, asked.TimingKey);
                 Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
                 Assert.Same(inspector, InspectorPanel(window));
-                Assert.Equal("Timing", workspace.Inspector.Crumbs[0].Label);
+                Assert.Equal("Parser Work", workspace.Inspector.Crumbs[0].Label);
             }
             finally
             {
@@ -362,7 +362,7 @@ public sealed class InspectorTests
 
     private static InspectLink RecordedRuleLink(Window window, TraceTimingKey? timingKey = null) =>
         window.GetVisualDescendants().OfType<ListBox>()
-            .Single(list => AutomationProperties.GetName(list) == "Plain trace steps")
+            .Single(list => AutomationProperties.GetName(list) == "Plain trace events")
             .GetVisualDescendants().OfType<InspectLink>().First(link => link.IsEffectivelyVisible &&
                 (timingKey is null || link.DataContext is TraceStepViewModel step &&
                     step.Reference?.TimingKey == timingKey));

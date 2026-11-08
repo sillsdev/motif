@@ -104,7 +104,7 @@
                        LineSpacing="{DynamicResource Intent.Space.Related}">
               <Button Classes="tryWordResultAction" Content="{x:Static app:MotifAppStrings.AnalyzeTexts}" Command="{Binding OpenInTextsCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TryWordOpenInAnalyzeTextsAccessibleName}" />
               <Button Classes="tryWordResultAction" Content="{x:Static app:MotifAppStrings.TryWordTimingLabel}" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingForThisWordAccessibleName}" />
-      <Button Classes="tryWordResultAction" Content="{x:Static vm:WindowCopy.AiHandoffForThisWord}" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForThisWord}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordHandOff}" />
+      <Button IsVisible="False" Classes="tryWordResultAction" Content="{x:Static vm:WindowCopy.AiHandoffForThisWord}" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForThisWord}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordHandOff}" />
             </WrapPanel>
 
           <views:CopyableTextBlock Text="{Binding Trace.SearchStatusText}" Classes="status" TextWrapping="Wrap" IsVisible="{Binding !Trace.Result.Complete}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchCompletenessAccessibleName}" />

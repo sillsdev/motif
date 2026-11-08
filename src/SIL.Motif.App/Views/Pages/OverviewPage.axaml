@@ -394,13 +394,13 @@
         </Border>
         </StackPanel>
       </Grid>
-      <Border Classes="overviewHandoff" IsVisible="{Binding HasAssessment}">
+      <Border Classes="overviewHandoff" IsVisible="False">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Component.Overview.HandoffGap}">
           <PathIcon Classes="overviewHandoffIcon" Data="M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7z M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
           <views:CopyableTextBlock Grid.Column="1" Classes="overviewHandoffText"
                                    Text="{x:Static app:MotifAppStrings.AskAChatModelAboutAnything}"
                                    TextWrapping="Wrap" VerticalAlignment="Center" />
-          <Button Grid.Column="2" Content="{x:Static app:MotifAppStrings.StartAnAIHandoff}" Command="{Binding OpenAiHandoffCommand}"
+          <Button Grid.Column="2" IsVisible="False" Content="{x:Static app:MotifAppStrings.StartAnAIHandoff}" Command="{Binding OpenAiHandoffCommand}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.StartAnAIHandoffAccessibleName}" />
         </Grid>
       </Border>

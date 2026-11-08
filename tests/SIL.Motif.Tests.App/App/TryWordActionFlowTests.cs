@@ -42,7 +42,7 @@ public sealed class TryWordActionFlowTests
                     AutomationProperties.GetName(button) == MotifAppStrings.TryWordOpenInAnalyzeTextsAccessibleName ||
                     AutomationProperties.GetName(button) == MotifAppStrings.TimingForThisWordAccessibleName ||
                     AutomationProperties.GetAutomationId(button) == AutomationIds.TryWordHandOff).ToArray();
-                Assert.Equal(3, actions.Length);
+                Assert.Equal(2, actions.Length);
                 foreach (var action in actions)
                 {
                     var bounds = BoundsIn(action, window);

@@ -48,7 +48,7 @@ public sealed class GrammarFeedbackRealParserTests(PristineProjectFixture pristi
             walkthrough.Show();
             var workspace = walkthrough.Workspace;
             await workspace.SetProjectAsync(project.FwDataPath);
-            Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
             var page = workspace.PageModel<WarningsPageModel>();
             walkthrough.WaitUntil(() => page.Grammar.HasChecked && !page.Grammar.IsLoading,
                 WalkthroughSteps.Remaining(deadline), "the automatic grammar check did not complete");

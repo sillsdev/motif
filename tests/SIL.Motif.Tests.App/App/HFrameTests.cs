@@ -78,12 +78,11 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 window.Show();
                 PageScreenshots.Settle(window);
                 Assert.Equal(34, window.FindInWindowOrWorkspace<Border>("TopBar")!.Bounds.Height);
-                Assert.Equal(44, window.FindInWindowOrWorkspace<Border>("Sidebar")!.Bounds.Width);
+                Assert.Equal(190, window.FindInWindowOrWorkspace<Border>("Sidebar")!.Bounds.Width);
                 var status = window.FindInWindowOrWorkspace<Border>("StatusBar");
                 Assert.NotNull(status);
                 Assert.Equal(24, status.Bounds.Height);
-                Assert.Contains(status.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.Text == "Tech demo: writes nothing until you press Apply");
+                Assert.NotNull(window.FindInWindowOrWorkspace<Button>("StatusTechDemo"));
                 Assert.Contains(status.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Report a problem");
             }
@@ -248,14 +247,18 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 settings.ZoomPercent = zoom;
                 PageScreenshots.Settle(window);
                 Assert.Equal(640, window.ClientSize.Width);
-                var actions = window.GetVisualDescendants().OfType<ListBoxItem>().Cast<Control>().ToList();
+                var actions = window.FindInWindowOrWorkspace<ListBox>("PageList")!.GetVisualDescendants()
+                    .OfType<ListBoxItem>().Cast<Control>().ToList();
                 actions.Add(window.FindInWindowOrWorkspace<Button>("HelpButton")!);
                 actions.Add(window.FindInWindowOrWorkspace<Button>("SettingsButton")!);
+                actions.Add(window.FindInWindowOrWorkspace<Button>("StatusTechDemo")!);
                 actions.Add(window.FindInWindowOrWorkspace<Border>("StatusBar")!.GetVisualDescendants().OfType<Button>().Single(button =>
                     button.IsEffectivelyVisible && AutomationProperties.GetName(button) == "Report a problem"));
                 Assert.NotEmpty(actions);
                 foreach (var action in actions)
                 {
+                    action.BringIntoView();
+                    PageScreenshots.Settle(window);
                     Assert.True(action.IsEffectivelyVisible);
                     var first = action.TranslatePoint(default, window)!.Value;
                     var last = action.TranslatePoint(new Point(action.Bounds.Width, action.Bounds.Height), window)!.Value;

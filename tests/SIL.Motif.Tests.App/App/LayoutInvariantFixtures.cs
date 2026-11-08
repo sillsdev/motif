@@ -25,7 +25,7 @@ internal static class LayoutInvariantFixtures
     [
         WorkspacePage.Overview, WorkspacePage.Proposals, WorkspacePage.Texts, WorkspacePage.TryAWord,
         WorkspacePage.Timing, WorkspacePage.Warnings, WorkspacePage.Parsimony, WorkspacePage.Review,
-        WorkspacePage.AiHandoff, WorkspacePage.AiAssistants, WorkspacePage.Settings,
+        WorkspacePage.AiAssistants, WorkspacePage.Settings,
     ];
 
     internal static IReadOnlyList<WorkspacePage> PopulatedPages { get; } =
@@ -132,8 +132,8 @@ internal static class LayoutInvariantFixtures
                 // The tabs live in the side bar; a collapsed side bar offers its labelled reveal instead.
                 WorkspacePage.Parsimony => $"id:{AutomationIds.ParsimonyActiveTab}|Show side bar",
                 WorkspacePage.Review => "Apply to FieldWorks project",
-                WorkspacePage.AiHandoff => "Write the AI Handoff folder",
-                WorkspacePage.AiAssistants => "Turn On Advanced AI Mode",
+                WorkspacePage.AiHandoff => "Let Assistants Use Motif's Tools",
+                WorkspacePage.AiAssistants => "Let Assistants Use Motif's Tools",
                 WorkspacePage.Settings => "Leave Settings",
                 _ => throw new InvalidOperationException($"No required-action fixture for {workspace.CurrentPage}."),
             });

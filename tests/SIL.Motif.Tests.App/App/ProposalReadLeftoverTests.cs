@@ -26,9 +26,9 @@ public sealed class ProposalReadLeftoverTests
             ? TimingProposalViewTests.Respond(request, side.Today, ("morph_rule", 1))
             : TimingProposalViewTests.Respond(request, side.Proposals(request.ProposalId), ("morph_rule", 1))));
 
-    private static CommandOutcome<TimingResponse> Total(IReadOnlyList<TimingProposalViewTests.Word> words) =>
+    private static CommandOutcome<TimingResponse> Total(IReadOnlyList<TimingProposalViewTests.Word> words, string? proposalId = null) =>
         CommandOutcome<TimingResponse>.Success(TimingProposalViewTests.Respond(
-            new TimingRequest(TimingProposalViewTests.ProjectPath), words, ("morph_rule", 1)));
+            new TimingRequest(TimingProposalViewTests.ProjectPath, ProposalId: proposalId), words, ("morph_rule", 1)));
 
     [Fact]
     public async Task TheTimingPagesOwnCancellationIsNotAFailedRead()
@@ -121,16 +121,16 @@ public sealed class ProposalReadLeftoverTests
         await Task.Delay(50);
         context.ShowProposalView(MarkupView.Proposal);
 
-        gateA.SetResult(Total(TimingProposalViewTests.ProposalCalm));
+        gateA.SetResult(Total(TimingProposalViewTests.ProposalCalm, "proposal/one"));
         await Task.Delay(50);
         Assert.Equal(MotifAppStrings.OverviewProposalReading, page.HeadlineTotal);
         gateToday.SetResult(Total(side.Proposals("proposal/two").Select(word => word with { Steps = word.Steps * 10 }).ToArray()));
         await Task.Delay(50);
         Assert.Equal(MotifAppStrings.OverviewProposalReading, page.HeadlineTotal);
 
-        gateB.SetResult(Total(side.Proposals("proposal/two")));
+        gateB.SetResult(Total(side.Proposals("proposal/two"), "proposal/two"));
         await opening;
-        Assert.Equal("1,000 parser work", page.HeadlineTotal);
+        Assert.Equal("About 90% less parser work than the Baseline", page.HeadlineTotal);
         context.ShowProposalView(MarkupView.TodayToProposal);
         Assert.DoesNotContain("9,000", page.HeadlineTotal);
     }

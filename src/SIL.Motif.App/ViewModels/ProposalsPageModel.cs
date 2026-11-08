@@ -875,7 +875,7 @@ public sealed partial class ProposalsPageModel : PageModel
         SetAsideLinkText = _includeSetAside ? "Hide closed"
             : standings.SetAsideCount == 0 ? string.Empty
             : $"Show closed ({standings.SetAsideCount.ToString(CultureInfo.CurrentCulture)})";
-        var waiting = cards.Count(card => card.Card.Group == ProposalGroup.WaitingForYou);
+        var waiting = cards.Count(card => !card.Card.IsDraft && card.Card.Status == "proposed");
         BadgeCount = waiting == 0 ? null : waiting;
     }
 
@@ -1101,10 +1101,17 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         SetDeleteQuestion(null);
         if (card is null || !card.CanDelete || Context.ProjectPath is not { } path) return;
-        var deleted = await Context.Commands.DeleteProposalAsync(new DeleteProposalRequest(path, card.ProposalId),
-            CancellationToken.None).ConfigureAwait(true);
+        var request = new DeleteProposalRequest(path, card.ProposalId);
+        var deleted = await Context.Commands.DeleteProposalAsync(request, CancellationToken.None).ConfigureAwait(true);
+        if (path != Context.ProjectPath) return;
+        if (!deleted.Succeeded && deleted.Refusal?.Code == RefusalCodes.ProjectBusy)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250), Context.Clock, CancellationToken.None).ConfigureAwait(true);
+            if (path != Context.ProjectPath) return;
+            deleted = await Context.Commands.DeleteProposalAsync(request, CancellationToken.None).ConfigureAwait(true);
+        }
         if (path != Context.ProjectPath) return;
         ShownRefusal = deleted.Succeeded ? null : WindowRefusal.From(deleted.Refusal!);
-        await LoadAsync(path, CancellationToken.None).ConfigureAwait(true);
+        if (deleted.Succeeded) await LoadAsync(path, CancellationToken.None).ConfigureAwait(true);
     }
 }
