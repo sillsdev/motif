@@ -123,6 +123,7 @@ properties, spelling, the environment box, long documents. The Pandoc tests need
 | `src/SIL.TextEditing.Avalonia` | `RichTextField`, the control. |
 | `src/SIL.TextEditing.Markdown` | FieldWorks Markdown and record files. Trimmable and AOT-compatible. |
 | `src/SIL.TextEditing.LCModel` | The `ITsString` adapter and the TsString XML clipboard form. |
+| `src/SIL.TextEditing.Project` | Read-only styles and writing systems from a caller-owned `LcmCache`. |
 | `samples/SIL.TextEditing.Playground` | The shared playground UI both hosts and the integration tests use. |
 | `samples/Playground.Desktop` | The playground in a plain Avalonia window, net48 and net10.0. |
 | `samples/Host48` | The playground inside a WinForms form, net48: FieldWorks' shape. |
@@ -149,7 +150,7 @@ Planned, not built:
   ([ADR 0031](docs/adr/0031-shared-editing-and-interchange-layer.md),
   [clipboard plan](docs/formats/clipboard.md#planned-word-html-and-rtf)).
 - **Real tables** in the field ([motif#46](https://github.com/sillsdev/motif/issues/46), [tables plan](docs/formats/tables.md#planned-real-tables-in-the-field)).
-- **`SIL.TextEditing.Project`**: LCModel-backed record I/O and the record schema built from liblcm metadata
+- **Project record I/O** and the record schema built from liblcm metadata, in `SIL.TextEditing.Project`
   ([ADR 0031](docs/adr/0031-shared-editing-and-interchange-layer.md), [ADR 0033](docs/adr/0033-block-features.md)).
 - **The `fwmd` command-line checker** ([motif#51](https://github.com/sillsdev/motif/issues/51)).
 - **The FieldWorks Markdown clipboard form** ([motif#56](https://github.com/sillsdev/motif/issues/56)).

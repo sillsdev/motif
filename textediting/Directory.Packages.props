@@ -37,10 +37,12 @@
     <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
   </ItemGroup>
 
-  <!-- liblcm (ADR 0016) at the host's version, from SilVersions.props (ADR 0034). SIL.LCModel, for the planned
-       SIL.TextEditing.Project (ADR 0031), takes the same property. -->
+  <!-- Both liblcm adapters follow the host's version (ADRs 0016, 0031 and 0034).
+       Core.Desktop selects L10NSharp's netstandard2.0 asset instead of its Framework-only predecessor. -->
   <ItemGroup>
     <PackageVersion Include="SIL.LCModel.Core" Version="$(SilLCModelPackageVersion)" />
+    <PackageVersion Include="SIL.LCModel" Version="$(SilLCModelPackageVersion)" />
+    <PackageVersion Include="SIL.Core.Desktop" Version="$(SilCoreDesktopVersion)" />
   </ItemGroup>
 
   <!-- ADR 0011: the Markdown parser; referenced by SIL.TextEditing.Markdown only. -->
