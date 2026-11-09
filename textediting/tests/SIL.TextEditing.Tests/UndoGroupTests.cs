@@ -91,22 +91,70 @@ namespace SIL.TextEditing.Tests
         }
 
         [Fact]
-        public void A_delete_after_typing_is_a_step_of_its_own_and_so_is_the_typing_after_it()
+        public void A_backspace_while_typing_stays_in_the_typing_step_and_is_reported_at_once()
         {
             var r = new Rig("ab");
-            r.Type("xy");
+            r.Type("o");
             r.Editor.Backspace();
-            r.Type("z");
-            Assert.Equal(3, r.Undo.DoneSteps);
-            Assert.True(r.Deltas[2].StartsUndoGroup);
-            Assert.True(r.Deltas[3].StartsUndoGroup);
-            Assert.Equal(new[] { r.Deltas[0].UndoGroup, r.Deltas[2].UndoGroup }, r.Ended);   // the delete is one complete step at once
-            r.Undo.Undo();
-            Assert.Equal("abx", r.Text);
-            r.Undo.Undo();
-            Assert.Equal("abxy", r.Text);
+            Assert.Equal("ab", r.Text);   // the host has the edit now, not later
+            r.Type("ò");
+            Assert.Equal(3, r.Deltas.Count);
+            Assert.Single(r.Deltas, d => d.StartsUndoGroup);
+            Assert.Empty(r.Ended);
+            Assert.Equal(1, r.Undo.DoneSteps);
             r.Undo.Undo();
             Assert.Equal("ab", r.Text);
+        }
+
+        [Fact]
+        public void A_backspace_after_a_caret_move_is_a_step_of_its_own_and_typing_after_it_joins()
+        {
+            var r = new Rig("abc");
+            r.Type("x");
+            r.Editor.SetCaret(new TextPosition(0, 2));
+            r.Editor.Backspace();
+            r.Type("z");
+            Assert.Equal(2, r.Undo.DoneSteps);
+            Assert.True(r.Deltas[1].StartsUndoGroup);
+            Assert.False(r.Deltas[2].StartsUndoGroup);
+            r.Undo.Undo();
+            Assert.Equal("abcx", r.Text);
+        }
+
+        [Fact]
+        public void A_backspace_after_a_pause_is_a_step_of_its_own()
+        {
+            var r = new Rig("ab");
+            r.Type("x");
+            r.Now += TimeSpan.FromMilliseconds(900);
+            r.Editor.Backspace();
+            Assert.False(r.Deltas[1].StartsUndoGroup);
+            r.Now += TimeSpan.FromMilliseconds(1100);
+            r.Editor.Backspace();
+            Assert.True(r.Deltas[2].StartsUndoGroup);
+            Assert.Equal(2, r.Undo.DoneSteps);
+        }
+
+        [Fact]
+        public void A_backspace_after_a_writing_system_change_is_a_step_of_its_own()
+        {
+            var r = new Rig("ab");
+            r.Type("x");
+            r.Editor.SetActiveWs("fr");
+            r.Editor.Backspace();
+            Assert.True(r.Deltas[1].StartsUndoGroup);
+            Assert.Equal(2, r.Undo.DoneSteps);
+        }
+
+        [Fact]
+        public void A_backspace_after_a_command_is_a_step_of_its_own()
+        {
+            var r = new Rig("ab");
+            r.Type("x");
+            r.Editor.CloseUndoGroup();
+            r.Editor.Backspace();
+            Assert.True(r.Deltas[1].StartsUndoGroup);
+            Assert.Equal(2, r.Undo.DoneSteps);
         }
 
         [Fact]

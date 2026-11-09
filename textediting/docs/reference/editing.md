@@ -98,6 +98,10 @@ checked in real windows with a second window of the same application; switching 
 gives one focus-gain event. The event arguments cannot tell that from any other focus gain, so a host that must tell uses its window's
 `Activated`.
 
+## Undo steps (ADR 0023)
+
+Typing is one undo step, and a Backspace or Delete while typing stays in it, so a keyboard's replacement (Backspaces then the new text) is one step. The step ends at a caret move, a pause of about one second (`Editor.Clock` and `TypingPause`), a change of writing system or any command; a delete that starts after one of those is a step of its own, and typing after it joins that step. Every edit reaches the host at once.
+
 ## Host hooks (ADR 0021, ADR 0025)
 
 The field owns one text; the window around it belongs to the host. These are the hooks:
