@@ -181,8 +181,8 @@ public sealed class ToolSurfaceTests
                 "compose-move-example" or "compose-add-example" or
                 "compose-set-stem-part-of-speech" or "compose-record-source-validated-decision" or
                 "compose-retire-boundary-marker" or "compose-retire-affix-slot" or "compose-add-exception-features" or
-                "compose-merge-boundary-markers").ToArray();
-        Assert.Equal(16, numeralEditors.Length);
+                "compose-merge-boundary-markers" or "compose-edit-text-notes").ToArray();
+        Assert.Equal(17, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
