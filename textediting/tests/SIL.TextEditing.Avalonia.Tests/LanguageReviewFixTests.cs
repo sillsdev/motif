@@ -247,22 +247,30 @@ namespace SIL.TextEditing.Avalonia.Tests
         [Fact]
         public void A_service_that_keeps_cancelling_what_nobody_cancelled_is_asked_a_few_times_not_for_ever() => Headless.Run(() =>
         {
-            var r = new LanguageRig("a b", new FakeLanguageService { CancelsItself = true, Analysis = FakeLanguageService.Words("word") });
-            r.Idle();
+            var r = new LanguageRig("a b", new FakeLanguageService { CancelsItself = true, Analysis = FakeLanguageService.Words("word") }, attach: false);
+            var timer = new ManualTimer();
+            r.Field.LanguageScheduler = timer.Schedule;
+            r.Field.LanguageDebounce = TimeSpan.FromMilliseconds(200);
+            r.Field.LanguageService = r.Service;
+            Drain(r);
             Assert.Equal(4, r.Service.AnalyzedTexts.Count);      // once, and three more
-            r.Idle();
+            Drain(r);
             Assert.Equal(4, r.Service.AnalyzedTexts.Count);
             // A repaint is not a reason to ask again. The test paints on purpose: when the headless renderer paints by itself is a matter of timing (issue 145).
             for (int i = 0; i < 3; i++)
             {
                 Fixtures.Render(r.Field);
-                r.Idle();
+                Drain(r);
             }
             Assert.Equal(4, r.Service.AnalyzedTexts.Count);
             r.Service.CancelsItself = false;
             r.Field.Editor.SetCaret(new TextPosition(0, 3));
             r.Field.Editor.TypeText("c");
-            r.Idle();
+            timer.Advance(TimeSpan.FromMilliseconds(199));
+            Drain(r);
+            Assert.Equal(4, r.Service.AnalyzedTexts.Count);
+            timer.Advance(TimeSpan.FromMilliseconds(1));
+            Drain(r);
             Assert.Equal(5, r.Service.AnalyzedTexts.Count);
             Assert.Equal(2, r.Field.LanguageTokens.Count);
             r.Close();
@@ -300,31 +308,68 @@ namespace SIL.TextEditing.Avalonia.Tests
         public void With_a_debounce_the_service_is_asked_when_typing_has_paused_and_every_edit_starts_the_wait_again() => Headless.Run(() =>
         {
             var r = new LanguageRig("one", attach: false);
-            var waits = new List<(TimeSpan Interval, Action Run, bool[] Cancelled)>();
-            r.Field.LanguageScheduler = (interval, run) =>
-            {
-                var cancelled = new bool[1];
-                waits.Add((interval, run, cancelled));
-                return new Cancel(() => cancelled[0] = true);
-            };
+            var timer = new ManualTimer();
+            r.Field.LanguageScheduler = timer.Schedule;
             r.Field.LanguageDebounce = TimeSpan.FromMilliseconds(200);
             r.Field.LanguageService = r.Service;
-            r.Idle();
+            Drain(r);
             Assert.Single(r.Service.AnalyzedTexts);                // the first answer for a new service is not held back
             r.Field.Editor.SetCaret(new TextPosition(0, 3));
             r.Field.Editor.TypeText("a");
+            timer.Advance(TimeSpan.FromMilliseconds(120));
             r.Field.Editor.TypeText("b");
-            r.Idle();
+            timer.Advance(TimeSpan.FromMilliseconds(199));
+            Drain(r);
             Assert.Single(r.Service.AnalyzedTexts);                // waiting
-            Assert.True(waits.Count >= 2);
-            for (int i = 0; i < waits.Count - 1; i++) Assert.True(waits[i].Cancelled[0]);   // every edit restarted the wait
-            Assert.False(waits[waits.Count - 1].Cancelled[0]);
-            Assert.Equal(TimeSpan.FromMilliseconds(200), waits[waits.Count - 1].Interval);
-            waits[waits.Count - 1].Run();
-            r.Idle();
+            timer.Advance(TimeSpan.FromMilliseconds(1));
+            Drain(r);
             Assert.Equal(new[] { "one", "oneab" }, r.Service.AnalyzedTexts.ToArray());
             r.Close();
         });
+
+        static void Drain(LanguageRig r)
+        {
+            int remaining = 50;
+            while (r.Posts.Count > 0 && remaining-- > 0)
+            {
+                var next = r.Posts[0];
+                r.Posts.RemoveAt(0);
+                next();
+            }
+            Assert.Empty(r.Posts);
+        }
+
+        sealed class ManualTimer
+        {
+            sealed class Wait
+            {
+                public TimeSpan Due;
+                public Action Run = null!;
+                public bool Cancelled;
+            }
+
+            readonly List<Wait> _waits = new List<Wait>();
+            TimeSpan _now;
+
+            public IDisposable Schedule(TimeSpan interval, Action run)
+            {
+                var wait = new Wait { Due = _now + interval, Run = run };
+                _waits.Add(wait);
+                return new Cancel(() => wait.Cancelled = true);
+            }
+
+            public void Advance(TimeSpan by)
+            {
+                _now += by;
+                while (true)
+                {
+                    var next = _waits.Where(w => w.Due <= _now).OrderBy(w => w.Due).FirstOrDefault();
+                    if (next == null) return;
+                    _waits.Remove(next);
+                    if (!next.Cancelled) next.Run();
+                }
+            }
+        }
 
         sealed class Cancel : IDisposable
         {
