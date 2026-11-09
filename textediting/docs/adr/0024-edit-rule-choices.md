@@ -34,9 +34,10 @@ one, and can change without superseding anything.
   selection is fully editable. Matches FieldWorks, which uses semi-editable for type-ahead boxes. Pasted text takes the
   editable value of the run it lands in when that run is semi-editable (the run before the insertion point, else the one
   after), as typed text does, so a paste into the middle of a semi-editable run leaves it whole; anywhere else it is editable.
-- **Paste is one undo step; consecutive deletes are not grouped.** A paste, with the selection it replaces and any
-  paragraph breaks it makes, is one step that neither joins the typing before it nor the typing after it. Each Backspace
-  or Delete is a step of its own and ends any typing step (ADR 0023). Default: FieldWorks makes a step per delete
+- **Paste is one undo step.** A paste, with the selection it replaces and any
+  paragraph breaks it makes, is one step that neither joins the typing before it nor the typing after it. A Backspace or
+  Delete while typing stays in the typing step (ADR 0023, amended 2026-11-09); one that starts after a caret move, pause
+  or command starts a step of its own, which typing then joins. Default: FieldWorks makes a step per delete
   and per paste, but whether LCModel merges consecutive units was not confirmed (feature inventory, group 4).
 - **Paste in single-paragraph mode turns each separator into one space and removes tabs.** This is FieldWorks' rule for
   a view that cannot hold paragraphs, and nothing more: each separator (CR, LF, NEL, U+2029; CR LF counts as one)
@@ -128,9 +129,10 @@ one, and can change without superseding anything.
   `Directory.Build.props`), so a release build has no counting on its hot paths; the tests that read them sit inside `#if TEXTEDITING_COUNTERS`, and one
   test pins that a build without the symbol counts nothing.
 
-**Still open:** whether a host closes its undo task when it receives `UndoGroupEnded`, or when the next delta with
-`StartsUndoGroup` arrives. The field supports the first (it closes the open step before it raises an undo or redo
-request, so the event never fires in the middle of an undo), and the second is not ruled out. Not decided here.
+**Decided 2026-11-09 (owner):** a host closes its undo task when it receives `UndoGroupEnded`, not when the next delta
+with `StartsUndoGroup` arrives. The field closes the open step before it raises an undo or redo request, so the event
+never fires in the middle of an undo. Waiting for the next group would leave a task open while the person reads, and a
+host command such as Apply could land inside it, so one Ctrl+Z would undo the typing and the command together.
 
 Written at the owner's request, 2026-11-03. Entries marked as defaults are not owner decisions and can change without
 superseding this ADR.
