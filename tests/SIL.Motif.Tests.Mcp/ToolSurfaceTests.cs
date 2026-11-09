@@ -150,6 +150,7 @@ public sealed class ToolSurfaceTests
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
             "compose-edit-stem-inflection-class",
+            "compose-edit-text-notes",
             "compose-merge-boundary-markers",
             "compose-move-example",
             "compose-move-sense-to-entry",

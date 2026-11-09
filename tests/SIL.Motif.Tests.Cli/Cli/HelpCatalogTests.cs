@@ -81,6 +81,7 @@ public sealed class HelpCatalogTests
         ["compose-edit-gloss"] = "authors a short translation equivalent without encoding a grammar phenomenon",
         ["compose-edit-lexical-note"] = "authors lexical documentation without encoding a grammar phenomenon",
         ["compose-author-text"] = "adds a text to analyse, not grammar",
+        ["compose-edit-text-notes"] = "replaces the Notes of existing text segments, not grammar",
         ["compose-delete-empty-sense"] = "removes an empty sense, which encodes no phenomenon",
         ["compose-edit-clitic-attachment"] = "restricts the categories a clitic attaches to, a lexical property of one analysis",
         ["compose-edit-morph-type"] = "changes an existing stem form within its morph-type family",

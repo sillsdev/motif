@@ -1006,6 +1006,19 @@
     },
     {
       "kind": "command",
+      "code": "compose-edit-text-notes",
+      "slug": "compose-edit-text-notes",
+      "title": "Edit the Notes of existing text segments",
+      "description": "Stages, in bulk, the replacement of the Notes of segments in existing Texts: each edit names a Text, a segment or a word in it, and the one Note the segment is to hold. Apply refuses a segment whose Notes changed since the edit was composed. Dry Run and Trial before a person Applies the Proposal.",
+      "helpPage": "# Edit the Notes of existing text segments\n\nSets or replaces the Notes of segments in Texts that already exist, in bulk, without creating a new Text. Each edit names a Text (its name, or its id when two Texts share a name), a segment or a word, and the Note. The segment then holds exactly that one Note: the first existing Note keeps its identity and its text in the analysis writing system is replaced, and any other Notes of the segment are removed. Free and Literal Translations, words and the baseline are untouched.\n\n\u0060\u0060\u0060sh\nmotif compose-edit-text-notes --project language.fwdata --draft my-draft \\\n  --intent \u0027{\u0022edits\u0022:[{\u0022text\u0022:\u0022Tracking\u0022,\u0022word\u0022:\u0022balay\u0022,\u0022note\u0022:\u0022loan: Spanish\u0022},{\u0022text\u0022:\u0022Tracking\u0022,\u0022segment\u0022:12,\u0022note\u0022:\u0022proper name\u0022}]}\u0027\n\u0060\u0060\u0060\n\n\u0060segment\u0060 is the 1-based number of the segment counted across all paragraphs of the Text. \u0060word\u0060 is a form in NFD; it must occur in exactly one segment of that Text, otherwise the edit is refused and names the segment numbers to choose from. Two edits for one segment are refused. Notes are written in \u0060analysisWs\u0060 when given, otherwise in the project\u0027s default analysis writing system.\n\nFor thousands of edits, put the same intent in a file and use \u0060compose-batch\u0060, so the command line stays short:\n\n\u0060\u0060\u0060sh\nmotif compose-batch --project language.fwdata --draft my-draft --intents notes.json\n# notes.json: {\u0022intents\u0022:[{\u0022verb\u0022:\u0022compose-edit-text-notes\u0022,\u0022intent\u0022:{\u0022edits\u0022:[...]}}]}\n\u0060\u0060\u0060\n\nOr give a tab-separated file of \u0060Text\u003CTAB\u003Esegment-number-or-word\u003CTAB\u003ENote\u0060 lines (a first line starting \u0060Text\u0060 is skipped; a locator that is a whole number is a segment, anything else a word):\n\n\u0060\u0060\u0060sh\nmotif compose-edit-text-notes --project language.fwdata --draft my-draft --notes-tsv notes.tsv [--analysis-ws en]\n\u0060\u0060\u0060\n\nEach staged operation remembers the Notes it started from. If a segment\u0027s Notes change before Apply, that Apply is refused (\u0060text-notes.stale-source\u0060) and you compose the edit again. The Dry Run lists every segment changed; a Trial reparses nothing, because the baseline is unchanged. Only a person can Apply the Proposal. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 to record a source on every operation.\n",
+      "usage": [
+        "Usage: motif compose-edit-text-notes --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-edit-text-notes/"
+    },
+    {
+      "kind": "command",
       "code": "compose-link-variant",
       "slug": "compose-link-variant",
       "title": "Link a variant",
