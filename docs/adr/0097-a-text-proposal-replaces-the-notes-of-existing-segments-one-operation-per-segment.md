@@ -1,4 +1,4 @@
-# 0096. A Text Proposal can replace the Notes of existing segments, one operation per segment
+# 0097. A Text Proposal can replace the Notes of existing segments, one operation per segment
 
 A linguist who has to change many segment Notes in a Text that already exists, such as turning placeholder
 dispositions into real ones across thousands of words, should do it in one Proposal that goes through the ordinary
