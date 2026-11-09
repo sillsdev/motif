@@ -50,13 +50,6 @@ namespace SIL.TextEditing.Samples.Host48
             return view.Field.WantsKey(key, mods);
         }
 
-        // Tab into the host gives WinForms focus to the control but leaves Avalonia with no focused element, so the field is asked for it.
-        protected override void OnGotFocus(EventArgs e)
-        {
-            base.OnGotFocus(e);
-            if (Content is PlaygroundView view) global::Avalonia.Threading.Dispatcher.UIThread.Post(() => view.Field.Focus());
-        }
-
         protected override bool IsInputKey(Keys keyData) => ((IsArrow(keyData) && ContainsFocus) || FieldWants(keyData)) || base.IsInputKey(keyData);
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData) => !((IsArrow(keyData) && ContainsFocus) || FieldWants(keyData)) && base.ProcessCmdKey(ref msg, keyData);
