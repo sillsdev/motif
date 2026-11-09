@@ -14,5 +14,6 @@
     <InternalsVisibleTo Include="SIL.TextEditing.Tests" />
     <InternalsVisibleTo Include="SIL.TextEditing.Avalonia" />
     <InternalsVisibleTo Include="SIL.TextEditing.Avalonia.Tests" />
+    <InternalsVisibleTo Include="SIL.TextEditing.Markdown" />
   </ItemGroup>
 </Project>

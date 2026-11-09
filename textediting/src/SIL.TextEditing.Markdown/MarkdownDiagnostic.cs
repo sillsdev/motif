@@ -108,6 +108,8 @@ namespace SIL.TextEditing.Markdown
     public static class MarkdownDiagnosticIds
     {
         public const string UnclosedMark = "fwmd.syntax.unclosed-mark";
+        /// <summary>A noncharacter or lone surrogate is kept, but may be rejected by normalization or other text processors.</summary>
+        public const string Unnormalizable = "fwmd.text.unnormalizable";
         public const string VersionUnsupported = "fwmd.version.unsupported";
         /// <summary>Reported by hosts: unmarked text that looks like it is vernacular (a suggestion).</summary>
         public const string WsUnmarkedVernacular = "fwmd.ws.unmarked-vernacular";

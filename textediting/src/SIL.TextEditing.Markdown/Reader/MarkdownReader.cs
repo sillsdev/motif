@@ -172,6 +172,7 @@ namespace SIL.TextEditing.Markdown.Reader
         {
             var reader = new MarkdownReader(options, Prepare(markdown), markdown.Length > 0 && markdown[0] == Chars.ByteOrderMark);
             reader.ReadAll();
+            if (!reader._unsupportedVersion) ReportUnnormalizable(reader._context);
             var document = new Document();
             document.Paragraphs.AddRange(reader._paragraphs);
             return new MarkdownParseResult(document, reader._context.Diagnostics.Select((d, i) => (d, i)).OrderBy(x => x.d.Start).ThenBy(x => x.i).Select(x => x.d).ToList(), reader._context, reader._sources);
@@ -202,8 +203,23 @@ namespace SIL.TextEditing.Markdown.Reader
         {
             var reader = new MarkdownReader(options, Prepare(text), text.Length > 0 && text[0] == Chars.ByteOrderMark);
             var runs = reader.ReadInlineText();
+            ReportUnnormalizable(reader._context);
             context = reader._context;
             return runs;
+        }
+
+        static void ReportUnnormalizable(ReaderContext context)
+        {
+            string source = context.Source;
+            for (int i = 0; i < source.Length; i++)
+            {
+                int length = char.IsHighSurrogate(source[i]) && i + 1 < source.Length && char.IsLowSurrogate(source[i + 1]) ? 2 : 1;
+                int cp = length == 2 ? char.ConvertToUtf32(source[i], source[i + 1]) : source[i];
+                if (TextNormalizer.IsNoncharacter(cp) || length == 1 && char.IsSurrogate(source[i]))
+                    context.Report(MarkdownDiagnosticIds.Unnormalizable, MarkdownSeverity.Warning,
+                        "This Unicode value is kept, but text processors may reject it.", i, i + length);
+                i += length - 1;
+            }
         }
 
         static string Prepare(string markdown)
