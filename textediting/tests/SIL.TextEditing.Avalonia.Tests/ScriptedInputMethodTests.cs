@@ -68,6 +68,19 @@ namespace SIL.TextEditing.Avalonia.Tests
         });
 
         [Fact]
+        public void Keyman_backspace_and_replacement_are_one_undo_step_with_the_typing_around_them() => Headless.Run(() =>
+        {
+            var (field, ime, undo) = Rig(Doc(Para("en", "en", "ab")), 2);
+            ime.Commit("o");
+            ime.Backspace();
+            ime.Commit("ò");
+            ime.Commit("x");
+            State(field, undo, 4, 1, "en:abòx");
+            Assert.True(undo.Undo());
+            State(field, undo, 2, 0, "en:ab");
+        });
+
+        [Fact]
         public void Keyman_backspaces_cross_runs_and_writing_systems_before_replacement() => Headless.Run(() =>
         {
             var (field, ime, undo) = Rig(Doc(Para("en", "en", "ab", "fr", "cd")), 4);
@@ -75,19 +88,15 @@ namespace SIL.TextEditing.Avalonia.Tests
             ime.Backspace();
             State(field, undo, 3, 1, "en:ab", "fr:c");
             ime.Backspace();
-            State(field, undo, 2, 2, "en:ab");
+            State(field, undo, 2, 1, "en:ab");
             ime.Backspace();
-            State(field, undo, 1, 3, "en:a");
+            State(field, undo, 1, 1, "en:a");
             Assert.Equal("a", ime.SurroundingText);
             ime.Commit("Z");
-            State(field, undo, 2, 4, "en:aZ");
-            Assert.True(undo.Undo());
-            State(field, undo, 1, 3, "en:a");
-            Assert.True(undo.Undo());
-            Assert.True(undo.Undo());
+            State(field, undo, 2, 1, "en:aZ");
             Assert.True(undo.Undo());
             State(field, undo, 4, 0, "en:ab", "fr:cd");
-            Assert.Equal(4, undo.UndoneSteps);
+            Assert.Equal(1, undo.UndoneSteps);
         });
 
         [Fact]

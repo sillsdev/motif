@@ -292,7 +292,9 @@ namespace SIL.TextEditing
             ReplaceRange(a, b, null, label);
         }
 
-        public void Backspace()
+        public void Backspace() => AsTyping(BackspaceCore);
+
+        void BackspaceCore()
         {
             if (HasSelection) { DeleteSelection("backspace"); return; }
             if (Caret.Offset == 0)
@@ -306,7 +308,23 @@ namespace SIL.TextEditing
             ReplaceRange(new TextPosition(Caret.Paragraph, to), Caret, null, "backspace");
         }
 
-        public void DeleteForward()
+        public void DeleteForward() => AsTyping(DeleteForwardCore);
+
+        // A delete joins the typing step it follows, so a keyboard's Backspaces and replacement text stay one undo step.
+        void AsTyping(Action delete)
+        {
+            // The writing system a delete leaves the caret in is not a change the person made, unless they chose one.
+            _typingWs = _wsOverride || !_groupOpen ? ActiveWs : _groupWs ?? ActiveWs;
+            _typing = true;
+            try { delete(); }
+            finally
+            {
+                _typing = false;
+                if (_groupOpen && _groupTyping) _groupWs = ActiveWs;
+            }
+        }
+
+        void DeleteForwardCore()
         {
             if (HasSelection) { DeleteSelection("delete"); return; }
             var p = Document.Paragraphs[Caret.Paragraph];
