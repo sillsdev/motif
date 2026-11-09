@@ -8,7 +8,7 @@ namespace SIL.TextEditing.Playground
     /// <summary>What the playground tells the FieldWorks Markdown converter: unmarked text is the default analysis (en), <c>.v</c> is the default
     /// vernacular (swh), and the known writing systems are the registry's. The Markdown pane writes the body only: the front matter would list
     /// the same writing systems, and a host supplies them. Sample data only.</summary>
-    public sealed class SampleMarkdown : IWritingSystemMapper, IKnownWritingSystems, IObjectMapper
+    public sealed class SampleMarkdown : IWritingSystemMapper, IKnownWritingSystems, IObjectMapper, IStyleCatalog
     {
         readonly WritingSystemRegistry _registry;
 
@@ -22,6 +22,9 @@ namespace SIL.TextEditing.Playground
         public string DefaultVernacular => SampleWritingSystems.DefaultVernacular;
         public bool IsKnown(string tag) => _registry.Contains(tag);
         public IReadOnlyList<string> KnownTags { get; }
+
+        public bool IsParagraphStyle(string name) => name.Length == 0 || SampleStyles.ParagraphStyles.Contains(name);
+        public bool IsCharacterStyle(string name) => name.Length == 0 || SampleStyles.CharacterStyles.Contains(name);
 
         /// <summary>A picture of the sample project is written as an image with its path and GUID; any other object as the default mapper says.</summary>
         public MarkdownObject? Describe(string objData)

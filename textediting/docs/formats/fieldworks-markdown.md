@@ -7,7 +7,7 @@ writing systems, styles, every text property, links and pictures.
 | | |
 |---|---|
 | File name | `*.fw.md` (`MarkdownFrontMatter.FileExtension`). Only a hint: the front matter decides. |
-| Clipboard id | `FieldWorks Markdown` (`ClipboardForms.FieldWorksMarkdownId`). The form itself is planned (#168); see [Clipboard](clipboard.md). |
+| Clipboard id | `FieldWorks Markdown` (`ClipboardForms.FieldWorksMarkdownId`). `FieldWorksMarkdownClipboardForm` ships in the Markdown library; see [Clipboard](clipboard.md). |
 | Version | `fwmd: 1` (`MarkdownFrontMatter.CurrentVersion`). |
 | API | `MarkdownConverter.ToMarkdown`, `Parse`, `Canonicalize`, `ToInlineMarkdown`, `ParseInline`, `AreEquivalent` in `SIL.TextEditing.Markdown`. |
 | Defined by | The conformance fixtures in `tests/conformance` (their README explains the case format) and ADRs 0011, 0018, 0028 and 0029. The parser does not define the format. |

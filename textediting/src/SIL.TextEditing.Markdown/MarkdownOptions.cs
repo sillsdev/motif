@@ -33,6 +33,8 @@ namespace SIL.TextEditing.Markdown
     /// need no project (ADR 0011, ADR 0028).</summary>
     public sealed class MarkdownOptions
     {
+        internal MarkdownOptions Copy() => (MarkdownOptions)MemberwiseClone();
+
         IWritingSystemMapper _writingSystems = new FixedWritingSystems("en", "en");
         MarkdownStyleNames _styleNames = new MarkdownStyleNames();
         IObjectMapper _objects = DefaultObjectMapper.Instance;

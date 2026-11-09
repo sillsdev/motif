@@ -154,7 +154,6 @@ Planned, not built:
 - **Project record I/O** and the record schema built from liblcm metadata, in `SIL.TextEditing.Project`
   ([ADR 0031](docs/adr/0031-shared-editing-and-interchange-layer.md), [ADR 0033](docs/adr/0033-block-features.md)).
 - **The `fwmd` command-line checker** ([motif#51](https://github.com/sillsdev/motif/issues/51)).
-- **The FieldWorks Markdown clipboard form** ([motif#56](https://github.com/sillsdev/motif/issues/56)).
 - **Editor integration**: an inline WYSIWYG and Markdown source mode, and a VS Code extension with a language server. The playground's
   Markdown pane is a host-side sketch of the source mode. The plan and a proposed ADR are awaiting owner decisions ([motif#57](https://github.com/sillsdev/motif/issues/57)).
 - **Retiring the liblcm refusals** once FieldWorks pins a liblcm with its fixes [#410](https://github.com/sillsdev/liblcm/issues/410), [#413](https://github.com/sillsdev/liblcm/issues/413) and [#414](https://github.com/sillsdev/liblcm/issues/414) ([motif#50](https://github.com/sillsdev/motif/issues/50)).

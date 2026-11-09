@@ -236,7 +236,7 @@ namespace SIL.TextEditing.Playground.Tests
                     P("Table Row", "Table Header and Table Row (Tables)"),
                 };
                 await global::SIL.TextEditing.Avalonia.ClipboardCompat.SetAsync(TopLevel.GetTopLevel(s.Field), "x",
-                    new[] { new System.Collections.Generic.KeyValuePair<string, object>(Interchange.ClipboardFormat, Interchange.ToXml(paragraphs)) });
+                    new[] { new System.Collections.Generic.KeyValuePair<string, object>(global::SIL.TextEditing.Markdown.FieldWorksMarkdownClipboardForm.ClipboardFormatName, s.Field.ClipboardForms.Find(ClipboardForms.FieldWorksMarkdownId)!.Write(paragraphs)!) });
                 s.Caret(0, 0);
                 s.Click(PlaygroundView.Names.Paste);
                 await s.WaitClipboard();

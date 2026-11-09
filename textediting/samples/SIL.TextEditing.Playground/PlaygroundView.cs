@@ -808,7 +808,6 @@ namespace SIL.TextEditing.Playground
             LastCopyAsItems.Clear();
             AddCopyAs("Plain text", true, ClipboardForms.PlainTextId);
             foreach (var form in field.ClipboardForms.CopyAsForms) AddCopyAs(form.DisplayName, true, form.Id);
-            if (field.ClipboardForms.Find(ClipboardForms.FieldWorksMarkdownId) == null) AddCopyAs("FieldWorks Markdown (no converter registered)", false, null);
             copyAs.ItemsSource = copyAsItems;
             items.Add(copyAs);
             captions.Add(CopyAsCaption);
@@ -934,10 +933,16 @@ namespace SIL.TextEditing.Playground
                 PreferredWidth = many ? 300 : 500,
                 Margin = new Thickness(many ? 2 : 6),
             };
-            // The playground has no liblcm and registers no FieldWorks Markdown clipboard form (issue 168), so its one rich clipboard form is the
-            // field's debug dump (a real host registers TsString and FieldWorks Markdown, ADR 0029). The Markdown tab shows the field as Markdown.
-            var dump = new InterchangeClipboardForm();
-            field.ClipboardForms.Add(dump).PasteOrder.Insert(0, dump.Id);
+            var clipboardOptions = _markdownHost.Options();
+            clipboardOptions.Styles = _markdownHost;
+            var markdown = new FieldWorksMarkdownClipboardForm(clipboardOptions)
+            {
+                OnRead = result =>
+                {
+                    foreach (var finding in result.Diagnostics) Log("clipboard: " + finding);
+                },
+            };
+            field.ClipboardForms.Add(markdown);
             field.WritingSystemsMapped += (o, mapped) => Log("clipboard: notice, writing system(s) " + string.Join(", ", mapped.Missing.Select(m => m.Length == 0 ? "(none)" : m))
                 + " are not in this project; pasted text is now " + mapped.Target);
             field.BlocksFlattened += (o, flat) => Log("clipboard: notice, " + flat + " pasted into a field that does not allow them are now plain paragraphs");

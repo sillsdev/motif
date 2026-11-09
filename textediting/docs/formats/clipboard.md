@@ -8,7 +8,7 @@ registers the forms. The field itself depends on neither liblcm nor the Markdown
 | Form | Id | Clipboard format name | Payload | Provided by | Default paste order | "Copy as" | Status |
 |---|---|---|---|---|---|---|---|
 | FieldWorks TsString | `TsString` (`ClipboardForms.TsStringId`) | `TsString` | a host object: FieldWorks' .NET-serialised `TsStringWrapper` | the FieldWorks host | 1st | no | The id ships. The host writes the form and a clipboard backend that can store an object. |
-| FieldWorks Markdown | `FieldWorks Markdown` (`ClipboardForms.FieldWorksMarkdownId`) | chosen by the form | text: [FieldWorks Markdown](fieldworks-markdown.md) with its front matter | the host, around `MarkdownConverter` | 2nd | yes (planned, #168) | Planned, #168. Only the id ships; no form class ships yet. A host can write its own. |
+| FieldWorks Markdown | `FieldWorks Markdown` (`ClipboardForms.FieldWorksMarkdownId`) | `SIL.TextEditing.FieldWorksMarkdown` | text: [FieldWorks Markdown](fieldworks-markdown.md) with its front matter | `FieldWorksMarkdownClipboardForm` in `SIL.TextEditing.Markdown`, registered by the host | 2nd | yes | Shipped. |
 | Plain text | `text/plain` (`ClipboardForms.PlainTextId`) | the system's text format | text: the paragraphs' text joined with `\n`, in NFC | built into the field | 3rd | always | Shipped. |
 | TsString XML | `SIL.TextEditing.TsStringXml` (`TsStringClipboard.XmlFormatName`) | `SIL.TextEditing.TsStringXml` | text: the XML of one `ITsString` | `TsStringClipboardForm` in `SIL.TextEditing.LCModel` | not in it; the host adds the id | no | Shipped. |
 | Runs dump | `SIL.TextEditing.Runs.v1` | `SIL.TextEditing.Runs.v1` (`Interchange.ClipboardFormat`) | text: `Interchange` XML | `InterchangeClipboardForm` in `SIL.TextEditing` | not in it | yes | Shipped, for tests and debugging only. |
@@ -25,13 +25,39 @@ form with the id and format name `TsString`:
 
 A TsString copy of several paragraphs joins them with `"; "`. Under the default paste order TsString is read first, so such a copy,
 pasted into another field, arrives as one paragraph, as in FieldWorks. To keep the paragraph breaks, a host registers a FieldWorks Markdown
-form (planned, #168) and puts its id before `TsString` in `PasteOrder`.
+form and puts its id before `TsString` in `PasteOrder`.
 
-### FieldWorks Markdown (planned, #168)
+### FieldWorks Markdown
+
+The host registers `FieldWorksMarkdownClipboardForm` from `SIL.TextEditing.Markdown`. Its id is
+`ClipboardForms.FieldWorksMarkdownId`, its format name is `FieldWorksMarkdownClipboardForm.ClipboardFormatName`
+(`SIL.TextEditing.FieldWorksMarkdown`), and its payload kind is `Text`.
+
+```csharp
+var markdown = new FieldWorksMarkdownClipboardForm(projectMarkdownOptions);
+markdown.OnRead = result => ShowFindings(result.Diagnostics);
+field.ClipboardForms.Add(markdown);
+```
 
 The payload is a whole FieldWorks Markdown text **with its front matter**, so unmarked text never takes its writing system from the
-target project's defaults. Read it with `MarkdownConverter.Parse` and write it with `MarkdownConverter.ToMarkdown`. FieldWorks Markdown
-is a back end first (agents, files, drafting). On the clipboard it is planned as an extra form, not the default (planned, #168).
+target project's defaults. Each operation uses the host's `MarkdownOptions` with `WriteFrontMatter = true` and `NormalizeText = false`,
+without changing those options. Copy and read preserve stored run text, including NFC and NFD; the target editor normalizes on insertion.
+Paragraph keys do not travel. The form has no Avalonia or LCModel dependency. The playground registers it.
+The host supplies object and path resolvers through the options too. For interactive rebinding of an unknown GUID by its path,
+set `UnknownGuids = UnknownGuidPolicy.RebindByPath` and supply `Paths`; the form honors the host's link policy.
+
+`OnRead` receives the complete `MarkdownParseResult` for every text payload parsed, including rejected payloads. Supply a writing-system
+mapper and a style catalog through the options to check names against the target project. Unknown ids and style names produce the
+existing `fwmd.ws.unknown` and `fwmd.style.unknown` findings and remain in the recovered paragraphs; they do not throw or reject the form.
+The field then maps missing writing systems by the rule below. Unknown styles remain named for the host to resolve.
+
+Missing or incomplete front matter, an unsupported `fwmd` version, and record files are declined so paste can try the next form.
+Other parser findings accompany the recovered fragment. Non-string payloads are declined; bytes are never guessed as text.
+
+The form returns full paragraphs. `SingleParagraph` joins them with spaces; `BlockFeatures` and the host's `BlockRecognizer` flatten
+blocks the target disallows and raise `BlocksFlattened` (ADR 0033). These are target-field rules, shared with every rich form.
+FieldWorks Markdown is a back end first (agents, files, drafting). On the clipboard it is an extra form. Registering it does not change
+the default TsString-first paste order. A host that wants Markdown's paragraph breaks ahead of TsString puts its id first explicitly.
 
 ### Plain text
 
@@ -52,7 +78,7 @@ format, so it uses its own id and format name, `SIL.TextEditing.TsStringXml`, an
 ### Runs dump (tests and debugging)
 
 `Interchange.ToXml` writes every run, writing system and property, with nothing lost. ADR 0029 retired it from the user's clipboard;
-`InterchangeClipboardForm` exists so that tests and the playground can carry formatting without liblcm or the Markdown library. Its
+`InterchangeClipboardForm` exists so that tests can carry formatting without liblcm or the Markdown library. Its
 shape, from `src/SIL.TextEditing/Interchange.cs`:
 
 | Element | Attributes |
@@ -97,7 +123,7 @@ Text in a writing system the target project lacks takes the writing system of th
 ## Copy as
 
 `RichTextField.CopyAsAsync(formId)` puts one form on the clipboard as text: the plain text (`text/plain`), or any registered form
-whose payload is a string, such as FieldWorks Markdown (planned, #168). It returns false for an unknown id, for a form whose payload is
+whose payload is a string, such as FieldWorks Markdown. It returns false for an unknown id, for a form whose payload is
 not a string, and for a form with nothing to say. `OffersCopyAs` does not limit `CopyAsAsync`; it only decides which forms
 `ClipboardForms.CopyAsForms` lists for a menu.
 
