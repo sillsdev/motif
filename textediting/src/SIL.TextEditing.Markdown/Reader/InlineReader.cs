@@ -101,7 +101,18 @@ namespace SIL.TextEditing.Markdown.Reader
                         Add(literal.Content.ToString().Replace('\t', ' '), fmt);
                         break;
                     case HtmlEntityInline entity:
-                        Add(entity.Transcoded.ToString(), fmt);
+                        string decoded = entity.Transcoded.ToString();
+                        for (int i = 0; i < decoded.Length; i++)
+                        {
+                            int length = char.IsHighSurrogate(decoded[i]) && i + 1 < decoded.Length && char.IsLowSurrogate(decoded[i + 1]) ? 2 : 1;
+                            int cp = length == 2 ? char.ConvertToUtf32(decoded[i], decoded[i + 1]) : decoded[i];
+                            if (TextNormalizer.IsNoncharacter(cp) || length == 1 && char.IsSurrogate(decoded[i]))
+                                _context.Report(MarkdownDiagnosticIds.Unnormalizable, MarkdownSeverity.Warning,
+                                    "This character reference produces a Unicode value that text processors may reject.",
+                                    _context.Base + entity.Span.Start, _context.Base + entity.Span.End + 1);
+                            i += length - 1;
+                        }
+                        Add(decoded, fmt);
                         break;
                     case SupSubInline supSub:
                     {

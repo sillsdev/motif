@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using SIL.TextEditing.Markdown.Notation;
 
 namespace SIL.TextEditing.Markdown.Reader
@@ -27,6 +28,7 @@ namespace SIL.TextEditing.Markdown.Reader
         {
             var picture = new MarkdownObject { Kind = MarkdownObjectKind.Picture, Caption = caption, Guid = guid, Path = dest };
             var d = LinkSyntax.Classify(dest, _options);
+            ReportEncodedNoncharacters(dest, d.Path);
             if (d.Kind == DestKind.RootPath && d.Guid != null)
             {
                 if (guid != null && guid != d.Guid)
@@ -43,6 +45,7 @@ namespace SIL.TextEditing.Markdown.Reader
         public MarkdownObject? BuildLink(string dest, Guid? attrGuid, string? urlAttr, bool urlGiven, string? tool, bool name, bool example, bool broken)
         {
             var d = LinkSyntax.Classify(dest, _options);
+            ReportEncodedNoncharacters(dest, d.Path);
             if (d.Kind == DestKind.Relative && d.NoBase)
             {
                 Report(MarkdownDiagnosticIds.LinkRelativeWithoutBase, MarkdownSeverity.Error,
@@ -184,6 +187,27 @@ namespace SIL.TextEditing.Markdown.Reader
             }
             if (link.Tool == null && link.Guid != null) link.Tool = paths.ToolOf(link.Guid.Value) ?? (path != null ? PathTools.ToolOf(path) : null);
             return link;
+        }
+
+        void ReportEncodedNoncharacters(string dest, ProjectPath? path)
+        {
+            if (path == null || dest.IndexOf('%') < 0) return;
+            if (path.Segments.Any(s => HasNoncharacter(s.Name)) || HasNoncharacter(path.Field) || HasNoncharacter(path.FieldWritingSystem))
+                Report(MarkdownDiagnosticIds.Unnormalizable, MarkdownSeverity.Warning,
+                    "This path contains a Unicode noncharacter that text processors may reject.");
+        }
+
+        static bool HasNoncharacter(string? text)
+        {
+            if (text == null) return false;
+            for (int i = 0; i < text.Length; i++)
+            {
+                int length = char.IsHighSurrogate(text[i]) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]) ? 2 : 1;
+                int cp = length == 2 ? char.ConvertToUtf32(text[i], text[i + 1]) : text[i];
+                if (TextNormalizer.IsNoncharacter(cp)) return true;
+                i += length - 1;
+            }
+            return false;
         }
 
         static bool SamePlace(ProjectPath a, ProjectPath b) => new ProjectPath(a.Segments).Equals(new ProjectPath(b.Segments));

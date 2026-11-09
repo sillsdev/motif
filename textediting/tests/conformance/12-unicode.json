@@ -1,0 +1,14 @@
+[
+  {
+    "name": "a Unicode noncharacter is kept and reported",
+    "markdown": "a\ufffeb\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "a\ufffeb", "ws": "en" } ] } ],
+    "findings": [ { "id": "fwmd.text.unnormalizable", "severity": "warning", "line": 1, "column": 2, "endLine": 1, "endColumn": 3 } ],
+    "pandoc": "Pandoc's treatment of U+FFFE has not yet been verified"
+  },
+  {
+    "name": "ok: fwmd.text.unnormalizable ordinary Unicode text is normalized",
+    "markdown": "café\n",
+    "paragraphs": [ { "style": "Normal", "runs": [ { "text": "cafe\u0301", "ws": "en" } ] } ]
+  }
+]

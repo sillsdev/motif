@@ -93,6 +93,76 @@ namespace SIL.TextEditing.Markdown.Tests
             Assert.Equal("Normal| en\"a\\xD800 e" + Acute + "\"", Dump("a\uD800 \u00E9"));
         }
 
+        [Theory]
+        [InlineData("\uFFFE")]
+        [InlineData("\uFFFF")]
+        [InlineData("\uFDD0")]
+        [InlineData("\U0001FFFE")]
+        public void A_noncharacter_is_preserved_and_reported_when_text_is_normalized(string invalid)
+        {
+            string input = "café" + invalid + "é";
+            var result = MarkdownConverter.Parse(input);
+            Assert.Equal("cafe\u0301" + invalid + "e\u0301", result.Document.Paragraphs[0].Text);
+            var finding = Assert.Single(result.Diagnostics, d => d.Id == "fwmd.text.unnormalizable");
+            Assert.Equal(MarkdownSeverity.Warning, finding.Severity);
+            Assert.Equal(4, finding.Start);
+            Assert.Equal(invalid, finding.Observed);
+        }
+
+        [Fact]
+        public void A_literal_lone_surrogate_is_preserved_and_reported()
+        {
+            string invalid = ((char)0xD800).ToString();
+            var result = MarkdownConverter.Parse("a" + invalid + "é");
+            Assert.Equal("a" + invalid + "e\u0301", result.Document.Paragraphs[0].Text);
+            var finding = Assert.Single(result.Diagnostics, d => d.Id == "fwmd.text.unnormalizable");
+            Assert.Equal(invalid, finding.Observed);
+        }
+
+        [Fact]
+        public void A_percent_encoded_noncharacter_in_a_project_path_is_reported()
+        {
+            var result = MarkdownConverter.Parse("[x](/lexicon/a%EF%BF%BE)");
+            Assert.Contains(result.Diagnostics, d => d.Id == "fwmd.text.unnormalizable");
+        }
+
+        [Fact]
+        public void A_noncharacter_in_a_numeric_reference_is_reported()
+        {
+            var result = MarkdownConverter.Parse("a&#xFFFE;b");
+            Assert.Equal("a\uFFFEb", result.Document.Paragraphs[0].Text);
+            var finding = Assert.Single(result.Diagnostics, d => d.Id == "fwmd.text.unnormalizable");
+            Assert.Equal("&#xFFFE;", finding.Observed);
+        }
+
+        [Fact]
+        public void Inline_text_reports_the_original_offset_and_keeps_normalizable_neighbors()
+        {
+            var result = MarkdownConverter.ParseInline("é\uFFFEé");
+            Assert.Equal("e\u0301\uFFFEe\u0301", string.Concat(result.Runs.Select(r => r.Text)));
+            var finding = Assert.Single(result.Diagnostics, d => d.Id == "fwmd.text.unnormalizable");
+            Assert.Equal(1, finding.Start);
+            Assert.Equal(2, finding.End);
+        }
+
+        [Fact]
+        public void Writer_and_comparison_preserve_a_noncharacter_without_throwing()
+        {
+            var paragraph = B.Plain("café\uFFFEé");
+            string markdown = MarkdownConverter.ToMarkdown(B.Doc(paragraph));
+            var parsed = MarkdownConverter.Parse(markdown);
+            Assert.Contains(parsed.Diagnostics, d => d.Id == "fwmd.text.unnormalizable");
+            Assert.True(MarkdownConverter.AreEquivalent(paragraph, parsed.Document.Paragraphs[0]));
+        }
+
+        [Fact]
+        public void Noncharacters_are_reported_even_when_normalization_is_disabled()
+        {
+            var result = MarkdownConverter.Parse("é\uFFFE", new MarkdownOptions { NormalizeText = false });
+            Assert.Equal("é\uFFFE", result.Document.Paragraphs[0].Text);
+            Assert.Contains(result.Diagnostics, d => d.Id == "fwmd.text.unnormalizable");
+        }
+
         [Fact]
         public void ToMarkdownWritesTheTextAsStoredAndTheCopyReadsBackEquivalent()
         {

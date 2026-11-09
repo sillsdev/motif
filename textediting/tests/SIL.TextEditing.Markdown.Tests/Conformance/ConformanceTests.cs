@@ -24,7 +24,7 @@ namespace SIL.TextEditing.Markdown.Tests.Conformance
             "fwmd.syntax.too-deep", "fwmd.syntax.unsupported-markup", "fwmd.ws.unknown", "fwmd.link.not-found", "fwmd.link.ambiguous", "fwmd.link.broken",
             "fwmd.link.guid-mismatch", "fwmd.link.relative-without-base", "fwmd.link.stale-path", "fwmd.link.rebound", "fwmd.link.url-rebuilt", "fwmd.style.unknown",
             "fwmd.heading.too-deep", "fwmd.table.ragged", "fwmd.table.tab-in-cell", "fwmd.table.alignment", "fwmd.picture.unknown", "fwmd.field.block-syntax", "fwmd.prop.unknown-number",
-            "fwmd.record.record-file",
+            "fwmd.record.record-file", "fwmd.text.unnormalizable",
         };
 
         [Fact]
