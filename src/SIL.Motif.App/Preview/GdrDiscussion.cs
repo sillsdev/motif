@@ -13,11 +13,19 @@ public sealed class GdrDiscussion
 {
     private const float WritingSystemSizePoints = 12;
 
-    private GdrDiscussion(TextDocument document, IStyleResolver styles, WritingSystemRegistry writingSystems)
+    /// <summary>The text that follows a link whose target is missing.</summary>
+    public const string BrokenMarker = " (broken link)";
+
+    // FieldWorks colours are 0x00BBGGRR.
+    private const int BrokenColor = 0x0000C0, LinkColor = 0xC00000;
+
+    private GdrDiscussion(TextDocument document, IStyleResolver styles, WritingSystemRegistry writingSystems,
+        IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> targets)
     {
         Document = document;
         Styles = styles;
         WritingSystems = writingSystems;
+        Targets = targets;
     }
 
     /// <summary>The Discussion's paragraphs, runs and their properties.</summary>
@@ -29,11 +37,23 @@ public sealed class GdrDiscussion
     /// <summary>The writing systems the Discussion uses, with the project's direction and default font.</summary>
     public WritingSystemRegistry WritingSystems { get; }
 
+    /// <summary>What each link run points to, keyed by the run's paragraph and the offset where it starts in the document.</summary>
+    public IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> Targets { get; }
+
+    /// <summary>What a person reads when a link is activated: the target's kind, name and description, or that it is broken.</summary>
+    public static string Describe(string linkText, GdrLinkTarget target) => target.State switch
+    {
+        GdrLinkState.Resolved => $"{target.Kind}: {target.Name}" + (target.Description.Length > 0 ? $" ({target.Description})" : ""),
+        GdrLinkState.External => $"{target.Name}",
+        _ => $"'{linkText}' is a broken link: its target is not in this project.",
+    };
+
     /// <summary>Builds the document, style resolver and writing-system registry for <paramref name="response"/>.</summary>
     public static GdrDiscussion From(GdrShowResponse response)
     {
         ArgumentNullException.ThrowIfNull(response);
         var document = new TextDocument();
+        var targets = new Dictionary<(int Paragraph, int Offset), GdrLinkTarget>();
         foreach (var source in response.Discussion)
         {
             var paragraph = new Paragraph
@@ -43,8 +63,28 @@ public sealed class GdrDiscussion
                 Rtl = source.RightToLeft,
                 DefaultWs = source.DefaultWritingSystem,
             };
+            var offset = 0;
             foreach (var run in source.Runs)
-                paragraph.Runs.Add(new Run { Ws = run.WritingSystem, Text = run.Text, Props = Bag(run.Properties) });
+            {
+                var props = Bag(run.Properties);
+                if (run.Target is { } target)
+                {
+                    targets[(document.Paragraphs.Count, offset)] = target;
+                    props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
+                    props.SetInt(TextPropertyNumbers.ForeColor, target.State == GdrLinkState.Broken ? BrokenColor : LinkColor, 0);
+                }
+                paragraph.Runs.Add(new Run { Ws = run.WritingSystem, Text = run.Text, Props = props });
+                offset += run.Text.Length;
+                if (run.Target is { State: GdrLinkState.Broken })
+                {
+                    // The marker is text so a screen reader, which reads the field's text, says the link is broken too.
+                    var marker = new Run { Ws = run.WritingSystem, Text = BrokenMarker, Props = new PropertyBag() };
+                    marker.Props.SetInt(TextPropertyNumbers.Italic, 1, 0);
+                    marker.Props.SetInt(TextPropertyNumbers.ForeColor, BrokenColor, 0);
+                    paragraph.Runs.Add(marker);
+                    offset += BrokenMarker.Length;
+                }
+            }
             document.Paragraphs.Add(paragraph);
         }
 
@@ -52,7 +92,7 @@ public sealed class GdrDiscussion
         foreach (var system in response.WritingSystems)
             writingSystems.Add(WritingSystemRegistry.Define(system.Tag, system.DefaultFont, WritingSystemSizePoints,
                 rtl: system.Direction == "rtl"));
-        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems);
+        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets);
     }
 
     private static PropertyBag Bag(GdrTextProperties properties)

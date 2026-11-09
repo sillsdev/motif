@@ -38,6 +38,7 @@ public static class GdrReader
         var record = entry.Record;
 
         var writingSystems = new ProjectWritingSystems(cache);
+        var resolver = new ProjectPathResolver(cache);
         var styles = new ProjectStyles(cache);
         var paragraphs = Paragraphs(record);
         var document = TsStringConversion.ToDocument(paragraphs, writingSystems);
@@ -54,7 +55,7 @@ public static class GdrReader
                     wsTags.Add(run.Ws);
                     var style = run.Props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
                     if (style is not null) NoteStyle(styles, styleKinds, style);
-                    return new GdrRun(run.Text, run.Ws, style, Properties(run.Props), run.ObjData);
+                    return new GdrRun(run.Text, run.Ws, style, Properties(run.Props), run.ObjData, Target(resolver, run.ObjData));
                 }).ToArray());
         }).ToArray();
 
@@ -70,6 +71,18 @@ public static class GdrReader
                 return new GdrWritingSystem(tag, info.Direction, info.Font);
             }).ToArray(),
         };
+    }
+
+    private static GdrLinkTarget? Target(ProjectPathResolver resolver, string? objData)
+    {
+        var link = objData is null ? null : DefaultObjectMapper.Instance.Describe(objData);
+        if (link is null || link.Kind == MarkdownObjectKind.Picture) return null;
+        if (link.Kind == MarkdownObjectKind.ExternalLink || link.Project is not null)
+            return new GdrLinkTarget(GdrLinkState.External, null, link.Url, "");
+        var described = link.Guid is { } guid ? resolver.Describe(guid) : null;
+        return described is null
+            ? new GdrLinkTarget(GdrLinkState.Broken, null, null, "")
+            : new GdrLinkTarget(GdrLinkState.Resolved, described.Kind, described.Name, described.Description);
     }
 
     private readonly record struct Entry(ICmPossibility Record, ICmPossibility? Parent);

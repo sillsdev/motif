@@ -914,6 +914,18 @@ public static class CommandTextRenderer
             text.AppendLine();
             text.AppendLine(string.Concat(paragraph.Runs.Select(run => run.Text)));
         }
+        var links = response.Discussion.SelectMany(paragraph => paragraph.Runs).Where(run => run.Target is not null).ToArray();
+        if (links.Length > 0) text.AppendLine();
+        foreach (var run in links)
+        {
+            var target = run.Target!;
+            text.AppendLine(target.State switch
+            {
+                GdrLinkState.Resolved => $"Link '{run.Text}' -> {target.Kind}: {target.Name}" + (target.Description.Length > 0 ? $" ({target.Description})" : ""),
+                GdrLinkState.External => $"Link '{run.Text}' -> {target.Name}",
+                _ => $"Link '{run.Text}' is broken: its target is not in this project.",
+            });
+        }
         return text.ToString();
     }
 

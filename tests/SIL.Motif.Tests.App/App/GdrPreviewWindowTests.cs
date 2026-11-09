@@ -1,3 +1,5 @@
+using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
 using Avalonia.Headless;
 using SIL.Motif.App.Preview;
 using SIL.Motif.Contract.Responses;
@@ -120,5 +122,84 @@ public sealed class GdrPreviewWindowTests
     public void PreviewWindowIsNotOpenedWithoutTheGate()
     {
         _avalonia.Invoke(() => Assert.Null(GdrPreviewWindow.ShowIfRequested([])));
+    }
+
+    private static GdrShowResponse WithLinks() => Canned(First) with
+    {
+        Discussion =
+        [
+            new GdrParagraph("Normal", false, "en", Props(style: "Normal"),
+            [
+                new GdrRun("see ", "en", null, Props()),
+                new GdrRun("entry-1", "en", null, Props(), "link-1", new GdrLinkTarget(GdrLinkState.Resolved, "Lexical entry", "entry-1", "gloss-1")),
+                new GdrRun(" and ", "en", null, Props()),
+                new GdrRun("entry-2", "en", null, Props(), "link-2", new GdrLinkTarget(GdrLinkState.Broken, null, null, "")),
+                new GdrRun(" and ", "en", null, Props()),
+                new GdrRun("site", "en", null, Props(), "link-3", new GdrLinkTarget(GdrLinkState.External, null, "https://example.invalid/x", "")),
+            ]),
+        ],
+    };
+
+    private static ContextInfo At(GdrPreviewWindow window, int offset) =>
+        window.Field!.Editor.DescribeContext(new TextPosition(0, offset), false);
+
+    [Fact]
+    public void ABrokenLinkShowsAsBrokenInTheTextAndInTheFieldsAccessibleValue()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var window = new GdrPreviewWindow([First], _ => WithLinks());
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+
+            var runs = window.Field!.Editor.Document.Paragraphs[0].Runs;
+            var broken = runs.Single(run => run.Text == "entry-2");
+            Assert.True(broken.Props.TryGetInt(TextPropertyNumbers.ForeColor, out _));
+            Assert.Contains(runs, run => run.Text == GdrDiscussion.BrokenMarker);
+            var value = ((IValueProvider)ControlAutomationPeer.CreatePeerForElement(window.Field)).Value;
+            Assert.Contains("entry-2" + GdrDiscussion.BrokenMarker, value, StringComparison.Ordinal);
+            Assert.DoesNotContain("entry-1" + GdrDiscussion.BrokenMarker, value, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void ActivatingALinkShowsWhatItPointsTo()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var window = new GdrPreviewWindow([First], _ => WithLinks());
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+
+            Assert.True(window.ShowTarget(At(window, 5)));
+            Assert.Equal("Lexical entry: entry-1 (gloss-1)", window.TargetText);
+
+            Assert.True(window.ShowTarget(At(window, 17)));
+            Assert.Equal("'entry-2' is a broken link: its target is not in this project.", window.TargetText);
+
+            Assert.True(window.ShowTarget(At(window, window.Field!.Editor.Document.Paragraphs[0].Text.Length - 1)));
+            Assert.Equal("https://example.invalid/x", window.TargetText);
+        });
+    }
+
+    [Fact]
+    public void ActivatingPlainTextShowsNothingAndChoosingARecordClearsTheTarget()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var window = new GdrPreviewWindow([First], _ => WithLinks());
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            Assert.True(window.ShowTarget(At(window, 5)));
+
+            Assert.False(window.ShowTarget(At(window, 1)));
+            Assert.NotEqual("", window.TargetText);
+            window.Show(First.Id);
+
+            Assert.Equal("", window.TargetText);
+        });
     }
 }

@@ -48,6 +48,7 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains("GDR-1  title-1", text.Output);
         Assert.Contains("xylink", text.Output);
+        Assert.Contains("Link 'link' -> https://example.invalid/x", text.Output);
     }
 
     [Fact]

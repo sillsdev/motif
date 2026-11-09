@@ -5,6 +5,7 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.TextEditing;
 using SIL.TextEditing.Avalonia;
 
 namespace SIL.Motif.App.Preview;
@@ -26,6 +27,8 @@ public sealed class GdrPreviewWindow : Window
         VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
     };
     private readonly TextBlock _heading = new() { FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap };
+    private readonly TextBlock _target = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
+    private GdrDiscussion? _discussion;
 
     /// <summary>Creates the window over <paramref name="records"/>; <paramref name="show"/> reads one record by its id.</summary>
     public GdrPreviewWindow(IReadOnlyList<GdrSummary> records, Func<string, GdrShowResponse?> show)
@@ -51,6 +54,8 @@ public sealed class GdrPreviewWindow : Window
         var right = new DockPanel { Margin = new Thickness(12, 0, 0, 0), LastChildFill = true };
         DockPanel.SetDock(_heading, Dock.Top);
         right.Children.Add(_heading);
+        DockPanel.SetDock(_target, Dock.Bottom);
+        right.Children.Add(_target);
         right.Children.Add(reading);
         var panel = new DockPanel { Margin = new Thickness(12), LastChildFill = true };
         DockPanel.SetDock(_records, Dock.Left);
@@ -74,14 +79,42 @@ public sealed class GdrPreviewWindow : Window
         var shown = _show(id);
         if (shown is null) return;
         var discussion = GdrDiscussion.From(shown);
+        _discussion = discussion;
         // A field edits one document for its whole life, so each record gets a new read-only field.
-        _scroll.Content = new RichTextField(discussion.Document)
+        var field = new RichTextField(discussion.Document)
         {
             WritingSystems = discussion.WritingSystems,
             StyleResolver = discussion.Styles,
             IsReadOnly = true,
         };
+        field.ContextMenuRequested += OnContextMenuRequested;
+        _scroll.Content = field;
         _heading.Text = $"{shown.Record.Abbreviation}  {shown.Record.Title}\n{shown.Record.Description}";
+        _target.Text = string.Empty;
+    }
+
+    /// <summary>What the last activated link points to; empty before one is activated.</summary>
+    public string TargetText => _target.Text ?? string.Empty;
+
+    /// <summary>Shows what the link at <paramref name="place"/> points to; false, and nothing changes, when it is not on a link.</summary>
+    public bool ShowTarget(ContextInfo place)
+    {
+        ArgumentNullException.ThrowIfNull(place);
+        if (_discussion is null || place.Run is null ||
+            !_discussion.Targets.TryGetValue((place.RunRange.Start.Paragraph, place.RunRange.Start.Offset), out var target))
+            return false;
+        _target.Text = GdrDiscussion.Describe(place.Run.Text, target);
+        return true;
+    }
+
+    // The field offers links through its context menu, so a link's menu has the one item that shows its target.
+    private void OnContextMenuRequested(object? sender, ContextMenuRequestedEventArgs e)
+    {
+        if (sender is not Control field) return;
+        var place = e.Info;
+        var item = new MenuItem { Header = "Show target", IsEnabled = _discussion?.Targets.ContainsKey((place.RunRange.Start.Paragraph, place.RunRange.Start.Offset)) == true };
+        item.Click += (_, _) => ShowTarget(place);
+        new ContextMenu { ItemsSource = new[] { item } }.Open(field);
     }
 
     /// <summary>Whether <paramref name="developerFlag"/> and <paramref name="args"/> ask for this window.</summary>
