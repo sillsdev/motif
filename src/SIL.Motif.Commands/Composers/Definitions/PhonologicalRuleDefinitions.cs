@@ -1,5 +1,7 @@
 using System.Text.Json;
+using SIL.LCModel;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Runner.Composers;
 
@@ -82,6 +84,11 @@ internal sealed class EditPhonologicalRuleDefinition : ComposerDefinition<EditPh
     /// <inheritdoc />
     public override IReadOnlyList<OperationEnvelope> Lower(ComposeContext context, EditPhonologicalRuleIntent intent) =>
         EditPhonologicalRuleComposer.Build(context.Cache, intent, context.MintId);
+
+    /// <inheritdoc />
+    public override IReadOnlyList<ComposedRelatedObject>? RelatedObjects(LcmCache cache, EditPhonologicalRuleIntent intent) =>
+        MultiMemberOutputWarning.Read(cache, (intent.Change.RightHandSides?.SelectMany(outcome => outcome.Output) ?? [])
+            .Concat(intent.Change.Output ?? []));
 }
 
 /// <summary>Moves rules within the ordered rule list.</summary>

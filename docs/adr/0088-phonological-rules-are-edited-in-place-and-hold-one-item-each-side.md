@@ -25,7 +25,7 @@ retained so existing citations continue to resolve; the title and decision below
    properties.
 4. **Sequences of up to eight items each side.** Input and Output each accept zero to eight phoneme or natural-class
    items in order. The lengths may differ, including two items becoming one and one item becoming two. An Output
-   segment-list natural class produces any member. An aligned feature-class Output changes the specified features
+   segment-list natural class is applied as the union of its members' features and chooses none; the composer warns. An aligned feature-class Output changes the specified features
    on the matched segment and preserves the rest.
    FieldWorks' HermitCrab and PanGloss support these shapes, as the amendment evidence below records.
 5. **Merge a duplicate boundary marker.** `compose-merge-boundary-markers` points every boundary context that uses a

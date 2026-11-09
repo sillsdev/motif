@@ -17,7 +17,7 @@ An Output item uses `change`, an array of `{ "feature": "<feature-id>", "value":
 }
 ```
 
-The Output changes voice and keeps place and manner. Motif creates a feature natural class (`PhNCFeatures`) for this partial description, as FieldWorks does. Input and Output must have the same number of items when an Output item uses `change`, so each change has a matched segment. An Output segment-list natural class instead produces any member of its list; a feature natural class at an aligned Output position changes the named features.
+The Output changes voice and keeps place and manner. Motif creates a feature natural class (`PhNCFeatures`) for this partial description, as FieldWorks does. Input and Output must have the same number of items when an Output item uses `change`, so each change has a matched segment. An Output segment-list natural class does not choose a member: the engines apply it as the union of its members' features, which leaves an underspecified segment, so use a feature natural class at an aligned Output position to change the named features, or alternate forms for free variation.
 
 ## Alpha agreement and disagreement
 

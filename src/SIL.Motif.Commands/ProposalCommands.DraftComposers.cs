@@ -79,7 +79,9 @@ public static partial class ProposalCommands
         new("compose-author-environment", "AuthorEnvironment", ["phonological-rules", "conditioned-allomorphy"], (cache, input, _) =>
             AuthorEnvironmentComposer.Build(cache, AuthorEnvironmentIntentParser.Parse(input))),
         new("compose-author-phonological-rule", "AuthorPhonologicalRule", ["phonological-rules"], (cache, input, _) =>
-            AuthorPhonologicalRuleComposer.Build(cache, AuthorPhonologicalRuleIntentParser.Parse(input))),
+                AuthorPhonologicalRuleComposer.Build(cache, AuthorPhonologicalRuleIntentParser.Parse(input)),
+            RelatedObjects: (cache, input) => MultiMemberOutputWarning.Read(cache,
+                AuthorPhonologicalRuleIntentParser.Parse(input).Outcomes.SelectMany(outcome => outcome.Output))),
         new("compose-author-part-of-speech", "AuthorPartOfSpeech", ["lexical-entries-and-glosses", "inflection-classes", "affix-slots-and-templates"], (cache, input, _) =>
             AuthorPartOfSpeechComposer.Build(cache, AuthorPartOfSpeechIntentParser.Parse(input))),
         new("compose-author-lexical-entry", "AuthorLexicalEntry", ["lexical-entries-and-glosses", "senses-and-definitions"], (cache, input, _) =>

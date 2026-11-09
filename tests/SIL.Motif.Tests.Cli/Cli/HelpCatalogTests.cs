@@ -21,6 +21,19 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
+    public void NoHelpPageSaysASegmentListOutputProducesAnyMember()
+    {
+        var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
+        var pages = catalog.Entries.Where(entry => entry.HelpPage is not null).ToArray();
+
+        Assert.DoesNotContain(pages, entry => entry.HelpPage!.Contains("produces any member", StringComparison.Ordinal));
+        Assert.DoesNotContain(pages, entry => entry.HelpPage!.Contains("both members can surface", StringComparison.Ordinal));
+        var learn = Assert.Single(pages, entry => entry.Code == "learn/phonological-rules").HelpPage!;
+        Assert.Contains("alternate form", learn, StringComparison.Ordinal);
+        Assert.Contains("union of the two segments", learn, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ApplyAllPendingHelpSynopsisMatchesTheCliVerbCatalog()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
