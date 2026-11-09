@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gdr.schema.json",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/GdrListResponse"
+    },
+    {
+      "$ref": "#/$defs/GdrShowResponse"
+    }
+  ],
+  "$defs": {
+    "GdrSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "abbreviation",
+        "title",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "abbreviation": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "GdrIntProperty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variation",
+        "value"
+      ],
+      "properties": {
+        "variation": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "integer"
+        }
+      }
+    },
+    "GdrTextProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ints",
+        "strings"
+      ],
+      "properties": {
+        "ints": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/GdrIntProperty"
+          }
+        },
+        "strings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "GdrRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "writingSystem",
+        "properties"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "writingSystem": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "properties": {
+          "$ref": "#/$defs/GdrTextProperties"
+        }
+      }
+    },
+    "GdrParagraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rightToLeft",
+        "defaultWritingSystem",
+        "properties",
+        "runs"
+      ],
+      "properties": {
+        "style": {
+          "type": "string"
+        },
+        "rightToLeft": {
+          "type": "boolean"
+        },
+        "defaultWritingSystem": {
+          "type": "string"
+        },
+        "properties": {
+          "$ref": "#/$defs/GdrTextProperties"
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GdrRun"
+          }
+        }
+      }
+    },
+    "GdrStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "byWritingSystem"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "paragraph",
+            "character"
+          ]
+        },
+        "byWritingSystem": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/GdrTextProperties"
+          }
+        }
+      }
+    },
+    "GdrWritingSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tag",
+        "direction",
+        "defaultFont"
+      ],
+      "properties": {
+        "tag": {
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "ltr",
+            "rtl"
+          ]
+        },
+        "defaultFont": {
+          "type": "string"
+        }
+      }
+    },
+    "GdrListResponse": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "hasBaseline",
+        "records",
+        "schemaVersion"
+      ],
+      "properties": {
+        "hasBaseline": {
+          "type": "boolean"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GdrSummary"
+          }
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "baseline": {
+          "type": "object"
+        }
+      }
+    },
+    "GdrShowResponse": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "record",
+        "discussion",
+        "schemaVersion",
+        "defaultVernacular",
+        "defaultAnalysis",
+        "styles",
+        "writingSystems"
+      ],
+      "properties": {
+        "record": {
+          "$ref": "#/$defs/GdrSummary"
+        },
+        "discussion": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GdrParagraph"
+          }
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "defaultVernacular": {
+          "type": "string"
+        },
+        "defaultAnalysis": {
+          "type": "string"
+        },
+        "styles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GdrStyle"
+          }
+        },
+        "writingSystems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GdrWritingSystem"
+          }
+        },
+        "baseline": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

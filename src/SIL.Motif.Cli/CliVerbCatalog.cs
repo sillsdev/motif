@@ -29,6 +29,10 @@ public static class CliVerbCatalog
         new CliVerbDescriptor("Commands", "open", "open", new[] { "open <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "writing-systems", "writing-systems",
             new[] { "writing-systems --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Project", "gdr", "gdr list",
+            new[] { "gdr list --project <fwdata> [--json]" }),
+        new CliVerbDescriptor("Project", "gdr", "gdr show",
+            new[] { "gdr show --project <fwdata> <GDR-n> [--json]" }),
         new CliVerbDescriptor("Project", "project create", "project create",
             new[]
             {
