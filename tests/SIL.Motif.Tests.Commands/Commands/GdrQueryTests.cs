@@ -8,6 +8,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Ids;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Worker.Baselines;
@@ -230,6 +231,21 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
 
         Assert.Empty(GdrReader.List(cache));
         Assert.Null(GdrReader.Show(cache, "GDR-1"));
+    }
+
+    [Fact]
+    public void ShowNamesEachParagraphByItsProjectKey()
+    {
+        string[] expected = [];
+        var path = ProjectWithGdrs(captureBaseline: true, cache => expected = cache.LangProject.CheckListsOC
+            .Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == GdrReader.ListName).PossibilitiesOS[0]
+            .DiscussionOA.ParagraphsOS.Select(paragraph => CanonicalId.FromGuid(paragraph.Guid).Value).ToArray());
+
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"));
+
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        Assert.Equal(2, expected.Length);
+        Assert.Equal(expected, shown.Value!.Discussion.Select(paragraph => paragraph.Key));
     }
 
     [Fact]

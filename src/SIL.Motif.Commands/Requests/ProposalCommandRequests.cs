@@ -556,3 +556,12 @@ public sealed record EvidenceExportRequest(
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="NamePrefix">When set, only Drafts whose name starts with it are considered.</param>
 public sealed record DiscardEmptyDraftsRequest(string FwDataPath, string ProductVersion, string? NamePrefix = null);
+
+/// <summary>Requests a person's paragraph edit of one rich-text field be staged in the pending-changes Draft.</summary>
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="Target">The canonical id of the object that owns the field.</param>
+/// <param name="Paragraphs">The field and its paragraphs' new state, with the text the edit began from.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store; the current one when null.</param>
+public sealed record StageTextParagraphsRequest(
+    string FwDataPath, string Target, SIL.Motif.Runner.Operations.TextParagraphsPayload Paragraphs,
+    string? ProductVersion = null);

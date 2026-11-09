@@ -666,6 +666,45 @@ the same. Recheck may renew a Baseline token for an uncertain change, but does n
 evidence. These verbs cannot retarget a wordform, choose another analysis decision, change an opinion,
 or reorder the declared morphs.
 
+### Rich-text paragraph edits
+
+`text/setParagraphs` is a person's edit of one StText-valued field, such as a Grammar Design Record's Discussion
+([ADR 0095](adr/0095-rich-text-edits-are-two-generic-field-addressed-operations.md)). Unlike the generated kinds, it
+names its field at run time. It sits in its own `text` group, at contract version `1.0`. `target` is the object that
+owns the field. `after` is closed:
+
+```json
+{ "field": "CmPossibility.Discussion",
+  "order": ["<paragraph key>", null],
+  "changed": [{ "index": 1, "key": null, "style": "Normal",
+                "runs": [{ "text": "new paragraph", "ws": "en", "characterStyle": "Emphasis" }] }],
+  "removed": ["<paragraph key>"],
+  "expected": { "<paragraph key>": "starting text" } }
+```
+
+- **`field`** is `Class.Field`. It is one of the inventory's in-scope owning atomic StText fields, except
+  `Text.Contents`, whose paragraphs carry a text's segments and analyses. Each such class has one such field, so
+  target and kind name the slot `(target, text/<field>)`, and a later edit of the field replaces the earlier one in
+  the Draft.
+- **`order`** is every paragraph after the edit. A key is the paragraph's canonical id, and null is a new
+  paragraph. Existing paragraphs keep their relative order.
+- **`changed`** gives each new or changed paragraph's index in `order`, its key, its paragraph style name, and its
+  runs. A run carries text, a writing-system tag and an optional character style; later run properties join
+  this object without a new kind. A paragraph not in `changed` is not written, so its runs, links and embedded objects
+  stay as they are.
+- **`removed`** is the paragraphs that are gone, such as one joined to the paragraph before it.
+- **`expected`** is the starting text of exactly the changed and removed paragraphs.
+
+Apply creates the StText when the field has none, writes each style by name, keeps each existing paragraph's identity
+and creates new ones. A new object's GUID comes from the operation id, so a Dry Run and its Apply record the same
+effect. The effect's field is `text/<field>`, and Before and After give each paragraph's text and style by key and the
+paragraphs' order.
+
+If a paragraph the edit began from has changed, appeared, gone or moved, the operation is refused with
+`text.field-stale`. Its facts name the operation, the owner and the field. A Proposal still applies whole or not at
+all, so the whole Apply is refused and the Draft stays as it was, every other edit included. A Draft whose every
+operation is `text/setParagraphs` needs no Correctness Assessment, because the parser reads none of these fields.
+
 ## IDs and GUID mapping
 
 Proposal IDs, operation IDs, and proposed entity IDs use this textual convention:

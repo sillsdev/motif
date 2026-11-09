@@ -20,6 +20,7 @@ public sealed class OperationSlotCoverageTests
     [InlineData("grammar/phPhonData/createEnvironments", "{}")]
     [InlineData("lexical/lexEntry/createLexemeForm", "{\"morphType\":\"MEMBER\",\"ws\":\"en\",\"text\":\"form\"}")]
     [InlineData("analysis/stTxtPara/setContents", "{\"ws\":\"en\",\"text\":\"paragraph\"}")]
+    [InlineData("text/setParagraphs", "{\"field\":\"CmPossibility.Discussion\",\"order\":[],\"changed\":[],\"removed\":[],\"expected\":{}}")]
     [InlineData("grammar/phEnvironment/setStringRepresentation", "{\"ws\":\"en\",\"text\":\"/ a _\",\"left\":[],\"right\":[]}")]
     [InlineData("lexical/lexEntry/deleteRedundantZeroAffixGraph", "{\"graphDigest\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"members\":[{\"id\":\"MEMBER\",\"className\":\"LexEntry\",\"owner\":null}],\"optionalSlots\":[]}")]
     public void DuplicateFromEveryEmitterFamilyIsRefused(string kind, string payload)

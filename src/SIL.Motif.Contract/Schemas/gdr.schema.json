@@ -157,6 +157,9 @@
           "items": {
             "$ref": "#/$defs/GdrRun"
           }
+        },
+        "key": {
+          "type": "string"
         }
       }
     },
@@ -228,7 +231,7 @@
           }
         },
         "schemaVersion": {
-          "const": 3
+          "const": 4
         },
         "baseline": {
           "type": "object"
@@ -258,7 +261,7 @@
           }
         },
         "schemaVersion": {
-          "const": 3
+          "const": 4
         },
         "defaultVernacular": {
           "type": "string"

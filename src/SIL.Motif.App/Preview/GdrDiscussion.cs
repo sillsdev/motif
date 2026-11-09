@@ -48,6 +48,15 @@ public sealed class GdrDiscussion
         _ => $"'{linkText}' is a broken link: its target is not in this project.",
     };
 
+    /// <summary>Whether <paramref name="run"/> is the marker this view adds after a broken link, which the project does not hold.</summary>
+    public static bool IsMarker(Run run) =>
+        run.Text == BrokenMarker && !run.Props.TryGetStr(TextPropertyNumbers.NamedStyle, out _) &&
+        run.Props.TryGetInt(TextPropertyNumbers.ForeColor, out var color) && color == BrokenColor;
+
+    /// <summary>The text of <paramref name="paragraph"/> as the project holds it, without the markers this view adds.</summary>
+    public static string ProjectText(Paragraph paragraph) =>
+        string.Concat(paragraph.Runs.Where(run => !IsMarker(run)).Select(run => run.Text));
+
     /// <summary>Builds the document, style resolver and writing-system registry for <paramref name="response"/>.</summary>
     public static GdrDiscussion From(GdrShowResponse response)
     {
@@ -62,6 +71,7 @@ public sealed class GdrDiscussion
                 Style = source.Style ?? string.Empty,
                 Rtl = source.RightToLeft,
                 DefaultWs = source.DefaultWritingSystem,
+                Key = source.Key,
             };
             var offset = 0;
             foreach (var run in source.Runs)

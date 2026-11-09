@@ -5955,6 +5955,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Motif cannot open this store. Delete it and reopen the project to continue. Changes not applied yet are lost; your FieldWorks project is not touched.</value>
     <comment>Sentence the window shows for a refusal about a Motif store written by another version of Motif. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>
   </data>
+  <data name="MotifApp.RefusalTextFieldStale" xml:space="preserve">
+    <value>This text was changed in FieldWorks since you began editing it, so nothing was applied. Edit it again from the current text.</value>
+    <comment>Sentence the window shows when the command refuses with code C.TextFieldStale. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalStoreDamaged" xml:space="preserve">
     <value>Motif's file for this project is damaged. Close every Motif window and keep a copy of the matching .motif.db file beside the project's .fwdata file for support. Remove only that Motif store if you can confirm it belongs to Motif, then reopen the project. Changes not applied yet are lost; your FieldWorks project is not touched. If you cannot confirm the file belongs to Motif, leave it in place and ask for help.</value>
     <comment>Sentence the window shows for a refusal about a damaged Motif store. PanGloss is the parser product name; FieldWorks is a product name; .motif.db and .fwdata are file extensions.</comment>

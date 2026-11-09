@@ -949,6 +949,18 @@ public static class PendingChanges
         return saved;
     }
 
+    /// <summary>
+    /// The pending-changes Draft's name, creating the Draft as <see cref="Put"/> does when there is none, so another
+    /// command can compose into it.
+    /// </summary>
+    internal static string EnsurePendingDraft(ProposalRepository repository)
+    {
+        TryResolve(repository, null, out var target, out _);
+        if (target.Current is null) SaveDraft(repository, target, LoadDraft(null));
+        return repository.FindPendingChangesDraft()?.DraftName
+            ?? throw new InvalidOperationException("The pending-changes Draft could not be created.");
+    }
+
     // A refused write leaves a finalized Proposal finalized; a racing reopen is a conflict.
     private static bool WithReopen(ProposalRepository repository, DraftTarget target, Func<string, bool> save)
     {
