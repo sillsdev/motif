@@ -67,6 +67,7 @@
     { "tool": "motif_edit_compound_rule" },
     { "tool": "motif_set_no_default_compounding" },
     { "tool": "motif_set_not_on_clitics" },
+    { "tool": "motif_set_character_class" },
     { "tool": "motif_add_circumfix" },
     { "tool": "motif_add_morphosyntax_analysis" },
     { "tool": "motif_set_entry_do_not_parse" },

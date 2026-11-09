@@ -52,6 +52,7 @@ internal static class ComposerDefinitions
         new EditStemInflectionClassDefinition(),
         new SetNoDefaultCompoundingDefinition(),
         new SetNotOnCliticsDefinition(),
+        new SetCharacterClassDefinition(),
         new AuthorCircumfixDefinition(),
         new AddMorphoSyntaxAnalysisDefinition(),
         new SetEntryDoNotParseDefinition(),

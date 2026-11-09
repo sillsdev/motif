@@ -186,6 +186,7 @@ public sealed class HelpCatalogTests
                      "compose-edit-compound-rule",
                      "compose-set-no-default-compounding",
                      "compose-set-not-on-clitics",
+                     "compose-set-character-class",
                      "compose-rewrite-lexeme-form",
                      "order-allomorphs",
                      "compose-author-text",
