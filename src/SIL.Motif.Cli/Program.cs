@@ -196,6 +196,20 @@ try
     switch (verb)
     {
         case var typedVerb when ProposalCommands.ComposerDescriptors.Any(composer => composer.Verb == typedVerb):
+            if (typedVerb == "compose-edit-text-notes" && !flags.ContainsKey("intent") &&
+                flags.TryGetValue("notes-tsv", out var notesTsv))
+            {
+                if (!File.Exists(notesTsv)) return Usage($"The --notes-tsv file '{notesTsv}' does not exist.", asJson);
+                try
+                {
+                    flags["intent"] = SIL.Motif.Runner.Composers.EditTextNotesIntentParser
+                        .FromTsv(File.ReadAllText(notesTsv), flags.GetValueOrDefault("analysis-ws")).GetRawText();
+                }
+                catch (SIL.Motif.Contract.Parsing.ContractParseException exception)
+                {
+                    return Usage("The --notes-tsv file is not usable: " + exception.Message, asJson);
+                }
+            }
             if (!flags.TryGetValue("draft", out var typedDraft) ||
                 !flags.TryGetValue("project", out var typedProject) ||
                 !flags.TryGetValue("intent", out var typedIntent))

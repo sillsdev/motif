@@ -1203,6 +1203,21 @@
       "Create a text from segments of words"
     ]
   },
+  "compose-edit-text-notes": {
+    "title": "Edit the Notes of existing text segments",
+    "description": "Stages, in bulk, the replacement of the Notes of segments in existing Texts: each edit names a Text, a segment or a word in it, and the one Note the segment is to hold. Apply refuses a segment whose Notes changed since the edit was composed. Dry Run and Trial before a person Applies the Proposal.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "analysisWs": "Analysis writing system of the Notes; the project's default when omitted.",
+      "edits": "The edits: each has text (the Text's name or id), segment (1-based number across the Text) or word (a word in exactly one segment), and note (the Note text, NFD)."
+    },
+    "goals": [
+      "Replace placeholder Notes on many words of an existing Text",
+      "Set the Note of a segment of an existing Text",
+      "Record dispositions on tracked words in bulk"
+    ]
+  },
   "compose-record-source-validated-decision": {
     "title": "Stage a source-validated decision",
     "description": "Stages, in a Draft, a decision a named program made from cited sources: an approval or disapproval of one existing analysis under a non-human agent, or the evidence for a wordform or analysis alone. It is never a person's decision and never sets spelling status; only a person can Apply.",

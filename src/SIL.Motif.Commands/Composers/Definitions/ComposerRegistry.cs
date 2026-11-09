@@ -27,6 +27,7 @@ internal static class ComposerDefinitions
         new DeleteAdhocProhibitionDefinition(),
         new DeleteAffixProcessDefinition(),
         new EditMorphTypeDefinition(),
+        new EditTextNotesDefinition(),
         new ChangeAffixKindDefinition(),
         new EditCliticAttachmentDefinition(),
         new EditPhonemeDefinition(),

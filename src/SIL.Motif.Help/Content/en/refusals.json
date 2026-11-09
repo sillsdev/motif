@@ -211,6 +211,10 @@
     "why": "The form's morph type changed after this edit was composed. Inspect the form and compose the edit again.",
     "source": "Hand-written from the Motif MCP refusal advice."
   },
+  "text-notes.stale-source": {
+    "why": "The Notes of a segment changed after this edit was composed. Inspect the segment and compose the edit again.",
+    "source": "Hand-written for the Text Note edit."
+  },
   "clitic-attachment.not-clitic": {
     "why": "Attaches to Categories can be edited here only on a stem analysis of a proclitic, enclitic or clitic entry. Change the form's morph type first, in the same Draft if needed.",
     "source": "Hand-written from the Motif MCP refusal advice."

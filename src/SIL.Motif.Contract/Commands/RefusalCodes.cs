@@ -426,6 +426,8 @@ public static class RefusalCodes
 
     /// <summary>A rich-text field no longer holds the text its edit began from.</summary>
     public const string TextFieldStale = "text.field-stale";
+    /// <summary>A segment's Notes changed since the Note edit was composed.</summary>
+    public const string TextNotesStaleSource = "text-notes.stale-source";
 
     /// <summary>The morph-type edit would leave the supported stem family.</summary>
     public const string MorphTypeIncompatibleFamily = "morph-type.incompatible-family";

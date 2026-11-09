@@ -486,6 +486,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.MorphTypeIncompatibleFamily, FailureReason.Refused),
         Spec(RefusalCodes.MorphTypeStaleSource, FailureReason.Refused),
         Spec(RefusalCodes.TextFieldStale, FailureReason.Refused),
+        Spec(RefusalCodes.TextNotesStaleSource, FailureReason.Refused),
         Spec(RefusalCodes.CliticAttachmentNotClitic, FailureReason.Refused),
         Spec(RefusalCodes.CliticAttachmentInvalidCategory, FailureReason.Refused),
         Spec(RefusalCodes.CliticAttachmentStaleSource, FailureReason.Refused),
