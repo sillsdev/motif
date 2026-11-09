@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Input.Raw;
 using Avalonia.Media;
 using SIL.TextEditing.Tests;
 using Xunit;
@@ -17,6 +18,7 @@ namespace SIL.TextEditing.Avalonia.Tests
     public class WordRuleFieldTests
     {
         const string Text = "foo-bar baz_qux end";
+        static ulong _clickTime;
 
         /// <summary>A hyphen is a letter and an underscore is not.</summary>
         sealed class HyphenRules : IWordRules
@@ -45,21 +47,40 @@ namespace SIL.TextEditing.Avalonia.Tests
 
         static string DoubleClick(Window w, RichTextField f, int index)
         {
-            // Avalonia counts clicks by the real time between them (the system's double-click interval), so a busy machine can make the two presses
-            // of one attempt look like two single clicks, which leave no selection. Such an attempt is simply made again (a failed attempt changes
-            // nothing but the caret); a double click that is wrong in another way still fails the test.
-            for (int attempt = 0; ; attempt++)
-            {
-                var far = new Point(w.Width - 3, w.Height - 3);
-                w.MouseDown(far, MouseButton.Left);                // a click somewhere else (and a moment later in effect) ends any click count in progress
-                w.MouseUp(far, MouseButton.Left);
-                var p = Center(f, index);
-                for (int i = 0; i < 2; i++) { w.MouseDown(p, MouseButton.Left); w.MouseUp(p, MouseButton.Left); }
-                Headless.Pump();
-                if (f.Editor.HasSelection || attempt >= 4)
-                    return string.Join("\n", f.Editor.HasSelection ? f.Editor.GetFragment().Select(x => x.Text) : Enumerable.Empty<string>());
-                System.Threading.Thread.Sleep(600);                // past the double-click interval, so the next attempt starts a fresh count
-            }
+            // Avalonia's reference assembly hides the raw-input constructors used here.
+            var device = typeof(MouseDevice).GetProperty("Primary", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)!.GetValue(null)!;
+            var pointer = (IPointer)typeof(MouseDevice).GetProperty("Pointer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)!.GetValue(device)!;
+            pointer.Capture(null);
+            var p = Center(f, index);
+            var counts = new List<int>();
+            void Record(object? sender, PointerPressedEventArgs e) => counts.Add(e.ClickCount);
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+            var platform = typeof(TopLevel).GetProperty("PlatformImpl", flags)!.GetValue(w)!;
+            var input = (Delegate)typeof(global::Avalonia.Platform.ITopLevelImpl).GetProperty("Input")!.GetValue(platform)!;
+            var constructor = typeof(RawPointerEventArgs).GetConstructors().Single(c => c.GetParameters()[4].ParameterType == typeof(Point));
+            var root = constructor.GetParameters()[2].ParameterType.IsInstanceOfType(w) ? (object)w
+                : typeof(TopLevel).GetProperty("InputRoot", flags)!.GetValue(w)!;
+            void Send(RawPointerEventType type, ulong time, Point point, RawInputModifiers modifiers)
+                => input.DynamicInvoke(constructor.Invoke(new object[] { device, time, root, type, point, modifiers }));
+            ulong start = Math.Max(_clickTime, (uint)Environment.TickCount) + 2000;
+            _clickTime = start + 1011;
+            var far = new Point(w.Width - 3, w.Height - 3);
+            Send(RawPointerEventType.Move, start, far, RawInputModifiers.None);
+            Send(RawPointerEventType.LeftButtonDown, start, far, RawInputModifiers.None);
+            Send(RawPointerEventType.LeftButtonUp, start + 1, far, RawInputModifiers.LeftMouseButton);
+            Send(RawPointerEventType.Move, start + 999, p, RawInputModifiers.None);
+            f.AddHandler(InputElement.PointerPressedEvent, Record, global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            // Capture isolates this field from pointer state left by other headless windows.
+            pointer.Capture(f);
+            Send(RawPointerEventType.LeftButtonDown, start + 1000, p, RawInputModifiers.None);
+            Send(RawPointerEventType.LeftButtonUp, start + 1001, p, RawInputModifiers.LeftMouseButton);
+            pointer.Capture(f);
+            Send(RawPointerEventType.LeftButtonDown, start + 1010, p, RawInputModifiers.None);
+            Send(RawPointerEventType.LeftButtonUp, start + 1011, p, RawInputModifiers.LeftMouseButton);
+            Headless.Pump();
+            f.RemoveHandler(InputElement.PointerPressedEvent, Record);
+            Assert.True(counts.SequenceEqual(new[] { 1, 2 }), "counts=" + string.Join(",", counts) + " selection=" + f.Editor.HasSelection + " point=" + p + " field=" + f.Bounds + " window=" + w.Bounds);
+            return string.Join("\n", f.Editor.HasSelection ? f.Editor.GetFragment().Select(x => x.Text) : Enumerable.Empty<string>());
         }
 
         static (Window, RichTextField) Open(string text = Text)
