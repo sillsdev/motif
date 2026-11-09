@@ -22,7 +22,14 @@ public static class GdrQuery
             if (baseline is null) return CommandOutcome<GdrListResponse>.Success(new(false, []));
             if (!File.Exists(baseline.FwDataPath)) return BaselineUnavailable<GdrListResponse>();
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
-            return CommandOutcome<GdrListResponse>.Success(new(true, GdrReader.List(reader.Cache)) { Baseline = baseline.Token });
+            try
+            {
+                return CommandOutcome<GdrListResponse>.Success(new(true, GdrReader.List(reader.Cache)) { Baseline = baseline.Token });
+            }
+            catch (GdrRefusalException refused)
+            {
+                return CommandOutcome<GdrListResponse>.Refused(refused.Refusal);
+            }
         });
     }
 
@@ -39,10 +46,17 @@ public static class GdrQuery
             if (baseline is null) return NoBaseline<GdrShowResponse>();
             if (!File.Exists(baseline.FwDataPath)) return BaselineUnavailable<GdrShowResponse>();
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
-            var shown = GdrReader.Show(reader.Cache, id);
-            return shown is null
-                ? NotFound<GdrShowResponse>(id)
-                : CommandOutcome<GdrShowResponse>.Success(shown with { Baseline = baseline.Token });
+            try
+            {
+                var shown = GdrReader.Show(reader.Cache, id);
+                return shown is null
+                    ? NotFound<GdrShowResponse>(id)
+                    : CommandOutcome<GdrShowResponse>.Success(shown with { Baseline = baseline.Token });
+            }
+            catch (GdrRefusalException refused)
+            {
+                return CommandOutcome<GdrShowResponse>.Refused(refused.Refusal);
+            }
         });
     }
 

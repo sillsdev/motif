@@ -31,6 +31,9 @@
         },
         "description": {
           "type": "string"
+        },
+        "parentId": {
+          "type": "string"
         }
       }
     },
@@ -92,6 +95,9 @@
         },
         "properties": {
           "$ref": "#/$defs/GdrTextProperties"
+        },
+        "objData": {
+          "type": "string"
         }
       }
     },
@@ -193,7 +199,7 @@
           }
         },
         "schemaVersion": {
-          "const": 1
+          "const": 2
         },
         "baseline": {
           "type": "object"
@@ -223,7 +229,7 @@
           }
         },
         "schemaVersion": {
-          "const": 1
+          "const": 2
         },
         "defaultVernacular": {
           "type": "string"

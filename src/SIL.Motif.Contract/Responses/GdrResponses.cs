@@ -6,16 +6,17 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The wire version of the Grammar Design Record responses, raised when their shape changes.</summary>
 public static class GdrWire
 {
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
 }
 
 /// <summary>One Grammar Design Record as the list shows it.</summary>
 /// <param name="Id">The record's canonical id.</param>
 /// <param name="Abbreviation">The <c>GDR-n</c> number a person says.</param>
 /// <param name="Title">The record's name.</param>
-/// <param name="Description">The one-paragraph abstract.</param>
+/// <param name="Description">The one-paragraph abstract; empty when the record has none.</param>
+/// <param name="ParentId">The canonical id of the record this is a sub-item of, or null at the top of the list.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record GdrSummary(string Id, string Abbreviation, string Title, string Description);
+public sealed record GdrSummary(string Id, string Abbreviation, string Title, string Description, string? ParentId = null);
 
 /// <summary>An integer text property: how to read the value, and the value, as FieldWorks stores them.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -31,8 +32,10 @@ public sealed record GdrTextProperties(
 /// <param name="WritingSystem">The run's writing-system tag.</param>
 /// <param name="Style">The character style name, or null for none.</param>
 /// <param name="Properties">Every property of the run, the style name included.</param>
+/// <param name="ObjData">The run's link target or embedded-object data as FieldWorks stores it, or null for plain text.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record GdrRun(string Text, string WritingSystem, string? Style, GdrTextProperties Properties);
+public sealed record GdrRun(
+    string Text, string WritingSystem, string? Style, GdrTextProperties Properties, string? ObjData = null);
 
 /// <summary>One paragraph of a Discussion.</summary>
 /// <param name="Style">The paragraph style name, or null for none.</param>

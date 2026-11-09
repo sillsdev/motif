@@ -46,8 +46,8 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
 
         var text = await CliProcess.RunAsync(_root, null, true, "gdr", "show", "--project", path, "GDR-1");
         Assert.True(text.ExitCode == 0, text.Error);
-        Assert.Contains("GDR-1  Word boundaries", text.Output);
-        Assert.Contains("Words end at spaces", text.Output);
+        Assert.Contains("GDR-1  title-1", text.Output);
+        Assert.Contains("xylink", text.Output);
     }
 
     [Fact]

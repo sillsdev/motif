@@ -13,9 +13,9 @@ public sealed class GdrContractTests
             new Dictionary<int, GdrIntProperty> { [2] = new(0, 1) }, new Dictionary<int, string> { [133] = "Emphasis" });
         var paragraphProperties = new GdrTextProperties(
             new Dictionary<int, GdrIntProperty> { [28] = new(0, 1) }, new Dictionary<int, string> { [133] = "Normal" });
-        return new GdrShowResponse(new GdrSummary("id-1", "GDR-1", "Word boundaries", "Where one word ends."),
+        return new GdrShowResponse(new GdrSummary("id-1", "GDR-1", "title-1", "abstract-1", "id-0"),
             [new GdrParagraph("Normal", true, "ar", paragraphProperties,
-                [new GdrRun("abc", "ar", null, plain), new GdrRun("def", "en", "Emphasis", italic)])])
+                [new GdrRun("abc", "ar", null, plain), new GdrRun("def", "en", "Emphasis", italic, "https://example.invalid/x")])])
         {
             DefaultVernacular = "ar", DefaultAnalysis = "en",
             Styles = [new GdrStyle("Emphasis", GdrStyleKind.Character,
@@ -51,7 +51,7 @@ public sealed class GdrContractTests
         var paragraph = document.RootElement.GetProperty("discussion")[0];
         Assert.Equal(Required(Definition(schema, "GdrParagraph")).Append("style").Order(), paragraph.EnumerateObject().Select(item => item.Name).Order());
         var run = paragraph.GetProperty("runs")[1];
-        Assert.Equal(Required(Definition(schema, "GdrRun")).Append("style").Order(), run.EnumerateObject().Select(item => item.Name).Order());
+        Assert.Equal(Required(Definition(schema, "GdrRun")).Append("style").Append("objData").Order(), run.EnumerateObject().Select(item => item.Name).Order());
         Assert.Equal("character", document.RootElement.GetProperty("styles")[0].GetProperty("kind").GetString());
         Assert.Equal(1, run.GetProperty("properties").GetProperty("ints").GetProperty("2").GetProperty("value").GetInt32());
 
@@ -62,12 +62,12 @@ public sealed class GdrContractTests
     public void ListWireShapeMatchesItsSchema()
     {
         var json = ProjectionJson.Serialize(new GdrListResponse(true,
-            [new GdrSummary("id-1", "GDR-1", "Word boundaries", "Where one word ends.")]));
+            [new GdrSummary("id-1", "GDR-1", "title-1", "abstract-1", "id-0")]));
         using var document = JsonDocument.Parse(json);
         using var schema = Schema();
 
         Assert.Equal(Required(Definition(schema, "GdrListResponse")), document.RootElement.EnumerateObject().Select(item => item.Name).Order());
-        Assert.Equal(Required(Definition(schema, "GdrSummary")),
+        Assert.Equal(Required(Definition(schema, "GdrSummary")).Append("parentId").Order(),
             document.RootElement.GetProperty("records")[0].EnumerateObject().Select(item => item.Name).Order());
     }
 
