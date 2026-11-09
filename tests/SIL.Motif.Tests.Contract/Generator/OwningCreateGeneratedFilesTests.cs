@@ -45,7 +45,8 @@ public sealed class OwningCreateGeneratedFilesTests
             Assert.Contains("IPhRegularRuleFactory", ruleCreate);
             Assert.Contains("child.Disabled = true", ruleCreate);
             Assert.Contains("owner.PhonRulesOS.Insert(index, child)", ruleCreate);
-            Assert.Contains("new[] { \"PhRegularRule\" }", ruleCreate);
+            Assert.Contains("IPhMetathesisRuleFactory", ruleCreate);
+            Assert.Contains("new[] { \"PhRegularRule\", \"PhMetathesisRule\" }", ruleCreate);
             Assert.Contains("grammar/phPhonData/movePhonRules", ruleCreate);
             Assert.Contains("ReferenceSequenceFieldLowering.ApplyMove", ruleCreate);
             Assert.Contains("PhPhonDataPhonRulesMoveHandler.Instance", ruleCreate);
