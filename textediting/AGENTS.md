@@ -23,7 +23,8 @@
 - **No "Fw" prefixes** in names. Namespaces are `SIL.TextEditing` and `SIL.TextEditing.Avalonia`.
 - **Run model.** `Run` is shaped like one ITsString run (Ws and ObjData are fields, mapped by the adapter): text, writing-system id, an opaque `PropertyBag` keyed by FieldWorks
   property numbers, and `ObjData`. The editor never interprets a bag; it carries it through every edit.
-- **Tests.** Build and test on Windows (`dotnet test SIL.TextEditing.sln`): net48 only runs there. A test that pins a
+- **Tests.** Run `pwsh ./test.ps1` on Windows; net48 only runs there. On Linux use `pwsh ./test.ps1 -Framework net10.0`.
+  The script clears Linux display variables before tests start. A test that pins a
   known Avalonia fault says so in its name; when it starts failing, remove the workaround, not the test.
   - Avalonia tests that create controls run inside `Headless.Run`.
   - No wall-clock assertions. Assert counted work (counters such as `RecordWork.Steps`, `TextReads`).
