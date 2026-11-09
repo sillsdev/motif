@@ -36,4 +36,6 @@ Amended by ADR 0031 (2026-11-05): "No HTML or RTF" is reversed; Word-compatible 
 
 Amended 2026-11-07: the rejection of HTML and RTF under "Considered options" is reversed by owner decision R-3 in ADR 0031;
 they are planned in a new `SIL.TextEditing.WordInterchange` project. The FieldWorks Markdown clipboard form this ADR decides
-is not built yet: only its id and the paste order exist (motif issue #56).
+is built: `FieldWorksMarkdownClipboardForm` in `SIL.TextEditing.Markdown` writes complete front matter and exposes read findings through
+`OnRead`. Hosts register it; the playground does so. The default paste order remains TsString first. A host wanting Markdown to keep
+paragraph breaks ahead of TsString chooses that order explicitly.

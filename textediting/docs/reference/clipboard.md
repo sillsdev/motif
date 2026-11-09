@@ -20,10 +20,10 @@ The clipboard forms, the paste order, the writing-system rule, "Copy as" and the
   `RichTextField.KnowsWritingSystem` (by default: its `WritingSystems` registry, and a registry with no entries accepts everything), and
   raises `WritingSystemsMapped` after the paste so the host can show a notice.
 - **Copy as** (`RichTextField.CopyAsAsync(formId)`) puts one form on the clipboard as text: the plain text, or any registered form whose
-  payload is a string, such as FieldWorks Markdown (planned, #168). `IClipboardForm.OffersCopyAs` only decides which forms
+  payload is a string, such as FieldWorks Markdown. `IClipboardForm.OffersCopyAs` only decides which forms
   `ClipboardForms.CopyAsForms` lists for a menu. The playground's context menu has a "Copy as" submenu.
 - `SIL.TextEditing.Runs.v1` is no longer on the clipboard. `Interchange` stays as a test and debug dump, and `InterchangeClipboardForm`
-  lets tests and the playground carry formatting without liblcm or the Markdown library.
+  lets tests carry formatting without liblcm or the Markdown library.
 
 ## FieldWorks interop
 
@@ -31,8 +31,16 @@ FieldWorks interop is the host's job and uses two hooks, the backend and a host-
 [The LCModel adapter](lcmodel.md#it-is-not-fieldworks-tsstring-wire-format) and
 [Clipboard: FieldWorks TsString](../formats/clipboard.md#fieldworks-tsstring).
 
-A FieldWorks host also registers the FieldWorks Markdown form. The Markdown library is to provide it (issue #168); only the registration
-point and the ids `ClipboardForms.FieldWorksMarkdownId` and `ClipboardForms.TsStringId` exist today.
+A FieldWorks host also registers `FieldWorksMarkdownClipboardForm` from `SIL.TextEditing.Markdown`, supplying its `MarkdownOptions`.
+The playground registers it too. It writes text under `SIL.TextEditing.FieldWorksMarkdown`, always with front matter, and offers Copy as.
+`OnRead` receives the parse result and its findings. Unknown writing-system ids and style names remain in the fragment with findings;
+the field maps missing writing systems afterward. The options' writing-system mapper and style catalog define which names are known.
+Missing or incomplete front matter, unsupported versions and record files fall through to the next form. Stored normalization is kept
+until the editor inserts the fragment. The target's `SingleParagraph`, `BlockFeatures` and `BlockRecognizer` apply as for any rich paste.
+See [FieldWorks Markdown](../formats/clipboard.md#fieldworks-markdown) for registration and payload details.
+
+The default paste order remains TsString first. A host that registers both forms and needs multi-paragraph fidelity puts
+`ClipboardForms.FieldWorksMarkdownId` before `ClipboardForms.TsStringId` in `PasteOrder`.
 
 ## The real clipboard
 

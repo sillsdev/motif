@@ -69,7 +69,7 @@ namespace SIL.TextEditing.Playground.Tests
                 row.Runs.Add(new Run { Ws = "en", Text = "palit\tbuy" });
                 var top = global::Avalonia.Controls.TopLevel.GetTopLevel(s.Field);
                 await global::SIL.TextEditing.Avalonia.ClipboardCompat.SetAsync(top, "x",
-                    new[] { new KeyValuePair<string, object>(Interchange.ClipboardFormat, Interchange.ToXml(new[] { lead, header, row })) });
+                    new[] { new KeyValuePair<string, object>(global::SIL.TextEditing.Markdown.FieldWorksMarkdownClipboardForm.ClipboardFormatName, s.Field.ClipboardForms.Find(ClipboardForms.FieldWorksMarkdownId)!.Write(new[] { lead, header, row })!) });
                 int before = s.Editor.Document.Paragraphs.Count;
                 s.Caret(0, 0);
                 s.Click(PlaygroundView.Names.Paste);
@@ -96,7 +96,7 @@ namespace SIL.TextEditing.Playground.Tests
                 row.Runs.Add(new Run { Ws = "en", Text = "palit" });
                 var top = global::Avalonia.Controls.TopLevel.GetTopLevel(s.Field);
                 await global::SIL.TextEditing.Avalonia.ClipboardCompat.SetAsync(top, "x",
-                    new[] { new KeyValuePair<string, object>(Interchange.ClipboardFormat, Interchange.ToXml(new[] { lead, row })) });
+                    new[] { new KeyValuePair<string, object>(global::SIL.TextEditing.Markdown.FieldWorksMarkdownClipboardForm.ClipboardFormatName, s.Field.ClipboardForms.Find(ClipboardForms.FieldWorksMarkdownId)!.Write(new[] { lead, row })!) });
                 s.Caret(0, 0);
                 s.Click(PlaygroundView.Names.Paste);
                 await s.WaitClipboard();
