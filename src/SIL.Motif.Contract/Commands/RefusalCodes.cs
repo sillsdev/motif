@@ -120,6 +120,19 @@ public static class RefusalCodes
     /// <summary>An agent identity already exists under another name or version.</summary>
     public const string AgentVersionConflict = "agent.version-conflict";
 
+    /// <summary>Two lists share the Grammar Design Records name, or two records share an abbreviation.</summary>
+    public const string GdrAmbiguous = "gdr.ambiguous";
+    /// <summary>The exact Baseline file is missing, so no Grammar Design Record can be read.</summary>
+    public const string GdrBaselineUnavailable = "gdr.baseline-unavailable";
+    /// <summary>A style in the project is based on itself, so no style can be resolved.</summary>
+    public const string GdrStyleCycle = "gdr.style-cycle";
+    /// <summary>A gdr show request named no record.</summary>
+    public const string GdrEmptyId = "gdr.empty-id";
+    /// <summary>The project has no Baseline to read a Grammar Design Record from.</summary>
+    public const string GdrNoBaseline = "gdr.no-baseline";
+    /// <summary>No Grammar Design Record has that id or number.</summary>
+    public const string GdrNotFound = "gdr.not-found";
+
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
     public const string GrammarCheckFailed = "grammarcheck.failed";
     public const string GrammarCheckMalformedFindings = "grammarcheck.malformed-findings";

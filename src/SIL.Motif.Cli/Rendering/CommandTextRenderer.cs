@@ -117,6 +117,8 @@ public static class CommandTextRenderer
             HandoffCommandResponse r => RenderHandoff(r),
             WordTraceResponse r => RenderTrace(r),
             WritingSystemsResponse r => RenderWritingSystems(r),
+            GdrListResponse r => RenderGdrList(r),
+            GdrShowResponse r => RenderGdrShow(r),
             WordContextResponse r => RenderWordContext(r),
             ProposalStandings r => RenderProposalStandings(r),
             ProposalTextChangedResponse r => ProposalCommandRenderer.RenderTextChanged(r),
@@ -890,6 +892,28 @@ public static class CommandTextRenderer
             foreach (var size in ws.StyleSizes) text.AppendLine($"  {size.Key}: {size.Value.ToString(CultureInfo.InvariantCulture)} pt");
         }
         text.AppendLine("Change fonts and direction in FieldWorks: Format > Set up Vernacular/Analysis Writing Systems; sizes: Format > Styles.");
+        return text.ToString();
+    }
+
+    private static string RenderGdrList(GdrListResponse response)
+    {
+        if (!response.HasBaseline) return "No Baseline yet. Capture a Baseline to read Grammar Design Records." + Environment.NewLine;
+        if (response.Records.Count == 0) return "This project has no Grammar Design Records." + Environment.NewLine;
+        var text = new StringBuilder();
+        foreach (var record in response.Records) text.AppendLine($"{record.Abbreviation}  {record.Title}");
+        return text.ToString();
+    }
+
+    private static string RenderGdrShow(GdrShowResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"{response.Record.Abbreviation}  {response.Record.Title}");
+        if (response.Record.Description.Length > 0) text.AppendLine(response.Record.Description);
+        foreach (var paragraph in response.Discussion)
+        {
+            text.AppendLine();
+            text.AppendLine(string.Concat(paragraph.Runs.Select(run => run.Text)));
+        }
         return text.ToString();
     }
 

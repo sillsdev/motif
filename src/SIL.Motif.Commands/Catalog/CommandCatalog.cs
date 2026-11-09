@@ -247,6 +247,10 @@ public static class CommandCatalog
         new CommandDescriptor("writing-systems", typeof(WritingSystemsRequest),
             typeof(WritingSystemsResponse), CommandSurface.Released, AgentClass.Read),
 
+        // GdrQuery: Grammar Design Records from the current Baseline, behind the developer preview gate
+        new CommandDescriptor("gdr list", typeof(GdrListRequest), typeof(GdrListResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("gdr show", typeof(GdrShowRequest), typeof(GdrShowResponse), CommandSurface.Developer, AgentClass.Read),
+
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("difference produce", typeof(ProposalDifferenceProduceRequest), typeof(ProposalDifferenceResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),
