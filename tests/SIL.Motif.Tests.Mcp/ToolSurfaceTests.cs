@@ -384,6 +384,7 @@ public sealed class ToolSurfaceTests
             "compose-relink-natural-class",
             "compose-author-environment",
             "compose-author-phonological-rule",
+            "compose-author-metathesis-rule",
             "compose-author-part-of-speech",
             "compose-author-inflection-feature",
             "compose-author-inflection-class",

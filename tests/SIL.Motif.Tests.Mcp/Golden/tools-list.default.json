@@ -3051,6 +3051,195 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-author-metathesis-rule"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-metathesis-rule.",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Rule name."
+                      },
+                      "direction": {
+                        "type": "string",
+                        "description": "Rule scan direction or application mode.",
+                        "enum": [
+                          "left-to-right",
+                          "right-to-left",
+                          "simultaneous"
+                        ]
+                      },
+                      "left": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string",
+                              "description": "Phoneme id in the first phoneme set."
+                            },
+                            "naturalClass": {
+                              "type": "string",
+                              "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+                            },
+                            "boundary": {
+                              "type": "string",
+                              "description": "Word edge or declared morpheme boundary.",
+                              "enum": [
+                                "word",
+                                "morpheme"
+                              ]
+                            },
+                            "boundaryMarker": {
+                              "type": "string",
+                              "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+                        "maxItems": 8
+                      },
+                      "leftSwitch": {
+                        "type": "object",
+                        "properties": {
+                          "phoneme": {
+                            "type": "string",
+                            "description": "Phoneme id in the first phoneme set."
+                          },
+                          "naturalClass": {
+                            "type": "string",
+                            "description": "Natural class id owned by this project\u0027s phonological data."
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "The phoneme or natural class that moves to the right switch position."
+                      },
+                      "middle": {
+                        "type": "object",
+                        "properties": {
+                          "phoneme": {
+                            "type": "string",
+                            "description": "Phoneme id in the first phoneme set."
+                          },
+                          "naturalClass": {
+                            "type": "string",
+                            "description": "Natural class id owned by this project\u0027s phonological data."
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "The optional context between the switches, which stays in place."
+                      },
+                      "middleWith": {
+                        "type": "string",
+                        "description": "Whether the middle belongs to the left or right switch; defaults to left.",
+                        "enum": [
+                          "left",
+                          "right"
+                        ]
+                      },
+                      "rightSwitch": {
+                        "type": "object",
+                        "properties": {
+                          "phoneme": {
+                            "type": "string",
+                            "description": "Phoneme id in the first phoneme set."
+                          },
+                          "naturalClass": {
+                            "type": "string",
+                            "description": "Natural class id owned by this project\u0027s phonological data."
+                          }
+                        },
+                        "additionalProperties": false,
+                        "description": "The phoneme or natural class that moves to the left switch position."
+                      },
+                      "right": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "phoneme": {
+                              "type": "string",
+                              "description": "Phoneme id in the first phoneme set."
+                            },
+                            "naturalClass": {
+                              "type": "string",
+                              "description": "Natural class id, exact name or abbreviation; names must resolve uniquely using NFD and ordinal case-insensitive equality, without trimming. The class must have a unique abbreviation."
+                            },
+                            "boundary": {
+                              "type": "string",
+                              "description": "Word edge or declared morpheme boundary.",
+                              "enum": [
+                                "word",
+                                "morpheme"
+                              ]
+                            },
+                            "boundaryMarker": {
+                              "type": "string",
+                              "description": "Stored boundary-marker id. Rule contexts preserve its literal identity, even when its code is #."
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": "Context items in linguistic order, from the outer left to outer right. Each names exactly one reference.",
+                        "maxItems": 8
+                      },
+                      "placement": {
+                        "type": "object",
+                        "properties": {
+                          "after": {
+                            "type": "string",
+                            "description": "Adjacent existing rule before the insertion gap."
+                          },
+                          "before": {
+                            "type": "string",
+                            "description": "Adjacent existing rule after the insertion gap."
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "direction",
+                      "leftSwitch",
+                      "rightSwitch"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-author-part-of-speech"
                     ]
                   },

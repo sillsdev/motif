@@ -28,7 +28,7 @@ public sealed class MetathesisRuleDraftTests(PristineProjectFixture pristine)
             var composed = ProposalCommands.ComposeAuthorPhoneme(new(path, version, draft,
                 JsonSerializer.Serialize(new { name = letter, representations = new[] { letter } })));
             Assert.True(composed.Succeeded, composed.Refusal?.Message);
-            return Assert.Single(composed.Value!.Operations, o => o.Kind == PhPhonemeSetPhonemesOperationKinds.Create).EntityId!.Value;
+            return Assert.Single(composed.Value!.Operations, o => o.Kind == PhPhonemeSetPhonemesOperationKinds.Create).EntityId!;
         }
         var h = Phoneme("h");
         var m = Phoneme("m");
