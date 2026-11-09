@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing.Project</RootNamespace>
+    <Description>Project-backed styles and writing systems for SIL.TextEditing hosts.</Description>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == ''">
+    <TargetDir>$(MSBuildProjectDirectory)\</TargetDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SIL.LCModel" />
+    <PackageReference Include="SIL.Core.Desktop" />
+    <ProjectReference Include="..\SIL.TextEditing.LCModel\SIL.TextEditing.LCModel.csproj" />
+    <ProjectReference Include="..\SIL.TextEditing.Markdown\SIL.TextEditing.Markdown.csproj" />
+  </ItemGroup>
+</Project>

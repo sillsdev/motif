@@ -12,7 +12,7 @@ code is split into projects by dependency, so each host takes only what it needs
 | `SIL.TextEditing.Avalonia` | `RichTextField` and everything that touches Avalonia. | Avalonia, libpalaso |
 | `SIL.TextEditing.Markdown` | FieldWorks Markdown, the YAML record frame, and schema-driven diff and shape checks. The schema is data. | Markdig; no liblcm; AOT-clean |
 | `SIL.TextEditing.LCModel` | The `ITsString` adapter (ADR 0016). | `SIL.LCModel.Core` |
-| `SIL.TextEditing.Project` (planned) | Project paths, the record schema built from liblcm metadata at run time, field notations, record export and import to a neutral change list, and liblcm-backed language services. | `SIL.LCModel` |
+| `SIL.TextEditing.Project` | Project-backed styles and writing systems. Project paths, runtime record schemas, field notations, record I/O and liblcm-backed language services remain planned. | `SIL.LCModel`, the LCModel adapter and Markdown contracts |
 
 **Stays in the hosts:** the host shell and workflow. In FieldWorks that is the DataTree, windows and the unit of work. In
 Motif it is Proposals, MCP, the GDR template and checker, and the AI-authoring profile.
@@ -25,7 +25,7 @@ Motif it is Proposals, MCP, the GDR template and checker, and the AI-authoring p
   ADR 0016 say so.
 - `SIL.TextEditing.Project` is not trimmable or AOT-marked, like the LCModel adapter. This blocks nothing: neither host
   publishes trimmed or native AOT, and Motif's GUI already loads liblcm.
-- The project is not created by this ADR.
+- The project starts with read-only style and writing-system adapters; the other project-aware services remain follow-ups.
 - The library stays MIT and clean-room until the repositories merge (ADR 0010).
 
 **Owner decisions** (2026-11-05, from the editing-surfaces scoping report):
@@ -60,3 +60,13 @@ Owner decision, 2026-11-05.
 Amended by ADR 0034 (2026-11-06): from the move into Motif, `SIL.LCModel` (R-1 and the consequences above) follows Motif's
 `SilVersions.props`, not FieldWorks' pin. Motif is MIT, so that move is not the "repositories merge" of Q60: the library
 stays MIT and clean-room (ADR 0010).
+
+Implementation scope, 2026-11-07: `ProjectStyles` supplies the style resolver and catalog;
+`ProjectWritingSystems` supplies writing-system defaults, inventory, details and the existing adapter's handle contract.
+Both target netstandard2.0 and net10.0 and read a caller-owned `LcmCache`. Loading, threading, units of work,
+persistence and disposal remain the host's responsibility. These adapters neither export nor import records.
+
+The owner authorized the full `SIL.LCModel` reference at `$(SilLCModelPackageVersion)` and a direct
+`SIL.Core.Desktop` reference at `$(SilCoreDesktopVersion)`, both defined by the already-imported `SilVersions.props`.
+The direct Desktop reference selects L10NSharp's netstandard2.0 asset; the older transitive version selects
+Framework-only assets and fails restore with NU1701. It introduces no Avalonia dependency or trim/AOT promise.

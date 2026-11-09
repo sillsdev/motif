@@ -29,6 +29,42 @@ FieldWorks Markdown and record files. See [The Markdown library](markdown.md).
 
 The `ITsString` adapter and the TsString XML clipboard form. See [The LCModel adapter](lcmodel.md).
 
+### `src/SIL.TextEditing.Project` (netstandard2.0, net10.0)
+
+Read-only adapters over an already-loaded `LcmCache` (ADR 0031):
+
+- `ProjectStyles` implements `IStyleResolver`, `IStyleCatalog` and `IKnownStyles`. It reads the project's
+  `IStStyle` paragraph/character types, resolves based-on inheritance through liblcm's stylesheet, and applies the
+  requested writing system's inherited font overrides through liblcm's resolved font-info API. Common properties
+  use the LCModel adapter's `TsStringConversion.ToBag`. Default-font markers resolve to the writing system's font.
+  Missing styles return null; an unknown writing-system id uses common style properties. Malformed inheritance
+  cycles throw `InvalidOperationException` before liblcm traverses them.
+- `ProjectWritingSystems` implements `IWritingSystemMapper`, `IWritingSystemDetails`, `IKnownWritingSystems`
+  and `IWritingSystemHandles`. Defaults come from the cache; choices are the distinct analysis and vernacular
+  writing systems, including configured systems outside the current lists. Details use the actual language tag,
+  direction and default font. A system known only to the factory is not a project choice. Handle conversion
+  delegates to `WritingSystemHandles.FromFactory`, so the same instance also serves `TsStringConversion`.
+
+```csharp
+var styles = new ProjectStyles(cache);
+var writingSystems = new ProjectWritingSystems(cache);
+var options = new MarkdownOptions { Styles = styles, WritingSystems = writingSystems };
+// Use styles as the field's IStyleResolver and writingSystems for ITsString conversion too.
+```
+
+The host owns loading, ICU initialization, cache lifetime, thread affinity, units of work and persistence. Serialize
+reads on the cache's owning thread while it is alive. The adapters do not change or dispose the cache; lists, bags
+and descriptions are detached results. Reads see project edits on the next call; the host invalidates field
+layouts when styles or writing-system definitions change. Names and ids use the project's exact spelling.
+
+The project references the LCModel and Markdown libraries plus full `SIL.LCModel` at
+`$(SilLCModelPackageVersion)`. Its direct `SIL.Core.Desktop` reference uses `$(SilCoreDesktopVersion)` to select
+L10NSharp's netstandard2.0 asset instead of the Framework-only transitive version (owner decision, ADR 0031).
+These pins come from `SilVersions.props`. There is no Avalonia reference, and the project is not trimmable or
+AOT-compatible. It is intentionally excluded from `tests/AotCheck`.
+
+Project paths, metadata-derived record schemas, record export/import and project language services remain planned.
+
 ## Samples
 
 Samples do not ship.
@@ -55,6 +91,7 @@ properties, an environment box with a language service, 200 paragraphs, many fie
 | `tests/SIL.TextEditing.SecondDispatcher.Tests` | net10.0 | The tests that make a dispatcher on a second thread (Avalonia 12 allows it). |
 | `tests/SIL.TextEditing.RealClipboard.Tests` | net48, net10.0 | Bytes and Arabic text through the default clipboard backend and the real Windows clipboard. Opt-in. |
 | `tests/SIL.TextEditing.LCModel.Tests` | net48, net10.0 | The adapter ([details](lcmodel.md#tests)). |
+| `tests/SIL.TextEditing.Project.Tests` | net48, net10.0 | Styles, writing systems and Markdown/TsString integration over real memory-only caches, built with public liblcm APIs. |
 | `tests/SIL.TextEditing.Markdown.Tests` | net48, net10.0 | Conformance, Pandoc agreement, random round trips ([details](markdown.md#tests)). |
 | `tests/SIL.TextEditing.Playground.Tests` | net48, net10.0 | Avalonia.Headless integration tests that drive the playground the way a person would. |
 | `tests/AotCheck` | net10.0 | Publishes the three net10.0 libraries native AOT and runs the Markdown, record and writing-system checks ([details](markdown.md#dependencies-trimming-and-aot)). |
@@ -76,6 +113,12 @@ It runs in a real Avalonia window (Avalonia.Desktop), not Avalonia.Headless.
 - If the Win32 platform cannot start, the tests say so and end.
 
 ## Build environment
+
+The Project tests stage normalization data and Windows x64 ICU DLLs from their existing transitive packages.
+On Linux/macOS, supply a SIL ICU 70 installation with `TEXTEDITING_SIL_ICU_STAGE=/path/to/icu` when running them.
+The fixture uses an offline, process-private SLDR cache; its private-cache overload is internal to libpalaso and
+accessed by reflection in test setup only. The cache itself is created and edited solely through public liblcm APIs.
+No FieldWorks project data is stored in the repository.
 
 Windows with the .NET 10 SDK and the .NET Framework 4.8 targeting pack. net48 builds and tests run only on Windows.
 
