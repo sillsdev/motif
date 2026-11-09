@@ -26,8 +26,10 @@ prose.
    when the field has none, keeps existing paragraph identities and creates new ones.
 2. **`text/setRichString`** edits any String or MultiString field, addressed by owner object, field and writing
    system. Its `after` holds the runs and the expected starting text.
-3. **Drift refuses that field only.** If a field no longer matches `expected` at Apply, Apply refuses that operation
-   with a stale-field refusal and the rest of the Draft is unaffected by it; the conflict viewer (#88) resolves it.
+3. **Drift holds the Apply.** If a field no longer matches `expected` at Apply, Apply refuses as a whole with a
+   stale-field refusal naming that field, and the Draft stays whole (owner, 2026-11-09: while one field is undecided,
+   Apply waits). The person resolves the field (the conflict viewer, #88), which restages it from the live text, and
+   applies again.
 4. **One editing session updates one operation.** A later session on the same field replaces the operation (same
    target and field), and `expected` stays the text of the first session's start.
 5. **Which fields may be edited this way comes from the field inventory**, not from per-field kinds. The kinds join
