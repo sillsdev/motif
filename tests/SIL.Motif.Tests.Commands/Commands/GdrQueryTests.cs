@@ -86,6 +86,32 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public void ShowResolvesEverySpellingOfALinkToItsTargetAndMarksAMissingTargetBroken()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true, SeededGdrs.SeedLinks);
+
+        var shown = GdrQuery.Show(new GdrShowRequest(path, SeededGdrs.LinksRecord));
+
+        Assert.True(shown.Succeeded, shown.Refusal?.Message);
+        var targets = shown.Value!.Discussion.Select(paragraph => paragraph.Runs.Single().Target).ToArray();
+        Assert.Equal(6, targets.Length);
+        Assert.All(targets.Take(5), target => Assert.Equal(new GdrLinkTarget(GdrLinkState.Resolved, "Lexical entry", "entry-1", "gloss-1"), target));
+        Assert.Equal(new GdrLinkTarget(GdrLinkState.Broken, null, null, ""), targets[5]);
+    }
+
+    [Fact]
+    public void ShowSaysAnExternalHyperlinkIsExternalAndLeavesAnObjectRunWithoutATarget()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true);
+
+        var runs = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!.Discussion[0].Runs;
+
+        Assert.Equal(new GdrLinkTarget(GdrLinkState.External, null, "https://example.invalid/x", ""), runs.Single(run => run.Text == "link").Target);
+        Assert.Null(runs.Single(run => run.Text == "￼").Target);
+        Assert.All(runs.Where(run => run.Text is "x" or "y"), run => Assert.Null(run.Target));
+    }
+
+    [Fact]
     public void ShowKeepsALinkTargetAndAnObjectRunsData()
     {
         var path = ProjectWithGdrs(captureBaseline: true);

@@ -6,7 +6,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The wire version of the Grammar Design Record responses, raised when their shape changes.</summary>
 public static class GdrWire
 {
-    public const int SchemaVersion = 2;
+    public const int SchemaVersion = 3;
 }
 
 /// <summary>One Grammar Design Record as the list shows it.</summary>
@@ -33,9 +33,30 @@ public sealed record GdrTextProperties(
 /// <param name="Style">The character style name, or null for none.</param>
 /// <param name="Properties">Every property of the run, the style name included.</param>
 /// <param name="ObjData">The run's link target or embedded-object data as FieldWorks stores it, or null for plain text.</param>
+/// <param name="Target">What a link run points to, or null when the run is not a link.</param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record GdrRun(
-    string Text, string WritingSystem, string? Style, GdrTextProperties Properties, string? ObjData = null);
+    string Text, string WritingSystem, string? Style, GdrTextProperties Properties, string? ObjData = null,
+    GdrLinkTarget? Target = null);
+
+[JsonConverter(typeof(JsonStringEnumConverter<GdrLinkState>))]
+public enum GdrLinkState
+{
+    /// <summary>The target is an object of the project.</summary>
+    [JsonStringEnumMemberName("resolved")] Resolved,
+    /// <summary>The target is not in the project, or the link names none.</summary>
+    [JsonStringEnumMemberName("broken")] Broken,
+    /// <summary>The target is outside this project; nothing was looked up.</summary>
+    [JsonStringEnumMemberName("external")] External,
+}
+
+/// <summary>What a link run points to, resolved against the Baseline.</summary>
+/// <param name="State">Whether the target was found.</param>
+/// <param name="Kind">The kind of object in a person's words, or null when it is not an object of the project.</param>
+/// <param name="Name">The target's current name, or the address for an external link; null for a broken link.</param>
+/// <param name="Description">A short description of the target; empty when it has none.</param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record GdrLinkTarget(GdrLinkState State, string? Kind, string? Name, string Description);
 
 /// <summary>One paragraph of a Discussion.</summary>
 /// <param name="Style">The paragraph style name, or null for none.</param>

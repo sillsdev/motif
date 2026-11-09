@@ -4,6 +4,9 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.Gdr;
+using SIL.TextEditing.LCModel;
+using SIL.TextEditing.Markdown;
+using SIL.TextEditing.Project;
 
 namespace SIL.Motif.Tests.TestFixtures;
 
@@ -63,6 +66,57 @@ public static class SeededGdrs
 
     /// <summary>The data of an object run: a type character, then eight characters of GUID.</summary>
     public static readonly string ObjectData = (char)FwObjDataTypes.kodtOwnNameGuidHot + "01234567";
+
+    /// <summary>The abbreviation of the record <see cref="SeedLinks"/> adds.</summary>
+    public const string LinksRecord = "GDR-L";
+
+    /// <summary>Adds a lexical entry (entry-1, glossed gloss-1) and the record GDR-L, one paragraph per link spelling A to E to that entry,
+    /// then one to an entry that is deleted afterwards.</summary>
+    public static void SeedLinks(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+    {
+        var services = cache.ServiceLocator;
+        ILexEntry NewEntry(string form, string gloss)
+        {
+            var entry = services.GetInstance<ILexEntryFactory>().Create();
+            var allomorph = services.GetInstance<IMoStemAllomorphFactory>().Create();
+            entry.LexemeFormOA = allomorph;
+            allomorph.Form.set_String(cache.DefaultVernWs, form);
+            var sense = services.GetInstance<ILexSenseFactory>().Create();
+            entry.SensesOS.Add(sense);
+            sense.Gloss.set_String(cache.DefaultAnalWs, gloss);
+            return entry;
+        }
+        var target = NewEntry("entry-1", "gloss-1");
+        var doomed = NewEntry("entry-2", "gloss-2");
+        var systems = new ProjectWritingSystems(cache);
+        var options = new MarkdownOptions
+        {
+            WritingSystems = systems,
+            Paths = new ProjectPathResolver(cache),
+            LinkBase = "/lists/GDR/GDR-47.fw.md",
+            ProjectName = "Sena3",
+        };
+        string Guid(ILexEntry entry) => entry.Guid.ToString("D");
+        var spellings = new[]
+        {
+            $"[entry-1](/lexicon/entry-1){{.name guid={Guid(target)}}}",
+            $"[entry-1](../../lexicon/entry-1.fw.md){{.name guid={Guid(target)}}}",
+            $"[entry-1](silfw://localhost/link?database%3dthis%24%26tool%3dlexiconEdit%26guid%3d{Guid(target)}%26tag%3d){{.name}}",
+            $"[entry-1](motif://projects/Sena3/lexicon/entry-1?guid={Guid(target)}){{.name}}",
+            $"[entry-1](/objects/{Guid(target)}){{.name}}",
+            $"[entry-2](/lexicon/entry-2){{.name guid={Guid(doomed)}}}",
+        };
+        var analysisTag = systems.DefaultAnalysis;
+        AddRecord(cache, Records(cache).PossibilitiesOS, LinksRecord, "title-links", "abstract-links", stText =>
+        {
+            foreach (var markdown in spellings)
+            {
+                var parsed = MarkdownConverter.ParseInline(markdown, options);
+                AddParagraph(cache, stText, TsStringConversion.ToTsString(parsed.Runs, systems, analysisTag), "Normal", rightToLeft: false);
+            }
+        });
+        cache.DomainDataByFlid.DeleteObj(doomed.Hvo);
+    });
 
     /// <summary>Adds a second record that repeats GDR-2's abbreviation.</summary>
     public static void SeedDuplicateAbbreviation(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>

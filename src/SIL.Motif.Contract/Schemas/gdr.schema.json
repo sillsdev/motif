@@ -98,6 +98,35 @@
         },
         "objData": {
           "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/GdrLinkTarget"
+        }
+      }
+    },
+    "GdrLinkTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "description"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "resolved",
+            "broken",
+            "external"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
         }
       }
     },
@@ -199,7 +228,7 @@
           }
         },
         "schemaVersion": {
-          "const": 2
+          "const": 3
         },
         "baseline": {
           "type": "object"
@@ -229,7 +258,7 @@
           }
         },
         "schemaVersion": {
-          "const": 2
+          "const": 3
         },
         "defaultVernacular": {
           "type": "string"
