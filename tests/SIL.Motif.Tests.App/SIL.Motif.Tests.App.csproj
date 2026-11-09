@@ -6,6 +6,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <InvariantGlobalization>false</InvariantGlobalization>
     <!-- Compiles the token gate as a library here, so its tests call it directly rather than as a process. -->
     <DefineConstants>$(DefineConstants);TOKEN_HYGIENE_UNDER_TEST</DefineConstants>

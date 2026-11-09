@@ -20,6 +20,23 @@
           </StackPanel>
         </Border>
 
+        <Border Classes="card">
+          <StackPanel>
+            <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ChatGptTitle}" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ChatGptKeyHelp}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ChatGptKey}" />
+            <TextBox PasswordChar="●" Text="{Binding ChatGptKey}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ChatGptKey}" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ChatGptTunnelId}" />
+            <TextBox Text="{Binding ChatGptTunnelId}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ChatGptTunnelId}" />
+            <StackPanel Orientation="Horizontal">
+              <Button Content="{x:Static app:MotifAppStrings.ChatGptConnect}" Command="{Binding ConnectChatGptCommand}" />
+              <Button Content="{x:Static app:MotifAppStrings.ChatGptDisconnect}" Command="{Binding DisconnectChatGptCommand}" />
+            </StackPanel>
+            <views:CopyableTextBlock Text="{Binding ChatGptStatus}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Text="{Binding ChatGptSaveWarning}" TextWrapping="Wrap" />
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ChatGptInstructions}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
         <Border Classes="notice" IsVisible="{Binding HasVersionWarning}">
           <views:CopyableTextBlock Text="{Binding VersionWarning}" TextWrapping="Wrap" />
         </Border>

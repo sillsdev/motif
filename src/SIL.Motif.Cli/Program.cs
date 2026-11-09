@@ -52,6 +52,8 @@ public static int Main(string[] args)
     if (ArtifactInventoryCli.IsInvocation(args))
         return ArtifactInventoryCli.Run(args, Console.Out, Console.Error,
             Environment.GetEnvironmentVariable(CommandSurfacePolicy.DeveloperCommandsEnvironmentVariable));
+    if (args.Length > 0 && args[0] == "tunnel-supervise")
+        return TunnelSuperviseCommand.RunAsync(args[1..]).GetAwaiter().GetResult();
     MotifInstallLifecycle.Initialize(args);
 
     if (args.Length > 0 && args[0] == "--update-smoke")

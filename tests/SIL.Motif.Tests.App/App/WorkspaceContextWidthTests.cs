@@ -32,6 +32,7 @@ public sealed class WorkspaceContextWidthTests
             typeof(IAsyncRelayCommand), typeof(IAsyncRelayCommand<string>), typeof(IRelayCommand),
             typeof(System.Collections.ObjectModel.ObservableCollection<KnownProjectSummary>),
             typeof(IAdvancedAiModePreferenceStore), typeof(IAssistantConnectionService), typeof(ITryWordSessions),
+            typeof(ICredentialStore), typeof(ITunnelClient),
             typeof(SIL.Motif.Host.Preferences.IDefaultProposalChecksStore), typeof(ProjectViewMemory),
         ];
         var carried = typeof(WorkspaceContext).GetProperties(BindingFlags.Instance | BindingFlags.Public)

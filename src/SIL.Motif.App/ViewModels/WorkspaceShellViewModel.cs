@@ -66,7 +66,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
         IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null, bool advancedAiModeEnabled = false,
         IDefaultProposalChecksStore? defaultProposalChecks = null,
-        ITryWordSessions? tryWordSessions = null, IPictureIntake? pictureIntake = null)
+        ITryWordSessions? tryWordSessions = null, IPictureIntake? pictureIntake = null,
+        ICredentialStore? credentials = null, ITunnelClient? tunnelClient = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -92,7 +93,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             CanOpenRecentProjectFolder);
         Context = new WorkspaceContext(selection, assess, new ChangesViewModel(commandClient), commandClient, folderPicker,
             dragSource, baseline, clock, clipboard, diagnosticFiles, diagnosticDialogs,
-            advancedAiModePreferences, assistantConnections, uriLauncher, defaultProposalChecks, tryWordSessions, pictureIntake)
+            advancedAiModePreferences, assistantConnections, uriLauncher, defaultProposalChecks, tryWordSessions,
+            pictureIntake, credentials, tunnelClient)
         {
             AdvancedAiModeEnabled = advancedAiModeEnabled,
             KnownProjects = project.KnownProjects,

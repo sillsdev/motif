@@ -11,12 +11,17 @@ public sealed partial class AssistantConnectionsPageModel : PageModel
 {
     private readonly IAssistantConnectionService _connections;
     private readonly IUriLauncher? _launcher;
+    private readonly SynchronizationContext? _uiContext;
+    private int _chatGptAttempt;
 
     /// <summary>Creates the page from the window's preferences and assistant adapters.</summary>
     public AssistantConnectionsPageModel(WorkspaceContext context) : base(context)
     {
         _connections = context.AssistantConnections;
         _launcher = context.UriLauncher;
+        _uiContext = SynchronizationContext.Current;
+        if (context.ChatGptTunnel is { } tunnel)
+            tunnel.StatusChanged += OnTunnelStatusChanged;
         _isEnabled = context.AdvancedAiModePreferences?.IsEnabled ?? true;
         foreach (var assistant in _connections.FindAssistants())
         {
@@ -85,6 +90,69 @@ public sealed partial class AssistantConnectionsPageModel : PageModel
 
     /// <summary>The bundled plugin ZIP to upload in Claude Desktop.</summary>
     public string PluginZipPath => _connections.PluginZipPath;
+
+    /// <summary>The runtime key entered for the next connection.</summary>
+    [ObservableProperty]
+    private string _chatGptKey = string.Empty;
+
+    /// <summary>The tunnel identifier supplied by the person.</summary>
+    [ObservableProperty]
+    private string _chatGptTunnelId = string.Empty;
+
+    /// <summary>The connection state in window language.</summary>
+    [ObservableProperty]
+    private string _chatGptStatus = MotifAppStrings.ChatGptNotConnected;
+
+    /// <summary>The notice when the operating system cannot persist the key.</summary>
+    [ObservableProperty]
+    private string _chatGptSaveWarning = string.Empty;
+
+    [RelayCommand]
+    private async Task ConnectChatGptAsync()
+    {
+        var attempt = ++_chatGptAttempt;
+        var store = Context.ChatGptCredentials;
+        var tunnel = Context.ChatGptTunnel;
+        if (store is null || tunnel is null) { ChatGptStatus = MotifAppStrings.ChatGptError; return; }
+        var enteredKey = ChatGptKey;
+        var key = string.IsNullOrWhiteSpace(enteredKey)
+            ? await Task.Run(store.Read).ConfigureAwait(true)
+            : enteredKey;
+        if (attempt != _chatGptAttempt) return;
+        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(ChatGptTunnelId))
+        {
+            ChatGptStatus = MotifAppStrings.ChatGptMissing;
+            return;
+        }
+        if (!string.IsNullOrWhiteSpace(enteredKey))
+        {
+            var saved = await Task.Run(() => store.Write(enteredKey)).ConfigureAwait(true);
+            if (attempt != _chatGptAttempt) return;
+            ChatGptSaveWarning = saved ? string.Empty : MotifAppStrings.ChatGptKeyNotSaved;
+            ChatGptKey = string.Empty;
+        }
+        await tunnel.ConnectAsync(key, ChatGptTunnelId).ConfigureAwait(true);
+    }
+
+    [RelayCommand]
+    private void DisconnectChatGpt()
+    {
+        ++_chatGptAttempt;
+        Context.ChatGptTunnel?.Disconnect();
+    }
+
+    private void OnTunnelStatusChanged(TunnelStatus status)
+    {
+        void Update() => ChatGptStatus = (Context.ChatGptTunnel?.Status ?? status) switch
+        {
+            TunnelStatus.Connecting => MotifAppStrings.ChatGptConnecting,
+            TunnelStatus.Connected => MotifAppStrings.ChatGptConnected,
+            TunnelStatus.Error => MotifAppStrings.ChatGptError,
+            _ => MotifAppStrings.ChatGptNotConnected,
+        };
+        if (_uiContext is null) Update();
+        else _uiContext.Post(_ => Update(), null);
+    }
 
     /// <summary>Connects every checked assistant through its client-specific setup.</summary>
     [RelayCommand(CanExecute = nameof(CanConnectSelected))]

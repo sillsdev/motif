@@ -37,6 +37,8 @@ namespace SIL.Motif.App.Composition;
 /// <param name="AdvancedAiModePreferences">Where the user's Advanced AI mode choice is read and saved.</param>
 /// <param name="AssistantConnections">The replaceable assistant discovery and connection service.</param>
 /// <param name="DefaultProposalChecks">Where the user's Default proposal checks are read and saved.</param>
+/// <param name="Credentials">The replaceable ChatGPT credential store.</param>
+/// <param name="TunnelClient">The tunnel owned by this desktop session.</param>
 public sealed record MotifAppOptions(
     string ManagedRoot,
     string? ParserPath,
@@ -53,7 +55,8 @@ public sealed record MotifAppOptions(
     IAdvancedAiModePreferenceStore? AdvancedAiModePreferences = null,
     IAssistantConnectionService? AssistantConnections = null,
     IDefaultProposalChecksStore? DefaultProposalChecks = null,
-    ITryWordSessions? TryWordSessions = null)
+    ITryWordSessions? TryWordSessions = null,
+    ICredentialStore? Credentials = null, ITunnelClient? TunnelClient = null)
 {
     /// <summary>Creates session-owned preferences when no caller-owned store is supplied.</summary>
     internal Func<FileUserPreferencesStore>? OwnedUserPreferencesFactory { get; init; }
@@ -74,7 +77,8 @@ public sealed record MotifAppOptions(
             AdvancedAiModePreferences: FileAdvancedAiModePreferenceStore.ForInstallation(),
             AssistantConnections: AssistantConnectionService.ForInstallation(),
             DefaultProposalChecks: FileDefaultProposalChecksStore.ForInstallation(),
-            TryWordSessions: new TryWordSessionsAdapter())
+            TryWordSessions: new TryWordSessionsAdapter(),
+            Credentials: new NativeCredentialStore(), TunnelClient: new TunnelClient())
         {
             OwnedUserPreferencesFactory = static () => new FileUserPreferencesStore(
                 FileUserPreferencesStore.DefaultPath, FileUserPreferencesStore.InstallationSaveDelay),
@@ -133,7 +137,8 @@ public static class MotifAppComposition
             defaultProposalChecks: options.DefaultProposalChecks,
             uriLauncher: new AvaloniaLauncher(window),
             tryWordSessions: options.TryWordSessions,
-            pictureIntake: new AvaloniaPictureIntake(window));
+            pictureIntake: new AvaloniaPictureIntake(window), credentials: options.Credentials,
+            tunnelClient: options.TunnelClient);
         window.Compose(workspace);
         var crashes = new CrashReporter(options.TimeProvider, options.CrashWindow ?? new CrashWindowServices());
         return new MotifAppCompositionResult(window, workspace, crashes, surfacePolicy)

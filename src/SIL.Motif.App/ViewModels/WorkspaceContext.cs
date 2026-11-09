@@ -135,7 +135,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
         IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null,
         IDefaultProposalChecksStore? defaultProposalChecks = null, ITryWordSessions? tryWordSessions = null,
-        IPictureIntake? pictureIntake = null)
+        IPictureIntake? pictureIntake = null, ICredentialStore? credentials = null, ITunnelClient? tunnelClient = null)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(assess);
@@ -172,6 +172,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         AdvancedAiModePreferences = advancedAiModePreferences;
         DefaultProposalChecks = defaultProposalChecks ?? new MemoryDefaultProposalChecksStore();
         AssistantConnections = assistantConnections ?? NoAssistantConnectionService.Instance;
+        ChatGptCredentials = credentials;
+        ChatGptTunnel = tunnelClient;
         UriLauncher = uriLauncher;
         PictureIntake = pictureIntake;
         Assess.PropertyChanged += OnAssessPropertyChanged;
@@ -257,6 +259,12 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The service that finds assistants and connects them to Motif.</summary>
     public IAssistantConnectionService AssistantConnections { get; }
+
+    /// <summary>The ChatGPT credential store, if available.</summary>
+    public ICredentialStore? ChatGptCredentials { get; }
+
+    /// <summary>The tunnel owned by this desktop session, if available.</summary>
+    public ITunnelClient? ChatGptTunnel { get; }
 
     /// <summary>Where a person chooses a picture for a Proposal; null when the window offers none.</summary>
     public IPictureIntake? PictureIntake { get; }

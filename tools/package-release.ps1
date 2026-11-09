@@ -404,6 +404,8 @@ try {
         throw 'PanGloss changed while it was being copied; no package was published.'
     }
 
+    & (Join-Path $PSScriptRoot 'Stage-TunnelClient.ps1') -StageDirectory $stage -RuntimeIdentifier $RuntimeIdentifier
+
     $noticeAssets = @('SIL.Motif.App', 'SIL.Motif.Cli', 'SIL.Motif.Worker') | ForEach-Object {
         Join-Path $intermediateRoot "$_/project.assets.json"
     }

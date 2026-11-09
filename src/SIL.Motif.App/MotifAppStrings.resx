@@ -9634,4 +9634,17 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Selected Event</value>
     <comment>Heading for details of the selected recorded event.</comment>
   </data>
+  <data name="MotifApp.ChatGptTitle" xml:space="preserve"><value>Set Up ChatGPT</value></data>
+  <data name="MotifApp.ChatGptKey" xml:space="preserve"><value>OpenAI API Key</value></data>
+  <data name="MotifApp.ChatGptTunnelId" xml:space="preserve"><value>Tunnel ID</value></data>
+  <data name="MotifApp.ChatGptConnect" xml:space="preserve"><value>Connect</value></data>
+  <data name="MotifApp.ChatGptDisconnect" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="MotifApp.ChatGptNotConnected" xml:space="preserve"><value>Not Connected</value></data>
+  <data name="MotifApp.ChatGptConnecting" xml:space="preserve"><value>Connecting</value></data>
+  <data name="MotifApp.ChatGptConnected" xml:space="preserve"><value>Connected</value></data>
+  <data name="MotifApp.ChatGptError" xml:space="preserve"><value>Can't connect. Check the key, tunnel ID and internet connection, then try again.</value></data>
+  <data name="MotifApp.ChatGptMissing" xml:space="preserve"><value>Enter an OpenAI API key and tunnel ID.</value></data>
+  <data name="MotifApp.ChatGptKeyNotSaved" xml:space="preserve"><value>Motif can't save the key on this computer, so you'll enter it again next time.</value></data>
+  <data name="MotifApp.ChatGptInstructions" xml:space="preserve"><value>1. In ChatGPT, open Plugins and choose the plus button.&#10;2. Choose Add Custom MCP Server.&#10;3. Under Connection, choose Tunnel and paste the tunnel ID.</value></data>
+  <data name="MotifApp.ChatGptKeyHelp" xml:space="preserve"><value>Use an OpenAI runtime API key with Tunnels Read and Use access.</value></data>
 </root>

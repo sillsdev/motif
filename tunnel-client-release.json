@@ -1,0 +1,23 @@
+{
+  "version": "0.0.20",
+  "tag": "v0.0.20",
+  "sha256Status": "TODO: verify each release archive before publishing",
+  "rids": {
+    "win-x64": {
+      "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.20/tunnel-client-v0.0.20-windows-amd64.zip",
+      "sha256": "TODO"
+    },
+    "linux-x64": {
+      "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.20/tunnel-client-v0.0.20-linux-amd64.zip",
+      "sha256": "TODO"
+    },
+    "osx-x64": {
+      "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.20/tunnel-client-v0.0.20-darwin-amd64.zip",
+      "sha256": "TODO"
+    },
+    "osx-arm64": {
+      "url": "https://github.com/openai/tunnel-client/releases/download/v0.0.20/tunnel-client-v0.0.20-darwin-arm64.zip",
+      "sha256": "TODO"
+    }
+  }
+}

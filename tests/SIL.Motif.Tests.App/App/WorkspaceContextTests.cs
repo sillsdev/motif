@@ -1888,7 +1888,7 @@ public sealed class WorkspaceContextTests
         ICommandClient commands,
         IAdvancedAiModePreferenceStore? advancedAiModePreferences = null,
         IAssistantConnectionService? assistantConnections = null,
-        IUriLauncher? uriLauncher = null)
+        IUriLauncher? uriLauncher = null, ICredentialStore? credentials = null, ITunnelClient? tunnelClient = null)
     {
         if (commands is FakeCommandClient fake)
             fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(Token, DateTimeOffset.UtcNow, false));
@@ -1903,7 +1903,7 @@ public sealed class WorkspaceContextTests
             new BaselineViewModel(commands),
             advancedAiModePreferences: advancedAiModePreferences,
             assistantConnections: assistantConnections,
-            uriLauncher: uriLauncher);
+            uriLauncher: uriLauncher, credentials: credentials, tunnelClient: tunnelClient);
     }
 
     internal static (FakeCommandClient Fake, WorkspaceContext Context) NewContextWithFake()

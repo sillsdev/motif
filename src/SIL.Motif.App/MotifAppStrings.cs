@@ -4846,4 +4846,17 @@ public static class MotifAppStrings
     public static string TraceSearchEvents => Text("MotifApp.TraceSearchEvents");
 
     public static string TraceSelectedEvent => Text("MotifApp.TraceSelectedEvent");
+    public static string ChatGptTitle => Text("MotifApp.ChatGptTitle");
+    public static string ChatGptKey => Text("MotifApp.ChatGptKey");
+    public static string ChatGptTunnelId => Text("MotifApp.ChatGptTunnelId");
+    public static string ChatGptConnect => Text("MotifApp.ChatGptConnect");
+    public static string ChatGptDisconnect => Text("MotifApp.ChatGptDisconnect");
+    public static string ChatGptNotConnected => Text("MotifApp.ChatGptNotConnected");
+    public static string ChatGptConnecting => Text("MotifApp.ChatGptConnecting");
+    public static string ChatGptConnected => Text("MotifApp.ChatGptConnected");
+    public static string ChatGptError => Text("MotifApp.ChatGptError");
+    public static string ChatGptMissing => Text("MotifApp.ChatGptMissing");
+    public static string ChatGptKeyNotSaved => Text("MotifApp.ChatGptKeyNotSaved");
+    public static string ChatGptInstructions => Text("MotifApp.ChatGptInstructions");
+    public static string ChatGptKeyHelp => Text("MotifApp.ChatGptKeyHelp");
 }
