@@ -147,6 +147,8 @@ public static class AuthorPhonologicalRuleIntentParser
 
     internal static PhonologicalRuleDirection ParseDirection(JsonElement authored) => Direction(authored);
 
+    internal static Placement? ParsePlacement(JsonElement authored) => Placement(authored);
+
     internal static PhonologicalRuleItem[] ParseItems(JsonElement authored, string name) => Items(authored, name);
 
     internal static EnvironmentContext[] ParseContexts(JsonElement authored, string name)

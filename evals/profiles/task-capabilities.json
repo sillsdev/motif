@@ -41,6 +41,12 @@
       "class": "Draft"
     }
   ],
+  "compose-author-metathesis-rule": [
+    {
+      "name": "motif_add_metathesis_rule",
+      "class": "Draft"
+    }
+  ],
   "compose-author-feature-structure": [
     {
       "name": "motif_add_feature_structure",

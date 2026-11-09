@@ -82,6 +82,8 @@ public static partial class ProposalCommands
                 AuthorPhonologicalRuleComposer.Build(cache, AuthorPhonologicalRuleIntentParser.Parse(input)),
             RelatedObjects: (cache, input) => MultiMemberOutputWarning.Read(cache,
                 AuthorPhonologicalRuleIntentParser.Parse(input).Outcomes.SelectMany(outcome => outcome.Output))),
+        new("compose-author-metathesis-rule", "AuthorMetathesisRule", ["phonological-rules"], (cache, input, _) =>
+            AuthorMetathesisRuleComposer.Build(cache, AuthorMetathesisRuleIntentParser.Parse(input))),
         new("compose-author-part-of-speech", "AuthorPartOfSpeech", ["lexical-entries-and-glosses", "inflection-classes", "affix-slots-and-templates"], (cache, input, _) =>
             AuthorPartOfSpeechComposer.Build(cache, AuthorPartOfSpeechIntentParser.Parse(input))),
         new("compose-author-lexical-entry", "AuthorLexicalEntry", ["lexical-entries-and-glosses", "senses-and-definitions"], (cache, input, _) =>

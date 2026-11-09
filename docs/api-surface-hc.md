@@ -79,9 +79,9 @@ sync — a name-collision hazard rather than a referential-integrity one.
 | `addIrregularlyInflectedForm` | 8 fields across a child `LexEntry` + `LexEntryRef` + `LexEntryInflType` |
 | `setParserOption` | one string field encodes 8+ independent settings plus per-rule `maxApps`; round-trip the `<HC>` element only and never touch `<XAmple>` |
 
-**Direct primitives, no composer:** `naturalClass` (3 fields), `environment` (1), `metathesisRule` (3),
+**Direct primitives, no composer:** `naturalClass` (3 fields), `environment` (1),
 `coOccurrenceRule` (3), `stemName`, `partOfSpeech`, `compoundRule` (borderline), the `rewriteRule` and
-`affixProcessRule` shells.
+`affixProcessRule` shells. `metathesisRule` is no longer here: `compose-author-metathesis-rule` authors it.
 
 ## Three string-authored surfaces
 

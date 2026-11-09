@@ -307,6 +307,7 @@ try
         case "compose-author-natural-class":
         case "compose-author-environment":
         case "compose-author-phonological-rule":
+        case "compose-author-metathesis-rule":
         case "compose-author-affix-slot":
         case "compose-author-part-of-speech":
         case "compose-author-inflection-feature":
@@ -326,6 +327,8 @@ try
                 "compose-author-phoneme" => ProposalCommands.ComposeAuthorPhoneme(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-natural-class" => ProposalCommands.ComposeAuthorNaturalClass(new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-phonological-rule" => ProposalCommands.ComposeAuthorPhonologicalRule(
+                    new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
+                "compose-author-metathesis-rule" => ProposalCommands.ComposeAuthorMetathesisRule(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),
                 "compose-author-inflection-feature" => ProposalCommands.ComposeAuthorInflectionFeature(
                     new(soundProject, CliProductVersion(), soundDraft, soundIntent)),

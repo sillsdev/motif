@@ -387,7 +387,7 @@ public static class AuthorPhonologicalRuleComposer
         _ => throw new InvalidOperationException("A reserved boundary representation was not recognized."),
     };
 
-    private static void ValidatePlacement(IPhPhonData data, Placement? placement)
+    internal static void ValidatePlacement(IPhPhonData data, Placement? placement)
     {
         if (data.PhonRulesOS.Count == 0)
         {

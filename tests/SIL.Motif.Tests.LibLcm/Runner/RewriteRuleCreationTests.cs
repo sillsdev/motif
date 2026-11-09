@@ -141,7 +141,7 @@ public sealed class RewriteRuleCreationTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void RuleCreation_RejectsMetathesisConcreteClass()
+    public void RuleCreation_RejectsAnUnsupportedConcreteClass()
     {
         using var cache = pristine.NewScratch();
         var data = cache.LangProject.PhonologicalDataOA;
@@ -149,11 +149,11 @@ public sealed class RewriteRuleCreationTests(PristineProjectFixture pristine)
             new Dictionary<string, string> { ["grammar"] = "1.0" }, CanonicalId.Mint(), null,
             [new OperationEnvelope(CanonicalId.Mint(), PhPhonDataPhonRulesOperationKinds.Create,
                 entityId: CanonicalId.Mint(), target: CanonicalId.FromGuid(data.Guid),
-                after: JsonSerializer.SerializeToElement(new { @class = "PhMetathesisRule" }))]);
+                after: JsonSerializer.SerializeToElement(new { @class = "MoStemMsa" }))]);
 
         var exception = Assert.Throws<InvalidOperationException>(() => ScratchDryRun.Of(cache, proposal));
 
-        Assert.Contains("class must be PhRegularRule", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("PhRegularRule", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

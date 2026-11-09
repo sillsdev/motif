@@ -32,4 +32,4 @@ Example with distinct environments:
 }
 ```
 
-Before Apply, Dry Run and Trial words for every case, every lexical alternative and each negative control. Metathesis is a separate capability.
+Before Apply, Dry Run and Trial words for every case, every lexical alternative and each negative control. Two sounds that trade places are a metathesis rule: use [Author a metathesis rule](cmd:compose-author-metathesis-rule).

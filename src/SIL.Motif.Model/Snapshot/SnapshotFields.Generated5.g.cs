@@ -103,6 +103,9 @@ public static partial class SnapshotFields
     /// <summary>A <c>PhEnvironment</c>'s <c>StringRepresentation</c> basic String field.</summary>
     public const string PhEnvironmentStringRepresentation = "grammar/phEnvironment/stringRepresentation";
 
+    /// <summary>A <c>PhMetathesisRule</c>'s <c>StrucChange</c> basic String field.</summary>
+    public const string PhMetathesisRuleStrucChange = "grammar/phMetathesisRule/strucChange";
+
     /// <summary>A <c>PhNCFeatures</c>'s <c>Features</c> owning FsFeatStruc field.</summary>
     public const string PhNCFeaturesFeatures = "grammar/phNCFeatures/features";
 

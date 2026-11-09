@@ -134,6 +134,7 @@ public static class ChangeVocabulary
             ["AuthorNaturalClass"] = ("Add natural class", "Add a natural class"),
             ["AuthorEnvironment"] = ("Add environment", "Add an environment"),
             ["AuthorPhonologicalRule"] = ("Add rule", "Add a phonological rule"),
+            ["AuthorMetathesisRule"] = ("Add metathesis rule", "Add a metathesis rule"),
             ["AuthorAffixSlot"] = ("Add affix slot", "Add an affix slot"),
             ["AuthorPartOfSpeech"] = ("Add category", "Add a part of speech"),
             ["AuthorLexicalEntry"] = ("Add entry", "Add a dictionary entry"),

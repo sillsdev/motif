@@ -39,6 +39,7 @@ internal static class AgentTools
         "compose-relink-natural-class",
         "compose-author-environment",
         "compose-author-phonological-rule",
+        "compose-author-metathesis-rule",
         "compose-author-part-of-speech",
         "compose-author-inflection-feature",
         "compose-author-inflection-class",
@@ -366,6 +367,19 @@ internal static class AgentTools
                 new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "direction", "input",
                     "output", "left", "right", "placement", "rightHandSides"))),
                 r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize."))) { Requests = [typeof(ComposeAuthorPhonologicalRuleRequest)] },
+
+        new("motif_add_metathesis_rule",
+            string.Empty,
+            AgentClass.Draft,
+            MetathesisRuleSchema(),
+            false,
+            false,
+            false,
+            true,
+            (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalCommands.ComposeAuthorMetathesisRule(
+                new(c.ProjectPath, c.ProductVersion, a.Required("draft"), a.IntentJson("name", "direction", "left",
+                    "leftSwitch", "middle", "middleWith", "rightSwitch", "right", "placement"))),
+                r => $"Draft now has {r.OperationCount} operations. Run motif_dry_run and motif_trial, revise, then Finalize."))) { Requests = [typeof(ComposeAuthorMetathesisRuleRequest)] },
 
         new("motif_add_affix_slot",
             string.Empty,
@@ -1073,6 +1087,33 @@ internal static class AgentTools
             .Select(SIL.Motif.Worker.Store.ProposalDifferenceRepository.ApprovalStateName)
             .Append("unavailable").Distinct(StringComparer.Ordinal),
     ];
+
+    private static JsonObject MetathesisRuleSchema()
+    {
+        JsonObject Switch(string description)
+        {
+            var item = Schema.Object(
+                ("phoneme", Schema.String("Phoneme id in the first phoneme set."), false),
+                ("naturalClass", Schema.String("Natural class id owned by this project's phonological data."), false));
+            item["description"] = description;
+            return item;
+        }
+        var contexts = NaturalClassContexts();
+        contexts["maxItems"] = 8;
+        var placement = Schema.Object(("after", Schema.String("Adjacent existing rule before the insertion gap."), false),
+            ("before", Schema.String("Adjacent existing rule after the insertion gap."), false));
+        return Schema.Object(("draft", Schema.String("Draft name."), true),
+            ("name", Schema.String("Rule name."), true),
+            ("direction", Schema.String("Rule scan direction or application mode.",
+                "left-to-right", "right-to-left", "simultaneous"), true),
+            ("left", contexts.DeepClone().AsObject(), false),
+            ("leftSwitch", Switch("The phoneme or natural class that moves to the right switch position."), true),
+            ("middle", Switch("The optional context between the switches, which stays in place."), false),
+            ("middleWith", Schema.String("Whether the middle belongs to the left or right switch; defaults to left.", "left", "right"), false),
+            ("rightSwitch", Switch("The phoneme or natural class that moves to the left switch position."), true),
+            ("right", contexts.DeepClone().AsObject(), false),
+            ("placement", placement, false));
+    }
 
     private static JsonObject RuleComposerSchema()
     {

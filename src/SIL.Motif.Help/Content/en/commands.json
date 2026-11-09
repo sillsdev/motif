@@ -228,6 +228,20 @@
     ],
     "redirect": "Use for a regular sound change across many forms. Not for one irregular word: use an alternate form or allomorph (guide conditioned-allomorphs)."
   },
+  "compose-author-metathesis-rule": {
+    "title": "Author a metathesis rule",
+    "description": "Stages one FieldWorks metathesis rule in a Draft: a left environment, a left and a right switch item that trade places, an optional middle and a right environment. Dry Run it and try words with it in a Trial before a person Applies the Proposal.",
+    "source": "Hand-written from the metathesis rule composer contract and FieldWorks' Metathesis Rule formula.",
+    "goals": [
+      "Swap two neighbouring sounds, such as h and a following consonant",
+      "Reorder a consonant cluster after a vowel is lost",
+      "Add a metathesis rule after a syncope rule"
+    ],
+    "guides": [
+      "phonological-rules"
+    ],
+    "redirect": "Use for two adjacent sounds that trade places. Not for a sound that changes in place: use compose-author-phonological-rule."
+  },
   "compose-author-lexical-entry": {
     "title": "Author a lexical entry",
     "description": "Stages one new dictionary entry with its lexeme form, one sense with gloss and optional definition, and grammatical info: a stem, or an inflectional, derivational or unclassified affix. An inflectional affix can name the inflection classes its form attaches to; use compose-edit-derivational-affix-restriction for a derivational affix. Inspect its Dry Run and try words with it before a person Applies the Proposal.",

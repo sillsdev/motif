@@ -47,6 +47,8 @@ public static class SoundSystemSnapshots
                 foreach (var context in rule.StrucDescOS) Add(context);
                 foreach (var rhs in regular.RightHandSidesOS) Add(rhs);
             }
+            else if (rule is IPhMetathesisRule)
+                foreach (var context in rule.StrucDescOS) Add(context);
         }
         foreach (var context in data.ContextsOS) Add(context);
         foreach (var (id, snapshot) in AffixProcessSnapshots.Read(cache)) objects[id] = snapshot;
@@ -122,6 +124,11 @@ public static class SoundSystemSnapshots
                     if (rule is IPhRegularRule regular)
                         Members(SnapshotFields.PhRegularRuleRightHandSides, regular.RightHandSidesOS, true);
                     Members(SnapshotFields.PhSegmentRuleStrucDesc, rule.StrucDescOS, true);
+                    if (rule is IPhMetathesisRule metathesis && string.IsNullOrEmpty(metathesis.StrucChange?.Text) == false)
+                        fields[SnapshotFields.PhMetathesisRuleStrucChange] = new Dictionary<string, string>
+                        {
+                            ["text"] = metathesis.StrucChange.get_NormalizedForm(FwNormalizationMode.knmNFSC).Text,
+                        };
                     break;
                 case IPhSimpleContextSeg segmentContext:
                     Fields(PhSimpleContextSegRelationsSnapshotter.Snapshot(cache, segmentContext));

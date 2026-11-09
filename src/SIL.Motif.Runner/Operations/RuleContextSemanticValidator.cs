@@ -97,12 +97,13 @@ internal static class RuleContextSemanticValidator
 
     public static void ValidateRule(IPhPhonData data, IPhSegmentRule rule)
     {
-        if (rule is not IPhRegularRule regular)
-            throw new InvalidOperationException("Rule contexts are supported only on regular rewrite rules.");
+        if (rule is not (IPhRegularRule or IPhMetathesisRule))
+            throw new InvalidOperationException("Rule contexts are supported only on regular rewrite rules and metathesis rules.");
         var seen = new HashSet<Guid>();
         var active = new HashSet<Guid>();
         foreach (var context in rule.StrucDescOS)
             ValidateNode(data, context, allowSequence: false, seen, active);
+        if (rule is not IPhRegularRule regular) return;
         foreach (var rhs in regular.RightHandSidesOS)
         {
             foreach (var context in rhs.StrucChangeOS)

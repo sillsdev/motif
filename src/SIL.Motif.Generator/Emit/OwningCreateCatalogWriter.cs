@@ -72,7 +72,12 @@ public static class OwningCreateCatalogWriter
             "    _ => throw new InvalidOperationException(\"Rule context must be a supported simple, sequence or iteration context.\"),\n" +
             "};\nowner.ContextsOS.Insert(index, child);", PositionMatters: false),
         new("PhPhonData", "PhonRules", "PhSegmentRule", FieldCard.Seq,
-            "var child = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create(guid);\n" +
+            "IPhSegmentRule child = concreteClass switch\n" +
+            "{\n" +
+            "    \"PhRegularRule\" => cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create(guid),\n" +
+            "    \"PhMetathesisRule\" => cache.ServiceLocator.GetInstance<IPhMetathesisRuleFactory>().Create(guid),\n" +
+            "    _ => throw new InvalidOperationException(\"Phonological rule must be PhRegularRule or PhMetathesisRule.\"),\n" +
+            "};\n" +
             "child.Disabled = true;\n" +
             "owner.PhonRulesOS.Insert(index, child);", SupportsMove: true),
         new("PhRegularRule", "RightHandSides", "PhSegRuleRHS", FieldCard.Seq,
@@ -256,7 +261,7 @@ public static class OwningCreateCatalogWriter
                     : creation.Sig switch
                 {
                     "PhNaturalClass" => "new[] { \"PhNCSegments\", \"PhNCFeatures\" }",
-                    "PhSegmentRule" => "new[] { \"PhRegularRule\" }",
+                    "PhSegmentRule" => "new[] { \"PhRegularRule\", \"PhMetathesisRule\" }",
                     "PhContextOrVar" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\", \"PhIterationContext\" }",
                     "PhSimpleContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\" }",
                     "PhPhonContext" => "new[] { \"PhSimpleContextSeg\", \"PhSimpleContextNC\", \"PhSimpleContextBdry\", \"PhSequenceContext\", \"PhIterationContext\" }",
@@ -326,6 +331,8 @@ public static class OwningCreateCatalogWriter
             throw new GeneratorException("PhEnvironment.StringRepresentation no longer matches the string policy.");
         Write("src/SIL.Motif.Runner/Operations/Generated5/PhEnvironmentStringRepresentation.g.cs", EnvironmentStringEmitter.Render());
         constants.Add(new("PhEnvironment", "StringRepresentation", "grammar", "phEnvironment", "PhEnvironmentStringRepresentation", "basic String"));
+        Write("src/SIL.Motif.Runner/Operations/Generated5/PhMetathesisRuleStrucChange.g.cs", MetathesisRuleStrucChangeEmitter.Render());
+        constants.Add(new("PhMetathesisRule", "StrucChange", "grammar", "phMetathesisRule", "PhMetathesisRuleStrucChange", "basic String"));
         var valueRow = model.Rows.Single(r => r.DeclaringClass == "FsClosedValue" && r.FieldName == "Value");
         var valueSpec = RelationFieldSpecBuilder.BuildAtomic(valueRow);
         Write("src/SIL.Motif.Runner/Operations/Generated5/FsClosedValueValue.g.cs", ReferenceAtomicFieldEmitter.Render(valueSpec));

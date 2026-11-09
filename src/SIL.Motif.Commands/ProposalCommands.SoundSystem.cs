@@ -52,6 +52,10 @@ public static partial class ProposalCommands
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
             DraftComposers["compose-author-phonological-rule"]);
 
+    public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorMetathesisRule(ComposeAuthorMetathesisRuleRequest request) =>
+        ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
+            DraftComposers["compose-author-metathesis-rule"]);
+
     public static CommandOutcome<ComposedOperationsResponse> ComposeAuthorPartOfSpeech(
         ComposeAuthorPartOfSpeechRequest request) =>
         ComposeSoundSystem(request.FwDataPath, request.ProductVersion, request.DraftName, request.IntentJson,
@@ -280,12 +284,18 @@ public static partial class ProposalCommands
     private static JsonElement ResolveSoundObjectNames(LcmCache cache, string verb, JsonElement authored)
     {
         if (verb is not ("compose-author-environment" or "compose-author-phonological-rule" or
-            "compose-edit-natural-class" or "compose-relink-natural-class") ||
+            "compose-author-metathesis-rule" or "compose-edit-natural-class" or "compose-relink-natural-class") ||
             HasDuplicateSoundIntentProperties(authored) ||
             JsonNode.Parse(authored.GetRawText()) is not JsonObject intent) return authored;
         switch (verb)
         {
             case "compose-author-environment":
+            case "compose-author-metathesis-rule":
+                ResolveContextNaturalClassNames(cache, intent, "left", "right");
+                foreach (var part in new[] { "leftSwitch", "middle", "rightSwitch" })
+                    if (intent[part] is JsonObject switchItem)
+                        ResolveReference(cache, switchItem, "naturalClass", NaturalClassReference);
+                break;
             case "compose-author-phonological-rule":
                 ResolveContextNaturalClassNames(cache, intent, "left", "right");
                 if (intent["rightHandSides"] is JsonArray outcomes)

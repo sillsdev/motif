@@ -93,6 +93,8 @@ public static class CommandCatalog
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-phonological-rule", typeof(ComposeAuthorPhonologicalRuleRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
+        new CommandDescriptor("compose-author-metathesis-rule", typeof(ComposeAuthorMetathesisRuleRequest),
+            typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-part-of-speech", typeof(ComposeAuthorPartOfSpeechRequest),
             typeof(ComposedOperationsResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("compose-author-inflection-feature", typeof(ComposeAuthorInflectionFeatureRequest),

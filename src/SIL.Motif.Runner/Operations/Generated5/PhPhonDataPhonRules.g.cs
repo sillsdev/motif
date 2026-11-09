@@ -28,10 +28,15 @@ public static class PhPhonDataPhonRulesOperationKinds
             Create, SnapshotFields.PhPhonDataPhonRules, owner => owner.PhonRulesOS.Cast<ICmObject>().ToArray(),
             (cache, owner, guid, index, concreteClass) =>
             {
-                var child = cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create(guid);
+                IPhSegmentRule child = concreteClass switch
+                        {
+                            "PhRegularRule" => cache.ServiceLocator.GetInstance<IPhRegularRuleFactory>().Create(guid),
+                            "PhMetathesisRule" => cache.ServiceLocator.GetInstance<IPhMetathesisRuleFactory>().Create(guid),
+                            _ => throw new InvalidOperationException("Phonological rule must be PhRegularRule or PhMetathesisRule."),
+                        };
                         child.Disabled = true;
                         owner.PhonRulesOS.Insert(index, child);
-            }, true, false, new[] { "PhRegularRule" }, "PhSegmentRule", true));
+            }, true, false, new[] { "PhRegularRule", "PhMetathesisRule" }, "PhSegmentRule", true));
         OperationKindRegistry.Register(MovePhonRules);
         OperationHandlerRegistry.Register(MovePhonRules, PhPhonDataPhonRulesMoveHandler.Instance);
         OperationSlotRegistry.RegisterMember(MovePhonRules, SnapshotFields.PhPhonDataPhonRules);

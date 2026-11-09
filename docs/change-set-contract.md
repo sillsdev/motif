@@ -422,8 +422,16 @@ The `AuthorPhonologicalRule` composer accepts zero or one explicit phoneme or na
 each changed side, and one to eight phoneme, natural-class, or supported boundary items on each
 context side. An empty input is insertion; an empty output is deletion. The composer authors a
 complete regular rule and turns it on only after all right-hand sides pass the typed-context guard.
-Alpha variables, metathesis, empty or foreign natural classes, and allomorph `PhEnvironment` objects
+Alpha variables, empty or foreign natural classes, and allomorph `PhEnvironment` objects
 are outside this operation set.
+
+The `AuthorMetathesisRule` composer (`compose-author-metathesis-rule`) authors a `PhMetathesisRule`: the
+left environment, left switch, optional middle, right switch and right environment are its structural
+description in that order, one phoneme or natural class per switch and middle, and up to eight simple items
+per environment. `grammar/phMetathesisRule/setStrucChange` carries `{ leftEnvironment, leftSwitch, middle,
+rightSwitch, rightEnvironment, middleWith }` as positions in that description (-1 for an empty part), and the
+handler writes them through LibLCM's `SetStrucChangeIndices`, so the stored text stays FieldWorks' own. A
+metathesis rule cannot be enabled until both switch positions are set.
 
 `compose-batch` also accepts a file-local `as` label on phonological-rule entries. A later rule may
 use `@label` in `placement.after` or `placement.before`; Motif resolves that reference to the
