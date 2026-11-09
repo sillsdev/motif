@@ -174,14 +174,22 @@ public sealed class GdrDiscussionSession
             changed, removed, startingText);
     }
 
+    // Formatting counts as much as text: bolding a run or changing a paragraph's direction is an edit.
     private static bool Same(Paragraph before, Paragraph after) =>
-        before.Text == after.Text && before.Style == after.Style &&
-        before.Runs.Count == after.Runs.Count &&
-        before.Runs.Zip(after.Runs).All(pair => pair.First.Text == pair.Second.Text && pair.First.Ws == pair.Second.Ws);
+        before.Text == after.Text && before.Style == after.Style && before.Rtl == after.Rtl &&
+        before.Props.ContentEquals(after.Props) && before.Runs.Count == after.Runs.Count &&
+        before.Runs.Zip(after.Runs).All(pair => pair.First.Text == pair.Second.Text && pair.First.Ws == pair.Second.Ws &&
+            pair.First.ObjData == pair.Second.ObjData && pair.First.Props.ContentEquals(pair.Second.Props));
 
     private static string? Describe(GdrDiscussionEdit? edit) => edit is null ? null : string.Join("\u0001",
-        edit.Order.Select(key => key ?? "+").Concat(edit.Changed.Select(change => $"{change.Index}:{change.Key}:{change.Content.Style}:" +
-            string.Join("\u0002", change.Content.Runs.Select(run => run.Ws + "\u0003" + run.Text)))).Concat(edit.Removed));
+        edit.Order.Select(key => key ?? "+").Concat(edit.Changed.Select(change =>
+            $"{change.Index}:{change.Key}:{change.Content.Style}:{change.Content.Rtl}:{Describe(change.Content.Props)}:" +
+            string.Join("\u0002", change.Content.Runs.Select(run =>
+                run.Ws + "\u0003" + run.Text + "\u0003" + run.ObjData + "\u0003" + Describe(run.Props))))).Concat(edit.Removed));
+
+    private static string Describe(PropertyBag props) => string.Join(",",
+        props.IntProps.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}={pair.Value.Variation}/{pair.Value.Value}")
+            .Concat(props.StrProps.OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}:{pair.Value}")));
 
     private static List<Paragraph> Copy(Document document) => document.Paragraphs.Select(paragraph => paragraph.Clone()).ToList();
 }

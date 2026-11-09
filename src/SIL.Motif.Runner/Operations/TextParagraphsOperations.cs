@@ -14,6 +14,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Resolution;
+using SIL.TextEditing.LCModel;
 
 namespace SIL.Motif.Runner.Operations;
 
@@ -218,6 +219,8 @@ public sealed record TextParagraphsPayload(
         var objData = OptionalString(run, "objData");
         if (text.Contains('￼') && (text.Length != 1 || objData is null))
             throw Invalid("an embedded object (U+FFFC) must be a run of its own that carries its 'objData'");
+        if (objData is not null && TsStringConversion.WhyLiblcmRefuses((int)FwTextPropType.ktptObjData, objData, false) is { } why)
+            throw Invalid($"'objData' cannot be stored: {why}");
         return new TextRun(text, ClosedPayloadParsing.GetRequiredString(run, "ws", Kind), OptionalString(run, "characterStyle"),
             Props(run, inStyleRules: false), objData);
     }
@@ -237,6 +240,8 @@ public sealed record TextParagraphsPayload(
                 if (property.Value.ValueKind != JsonValueKind.Array || property.Value.GetArrayLength() != 2 ||
                     !property.Value[0].TryGetInt32(out var variation) || !property.Value[1].TryGetInt32(out var value))
                     throw Invalid($"'ints.{property.Name}' must be [variation, value]");
+                if (TsStringConversion.WhyLiblcmRefuses(number, variation, value, inStyleRules) is { } why)
+                    throw Invalid($"'ints.{property.Name}' cannot be stored: {why}");
                 intProps[number] = (variation, value);
             }
         }
@@ -250,6 +255,8 @@ public sealed record TextParagraphsPayload(
                 stringProps[number] = property.Value.ValueKind == JsonValueKind.String
                     ? property.Value.GetString()!
                     : throw Invalid($"'strings.{property.Name}' must be a string");
+                if (TsStringConversion.WhyLiblcmRefuses(number, stringProps[number], inStyleRules) is { } why)
+                    throw Invalid($"'strings.{property.Name}' cannot be stored: {why}");
             }
         }
         return new(intProps, stringProps);
@@ -266,13 +273,10 @@ public sealed record TextParagraphsPayload(
             throw Invalid("object data is a run's 'objData', not a property");
         if (!isInt && number == (int)FwTextPropType.ktptNamedStyle)
             throw Invalid("the named style is 'style' or 'characterStyle', not a property");
-        if (isInt && (UnloadableInts.Contains(number) || (inStyleRules && number == (int)FwTextPropType.ktptEditable)))
+        if (isInt && TsStringConversion.IsRefusedByLiblcm(number, inStyleRules))
             throw Invalid($"integer property {number} is one liblcm cannot load back");
         return number;
     }
-
-    // Integer properties liblcm writes but cannot read back.
-    private static readonly HashSet<int> UnloadableInts = [50, 129, 150, 151, 152, 153, 154, 159, 160];
 
     private static Dictionary<string, TextParagraphExpected> Expectations(JsonElement after)
     {

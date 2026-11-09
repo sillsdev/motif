@@ -277,11 +277,32 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
     [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"x\",\"ws\":\"en\",\"strings\":{\"133\":\"Emphasis\"}}]}],\"removed\":[],\"expected\":{}}")]
     [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"x\",\"ws\":\"en\",\"ints\":{\"50\":[0,1]}}]}],\"removed\":[],\"expected\":{}}")]
     [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"\uFFFC\",\"ws\":\"en\"}]}],\"removed\":[],\"expected\":{}}")]
+    [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"ints\":{\"128\":[0,-1]},\"runs\":[{\"text\":\"x\",\"ws\":\"en\"}]}],\"removed\":[],\"expected\":{}}")]
+    [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"x\",\"ws\":\"en\",\"ints\":{\"2\":[0,7]}}]}],\"removed\":[],\"expected\":{}}")]
+    [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"x\",\"ws\":\"en\",\"ints\":{\"17\":[0,9]}}]}],\"removed\":[],\"expected\":{}}")]
     public void AMalformedPayloadIsRefused(string payload)
     {
         using var document = System.Text.Json.JsonDocument.Parse(payload.Replace("KEY", CanonicalId.Mint().Value));
 
         Assert.ThrowsAny<SIL.Motif.Contract.Parsing.ContractParseException>(() => TextParagraphsPayload.Parse(document.RootElement));
+    }
+
+    [Fact]
+    public void ObjectDataLiblcmCannotLoadBackIsRefused()
+    {
+        var objData = (char)FwObjDataTypes.kodtNameGuidHot + "ab";
+        var payload = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            field = Discussion,
+            order = new string?[] { null },
+            changed = new[] { new { index = 0, runs = new[] { new { text = "x", ws = "en", objData } } } },
+            removed = Array.Empty<string>(),
+            expected = new { },
+        });
+        using var document = System.Text.Json.JsonDocument.Parse(payload);
+
+        var refused = Assert.ThrowsAny<SIL.Motif.Contract.Parsing.ContractParseException>(() => TextParagraphsPayload.Parse(document.RootElement));
+        Assert.Contains("objData", refused.Message, StringComparison.Ordinal);
     }
 
     // Each changed or removed paragraph's expected state is what `gdr show` returned for it.

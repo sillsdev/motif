@@ -36,6 +36,9 @@ public sealed class GdrPreviewWindow : Window
         Child = new TextBlock { Text = UnappliedMessage, TextWrapping = TextWrapping.Wrap },
     };
     private readonly Dictionary<string, string> _refused = new(StringComparer.Ordinal);
+    // Records whose Draft edit has not been read yet, or could not be, or no longer fits the project.
+    private readonly HashSet<string> _locked = new(StringComparer.Ordinal);
+    private bool _applying;
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
     private Task _staging = Task.CompletedTask;
     private readonly ListBox _records = new() { Width = 220 };
@@ -177,8 +180,8 @@ public sealed class GdrPreviewWindow : Window
             _status.Text = "Nothing was applied: an edit could not be added to the pending changes. " + _refused.Values.First();
             return false;
         }
-        var fields = _opened.Values.Select(opened => (opened.Field, opened.Field.IsReadOnly)).ToArray();
-        foreach (var (field, _) in fields) field.IsReadOnly = true;
+        _applying = true;
+        SetReadOnly();
         GdrApplyRefusal? refusal;
         try
         {
@@ -186,7 +189,8 @@ public sealed class GdrPreviewWindow : Window
         }
         finally
         {
-            foreach (var (field, readOnly) in fields) field.IsReadOnly = readOnly;
+            _applying = false;
+            SetReadOnly();
         }
         if (refusal is not null)
         {
@@ -254,6 +258,12 @@ public sealed class GdrPreviewWindow : Window
         }
         _status.Text = refusal ?? string.Empty;
         return refusal;
+    }
+
+    // Typing is allowed only when nothing applies and the record's Draft edit was read and fits the project.
+    private void SetReadOnly()
+    {
+        foreach (var opened in _opened.Values) opened.Field.IsReadOnly = _applying || _locked.Contains(opened.RecordId);
     }
 
     private void ShowStrips()
@@ -351,7 +361,8 @@ public sealed class GdrPreviewWindow : Window
         };
         field.ContextMenuRequested += OnContextMenuRequested;
         // Until the Draft has been read, typing could start an edit that would replace the one it holds.
-        field.IsReadOnly = _store is not null && pending is null;
+        if (_store is not null && pending is null) _locked.Add(id);
+        field.IsReadOnly = _applying || _locked.Contains(id);
         var session = new GdrDiscussionSession(field, id, starting: starting);
         var opened = new OpenedRecord(id, field, session, $"{shown.Record.Abbreviation}  {shown.Record.Title}\n{shown.Record.Description}",
             discussion, pending?.Expected);
@@ -378,23 +389,35 @@ public sealed class GdrPreviewWindow : Window
         }
         if (read.Paragraphs is not { } pending)
         {
-            opened.Field.IsReadOnly = false;
+            _locked.Remove(opened.RecordId);
+            SetReadOnly();
             return;
         }
-        var keys = opened.Discussion.Expected.Keys.ToHashSet(StringComparer.Ordinal);
-        if (!pending.Order.OfType<string>().All(keys.Contains))
+        if (!Fits(pending, shown, opened.Discussion))
         {
-            // The Draft's edit names a paragraph the project no longer holds, so it can only be started again.
+            // Shown over this project, the edit would drop what FieldWorks changed, so only Start again remains.
             _stale.Add(opened.RecordId);
             _staged.Add(opened.RecordId);
             ShowStrips();
             return;
         }
+        _locked.Remove(opened.RecordId);
         var reopened = Open(shown, pending);
         _opened[opened.RecordId] = reopened;
         _staged.Add(opened.RecordId);
         if (_shownId == opened.RecordId) _scroll.Content = reopened.Field;
         ShowStrips();
+    }
+
+    // Apply's own check: the same paragraphs, kept ones in order, each as the edit began.
+    private static bool Fits(TextParagraphsPayload pending, GdrShowResponse shown, GdrDiscussion discussion)
+    {
+        var live = shown.Discussion.Select(paragraph => paragraph.Key).ToArray();
+        var kept = pending.Order.OfType<string>().ToArray();
+        var began = kept.Concat(pending.Removed).ToHashSet(StringComparer.Ordinal);
+        return live.Length == began.Count && live.All(key => key is not null && began.Contains(key)) &&
+            live.Where(key => kept.Contains(key)).SequenceEqual(kept) &&
+            pending.Expected.All(expected => discussion.Expected.TryGetValue(expected.Key, out var now) && now == expected.Value);
     }
 
     private static void ShowEdit(SIL.TextEditing.Document document, TextParagraphsPayload pending)

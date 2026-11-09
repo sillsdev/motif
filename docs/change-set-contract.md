@@ -699,7 +699,10 @@ owns the field. `after` is closed:
   FieldWorks defines is carried as it is, except those with a member of their own, which are refused as properties
   (the writing system, 1, is `ws`; the named style, 133, is `style` or `characterStyle`; object data, 6, is
   `objData`), and the integer properties liblcm cannot load back (50, 129, 150 to 154, 159, 160, and 155 among
-  paragraph properties). A payload that cannot carry a property is refused when it is staged, never written without it.
+  paragraph properties). A value liblcm cannot load back is refused too, by SIL.TextEditing.LCModel's own rules: a
+  toggle such as bold or italic outside 0 to 2, an alignment outside 0 to 5, a negative value where the property counts,
+  such as direction (128), or object data that does not name its target. A payload that cannot carry a property is
+  refused when it is staged, never written without it.
 - **`objData`** is a run's FieldWorks object data. An embedded object (U+FFFC) is a run of its own and must carry it.
 - **`removed`** is the paragraphs that are gone, such as one joined to the paragraph before it.
 - **`expected`** gives exactly the changed and removed paragraphs as the edit began: their text, their paragraph
