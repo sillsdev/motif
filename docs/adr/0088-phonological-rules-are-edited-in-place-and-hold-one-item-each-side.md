@@ -122,13 +122,15 @@ items, but LibLCM's sequence collector omits them; no editor-only registration r
     and preserves stored constraints, recreating those collected when their last referrers are replaced Input.
     RHS-only constraints remain reusable; after replacement, old constraints with no remaining referrers are
     collected. Constraints still used by this rule, another rule or a process are kept.
-13. **Preserve FieldWorks priority; alternatives use an Output class.** Multiple right-hand sides are ordered
+13. **Preserve FieldWorks priority; alternatives come from alternate forms.** Multiple right-hand sides are ordered
     cases, not free variation. FieldWorks HCLoader loads them in order; Machine's `RewriteRuleSpec.MatchSubrule`
     returns on the first applicable environment. The default PanGloss 0.15.2 engine likewise gives ara, not ala,
     from ada with overlapping d → r then d → l cases. Deleting the first enables the second. Two overlapping
     cases therefore cannot provide the proposed optional-outcome proof. An Output segment-list class {r,l}
-    supplies both alternatives within one case, under lexical rule-feature restrictions; the same representation
-    can retain an original segment alongside its changed counterpart. No optional flag or dialect/register
+    is applied as the union of its members' features, leaving one underspecified segment, and yields only r.
+    Free variation is authored as alternate forms of the stem on the entry. This union behaviour holds for rule
+    Output only; an affix-process insertion of a multi-member class still yields either member
+    (`RealParserAffixProcessOutputKindTests`). No optional flag or dialect/register
     abstraction is invented. The requested overlapping-RHS semantics require a separate engine/model decision.
 14. **Respect the loader's variable-name bound.** FieldWorks HCLoader names alpha constraints with a fixed
     24-element Greek-name table. The combined Input and all outcomes therefore admit at most 24 distinct
