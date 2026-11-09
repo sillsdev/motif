@@ -763,6 +763,7 @@
   "SIL.Motif.Tests.Commands.StoredGrammarCheckQueryTests": 3.6,
   "SIL.Motif.Tests.Commands.StoredParseWarningsTests": 0.0,
   "SIL.Motif.Tests.Commands.StorePruneCommandTests": 0.2,
+  "SIL.Motif.Tests.Commands.SetCharacterClassDraftTests": 1.1,
   "SIL.Motif.Tests.Commands.TextCoverageSelectionParityTests": 6.8,
   "SIL.Motif.Tests.Commands.TextInventoryQueryTests": 1.5,
   "SIL.Motif.Tests.Commands.TextWordsQueryTests": 2.1,
@@ -1294,5 +1295,6 @@
   "SIL.Motif.Tests.WritingSystems.FwDataProjectLoaderWritingSystemRepositoryTests": 0.0,
   "SIL.Motif.Tests.WritingSystems.ProcessWritingSystemRepositoryTests": 12.4,
   "SIL.Motif.Tests.WritingSystems.WritingSystemDisplayTests": 0.1,
-  "SIL.Motif.Tests.WritingSystems.WritingSystemInventoryTests": 0.5
+  "SIL.Motif.Tests.WritingSystems.WritingSystemInventoryTests": 0.5,
+  "SIL.Motif.Tests.WritingSystems.WritingSystemCharacterClassTests": 1.5
 }

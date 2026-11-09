@@ -126,6 +126,13 @@ public sealed class DryRunScratch : IDisposable
         return _cache;
     }
 
+    // Disposing a cache writes changed writing systems to its project's store; a scratch must not write there.
+    private static void ForgetUnsavedWritingSystemChanges(LcmCache cache)
+    {
+        foreach (var writingSystem in cache.ServiceLocator.WritingSystemManager.WritingSystems)
+            writingSystem.AcceptChanges();
+    }
+
     /// <summary>
     /// Discards the scratch: disposes the cache and runs the caller's cleanup. This — not a rollback —
     /// is how a Dry Run's mutations are undone.
@@ -135,7 +142,11 @@ public sealed class DryRunScratch : IDisposable
         var cache = _cache;
         _cache = null;
 
-        if (cache is { IsDisposed: false }) cache.Dispose();
+        if (cache is { IsDisposed: false })
+        {
+            ForgetUnsavedWritingSystemChanges(cache);
+            cache.Dispose();
+        }
         _onDisposed?.Invoke();
     }
 }

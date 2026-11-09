@@ -79,6 +79,9 @@ public static partial class SnapshotFields
     /// <summary>One Text's identity, name, paragraph, segment and occurrence bindings; never every Text.</summary>
     public const string LangProjectTexts = "texts/langProject/texts";
 
+    /// <summary>The class (word-forming or punctuation) of the named characters in one writing system, as its LDML character sets and Unicode give it; never the rest of the writing system.</summary>
+    public const string LangProjectWritingSystemCharacterClass = "writingSystems/langProject/characterClass";
+
     /// <summary>Whether the parser's built-in default compounding is switched off in ParserParameters; never the rest of that XML.</summary>
     public const string MoMorphDataNoDefaultCompounding = "grammar/moMorphData/noDefaultCompounding";
 

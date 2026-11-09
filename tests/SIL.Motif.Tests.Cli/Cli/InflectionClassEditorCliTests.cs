@@ -46,6 +46,7 @@ public sealed class InflectionClassEditorCliTests
     [InlineData("compose-edit-compound-rule")]
     [InlineData("compose-set-no-default-compounding")]
     [InlineData("compose-set-not-on-clitics")]
+    [InlineData("compose-set-character-class")]
     [InlineData("compose-author-circumfix")]
     [InlineData("compose-add-morphosyntax-analysis")]
     [InlineData("compose-set-entry-do-not-parse")]

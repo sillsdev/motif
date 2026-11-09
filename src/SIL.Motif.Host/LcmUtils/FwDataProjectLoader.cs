@@ -534,6 +534,12 @@ public class FwDataProjectLoader
     /// liblcm</b> (ADR 0016), and this reflection is what should be
     /// deleted when it lands.
     /// </para>
+    /// <para>
+    /// <b>The writing systems are saved too.</b> A writing system lives in the project's
+    /// <c>WritingSystemStore</c>, outside the <c>.fwdata</c> file and outside the unit of work, so committing
+    /// the backend alone left a changed writing system in memory: a file copy, a Trial's exported candidate
+    /// and a reload all read the old LDML (ADR 0096). Saving writes only the writing systems that changed.
+    /// </para>
     /// </remarks>
     public virtual void Save(LcmCache cache)
     {
@@ -544,6 +550,7 @@ public class FwDataProjectLoader
 
         var ui = cache.ServiceLocator.GetInstance<ILcmUI>() as HeadlessLcmUi;
         ui?.ThrowReportedErrors();
+        cache.ServiceLocator.WritingSystemManager.Save();
         cache.ActionHandlerAccessor.Commit();
         WaitForPendingWritesToReachDisk(cache);
         ui?.ThrowReportedErrors();

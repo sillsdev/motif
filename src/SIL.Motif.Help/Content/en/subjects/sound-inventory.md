@@ -20,6 +20,7 @@ An orthography that writes numerals inside words (Cebuano `ika-14`, an ordinal p
 3. `compose-merge-phoneme` folds a phoneme into the one it is a spelling of, and `compose-split-phoneme` undoes that.
 4. `compose-author-phonological-feature` and `compose-add-phonological-feature-value` define the features of sounds (place, voicing), and `compose-edit-phoneme-features` sets them on phonemes that exist.
 5. `compose-author-natural-class` groups phonemes once they exist, by members or by features, and `compose-edit-natural-class-features` changes the features of a class.
+6. `compose-set-character-class` makes characters such as curly quotes punctuation (not part of a word), or word-forming, for a writing system; Trial the Texts to see the words change.
 
 ## Pitfalls
 

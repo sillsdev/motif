@@ -1214,6 +1214,19 @@
     },
     {
       "kind": "command",
+      "code": "compose-set-character-class",
+      "slug": "compose-set-character-class",
+      "title": "Set a character\u0027s class",
+      "description": "Stages one change that makes named characters of a project writing system part of a word or punctuation, such as making the curly quotes punctuation so they stop being part of a word. The Trial re-reads the Texts with the changed writing system; only a person can Apply.",
+      "helpPage": "# Set a character\u0027s class\n\n\u0060\u0060\u0060sh\nmotif compose-set-character-class --project language.fwdata --draft \u003Cname\u003E \\\n  --intent \u0027{\u0022ws\u0022:\u0022ceb\u0022,\u0022class\u0022:\u0022punctuation\u0022,\u0022characters\u0022:\u0022\\u2018\\u2019\u0022}\u0027\n\u0060\u0060\u0060\n\nMoves the named characters of one project writing system between word-forming (part of a word) and punctuation (not part of a word). \u0060class\u0060 is \u0060wordForming\u0060 or \u0060punctuation\u0060; \u0060characters\u0060 lists the characters together, one visible character each. Motif refuses punctuation for a letter, mark or modifier, because no writing-system setting can make one so.\n\nThe command stages one write in the Draft. It does not change the FieldWorks project. Finish the Draft, inspect its Dry Run, and Trial the affected Texts: the Trial re-reads them with the changed writing system, so a word such as \u0060\u2018baba\u2019\u0060 becomes \u0060baba\u0060. Review the after Report; only a person can Apply a Proposal. Apply writes the project\u0027s writing-system file and re-reads the Texts that contain the changed characters.\n\nAdd \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 to record the source on the operation this command produces.\n",
+      "usage": [
+        "Usage: motif compose-set-character-class --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-set-character-class/"
+    },
+    {
+      "kind": "command",
       "code": "compose-set-entry-do-not-parse",
       "slug": "compose-set-entry-do-not-parse",
       "title": "Set entry parsing flag",

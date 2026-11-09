@@ -20,10 +20,10 @@ namespace SIL.Motif.Commands;
 /// that set, the same one <c>project create --word-forming</c> fills.
 /// </para>
 /// <para>
-/// This is the one command that edits a writing system of an existing project, which is why it is human-only and
-/// never a Proposal: a writing system is not part of the grammar the Proposals change, and LibLCM keeps it in the
-/// project's writing-system store. It only adds characters and never removes one. The parser needs more than the
-/// writing system: each character a word can contain must also be a phoneme grapheme, which
+/// This is the direct, human-only way to add word-forming characters when no Dry Run or Trial is wanted. It only
+/// adds characters. <c>compose-set-character-class</c> (ADR 0096) is the Proposal way, and the only way to move a
+/// character back to punctuation. The parser needs more than the writing system: each character a word can
+/// contain must also be a phoneme grapheme, which
 /// <c>compose-author-phoneme</c> authors in a Proposal.
 /// </para>
 /// </remarks>

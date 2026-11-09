@@ -616,6 +616,27 @@
     ],
     "redirect": "Only chooses where phonological rules run relative to clitics; it authors no rule or clitic. Trial clitic words first and ask the linguist (guide workflow)."
   },
+  "compose-set-character-class": {
+    "title": "Set a character's class",
+    "description": "Stages one change that makes named characters of a project writing system part of a word or punctuation, such as making the curly quotes punctuation so they stop being part of a word. The Trial re-reads the Texts with the changed writing system; only a person can Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "ws": "The writing system tag, for example ceb.",
+      "class": "wordForming or punctuation.",
+      "characters": "The characters to change, written together, one visible character each."
+    },
+    "goals": [
+      "Stop a quotation mark from being part of a word",
+      "Make a character part of a word",
+      "Split words at an apostrophe or a curly quote"
+    ],
+    "guides": [
+      "workflow",
+      "ask-the-linguist"
+    ],
+    "redirect": "Only moves characters between word and punctuation; no other writing-system setting. Trial the affected Texts and ask the linguist (guide workflow)."
+  },
   "compose-edit-affix-slot": {
     "title": "Edit an affix slot",
     "description": "Changes whether an existing inflectional affix slot is optional, renames it, or both. The response lists every affix and template using the shared slot; Motif stages a Draft and never Applies it automatically. Only a person can Apply.",

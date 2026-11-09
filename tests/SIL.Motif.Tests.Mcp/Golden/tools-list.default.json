@@ -7703,6 +7703,68 @@
                     "type": "string",
                     "description": "Composing verb for this intent.",
                     "enum": [
+                      "compose-set-character-class"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-set-character-class.",
+                    "properties": {
+                      "ws": {
+                        "type": "string",
+                        "description": "The writing system tag, for example ceb."
+                      },
+                      "class": {
+                        "type": "string",
+                        "enum": [
+                          "wordForming",
+                          "punctuation"
+                        ],
+                        "description": "wordForming or punctuation."
+                      },
+                      "characters": {
+                        "type": "string",
+                        "description": "The characters to change, written together, one visible character each."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "ws",
+                      "class",
+                      "characters"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
                       "compose-author-circumfix"
                     ]
                   },
@@ -10666,6 +10728,50 @@
         "draft",
         "expectedNotOnClitics",
         "notOnClitics",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false
+  },
+  {
+    "name": "motif_set_character_class",
+    "description": "Set a character\u0027s class. Research first: motif_guide topic workflow or ask-the-linguist; check best practice. Only moves characters between word and punctuation; no other writing-system setting. Trial the affected Texts and ask the linguist (guide workflow). Stages one change that makes named characters of a project writing system part of a word or punctuation, such as making the curly quotes punctuation so they stop being part of a word. The Trial re-reads the Texts with the changed writing system; only a person can Apply.\nCommand: compose-set-character-class. Agent class: Draft.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "draft": {
+          "type": "string",
+          "description": "Draft name."
+        },
+        "ws": {
+          "type": "string",
+          "description": "The writing system tag, for example ceb."
+        },
+        "class": {
+          "type": "string",
+          "enum": [
+            "wordForming",
+            "punctuation"
+          ],
+          "description": "wordForming or punctuation."
+        },
+        "characters": {
+          "type": "string",
+          "description": "The characters to change, written together, one visible character each."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "draft",
+        "ws",
+        "class",
+        "characters",
         "project"
       ],
       "additionalProperties": false
