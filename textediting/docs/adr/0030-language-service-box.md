@@ -119,7 +119,7 @@ that is behaviour, not code. Only empty text has nothing to describe: whitespace
   it but for case; insert a missing leading slash. Nothing is offered where there is no single right answer (an unknown phoneme).
 
 **Open questions** (not owner decisions; none blocks the library):
-- Phase 0 gates that need a person (scope report 18, section 5; `docs/manual-testing.md` steps 12.1 to 12.14): do the chips read as chips on a
+- Phase 0 gates that need a person (scope report 18, section 5; `docs/manual-testing.md` section 12; since 2026-11-09 steps 12.4 to 12.10 are automated in the playground and input-driver tests): do the chips read as chips on a
   real screen in both themes; does completion work with an input method and Keyman active; does the popup place, focus and dismiss correctly
   on Avalonia 11.3 inside `WinFormsAvaloniaControlHost`. Headless tests cover the logic, the keys and the popup in the playground's window.
 - Accessibility (owner question Q59, open): a change of the highlight is not announced by itself (Avalonia 11 and 12 have no live region); the
