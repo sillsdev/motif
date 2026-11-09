@@ -6,6 +6,9 @@ Status: accepted (2026-08-01). **Amended twice** — 2026-08-05 (*Verified, and 
 anticipate*) and 2026-08-06 (*there is exactly one rollback, and the apparatus is deleted rather than kept*),
 which is the one to read first: it shrinks this ADR's consequences to a deletion.
 
+Writing-system operations are the exception to the unsupported-writing-system rule in the first amendment: see
+[ADR 0096](0096-writing-system-changes-are-proposal-operations-character-class-first.md).
+
 Supersedes the mutate-then-rollback mechanism that
 [ADR 0006](0006-engine-reality-apply-readback-preflight.md) decision 3 works around. ADR 0006's other
 decisions stand unchanged — in particular decision 1 (read back, do not replay), which is *why* a dry
