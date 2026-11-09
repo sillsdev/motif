@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Operations;
 using SIL.TextEditing;
 using SIL.TextEditing.Avalonia;
 using TextDocument = SIL.TextEditing.Document;
@@ -19,14 +20,24 @@ public sealed class GdrDiscussion
     // FieldWorks colours are 0x00BBGGRR.
     private const int BrokenColor = 0x0000C0, LinkColor = 0xC00000;
 
+    private const int RightToLeft = 128;
+
+    private readonly IReadOnlyDictionary<string, PropertyBag> _linkProps;
+
     private GdrDiscussion(TextDocument document, IStyleResolver styles, WritingSystemRegistry writingSystems,
-        IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> targets)
+        IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> targets,
+        IReadOnlyDictionary<string, TextParagraphExpected> expected, IReadOnlyDictionary<string, PropertyBag> linkProps)
     {
         Document = document;
         Styles = styles;
         WritingSystems = writingSystems;
         Targets = targets;
+        Expected = expected;
+        _linkProps = linkProps;
     }
+
+    /// <summary>What each stored paragraph held as the project returned it, by key: what an edit of it began from.</summary>
+    public IReadOnlyDictionary<string, TextParagraphExpected> Expected { get; }
 
     /// <summary>The Discussion's paragraphs, runs and their properties.</summary>
     public TextDocument Document { get; }
@@ -57,12 +68,37 @@ public sealed class GdrDiscussion
     public static string ProjectText(Paragraph paragraph) =>
         string.Concat(paragraph.Runs.Where(run => !IsMarker(run)).Select(run => run.Text));
 
+    /// <summary>
+    /// The runs of <paramref name="paragraph"/> as the project is to hold them: without broken-link markers, and with
+    /// each link run's own properties in place of the colour and underline this view shows links with.
+    /// </summary>
+    public IReadOnlyList<TextRun> ProjectRuns(Paragraph paragraph) => paragraph.Runs.Where(run => !IsMarker(run)).Select(run =>
+    {
+        var props = run.ObjData is { } objData && _linkProps.TryGetValue(objData, out var stored) ? stored : run.Props;
+        var style = props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
+        return new TextRun(run.Text, run.Ws, style, Props(props), run.ObjData);
+    }).ToArray();
+
+    /// <summary>The paragraph properties of <paramref name="paragraph"/> other than its style, with its direction.</summary>
+    public static TextProps ParagraphProps(Paragraph paragraph)
+    {
+        var props = paragraph.Props.Clone();
+        if (paragraph.Rtl || props.IntProps.ContainsKey(RightToLeft)) props.IntProps[RightToLeft] = new IntPropValue(0, paragraph.Rtl ? 1 : 0);
+        return Props(props);
+    }
+
+    private static TextProps Props(PropertyBag bag) => new(
+        bag.IntProps.ToDictionary(pair => pair.Key, pair => (pair.Value.Variation, pair.Value.Value)),
+        bag.StrProps.Where(pair => pair.Key != TextPropertyNumbers.NamedStyle).ToDictionary(pair => pair.Key, pair => pair.Value));
+
     /// <summary>Builds the document, style resolver and writing-system registry for <paramref name="response"/>.</summary>
     public static GdrDiscussion From(GdrShowResponse response)
     {
         ArgumentNullException.ThrowIfNull(response);
         var document = new TextDocument();
         var targets = new Dictionary<(int Paragraph, int Offset), GdrLinkTarget>();
+        var expected = new Dictionary<string, TextParagraphExpected>(StringComparer.Ordinal);
+        var linkProps = new Dictionary<string, PropertyBag>(StringComparer.Ordinal);
         foreach (var source in response.Discussion)
         {
             var paragraph = new Paragraph
@@ -79,11 +115,12 @@ public sealed class GdrDiscussion
                 var props = Bag(run.Properties);
                 if (run.Target is { } target)
                 {
+                    if (run.ObjData is { } objData) linkProps.TryAdd(objData, Bag(run.Properties));
                     targets[(document.Paragraphs.Count, offset)] = target;
                     props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
                     props.SetInt(TextPropertyNumbers.ForeColor, target.State == GdrLinkState.Broken ? BrokenColor : LinkColor, 0);
                 }
-                paragraph.Runs.Add(new Run { Ws = run.WritingSystem, Text = run.Text, Props = props });
+                paragraph.Runs.Add(new Run { Ws = run.WritingSystem, Text = run.Text, Props = props, ObjData = run.ObjData });
                 offset += run.Text.Length;
                 if (run.Target is { State: GdrLinkState.Broken })
                 {
@@ -96,13 +133,16 @@ public sealed class GdrDiscussion
                 }
             }
             document.Paragraphs.Add(paragraph);
+            if (source.Key is { } key)
+                expected[key] = new TextParagraphExpected(string.Concat(source.Runs.Select(run => run.Text)), source.Style ?? "",
+                    TextRunsDigest.Of(source));
         }
 
         var writingSystems = new WritingSystemRegistry();
         foreach (var system in response.WritingSystems)
             writingSystems.Add(WritingSystemRegistry.Define(system.Tag, system.DefaultFont, WritingSystemSizePoints,
                 rtl: system.Direction == "rtl"));
-        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets);
+        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, linkProps);
     }
 
     private static PropertyBag Bag(GdrTextProperties properties)

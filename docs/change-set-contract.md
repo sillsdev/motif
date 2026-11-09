@@ -676,34 +676,52 @@ owns the field. `after` is closed:
 ```json
 { "field": "CmPossibility.Discussion",
   "order": ["<paragraph key>", null],
-  "changed": [{ "index": 1, "key": null, "style": "Normal",
-                "runs": [{ "text": "new paragraph", "ws": "en", "characterStyle": "Emphasis" }] }],
+  "changed": [{ "index": 1, "key": null, "style": "Normal", "ints": { "128": [0, 1] }, "strings": {},
+                "runs": [{ "text": "new paragraph", "ws": "en", "characterStyle": "Emphasis",
+                           "ints": { "2": [0, 1] }, "strings": {}, "objData": null }] }],
   "removed": ["<paragraph key>"],
-  "expected": { "<paragraph key>": "starting text" } }
+  "expected": { "<paragraph key>": { "text": "starting text", "style": "Normal", "runs": "<runs digest>" } } }
 ```
 
 - **`field`** is `Class.Field`. It is one of the inventory's in-scope owning atomic StText fields, except
   `Text.Contents`, whose paragraphs carry a text's segments and analyses. Each such class has one such field, so
   target and kind name the slot `(target, text/<field>)`, and a later edit of the field replaces the earlier one in
   the Draft.
-- **`order`** is every paragraph after the edit. A key is the paragraph's canonical id, and null is a new
-  paragraph. Existing paragraphs keep their relative order.
-- **`changed`** gives each new or changed paragraph's index in `order`, its key, its paragraph style name, and its
-  runs. A run carries text, a writing-system tag and an optional character style; later run properties join
-  this object without a new kind. A paragraph not in `changed` is not written, so its runs, links and embedded objects
-  stay as they are.
+- **`order`** is every paragraph after the edit, and is never empty: a field emptied by the person keeps one empty
+  paragraph. A key is the paragraph's canonical id, and null is a new paragraph. Existing paragraphs keep their
+  relative order.
+- **`changed`** gives each new or changed paragraph's index in `order`, its key, its paragraph style name, its other
+  paragraph properties, and its runs. A run carries text, a writing-system tag, an optional character style, its
+  other properties and its object data, such as a link's target. A paragraph not in `changed` is not written, so its
+  runs, links and embedded objects stay as they are.
+- **`ints`** and **`strings`** are FieldWorks text properties by property number: `ints` as `[variation, value]`,
+  `strings` as text. The set is closed by what a project can store, not by a list in Motif: any property number
+  FieldWorks defines is carried as it is, except those with a member of their own, which are refused as properties
+  (the writing system, 1, is `ws`; the named style, 133, is `style` or `characterStyle`; object data, 6, is
+  `objData`), and the integer properties liblcm cannot load back (50, 129, 150 to 154, 159, 160, and 155 among
+  paragraph properties). A payload that cannot carry a property is refused when it is staged, never written without it.
+- **`objData`** is a run's FieldWorks object data. An embedded object (U+FFFC) is a run of its own and must carry it.
 - **`removed`** is the paragraphs that are gone, such as one joined to the paragraph before it.
-- **`expected`** is the starting text of exactly the changed and removed paragraphs.
+- **`expected`** gives exactly the changed and removed paragraphs as the edit began: their text, their paragraph
+  style name, and a digest of their runs. The digest is the lowercase hexadecimal SHA-256 of a JSON array with one
+  `[text, ws, ints, strings, objData]` entry per run, where text is in NFD, `ints` is `[number, variation, value]`
+  sorted by number without the writing system, and `strings` is `[number, text]` sorted by number without object data.
 
-Apply creates the StText when the field has none, writes each style by name, keeps each existing paragraph's identity
-and creates new ones. A new object's GUID comes from the operation id, so a Dry Run and its Apply record the same
-effect. The effect's field is `text/<field>`, and Before and After give each paragraph's text and style by key and the
-paragraphs' order.
+Apply creates the StText when the field has none, keeps each existing paragraph's identity and creates new ones. A
+changed paragraph starts from the paragraph properties it has, such as its direction and indents, and the edit's
+properties and style are set over them. Its runs are written whole from the payload, with text in NFD. An empty
+paragraph takes the writing system of its first run, else its own, else the paragraph before it; FieldWorks does not
+store an empty paragraph's writing system, so it reads back as the field's default. A new object's GUID comes from
+the operation id, so a Dry Run and its Apply record the same effect. The effect's field is `text/<field>`, and Before
+and After give each paragraph's text, style and runs digest by key and the paragraphs' order.
 
-If a paragraph the edit began from has changed, appeared, gone or moved, the operation is refused with
-`text.field-stale`. Its facts name the operation, the owner and the field. A Proposal still applies whole or not at
-all, so the whole Apply is refused and the Draft stays as it was, every other edit included. A Draft whose every
-operation is `text/setParagraphs` needs no Correctness Assessment, because the parser reads none of these fields.
+If a paragraph the edit began from has changed its text, style or runs, or has appeared, gone or moved, or a key in
+the edit is not one of the field's paragraphs, the operation is refused with `text.field-stale`. Its facts name the
+operation, the owner and the field. A Proposal still applies whole or not at all, so the whole Apply is refused and
+the Draft stays as it was, every other edit included. The person either edits the field again from its current text,
+which replaces the operation, or takes the field's operation out of the Draft, which leaves the other edits there. A
+Draft whose every operation is `text/setParagraphs` needs no Correctness Assessment, because the parser reads none of
+these fields.
 
 ## IDs and GUID mapping
 

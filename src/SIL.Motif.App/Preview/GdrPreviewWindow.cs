@@ -28,6 +28,14 @@ public sealed class GdrPreviewWindow : Window
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
     private readonly HashSet<string> _stale = new(StringComparer.Ordinal);
     private readonly Border _staleStrip;
+    private readonly Border _unappliedStrip = new()
+    {
+        Background = Brushes.LightYellow,
+        Padding = new Thickness(8, 4),
+        IsVisible = false,
+        Child = new TextBlock { Text = UnappliedMessage, TextWrapping = TextWrapping.Wrap },
+    };
+    private readonly Dictionary<string, string> _refused = new(StringComparer.Ordinal);
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
     private Task _staging = Task.CompletedTask;
     private readonly ListBox _records = new() { Width = 220 };
@@ -83,6 +91,8 @@ public sealed class GdrPreviewWindow : Window
         var inField = new DockPanel { LastChildFill = true };
         DockPanel.SetDock(_staleStrip, Dock.Top);
         inField.Children.Add(_staleStrip);
+        DockPanel.SetDock(_unappliedStrip, Dock.Top);
+        inField.Children.Add(_unappliedStrip);
         inField.Children.Add(_scroll);
         var reading = new Border
         {
@@ -139,23 +149,52 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>Whether the strip saying the shown record was also changed in FieldWorks is showing.</summary>
     public bool IsStaleStripShown => _staleStrip.IsVisible;
 
+    /// <summary>What the strip in the field says when the shown record holds an edit the Draft kept from an earlier window.</summary>
+    public const string UnappliedMessage = "This Discussion shows your edit that is not applied yet.";
+
+    /// <summary>Whether the strip saying the shown record shows an edit kept in the Draft is showing.</summary>
+    public bool IsUnappliedStripShown => _unappliedStrip.IsVisible;
+
+    /// <summary>The newest read of a record's edit from the Draft, which reaches the field when it completes.</summary>
+    public Task Loading { get; private set; } = Task.CompletedTask;
+
     /// <summary>
-    /// Ends the shown record's session, waits for every edit to reach the Draft, and applies the pending changes. Once
-    /// they are written, each staged record's paragraphs take the keys the project gave them and its session starts
-    /// again from the applied text; returns whether Apply wrote them.
+    /// Ends the shown record's session, waits for every edit to reach the Draft, and applies the pending changes, with
+    /// every field read-only meanwhile. Once they are written, each staged record's paragraphs take the keys the project
+    /// gave them and its session starts again from the applied text; returns whether Apply wrote them. Apply waits while
+    /// a record's latest edit could not be staged, since the Draft still holds an older one.
     /// </summary>
     public async Task<bool> ApplyAsync()
     {
         if (_store is null) return false;
         Session?.EndSession();
+        // A refused staging is tried again, so a busy Draft only holds Apply back while it stays busy.
+        foreach (var id in _refused.Keys.ToArray())
+            if (_opened.TryGetValue(id, out var refused)) _ = Stage(refused, refused.Session.Pending);
         await _staging;
-        if (await _store.ApplyAsync() is { } refusal)
+        if (_refused.Count > 0)
+        {
+            _status.Text = "Nothing was applied: an edit could not be added to the pending changes. " + _refused.Values.First();
+            return false;
+        }
+        var fields = _opened.Values.Select(opened => (opened.Field, opened.Field.IsReadOnly)).ToArray();
+        foreach (var (field, _) in fields) field.IsReadOnly = true;
+        GdrApplyRefusal? refusal;
+        try
+        {
+            refusal = await _store.ApplyAsync();
+        }
+        finally
+        {
+            foreach (var (field, readOnly) in fields) field.IsReadOnly = readOnly;
+        }
+        if (refusal is not null)
         {
             if (refusal.StaleRecordId is { } stale)
             {
                 _stale.Add(stale);
                 _status.Text = "Nothing was applied.";
-                ShowStaleStrip();
+                ShowStrips();
             }
             else
             {
@@ -166,6 +205,7 @@ public sealed class GdrPreviewWindow : Window
         foreach (var id in _staged.ToArray()) Rekey(id);
         _staged.Clear();
         _status.Text = "Applied.";
+        ShowStrips();
         return true;
     }
 
@@ -177,34 +217,51 @@ public sealed class GdrPreviewWindow : Window
     {
         if (_store is null || _shownId is not { } id || !_stale.Contains(id)) return false;
         if (!await _confirmStartAgain()) return false;
-        var opened = _opened[id];
-        opened.Session.EndSession();
-        if (await Stage(id, null, opened.Field.Editor.Document) is not null) return false;
+        _opened[id].Session.EndSession();
+        if (await Staged(id, pending: false, () => _store.DiscardAsync(id)) is not null) return false;
         _stale.Remove(id);
         _opened.Remove(id);
         Show(id);
         return true;
     }
 
-    private Task<string?> Stage(string recordId, GdrDiscussionEdit? edit, SIL.TextEditing.Document document)
+    private Task<string?> Stage(OpenedRecord opened, GdrDiscussionEdit? edit) => edit is null
+        ? Staged(opened.RecordId, pending: false, () => _store!.DiscardAsync(opened.RecordId))
+        : Staged(opened.RecordId, pending: true,
+            () => _store!.StageAsync(opened.RecordId, GdrDiscussionPayload.From(edit, opened.Discussion, opened.Began)));
+
+    // One staging at a time, in the order the sessions ended, so the Draft ends up with each record's latest edit.
+    private Task<string?> Staged(string recordId, bool pending, Func<Task<string?>> write)
     {
-        var staged = StageAfter(_staging, recordId, edit is not null, GdrDiscussionPayload.From(edit, document));
+        var staged = StageAfter(_staging, recordId, pending, write);
         _staging = staged;
         return staged;
     }
 
-    // One staging at a time, in the order the sessions ended, so the Draft ends up with each record's latest edit.
-    private async Task<string?> StageAfter(Task earlier, string recordId, bool pending, TextParagraphsPayload paragraphs)
+    private async Task<string?> StageAfter(Task earlier, string recordId, bool pending, Func<Task<string?>> write)
     {
         await earlier;
-        var refusal = await _store!.StageAsync(recordId, paragraphs);
-        if (refusal is null && pending) _staged.Add(recordId);
-        else if (refusal is null) _staged.Remove(recordId);
+        var refusal = await write();
+        if (refusal is null)
+        {
+            _refused.Remove(recordId);
+            if (pending) _staged.Add(recordId);
+            else _staged.Remove(recordId);
+        }
+        else
+        {
+            _refused[recordId] = refusal;
+        }
         _status.Text = refusal ?? string.Empty;
         return refusal;
     }
 
-    private void ShowStaleStrip() => _staleStrip.IsVisible = _shownId is { } id && _stale.Contains(id);
+    private void ShowStrips()
+    {
+        _staleStrip.IsVisible = _shownId is { } id && _stale.Contains(id);
+        _unappliedStrip.IsVisible = !_staleStrip.IsVisible && _shownId is { } shown &&
+            _opened.TryGetValue(shown, out var opened) && opened.Began is not null && opened.Session.Pending is not null;
+    }
 
     private async Task<bool> ConfirmStartAgainAsync()
     {
@@ -238,7 +295,7 @@ public sealed class GdrPreviewWindow : Window
         return await dialog.ShowDialog<bool>(this);
     }
 
-    // New paragraphs get their keys from the project after Apply; a reshaped field is rebuilt instead.
+    // After Apply, new paragraphs take the project's keys and the applied text is the next edit's start.
     private void Rekey(string id)
     {
         if (!_opened.TryGetValue(id, out var opened)) return;
@@ -247,6 +304,7 @@ public sealed class GdrPreviewWindow : Window
         {
             for (var i = 0; i < paragraphs.Count; i++) paragraphs[i].Key = reloaded.Discussion[i].Key;
             opened.Session.Applied();
+            _opened[id] = opened with { Discussion = GdrDiscussion.From(reloaded), Began = null };
             return;
         }
         _opened.Remove(id);
@@ -256,37 +314,122 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>The heading above the field: the selected record's number, title and abstract.</summary>
     public string HeadingText => _heading.Text ?? string.Empty;
 
-    /// <summary>Selects the record <paramref name="id"/> and shows its Discussion, with any edits made to it already.</summary>
+    /// <summary>
+    /// Selects the record <paramref name="id"/> and shows its Discussion, with any edits made to it already. A record
+    /// opened for the first time shows the edit the pending-changes Draft holds for it, once <see cref="Loading"/>
+    /// has read it.
+    /// </summary>
     public void Show(string id)
     {
+        GdrShowResponse? first = null;
         if (!_opened.TryGetValue(id, out var opened))
         {
-            var shown = _show(id);
-            if (shown is null) return;
-            var discussion = GdrDiscussion.From(shown);
-            // A field edits one document for its whole life, so each record gets its own field and keeps it.
-            var field = new RichTextField(discussion.Document)
-            {
-                WritingSystems = discussion.WritingSystems,
-                StyleResolver = discussion.Styles,
-            };
-            field.ContextMenuRequested += OnContextMenuRequested;
-            var session = new GdrDiscussionSession(field, shown.Record.Id);
-            session.PendingChanged += (_, edit) =>
-            {
-                // A field set aside by "Start again" no longer speaks for the record.
-                if (!_opened.TryGetValue(id, out var current) || current.Field != field) return;
-                if (_store is not null) Stage(shown.Record.Id, edit, field.Editor.Document);
-                PendingEditChanged?.Invoke(this, edit);
-            };
-            opened = new(field, session, $"{shown.Record.Abbreviation}  {shown.Record.Title}\n{shown.Record.Description}", discussion);
+            first = _show(id);
+            if (first is null) return;
+            opened = Open(first, null);
             _opened[id] = opened;
         }
         _shownId = id;
         _scroll.Content = opened.Field;
         _heading.Text = opened.Heading;
         _target.Text = string.Empty;
-        ShowStaleStrip();
+        ShowStrips();
+        if (first is not null && _store is not null) Loading = LoadPending(first, opened);
+    }
+
+    private OpenedRecord Open(GdrShowResponse shown, TextParagraphsPayload? pending)
+    {
+        var id = shown.Record.Id;
+        var discussion = GdrDiscussion.From(shown);
+        var starting = pending is null ? null : discussion.Document.Paragraphs.Select(paragraph => paragraph.Clone()).ToList();
+        if (pending is not null) ShowEdit(discussion.Document, pending);
+        // A field edits one document for its whole life, so each record gets its own field and keeps it.
+        var field = new RichTextField(discussion.Document)
+        {
+            WritingSystems = discussion.WritingSystems,
+            StyleResolver = discussion.Styles,
+        };
+        field.ContextMenuRequested += OnContextMenuRequested;
+        // Until the Draft has been read, typing could start an edit that would replace the one it holds.
+        field.IsReadOnly = _store is not null && pending is null;
+        var session = new GdrDiscussionSession(field, id, starting: starting);
+        var opened = new OpenedRecord(id, field, session, $"{shown.Record.Abbreviation}  {shown.Record.Title}\n{shown.Record.Description}",
+            discussion, pending?.Expected);
+        session.PendingChanged += (_, edit) =>
+        {
+            // A field set aside by "Start again" or by loading the Draft's edit no longer speaks for the record.
+            if (!_opened.TryGetValue(id, out var current) || current.Field != field) return;
+            if (_store is not null) Stage(current, edit);
+            PendingEditChanged?.Invoke(this, edit);
+            ShowStrips();
+        };
+        return opened;
+    }
+
+    // A record the Draft holds an edit of shows that edit, so a later session updates it.
+    private async Task LoadPending(GdrShowResponse shown, OpenedRecord opened)
+    {
+        var read = await _store!.PendingAsync(opened.RecordId);
+        if (!_opened.TryGetValue(opened.RecordId, out var current) || current != opened) return;
+        if (read.Refusal is { } refusal)
+        {
+            _status.Text = "This Discussion stays read-only: its pending edit could not be read. " + refusal;
+            return;
+        }
+        if (read.Paragraphs is not { } pending)
+        {
+            opened.Field.IsReadOnly = false;
+            return;
+        }
+        var keys = opened.Discussion.Expected.Keys.ToHashSet(StringComparer.Ordinal);
+        if (!pending.Order.OfType<string>().All(keys.Contains))
+        {
+            // The Draft's edit names a paragraph the project no longer holds, so it can only be started again.
+            _stale.Add(opened.RecordId);
+            _staged.Add(opened.RecordId);
+            ShowStrips();
+            return;
+        }
+        var reopened = Open(shown, pending);
+        _opened[opened.RecordId] = reopened;
+        _staged.Add(opened.RecordId);
+        if (_shownId == opened.RecordId) _scroll.Content = reopened.Field;
+        ShowStrips();
+    }
+
+    private static void ShowEdit(SIL.TextEditing.Document document, TextParagraphsPayload pending)
+    {
+        var byKey = document.Paragraphs.Where(paragraph => paragraph.Key is string)
+            .ToDictionary(paragraph => (string)paragraph.Key!, StringComparer.Ordinal);
+        var changes = pending.Changed.ToDictionary(change => change.Index);
+        var edited = pending.Order.Select((key, index) =>
+            changes.TryGetValue(index, out var change) ? Paragraph(change) : byKey[key!]).ToList();
+        document.Paragraphs.Clear();
+        foreach (var paragraph in edited) document.Paragraphs.Add(paragraph);
+    }
+
+    private static Paragraph Paragraph(TextParagraphChange change)
+    {
+        var paragraph = new Paragraph { Key = change.Key, Style = change.Style ?? string.Empty, Props = Bag(change.Props) };
+        paragraph.Rtl = paragraph.Props.TryGetInt(128, out var rtl) && rtl != 0;
+        if (change.Style is { } style) paragraph.Props.SetStr(SIL.TextEditing.TextPropertyNumbers.NamedStyle, style);
+        foreach (var run in change.Runs)
+        {
+            var props = Bag(run.Props);
+            if (run.CharacterStyle is { } named) props.SetStr(SIL.TextEditing.TextPropertyNumbers.NamedStyle, named);
+            paragraph.Runs.Add(new Run { Text = run.Text, Ws = run.Ws, Props = props, ObjData = run.ObjData });
+        }
+        if (change.Runs.Count > 0) paragraph.DefaultWs = change.Runs[0].Ws;
+        return paragraph;
+    }
+
+    private static PropertyBag Bag(TextProps? props)
+    {
+        var bag = new PropertyBag();
+        if (props is null) return bag;
+        foreach (var (number, (variation, value)) in props.Ints) bag.SetInt(number, value, variation);
+        foreach (var (number, value) in props.Strings) bag.SetStr(number, value);
+        return bag;
     }
 
     /// <summary>What the last activated link points to; empty before one is activated.</summary>
@@ -338,5 +481,7 @@ public sealed class GdrPreviewWindow : Window
         return window;
     }
 
-    private sealed record OpenedRecord(RichTextField Field, GdrDiscussionSession Session, string Heading, GdrDiscussion Discussion);
+
+    private sealed record OpenedRecord(string RecordId, RichTextField Field, GdrDiscussionSession Session, string Heading,
+        GdrDiscussion Discussion, IReadOnlyDictionary<string, TextParagraphExpected>? Began);
 }

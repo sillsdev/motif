@@ -51,12 +51,17 @@ public sealed class GdrDiscussionSession
     private bool _stepOpen;
     private List<Paragraph> _starting;
 
-    /// <summary>Starts hosting <paramref name="field"/>, whose document is record <paramref name="recordId"/>'s Discussion as shown.</summary>
-    public GdrDiscussionSession(RichTextField field, string recordId, TimeSpan? pause = null)
+    /// <summary>
+    /// Starts hosting <paramref name="field"/>, whose document is record <paramref name="recordId"/>'s Discussion as
+    /// shown. When the field already shows an edit, <paramref name="starting"/> is the text that edit began from, and
+    /// the edit is <see cref="Pending"/> from the start.
+    /// </summary>
+    public GdrDiscussionSession(RichTextField field, string recordId, TimeSpan? pause = null, IEnumerable<Paragraph>? starting = null)
     {
         _field = field ?? throw new ArgumentNullException(nameof(field));
         _recordId = recordId;
-        _starting = Copy(field.Editor.Document);
+        _starting = starting?.Select(paragraph => paragraph.Clone()).ToList() ?? Copy(field.Editor.Document);
+        Pending = starting is null ? null : Measure();
         _pause = new DispatcherTimer { Interval = pause ?? DefaultPause };
         _pause.Tick += (_, _) => EndSession();
 

@@ -307,19 +307,51 @@ public sealed class GdrPreviewWindowTests
     {
         public List<(string RecordId, TextParagraphsPayload Paragraphs)> Staged { get; } = [];
 
+        public List<string> Discards { get; } = [];
+
+        public Dictionary<string, TextParagraphsPayload> Pending { get; } = [];
+
+        public string? StageRefusal { get; set; }
+
+        public TaskCompletionSource? ApplyGate { get; set; }
+
+        public TaskCompletionSource? PendingGate { get; set; }
+
+        public string? PendingRefusal { get; set; }
+
         public int Applies { get; private set; }
 
         public Task<string?> StageAsync(string recordId, TextParagraphsPayload paragraphs)
         {
+            if (StageRefusal is { } refusal) return Task.FromResult<string?>(refusal);
             Staged.Add((recordId, paragraphs));
             return Task.FromResult<string?>(null);
         }
 
-        public Task<GdrApplyRefusal?> ApplyAsync()
+        public Task<string?> DiscardAsync(string recordId)
+        {
+            Discards.Add(recordId);
+            return Task.FromResult<string?>(null);
+        }
+
+        public async Task<GdrPendingRead> PendingAsync(string recordId)
+        {
+            if (PendingGate is { } gate) await gate.Task;
+            return new GdrPendingRead(PendingRefusal is null ? Pending.GetValueOrDefault(recordId) : null, PendingRefusal);
+        }
+
+        public async Task<GdrApplyRefusal?> ApplyAsync()
         {
             Applies++;
-            return Task.FromResult(applyRefusal);
+            if (ApplyGate is { } gate) await gate.Task;
+            return applyRefusal;
         }
+    }
+
+    private static void Completed(Task task)
+    {
+        while (!task.IsCompleted) Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        task.GetAwaiter().GetResult();
     }
 
     private static GdrShowResponse Split(GdrSummary record)
@@ -362,12 +394,13 @@ public sealed class GdrPreviewWindowTests
             Assert.Equal((0, "para-1", "Normal"), (changed.Index, changed.Key, changed.Style));
             Assert.Equal([("xyzWords end at ", "en", (string?)null), ("spaces", "en", "Emphasis")],
                 changed.Runs.Select(run => (run.Text, run.Ws, run.CharacterStyle)));
-            Assert.Equal("Words end at spaces", paragraphs.Expected["para-1"]);
+            Assert.Equal(new TextParagraphExpected("Words end at spaces", "Normal", TextRunsDigest.Of(Canned(First).Discussion[0])),
+                paragraphs.Expected["para-1"]);
         });
     }
 
     [Fact]
-    public void EditingBackToTheStartStagesAnEditThatChangesNothing()
+    public void EditingBackToTheStartTakesTheEditOutOfTheDraft()
     {
         _avalonia.Invoke(() =>
         {
@@ -384,11 +417,8 @@ public sealed class GdrPreviewWindowTests
             Press(window, Key.Z, RawInputModifiers.Control);
             Leave(window);
 
-            Assert.Equal(2, store.Staged.Count);
-            var cleared = store.Staged[1].Paragraphs;
-            Assert.Equal(["para-1", "para-2"], cleared.Order);
-            Assert.Empty(cleared.Changed);
-            Assert.Empty(cleared.Removed);
+            Assert.Single(store.Staged);
+            Assert.Equal([First.Id], store.Discards);
         });
     }
 
@@ -424,7 +454,7 @@ public sealed class GdrPreviewWindowTests
             Leave(window);
             var next = store.Staged[^1].Paragraphs;
             Assert.Equal(["para-1", "para-new", "para-2"], next.Order);
-            Assert.Equal(" at spaces", next.Expected["para-new"]);
+            Assert.Equal(" at spaces", next.Expected["para-new"].Text);
         });
     }
 
@@ -513,10 +543,7 @@ public sealed class GdrPreviewWindowTests
             confirm = true;
             Assert.True(Completed(window.StartAgainFromFieldWorksAsync()));
 
-            var cleared = store.Staged[^1];
-            Assert.Equal(First.Id, cleared.RecordId);
-            Assert.Empty(cleared.Paragraphs.Changed);
-            Assert.Empty(cleared.Paragraphs.Removed);
+            Assert.Equal([First.Id], store.Discards);
             Assert.False(window.IsStaleStripShown);
             Assert.Empty(window.PendingEdits);
             Assert.Equal("Changed in FieldWorks", window.Field!.Editor.Document.Paragraphs[0].Text);
@@ -524,7 +551,7 @@ public sealed class GdrPreviewWindowTests
             window.Field.Focus();
             window.KeyTextInput("b");
             Leave(window);
-            Assert.Equal("Changed in FieldWorks", store.Staged[^1].Paragraphs.Expected["para-1"]);
+            Assert.Equal("Changed in FieldWorks", store.Staged[^1].Paragraphs.Expected["para-1"].Text);
         });
     }
 
@@ -535,7 +562,7 @@ public sealed class GdrPreviewWindowTests
             new GdrParagraph("Normal", false, "en", Props(style: "Normal"),
             [
                 new GdrRun("see ", "en", null, Props()),
-                new GdrRun("entry-1", "en", null, Props(), "link-1", new GdrLinkTarget(GdrLinkState.Resolved, "Lexical entry", "entry-1", "gloss-1")),
+                new GdrRun("entry-1", "en", null, Props(italic: 1), "link-1", new GdrLinkTarget(GdrLinkState.Resolved, "Lexical entry", "entry-1", "gloss-1")),
                 new GdrRun(" and ", "en", null, Props()),
                 new GdrRun("entry-2", "en", null, Props(), "link-2", new GdrLinkTarget(GdrLinkState.Broken, null, null, "")),
                 new GdrRun(" and ", "en", null, Props()),
@@ -614,7 +641,7 @@ public sealed class GdrPreviewWindowTests
         {
             var store = new FakeStore();
             var linked = WithLinks();
-            var keyed = linked with { Discussion = [linked.Discussion[0] with { Key = "para-1" }] };
+            var keyed = linked with { Discussion = [linked.Discussion[0] with { Key = "para-1", RightToLeft = true }] };
             var window = new GdrPreviewWindow([First, Second], _ => keyed, store);
             using var closer = window.CloseOnExit();
             window.Show();
@@ -625,8 +652,175 @@ public sealed class GdrPreviewWindowTests
             Leave(window);
 
             var paragraphs = Assert.Single(store.Staged).Paragraphs;
-            Assert.Equal("see entry-1 and entry-2 and site", paragraphs.Expected["para-1"]);
-            Assert.Equal("xsee entry-1 and entry-2 and site", string.Concat(Assert.Single(paragraphs.Changed).Runs.Select(run => run.Text)));
+            Assert.Equal(new TextParagraphExpected("see entry-1 and entry-2 and site", "Normal", TextRunsDigest.Of(keyed.Discussion[0])),
+                paragraphs.Expected["para-1"]);
+            var changed = Assert.Single(paragraphs.Changed);
+            Assert.Equal("xsee entry-1 and entry-2 and site", string.Concat(changed.Runs.Select(run => run.Text)));
+            Assert.Equal((0, 1), changed.Props!.Ints[128]);
+            var link = changed.Runs.Single(run => run.Text == "entry-1");
+            Assert.Equal("link-1", link.ObjData);
+            Assert.Equal([TextPropertyNumbers.Italic], link.Props!.Ints.Keys);
+            var broken = changed.Runs.Single(run => run.Text == "entry-2");
+            Assert.Equal("link-2", broken.ObjData);
+            Assert.Empty(broken.Props!.Ints);
+            Assert.Equal(["link-1", "link-2", "link-3"], changed.Runs.Where(run => run.ObjData is not null).Select(run => run.ObjData));
+        });
+    }
+
+    [Fact]
+    public void StartingAgainAfterAnEnterAddedAParagraphTakesTheEditOutOfTheDraft()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id));
+            var refused = false;
+            var window = new GdrPreviewWindow([First, Second],
+                id => refused && id == First.Id ? ChangedInFieldWorks(First) : Canned(id == First.Id ? First : Second), store,
+                () => Task.FromResult(true));
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            window.Field!.Focus();
+            window.Field.Editor.SetCaret(new TextPosition(0, "Words end".Length));
+            Press(window, Key.Enter);
+            Assert.False(Completed(window.ApplyAsync()));
+            Assert.Equal(["para-1", null, "para-2"], store.Staged[^1].Paragraphs.Order);
+            refused = true;
+
+            Assert.True(Completed(window.StartAgainFromFieldWorksAsync()));
+
+            Assert.Equal([First.Id], store.Discards);
+            Assert.Equal(["Changed in FieldWorks", "كتاب"], window.Field!.Editor.Document.Paragraphs.Select(paragraph => paragraph.Text));
+            Assert.Empty(window.PendingEdits);
+        });
+    }
+
+    [Fact]
+    public void EveryFieldIsReadOnlyWhileApplyRuns()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { ApplyGate = new TaskCompletionSource() };
+            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            window.Field!.Focus();
+            window.KeyTextInput("a");
+
+            var applying = window.ApplyAsync();
+            while (store.Applies == 0) Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(window.Field.IsReadOnly);
+            window.KeyTextInput("b");
+            Assert.StartsWith("aWords", window.Field.Editor.Document.Paragraphs[0].Text);
+            store.ApplyGate.SetResult();
+            Assert.True(Completed(applying));
+            Assert.False(window.Field.IsReadOnly);
+        });
+    }
+
+    [Fact]
+    public void OpeningARecordShowsTheEditTheDraftHoldsAndALaterSessionKeepsWhatItBeganFrom()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var began = new TextParagraphExpected("Words end at spaces", "Normal", "runs-when-the-edit-began");
+            store.Pending[First.Id] = new TextParagraphsPayload(GdrDiscussionPayload.Field, ["para-1", null, "para-2"],
+            [
+                new TextParagraphChange(0, "para-1", "Normal", [new TextRun("Words end", "en")]),
+                new TextParagraphChange(1, null, "Normal", [new TextRun("New", "en")]),
+            ], [], new Dictionary<string, TextParagraphExpected> { ["para-1"] = began });
+            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            Completed(window.Loading);
+
+            Assert.Equal(["Words end", "New", "كتاب"], window.Field!.Editor.Document.Paragraphs.Select(paragraph => paragraph.Text));
+            Assert.True(window.IsUnappliedStripShown);
+            Assert.Single(window.PendingEdits);
+
+            window.Field.Focus();
+            window.Field.Editor.SetCaret(new TextPosition(1, 3));
+            window.KeyTextInput("er");
+            Leave(window);
+
+            var staged = store.Staged[^1].Paragraphs;
+            Assert.Equal(["para-1", null, "para-2"], staged.Order);
+            Assert.Equal(began, staged.Expected["para-1"]);
+            Assert.Equal("Newer", string.Concat(staged.Changed.Single(change => change.Key is null).Runs.Select(run => run.Text)));
+        });
+    }
+
+    [Fact]
+    public void ApplyWaitsWhileARecordsLatestEditCouldNotBeStaged()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { StageRefusal = "The pending changes are busy." };
+            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            window.Field!.Focus();
+            window.KeyTextInput("a");
+            Leave(window);
+
+            Assert.False(Completed(window.ApplyAsync()));
+
+            Assert.Equal(0, store.Applies);
+            Assert.Contains("The pending changes are busy.", window.StatusText, StringComparison.Ordinal);
+
+            store.StageRefusal = null;
+            Assert.True(Completed(window.ApplyAsync()));
+            Assert.Equal(1, store.Applies);
+            Assert.StartsWith("aWords", Assert.Single(store.Staged).Paragraphs.Changed[0].Runs[0].Text);
+        });
+    }
+
+    [Fact]
+    public void TypingBeforeTheDraftHasBeenReadIsHeldBackAndTheDraftsEditIsShown()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { PendingGate = new TaskCompletionSource() };
+            store.Pending[First.Id] = new TextParagraphsPayload(GdrDiscussionPayload.Field, ["para-1", "para-2"],
+                [new TextParagraphChange(0, "para-1", "Normal", [new TextRun("Kept", "en")])], [],
+                new Dictionary<string, TextParagraphExpected> { ["para-1"] = new("Words end at spaces", "Normal", "digest") });
+            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            window.Field!.Focus();
+
+            window.KeyTextInput("lost");
+            Assert.True(window.Field.IsReadOnly);
+            Assert.Equal("Words end at spaces", window.Field.Editor.Document.Paragraphs[0].Text);
+            store.PendingGate.SetResult();
+            Completed(window.Loading);
+
+            Assert.False(window.Field!.IsReadOnly);
+            Assert.Equal("Kept", window.Field.Editor.Document.Paragraphs[0].Text);
+            Assert.Empty(store.Staged);
+        });
+    }
+
+    [Fact]
+    public void ARecordWhoseDraftEditCannotBeReadStaysReadOnlyAndSaysWhy()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { PendingRefusal = "The project store is busy." };
+            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            Completed(window.Loading);
+
+            Assert.True(window.Field!.IsReadOnly);
+            Assert.Contains("The project store is busy.", window.StatusText, StringComparison.Ordinal);
         });
     }
 }

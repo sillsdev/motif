@@ -565,3 +565,10 @@ public sealed record DiscardEmptyDraftsRequest(string FwDataPath, string Product
 public sealed record StageTextParagraphsRequest(
     string FwDataPath, string Target, SIL.Motif.Runner.Operations.TextParagraphsPayload Paragraphs,
     string? ProductVersion = null);
+
+/// <summary>Requests the pending-changes Draft's edit of one rich-text field: taken out, or read.</summary>
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="Target">The canonical id of the object that owns the field.</param>
+/// <param name="Field">The field, as <c>Class.Field</c>.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store; the current one when null.</param>
+public sealed record TextParagraphsFieldRequest(string FwDataPath, string Target, string Field, string? ProductVersion = null);
