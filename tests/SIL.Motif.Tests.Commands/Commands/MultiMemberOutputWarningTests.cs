@@ -61,4 +61,35 @@ public sealed class MultiMemberOutputWarningTests(PristineProjectFixture pristin
         Assert.Empty(Compose(new { naturalClass = "@jw:naturalclasses" }).Related);
         Assert.Empty(Compose(new { phoneme = "@w:phonemes" }).Related);
     }
+
+    [Fact]
+    public void EditingASavedRuleToAMultiMemberSegmentListOutputWarns()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "seed", "Seed")).Succeeded);
+        var seeded = ProposalCommands.Compose(new(path, Version, "seed", Steps(Rule(new { naturalClass = "@jw:naturalclasses" })), null));
+        Assert.True(seeded.Succeeded, seeded.Refusal?.Message);
+        string Created(string kind) => seeded.Value!.Intents.SelectMany(intent => intent.Operations)
+            .First(operation => operation.Kind == kind).EntityId!;
+        DraftRationale.Author(path, "seed", "seed", "Save a rule with a single-member class Output.");
+        var finalized = ProposalCommands.Finalize(new(path, Version, "seed"));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var dryRun = DryRunJobRunner.Run(path, Version, finalized.Value!.ProposalId);
+        Assert.True(dryRun.Succeeded, dryRun.Refusal?.Message);
+        Assert.True(ProposalCommands.Apply(new(path, Version, finalized.Value.ProposalId, Force: true)).Succeeded);
+
+        Assert.True(ProposalCommands.New(new(path, Version, "edit", "Edit")).Succeeded);
+        var edited = ProposalCommands.ComposeIntent(new(path, Version, "edit", "compose-edit-phonological-rule",
+            JsonSerializer.Serialize(new
+            {
+                rule = Created("grammar/phPhonData/createPhonRules"),
+                output = new[] { new { naturalClass = Created("grammar/phPhonData/createNaturalClasses") } },
+            })));
+        Assert.True(edited.Succeeded, edited.Refusal?.Message);
+        var warning = Assert.Single(edited.Value!.RelatedObjects ?? []);
+        Assert.Equal("multi-member-output", warning.Kind);
+        Assert.Contains("union of the members' features", warning.Name, StringComparison.Ordinal);
+    }
 }
