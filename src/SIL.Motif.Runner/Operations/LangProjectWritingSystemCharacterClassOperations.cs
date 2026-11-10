@@ -30,7 +30,9 @@ namespace SIL.Motif.Runner.Operations;
 /// <para>
 /// The effect records, for each named character, the class the writing system gives it and the set that lists it,
 /// read back after the write. Texts that hold a changed character are parsed again, pinned by
-/// `TextsAreRetokenisedSoTheQuotesStopFormingWords`. The writing system sits outside the unit of work, so only
+/// `TextsAreRetokenisedSoTheQuotesStopFormingWords`, when the character's effective class changed, pinned by
+/// `ListingAnUnlistedNonLetterAsPunctuationParsesNothing`, and when any run of the paragraph is in the writing
+/// system, pinned by `AParagraphWhoseFirstRunIsAnotherWritingSystemIsRetokenised`. The writing system sits outside the unit of work, so only
 /// discarding the cache undoes the change.
 /// </para>
 /// </remarks>
@@ -188,7 +190,11 @@ internal sealed class WritingSystemCharacterClassHandler : IOperationHandler
         RequireChangeable(payload);
 
         var before = Alternatives(ws, payload);
-        if (WritingSystemCharacterSets.Set(ws, payload.Class, payload.Characters)) Retokenise(cache, ws, payload.Characters);
+        var effectiveBefore = payload.Characters.ToDictionary(codePoint => codePoint, ws.get_IsWordForming);
+        WritingSystemCharacterSets.Set(ws, payload.Class, payload.Characters);
+        // Only a changed effective class can change a segmentation, so listing an unlisted non-letter parses nothing.
+        var reclassed = payload.Characters.Where(codePoint => ws.get_IsWordForming(codePoint) != effectiveBefore[codePoint]).ToArray();
+        if (reclassed.Length > 0) Retokenise(cache, ws, reclassed);
         return new ExpectedEffect(id, SnapshotFields.LangProjectWritingSystemCharacterClass, before, Alternatives(ws, payload));
     }
 
@@ -232,13 +238,21 @@ internal sealed class WritingSystemCharacterClassHandler : IOperationHandler
         return (id, Find(cache, payload.WritingSystem));
     }
 
+    // A paragraph can mix writing systems, so the first run alone does not say whether the changed one is used.
+    private static bool HasRunIn(ITsString contents, int handle)
+    {
+        for (var run = 0; run < contents.RunCount; run++)
+            if (contents.get_WritingSystem(run) == handle) return true;
+        return false;
+    }
+
     // FieldWorks segments a paragraph when it is parsed, so Texts keep the old words until they are parsed again.
     private static void Retokenise(LcmCache cache, CoreWritingSystemDefinition ws, IReadOnlyList<int> characters)
     {
         var needles = characters.Select(char.ConvertFromUtf32).ToArray();
         var paragraphs = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().AllInstances()
             .Where(paragraph => paragraph.Contents is { Length: > 0 } contents &&
-                contents.get_WritingSystem(0) == ws.Handle &&
+                HasRunIn(contents, ws.Handle) &&
                 needles.Any(needle => contents.Text.Contains(needle, StringComparison.Ordinal)))
             .ToArray();
         if (paragraphs.Length == 0) return;
