@@ -218,7 +218,8 @@
       "required": [
         "hasBaseline",
         "records",
-        "schemaVersion"
+        "schemaVersion",
+        "isStale"
       ],
       "properties": {
         "hasBaseline": {
@@ -231,10 +232,13 @@
           }
         },
         "schemaVersion": {
-          "const": 4
+          "const": 5
         },
         "baseline": {
           "type": "object"
+        },
+        "isStale": {
+          "type": "boolean"
         }
       }
     },
@@ -248,7 +252,8 @@
         "defaultVernacular",
         "defaultAnalysis",
         "styles",
-        "writingSystems"
+        "writingSystems",
+        "isStale"
       ],
       "properties": {
         "record": {
@@ -261,7 +266,7 @@
           }
         },
         "schemaVersion": {
-          "const": 4
+          "const": 5
         },
         "defaultVernacular": {
           "type": "string"
@@ -283,6 +288,9 @@
         },
         "baseline": {
           "type": "object"
+        },
+        "isStale": {
+          "type": "boolean"
         }
       }
     }

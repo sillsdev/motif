@@ -6,7 +6,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The wire version of the Grammar Design Record responses, raised when their shape changes.</summary>
 public static class GdrWire
 {
-    public const int SchemaVersion = 4;
+    public const int SchemaVersion = 5;
 }
 
 /// <summary>One Grammar Design Record as the list shows it.</summary>
@@ -100,6 +100,8 @@ public sealed record GdrListResponse(bool HasBaseline, IReadOnlyList<GdrSummary>
 {
     public int SchemaVersion { get; init; } = GdrWire.SchemaVersion;
     public BaselineToken? Baseline { get; init; }
+    /// <summary>Whether the live file has been saved since this Baseline; its records remain readable.</summary>
+    public bool IsStale { get; init; }
 }
 
 /// <summary>One Grammar Design Record with its Discussion as paragraphs of runs, and what they need to be drawn.</summary>
@@ -107,6 +109,8 @@ public sealed record GdrShowResponse(GdrSummary Record, IReadOnlyList<GdrParagra
 {
     public int SchemaVersion { get; init; } = GdrWire.SchemaVersion;
     public BaselineToken? Baseline { get; init; }
+    /// <summary>Whether the live file has been saved since this Baseline; its records remain readable.</summary>
+    public bool IsStale { get; init; }
     public string DefaultVernacular { get; init; } = "";
     public string DefaultAnalysis { get; init; } = "";
     public IReadOnlyList<GdrStyle> Styles { get; init; } = [];
