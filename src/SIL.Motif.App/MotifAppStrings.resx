@@ -9687,4 +9687,56 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.ChatGptKeyNotSaved" xml:space="preserve"><value>Motif can't save the key on this computer, so you'll enter it again next time.</value></data>
   <data name="MotifApp.ChatGptInstructions" xml:space="preserve"><value>1. In ChatGPT, open Plugins and choose the plus button.&#10;2. Choose Add Custom MCP Server.&#10;3. Under Connection, choose Tunnel and paste the tunnel ID.</value></data>
   <data name="MotifApp.ChatGptKeyHelp" xml:space="preserve"><value>Use an OpenAI runtime API key with Tunnels Read and Use access.</value></data>
+  <data name="MotifApp.ShortcutCompareVersions" xml:space="preserve">
+    <value>Compare Two Versions</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareSideBySide" xml:space="preserve">
+    <value>Side by Side</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareUseMine" xml:space="preserve">
+    <value>Use Mine</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareUseFieldWorks" xml:space="preserve">
+    <value>Use FieldWorks</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareUseBoth" xml:space="preserve">
+    <value>Use Both</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareEditSideBySide" xml:space="preserve">
+    <value>Edit in the Side-by-Side View</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareNextChoice" xml:space="preserve">
+    <value>Next Change That Needs a Choice</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutComparePreviousChoice" xml:space="preserve">
+    <value>Previous Change That Needs a Choice</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareOpenSideBySide" xml:space="preserve">
+    <value>Open Side by Side</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareDecideLater" xml:space="preserve">
+    <value>Decide Later</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareUseThis" xml:space="preserve">
+    <value>Use This</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareSwitchSide" xml:space="preserve">
+    <value>Switch Side</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
+  <data name="MotifApp.ShortcutCompareBackToCombined" xml:space="preserve">
+    <value>Back to Combined View</value>
+    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
+  </data>
 </root>

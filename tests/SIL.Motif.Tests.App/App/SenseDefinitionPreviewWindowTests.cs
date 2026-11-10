@@ -1,5 +1,8 @@
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Controls;
+using Avalonia.LogicalTree;
+using SIL.Motif.App.Compare;
 using SIL.Motif.App.Preview;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
@@ -46,17 +49,20 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
         public TaskCompletionSource? ApplyGate { get; set; }
         public GdrApplyRefusal? ApplyRefusal { get; set; } = applyRefusal;
         public int Applies { get; private set; }
+        public bool RemembersStaged { get; set; }
 
         public Task<string?> StageAsync(string senseId, TextRichStringPayload richString)
         {
             if (StageRefusal is { } refusal) return Task.FromResult<string?>(refusal);
             Staged.Add((senseId, richString));
+            if (RemembersStaged) Pending[richString.Ws!] = richString;
             return Task.FromResult<string?>(null);
         }
 
         public Task<string?> DiscardAsync(string senseId, string ws)
         {
             Discards.Add((senseId, ws));
+            if (RemembersStaged) Pending.Remove(ws);
             return Task.FromResult<string?>(null);
         }
 
@@ -270,6 +276,82 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
     }
 
     [Fact]
+    public void DoneInTheComparisonStagesTheMergedDefinitionMeasuredAgainstFieldWorksAndItFitsAgain()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { RemembersStaged = true };
+            var started = Canned().Senses[0].Definition[0].Runs.Select(TextVersions.Run);
+            store.Pending["en"] = new TextRichStringPayload(SenseDefinitionStore.Field, "en", [.. started, new TextRun(" mine", "en")],
+                Start(Canned(), "en"));
+            var compared = new List<CompareWindow>();
+            var window = new SenseDefinitionPreviewWindow(Canned("fw "), () => Canned("fw "), store, () => Task.FromResult(true), shown =>
+            {
+                compared.Add(shown);
+                shown.Finish();
+                return Task.FromResult(shown.Outcome);
+            });
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(SenseId);
+            Completed(window.Loading);
+            Assert.True(window.IsStaleStripShown);
+            Assert.Contains(ChangeWords.Compare, window.GetLogicalDescendants().OfType<Button>().Select(button => button.Content as string));
+
+            Assert.True(Completed(window.CompareAsync()));
+            Completed(window.Loading);
+
+            Assert.Equal(2, Assert.Single(compared).Comparison.Sorted.Changes.Count);
+            var (sense, payload) = store.Staged[^1];
+            Assert.Equal(SenseId, sense);
+            Assert.Equal(Start(Canned("fw "), "en"), payload.Expected);
+            Assert.Equal("fw y mine", string.Concat(payload.Runs.Select(run => run.Text)));
+            Assert.Empty(store.Discards);
+            Assert.False(window.IsStaleStripShown);
+            Assert.False(window.FieldFor("en")!.IsReadOnly);
+            Assert.Equal("fw y mine", window.FieldFor("en")!.Editor.Document.Paragraphs[0].Text);
+        });
+    }
+
+    [Fact]
+    public void DoneOnADefinitionOfTwoParagraphsStaysInTheComparisonAndSaysWhy()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { RemembersStaged = true };
+            var started = Canned().Senses[0].Definition[0].Runs.Select(TextVersions.Run);
+            store.Pending["en"] = new TextRichStringPayload(SenseDefinitionStore.Field, "en", [.. started, new TextRun(" mine", "en")],
+                Start(Canned(), "en"));
+            string? waiting = null;
+            var window = new SenseDefinitionPreviewWindow(Canned("fw "), () => Canned("fw "), store, () => Task.FromResult(true), shown =>
+            {
+                shown.OpenSideBySide();
+                var field = shown.ResultFields[0];
+                field.Focus();
+                Assert.True(field.HandleKey(Key.End, KeyModifiers.Control));
+                Assert.True(field.HandleKey(Key.Enter, KeyModifiers.None));
+                shown.KeyTextInput("more");
+                Assert.Equal(2, field.Editor.Document.Paragraphs.Count);
+                Assert.False(shown.Finish());
+                Assert.Null(shown.Outcome);
+                waiting = shown.WaitingText;
+                shown.DecideLater();
+                return Task.FromResult(shown.Outcome);
+            });
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(SenseId);
+            Completed(window.Loading);
+
+            Assert.False(Completed(window.CompareAsync()));
+
+            Assert.Equal(SenseDefinitionPreviewWindow.OneParagraphResultMessage, waiting);
+            Assert.Empty(store.Staged);
+            Assert.True(window.IsStaleStripShown);
+        });
+    }
+
+    [Fact]
     public void AnApplyHeldForDriftKeepsTheTypingAndShowsTheStrip()
     {
         avalonia.Invoke(() =>
@@ -284,6 +366,25 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
             Assert.True(window.IsStaleStripShown);
             Assert.Equal("zx y", window.FieldFor("en")!.Editor.Document.Paragraphs[0].Text);
             Assert.Equal("Nothing was applied.", window.StatusText);
+        });
+    }
+
+    [Fact]
+    public void CompareWhenTheEditCouldNotBeStagedSaysWhy()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore(new GdrApplyRefusal("changed", SenseId, "en", SenseDefinitionStore.Field));
+            var window = Opened(store, out var closer);
+            using var _ = closer;
+            Type(window, "en", "z");
+            Assert.False(Completed(window.ApplyAsync()));
+            store.StageRefusal = "The pending changes are busy.";
+            Type(window, "en", "b");
+
+            Assert.False(Completed(window.CompareAsync()));
+
+            Assert.Equal(SenseDefinitionPreviewWindow.CouldNotStageMessage + "The pending changes are busy.", window.StatusText);
         });
     }
 

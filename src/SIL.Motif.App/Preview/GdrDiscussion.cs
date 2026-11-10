@@ -40,7 +40,11 @@ public sealed class GdrDiscussion
         ParagraphStyles = response.Styles.Where(style => style.Kind == GdrStyleKind.Paragraph).Select(style => style.Name).ToArray();
         CharacterStyles = response.Styles.Where(style => style.Kind == GdrStyleKind.Character).Select(style => style.Name).ToArray();
         WritingSystemChoices = response.WritingSystems;
+        Source = response.Discussion;
     }
+
+    /// <summary>The paragraphs as the project returned them, before this view laid them out.</summary>
+    public IReadOnlyList<GdrParagraph> Source { get; }
 
     /// <summary>The project's paragraph styles, which an edit may give a paragraph.</summary>
     public IReadOnlyList<string> ParagraphStyles { get; }

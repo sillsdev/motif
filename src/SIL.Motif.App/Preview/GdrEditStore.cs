@@ -3,6 +3,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
 
 namespace SIL.Motif.App.Preview;
@@ -34,8 +35,12 @@ public sealed record GdrApplyRefusal(string Message, string? StaleRecordId = nul
 /// <summary>A read of a record's edit in the Draft: the edit, or null for none, unless <paramref name="Refusal"/> says why it failed.</summary>
 public sealed record GdrPendingRead(TextParagraphsPayload? Paragraphs, string? Refusal = null);
 
-/// <summary>Stages and applies through the project's own commands, off the UI thread.</summary>
-public sealed class GdrEditStore(string projectPath) : IGdrEditStore
+/// <summary>
+/// Stages and applies through the project's own commands, off the UI thread. <paramref name="managedRoot"/> and
+/// <paramref name="runnerLauncher"/>, when given, replace the installation's managed root and Runner, so a test can
+/// apply into a disposable root of its own.
+/// </summary>
+public sealed class GdrEditStore(string projectPath, string? managedRoot = null, IJobRunnerLauncher? runnerLauncher = null) : IGdrEditStore
 {
     /// <summary>What Apply says when FieldWorks changed the project since it was read, and it has been read again.</summary>
     public const string RefreshedMessage = "Nothing was applied: the project changed in FieldWorks and has been read again. Apply again.";
@@ -60,21 +65,25 @@ public sealed class GdrEditStore(string projectPath) : IGdrEditStore
 
     public Task<GdrApplyRefusal?> ApplyAsync() => Task.Run(() =>
     {
-        var applied = PendingChangesWorkflow.Apply(new ApplyPendingRequest(projectPath, null, null));
+        var applied = PendingChangesWorkflow.Apply(new ApplyPendingRequest(projectPath, null, null), runnerLauncher: runnerLauncher);
         if (!applied.Succeeded && applied.Refusal!.Code == RefusalCodes.ChangeRefreshRequired)
         {
             // The person applies again after the refresh, so nothing is applied against a project they have not seen.
-            var refreshed = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath));
+            var refreshed = Capture();
             return new GdrApplyRefusal(refreshed.Succeeded ? RefreshedMessage : refreshed.Refusal!.Message);
         }
         if (!applied.Succeeded && applied.Refusal!.Code != RefusalCodes.TextFieldStale) return new GdrApplyRefusal(applied.Refusal.Message);
         // GdrQuery reads the Baseline, so recapture it to show what Apply or FieldWorks wrote.
-        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath));
+        var captured = Capture();
         if (!applied.Succeeded)
             return new GdrApplyRefusal(applied.Refusal!.Message, applied.Refusal.Facts.GetValueOrDefault("owner"),
                 applied.Refusal.Facts.GetValueOrDefault("ws"), applied.Refusal.Facts.GetValueOrDefault("field"));
         return captured.Succeeded ? null : new GdrApplyRefusal(captured.Refusal!.Message);
     });
+
+    private CommandOutcome<BaselineCaptureResponse> Capture() => managedRoot is null
+        ? BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath))
+        : BaselineCaptureCommand.Capture(new BaselineCaptureRequest(projectPath), managedRoot);
 }
 
 /// <summary>Turns a Discussion edit into the <c>text/setParagraphs</c> payload of a CmPossibility's Discussion.</summary>

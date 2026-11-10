@@ -163,3 +163,24 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | ← or → | ← or → | ← or → | Settings | Move Between Theme Choices |
 | Tab | Shift+Tab | Shift+Tab | Settings | Move Focus to Back |
 | Tab | Tab | Tab | Settings | Move Focus to Settings Groups |
+
+## Compare Two Versions
+
+| Key | Windows / Linux | macOS | Page or scope | Action |
+| --- | --- | --- | --- | --- |
+| M | Alt+M | Alt+M | Compare Two Versions | Use Mine |
+| F | Alt+F | Alt+F | Compare Two Versions | Use FieldWorks |
+| B | Alt+B | Alt+B | Compare Two Versions | Use Both |
+| E | Alt+E | Alt+E | Compare Two Versions | Edit in the Side-by-Side View |
+| F8 | F8 | F8 | Compare Two Versions | Next Change That Needs a Choice |
+| F8 | Shift+F8 | Shift+F8 | Compare Two Versions | Previous Change That Needs a Choice |
+| S | Ctrl+Alt+S | ⌘+Alt+S | Compare Two Versions | Open Side by Side |
+| Escape | Esc | Esc | Compare Two Versions | Decide Later |
+
+## Side by Side
+
+| Key | Windows / Linux | macOS | Page or scope | Action |
+| --- | --- | --- | --- | --- |
+| → | Alt+→ | Alt+→ | Side by Side | Use This |
+| F6 | F6 | F6 | Side by Side | Switch Side |
+| Escape | Esc | Esc | Side by Side | Back to Combined View |

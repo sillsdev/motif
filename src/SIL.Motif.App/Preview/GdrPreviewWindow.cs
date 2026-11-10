@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using SIL.Motif.App.Compare;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Baselines;
@@ -31,6 +32,8 @@ public sealed class GdrPreviewWindow : Window
     private readonly string? _projectName;
     private readonly IGdrEditStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
+    private readonly Func<CompareWindow, Task<CompareOutcome?>> _compare;
+    private readonly Func<string, string>? _writingSystemName;
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
     private readonly HashSet<string> _stale = new(StringComparer.Ordinal);
     private readonly Border _staleStrip;
@@ -65,20 +68,25 @@ public sealed class GdrPreviewWindow : Window
     /// <paramref name="store"/>, when given, stages each edit and offers Apply. <paramref name="confirmStartAgain"/>
     /// asks the person before their edit of a record changed in FieldWorks is thrown away; by default a dialog asks.
     /// <paramref name="projectName"/> is the FieldWorks project a new link names; without it no link can be inserted.
+    /// <paramref name="compare"/> shows the window that compares that edit with FieldWorks' text and returns how the
+    /// person left it; by default it opens as a dialog. <paramref name="writingSystemName"/> names a writing system by
+    /// its tag, as the project does; without it the comparison says the tag.
     /// <paramref name="linkToPath"/> finds the object at a project path for a link, in the Baseline the shown record was read
     /// from; without it the path box finds nothing.
     /// </summary>
     public GdrPreviewWindow(IReadOnlyList<GdrSummary> records, Func<string, GdrShowResponse?> show, IGdrEditStore? store = null,
-        Func<Task<bool>>? confirmStartAgain = null, string? projectName = null,
-        Func<string, BaselineToken?, CommandOutcome<GdrPathLink>>? linkToPath = null)
+        Func<Task<bool>>? confirmStartAgain = null, string? projectName = null, Func<CompareWindow, Task<CompareOutcome?>>? compare = null,
+        Func<string, string>? writingSystemName = null, Func<string, BaselineToken?, CommandOutcome<GdrPathLink>>? linkToPath = null)
     {
+        _writingSystemName = writingSystemName;
         _show = show;
         _linkToPath = linkToPath;
         _projectName = projectName;
         _store = store;
         _confirmStartAgain = confirmStartAgain ?? ConfirmStartAgainAsync;
-        var startAgain = new Button { Content = "Start again from the FieldWorks text" };
-        startAgain.Click += async (_, _) => await StartAgainFromFieldWorksAsync();
+        _compare = compare ?? (window => window.ShowDialog<CompareOutcome?>(this));
+        var compareButton = new Button { Content = ChangeWords.Compare };
+        compareButton.Click += async (_, _) => await CompareAsync();
         var strip = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
         strip.Children.Add(new TextBlock
         {
@@ -86,7 +94,7 @@ public sealed class GdrPreviewWindow : Window
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
         });
-        strip.Children.Add(startAgain);
+        strip.Children.Add(compareButton);
         _staleStrip = new Border
         {
             Background = Brushes.LightYellow,
@@ -355,6 +363,12 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>What the strip in the field says when the shown record's text was also changed in FieldWorks.</summary>
     public const string StaleMessage = "This Discussion was also changed in FieldWorks. Your typing is safe.";
 
+    /// <summary>What Compare says, before the refusal, when the edit of the Discussion could not be added to the pending changes.</summary>
+    public const string CouldNotStageMessage = "There is nothing to compare yet: your edit could not be added to the pending changes. ";
+
+    /// <summary>What Compare says when the pending changes no longer hold an edit of the shown Discussion.</summary>
+    public const string NothingToCompareMessage = "There is nothing to compare: your pending changes no longer hold an edit of this Discussion.";
+
     /// <summary>Whether the strip saying the shown record was also changed in FieldWorks is showing.</summary>
     public bool IsStaleStripShown => _staleStrip.IsVisible;
 
@@ -436,6 +450,50 @@ public sealed class GdrPreviewWindow : Window
         return true;
     }
 
+    /// <summary>
+    /// Compares the shown record's edit, which the record's text in FieldWorks has overtaken, with that text, and lets
+    /// the person choose change by change. Done stages the result measured against FieldWorks' text, so it fits again;
+    /// Decide later leaves the edit as it was, and Apply keeps waiting. Returns whether the edit fits again.
+    /// </summary>
+    public async Task<bool> CompareAsync()
+    {
+        if (_store is null || _shownId is not { } id || !_stale.Contains(id)) return false;
+        _opened[id].Session.EndSession();
+        await _staging;
+        if (_refused.TryGetValue(id, out var unstaged))
+        {
+            _status.Text = CouldNotStageMessage + unstaged;
+            return false;
+        }
+        var read = await _store.PendingAsync(id);
+        if (read.Refusal is { } refusal)
+        {
+            _status.Text = refusal;
+            return false;
+        }
+        if (read.Paragraphs is not { } pending || _show(id) is not { } live)
+        {
+            _status.Text = NothingToCompareMessage;
+            return false;
+        }
+        var discussion = GdrDiscussion.From(live);
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(pending, live.Discussion,
+            _opened[id].Discussion.Source.Select(TextVersions.Paragraph))));
+        var window = new CompareWindow($"{live.Record.Abbreviation}  {live.Record.Title}, Discussion", comparison,
+            discussion.WritingSystems, discussion.Styles, writingSystemName: _writingSystemName);
+        var outcome = await _compare(window);
+        if (outcome?.End == CompareEnd.StartAgain) return await StartAgainFromFieldWorksAsync();
+        if (outcome?.End != CompareEnd.Done) return false;
+        var payload = ComparedPayloads.Paragraphs(GdrDiscussionPayload.Field, outcome.Result, live.Discussion);
+        var write = payload is null ? (Func<Task<string?>>)(() => _store.DiscardAsync(id)) : () => _store.StageAsync(id, payload);
+        if (await Staged(id, pending: payload is not null, write) is not null) return false;
+        _stale.Remove(id);
+        _opened.Remove(id);
+        Show(id);
+        _status.Text = payload is null ? "Your edit now matches FieldWorks; nothing is left to apply." : "Your edit now fits. Apply when ready.";
+        return true;
+    }
+
     private Task<string?> Stage(OpenedRecord opened, GdrDiscussionEdit? edit) => edit is null
         ? Staged(opened.RecordId, pending: false, () => _store!.DiscardAsync(opened.RecordId))
         : Staged(opened.RecordId, pending: true,
@@ -488,7 +546,7 @@ public sealed class GdrPreviewWindow : Window
             SizeToContent = SizeToContent.WidthAndHeight,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
         };
-        var keep = new Button { Content = "Keep my edit", IsDefault = true, IsCancel = true };
+        var keep = new Button { Content = "Go back", IsDefault = true, IsCancel = true };
         var discard = new Button { Content = "Discard my edit" };
         keep.Click += (_, _) => dialog.Close(false);
         discard.Click += (_, _) => dialog.Close(true);
@@ -607,7 +665,7 @@ public sealed class GdrPreviewWindow : Window
         }
         if (!Fits(pending, shown, opened.Discussion))
         {
-            // Shown over this project, the edit would drop what FieldWorks changed, so only Start again remains.
+            // Shown over this project, the edit would drop what FieldWorks changed, so it waits for Compare.
             _stale.Add(opened.RecordId);
             _staged.Add(opened.RecordId);
             ShowStrips();
@@ -712,6 +770,7 @@ public sealed class GdrPreviewWindow : Window
         var window = new GdrPreviewWindow(listed.Value!.Records,
             id => GdrQuery.Show(new GdrShowRequest(project, id)) is { Succeeded: true } shown ? shown.Value : null,
             new GdrEditStore(project), projectName: Path.GetFileNameWithoutExtension(project),
+            writingSystemName: WritingSystemNames.For(project),
             linkToPath: (path, baseline) => GdrQuery.LinkToPath(new GdrLinkToPathRequest(project, path, baseline)));
         window.Show();
         return window;

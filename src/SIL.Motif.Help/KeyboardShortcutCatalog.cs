@@ -121,6 +121,14 @@ public enum ShortcutKey
     F10,
     /// <summary>The keyboard menu key.</summary>
     Apps,
+    /// <summary>The M key.</summary>
+    M,
+    /// <summary>The B key.</summary>
+    B,
+    /// <summary>F6.</summary>
+    F6,
+    /// <summary>F8.</summary>
+    F8,
 }
 
 /// <summary>The product surface where a shortcut is available.</summary>
@@ -154,6 +162,10 @@ public enum ShortcutScope
     Menu,
     /// <summary>Grouped tables with row and group actions.</summary>
     Table,
+    /// <summary>The combined view that compares a person's version of a text with the FieldWorks version.</summary>
+    CompareVersions,
+    /// <summary>The side-by-side view of the same comparison.</summary>
+    CompareSideBySide,
 }
 
 /// <summary>The focus condition required before a shortcut can run.</summary>
