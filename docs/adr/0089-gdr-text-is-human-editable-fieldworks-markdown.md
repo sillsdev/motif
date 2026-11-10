@@ -73,3 +73,7 @@ Owner decision, 2026-11-04.
 Amended 2026-11-07: decision 4's "the names of its two table styles" is stale. The GDR template drops its own
 `GDR Table Header` and `GDR Table Row` styles and uses the generic table styles (`Table Row`, a header-row style and
 `Table Cell Separator`, which the host may rename; owner decision of 2026-11-07, Q73 and Q74).
+
+Amended 2026-11-10 (owner: "name tables"): Motif names its table styles now, before real tables (#46): the header row
+is `Table Header`, body rows are `Table Row`, and the cell separator is `Table Cell Separator`. A pipe table in a GDR,
+a Rationale or a Comment is then ordinary FieldWorks Markdown, not a finding (#142).
