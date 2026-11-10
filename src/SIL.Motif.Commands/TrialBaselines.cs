@@ -20,6 +20,9 @@ namespace SIL.Motif.Commands;
 /// </summary>
 public static class TrialBaselines
 {
+    /// <summary>Lets a test split a Trial's Before measurement into writing-system partitions without a captured review.</summary>
+    internal static readonly AsyncLocal<IReadOnlyList<ReviewParsePartition>?> PartitionsForTests = new();
+
     /// <summary>Assesses the words, or the project's default Selection when none are named.</summary>
     public static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
         string managedRoot, string? parserPath, CancellationToken cancellationToken) =>
@@ -137,8 +140,8 @@ public static class TrialBaselines
         if (!captured.Succeeded) return CommandOutcome<JobEnqueuedResponse>.Refused(captured.Refusal!);
         request = captured.Value!;
         if (request.ReviewInputs is not null) words = request.Words;
-        var partitions = request.ReviewSnapshot is { } review
-            ? ReviewInputPartitions.Create(review) : [new ReviewParsePartition(null, words ?? [], [])];
+        IReadOnlyList<ReviewParsePartition> partitions = PartitionsForTests.Value ?? (request.ReviewSnapshot is { } review
+            ? ReviewInputPartitions.Create(review) : [new ReviewParsePartition(null, words ?? [], [])]);
         if (partitions.Count == 0) partitions = [new ReviewParsePartition(null, words ?? [], [])];
         var assessmentIds = new List<string>();
         var baselines = new List<ReviewBaselinePartition>();

@@ -1,6 +1,8 @@
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Assess;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -52,6 +54,49 @@ public sealed class TrialBeforePruneTests : IDisposable
             Assert.All(first, id => Assert.Null(new AssessmentRepository(database).GetHeader(id)));
         }
         finally { AssessCommand.ByteBudgetForTests.Value = null; }
+    }
+
+    [Fact]
+    public void TheTrialsPartitionLoopHandsEachPartitionTheIdsMeasuredBeforeIt()
+    {
+        var created = ProposalCommands.New(new NewDraftRequest(_project.FwDataPath, "1.0", "prune", null));
+        Assert.True(created.Succeeded, created.Refusal?.Message);
+        var edited = ProposalCommands.AddSetGloss(new AddSetGlossRequest(_project.FwDataPath, "1.0", "prune",
+            SIL.Motif.Contract.Ids.CanonicalId.FromGuid(_project.Seed.FirstSenseId).Value, "en", "changed gloss"));
+        Assert.True(edited.Succeeded, edited.Refusal?.Message);
+        var request = new EnqueueTrialRequest(_project.FwDataPath, "1.0", created.Value!.ProposalId,
+            Words: [SeededProject.FirstForm, SeededProject.SecondForm]);
+        Assert.True(TrialBaselines.EnsureCurrentBaseline(request, _project.ManagedRoot).Succeeded);
+        var seen = new List<string[]>();
+        var measured = new List<string>();
+        AssessCommand.ByteBudgetForTests.Value = 1;
+        TrialBaselines.PartitionsForTests.Value =
+        [
+            new ReviewParsePartition("one", [SeededProject.FirstForm], []),
+            new ReviewParsePartition("two", [SeededProject.SecondForm], []),
+        ];
+        try
+        {
+            var queued = TrialBaselines.EnqueueWithBaseline(request, (words, limits, writingSystem, onPartial, earlier) =>
+            {
+                seen.Add(earlier.ToArray());
+                var assess = TrialBaselines.Assess(_project.FwDataPath, words, _project.ManagedRoot, _parser,
+                    CancellationToken.None, limits, writingSystemId: null, onPartial: onPartial, alsoProtect: earlier);
+                if (assess.Succeeded) measured.AddRange(assess.Value!.AssessmentIds);
+                return assess;
+            });
+
+            Assert.True(queued.Succeeded, queued.Refusal?.Message);
+            Assert.Equal(2, seen.Count);
+            Assert.Empty(seen[0]);
+            Assert.NotEmpty(seen[1]);
+            Assert.All(seen[1], id => Assert.Contains(id, measured));
+        }
+        finally
+        {
+            AssessCommand.ByteBudgetForTests.Value = null;
+            TrialBaselines.PartitionsForTests.Value = null;
+        }
     }
 
     private IReadOnlyList<string> Before(string word, IReadOnlyCollection<string> earlier)
