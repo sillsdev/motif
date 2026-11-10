@@ -31,7 +31,7 @@ namespace SIL.Motif.Runner.Operations;
 /// The effect records, for each named character, the class the writing system gives it and the set that lists it,
 /// read back after the write. Texts that hold a changed character are parsed again, pinned by
 /// `TextsAreRetokenisedSoTheQuotesStopFormingWords`, when the character's effective class changed, pinned by
-/// `ListingAnUnlistedNonLetterAsPunctuationParsesNothing`, and when any run of the paragraph is in the writing
+/// `ListingAnUnlistedNonLetterAsPunctuationReclassesNothingSoNothingIsParsed`, and when any run of the paragraph is in the writing
 /// system, pinned by `AParagraphWhoseFirstRunIsAnotherWritingSystemIsRetokenised`. The writing system sits outside the unit of work, so only
 /// discarding the cache undoes the change.
 /// </para>
@@ -137,19 +137,24 @@ internal static class WritingSystemCharacterSets
             return $"{LangProjectWritingSystemOperationKinds.Notation(codePoint)}={effective}/{listing}";
         }));
 
-    /// <summary>Moves each character to the set that gives it <paramref name="characterClass"/>; true when any set changed.</summary>
-    public static bool Set(CoreWritingSystemDefinition ws, WritingSystemCharacterClass characterClass, IEnumerable<int> characters)
+    /// <summary>
+    /// Moves each character to the set that gives it <paramref name="characterClass"/> and returns those whose
+    /// effective class changed, the only ones that can change a segmentation.
+    /// </summary>
+    public static int[] Set(CoreWritingSystemDefinition ws, WritingSystemCharacterClass characterClass, IEnumerable<int> characters)
     {
-        var changed = false;
+        var reclassed = new List<int>();
         foreach (var codePoint in characters)
         {
             var text = char.ConvertFromUtf32(codePoint);
             var (add, remove) = characterClass == WritingSystemCharacterClass.WordForming
                 ? (Main, PunctuationSet) : (PunctuationSet, Main);
-            if (Lists(ws, remove, text)) { Remove(ws, remove, text); changed = true; }
-            if (!Lists(ws, add, text)) { Add(ws, add, text); changed = true; }
+            var wasWordForming = ws.get_IsWordForming(codePoint);
+            if (Lists(ws, remove, text)) Remove(ws, remove, text);
+            if (!Lists(ws, add, text)) Add(ws, add, text);
+            if (ws.get_IsWordForming(codePoint) != wasWordForming) reclassed.Add(codePoint);
         }
-        return changed;
+        return reclassed.ToArray();
     }
 
     private static bool Lists(CoreWritingSystemDefinition ws, string set, string text) =>
@@ -190,10 +195,7 @@ internal sealed class WritingSystemCharacterClassHandler : IOperationHandler
         RequireChangeable(payload);
 
         var before = Alternatives(ws, payload);
-        var effectiveBefore = payload.Characters.ToDictionary(codePoint => codePoint, ws.get_IsWordForming);
-        WritingSystemCharacterSets.Set(ws, payload.Class, payload.Characters);
-        // Only a changed effective class can change a segmentation, so listing an unlisted non-letter parses nothing.
-        var reclassed = payload.Characters.Where(codePoint => ws.get_IsWordForming(codePoint) != effectiveBefore[codePoint]).ToArray();
+        var reclassed = WritingSystemCharacterSets.Set(ws, payload.Class, payload.Characters);
         if (reclassed.Length > 0) Retokenise(cache, ws, reclassed);
         return new ExpectedEffect(id, SnapshotFields.LangProjectWritingSystemCharacterClass, before, Alternatives(ws, payload));
     }

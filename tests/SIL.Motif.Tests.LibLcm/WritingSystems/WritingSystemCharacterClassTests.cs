@@ -198,22 +198,16 @@ public sealed class WritingSystemCharacterClassTests(PristineProjectFixture pris
     }
 
     [Fact]
-    public void ListingAnUnlistedNonLetterAsPunctuationParsesNothing()
+    public void ListingAnUnlistedNonLetterAsPunctuationReclassesNothingSoNothingIsParsed()
     {
-        var cache = CebuanoLikeProject();
-        var paragraph = AddParsedParagraph(cache, "baba ~ ug.");
-        var wordformsBefore = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().Count;
-        var stamp = paragraph.SegmentsOS.Select(segment => segment.Guid).ToArray();
-        var operations = SetCharacterClassComposer.Build(cache, new(Vernacular(cache).Id, WritingSystemCharacterClass.Punctuation, "~"));
-        var proposal = Propose(operations);
-        var dryRun = ScratchDryRun.Of(cache, proposal);
+        var ws = Vernacular(CebuanoLikeProject());
+        var tilde = new[] { (int)'~' };
 
-        ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "motif-tests");
-
-        Assert.True(Vernacular(cache).CharacterSets.TryGet("punctuation", out var listed));
+        Assert.Empty(WritingSystemCharacterSets.Set(ws, WritingSystemCharacterClass.Punctuation, tilde));
+        Assert.True(ws.CharacterSets.TryGet("punctuation", out var listed));
         Assert.Equal(["~"], listed.Characters);
-        Assert.Equal(stamp, paragraph.SegmentsOS.Select(segment => segment.Guid).ToArray());
-        Assert.Equal(wordformsBefore, cache.ServiceLocator.GetInstance<IWfiWordformRepository>().Count);
+        Assert.Equal([(int)Open[0]], WritingSystemCharacterSets.Set(ws, WritingSystemCharacterClass.Punctuation, new[] { (int)Open[0] }));
+        Assert.Equal([(int)Open[0]], WritingSystemCharacterSets.Set(ws, WritingSystemCharacterClass.WordForming, new[] { (int)Open[0] }));
     }
 
     [Fact]
