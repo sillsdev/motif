@@ -793,33 +793,6 @@ public sealed partial class ReviewPageModel : PageModel
         HasReceipt || ApplyRefusal is not null;
 
     /// <summary>
-    /// What Apply checks for an open Proposal, each passed or not, so the card says what is already settled as well
-    /// as what blocks it; empty outside Proposal mode, where the numbers card speaks instead.
-    /// </summary>
-    public IReadOnlyList<ApplyCheck> ApplyChecks
-    {
-        get
-        {
-            if (!InProposalMode || !HasEntries) return [];
-            var standing = Context.ProposalStanding;
-            var checks = new List<ApplyCheck>
-            {
-                standing.Kind == TrialStandingKind.Current
-                    ? new("Tried as it is now", true)
-                    : new(TrialStandingWords.For(standing).Status, false),
-                Changes.Items.Any(item => item.IsNoLongerFits || item.IsUncertain)
-                    ? new("A change needs a look", false)
-                    : new("Every change still fits", true),
-            };
-            if (_review?.Readiness is { } readiness)
-                checks.Add(readiness.IsReady ? new("Ready to apply", true) : new("Not ready to apply", false));
-            return checks;
-        }
-    }
-
-    public bool HasApplyChecks => ApplyChecks.Count > 0;
-
-    /// <summary>
     /// Whether the card offers its check of the changed words: only for the pending changes, since a Proposal is
     /// checked by trying it.
     /// </summary>
@@ -1111,65 +1084,6 @@ public sealed partial class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(MeasurementProgressText));
     }
 
-    private async Task ApplyAsync()
-    {
-        var proposal = Changes.TargetProposalId;
-        if (!CanApply || Context.ProjectPath is not { } project ||
-            (proposal is null && Changes.Snapshot.DraftId is not { }))
-            return;
-        var draft = Changes.Snapshot.DraftId ?? string.Empty;
-        using var usageAction = Context.Commands.BeginUsageAction(
-            proposal is null ? "apply --all-pending" : "apply --proposal",
-            UsageArgumentShape.Text("fwDataPath"), UsageArgumentShape.List("changes", _entries.Count));
-        IsApplying = true;
-        _applyCancellation?.Dispose();
-        _applyCancellation = new CancellationTokenSource();
-        OnPropertyChanged(nameof(IsApplying));
-        OnPropertyChanged(nameof(CanApply));
-        OnPropertyChanged(nameof(ApplyBlockReason));
-        CommandOutcome<ApplyPendingResult> result;
-        try
-        {
-            result = proposal is null
-                ? await Context.Commands.ApplyPendingAsync(new ApplyPendingRequest(
-                    project, draft, Changes.Snapshot.Revision),
-                    _applyCancellation.Token).ConfigureAwait(true)
-                : await Context.Commands.ApplyProposalAsync(new ApplyProposalRequest(
-                    project, proposal, _review?.Revision), _applyCancellation.Token).ConfigureAwait(true);
-        }
-        finally
-        {
-            var cancellation = _applyCancellation;
-            _applyCancellation = null;
-            cancellation?.Dispose();
-            IsApplying = false;
-            OnPropertyChanged(nameof(IsApplying));
-            OnPropertyChanged(nameof(CanApply));
-            OnPropertyChanged(nameof(ApplyBlockReason));
-            ApplyCommand.NotifyCanExecuteChanged();
-        }
-        if (Context.ProjectPath != project) return;
-        if (!result.Succeeded)
-        {
-            ApplyRefusal = WindowRefusal.From(result.Refusal!);
-            OnPropertyChanged(nameof(ApplyRefusal));
-            RaiseApplyState();
-            await Changes.ReloadAsync().ConfigureAwait(true);
-            return;
-        }
-        Changes.ClearStagingHistory();
-        Receipt = result.Value!.Receipt;
-        ApplyRefusal = null;
-        if (result.Value.Applied) Context.RecordApplied();
-        if (proposal is not null) await Context.LeaveProposalAsync().ConfigureAwait(true);
-        await Changes.ReloadAsync().ConfigureAwait(true);
-        await LoadReviewAsync().ConfigureAwait(true);
-        OnPropertyChanged(nameof(Receipt));
-        OnPropertyChanged(nameof(HasReceipt));
-        OnPropertyChanged(nameof(ReceiptText));
-        OnPropertyChanged(nameof(ApplyRefusal));
-    }
-
     private async Task RemoveNonFittingAsync()
     {
         using var historyAction = Changes.BeginStagingAction();
@@ -1184,6 +1098,7 @@ public sealed partial class ReviewPageModel : PageModel
     {
         if (e.PropertyName == nameof(ChangesViewModel.TargetProposalId))
         {
+            StopConfirmingApply();
             RaiseModeState();
             OnPropertyChanged(nameof(WorkNotice));
         }
@@ -1384,6 +1299,8 @@ public sealed partial class ReviewPageModel : PageModel
     private void OnEvidencePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(ProjectEvidence.IsStale)) RaiseApplyState();
+        if (e.PropertyName is nameof(ProjectEvidence.AppliedSinceRefresh))
+            OnPropertyChanged(nameof(ApplyResultBaselineText));
     }
 
     // Many paths announce CanApply or ApplyBlockReason; everything derived from the blockers follows those two.
@@ -1405,6 +1322,8 @@ public sealed partial class ReviewPageModel : PageModel
                 // The Apply button follows its command, so every change to CanApply must re-ask the command.
                 ApplyCommand.NotifyCanExecuteChanged();
                 OnPropertyChanged(nameof(ApplyBlockReason));
+                if (!CanApply && _isConfirming) StopConfirmingApply();
+                AskToApplyCommand.NotifyCanExecuteChanged();
                 break;
             case nameof(ApplyBlockReason):
                 OnPropertyChanged(nameof(ApplyDisabledReason));
@@ -1425,6 +1344,11 @@ public sealed partial class ReviewPageModel : PageModel
             case nameof(HasReceipt):
                 OnPropertyChanged(nameof(ShowsSideCards));
                 break;
+            case nameof(CountText):
+                OnPropertyChanged(nameof(ApplySummaryText));
+                OnPropertyChanged(nameof(ApplyCardCountText));
+                OnPropertyChanged(nameof(ApplyQuestionText));
+                break;
         }
     }
 
@@ -1444,6 +1368,7 @@ public sealed partial class ReviewPageModel : PageModel
 
     protected override void OnProjectCleared()
     {
+        StopConfirmingApply();
         _filterMemory?.Open(null);
         _walked = false;
         _selectedFilterIndex = 0;

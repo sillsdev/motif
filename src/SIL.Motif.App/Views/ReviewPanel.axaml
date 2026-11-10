@@ -72,12 +72,15 @@
           <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.AppliedToTheFieldWorksProject}" />
           <views:CopyableTextBlock Text="{Binding ReceiptText}" TextWrapping="Wrap"
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyReceipt}" />
+          <views:CopyableTextBlock Text="{Binding ApplyResultWroteText}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{Binding ApplyResultBaselineText}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ApplyResultReopen}" TextWrapping="Wrap" />
         </StackPanel>
         <views:CopyableTextBlock Classes="section-title" Text="{Binding ApplyTitle}"
                                  AutomationProperties.HelpText="{Binding ProjectName}"
                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyTitle}"
                                  TextWrapping="Wrap" />
-        <views:CopyableTextBlock Classes="muted" Text="{Binding CountText}" TextWrapping="Wrap"
+        <views:CopyableTextBlock Classes="muted" Text="{Binding ApplyCardCountText}" TextWrapping="Wrap"
                                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewApplyCount}" />
         <ItemsControl x:Name="ApplyChecks" ItemsSource="{Binding ApplyChecks}" IsVisible="{Binding HasApplyChecks}"
                       AutomationProperties.Name="{x:Static app:MotifAppStrings.WhatApplyChecksAccessibleName}">
@@ -117,8 +120,23 @@
           </Style>
         </Border.Styles>
     <StackPanel x:Name="ApplyActions" Classes="reviewCompact">
-      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
-        <Button Content="{x:Static app:MotifAppStrings.ReviewApply}" Command="{Binding ApplyCommand}"
+      <StackPanel Classes="reviewCompact" IsVisible="{Binding IsConfirmingApply}">
+        <views:CopyableTextBlock Classes="section-title" Text="{Binding ApplyQuestionText}" TextWrapping="Wrap" />
+        <HyperlinkButton Classes="reviewLink" Content="{x:Static app:MotifAppStrings.ApplyBackupLink}"
+                         Command="{Binding OpenBackupHelpCommand}"
+                         AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyBackupHelp}" />
+        <WrapPanel>
+          <Button Classes="Primary" Theme="{DynamicResource SolidButton}"
+                  Content="{x:Static app:MotifAppStrings.ReviewApply}" Command="{Binding ApplyCommand}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyConfirm}" />
+          <Button x:Name="ApplyCancelButton" Content="{x:Static app:MotifAppStrings.Cancel}"
+                  Command="{Binding CancelApplyCommand}" IsDefault="True"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyConfirmCancel}" />
+        </WrapPanel>
+      </StackPanel>
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}"
+            IsVisible="{Binding OffersApply}">
+        <Button Content="{x:Static app:MotifAppStrings.ReviewApply}" Command="{Binding AskToApplyCommand}"
                 IsEnabled="{Binding CanApply}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ApplyToFieldWorksProjectAccessibleName}"
                 AutomationProperties.HelpText="{Binding ApplyDisabledReason}"
                 Classes="reviewAction"
