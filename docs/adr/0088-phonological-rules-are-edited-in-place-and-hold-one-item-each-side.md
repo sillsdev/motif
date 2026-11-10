@@ -126,11 +126,12 @@ items, but LibLCM's sequence collector omits them; no editor-only registration r
     cases, not free variation. FieldWorks HCLoader loads them in order; Machine's `RewriteRuleSpec.MatchSubrule`
     returns on the first applicable environment. The default PanGloss 0.15.2 engine likewise gives ara, not ala,
     from ada with overlapping d → r then d → l cases. Deleting the first enables the second. Two overlapping
-    cases therefore cannot provide the proposed optional-outcome proof. An Output segment-list class {r,l}
-    is applied as the union of its members' features, leaving one underspecified segment, and yields only r.
-    Free variation is authored as alternate forms of the stem on the entry. This union behaviour holds for rule
-    Output only; an affix-process insertion of a multi-member class still yields either member
-    (`RealParserAffixProcessOutputKindTests`). No optional flag or dialect/register
+    cases therefore cannot provide the proposed optional-outcome proof. A rule whose Output is a multi-member segment class does not choose a member. It applies only the features
+    the members share, so the input segment keeps its own value for every feature the members differ on: an l stays
+    l under {l,w}, and a [-lat] d becomes r under {r,l}. Only an input with no value for those features matches
+    every member (fieldworks-parser-conformance#38). Free variation is authored as alternate forms of the stem on
+    the entry. This holds for rule Output only; an affix-process insertion of a multi-member class still yields
+    either member (`RealParserAffixProcessOutputKindTests`). No optional flag or dialect/register
     abstraction is invented. The requested overlapping-RHS semantics require a separate engine/model decision.
 14. **Respect the loader's variable-name bound.** FieldWorks HCLoader names alpha constraints with a fixed
     24-element Greek-name table. The combined Input and all outcomes therefore admit at most 24 distinct
