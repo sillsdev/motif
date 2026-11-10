@@ -254,6 +254,16 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public void FindsTheListUnownedAsFieldWorksStoresACustomList()
+    {
+        using var cache = pristine.NewScratch();
+        SeededGdrs.Seed(cache);
+
+        Assert.Null(SeededGdrs.Records(cache).Owner);
+        Assert.Equal("title-1", GdrReader.List(cache)[0].Title);
+    }
+
+    [Fact]
     public void AProjectWithoutTheListHasNoRecords()
     {
         using var cache = pristine.NewScratch();
@@ -266,8 +276,7 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     public void ShowNamesEachParagraphByItsProjectKey()
     {
         string[] expected = [];
-        var path = ProjectWithGdrs(captureBaseline: true, cache => expected = cache.LangProject.CheckListsOC
-            .Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == GdrReader.ListName).PossibilitiesOS[0]
+        var path = ProjectWithGdrs(captureBaseline: true, cache => expected = SeededGdrs.Records(cache).PossibilitiesOS[0]
             .DiscussionOA.ParagraphsOS.Select(paragraph => CanonicalId.FromGuid(paragraph.Guid).Value).ToArray());
 
         var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"));
