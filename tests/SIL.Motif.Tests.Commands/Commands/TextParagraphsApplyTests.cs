@@ -377,6 +377,26 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ADraftThatCannotBeReadIsRefusedNotTakenForOneWithoutAnEdit()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-1a");
+        var only = shown.Discussion[0];
+        Staged(path, shown.Record.Id, Edit([only.Key], [new TextParagraphChange(0, only.Key, "Normal", [new TextRun("w", only.Runs[0].WritingSystem)])], [], only));
+        Assert.True(ProjectStoreCommand.Run(path, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            var repository = new ProposalRepository(database);
+            var draft = repository.FindPendingChangesDraft()!;
+            return CommandOutcome<string>.Success(repository.TrySaveDraft(draft.DraftName!, draft.ProposalJson!, "[]") ? "saved" : null);
+        }).Value is "saved");
+
+        var pending = ProposalCommands.PendingTextParagraphs(new TextParagraphsFieldRequest(path, shown.Record.Id, Discussion));
+
+        Assert.False(pending.Succeeded);
+        Assert.Equal("draft.invalid", pending.Refusal!.Code);
+    }
+
+    [Fact]
     public void DiscardingTakesTheFieldsEditOutOfTheDraftEvenWhenItAddedAParagraph()
     {
         var path = ProjectWithGdrs();
@@ -424,6 +444,8 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
     [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"ints\":{\"128\":[0,-1]},\"runs\":[{\"text\":\"x\",\"ws\":\"en\"}]}],\"removed\":[],\"expected\":{}}")]
     [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"x\",\"ws\":\"en\",\"ints\":{\"2\":[0,7]}}]}],\"removed\":[],\"expected\":{}}")]
     [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"x\",\"ws\":\"en\",\"ints\":{\"17\":[0,9]}}]}],\"removed\":[],\"expected\":{}}")]
+    [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"x\",\"ws\":\"en\",\"ints\":{\"500\":[0,1]}}]}],\"removed\":[],\"expected\":{}}")]
+    [InlineData("{\"field\":\"CmPossibility.Discussion\",\"order\":[null],\"changed\":[{\"index\":0,\"runs\":[{\"text\":\"x\",\"ws\":\"en\",\"strings\":{\"500\":\"x\"}}]}],\"removed\":[],\"expected\":{}}")]
     public void AMalformedPayloadIsRefused(string payload)
     {
         using var document = System.Text.Json.JsonDocument.Parse(payload.Replace("KEY", CanonicalId.Mint().Value));

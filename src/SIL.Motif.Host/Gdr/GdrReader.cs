@@ -1,6 +1,7 @@
 using System.Text;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
@@ -99,10 +100,68 @@ public static class GdrReader
     public static string LinkData(string projectName, string canonicalId)
     {
         ArgumentNullException.ThrowIfNull(projectName);
-        var guid = CanonicalId.Parse(canonicalId).ToGuid();
-        var url = FieldWorksLinks.ForTarget(projectName, new FieldWorksLinkTarget(ListTool, guid));
-        var target = new MarkdownObject { Kind = MarkdownObjectKind.InternalLink, Guid = guid, Url = url };
-        DefaultObjectMapper.Instance.TryCreateObjData(target, out var objData, out _);
+        return LinkData(projectName, new FieldWorksLinkTarget(ListTool, CanonicalId.Parse(canonicalId).ToGuid()));
+    }
+
+    /// <summary>
+    /// A link to the object at the FieldWorks Markdown project path <paramref name="path"/> (ADR 0031), such as
+    /// <c>/lexicon/entry-1(2)</c> or <c>/lists/list-1/item-1</c>, as a run's object data naming the project
+    /// <paramref name="projectName"/> and the FieldWorks tool that opens the object. A sense opens at its entry, as
+    /// FieldWorks' own links do. A path that is malformed, names nothing, names more than one object, or names an object
+    /// no FieldWorks tool opens is thrown as <see cref="GdrRefusalException"/>.
+    /// </summary>
+    public static GdrPathLink LinkToPath(LcmCache cache, string projectName, string path)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(projectName);
+        ArgumentNullException.ThrowIfNull(path);
+        var written = path.Trim();
+        ProjectPath? parsed;
+        try
+        {
+            parsed = ProjectPath.Parse(written);
+        }
+        catch (ArgumentException)
+        {
+            parsed = null;
+        }
+        if (parsed is null || parsed.Segments.Count == 0 || parsed.Field is not null)
+            throw LinkRefused(RefusalCodes.GdrLinkPathInvalid, FailureReason.InvalidArgument,
+                "Write a project path that starts with /, such as /lexicon/entry or /lists/list/item.");
+        var resolver = new ProjectPathResolver(cache);
+        if (resolver.Resolve(parsed, out var candidates) is not { } guid)
+            throw candidates.Count > 1
+                ? LinkRefused(RefusalCodes.GdrLinkAmbiguous, FailureReason.Refused,
+                    $"{candidates.Count} objects have the path {written}. Add a homograph number or the start of the object's id.")
+                : LinkRefused(RefusalCodes.GdrLinkNotFound, FailureReason.NotFound, $"Nothing in the project has the path {written}.");
+        var item = cache.ServiceLocator.ObjectRepository.GetObject(guid);
+        var target = FieldWorksLinks.TargetFor(cache, item) ?? CustomListTarget(item) ??
+            throw LinkRefused(RefusalCodes.GdrLinkNoTool, FailureReason.Refused,
+                $"Motif knows no FieldWorks tool that opens {written}, so a link to it could not be followed.");
+        var described = resolver.Describe(target.ObjectId)!;
+        return new GdrPathLink(CanonicalId.FromGuid(target.ObjectId).Value, described.Kind, described.Name, described.Description,
+            LinkData(projectName, target));
+    }
+
+    // FieldWorks lists a custom (unowned) list's items in a tool named for the list, as ListTool is.
+    private static FieldWorksLinkTarget? CustomListTarget(ICmObject item)
+    {
+        if (item is not ICmPossibility possibility) return null;
+        ICmObject owner = possibility;
+        while (owner is ICmPossibility) owner = owner.Owner;
+        return owner is ICmPossibilityList { Owner: null } list && Texts(list.Name).FirstOrDefault(name => name.Length > 0) is { } name
+            ? new FieldWorksLinkTarget(string.Concat(name.Where(character => !char.IsWhiteSpace(character))) + "Edit", possibility.Guid)
+            : null;
+    }
+
+    private static GdrRefusalException LinkRefused(string code, FailureReason reason, string message) =>
+        new(new Refusal(code, reason, message));
+
+    private static string LinkData(string projectName, FieldWorksLinkTarget target)
+    {
+        var url = FieldWorksLinks.ForTarget(projectName, target);
+        var link = new MarkdownObject { Kind = MarkdownObjectKind.InternalLink, Guid = target.ObjectId, Url = url };
+        DefaultObjectMapper.Instance.TryCreateObjData(link, out var objData, out _);
         return objData;
     }
 
@@ -196,6 +255,21 @@ public static class GdrReader
     private static GdrTextProperties Properties(PropertyBag bag) => new(
         bag.IntProps.ToDictionary(pair => pair.Key, pair => new GdrIntProperty(pair.Value.Variation, pair.Value.Value)),
         bag.StrProps.ToDictionary(pair => pair.Key, pair => pair.Value));
+}
+
+/// <summary>A link to a project object found by its path.</summary>
+/// <param name="Id">The canonical id of the object the link opens.</param>
+/// <param name="Kind">What the object is, in a person's words.</param>
+/// <param name="Name">The object's name, which names the link.</param>
+/// <param name="Description">A short description of the object; empty when it has none.</param>
+/// <param name="ObjData">The run's object data, as FieldWorks stores a link.</param>
+public sealed record GdrPathLink(string Id, string Kind, string Name, string Description, string ObjData)
+{
+    /// <summary>The Baseline the path was found in.</summary>
+    public BaselineToken? Baseline { get; init; }
+
+    /// <summary>Whether the live file has been saved since that Baseline, so the object may since have moved or gone.</summary>
+    public bool IsStale { get; init; }
 }
 
 /// <summary>A Grammar Design Record read that the project's contents make impossible, carrying the refusal to return.</summary>

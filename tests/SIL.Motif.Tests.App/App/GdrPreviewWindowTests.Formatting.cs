@@ -223,8 +223,91 @@ public sealed partial class GdrPreviewWindowTests
         };
     }
 
+    private static GdrShowResponse WithTwoLinksToOneTarget(GdrSummary record)
+    {
+        var canned = Canned(record);
+        var bold = new GdrTextProperties(new Dictionary<int, GdrIntProperty> { [TextPropertyNumbers.Bold] = new(0, 1) },
+            new Dictionary<int, string>());
+        var target = new GdrLinkTarget(GdrLinkState.External, null, "https://example.invalid/x", "");
+        return canned with
+        {
+            Discussion =
+            [
+                canned.Discussion[0] with
+                {
+                    Runs =
+                    [
+                        new GdrRun("one", "en", null, bold, LinkData, target),
+                        new GdrRun(" and ", "en", null, Props()),
+                        new GdrRun("two", "en", null, Props(), LinkData, target),
+                    ],
+                },
+                canned.Discussion[1],
+            ],
+        };
+    }
+
     [Fact]
-    public void TypingInAParagraphKeepsItsLinkWithTheLinksOwnPropertiesAndItsPicture()
+    public void TwoLinksToOneTargetEachKeepTheirOwnFormatting()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, WithTwoLinksToOneTarget);
+            using var closer = window.CloseOnExit();
+            window.Field!.Editor.SetCaret(new TextPosition(0, "one and two".Length));
+
+            window.KeyTextInput("!");
+            Leave(window);
+
+            var links = StagedFirst(store).Runs.Where(run => run.ObjData == LinkData).ToArray();
+            Assert.Equal(["one", "two"], links.Select(link => link.Text));
+            Assert.True(links[0].Props!.Ints.ContainsKey(TextPropertyNumbers.Bold));
+            Assert.False(links[1].Props!.Ints.ContainsKey(TextPropertyNumbers.Bold));
+            Assert.All(links, link => Assert.False(link.Props!.Ints.ContainsKey(TextPropertyNumbers.Underline)));
+        });
+    }
+
+    [Fact]
+    public void AnUnderlineThePersonGivesALinkIsKept()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, WithLinkAndPicture);
+            using var closer = window.CloseOnExit();
+
+            Select(window, 0, 0, "See here".Length);
+            Assert.True(window.ToggleUnderline());
+            Leave(window);
+
+            var runs = StagedFirst(store).Runs;
+            Assert.True(runs[0].Props!.Ints.ContainsKey(TextPropertyNumbers.Underline));
+            Assert.True(runs.Single(run => run.ObjData == LinkData).Props!.Ints.ContainsKey(TextPropertyNumbers.Underline));
+        });
+    }
+
+    [Fact]
+    public void ACharacterStyleThePersonGivesALinkIsKept()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, WithLinkAndPicture);
+            using var closer = window.CloseOnExit();
+
+            Select(window, 0, "See ".Length, "See here".Length);
+            Assert.True(window.ApplyCharacterStyle("Strong"));
+            Leave(window);
+
+            var link = StagedFirst(store).Runs.Single(run => run.ObjData == LinkData);
+            Assert.Equal(("here", "Strong"), (link.Text, link.CharacterStyle));
+            Assert.False(link.Props!.Ints.ContainsKey(TextPropertyNumbers.ForeColor));
+        });
+    }
+
+    [Fact]
+    public void TypingInAParagraphKeepsItsLinkWithItsOwnUnderlineAndColourThePersonsBoldAndItsPicture()
     {
         _avalonia.Invoke(() =>
         {
@@ -243,8 +326,10 @@ public sealed partial class GdrPreviewWindowTests
             Assert.Equal(("here", "Emphasis"), (link.Text, link.CharacterStyle));
             Assert.False(link.Props!.Ints.ContainsKey(TextPropertyNumbers.Underline));
             Assert.False(link.Props.Ints.ContainsKey(TextPropertyNumbers.ForeColor));
-            Assert.False(link.Props.Ints.ContainsKey(TextPropertyNumbers.Bold));
-            Assert.Equal("￼", runs.Single(run => run.ObjData == PictureData).Text);
+            Assert.True(link.Props.Ints.ContainsKey(TextPropertyNumbers.Bold));
+            var picture = runs.Single(run => run.ObjData == PictureData);
+            Assert.Equal("￼", picture.Text);
+            Assert.False(picture.Props?.Ints.ContainsKey(TextPropertyNumbers.Bold) ?? false);
             Assert.Equal("Now See ", runs[0].Text);
             Assert.True(runs[0].Props!.Ints.ContainsKey(TextPropertyNumbers.Bold));
         });
@@ -279,8 +364,7 @@ public sealed partial class GdrPreviewWindowTests
             Leave(window);
 
             Assert.Equal("gone after", string.Concat(StagedFirst(store).Runs.Select(run => run.Text)));
-            Assert.Equal((string?)null, StagedFirst(store).Runs[0].CharacterStyle);
-            Assert.Equal("Strong", StagedFirst(store).Runs[^1].CharacterStyle);
+            Assert.All(StagedFirst(store).Runs, run => Assert.Equal("Strong", run.CharacterStyle));
         });
     }
 
@@ -333,6 +417,93 @@ public sealed partial class GdrPreviewWindowTests
             Assert.Equal(GdrDiscussion.HyperlinkStyle, link.CharacterStyle);
             Assert.Equal(GdrReader.ListTool, SIL.Motif.Host.PanGloss.FieldWorksLinks.ToolOf(link.ObjData![1..]));
             Assert.Contains("database%3d" + ProjectName, link.ObjData, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    private static readonly string EntryId = CanonicalId.FromGuid(new Guid("8c5e2a6b-4d3f-4e0a-9b92-3f4051627384")).Value;
+
+    private static readonly GdrPathLink Entry = new(EntryId, "Lexical entry", "entry-1", "gloss-1", GdrReader.LinkData(ProjectName, EntryId));
+
+    private static SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink> FindEntry(string path, SIL.Motif.Contract.Baselines.BaselineToken? baseline) => path == "/lexicon/entry-1"
+        ? SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink>.Success(Entry)
+        : SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink>.Refused(new SIL.Motif.Contract.Commands.Refusal(
+            SIL.Motif.Contract.Commands.RefusalCodes.GdrLinkNotFound, FailureReason.NotFound,
+            $"Nothing in the project has the path {path}."));
+
+    [Fact]
+    public void TheLinkPathBoxSaysWhatAPathNamesAndInsertsALinkToIt()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var records = new[] { First, Second, Linked };
+            var window = new GdrPreviewWindow(records, id => WithHyperlinkStyle(records.Single(record => record.Id == id)), store,
+                projectName: ProjectName, linkToPath: FindEntry);
+            window.Show();
+            window.Show(First.Id);
+            using var closer = window.CloseOnExit();
+
+            window.LinkPath = "/lexicon/absent";
+            Completed(window.LinkPathResolving);
+            Assert.Equal("Broken: Nothing in the project has the path /lexicon/absent.", window.LinkPathHint);
+            window.LinkPath = "/lexicon/entry-1";
+            Completed(window.LinkPathResolving);
+            Assert.Equal("Resolved: Lexical entry entry-1", window.LinkPathHint);
+
+            window.Field!.Focus();
+            window.Field.Editor.SetCaret(new TextPosition(0, 0));
+            Assert.False(Completed(window.InsertLinkToPathAsync("/lexicon/absent")));
+            Assert.True(Completed(window.InsertLinkToPathAsync("/lexicon/entry-1")));
+            Leave(window);
+
+            var link = StagedFirst(store).Runs.Single(run => run.ObjData is not null);
+            Assert.Equal("entry-1", link.Text);
+            Assert.Equal(Entry.ObjData, link.ObjData);
+            Assert.Equal(GdrDiscussion.HyperlinkStyle, link.CharacterStyle);
+        });
+    }
+
+    [Fact]
+    public void ThePathIsLookedUpInTheShownRecordsBaselineAndSaysWhenTheProjectWasSavedSince()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var token = new SIL.Motif.Contract.Baselines.BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64));
+            SIL.Motif.Contract.Baselines.BaselineToken? asked = null;
+            var records = new[] { First, Second, Linked };
+            var window = new GdrPreviewWindow(records,
+                id => WithHyperlinkStyle(records.Single(record => record.Id == id)) with { Baseline = token }, new FakeStore(),
+                projectName: ProjectName, linkToPath: (path, baseline) =>
+                {
+                    asked = baseline;
+                    return SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink>.Success(Entry with { Baseline = baseline, IsStale = true });
+                });
+            window.Show();
+            window.Show(First.Id);
+            using var closer = window.CloseOnExit();
+
+            window.LinkPath = "/lexicon/entry-1";
+            Completed(window.LinkPathResolving);
+
+            Assert.Equal(token, asked);
+            Assert.Equal("Resolved: Lexical entry entry-1 (the project has been saved since this Baseline)", window.LinkPathHint);
+        });
+    }
+
+    [Fact]
+    public void WithoutALookUpThePathBoxFindsNothing()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var window = Staging(new FakeStore());
+            using var closer = window.CloseOnExit();
+
+            window.LinkPath = "/lexicon/entry-1";
+            Completed(window.LinkPathResolving);
+
+            Assert.Equal("", window.LinkPathHint);
+            Assert.False(Completed(window.InsertLinkToPathAsync("/lexicon/entry-1")));
         });
     }
 

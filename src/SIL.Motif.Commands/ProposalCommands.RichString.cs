@@ -85,12 +85,9 @@ public static partial class ProposalCommands
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion ?? MotifProductVersion.CurrentText, (database, _) =>
         {
             var target = CanonicalId.Parse(request.Target);
-            var repository = new ProposalRepository(database);
-            var operation = repository.FindPendingChangesDraft() is { DraftName: { } draftName } &&
-                TryLoadDraft(repository, draftName, out var draft, out string _)
-                ? SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(BuildProposalJson(draft)).Operations
-                    .LastOrDefault(item => IsRichStringEdit(item, target, request.Field, request.Ws))
-                : null;
+            if (!TryPendingOperations(new ProposalRepository(database), out var operations, out var refusal))
+                return CommandOutcome<PendingTextRichStringResponse>.Refused(refusal);
+            var operation = operations.LastOrDefault(item => IsRichStringEdit(item, target, request.Field, request.Ws));
             return CommandOutcome<PendingTextRichStringResponse>.Success(new PendingTextRichStringResponse(
                 operation is null ? null : TextRichStringPayload.Parse(OperationSlotRegistry.After(operation))));
         });
