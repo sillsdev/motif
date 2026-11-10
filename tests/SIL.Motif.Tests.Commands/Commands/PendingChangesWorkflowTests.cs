@@ -194,8 +194,8 @@ public sealed class PendingChangesWorkflowTests(PristineProjectFixture pristine,
             reopened.DraftId!, reopened.Revision), runner);
         Assert.True(secondApply.Succeeded, "the second Apply: " + secondApply.Refusal?.Message);
         var secondProposal = new ProposalRepository(database).Get(CanonicalId.Parse(reopened.DraftId!));
-        Assert.Equal("Changes to word analyses", secondProposal.Label);
-        Assert.Equal("Changes to word analyses and spelling.", secondProposal.Rationale);
+        Assert.Equal("Your changes", secondProposal.Label);
+        Assert.Equal("Changes you made in Motif.", secondProposal.Rationale);
     }
 
     [Fact]
