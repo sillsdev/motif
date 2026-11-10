@@ -111,10 +111,15 @@ changes". The checker's findings are underlined there, with the message on hover
 
 `LeaveSourceMode()` reads the Markdown with the same reader and checker as paste. An error keeps the field in source mode (the strip
 counts the errors) and returns false; warnings never block. A clean reading becomes one undo step, "Edit as Markdown", through
-`DocumentEditor.ReplaceParagraphs`: unchanged paragraphs stay as they were, changed ones keep their keys. Source with no change commits
-nothing. `DiscardSourceChanges()` goes back with nothing committed. `SourceModeChanged` gives each change and refusal, with a sentence for
-the host's screen reader. Undo inside the source view is the view's own and ends with the switch back. A host that changes the field
-itself (a conflict) returns it to rich mode first.
+`DocumentEditor.ReplaceParagraphs`: the paragraphs the source left as they were stay (found by a longest common subsequence), and a
+changed paragraph keeps the key of the old one it replaces, so keys stay on their own text when paragraphs are added or removed. Source
+with no change commits nothing. `DiscardSourceChanges()` goes back with nothing committed. `SourceModeChanged` gives each change and
+refusal, with a sentence for the host's screen reader. Undo inside the source view is the view's own and ends with the switch back.
+
+While the field is in source mode its editor refuses edits (`CanEdit` and `CanFormatSelection` are false), and the field is not a tab
+stop, so Tab and Shift+Tab pass through the strip's buttons and the view. The view's context menu reaches the host through the field's
+`ContextMenuRequested` with `ContextMenuRequestedEventArgs.Field` set to the view: Cut, Copy, Paste and a finding's fix go there. A host
+that changes the field itself (a conflict, its own undo) returns it to rich mode first.
 
 ## Host hooks (ADR 0021, ADR 0025)
 

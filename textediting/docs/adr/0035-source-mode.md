@@ -42,8 +42,11 @@ Not owner decisions; names and choices the decision above does not fix. Each can
   "Markdown"); `IsSourceMode`; `SourceView` (the second field, to read its `LanguageDiagnostics`); `SourceModeChanged`
   (`SourceModeChangedEventArgs`: `IsSourceMode`, `Refused`, `Announcement`, the sentence a host gives its screen reader, since Avalonia
   has no live region). `EnterSourceMode` is false for a read-only field, text that may not be edited, or text the form cannot write.
-  `LeaveSourceMode` is false, and the field stays in source mode, when the reading has an error, or when the host made the field
-  read-only meanwhile (the Markdown is kept, not lost).
+  `LeaveSourceMode` is false, and the field stays in source mode with the Markdown kept, when the reading has an error, when the form
+  throws while reading, or when the host made the field read-only meanwhile; the session closes only once the field holds the result.
+- `ContextMenuRequestedEventArgs.Field`: the field a menu is about. In source mode the view's context requests reach the host through
+  the field's `ContextMenuRequested`, with `Field` the source view and `Info` carrying its findings, so the host's Cut, Copy, Paste and a
+  finding's fix (`Field.ApplyDiagnosticFix`) work on the Markdown.
 - In the UI-free core: `ISourceForm` (`Name`, `Write`, `Read`, `AreEquivalent`), `SourceReading` (paragraphs, diagnostics, tokens,
   `HasErrors`), `SourceTokenKinds.Muted`, and `SourceFormLanguageService`, the form's reader as an ADR 0030 language service; and
   `DocumentEditor.ReplaceParagraphs(paragraphs, same, label)`, the one undo step. The Markdown form lives in
@@ -61,9 +64,21 @@ Not owner decisions; names and choices the decision above does not fix. Each can
   text, and no spelling. Findings are the Markdown checker's, marked as ADR 0030 diagnostics (`fwmd.*` ids, source `fwmd`), with a
   finding's replacement as its fix.
 - Leaving reads the text synchronously. Source that says what the field already holds commits nothing, so a round trip adds no undo
-  step. Otherwise the paragraphs are prepared as pasted ones are (block features flattened, ADR 0033; tabs; the host's normalisation
-  form), the paragraphs at the start and the end the form calls equivalent are left as they were (objects, keys and all), and in the
-  stretch between each paragraph takes the key of the old one at its place (ADR 0006); an added paragraph has no key until the host
-  gives it one. All of it is one delta labelled "Edit as Markdown".
+  step. Otherwise the paragraphs are prepared as pasted ones are (block features flattened, ADR 0033; tabs; the document's
+  normalisation form, `Document.Normalization`, so an NFC host gets NFC; with none set, the reader's NFD). Keys follow the text (ADR
+  0006): the longest common subsequence of old and new paragraphs under the form's `AreEquivalent` finds the paragraphs the source
+  left as they were, and those stay, the very objects with their keys. Between two of them, a changed run of old paragraphs gives its
+  keys to the new run's paragraphs by position, as far as both go; a paragraph beyond that is new and has no key until the host gives it
+  one, and an old paragraph beyond it is removed. So adding a paragraph at the top and editing the last leaves every key on its own
+  text. The Markdown form's `AreEquivalent` ignores normalisation, so a paragraph stored composed that the person did not touch stays
+  as it is. All of it is one delta labelled "Edit as Markdown".
+- While the field is in source mode its editor is held: every edit a user or host command makes (typing, paste, formatting checked
+  with `CanFormatSelection`, find and replace, `ReplaceRange`) is refused, as when read-only. `Apply` and `ExternalReplaceParagraph`
+  are not refused, because a host's undo must not fail silently; a host returns the field to rich mode before it uses them (the
+  playground refuses its Undo button in source mode).
+- Keyboard: while the view is up the field itself is neither a tab stop nor focusable, so Tab and Shift+Tab go through the strip's
+  buttons and the view and on out of the field both ways. Text input raised on the field goes to the view.
+- The strip's error line takes the theme's error colour, and the system's window text colour in a high contrast theme. The GUID mute is
+  a wash of the field's background, or of the theme's page colour when the background is not an opaque solid colour.
 - A host that changes the field's text itself (a conflict, a sync) returns the field to rich mode first, with `LeaveSourceMode` or
   `DiscardSourceChanges` (decision 7); the field does not watch for it.

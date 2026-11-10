@@ -631,20 +631,30 @@ namespace SIL.TextEditing.Avalonia
         /// <summary>Lays a wash of the background over the glyphs of tokens whose style mutes them; drawn after the text, before the squiggles.</summary>
         void DrawLanguageMutes(DrawingContext context, ParagraphLayout layout, int index, double top)
         {
-            if (_tokenStyles == null || SystemColours.IsHighContrast() || !(Background is ISolidColorBrush background)) return;
+            if (_tokenStyles == null || SystemColours.IsHighContrast()) return;
             var s = LiveLanguage();
             if (s == null || s.Tokens.Count == 0 || index >= s.Snapshot.Paragraphs.Length) return;
             bool dark = ActualThemeVariant == ThemeVariant.Dark;
+            var page = MuteColour(dark);
             int from = s.Snapshot.StartOf(index), to = s.Snapshot.EndOf(index);
             foreach (var token in s.Tokens)
             {
                 int a = Math.Max(token.Start, from), b = Math.Min(token.End, to);
                 var style = b > a ? _tokenStyles.Resolve(token.Kind, dark) : null;
                 if (style == null || style.Mute <= 0) continue;
-                var wash = new global::Avalonia.Media.Immutable.ImmutableSolidColorBrush(background.Color, style.Mute * background.Opacity);
+                var wash = new global::Avalonia.Media.Immutable.ImmutableSolidColorBrush(page, style.Mute);
                 foreach (var r in layout.SelectionRects(a - from, b - from))
                     context.DrawRectangle(wash, null, new Rect(r.X, r.Y + top, r.Width, r.Height));
             }
+        }
+
+        /// <summary>The colour a mute washes text with: the field's own background when it is an opaque enough solid colour, else the theme's page colour
+        /// (a gradient, an image or no background at all), else white or, in a dark theme, near black.</summary>
+        internal Color MuteColour(bool dark)
+        {
+            if (Background is ISolidColorBrush own && own.Color.A * own.Opacity >= 128) return Color.FromRgb(own.Color.R, own.Color.G, own.Color.B);
+            if (ResolveBackgroundBrush() is ISolidColorBrush theme && theme.Color.A >= 128) return Color.FromRgb(theme.Color.R, theme.Color.G, theme.Color.B);
+            return dark ? Color.FromRgb(0x1F, 0x1F, 0x1F) : Colors.White;
         }
 
         /// <summary>For a test: the chips that would be drawn, as start, end (offsets of the text the service was given) and style, for the theme the field is in;

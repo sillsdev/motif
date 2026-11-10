@@ -84,6 +84,93 @@ namespace SIL.TextEditing.Tests
             Assert.Equal(new[] { "one", "two", "three" }, e.Document.Paragraphs.Select(p => p.Text));
         }
 
+        static (DocumentEditor Editor, SimpleUndoStack Undo) Of(params string[] texts)
+        {
+            var e = new DocumentEditor(Doc(texts.Select(t => Para("en", "en", t)).ToArray()));
+            var undo = new SimpleUndoStack();
+            undo.Attach(e);
+            return (e, undo);
+        }
+
+        static object?[] Keys(DocumentEditor e) => e.Document.Paragraphs.Select(p => p.Key).ToArray();
+
+        [Fact]
+        public void A_paragraph_added_at_the_top_and_another_changed_lower_down_leave_every_key_on_its_own_text()
+        {
+            var (e, undo) = Of("A", "B", "C", "D");
+            var kept = e.Document.Paragraphs.Take(3).ToList();
+            Assert.True(e.ReplaceParagraphs(Read("New", "A", "B", "C", "Dx"), SameText, "Edit as Markdown"));
+            Assert.Equal(new[] { "New", "A", "B", "C", "Dx" }, e.Document.Paragraphs.Select(p => p.Text));
+            Assert.Equal(new object?[] { null, "key0", "key1", "key2", "key3" }, Keys(e));
+            for (int i = 0; i < 3; i++) Assert.Same(kept[i], e.Document.Paragraphs[i + 1]);   // untouched: the very objects
+            Assert.Equal(1, undo.DoneSteps);
+            undo.Undo();
+            Assert.Equal(new[] { "A", "B", "C", "D" }, e.Document.Paragraphs.Select(p => p.Text));
+            Assert.Equal(new object?[] { "key0", "key1", "key2", "key3" }, Keys(e));
+        }
+
+        [Fact]
+        public void Two_separate_edits_one_of_which_adds_a_paragraph_keep_the_keys_between_them()
+        {
+            var (e, _) = Of("A", "B", "C", "D", "E");
+            Assert.True(e.ReplaceParagraphs(Read("A", "Bx", "B2", "C", "D", "Ex"), SameText, "Edit as Markdown"));
+            Assert.Equal(new object?[] { "key0", "key1", null, "key2", "key3", "key4" }, Keys(e));
+        }
+
+        [Fact]
+        public void Two_separate_edits_one_of_which_removes_a_paragraph_keep_the_keys_between_them()
+        {
+            var (e, _) = Of("A", "B", "C", "D", "E");
+            Assert.True(e.ReplaceParagraphs(Read("Ax", "C", "D", "Ex"), SameText, "Edit as Markdown"));
+            Assert.Equal(new[] { "Ax", "C", "D", "Ex" }, e.Document.Paragraphs.Select(p => p.Text));
+            Assert.Equal(new object?[] { "key0", "key2", "key3", "key4" }, Keys(e));
+        }
+
+        [Fact]
+        public void Deleting_one_paragraph_and_editing_another_gives_the_edited_one_its_own_key()
+        {
+            var (e, _) = Of("A", "B", "C", "D");
+            var c = e.Document.Paragraphs[2];
+            Assert.True(e.ReplaceParagraphs(Read("A", "C", "Dx"), SameText, "Edit as Markdown"));
+            Assert.Equal(new object?[] { "key0", "key2", "key3" }, Keys(e));
+            Assert.Same(c, e.Document.Paragraphs[1]);
+        }
+
+        [Fact]
+        public void Edited_paragraphs_take_the_document_s_normalization_form()
+        {
+            var e = new DocumentEditor(Doc(Para("en", "en", "caf\u00e9"), Para("en", "en", "two")));
+            e.Document.Normalization = NormalizationForm.FormC;
+            Assert.True(e.ReplaceParagraphs(Read("cafe\u0301", "two cafe\u0301"), SameText, "Edit as Markdown"));
+            Assert.Equal("caf\u00e9", e.Document.Paragraphs[0].Text);
+            Assert.Equal("two caf\u00e9", e.Document.Paragraphs[1].Text);
+        }
+
+        [Fact]
+        public void While_held_for_source_mode_every_edit_command_is_refused()
+        {
+            var (e, undo) = Of("one two", "three");
+            e.HeldForSource = true;
+            e.SetCaret(new TextPosition(0, 3));
+            Assert.False(e.CanEdit);
+            e.TypeText("x");
+            e.PasteText("y");
+            e.Enter();
+            e.Backspace();
+            e.DeleteForward();
+            e.SetCaret(new TextPosition(0, 0));
+            e.SetCaret(new TextPosition(0, 3), extend: true);
+            Assert.False(e.CanFormatSelection);
+            e.DeleteSelection();
+            e.ReplaceRange(new TextPosition(0, 0), new TextPosition(0, 3), Read("z"), "replace");
+            Assert.Equal(0, e.ReplaceAll(new FindOptions { Pattern = "one" }, "1"));
+            Assert.False(e.ReplaceParagraphs(Read("changed"), SameText, "Edit as Markdown"));
+            Assert.Equal(new[] { "one two", "three" }, e.Document.Paragraphs.Select(p => p.Text));
+            Assert.Equal(0, undo.DoneSteps);
+            e.HeldForSource = false;
+            Assert.True(e.CanEdit);
+        }
+
         [Fact]
         public void Nothing_left_gives_one_empty_paragraph()
         {

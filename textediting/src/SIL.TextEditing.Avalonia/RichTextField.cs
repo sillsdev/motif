@@ -997,8 +997,11 @@ namespace SIL.TextEditing.Avalonia
             if (_source != null)
             {
                 // A key the source view left unhandled bubbles here: it is not the rich text's. One raised on the field itself goes to the view.
-                if (ReferenceEquals(e.Source, this) && HandleSourceKey(e.Key, e.KeyModifiers)) e.Handled = true;
-                FocusSourceView();
+                if (ReferenceEquals(e.Source, this))
+                {
+                    if (HandleSourceKey(e.Key, e.KeyModifiers)) e.Handled = true;
+                    FocusSourceView();
+                }
                 base.OnKeyDown(e);
                 return;
             }
@@ -1009,7 +1012,18 @@ namespace SIL.TextEditing.Avalonia
 
         protected override void OnTextInput(TextInputEventArgs e)
         {
-            if (_source != null) return;
+            if (_source != null)
+            {
+                // Text the view left bubbles here and is not the rich text's; text raised on the field itself is the view's.
+                if (ReferenceEquals(e.Source, this) && !e.Handled && !string.IsNullOrEmpty(e.Text))
+                {
+                    var view = _source.View;
+                    view.RaiseEvent(new TextInputEventArgs { RoutedEvent = TextInputEvent, Text = e.Text, Source = view });
+                    e.Handled = true;
+                    FocusSourceView();
+                }
+                return;
+            }
             if (string.IsNullOrEmpty(e.Text)) return;
             var text = e.Text!;
             // A platform may deliver one emoji as two events, one per UTF-16 half. A lone high surrogate is held until the

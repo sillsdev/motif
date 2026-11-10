@@ -72,7 +72,22 @@ namespace SIL.TextEditing.Markdown
             return new SourceReading(paragraphs, diagnostics, tokens);
         }
 
-        public bool AreEquivalent(Paragraph original, Paragraph read) => MarkdownConverter.AreEquivalent(original, read);
+        /// <summary>True when the source left the paragraph as it was. Normalisation is not a difference: the reader returns NFD
+        /// (<see cref="MarkdownOptions.NormalizeText"/>) and the field the host's form, so a paragraph stored composed that the person did not touch stays
+        /// as it is.</summary>
+        public bool AreEquivalent(Paragraph original, Paragraph read)
+        {
+            if (MarkdownConverter.AreEquivalent(original, read)) return true;
+            return MarkdownConverter.AreEquivalent(Decomposed(original), Decomposed(read));
+        }
+
+        static Paragraph Decomposed(Paragraph p)
+        {
+            var copy = p.Clone();
+            foreach (var r in copy.Runs)
+                if (!r.IsObject) r.Text = TextNormalizer.Normalize(r.Text, System.Text.NormalizationForm.FormD);
+            return copy;
+        }
 
         MarkdownOptions SourceOptions()
         {

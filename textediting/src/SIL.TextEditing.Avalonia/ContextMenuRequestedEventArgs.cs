@@ -32,5 +32,9 @@ namespace SIL.TextEditing.Avalonia
         /// selection and the slot for spelling suggestions.</summary>
         public ContextInfo Info { get; }
 
+        /// <summary>The field the menu is about, and the one Cut, Copy, Paste and a finding's fix (<see cref="RichTextField.ApplyDiagnosticFix"/>) go to: the
+        /// field that raised the event, or, while it is in source mode (ADR 0035), its <see cref="RichTextField.SourceView"/>, whose findings
+        /// <see cref="Info"/> then carries.</summary>
+        public RichTextField? Field { get; internal set; }
     }
 }

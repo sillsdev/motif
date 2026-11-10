@@ -351,7 +351,7 @@ namespace SIL.TextEditing
         public void ReplaceRange(TextPosition a, TextPosition b, List<Paragraph>? fragment, string label)
         {
             CheckAccess();
-            if (IsReadOnly || !CanEditRange(a, b)) return;
+            if (Refusing || !CanEditRange(a, b)) return;
             BlockFlattening? flattening = null;
             if (fragment != null)
             {

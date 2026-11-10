@@ -34,6 +34,18 @@ namespace SIL.TextEditing.Markdown.Tests
         }
 
         [Fact]
+        public void A_paragraph_stored_composed_that_was_not_touched_is_equivalent_to_what_the_reader_returns_decomposed()
+        {
+            var form = Form();
+            var stored = new Paragraph { DefaultWs = "en" };
+            stored.Runs.Add(new Run { Ws = "en", Text = "café" });
+            var read = form.Read(Assert.IsType<string>(form.Write(new[] { stored, new Paragraph { DefaultWs = "en", Runs = { new Run { Ws = "en", Text = "x" } } } }, false)), false);
+            Assert.Equal("café", read.Paragraphs[0].Text);
+            Assert.True(form.AreEquivalent(stored, read.Paragraphs[0]));
+            Assert.False(form.AreEquivalent(stored, read.Paragraphs[1]));
+        }
+
+        [Fact]
         public void One_paragraph_uses_the_inline_grammar_so_block_syntax_is_a_finding()
         {
             var form = Form();

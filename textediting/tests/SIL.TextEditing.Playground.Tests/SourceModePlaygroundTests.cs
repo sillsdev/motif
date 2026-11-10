@@ -95,6 +95,55 @@ namespace SIL.TextEditing.Playground.Tests
         });
 
         [Fact]
+        public void The_context_menu_in_Markdown_shows_the_finding_and_its_Cut_and_Paste_work_on_the_Markdown() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.MixedBidi))
+            {
+                string first = s.ParagraphText(0);
+                s.View.EditAsSource();
+                TypeInSource(s, 0, " [x](/lexicon/palit)");
+                var view = s.Field.SourceView!;
+                for (int i = 0; i < 20 && !view.IsLanguageAnalysisCurrent; i++) Headless.Pump();
+                int end = view.Editor.Document.Paragraphs[0].Length;
+                view.Editor.SetCaret(new TextPosition(0, end - 3));
+                s.Press(Key.F10, KeyModifiers.Shift);   // on the field: it goes to the view
+                Headless.Pump();
+                Assert.Contains(s.View.LastContextMenuItems, c => c.StartsWith("Error: ", System.StringComparison.Ordinal));
+                Assert.Contains("Paste", s.View.LastContextMenuItems);
+                s.View.CloseContextMenu();
+
+                // The menu's Cut goes to the Markdown, not to the rich text, which is held while the field is in source mode.
+                view.Editor.SetCaret(new TextPosition(0, end - " [x](/lexicon/palit)".Length));
+                view.Editor.SetCaret(new TextPosition(0, end), extend: true);
+                s.View.CopyAsync(true, view).GetAwaiter().GetResult();
+                Headless.Pump();
+                Assert.DoesNotContain("palit", view.Editor.Document.PlainText());
+                Assert.Equal(first, s.ParagraphText(0));
+                Assert.True(s.Field.LeaveSourceMode());
+            }
+        });
+
+        [Fact]
+        public void The_host_s_formatting_and_undo_are_refused_while_the_field_is_in_Markdown() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.MixedBidi))
+            {
+                s.Select(0, 0, 3);
+                s.View.ToggleBold();
+                Assert.Equal(1, s.View.Undo.DoneSteps);
+                s.View.EditAsSource();
+                s.Field.Editor.SetCaret(new TextPosition(0, 0));
+                s.Field.Editor.SetCaret(new TextPosition(0, 3), extend: true);
+                Assert.False(s.View.ToggleBold());
+                Assert.False(s.View.UndoLast());
+                Assert.Equal(1, s.View.Undo.DoneSteps);
+                Assert.Contains("refused, the field is in source mode", s.Log);
+                s.Field.DiscardSourceChanges();
+                Assert.True(s.View.UndoLast());
+            }
+        });
+
+        [Fact]
         public void A_link_s_guid_is_muted_in_the_Markdown() => Headless.Run(() =>
         {
             using (var s = new Session(Scenarios.Picture))

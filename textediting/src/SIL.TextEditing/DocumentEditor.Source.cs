@@ -54,7 +54,7 @@ namespace SIL.TextEditing
             CheckAccess();
             if (paragraphs == null) throw new ArgumentNullException(nameof(paragraphs));
             if (same == null) throw new ArgumentNullException(nameof(same));
-            if (IsReadOnly) return false;
+            if (Refusing) return false;
             var old = Document.Paragraphs;
             var incoming = PrepareFragment(paragraphs, false, out var flattening);
             if (incoming.Count == 0) incoming.Add(new Paragraph { DefaultWs = old.Count > 0 ? old[0].DefaultWs : string.Empty });
@@ -75,14 +75,7 @@ namespace SIL.TextEditing
             int oldEnd = old.Count - tail, newEnd = incoming.Count - tail;
             if (head == oldEnd && head == newEnd) return false;
             if (head < oldEnd && !CanEditRange(new TextPosition(head, 0), new TextPosition(oldEnd - 1, old[oldEnd - 1].Length))) return false;
-            var replacement = new List<Paragraph>();
-            for (int i = head; i < newEnd; i++)
-            {
-                var p = incoming[i].Clone(false);
-                if (i < oldEnd) p.Key = old[i].Key;
-                p.Normalize();
-                replacement.Add(p);
-            }
+            var replacement = Matched(old, head, oldEnd, incoming, newEnd, same);
             InOneUndoStep(() =>
             {
                 var d = Begin(head, oldEnd - 1, label);
@@ -95,6 +88,50 @@ namespace SIL.TextEditing
             });
             RaiseBlocksFlattened(flattening);
             return true;
+        }
+
+        /// <summary>The paragraphs of the stretch [head, oldEnd) as they become [head, newEnd) of <paramref name="incoming"/>. The longest common
+        /// subsequence under <paramref name="same"/> finds the old paragraphs the source left as they were; those stay, the very objects with their
+        /// keys (ADR 0006). Between two of them, a changed run of old paragraphs gives its keys to the new run's paragraphs by position, as far as
+        /// both go; a paragraph beyond the old run's end is new and has no key.</summary>
+        static List<Paragraph> Matched(List<Paragraph> old, int head, int oldEnd, List<Paragraph> incoming, int newEnd, Func<Paragraph, Paragraph, bool> same)
+        {
+            int n = oldEnd - head, m = newEnd - head;
+            // lcs[i, j]: the length of the longest common subsequence of old[head + i ..] and incoming[head + j ..].
+            var lcs = new int[n + 1, m + 1];
+            for (int i = n - 1; i >= 0; i--)
+                for (int j = m - 1; j >= 0; j--)
+                    lcs[i, j] = same(old[head + i], incoming[head + j]) ? lcs[i + 1, j + 1] + 1 : Math.Max(lcs[i + 1, j], lcs[i, j + 1]);
+            var result = new List<Paragraph>(m);
+            var oldRun = new List<Paragraph>();
+            var newRun = new List<Paragraph>();
+            void Flush()
+            {
+                for (int k = 0; k < newRun.Count; k++)
+                {
+                    var p = newRun[k].Clone(false);
+                    if (k < oldRun.Count) p.Key = oldRun[k].Key;
+                    p.Normalize();
+                    result.Add(p);
+                }
+                oldRun.Clear();
+                newRun.Clear();
+            }
+            int a = 0, b = 0;
+            while (a < n || b < m)
+            {
+                if (a < n && b < m && same(old[head + a], incoming[head + b]) && lcs[a, b] == lcs[a + 1, b + 1] + 1)
+                {
+                    Flush();
+                    result.Add(old[head + a]);
+                    a++;
+                    b++;
+                }
+                else if (b < m && (a == n || lcs[a, b + 1] >= lcs[a + 1, b])) newRun.Add(incoming[head + b++]);
+                else oldRun.Add(old[head + a++]);
+            }
+            Flush();
+            return result;
         }
     }
 }

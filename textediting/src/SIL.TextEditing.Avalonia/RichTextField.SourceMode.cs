@@ -52,6 +52,8 @@ namespace SIL.TextEditing.Avalonia
             public TextBlock Status = null!;
             public string Original = string.Empty;
             public bool SingleParagraph;
+            public bool WasTabStop;
+            public bool WasFocusable;
             public readonly SimpleUndoStack Undo = new SimpleUndoStack();
         }
 
@@ -94,14 +96,20 @@ namespace SIL.TextEditing.Avalonia
             var session = new SourceSession { Original = text, SingleParagraph = single };
             session.View = CreateSourceView(text, form, single);
             session.Undo.Attach(session.View.Editor);
-            session.Status = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, IsVisible = false, Foreground = Brushes.Red };
+            session.Status = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, IsVisible = false };
             session.Panel = BuildSourcePanel(form, session);
+            // The field itself is not a place for focus while the view is up: Shift+Tab from the strip goes on to what comes before the field.
+            session.WasTabStop = IsTabStop;
+            session.WasFocusable = Focusable;
             _source = session;
+            Editor.HeldForSource = true;
             LogicalChildren.Add(session.Panel);
             VisualChildren.Add(session.Panel);
             InvalidateMeasure();
             InvalidateVisual();
             session.View.Focus();
+            IsTabStop = false;
+            Focusable = false;
             RaiseSourceModeChanged(true, false, "Editing as " + form.Name);
             return true;
         }
@@ -123,34 +131,51 @@ namespace SIL.TextEditing.Avalonia
                 RaiseSourceModeChanged(false, false, "Back to rich text");
                 return true;
             }
-            var reading = form.Read(text, session.SingleParagraph);
+            SourceReading reading;
+            try { reading = form.Read(text, session.SingleParagraph); }
+            catch (Exception ex)
+            {
+                // A form that throws has not read the source: the person's Markdown stays, as for an error.
+                return RefuseReturn(session, "The " + form.Name + " could not be read (" + ex.Message + "). Your " + form.Name + " is kept; throw it away to go back.");
+            }
             if (reading.HasErrors)
             {
                 int errors = reading.Diagnostics.Count(d => d.Severity == DiagnosticSeverity.Error);
-                string message = "The " + form.Name + " has " + errors + (errors == 1 ? " error" : " errors")
-                    + ". Fix what is marked, or throw away your " + form.Name + " changes.";
-                session.Status.Text = message;
-                session.Status.IsVisible = true;
                 session.View.RestartLanguageAnalysis();
-                session.View.Focus();
-                RaiseSourceModeChanged(true, true, message);
-                return false;
+                return RefuseReturn(session, "The " + form.Name + " has " + errors + (errors == 1 ? " error" : " errors")
+                    + ". Fix what is marked, or throw away your " + form.Name + " changes.");
             }
+            // The host made the field read-only meanwhile: keep the person's Markdown rather than lose it on the way back.
             if (Editor.IsReadOnly || !CanEditAll())
+                return RefuseReturn(session, "The field cannot be edited now. Copy your " + form.Name + ", or throw away your " + form.Name + " changes.");
+            Editor.HeldForSource = false;
+            Editor.CloseUndoGroup();
+            try { Editor.ReplaceParagraphs(reading.Paragraphs, form.AreEquivalent, "Edit as " + form.Name); }
+            catch (Exception ex)
             {
-                // The host made the field read-only meanwhile: keep the person's Markdown rather than lose it on the way back.
-                string locked = "The field cannot be edited now. Copy your " + form.Name + ", or throw away your " + form.Name + " changes.";
-                session.Status.Text = locked;
-                session.Status.IsVisible = true;
-                RaiseSourceModeChanged(true, true, locked);
-                return false;
+                Editor.HeldForSource = true;
+                return RefuseReturn(session, "The " + form.Name + " could not be put back (" + ex.Message + "). Your " + form.Name + " is kept.");
             }
             CloseSource(session, focus: true);
-            Editor.CloseUndoGroup();
-            Editor.ReplaceParagraphs(reading.Paragraphs, form.AreEquivalent, "Edit as " + form.Name);
             RaiseSourceModeChanged(false, false, "Back to rich text");
             return true;
         }
+
+        bool RefuseReturn(SourceSession session, string message)
+        {
+            session.Status.Text = message;
+            session.Status.Foreground = StatusBrush();
+            session.Status.IsVisible = true;
+            session.View.Focus();
+            RaiseSourceModeChanged(true, true, message);
+            return false;
+        }
+
+        /// <summary>The colour of the strip's error line: the system's window text in a high contrast theme, else the theme's error text colour, else a red
+        /// that reads on the theme's page.</summary>
+        IBrush StatusBrush() => SystemBrush(SystemColour.WindowText) ??
+            ThemeBrush(ActualThemeVariant == global::Avalonia.Styling.ThemeVariant.Dark ? new SolidColorBrush(Color.FromRgb(0xFF, 0x99, 0xA4)) : new SolidColorBrush(Color.FromRgb(0xC4, 0x2B, 0x1C)),
+                "SystemFillColorCriticalBrush", "SystemControlErrorTextForegroundBrush", "SystemErrorTextColor");
 
         /// <summary>Throws the source away and returns the field to rich mode as it was before; the host receives nothing. Always offered (ADR 0035).</summary>
         public void DiscardSourceChanges()
@@ -175,6 +200,9 @@ namespace SIL.TextEditing.Avalonia
         {
             bool hadFocus = session.View.IsKeyboardFocusWithin || session.Panel.IsKeyboardFocusWithin;
             _source = null;
+            Editor.HeldForSource = false;
+            IsTabStop = session.WasTabStop;
+            Focusable = session.WasFocusable;
             session.View.LanguageService = null;
             VisualChildren.Remove(session.Panel);
             LogicalChildren.Remove(session.Panel);
@@ -207,6 +235,13 @@ namespace SIL.TextEditing.Avalonia
             view.UndoRequested += () => _source?.Undo.Undo();
             view.RedoRequested += () => _source?.Undo.Redo();
             view.LeaveRequested += (o, e) => LeaveRequested?.Invoke(this, e);
+            // The view's context menu is the host's: forwarded from this field, about the view (its findings, its selection), so the host's Cut, Copy,
+            // Paste and a finding's fix go to the view.
+            view.ContextMenuRequested += (o, e) =>
+            {
+                var at = view.TranslatePoint(e.Position, this) ?? e.Position;
+                ContextMenuRequested?.Invoke(this, new ContextMenuRequestedEventArgs(e.Trigger, at, e.Info) { Field = view });
+            };
             view.AddHandler(KeyDownEvent, (o, e) =>
             {
                 if (IsSourceToggle(e.Key, e.KeyModifiers)) { e.Handled = true; LeaveSourceMode(); }

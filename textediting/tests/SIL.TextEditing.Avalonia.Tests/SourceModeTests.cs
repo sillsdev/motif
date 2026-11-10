@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using SIL.TextEditing.Tests;
 using Xunit;
 using static SIL.TextEditing.Tests.TestDocs;
@@ -347,6 +348,175 @@ namespace SIL.TextEditing.Avalonia.Tests
             Assert.Equal(new[] { "one two" }, r.Texts);
             r.Window.Close();
         });
+
+        static IInputElement? Focused(Window window) => window.FocusManager?.GetFocusedElement();
+
+        static void Tab(Window window, KeyModifiers modifiers = KeyModifiers.None)
+        {
+            var target = (Focused(window) as InputElement) ?? window;
+            target.Press(Key.Tab, modifiers);
+            Headless.Pump();
+        }
+
+        [Fact]
+        public void Tab_and_Shift_Tab_reach_both_strip_buttons_and_leave_the_field_both_ways_with_no_trap() => Headless.Run(() =>
+        {
+            var before = new TextBox { Name = "before" };
+            var after = new TextBox { Name = "after" };
+            var field = new RichTextField(Doc(Para("en", "en", "one"))) { SourceForm = new LineForm() };
+            var panel = new StackPanel();
+            panel.Children.Add(before);
+            panel.Children.Add(field);
+            panel.Children.Add(after);
+            var window = new Window { Width = 520, Height = 400, Content = panel };
+            window.Show();
+            Headless.Pump();
+            Assert.True(field.EnterSourceMode());
+            Headless.Pump();
+            var view = field.SourceView!;
+            var buttons = field.GetLogicalDescendants().OfType<Button>().ToList();
+            Assert.Equal(2, buttons.Count);
+            Assert.False(field.IsTabStop);
+
+            // Backwards from the view: the two strip buttons, then what comes before the field, never the field itself.
+            view.Focus();
+            Headless.Pump();
+            var seen = new List<IInputElement?>();
+            for (int i = 0; i < 3; i++) { Tab(window, KeyModifiers.Shift); seen.Add(Focused(window)); }
+            Assert.Same(buttons[1], seen[0]);
+            Assert.Same(buttons[0], seen[1]);
+            Assert.Same(before, seen[2]);
+
+            // Forwards from before: the strip buttons, the view, then what comes after the field.
+            seen.Clear();
+            for (int i = 0; i < 4; i++) { Tab(window); seen.Add(Focused(window)); }
+            Assert.Same(buttons[0], seen[0]);
+            Assert.Same(buttons[1], seen[1]);
+            Assert.Same(view, seen[2]);
+            Assert.Same(after, seen[3]);
+
+            Assert.True(field.LeaveSourceMode());
+            Assert.True(field.IsTabStop);
+            Assert.True(field.Focusable);
+            window.Close();
+        });
+
+        [Fact]
+        public void The_view_s_context_menu_reaches_the_host_about_the_view_with_its_findings_and_their_fix() => Headless.Run(() =>
+        {
+            var r = new Rig("one");
+            var form = new FixingForm();
+            r.Field.SourceForm = form;
+            var posts = new List<Action>();
+            r.Field.LanguageIdlePost = posts.Add;
+            ContextMenuRequestedEventArgs? seen = null;
+            object? sender = null;
+            r.Field.ContextMenuRequested += (o, e) => { sender = o; seen = e; };
+            r.Field.EnterSourceMode();
+            r.TypeAtEndOf(0, " bad");
+            for (int guard = 0; guard < 50 && posts.Count > 0; guard++) { var next = posts[0]; posts.RemoveAt(0); next(); }
+            Headless.Pump();
+            r.View.Editor.SetCaret(new TextPosition(0, 5));
+            r.View.Press(Key.F10, KeyModifiers.Shift);
+            Headless.Pump();
+            Assert.NotNull(seen);
+            Assert.Same(r.Field, sender);
+            Assert.Same(r.View, seen!.Field);
+            var d = Assert.Single(seen.Info.Diagnostics);
+            Assert.True(seen.Field!.ApplyDiagnosticFix(d));
+            Assert.Equal("one good", r.Source);
+            Assert.Equal(new[] { "one" }, r.Texts);
+            r.Window.Close();
+        });
+
+        [Fact]
+        public void Text_input_raised_on_the_field_in_source_mode_goes_to_the_view() => Headless.Run(() =>
+        {
+            var r = new Rig("one");
+            r.Field.EnterSourceMode();
+            r.View.Editor.SetCaret(new TextPosition(0, 3));
+            r.Field.Type("!x");
+            Assert.Equal("one!x", r.Source);
+            Assert.Equal(new[] { "one" }, r.Texts);
+            Assert.Empty(r.Deltas);
+            r.Window.Close();
+        });
+
+        [Fact]
+        public void A_form_that_throws_on_reading_keeps_the_field_in_source_mode_with_the_source() => Headless.Run(() =>
+        {
+            var r = new Rig("one");
+            r.Field.SourceForm = new ThrowingForm();
+            r.Field.EnterSourceMode();
+            r.TypeAtEndOf(0, " two");
+            Assert.False(r.Field.LeaveSourceMode());
+            Assert.True(r.Field.IsSourceMode);
+            Assert.Equal("one two", r.Source);
+            Assert.Contains("could not be read", r.Changes.Last().Announcement);
+            r.Field.DiscardSourceChanges();
+            Assert.Equal(new[] { "one" }, r.Texts);
+            r.Window.Close();
+        });
+
+        [Fact]
+        public void The_rich_editor_refuses_host_commands_while_the_field_is_in_source_mode() => Headless.Run(() =>
+        {
+            var r = new Rig("one");
+            r.Field.EnterSourceMode();
+            Assert.False(r.Field.Editor.CanEdit);
+            r.Field.Editor.SetCaret(new TextPosition(0, 3));
+            r.Field.Editor.TypeText("x");
+            r.Field.Editor.PasteText("y");
+            Assert.Equal(new[] { "one" }, r.Texts);
+            r.TypeAtEndOf(0, " two");
+            Assert.True(r.Field.LeaveSourceMode());
+            Assert.Equal(new[] { "one two" }, r.Texts);
+            Assert.True(r.Field.Editor.CanEdit);
+            r.Window.Close();
+        });
+
+        [Fact]
+        public void The_mute_wash_uses_the_field_s_background_or_else_the_theme_s_page() => Headless.Run(() =>
+        {
+            var r = new Rig("one");
+            r.Field.Background = new SolidColorBrush(Color.FromRgb(10, 20, 30));
+            Assert.Equal(Color.FromRgb(10, 20, 30), r.Field.MuteColour(false));
+            r.Field.Background = new LinearGradientBrush();
+            var light = r.Field.MuteColour(false);
+            Assert.Equal(255, light.A);
+            r.Field.Background = Brushes.Transparent;
+            Assert.Equal(light, r.Field.MuteColour(false));
+            r.Window.Close();
+        });
+
+        /// <summary>A form whose reader marks "bad" as a warning with the fix "good".</summary>
+        sealed class FixingForm : ISourceForm
+        {
+            public string Name => "Lines";
+            public string? Write(IReadOnlyList<Paragraph> paragraphs, bool singleParagraph) => string.Join("\n", paragraphs.Select(p => p.Text));
+            public SourceReading Read(string source, bool singleParagraph)
+            {
+                var lines = source.Split('\n');
+                var diagnostics = new List<LanguageDiagnostic>();
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    int at = lines[i].IndexOf("bad", StringComparison.Ordinal);
+                    if (at < 0) continue;
+                    var range = new LanguageRange(new LanguagePosition(i, at), new LanguagePosition(i, at + 3));
+                    diagnostics.Add(new LanguageDiagnostic(range, DiagnosticSeverity.Warning, "bad word", fix: new LanguageFix("Use good", new[] { new LanguageTextEdit(range, "good") })));
+                }
+                return new SourceReading(lines.Select(l => Para("en", "en", l)).ToList(), diagnostics);
+            }
+            public bool AreEquivalent(Paragraph original, Paragraph read) => original.Text == read.Text;
+        }
+
+        sealed class ThrowingForm : ISourceForm
+        {
+            public string Name => "Lines";
+            public string? Write(IReadOnlyList<Paragraph> paragraphs, bool singleParagraph) => string.Join("\n", paragraphs.Select(p => p.Text));
+            public SourceReading Read(string source, bool singleParagraph) => throw new InvalidOperationException("broken reader");
+            public bool AreEquivalent(Paragraph original, Paragraph read) => original.Text == read.Text;
+        }
 
         [Fact]
         public void A_muted_token_style_draws_with_no_fill_and_its_strength_is_kept_between_0_and_1()
