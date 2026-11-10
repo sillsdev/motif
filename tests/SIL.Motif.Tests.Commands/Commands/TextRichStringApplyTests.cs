@@ -78,6 +78,20 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ADraftStartedByATextEditIsLabelledAsThePersonsChanges()
+    {
+        var path = Project();
+        var id = CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value;
+
+        Staged(path, id, new TextRichStringPayload("LexSense.Source", null, [new TextRun("src", "en")], new("", TextRunsDigest.Of([]))));
+
+        var draft = ProjectStoreCommand.Run(path, MotifProductVersion.CurrentText,
+            (database, _) => CommandOutcome<ProposalRecord>.Success(new ProposalRepository(database).FindPendingChangesDraft()!)).Value!;
+        Assert.Equal("Your changes", ProposalCommands.DeserializeDraft(draft.ProposalJson!).Label);
+        Assert.Equal("Changes you made in Motif.", draft.Rationale);
+    }
+
+    [Fact]
     public void ALaterSessionUpdatesTheOperationKeepingTheFirstStartAndAnEditBackToTheStartLeavesTheDraft()
     {
         var path = Project();

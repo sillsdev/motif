@@ -50,9 +50,8 @@ public static class SeededGdrs
                 hyperlink.Type = StyleType.kstCharacter;
             }
 
-            var list = services.GetInstance<ICmPossibilityListFactory>().Create();
-            cache.LangProject.CheckListsOC.Add(list);
-            list.Name.set_String(analysis, GdrReader.ListName);
+            // Unowned, as FieldWorks' Add Custom List makes it.
+            var list = services.GetInstance<ICmPossibilityListFactory>().CreateUnowned(GdrReader.ListName, analysis);
             var first = AddRecord(cache, list.PossibilitiesOS, "GDR-1", "title-1", "abstract-1", stText =>
             {
                 var contents = TsStringUtils.MakeStrBldr();
@@ -149,7 +148,11 @@ public static class SeededGdrs
     public static void SeedDuplicateAbbreviation(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         AddRecord(cache, Records(cache).PossibilitiesOS, "gdr-2", "title-4", "abstract-4", discussion: null));
 
-    /// <summary>Adds a second list with the records' list name.</summary>
+    /// <summary>Adds a record without a Discussion to the seeded list.</summary>
+    public static void SeedRecord(LcmCache cache, string number, string title) => NonUndoableUnitOfWorkHelper.Do(
+        cache.ActionHandlerAccessor, () => AddRecord(cache, Records(cache).PossibilitiesOS, number, title, "", discussion: null));
+
+    /// <summary>Adds a second list with the records' list name, owned where the first is not.</summary>
     public static void SeedSecondList(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
     {
         var list = cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
@@ -172,8 +175,9 @@ public static class SeededGdrs
         styles[1].BasedOnRA = styles[0];
     });
 
-    private static ICmPossibilityList Records(LcmCache cache) => cache.LangProject.CheckListsOC
-        .Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == GdrReader.ListName);
+    /// <summary>The seeded Grammar Design Records list.</summary>
+    public static ICmPossibilityList Records(LcmCache cache) => cache.ServiceLocator
+        .GetInstance<ICmPossibilityListRepository>().AllInstances().Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == GdrReader.ListName);
 
     private static ICmPossibility AddRecord(LcmCache cache, ILcmOwningSequence<ICmPossibility> owner, string number, string title,
         string abstractText, Action<IStText>? discussion)

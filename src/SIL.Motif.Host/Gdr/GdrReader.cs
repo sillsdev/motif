@@ -1,5 +1,7 @@
+using System.Text;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
@@ -33,7 +35,8 @@ public static class GdrReader
     /// </summary>
     public static GdrShowResponse? Show(LcmCache cache, string id, string? projectName = null)
     {
-        var matches = Records(cache).Where(item => Matches(cache, item.Record, id)).ToArray();
+        var wanted = id.Normalize(NormalizationForm.FormD);
+        var matches = Records(cache).Where(item => Matches(cache, item.Record, wanted)).ToArray();
         if (matches.Length == 0) return null;
         if (matches.Length > 1)
             throw new GdrRefusalException(new Refusal(RefusalCodes.GdrAmbiguous, FailureReason.Refused,
@@ -215,9 +218,10 @@ public static class GdrReader
         Real(cache, entry.Record.Name), Real(cache, entry.Record.Description),
         entry.Parent is null ? null : CanonicalId.FromGuid(entry.Parent.Guid).Value);
 
+    // The id arrives in NFD; the stored abbreviation may be composed either way.
     private static bool Matches(LcmCache cache, ICmPossibility record, string id)
     {
-        var abbreviation = Real(cache, record.Abbreviation);
+        var abbreviation = Real(cache, record.Abbreviation).Normalize(NormalizationForm.FormD);
         return (abbreviation.Length > 0 && string.Equals(abbreviation, id, StringComparison.OrdinalIgnoreCase)) ||
                string.Equals(CanonicalId.FromGuid(record.Guid).Value, id, StringComparison.Ordinal);
     }
@@ -253,15 +257,22 @@ public static class GdrReader
         bag.StrProps.ToDictionary(pair => pair.Key, pair => pair.Value));
 }
 
-/// <summary>A Grammar Design Record read that the project's contents make impossible, carrying the refusal to return.</summary>
 /// <summary>A link to a project object found by its path.</summary>
 /// <param name="Id">The canonical id of the object the link opens.</param>
 /// <param name="Kind">What the object is, in a person's words.</param>
 /// <param name="Name">The object's name, which names the link.</param>
 /// <param name="Description">A short description of the object; empty when it has none.</param>
 /// <param name="ObjData">The run's object data, as FieldWorks stores a link.</param>
-public sealed record GdrPathLink(string Id, string Kind, string Name, string Description, string ObjData);
+public sealed record GdrPathLink(string Id, string Kind, string Name, string Description, string ObjData)
+{
+    /// <summary>The Baseline the path was found in.</summary>
+    public BaselineToken? Baseline { get; init; }
 
+    /// <summary>Whether the live file has been saved since that Baseline, so the object may since have moved or gone.</summary>
+    public bool IsStale { get; init; }
+}
+
+/// <summary>A Grammar Design Record read that the project's contents make impossible, carrying the refusal to return.</summary>
 public sealed class GdrRefusalException(Refusal refusal) : Exception(refusal.Message)
 {
     /// <summary>The refusal the command answers with.</summary>

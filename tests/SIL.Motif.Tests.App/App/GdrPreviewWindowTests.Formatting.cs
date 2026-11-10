@@ -424,7 +424,7 @@ public sealed partial class GdrPreviewWindowTests
 
     private static readonly GdrPathLink Entry = new(EntryId, "Lexical entry", "entry-1", "gloss-1", GdrReader.LinkData(ProjectName, EntryId));
 
-    private static SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink> FindEntry(string path) => path == "/lexicon/entry-1"
+    private static SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink> FindEntry(string path, SIL.Motif.Contract.Baselines.BaselineToken? baseline) => path == "/lexicon/entry-1"
         ? SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink>.Success(Entry)
         : SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink>.Refused(new SIL.Motif.Contract.Commands.Refusal(
             SIL.Motif.Contract.Commands.RefusalCodes.GdrLinkNotFound, FailureReason.NotFound,
@@ -460,6 +460,34 @@ public sealed partial class GdrPreviewWindowTests
             Assert.Equal("entry-1", link.Text);
             Assert.Equal(Entry.ObjData, link.ObjData);
             Assert.Equal(GdrDiscussion.HyperlinkStyle, link.CharacterStyle);
+        });
+    }
+
+    [Fact]
+    public void ThePathIsLookedUpInTheShownRecordsBaselineAndSaysWhenTheProjectWasSavedSince()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var token = new SIL.Motif.Contract.Baselines.BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64));
+            SIL.Motif.Contract.Baselines.BaselineToken? asked = null;
+            var records = new[] { First, Second, Linked };
+            var window = new GdrPreviewWindow(records,
+                id => WithHyperlinkStyle(records.Single(record => record.Id == id)) with { Baseline = token }, new FakeStore(),
+                projectName: ProjectName, linkToPath: (path, baseline) =>
+                {
+                    asked = baseline;
+                    return SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink>.Success(Entry with { Baseline = baseline, IsStale = true });
+                });
+            window.Show();
+            window.Show(First.Id);
+            using var closer = window.CloseOnExit();
+
+            window.LinkPath = "/lexicon/entry-1";
+            Completed(window.LinkPathResolving);
+
+            Assert.Equal(token, asked);
+            Assert.Equal("Resolved: Lexical entry entry-1 (the project has been saved since this Baseline)", window.LinkPathHint);
         });
     }
 

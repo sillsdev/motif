@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -26,7 +27,7 @@ public sealed class GdrPreviewWindow : Window
     public const string StartupArgument = "--gdr-preview";
 
     private readonly Func<string, GdrShowResponse?> _show;
-    private readonly Func<string, CommandOutcome<GdrPathLink>>? _linkToPath;
+    private readonly Func<string, BaselineToken?, CommandOutcome<GdrPathLink>>? _linkToPath;
     private readonly string? _projectName;
     private readonly IGdrEditStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
@@ -64,11 +65,12 @@ public sealed class GdrPreviewWindow : Window
     /// <paramref name="store"/>, when given, stages each edit and offers Apply. <paramref name="confirmStartAgain"/>
     /// asks the person before their edit of a record changed in FieldWorks is thrown away; by default a dialog asks.
     /// <paramref name="projectName"/> is the FieldWorks project a new link names; without it no link can be inserted.
-    /// <paramref name="linkToPath"/> finds the object at a project path for a link; without it the path box finds nothing.
+    /// <paramref name="linkToPath"/> finds the object at a project path for a link, in the Baseline the shown record was read
+    /// from; without it the path box finds nothing.
     /// </summary>
     public GdrPreviewWindow(IReadOnlyList<GdrSummary> records, Func<string, GdrShowResponse?> show, IGdrEditStore? store = null,
         Func<Task<bool>>? confirmStartAgain = null, string? projectName = null,
-        Func<string, CommandOutcome<GdrPathLink>>? linkToPath = null)
+        Func<string, BaselineToken?, CommandOutcome<GdrPathLink>>? linkToPath = null)
     {
         _show = show;
         _linkToPath = linkToPath;
@@ -196,7 +198,8 @@ public sealed class GdrPreviewWindow : Window
     public async Task<bool> InsertLinkToPathAsync(string path)
     {
         if (_linkToPath is not { } find || _shownId is not { } shown) return false;
-        var found = await Task.Run(() => find(path));
+        var baseline = _opened.TryGetValue(shown, out var reading) ? reading.Baseline : null;
+        var found = await Task.Run(() => find(path, baseline));
         _linkHint.Text = Hint(found);
         if (found.Value is not { } link || _shownId != shown || !_opened.TryGetValue(shown, out var opened)) return false;
         return opened.Session.InsertLink(opened.Discussion.LinkRun(link.Name, opened.Field.Editor.ActiveWs, link.ObjData));
@@ -216,12 +219,13 @@ public sealed class GdrPreviewWindow : Window
         {
             return;
         }
-        var found = await Task.Run(() => find(path));
+        var baseline = _shownId is { } shown && _opened.TryGetValue(shown, out var reading) ? reading.Baseline : null;
+        var found = await Task.Run(() => find(path, baseline));
         if (!cancel.IsCancellationRequested) _linkHint.Text = Hint(found);
     }
 
     private static string Hint(CommandOutcome<GdrPathLink> found) => found.Value is { } link
-        ? $"Resolved: {link.Kind} {link.Name}"
+        ? $"Resolved: {link.Kind} {link.Name}" + (link.IsStale ? " (the project has been saved since this Baseline)" : "")
         : $"Broken: {found.Refusal?.Message}";
 
     /// <summary>Gives the shown Discussion's selected paragraphs the paragraph style <paramref name="style"/>.</summary>
@@ -572,7 +576,7 @@ public sealed class GdrPreviewWindow : Window
         field.IsReadOnly = _applying || _locked.Contains(id);
         var session = new GdrDiscussionSession(field, id, starting: starting);
         var opened = new OpenedRecord(id, field, session, $"{shown.Record.Abbreviation}  {shown.Record.Title}\n{shown.Record.Description}",
-            discussion, pending?.Expected);
+            discussion, pending?.Expected, shown.Baseline);
         session.PendingChanged += (_, edit) =>
         {
             // A field set aside by "Start again" or by loading the Draft's edit no longer speaks for the record.
@@ -708,12 +712,12 @@ public sealed class GdrPreviewWindow : Window
         var window = new GdrPreviewWindow(listed.Value!.Records,
             id => GdrQuery.Show(new GdrShowRequest(project, id)) is { Succeeded: true } shown ? shown.Value : null,
             new GdrEditStore(project), projectName: Path.GetFileNameWithoutExtension(project),
-            linkToPath: path => GdrQuery.LinkToPath(new GdrLinkToPathRequest(project, path)));
+            linkToPath: (path, baseline) => GdrQuery.LinkToPath(new GdrLinkToPathRequest(project, path, baseline)));
         window.Show();
         return window;
     }
 
 
     private sealed record OpenedRecord(string RecordId, RichTextField Field, GdrDiscussionSession Session, string Heading,
-        GdrDiscussion Discussion, IReadOnlyDictionary<string, TextParagraphExpected>? Began);
+        GdrDiscussion Discussion, IReadOnlyDictionary<string, TextParagraphExpected>? Began, BaselineToken? Baseline);
 }
