@@ -919,7 +919,7 @@ public static class PendingChanges
         ? new DraftDocument
         {
             ProposalId = CanonicalId.Mint().Value,
-            Label = "Changes to word analyses",
+            Label = "Your changes",
         }
         : ParseDraft(current.ProposalJson!);
 
@@ -945,7 +945,7 @@ public static class PendingChanges
         });
         // The person's own changes start with a standing Rationale, because finalizing a Proposal needs one.
         if (saved && current is null && target.ReopenFrom is null)
-            repository.SetRationale(CanonicalId.Parse(draft.ProposalId), "Changes to word analyses and spelling.");
+            repository.SetRationale(CanonicalId.Parse(draft.ProposalId), "Changes you made in Motif.");
         return saved;
     }
 
