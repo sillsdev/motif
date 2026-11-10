@@ -194,7 +194,7 @@ public sealed class GdrPreviewWindow : Window
         }
         if (refusal is not null)
         {
-            if (refusal.StaleRecordId is { } stale)
+            if (refusal is { StaleRecordId: { } stale, StaleWritingSystem: null })
             {
                 _stale.Add(stale);
                 _status.Text = "Nothing was applied.";

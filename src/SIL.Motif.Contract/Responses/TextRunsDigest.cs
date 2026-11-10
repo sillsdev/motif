@@ -31,7 +31,10 @@ public static class TextRunsDigest
     }
 
     /// <summary>The fingerprint of a paragraph as <c>gdr show</c> returns it.</summary>
-    public static string Of(GdrParagraph paragraph) => Of(paragraph.Runs.Select(run => new RunFacts(run.Text, run.WritingSystem,
+    public static string Of(GdrParagraph paragraph) => OfRuns(paragraph.Runs);
+
+    /// <summary>The fingerprint of runs as the project's readers return them.</summary>
+    public static string OfRuns(IEnumerable<GdrRun> runs) => Of(runs.Select(run => new RunFacts(run.Text, run.WritingSystem,
         run.Properties.Ints.Select(pair => KeyValuePair.Create(pair.Key, (pair.Value.Variation, pair.Value.Value))),
         run.Properties.Strings, run.ObjData)));
 }
