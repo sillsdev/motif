@@ -263,6 +263,19 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
         Assert.Equal("title-1", GdrReader.List(cache)[0].Title);
     }
 
+    [Theory]
+    [InlineData("GDR-é", "GDR-é")]
+    [InlineData("GDR-é", "GDR-é")]
+    [InlineData("GDR-é", "GDR-é")]
+    public void ShowMatchesAnAbbreviationWhicheverWayItsAccentsAreComposed(string stored, string typed)
+    {
+        using var cache = pristine.NewScratch();
+        SeededGdrs.Seed(cache);
+        SeededGdrs.SeedRecord(cache, stored, "title-accented");
+
+        Assert.Equal("title-accented", GdrReader.Show(cache, typed)?.Record.Title);
+    }
+
     [Fact]
     public void AProjectWithoutTheListHasNoRecords()
     {

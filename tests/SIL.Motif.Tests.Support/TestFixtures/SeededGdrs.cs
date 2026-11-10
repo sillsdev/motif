@@ -121,6 +121,10 @@ public static class SeededGdrs
     public static void SeedDuplicateAbbreviation(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         AddRecord(cache, Records(cache).PossibilitiesOS, "gdr-2", "title-4", "abstract-4", discussion: null));
 
+    /// <summary>Adds a record without a Discussion to the seeded list.</summary>
+    public static void SeedRecord(LcmCache cache, string number, string title) => NonUndoableUnitOfWorkHelper.Do(
+        cache.ActionHandlerAccessor, () => AddRecord(cache, Records(cache).PossibilitiesOS, number, title, "", discussion: null));
+
     /// <summary>Adds a second list with the records' list name, owned where the first is not.</summary>
     public static void SeedSecondList(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
     {
