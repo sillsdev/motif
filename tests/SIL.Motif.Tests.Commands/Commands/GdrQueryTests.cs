@@ -190,6 +190,22 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public void ShowOffersEveryStyleAndWritingSystemOfTheProjectEvenWhenTheDiscussionUsesNone()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true);
+
+        var response = GdrQuery.Show(new GdrShowRequest(path, "GDR-1a")).Value!;
+
+        Assert.Equal(GdrStyleKind.Character, response.Styles.Single(style => style.Name == SeededGdrs.StrongStyle).Kind);
+        Assert.Equal(GdrStyleKind.Character, response.Styles.Single(style => style.Name == "Emphasis").Kind);
+        Assert.Equal(GdrStyleKind.Paragraph, response.Styles.Single(style => style.Name == SeededGdrs.QuoteStyle).Kind);
+        var strong = response.Styles.Single(style => style.Name == SeededGdrs.StrongStyle);
+        Assert.Equal(1, strong.ByWritingSystem[SeededProject.RightToLeftTag].Ints[TextPropertyNumbers.Bold].Value);
+        Assert.Equal("rtl", response.WritingSystems.Single(system => system.Tag == SeededProject.RightToLeftTag).Direction);
+        Assert.Contains(response.WritingSystems, system => system.Tag == response.DefaultVernacular);
+    }
+
+    [Fact]
     public void ShowAcceptsTheCanonicalIdAsWellAsTheNumber()
     {
         var path = ProjectWithGdrs(captureBaseline: true);

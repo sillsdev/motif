@@ -3,6 +3,7 @@ using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 using SIL.TextEditing;
 using SIL.TextEditing.LCModel;
 using SIL.TextEditing.Markdown;
@@ -11,11 +12,11 @@ using SIL.TextEditing.Project;
 namespace SIL.Motif.Host.Gdr;
 
 /// <summary>
-/// Reads Grammar Design Records from an open project copy: the possibility list named
-/// <see cref="ListName"/>, each record's title, number and abstract, and a Discussion as paragraphs of runs with the
-/// project's own styles and writing systems resolved beside them. Sub-items are part of the outline and are listed
-/// after their parent. It never opens a unit of work. An ambiguous list or abbreviation, or a style cycle, is thrown
-/// as <see cref="GdrRefusalException"/>.
+/// Reads Grammar Design Records from an open project copy: the possibility list named <see cref="ListName"/>, each
+/// record's title, number and abstract, and a Discussion as paragraphs of runs. Every style and writing system of the
+/// project, and any other the Discussion uses, is resolved beside them. Sub-items are part of the outline and are listed
+/// after their parent. It never opens a unit of work. An ambiguous list or abbreviation, or a style cycle, is thrown as
+/// <see cref="GdrRefusalException"/>.
 /// </summary>
 public static class GdrReader
 {
@@ -26,8 +27,11 @@ public static class GdrReader
     public static IReadOnlyList<GdrSummary> List(LcmCache cache) =>
         Records(cache).Select(entry => Summary(cache, entry)).ToArray();
 
-    /// <summary>The record whose number or canonical id is <paramref name="id"/>, or null.</summary>
-    public static GdrShowResponse? Show(LcmCache cache, string id)
+    /// <summary>
+    /// The record whose number or canonical id is <paramref name="id"/>, or null. A link naming the project
+    /// <paramref name="projectName"/>, or the open copy's own name, is a link into this project.
+    /// </summary>
+    public static GdrShowResponse? Show(LcmCache cache, string id, string? projectName = null)
     {
         var matches = Records(cache).Where(item => Matches(cache, item.Record, id)).ToArray();
         if (matches.Length == 0) return null;
@@ -43,8 +47,12 @@ public static class GdrReader
         var paragraphs = Paragraphs(record);
         var document = TsStringConversion.ToDocument(paragraphs, writingSystems);
 
-        var wsTags = new SortedSet<string>(StringComparer.Ordinal) { writingSystems.DefaultVernacular, writingSystems.DefaultAnalysis };
+        // The project's own styles and writing systems are what an edit may choose from; the Discussion may use others.
+        var wsTags = new SortedSet<string>(writingSystems.KnownTags, StringComparer.Ordinal)
+            { writingSystems.DefaultVernacular, writingSystems.DefaultAnalysis };
         var styleKinds = new SortedDictionary<string, GdrStyleKind>(StringComparer.Ordinal);
+        foreach (var name in styles.ParagraphStyleNames) styleKinds.TryAdd(name, GdrStyleKind.Paragraph);
+        foreach (var name in styles.CharacterStyleNames) styleKinds.TryAdd(name, GdrStyleKind.Character);
         var converted = document.Paragraphs.Select(paragraph =>
         {
             wsTags.Add(paragraph.DefaultWs);
@@ -55,16 +63,18 @@ public static class GdrReader
                     wsTags.Add(run.Ws);
                     var style = run.Props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
                     if (style is not null) NoteStyle(styles, styleKinds, style);
-                    return new GdrRun(run.Text, run.Ws, style, Properties(run.Props), run.ObjData, Target(resolver, run.ObjData));
+                    return new GdrRun(run.Text, run.Ws, style, Properties(run.Props), run.ObjData,
+                        Target(resolver, run.ObjData, cache.ProjectId.Name, projectName));
                 }).ToArray(), paragraph.Key is Guid key ? CanonicalId.FromGuid(key).Value : null);
         }).ToArray();
 
+        var resolved = ResolveAll(styles, styleKinds.Keys, wsTags);
         return new GdrShowResponse(Summary(cache, entry), converted)
         {
             DefaultVernacular = writingSystems.DefaultVernacular,
             DefaultAnalysis = writingSystems.DefaultAnalysis,
             Styles = styleKinds.Select(pair => new GdrStyle(pair.Key, pair.Value, wsTags.ToDictionary(tag => tag,
-                tag => Properties(Resolve(styles, pair.Key, tag)), StringComparer.Ordinal))).ToArray(),
+                tag => Properties(resolved[pair.Key][tag]), StringComparer.Ordinal))).ToArray(),
             WritingSystems = wsTags.Select(tag =>
             {
                 var info = writingSystems.DescribeWritingSystem(tag) ?? WritingSystemInfo.Default(tag);
@@ -73,11 +83,33 @@ public static class GdrReader
         };
     }
 
-    private static GdrLinkTarget? Target(ProjectPathResolver resolver, string? objData)
+    /// <summary>
+    /// The FieldWorks tool that lists the records: FieldWorks names a custom list's tool by the list's name without white
+    /// space, followed by <c>Edit</c>.
+    /// </summary>
+    public const string ListTool = "GrammarDesignRecordsEdit";
+
+    /// <summary>
+    /// The object data FieldWorks stores in a run that links to the record <paramref name="canonicalId"/> of the project
+    /// <paramref name="projectName"/>: a <c>silfw://</c> link naming the project and <see cref="ListTool"/>, as
+    /// <see cref="FieldWorksLinks"/> builds them, which <c>gdr show</c> resolves back to that record.
+    /// </summary>
+    public static string LinkData(string projectName, string canonicalId)
+    {
+        ArgumentNullException.ThrowIfNull(projectName);
+        var guid = CanonicalId.Parse(canonicalId).ToGuid();
+        var url = FieldWorksLinks.ForTarget(projectName, new FieldWorksLinkTarget(ListTool, guid));
+        var target = new MarkdownObject { Kind = MarkdownObjectKind.InternalLink, Guid = guid, Url = url };
+        DefaultObjectMapper.Instance.TryCreateObjData(target, out var objData, out _);
+        return objData;
+    }
+
+    private static GdrLinkTarget? Target(ProjectPathResolver resolver, string? objData, params string?[] projectNames)
     {
         var link = objData is null ? null : DefaultObjectMapper.Instance.Describe(objData);
         if (link is null || link.Kind == MarkdownObjectKind.Picture) return null;
-        if (link.Kind == MarkdownObjectKind.ExternalLink || link.Project is not null)
+        if (link.Kind == MarkdownObjectKind.ExternalLink ||
+            (link.Project is { } named && !projectNames.Contains(named, StringComparer.OrdinalIgnoreCase)))
             return new GdrLinkTarget(GdrLinkState.External, null, link.Url, "");
         var described = link.Guid is { } guid ? resolver.Describe(guid) : null;
         return described is null
@@ -132,11 +164,12 @@ public static class GdrReader
                string.Equals(CanonicalId.FromGuid(record.Guid).Value, id, StringComparison.Ordinal);
     }
 
-    private static PropertyBag Resolve(ProjectStyles styles, string name, string tag)
+    private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, PropertyBag>> ResolveAll(ProjectStyles styles,
+        IEnumerable<string> names, IEnumerable<string> tags)
     {
         try
         {
-            return styles.Resolve(name, tag)!;
+            return styles.ResolveAll(names, tags);
         }
         catch (InvalidOperationException problem)
         {

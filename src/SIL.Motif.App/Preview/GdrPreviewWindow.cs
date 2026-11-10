@@ -5,6 +5,7 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Gdr;
 using SIL.Motif.Runner.Operations;
 using SIL.TextEditing;
 using SIL.TextEditing.Avalonia;
@@ -13,7 +14,8 @@ namespace SIL.Motif.App.Preview;
 
 /// <summary>
 /// A developer-only window that lists a project's Grammar Design Records and lets a person edit one's Discussion, with
-/// the project's own styles and writing systems. It reads through <see cref="GdrQuery"/>; each record's edits add up to
+/// the project's own styles and writing systems, which its toolbar also offers with bold, italic, underline and links to
+/// other records. It reads through <see cref="GdrQuery"/>; each record's edits add up to
 /// one pending <see cref="GdrDiscussionEdit"/>, measured against the text the record was shown with, which an
 /// <see cref="IGdrEditStore"/> keeps as one operation in the pending-changes Draft and applies.
 /// </summary>
@@ -23,6 +25,7 @@ public sealed class GdrPreviewWindow : Window
     public const string StartupArgument = "--gdr-preview";
 
     private readonly Func<string, GdrShowResponse?> _show;
+    private readonly string? _projectName;
     private readonly IGdrEditStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
@@ -56,11 +59,13 @@ public sealed class GdrPreviewWindow : Window
     /// Creates the window over <paramref name="records"/>; <paramref name="show"/> reads one record by its id, and
     /// <paramref name="store"/>, when given, stages each edit and offers Apply. <paramref name="confirmStartAgain"/>
     /// asks the person before their edit of a record changed in FieldWorks is thrown away; by default a dialog asks.
+    /// <paramref name="projectName"/> is the FieldWorks project a new link names; without it no link can be inserted.
     /// </summary>
     public GdrPreviewWindow(IReadOnlyList<GdrSummary> records, Func<string, GdrShowResponse?> show, IGdrEditStore? store = null,
-        Func<Task<bool>>? confirmStartAgain = null)
+        Func<Task<bool>>? confirmStartAgain = null, string? projectName = null)
     {
         _show = show;
+        _projectName = projectName;
         _store = store;
         _confirmStartAgain = confirmStartAgain ?? ConfirmStartAgainAsync;
         var startAgain = new Button { Content = "Start again from the FieldWorks text" };
@@ -92,6 +97,8 @@ public sealed class GdrPreviewWindow : Window
         };
 
         var inField = new DockPanel { LastChildFill = true };
+        DockPanel.SetDock(_toolbar, Dock.Top);
+        inField.Children.Add(BuildToolbar());
         DockPanel.SetDock(_staleStrip, Dock.Top);
         inField.Children.Add(_staleStrip);
         DockPanel.SetDock(_unappliedStrip, Dock.Top);
@@ -128,6 +135,123 @@ public sealed class GdrPreviewWindow : Window
 
     /// <summary>The records listed.</summary>
     public IReadOnlyList<GdrSummary> Records { get; }
+
+    /// <summary>What the character-style list offers to take a run's character style away.</summary>
+    public const string NoCharacterStyle = "(no character style)";
+
+    private readonly WrapPanel _toolbar = new() { Margin = new Thickness(4) };
+    private readonly ComboBox _paragraphStyles = Choice("Paragraph style");
+    private readonly ComboBox _characterStyles = Choice("Character style");
+    private readonly ComboBox _writingSystems = Choice("Writing system");
+    private readonly ComboBox _links = Choice("Link to a record");
+    private bool _resettingChoices;
+
+    /// <summary>The paragraph styles the toolbar offers: the project's.</summary>
+    public IReadOnlyList<string> ParagraphStyleChoices => Items(_paragraphStyles);
+
+    /// <summary>The character styles the toolbar offers: the project's, after <see cref="NoCharacterStyle"/>.</summary>
+    public IReadOnlyList<string> CharacterStyleChoices => Items(_characterStyles);
+
+    /// <summary>The writing systems the toolbar offers: the project's, by tag.</summary>
+    public IReadOnlyList<string> WritingSystemChoices => Items(_writingSystems);
+
+    /// <summary>The records a link can point to, as the toolbar lists them: every record but the one shown.</summary>
+    public IReadOnlyList<string> LinkChoices => Items(_links);
+
+    /// <summary>Gives the shown Discussion's selected paragraphs the paragraph style <paramref name="style"/>.</summary>
+    public bool ApplyParagraphStyle(string style) => Session?.ApplyParagraphStyle(style) == true;
+
+    /// <summary>Gives the selected text the character style <paramref name="style"/>, or takes it away when null.</summary>
+    public bool ApplyCharacterStyle(string? style) => Session?.ApplyCharacterStyle(style) == true;
+
+    /// <summary>Turns bold on or off for the selected text.</summary>
+    public bool ToggleBold() => Session?.ToggleBold() == true;
+
+    /// <summary>Turns italic on or off for the selected text.</summary>
+    public bool ToggleItalic() => Session?.ToggleItalic() == true;
+
+    /// <summary>Turns underline on or off for the selected text.</summary>
+    public bool ToggleUnderline() => Session?.ToggleUnderline() == true;
+
+    /// <summary>Puts the selected text in writing system <paramref name="tag"/>, or with no selection, types on in it.</summary>
+    public bool SetWritingSystem(string tag) => Session?.SetWritingSystem(tag) == true;
+
+    /// <summary>
+    /// Puts a link to the record <paramref name="recordId"/> at the caret, named by the record's number or, without one,
+    /// its title or else its id, in the writing system typing is in.
+    /// </summary>
+    public bool InsertLink(string recordId)
+    {
+        if (_projectName is not { } project || _shownId is not { } shown || Records.FirstOrDefault(record => record.Id == recordId) is not { } target ||
+            !SIL.Motif.Contract.Ids.CanonicalId.TryParse(target.Id, out _)) return false;
+        var opened = _opened[shown];
+        var name = new[] { target.Abbreviation, target.Title, target.Id }.First(text => !string.IsNullOrWhiteSpace(text));
+        return opened.Session.InsertLink(opened.Discussion.LinkRun(name, opened.Field.Editor.ActiveWs, GdrReader.LinkData(project, target.Id)));
+    }
+
+    private static ComboBox Choice(string label) => new()
+    {
+        PlaceholderText = label,
+        MinWidth = 140,
+        Margin = new Thickness(0, 0, 6, 0),
+        // The field keeps focus, so choosing a format does not end the editing session.
+        Focusable = false,
+    };
+
+    private static IReadOnlyList<string> Items(ComboBox box) => (box.ItemsSource as IReadOnlyList<string>) ?? [];
+
+    private Control BuildToolbar()
+    {
+        Button Toggle(string text, string name, FontWeight weight, FontStyle style, TextDecorationCollection? decorations, Func<bool> action)
+        {
+            var button = new Button
+            {
+                Content = new TextBlock { Text = text, FontWeight = weight, FontStyle = style, TextDecorations = decorations },
+                Focusable = false,
+                Margin = new Thickness(0, 0, 6, 0),
+            };
+            Avalonia.Automation.AutomationProperties.SetName(button, name);
+            button.Click += (_, _) => action();
+            return button;
+        }
+
+        _toolbar.Children.Add(_paragraphStyles);
+        _toolbar.Children.Add(_characterStyles);
+        _toolbar.Children.Add(Toggle("B", "Bold", FontWeight.Bold, FontStyle.Normal, null, ToggleBold));
+        _toolbar.Children.Add(Toggle("I", "Italic", FontWeight.Normal, FontStyle.Italic, null, ToggleItalic));
+        _toolbar.Children.Add(Toggle("U", "Underline", FontWeight.Normal, FontStyle.Normal, TextDecorations.Underline, ToggleUnderline));
+        _toolbar.Children.Add(_writingSystems);
+        _toolbar.Children.Add(_links);
+        Chosen(_paragraphStyles, (item, _) => ApplyParagraphStyle(item));
+        Chosen(_characterStyles, (item, _) => ApplyCharacterStyle(item == NoCharacterStyle ? null : item));
+        Chosen(_writingSystems, (item, _) => SetWritingSystem(item));
+        Chosen(_links, (_, at) =>
+        {
+            var targets = Records.Where(record => record.Id != _shownId).ToArray();
+            if (at < targets.Length) InsertLink(targets[at].Id);
+        });
+        return _toolbar;
+    }
+
+    // A list acts once per choice and then shows its label again, so the same choice can be made twice.
+    private void Chosen(ComboBox box, Action<string, int> act) => box.SelectionChanged += (_, _) =>
+    {
+        if (_resettingChoices || box.SelectedItem is not string item || box.SelectedIndex < 0) return;
+        act(item, box.SelectedIndex);
+        _resettingChoices = true;
+        box.SelectedIndex = -1;
+        _resettingChoices = false;
+    };
+
+    private void ShowChoices(GdrDiscussion discussion)
+    {
+        _paragraphStyles.ItemsSource = discussion.ParagraphStyles.ToArray();
+        _characterStyles.ItemsSource = new[] { NoCharacterStyle }.Concat(discussion.CharacterStyles).ToArray();
+        _writingSystems.ItemsSource = discussion.WritingSystemChoices.Select(system => system.Tag).ToArray();
+        _links.ItemsSource = Records.Where(record => record.Id != _shownId)
+            .Select(record => $"{record.Abbreviation}  {record.Title}".Trim()).ToArray();
+    }
+
 
     /// <summary>The field that edits the selected record's Discussion, or null before one is selected.</summary>
     public RichTextField? Field => _scroll.Content as RichTextField;
@@ -341,6 +465,7 @@ public sealed class GdrPreviewWindow : Window
         }
         _shownId = id;
         _scroll.Content = opened.Field;
+        ShowChoices(opened.Discussion);
         _heading.Text = opened.Heading;
         _target.Text = string.Empty;
         ShowStrips();
@@ -499,7 +624,7 @@ public sealed class GdrPreviewWindow : Window
         if (!listed.Succeeded) return null;
         var window = new GdrPreviewWindow(listed.Value!.Records,
             id => GdrQuery.Show(new GdrShowRequest(project, id)) is { Succeeded: true } shown ? shown.Value : null,
-            new GdrEditStore(project));
+            new GdrEditStore(project), projectName: Path.GetFileNameWithoutExtension(project));
         window.Show();
         return window;
     }

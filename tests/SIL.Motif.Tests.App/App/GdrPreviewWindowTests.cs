@@ -13,7 +13,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed class GdrPreviewWindowTests
+public sealed partial class GdrPreviewWindowTests
 {
     private readonly AvaloniaHeadlessFixture _avalonia;
 
@@ -43,6 +43,10 @@ public sealed class GdrPreviewWindowTests
             new GdrStyle("Emphasis", GdrStyleKind.Character,
                 new Dictionary<string, GdrTextProperties> { ["en"] = Props(italic: 1), ["ar"] = Props(italic: 1) }),
             new GdrStyle("Normal", GdrStyleKind.Paragraph,
+                new Dictionary<string, GdrTextProperties> { ["en"] = Props(), ["ar"] = Props() }),
+            new GdrStyle("Quote", GdrStyleKind.Paragraph,
+                new Dictionary<string, GdrTextProperties> { ["en"] = Props(), ["ar"] = Props() }),
+            new GdrStyle("Strong", GdrStyleKind.Character,
                 new Dictionary<string, GdrTextProperties> { ["en"] = Props(), ["ar"] = Props() }),
         ],
         WritingSystems = [new GdrWritingSystem("ar", "rtl", "Segoe UI"), new GdrWritingSystem("en", "ltr", "Segoe UI")],
