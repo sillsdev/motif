@@ -8229,6 +8229,42 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Choose a change in Texts to begin.</value>
     <comment>Short reason shown beside Apply in Review changes.</comment>
   </data>
+  <data name="MotifApp.ApplySummaryFormat" xml:space="preserve">
+    <value>Writes {0} to {1}</value>
+    <comment>Review: summary above Apply; {0} is the count of changes, {1} the project file name.</comment>
+  </data>
+  <data name="MotifApp.ApplyQuestionFormat" xml:space="preserve">
+    <value>Apply {0} to {1}?</value>
+    <comment>Review: question that asks to confirm Apply; {0} is the count of changes, {1} the project name.</comment>
+  </data>
+  <data name="MotifApp.ApplyCheckFieldWorksClosed" xml:space="preserve">
+    <value>FieldWorks is closed</value>
+    <comment>Review: Apply checklist item that passed.</comment>
+  </data>
+  <data name="MotifApp.ApplyCheckFieldWorksOpen" xml:space="preserve">
+    <value>FieldWorks has the project open</value>
+    <comment>Review: Apply checklist item that failed.</comment>
+  </data>
+  <data name="MotifApp.ApplyResultWroteFormat" xml:space="preserve">
+    <value>Wrote {0} to {1}.</value>
+    <comment>Review: Apply result; {0} is the count of changes, {1} the project file name.</comment>
+  </data>
+  <data name="MotifApp.ApplyResultBaselineRecorded" xml:space="preserve">
+    <value>A new Baseline was recorded.</value>
+    <comment>Review: Apply result once the window has captured a new Baseline.</comment>
+  </data>
+  <data name="MotifApp.ApplyResultBaselinePending" xml:space="preserve">
+    <value>Refresh to record a new Baseline.</value>
+    <comment>Review: Apply result before the window has captured a new Baseline.</comment>
+  </data>
+  <data name="MotifApp.ApplyResultReopen" xml:space="preserve">
+    <value>You can open the project in FieldWorks again.</value>
+    <comment>Review: Apply result.</comment>
+  </data>
+  <data name="MotifApp.ApplyBackupLink" xml:space="preserve">
+    <value>How to Back Up a Project in FieldWorks</value>
+    <comment>Review: link that opens the FieldWorks help topic on backing up a project.</comment>
+  </data>
   <data name="MotifApp.TraceEffortDescription" xml:space="preserve">
     <value>Category totals show parser work for this word, including work not attributed to a category.</value>
     <comment>Try a Word: explains that the effort table sums work over the traced search.</comment>

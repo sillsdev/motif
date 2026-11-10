@@ -487,7 +487,7 @@ public sealed class ReviewListWalkTests
         };
         await page.LoadReviewAsync();
 
-        Assert.Equal(["✓ Tried as it is now", "✗ A change needs a look", "✓ Ready to apply"],
+        Assert.Equal(["✓ FieldWorks is closed", "✓ Tried as it is now", "✗ A change needs a look", "✓ Ready to apply"],
             page.ApplyChecks.Select(check => check.MarkedText));
     }
 

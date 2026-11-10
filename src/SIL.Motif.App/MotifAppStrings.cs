@@ -4182,6 +4182,15 @@ public static class MotifAppStrings
     public static string ReviewApplyMeasuring => Text("MotifApp.ReviewApplyMeasuring");
     public static string ReviewApplyChooseChange => Text("MotifApp.ReviewApplyChooseChange");
     public static string ReviewApply => Text("MotifApp.ReviewApply");
+    public static string ApplySummaryFormat => Text("MotifApp.ApplySummaryFormat");
+    public static string ApplyQuestionFormat => Text("MotifApp.ApplyQuestionFormat");
+    public static string ApplyCheckFieldWorksClosed => Text("MotifApp.ApplyCheckFieldWorksClosed");
+    public static string ApplyCheckFieldWorksOpen => Text("MotifApp.ApplyCheckFieldWorksOpen");
+    public static string ApplyResultWroteFormat => Text("MotifApp.ApplyResultWroteFormat");
+    public static string ApplyResultBaselineRecorded => Text("MotifApp.ApplyResultBaselineRecorded");
+    public static string ApplyResultBaselinePending => Text("MotifApp.ApplyResultBaselinePending");
+    public static string ApplyResultReopen => Text("MotifApp.ApplyResultReopen");
+    public static string ApplyBackupLink => Text("MotifApp.ApplyBackupLink");
     public static string TraceEffortDescription => Text("MotifApp.TraceEffortDescription");
     public static string TraceSegmentsExaminedLabel => Text("MotifApp.TraceSegmentsExaminedLabel");
     public static string TraceParserWorkLabel => Text("MotifApp.TraceParserWorkLabel");
