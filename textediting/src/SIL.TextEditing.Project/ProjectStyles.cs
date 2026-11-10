@@ -50,8 +50,39 @@ namespace SIL.TextEditing.Project
         {
             if (Find(styleName) == null) return null;
             CheckInheritance();
+            return Resolve(Sheet(), styleName, ws);
+        }
+
+        /// <summary>
+        /// Resolves every listed style in every listed writing system against one reading of the project's styles, which
+        /// is much cheaper than calling <see cref="Resolve(string, string)"/> for each pair. Absent styles are left out;
+        /// writing systems behave as in <see cref="Resolve(string, string)"/>, and so do based-on cycles.
+        /// </summary>
+        public IReadOnlyDictionary<string, IReadOnlyDictionary<string, PropertyBag>> ResolveAll(IEnumerable<string> styleNames, IEnumerable<string> writingSystems)
+        {
+            if (styleNames == null) throw new ArgumentNullException(nameof(styleNames));
+            if (writingSystems == null) throw new ArgumentNullException(nameof(writingSystems));
+            var tags = writingSystems.Distinct(StringComparer.Ordinal).ToArray();
+            var names = new HashSet<string>(_cache.LangProject.StylesOC.Select(s => s.Name), StringComparer.Ordinal);
+            var result = new Dictionary<string, IReadOnlyDictionary<string, PropertyBag>>(StringComparer.Ordinal);
+            var present = styleNames.Where(names.Contains).Distinct(StringComparer.Ordinal).ToArray();
+            if (present.Length == 0) return result;
+            CheckInheritance();
+            var sheet = Sheet();
+            foreach (var name in present)
+                result[name] = tags.ToDictionary(tag => tag, tag => Resolve(sheet, name, tag), StringComparer.Ordinal);
+            return result;
+        }
+
+        LcmStyleSheet Sheet()
+        {
             var sheet = new LcmStyleSheet();
             sheet.Init(_cache, _cache.LangProject.Hvo, LangProjectTags.kflidStyles);
+            return sheet;
+        }
+
+        PropertyBag Resolve(LcmStyleSheet sheet, string styleName, string ws)
+        {
             var properties = sheet.GetStyleRgch(styleName.Length, styleName);
             var bag = TsStringConversion.ToBag(properties);
             int handle = _handles.GetHandle(ws);

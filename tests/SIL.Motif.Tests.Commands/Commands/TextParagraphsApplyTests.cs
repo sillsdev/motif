@@ -18,6 +18,7 @@ using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
+using SIL.TextEditing;
 using SIL.Motif.Host.Store;
 using Xunit;
 
@@ -54,6 +55,135 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
         Assert.Equal(SeededGdrs.ObjectData, after.Discussion[0].Runs.Single(run => run.Text == "￼").ObjData);
         Assert.Equal(TextRunsDigest.Of(second), TextRunsDigest.Of(after.Discussion[1]));
         Assert.True(after.Discussion[1].RightToLeft);
+    }
+
+    [Fact]
+    public void BoldItalicAndUnderlineWithNoTextChangeAreAppliedAndReadBack()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-1");
+        var first = shown.Discussion[0];
+        var runs = first.Runs.Select(Carried).ToArray();
+        runs[0] = runs[0] with
+        {
+            Props = Toggle(Toggle(Toggle(runs[0].Props, TextPropertyNumbers.Bold, 1), TextPropertyNumbers.Italic, 1),
+                TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle),
+        };
+
+        StagedFirst(path, shown, runs);
+        Applied(path);
+
+        var after = Show(path, "GDR-1").Discussion[0];
+        Assert.Equal(Text(first), Text(after));
+        var ints = after.Runs[0].Properties.Ints;
+        Assert.Equal(new GdrIntProperty(TextPropertyNumbers.VariationEnum, 1), ints[TextPropertyNumbers.Bold]);
+        Assert.Equal(new GdrIntProperty(TextPropertyNumbers.VariationEnum, 1), ints[TextPropertyNumbers.Italic]);
+        Assert.Equal(new GdrIntProperty(TextPropertyNumbers.VariationEnum, TextPropertyNumbers.UnderlineSingle), ints[TextPropertyNumbers.Underline]);
+        Assert.False(after.Runs[1].Properties.Ints.ContainsKey(TextPropertyNumbers.Bold));
+    }
+
+    [Fact]
+    public void ACharacterStyleIsAppliedAndAnotherRemovedAndBothReadBack()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-1");
+        var runs = shown.Discussion[0].Runs.Select(Carried).ToArray();
+        runs[0] = runs[0] with { CharacterStyle = SeededGdrs.StrongStyle };
+        runs[1] = runs[1] with { CharacterStyle = null };
+
+        StagedFirst(path, shown, runs);
+        Applied(path);
+
+        var after = Show(path, "GDR-1").Discussion[0];
+        Assert.Equal(("x", SeededGdrs.StrongStyle), (after.Runs[0].Text, after.Runs[0].Style));
+        Assert.Equal(("y", null), (after.Runs[1].Text, after.Runs[1].Style));
+        Assert.DoesNotContain(after.Runs, run => run.Style == "Emphasis");
+    }
+
+    [Fact]
+    public void AParagraphStyleChangeIsAppliedAndReadsBack()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-1");
+        var first = shown.Discussion[0];
+
+        Staged(path, shown.Record.Id, Edit([first.Key, shown.Discussion[1].Key],
+            [new TextParagraphChange(0, first.Key, SeededGdrs.QuoteStyle, first.Runs.Select(Carried).ToArray(), Props(first.Properties))],
+            [], first));
+        Applied(path);
+
+        var after = Show(path, "GDR-1");
+        Assert.Equal(SeededGdrs.QuoteStyle, after.Discussion[0].Style);
+        Assert.Equal(Runs(first), Runs(after.Discussion[0]));
+        Assert.Equal("Normal", after.Discussion[1].Style);
+    }
+
+    [Fact]
+    public void AWritingSystemChangeAndTypingOnInARightToLeftOneAreAppliedAndReadBack()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-1");
+        var runs = shown.Discussion[0].Runs.Select(Carried).ToList();
+        runs[0] = runs[0] with { Ws = SeededProject.RightToLeftTag };
+        runs.Add(new TextRun("ب", SeededProject.RightToLeftTag));
+
+        StagedFirst(path, shown, runs);
+        Applied(path);
+
+        var after = Show(path, "GDR-1").Discussion[0];
+        Assert.False(after.RightToLeft);
+        Assert.Equal(("x", SeededProject.RightToLeftTag), (after.Runs[0].Text, after.Runs[0].WritingSystem));
+        Assert.Equal(("ب", SeededProject.RightToLeftTag), (after.Runs[^1].Text, after.Runs[^1].WritingSystem));
+        Assert.Equal(shown.DefaultAnalysis, after.Runs[1].WritingSystem);
+    }
+
+    [Fact]
+    public void ALinkToAnotherRecordIsAppliedAndReadsBackResolvedBesideTheExistingLinkAndObject()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-1");
+        var target = GdrQuery.List(new GdrListRequest(path)).Value!.Records.Single(record => record.Abbreviation == "GDR-2");
+        var runs = shown.Discussion[0].Runs.Select(Carried).ToList();
+        runs.Insert(1, new TextRun("GDR-2", shown.DefaultAnalysis, ObjData: GdrReader.LinkData(target.Id)));
+
+        StagedFirst(path, shown, runs);
+        Applied(path);
+
+        var after = Show(path, "GDR-1").Discussion[0];
+        var link = after.Runs.Single(run => run.Text == "GDR-2");
+        Assert.Equal(GdrReader.LinkData(target.Id), link.ObjData);
+        Assert.Equal(new GdrLinkTarget(GdrLinkState.Resolved, "List item", "title-2", "abstract-2"), link.Target);
+        Assert.Equal(SeededGdrs.HyperlinkData, after.Runs.Single(run => run.Text == "link").ObjData);
+        Assert.Equal(SeededGdrs.ObjectData, after.Runs.Single(run => run.Text == "￼").ObjData);
+    }
+
+    [Fact]
+    public void AFieldWorksFormattingChangeHoldsAFormattingOnlyEdit()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-1");
+        var runs = shown.Discussion[0].Runs.Select(Carried).ToArray();
+        runs[0] = runs[0] with { CharacterStyle = SeededGdrs.StrongStyle };
+        StagedFirst(path, shown, runs);
+        InFieldWorks(path, "GDR-1", (cache, text) =>
+        {
+            var paragraph = (IStTxtPara)text.ParagraphsOS[0];
+            var italic = paragraph.Contents.GetBldr();
+            italic.SetIntPropValues(0, 1, (int)FwTextPropType.ktptItalic, (int)FwTextPropVar.ktpvEnum, 1);
+            paragraph.Contents = italic.GetString();
+        });
+
+        var refused = AppliedAfterRefresh(path);
+
+        Assert.Equal(RefusalCodes.TextFieldStale, refused.Refusal?.Code);
+        Assert.Null(Show(path, "GDR-1").Discussion[0].Runs[0].Style);
+    }
+
+    private static void StagedFirst(string path, GdrShowResponse shown, IReadOnlyList<TextRun> runs)
+    {
+        var first = shown.Discussion[0];
+        Staged(path, shown.Record.Id, Edit([first.Key, shown.Discussion[1].Key],
+            [new TextParagraphChange(0, first.Key, "Normal", runs, Props(first.Properties))], [], first));
     }
 
     [Fact]
@@ -156,7 +286,7 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
         Assert.Equal("fw zz", Text(Assert.Single(Show(path, "GDR-1a").Discussion)));
     }
 
-    public static TheoryData<string> FieldWorksChanges => ["format", "style", "add", "remove", "move"];
+    public static TheoryData<string> FieldWorksChanges => ["format", "style", "character style", "writing system", "add", "remove", "move"];
 
     [Theory]
     [MemberData(nameof(FieldWorksChanges))]
@@ -179,6 +309,16 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
                     break;
                 case "style":
                     paragraphs[1].StyleName = "Emphasis";
+                    break;
+                case "character style":
+                    var styled = paragraphs[1].Contents.GetBldr();
+                    styled.SetStrPropValue(0, 2, (int)FwTextPropType.ktptNamedStyle, SeededGdrs.StrongStyle);
+                    paragraphs[1].Contents = styled.GetString();
+                    break;
+                case "writing system":
+                    var moved = paragraphs[1].Contents.GetBldr();
+                    moved.SetIntPropValues(0, 2, (int)FwTextPropType.ktptWs, 0, cache.DefaultAnalWs);
+                    paragraphs[1].Contents = moved.GetString();
                     break;
                 case "add":
                     var added = cache.ServiceLocator.GetInstance<IStTxtParaFactory>().Create();
@@ -319,6 +459,14 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
     private static TextProps Props(GdrTextProperties properties) => new(
         properties.Ints.ToDictionary(pair => pair.Key, pair => (pair.Value.Variation, pair.Value.Value)),
         properties.Strings.Where(pair => pair.Key is not (133 or 6)).ToDictionary(pair => pair.Key, pair => pair.Value));
+
+    // The App sets a toggle with the enum variation, as FieldWorks stores toggles.
+    private static TextProps Toggle(TextProps? props, int property, int value)
+    {
+        var ints = props?.Ints.ToDictionary(pair => pair.Key, pair => pair.Value) ?? [];
+        ints[property] = (TextPropertyNumbers.VariationEnum, value);
+        return new TextProps(ints, props?.Strings ?? new Dictionary<int, string>());
+    }
 
     private static void InFieldWorks(string path, string abbreviation, Action<LcmCache, IStText> change)
     {

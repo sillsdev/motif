@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
@@ -208,6 +209,38 @@ namespace SIL.TextEditing.Project.Tests
                 var second = project.Style("Second", StyleType.kstParagraph, first, b => { });
                 project.Change(() => first.BasedOnRA = second);
                 var error = Assert.Throws<InvalidOperationException>(() => new ProjectStyles(project.Cache).Resolve("First", "en"));
+                Assert.Contains("cycle", error.Message);
+            }
+        }
+
+        [Fact]
+        public void ResolveAll_matches_Resolve_for_every_pair_leaves_out_absent_styles_and_fails_on_a_cycle()
+        {
+            using (var project = new ProjectFixture())
+            {
+                var parent = project.Style("Parent", StyleType.kstParagraph, null, b =>
+                {
+                    b.SetStrPropValue(1, "Common font");
+                    var font = new FontInfo();
+                    font.m_fontName.ExplicitValue = "Arabic font";
+                    BaseStyleInfo.SaveFontOverridesToBuilder(new Dictionary<int, FontInfo> { [project.Cache.DefaultVernWs] = font }, b);
+                });
+                project.Style("Child", StyleType.kstParagraph, parent, b => b.SetIntPropValues(6, 1, 18000));
+                project.Style("Emphasis", StyleType.kstCharacter, null, b => b.SetIntPropValues(2, 3, 1));
+                var styles = new ProjectStyles(project.Cache);
+                var names = new[] { "Parent", "Child", "Emphasis", "Absent", "Child" };
+                var tags = new[] { "en", "ar", "qaa-x-unknown" };
+                var all = styles.ResolveAll(names, tags);
+                Assert.Equal(new[] { "Child", "Emphasis", "Parent" }, all.Keys.OrderBy(k => k, StringComparer.Ordinal));
+                foreach (var name in all.Keys)
+                foreach (var tag in tags)
+                    Assert.True(styles.Resolve(name, tag)!.ContentEquals(all[name][tag]), name + " in " + tag);
+                Assert.Equal("Arabic font", all["Child"]["ar"].StrProps[1]);
+                Assert.Empty(styles.ResolveAll(new[] { "Absent" }, tags));
+                var first = project.Style("First", StyleType.kstParagraph, null, b => { });
+                var second = project.Style("Second", StyleType.kstParagraph, first, b => { });
+                project.Change(() => first.BasedOnRA = second);
+                var error = Assert.Throws<InvalidOperationException>(() => styles.ResolveAll(new[] { "Emphasis" }, tags));
                 Assert.Contains("cycle", error.Message);
             }
         }

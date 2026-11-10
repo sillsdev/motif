@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// <summary>
 /// Writes Grammar Design Records into a run-time project: GDR-1 with a right-to-left paragraph, a character style, a
 /// hyperlink and an object run, and a sub-item GDR-1a under it; GDR-2 with no Discussion; and a record with neither an
-/// abbreviation nor an abstract.
+/// abbreviation nor an abstract. It also adds a character and a paragraph style that no Discussion uses.
 /// </summary>
 public static class SeededGdrs
 {
@@ -31,6 +31,17 @@ public static class SeededGdrs
             var italic = TsStringUtils.MakePropsBldr();
             italic.SetIntPropValues((int)FwTextPropType.ktptItalic, (int)FwTextPropVar.ktpvEnum, 1);
             emphasis.Rules = italic.GetTextProps();
+            var strong = services.GetInstance<IStStyleFactory>().Create();
+            cache.LangProject.StylesOC.Add(strong);
+            strong.Name = StrongStyle;
+            strong.Type = StyleType.kstCharacter;
+            var bold = TsStringUtils.MakePropsBldr();
+            bold.SetIntPropValues((int)FwTextPropType.ktptBold, (int)FwTextPropVar.ktpvEnum, 1);
+            strong.Rules = bold.GetTextProps();
+            var quote = services.GetInstance<IStStyleFactory>().Create();
+            cache.LangProject.StylesOC.Add(quote);
+            quote.Name = QuoteStyle;
+            quote.Type = StyleType.kstParagraph;
 
             var list = services.GetInstance<ICmPossibilityListFactory>().Create();
             cache.LangProject.CheckListsOC.Add(list);
@@ -60,6 +71,12 @@ public static class SeededGdrs
             AddRecord(cache, list.PossibilitiesOS, "", "title-3", "", discussion: null);
         });
     }
+
+    /// <summary>A character style no Discussion uses, which an edit can apply.</summary>
+    public const string StrongStyle = "Strong";
+
+    /// <summary>A paragraph style no Discussion uses, which an edit can apply.</summary>
+    public const string QuoteStyle = "Quote";
 
     /// <summary>The link target FieldWorks stores for an external hyperlink: a type character, then the address.</summary>
     public static readonly string HyperlinkData = (char)FwObjDataTypes.kodtExternalPathName + "https://example.invalid/x";

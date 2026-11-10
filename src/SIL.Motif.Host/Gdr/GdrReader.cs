@@ -12,8 +12,8 @@ namespace SIL.Motif.Host.Gdr;
 
 /// <summary>
 /// Reads Grammar Design Records from an open project copy: the possibility list named
-/// <see cref="ListName"/>, each record's title, number and abstract, and a Discussion as paragraphs of runs with the
-/// project's own styles and writing systems resolved beside them. Sub-items are part of the outline and are listed
+/// <see cref="ListName"/>, each record's title, number and abstract, and a Discussion as paragraphs of runs with every
+/// style and writing system of the project, and any other the Discussion uses, resolved beside them. Sub-items are part of the outline and are listed
 /// after their parent. It never opens a unit of work. An ambiguous list or abbreviation, or a style cycle, is thrown
 /// as <see cref="GdrRefusalException"/>.
 /// </summary>
@@ -43,8 +43,12 @@ public static class GdrReader
         var paragraphs = Paragraphs(record);
         var document = TsStringConversion.ToDocument(paragraphs, writingSystems);
 
-        var wsTags = new SortedSet<string>(StringComparer.Ordinal) { writingSystems.DefaultVernacular, writingSystems.DefaultAnalysis };
+        // The project's own styles and writing systems are what an edit may choose from; the Discussion may use others.
+        var wsTags = new SortedSet<string>(writingSystems.KnownTags, StringComparer.Ordinal)
+            { writingSystems.DefaultVernacular, writingSystems.DefaultAnalysis };
         var styleKinds = new SortedDictionary<string, GdrStyleKind>(StringComparer.Ordinal);
+        foreach (var name in styles.ParagraphStyleNames) styleKinds.TryAdd(name, GdrStyleKind.Paragraph);
+        foreach (var name in styles.CharacterStyleNames) styleKinds.TryAdd(name, GdrStyleKind.Character);
         var converted = document.Paragraphs.Select(paragraph =>
         {
             wsTags.Add(paragraph.DefaultWs);
@@ -59,18 +63,30 @@ public static class GdrReader
                 }).ToArray(), paragraph.Key is Guid key ? CanonicalId.FromGuid(key).Value : null);
         }).ToArray();
 
+        var resolved = ResolveAll(styles, styleKinds.Keys, wsTags);
         return new GdrShowResponse(Summary(cache, entry), converted)
         {
             DefaultVernacular = writingSystems.DefaultVernacular,
             DefaultAnalysis = writingSystems.DefaultAnalysis,
             Styles = styleKinds.Select(pair => new GdrStyle(pair.Key, pair.Value, wsTags.ToDictionary(tag => tag,
-                tag => Properties(Resolve(styles, pair.Key, tag)), StringComparer.Ordinal))).ToArray(),
+                tag => Properties(resolved[pair.Key][tag]), StringComparer.Ordinal))).ToArray(),
             WritingSystems = wsTags.Select(tag =>
             {
                 var info = writingSystems.DescribeWritingSystem(tag) ?? WritingSystemInfo.Default(tag);
                 return new GdrWritingSystem(tag, info.Direction, info.Font);
             }).ToArray(),
         };
+    }
+
+    /// <summary>
+    /// The object data FieldWorks stores in a run that links to the project object <paramref name="canonicalId"/>: a
+    /// <c>silfw://</c> link to this project, which <c>gdr show</c> resolves back to that object.
+    /// </summary>
+    public static string LinkData(string canonicalId)
+    {
+        var target = new MarkdownObject { Kind = MarkdownObjectKind.InternalLink, Guid = CanonicalId.Parse(canonicalId).ToGuid() };
+        DefaultObjectMapper.Instance.TryCreateObjData(target, out var objData, out _);
+        return objData;
     }
 
     private static GdrLinkTarget? Target(ProjectPathResolver resolver, string? objData)
@@ -132,11 +148,12 @@ public static class GdrReader
                string.Equals(CanonicalId.FromGuid(record.Guid).Value, id, StringComparison.Ordinal);
     }
 
-    private static PropertyBag Resolve(ProjectStyles styles, string name, string tag)
+    private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, PropertyBag>> ResolveAll(ProjectStyles styles,
+        IEnumerable<string> names, IEnumerable<string> tags)
     {
         try
         {
-            return styles.Resolve(name, tag)!;
+            return styles.ResolveAll(names, tags);
         }
         catch (InvalidOperationException problem)
         {

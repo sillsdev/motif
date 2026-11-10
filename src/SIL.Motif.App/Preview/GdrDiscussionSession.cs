@@ -37,6 +37,8 @@ public sealed record GdrDiscussionEdit(
 /// Hosts a person's editing of one Discussion in a field: it keeps the field's undo history, one step per undo group
 /// closed on <see cref="DocumentEditor.UndoGroupEnded"/> (SIL.TextEditing ADRs 0003, 0023 and 0024), and when the person
 /// leaves the field or pauses it turns everything typed since the record was shown into one <see cref="GdrDiscussionEdit"/>.
+/// The field has no formatting commands, so the session makes them: character and paragraph styles, bold, italic,
+/// underline, writing systems and links, each one undo step.
 /// </summary>
 public sealed class GdrDiscussionSession
 {
@@ -117,6 +119,116 @@ public sealed class GdrDiscussionSession
         _undone.RemoveAt(_undone.Count - 1);
         _done.Add(step);
         foreach (var delta in step) _field.Editor.Apply(delta);
+        RestartPause();
+        return true;
+    }
+
+    /// <summary>Turns bold on for the selected text, or off when all of it is bold; returns whether anything changed.</summary>
+    public bool ToggleBold() => Toggle(TextPropertyNumbers.Bold, TextPropertyNumbers.ToggleOn);
+
+    /// <summary>Turns italic on for the selected text, or off when all of it is italic; returns whether anything changed.</summary>
+    public bool ToggleItalic() => Toggle(TextPropertyNumbers.Italic, TextPropertyNumbers.ToggleOn);
+
+    /// <summary>Underlines the selected text, or removes the underline when all of it is underlined; returns whether anything changed.</summary>
+    public bool ToggleUnderline() => Toggle(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle);
+
+    /// <summary>Gives the selected text the character style <paramref name="style"/>, or none when it is null; returns whether anything changed.</summary>
+    public bool ApplyCharacterStyle(string? style) => FormatSelection(_ => run =>
+    {
+        if (style is null) run.Props.StrProps.Remove(TextPropertyNumbers.NamedStyle);
+        else run.Props.SetStr(TextPropertyNumbers.NamedStyle, style);
+    });
+
+    /// <summary>
+    /// With a selection, puts the selected text in writing system <paramref name="tag"/>; with a caret, makes it the one
+    /// typing continues in. Returns whether it did either.
+    /// </summary>
+    public bool SetWritingSystem(string tag)
+    {
+        if (_field.IsReadOnly) return false;
+        if (_field.Editor.HasSelection) return FormatSelection(_ => run => run.Ws = tag);
+        _field.Editor.SetActiveWs(tag);
+        return true;
+    }
+
+    /// <summary>Gives the paragraphs of the selection, or the caret's paragraph, the paragraph style <paramref name="style"/>.</summary>
+    public bool ApplyParagraphStyle(string style)
+    {
+        var editor = _field.Editor;
+        if (_field.IsReadOnly || !_field.IsParagraphStyleAllowed(style)) return false;
+        editor.Ordered(out var start, out var end);
+        var delta = new EditDelta { Start = start.Paragraph, Label = "paragraph style " + style, CaretBefore = editor.Caret, CaretAfter = editor.Caret };
+        for (var i = start.Paragraph; i <= end.Paragraph; i++)
+        {
+            var edited = editor.Document.Paragraphs[i].Clone();
+            edited.Style = style;
+            edited.Props.SetStr(TextPropertyNumbers.NamedStyle, style);
+            delta.Before.Add(editor.Document.Paragraphs[i].Clone());
+            delta.After.Add(edited);
+        }
+        return Push(delta);
+    }
+
+    /// <summary>Puts <paramref name="link"/> at the caret in place of any selection, as one undo step; returns whether it did.</summary>
+    public bool InsertLink(Run link)
+    {
+        ArgumentNullException.ThrowIfNull(link);
+        if (_field.IsReadOnly || !_field.Editor.CanEdit) return false;
+        _field.Editor.CloseUndoGroup();
+        var fragment = new Paragraph { DefaultWs = link.Ws };
+        fragment.Runs.Add(link);
+        _field.Editor.Paste([fragment]);
+        _field.Editor.CloseUndoGroup();
+        return true;
+    }
+
+    private bool Toggle(int property, int on) => FormatSelection(runs =>
+    {
+        var allOn = runs.All(run => run.Props.TryGetInt(property, out var value) && value == on);
+        return run =>
+        {
+            if (allOn) run.Props.IntProps.Remove(property);
+            else run.Props.SetInt(property, on, TextPropertyNumbers.VariationEnum);
+        };
+    });
+
+    // Links and objects keep their own properties, and the view's broken-link marker is not the project's text.
+    private bool FormatSelection(Func<IReadOnlyList<Run>, Action<Run>> plan)
+    {
+        var editor = _field.Editor;
+        if (_field.IsReadOnly || !editor.CanFormatSelection) return false;
+        editor.Ordered(out var start, out var end);
+        var delta = new EditDelta { Start = start.Paragraph, Label = "format", CaretBefore = editor.Caret, CaretAfter = end };
+        var targets = new List<Run>();
+        for (var i = start.Paragraph; i <= end.Paragraph; i++)
+        {
+            var edited = editor.Document.Paragraphs[i].Clone();
+            var first = edited.SplitRunAt(i == start.Paragraph ? start.Offset : 0);
+            var last = edited.SplitRunAt(i == end.Paragraph ? end.Offset : edited.Length);
+            for (var r = first; r < last; r++)
+                if (!edited.Runs[r].IsObject && !GdrDiscussion.IsMarker(edited.Runs[r])) targets.Add(edited.Runs[r]);
+            delta.Before.Add(editor.Document.Paragraphs[i].Clone());
+            delta.After.Add(edited);
+        }
+        if (targets.Count == 0) return false;
+        var change = plan(targets);
+        foreach (var run in targets) change(run);
+        foreach (var paragraph in delta.After) paragraph.Normalize();
+        return Push(delta, start, end);
+    }
+
+    // The editor applies a host's change without raising Committed, so the session records it as a step of its own.
+    private bool Push(EditDelta delta, TextPosition? anchor = null, TextPosition? caret = null)
+    {
+        var editor = _field.Editor;
+        var (keptAnchor, keptCaret) = (anchor ?? editor.Anchor, caret ?? editor.Caret);
+        editor.CloseUndoGroup();
+        editor.Apply(delta);
+        _done.Add([delta]);
+        _stepOpen = false;
+        _undone.Clear();
+        editor.SetCaret(keptAnchor);
+        editor.SetCaret(keptCaret, extend: true);
         RestartPause();
         return true;
     }
