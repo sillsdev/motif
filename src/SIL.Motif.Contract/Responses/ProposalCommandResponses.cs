@@ -83,14 +83,42 @@ public sealed record PromoteGlossAddedResponse(
 /// <param name="Field">Which text changed: <c>rationale</c> or <c>note</c>.</param>
 /// <param name="UpdatedUtc">When the text was written; null when a note was cleared.</param>
 /// <param name="CommentsChanged">Whether a person's Comment is now newer than the Rationale.</param>
-public sealed record ProposalTextChangedResponse(string ProposalId, string Field, string? UpdatedUtc, bool CommentsChanged);
+public sealed record ProposalTextChangedResponse(string ProposalId, string Field, string? UpdatedUtc, bool CommentsChanged)
+{
+    /// <summary>
+    /// What a reader would see as wrong in the Rationale as saved (ADR 0099); empty when it is clean. A Draft's
+    /// Rationale saves with findings, but the Draft cannot be finalized until they are fixed.
+    /// </summary>
+    public IReadOnlyList<TextFinding> Findings { get; init; } = [];
+}
 
 /// <summary>A Comment was added, edited or deleted on a Proposal.</summary>
 /// <param name="ProposalId">The Proposal the Comment is on.</param>
 /// <param name="CommentId">The Comment's number.</param>
 /// <param name="Change"><c>added</c>, <c>edited</c> or <c>deleted</c>.</param>
 /// <param name="CommentsChanged">Whether a person's Comment is now newer than the builder's last write.</param>
-public sealed record ProposalCommentChangedResponse(string ProposalId, long CommentId, string Change, bool CommentsChanged);
+public sealed record ProposalCommentChangedResponse(string ProposalId, long CommentId, string Change, bool CommentsChanged)
+{
+    /// <summary>What a reader would see as wrong in the Comment as saved; Comments save with findings and never block.</summary>
+    public IReadOnlyList<TextFinding> Findings { get; init; } = [];
+}
+
+/// <summary>
+/// Something a reader would see as wrong in a Rationale or Comment read as FieldWorks Markdown: unreadable markup, a
+/// link to an object not in the project, an unknown writing system or style (ADR 0099 decision 4).
+/// </summary>
+/// <param name="Id">The checker's stable finding id, such as <c>fwmd.link.not-found</c>.</param>
+/// <param name="Line">The 1-based line of the text the finding starts on.</param>
+/// <param name="Column">The 1-based column, in UTF-16 code units.</param>
+/// <param name="Message">What is wrong, in a reader's words.</param>
+public sealed record TextFinding(string Id, int Line, int Column, string Message)
+{
+    /// <summary>The text the finding is about, when the checker names it.</summary>
+    public string? Observed { get; init; }
+
+    /// <summary>One exact replacement of <see cref="Observed"/> that fixes the finding, or null when there is none.</summary>
+    public string? Replacement { get; init; }
+}
 
 /// <summary>The Draft field <c>label</c> set to a new value.</summary>
 public sealed record DraftFieldChangedResponse(string DraftName, string Field, string Value);

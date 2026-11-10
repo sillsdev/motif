@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using SIL.Motif.Commands;
@@ -252,14 +253,26 @@ public static class ProposalCommandRenderer
 
     internal static string RenderTextChanged(ProposalTextChangedResponse response)
     {
-        var text = $"Wrote the {response.Field} on Proposal {response.ProposalId}.{Environment.NewLine}";
+        var text = $"Wrote the {response.Field} on Proposal {response.ProposalId}.{Environment.NewLine}" +
+            Findings(response.Findings, "It cannot be finalized until these are fixed:");
         return response.CommentsChanged ? text + CommentsNewer : text;
     }
 
     internal static string RenderCommentChanged(ProposalCommentChangedResponse response)
     {
-        var text = $"Comment {response.CommentId} {response.Change} on Proposal {response.ProposalId}.{Environment.NewLine}";
+        var text = $"Comment {response.CommentId} {response.Change} on Proposal {response.ProposalId}.{Environment.NewLine}" +
+            Findings(response.Findings, "A reader would see these as wrong:");
         return response.CommentsChanged ? text + CommentsNewer : text;
+    }
+
+    private static string Findings(IReadOnlyList<TextFinding> findings, string lead)
+    {
+        if (findings.Count == 0) return "";
+        var sb = new StringBuilder(lead).Append(Environment.NewLine);
+        foreach (var finding in findings)
+            sb.Append(CultureInfo.InvariantCulture, $"  {finding.Line}:{finding.Column} {finding.Id} {finding.Message}")
+                .Append(Environment.NewLine);
+        return sb.ToString();
     }
 
     internal static string RenderPictureChanged(ProposalPictureChangedResponse response) =>

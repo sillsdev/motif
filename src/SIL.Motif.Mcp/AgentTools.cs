@@ -214,7 +214,7 @@ internal static class AgentTools
             AgentClass.Draft,
             Schema.Object([("draft", Schema.String("Short draft name, for example 'plural-s'."), true),
                 ("label", Schema.String("A one-line description a reviewer reads in Motif's window."), true),
-                ("rationale", Schema.String("What this Proposal changes and why, in Markdown: the evidence, in a few sentences."), true),
+                ("rationale", Schema.String("What this Proposal changes and why, in FieldWorks Markdown: the evidence, in a few sentences. Finalize needs it free of findings."), true),
                 ("request_id", Schema.String("The request_id from motif_list_requests of the open Request this Proposal answers. The Request is answered when the Proposal is finalized."), false)]),
             false,
             false,
@@ -916,7 +916,7 @@ internal static class AgentTools
             string.Empty,
             AgentClass.Draft,
             Schema.Object([("proposal", Schema.String("The full Proposal id, as motif_start_proposal or motif_proposals returned it."), true),
-                ("rationale", Schema.String("What this Proposal changes and why, in Markdown. Replaces the earlier text."), true),
+                ("rationale", Schema.String("What this Proposal changes and why, in FieldWorks Markdown. Replaces the earlier text and returns its findings; a Draft with findings cannot be finalized, and a Ready Proposal refuses them and keeps its last clean Rationale."), true),
                 ("author", Schema.String("What you call yourself, such as 'Claude (Opus 5.5)'. Shown beside the text as a label only."), false)]),
             false,
             false,
@@ -925,13 +925,17 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalTexts.SetRationale(new SetRationaleRequest(
                 c.ProjectPath, c.ProductVersion, a.Required("proposal"), a.Required("rationale"),
                 a.Optional("author"), a.Optional("author") is null ? null : Environment.UserName)),
-                r => "Finalize or keep composing; the person reads this text beside the changes."))) { Requests = [typeof(SetRationaleRequest)] },
+                r => r.Findings.Count == 0
+                    ? "Finalize or keep composing; the person reads this text beside the changes."
+                    : "Saved, but Finalize is refused until these are fixed with motif_set_rationale: " + Listed(r.Findings)))) {
+            Requests = [typeof(SetRationaleRequest)],
+        },
 
         new("motif_add_comment",
             string.Empty,
             AgentClass.Draft,
             Schema.Object([("proposal", Schema.String("The full Proposal id, as motif_start_proposal or motif_proposals returned it."), true),
-                ("comment", Schema.String("Your Comment in Markdown, such as an answer to the person."), true),
+                ("comment", Schema.String("Your Comment in FieldWorks Markdown, such as an answer to the person. Its findings come back but never block."), true),
                 ("author", Schema.String("What you call yourself, such as 'Claude (Opus 5.5)'. Shown beside the Comment as a label only, never checked."), true)]),
             false,
             false,
@@ -940,7 +944,8 @@ internal static class AgentTools
             (c, a, ct) => Task.FromResult(ToolOutcome.From(ProposalComments.Add(new AddCommentRequest(
                 c.ProjectPath, c.ProductVersion, a.Required("proposal"), a.Required("comment"), Environment.UserName,
                 a.Required("author"))),
-                r => "The Comment is on the Proposal. You cannot edit or delete it; add another to correct it."))) {
+                r => "The Comment is on the Proposal. You cannot edit or delete it; add another to correct it." +
+                    (r.Findings.Count == 0 ? "" : " A reader would see these as wrong: " + Listed(r.Findings))))) {
             Requests = [typeof(AddCommentRequest)],
             FieldNames = new Dictionary<string, string?>
             {
@@ -1390,9 +1395,15 @@ internal static class AgentTools
         var written = ProposalTexts.SetRationale(new SetRationaleRequest(
             context.ProjectPath, context.ProductVersion, created.Value!.ProposalId, args.Required("rationale")));
         if (!written.Succeeded) return ToolOutcome.Refused(written.Refusal!);
+        var findings = written.Value!.Findings;
         return ToolOutcome.From(created, r =>
-            $"Add one related change to draft '{r.DraftName}'. Read motif_guide(topic=workflow) for the inspect-to-Trial steps.");
+            $"Add one related change to draft '{r.DraftName}'. Read motif_guide(topic=workflow) for the inspect-to-Trial steps." +
+            (findings.Count == 0 ? "" : " Fix the Rationale with motif_set_rationale before Finalize; a reader would see these as wrong: " +
+                Listed(findings)));
     }
+
+    private static string Listed(IReadOnlyList<TextFinding> findings) =>
+        string.Join("; ", findings.Select(finding => $"{finding.Line}:{finding.Column} {finding.Id} {finding.Message}"));
 
     private static ToolOutcome OpenProject(ToolArgs args)
     {

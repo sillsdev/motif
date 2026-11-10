@@ -958,6 +958,37 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task AnAgentIsToldTheFindingsOfItsRationaleAndCommentAndFinalizeRefusesUntilTheRationaleIsClean()
+    {
+        using var project = new WalkthroughProject(pristine);
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot).Succeeded);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "findings-draft"),
+            ("label", "A findings draft"), ("rationale", "Why this draft exists."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        var lexicon = await session.CallAsync("motif_lexicon", ("query", SeededProject.FirstForm));
+        var sense = lexicon.GetProperty("result").GetProperty("entries")[0].GetProperty("senses")[0];
+        await session.CallAsync("motif_set_gloss", ("draft", "findings-draft"), ("sense", sense.GetProperty("id").GetString()!),
+            ("ws", lexicon.GetProperty("result").GetProperty("glossWs").GetString()!), ("text", "gloss-2"));
+
+        var written = await session.CallAsync("motif_set_rationale", ("proposal", proposalId),
+            ("rationale", "Some <b>raw</b> HTML."));
+        var commented = await session.CallAsync("motif_add_comment", ("proposal", proposalId),
+            ("comment", "More <b>raw</b> HTML."), ("author", "agent-1"));
+        var refused = await session.Client.CallToolAsync("motif_finalize_proposal",
+            new Dictionary<string, object?> { ["draft"] = "findings-draft", ["project"] = project.FwDataPath });
+
+        Assert.True(written.GetProperty("ok").GetBoolean(), written.ToString());
+        Assert.Equal("fwmd.syntax.unsupported-markup",
+            written.GetProperty("result").GetProperty("findings")[0].GetProperty("id").GetString());
+        Assert.Contains("Finalize is refused", written.GetProperty("next").GetString(), StringComparison.Ordinal);
+        Assert.True(commented.GetProperty("ok").GetBoolean(), commented.ToString());
+        Assert.NotEqual(0, commented.GetProperty("result").GetProperty("findings").GetArrayLength());
+        Assert.True(refused.IsError);
+        Assert.Contains("proposal.rationale-findings", ((TextContentBlock)refused.Content[0]).Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TryWordParsesAWordWithADraftsChangesAndNamesTheDraftItTracedAgainst()
     {
         using var project = new WalkthroughProject(pristine);

@@ -240,7 +240,7 @@
         },
         "rationale": {
           "type": "string",
-          "description": "What this Proposal changes and why, in Markdown: the evidence, in a few sentences."
+          "description": "What this Proposal changes and why, in FieldWorks Markdown: the evidence, in a few sentences. Finalize needs it free of findings."
         },
         "request_id": {
           "type": "string",
@@ -9038,7 +9038,7 @@
         },
         "rationale": {
           "type": "string",
-          "description": "What this Proposal changes and why, in Markdown. Replaces the earlier text."
+          "description": "What this Proposal changes and why, in FieldWorks Markdown. Replaces the earlier text and returns its findings; a Draft with findings cannot be finalized, and a Ready Proposal refuses them and keeps its last clean Rationale."
         },
         "author": {
           "type": "string",
@@ -9072,7 +9072,7 @@
         },
         "comment": {
           "type": "string",
-          "description": "Your Comment in Markdown, such as an answer to the person."
+          "description": "Your Comment in FieldWorks Markdown, such as an answer to the person. Its findings come back but never block."
         },
         "author": {
           "type": "string",

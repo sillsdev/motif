@@ -648,7 +648,7 @@ public static partial class ProposalCommands
 
     public static CommandOutcome<ProposalFinalizedResponse> Finalize(FinalizeRequest request)
     {
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             try
             {
@@ -677,6 +677,17 @@ public static partial class ProposalCommands
                         $"Proposal changes and why with 'proposal rationale {draft.ProposalId} --text <markdown>', " +
                         "then finalize again.",
                         Fact(("draftName", request.DraftName), ("proposalId", draft.ProposalId))));
+                }
+
+                // Rechecked as the Baseline may have moved; a Draft finalized into a decision reaches no reviewer.
+                if (request.ThenMove is null &&
+                    ProposalTexts.Check(database, project, draftRecord.Rationale) is { IsClean: false } rationale)
+                {
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(ProposalTexts.RationaleFindings(
+                        $"Draft '{request.DraftName}' cannot be finalized while its Rationale has something a reader " +
+                        $"would see as wrong. Fix these with 'proposal rationale {draft.ProposalId} --text <markdown>', " +
+                        "then finalize again:", rationale.Findings,
+                        ("draftName", request.DraftName), ("proposalId", draft.ProposalId)));
                 }
 
                 if (draft.Operations.Count == 0)

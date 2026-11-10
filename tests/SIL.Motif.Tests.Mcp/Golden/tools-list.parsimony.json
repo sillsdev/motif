@@ -110,7 +110,7 @@
         },
         "rationale": {
           "type": "string",
-          "description": "What this Proposal changes and why, in Markdown: the evidence, in a few sentences."
+          "description": "What this Proposal changes and why, in FieldWorks Markdown: the evidence, in a few sentences. Finalize needs it free of findings."
         },
         "request_id": {
           "type": "string",

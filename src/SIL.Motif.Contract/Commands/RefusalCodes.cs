@@ -184,6 +184,7 @@ public static class RefusalCodes
     public const string RequestNotOpen = "request.not-open";
     public const string RequestProposalOpen = "request.proposal-open";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
+    public const string ProposalRationaleFindings = "proposal.rationale-findings";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
