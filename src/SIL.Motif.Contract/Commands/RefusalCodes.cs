@@ -126,6 +126,14 @@ public static class RefusalCodes
     public const string GdrBaselineUnavailable = "gdr.baseline-unavailable";
     /// <summary>A style in the project is based on itself, so no style can be resolved.</summary>
     public const string GdrStyleCycle = "gdr.style-cycle";
+    /// <summary>A project path for a link names more than one object.</summary>
+    public const string GdrLinkAmbiguous = "gdr.link-ambiguous";
+    /// <summary>A project path for a link names an object no FieldWorks tool opens.</summary>
+    public const string GdrLinkNoTool = "gdr.link-no-tool";
+    /// <summary>A project path for a link names nothing in the project.</summary>
+    public const string GdrLinkNotFound = "gdr.link-not-found";
+    /// <summary>A link's project path is not a path to an object.</summary>
+    public const string GdrLinkPathInvalid = "gdr.link-path-invalid";
     /// <summary>A gdr show request named no record.</summary>
     public const string GdrEmptyId = "gdr.empty-id";
     /// <summary>The project has no Baseline to read a Grammar Design Record from.</summary>

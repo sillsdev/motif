@@ -8,3 +8,8 @@ public sealed record GdrListRequest(string ProjectPath);
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="Id">The record's <c>GDR-n</c> abbreviation or its canonical id.</param>
 public sealed record GdrShowRequest(string ProjectPath, string Id);
+
+/// <summary>Finds the object at a project path in the current Baseline, for a link to it.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Path">The FieldWorks Markdown project path, such as <c>/lexicon/entry-1</c>.</param>
+public sealed record GdrLinkToPathRequest(string ProjectPath, string Path);

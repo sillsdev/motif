@@ -60,6 +60,31 @@ public static class GdrQuery
         });
     }
 
+    /// <summary>
+    /// A link to the object at a project path, found in the current Baseline and naming the project and the FieldWorks
+    /// tool that opens the object (<see cref="GdrReader.LinkToPath"/>).
+    /// </summary>
+    public static CommandOutcome<GdrPathLink> LinkToPath(GdrLinkToPathRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            if (baseline is null) return NoBaseline<GdrPathLink>();
+            if (!File.Exists(baseline.FwDataPath)) return BaselineUnavailable<GdrPathLink>();
+            using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+            try
+            {
+                return CommandOutcome<GdrPathLink>.Success(
+                    GdrReader.LinkToPath(reader.Cache, Path.GetFileNameWithoutExtension(request.ProjectPath), request.Path));
+            }
+            catch (GdrRefusalException refused)
+            {
+                return CommandOutcome<GdrPathLink>.Refused(refused.Refusal);
+            }
+        });
+    }
+
     private static CommandOutcome<T> EmptyId<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
         RefusalCodes.GdrEmptyId, FailureReason.InvalidArgument, "Name a Grammar Design Record, for example GDR-1."));
 

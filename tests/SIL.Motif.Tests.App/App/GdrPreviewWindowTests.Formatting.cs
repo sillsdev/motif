@@ -336,6 +336,65 @@ public sealed partial class GdrPreviewWindowTests
         });
     }
 
+    private static readonly string EntryId = CanonicalId.FromGuid(new Guid("8c5e2a6b-4d3f-4e0a-9b92-3f4051627384")).Value;
+
+    private static readonly GdrPathLink Entry = new(EntryId, "Lexical entry", "entry-1", "gloss-1", GdrReader.LinkData(ProjectName, EntryId));
+
+    private static SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink> FindEntry(string path) => path == "/lexicon/entry-1"
+        ? SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink>.Success(Entry)
+        : SIL.Motif.Contract.Commands.CommandOutcome<GdrPathLink>.Refused(new SIL.Motif.Contract.Commands.Refusal(
+            SIL.Motif.Contract.Commands.RefusalCodes.GdrLinkNotFound, FailureReason.NotFound,
+            $"Nothing in the project has the path {path}."));
+
+    [Fact]
+    public void TheLinkPathBoxSaysWhatAPathNamesAndInsertsALinkToIt()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var records = new[] { First, Second, Linked };
+            var window = new GdrPreviewWindow(records, id => WithHyperlinkStyle(records.Single(record => record.Id == id)), store,
+                projectName: ProjectName, linkToPath: FindEntry);
+            window.Show();
+            window.Show(First.Id);
+            using var closer = window.CloseOnExit();
+
+            window.LinkPath = "/lexicon/absent";
+            Completed(window.LinkPathResolving);
+            Assert.Equal("Broken: Nothing in the project has the path /lexicon/absent.", window.LinkPathHint);
+            window.LinkPath = "/lexicon/entry-1";
+            Completed(window.LinkPathResolving);
+            Assert.Equal("Resolved: Lexical entry entry-1", window.LinkPathHint);
+
+            window.Field!.Focus();
+            window.Field.Editor.SetCaret(new TextPosition(0, 0));
+            Assert.False(Completed(window.InsertLinkToPathAsync("/lexicon/absent")));
+            Assert.True(Completed(window.InsertLinkToPathAsync("/lexicon/entry-1")));
+            Leave(window);
+
+            var link = StagedFirst(store).Runs.Single(run => run.ObjData is not null);
+            Assert.Equal("entry-1", link.Text);
+            Assert.Equal(Entry.ObjData, link.ObjData);
+            Assert.Equal(GdrDiscussion.HyperlinkStyle, link.CharacterStyle);
+        });
+    }
+
+    [Fact]
+    public void WithoutALookUpThePathBoxFindsNothing()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var window = Staging(new FakeStore());
+            using var closer = window.CloseOnExit();
+
+            window.LinkPath = "/lexicon/entry-1";
+            Completed(window.LinkPathResolving);
+
+            Assert.Equal("", window.LinkPathHint);
+            Assert.False(Completed(window.InsertLinkToPathAsync("/lexicon/entry-1")));
+        });
+    }
+
     [Fact]
     public void ARecordWithNeitherNumberNorTitleIsLinkedByItsId()
     {

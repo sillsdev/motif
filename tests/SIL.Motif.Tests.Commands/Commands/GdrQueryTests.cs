@@ -17,6 +17,7 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.TextEditing;
 using Xunit;
@@ -238,6 +239,53 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
         Assert.False(listed.Value!.HasBaseline);
         Assert.Empty(listed.Value.Records);
         Assert.Equal(RefusalCodes.GdrNoBaseline, GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Refusal!.Code);
+    }
+
+    [Fact]
+    public void APathToAnEntryLinksToItInLexiconEditNamingTheProject()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true, SeededGdrs.SeedLinks);
+
+        var linked = GdrQuery.LinkToPath(new GdrLinkToPathRequest(path, "/lexicon/entry-1"));
+
+        Assert.True(linked.Succeeded, linked.Refusal?.Message);
+        Assert.Equal("Lexical entry", linked.Value!.Kind);
+        Assert.Equal("entry-1", linked.Value.Name);
+        Assert.Equal("gloss-1", linked.Value.Description);
+        Assert.Equal("lexiconEdit", FieldWorksLinks.ToolOf(linked.Value.ObjData[1..]));
+        Assert.Contains("database%3d" + Path.GetFileNameWithoutExtension(path), linked.Value.ObjData, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void APathToAnItemOfACustomListLinksToItInTheListsTool()
+    {
+        var item = "";
+        var path = ProjectWithGdrs(captureBaseline: true, cache => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var list = cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().CreateUnowned("list 1", cache.DefaultAnalWs);
+            var possibility = cache.ServiceLocator.GetInstance<ICmPossibilityFactory>().Create();
+            list.PossibilitiesOS.Add(possibility);
+            possibility.Name.set_String(cache.DefaultAnalWs, "item-1");
+            item = CanonicalId.FromGuid(possibility.Guid).Value;
+        }));
+
+        var linked = GdrQuery.LinkToPath(new GdrLinkToPathRequest(path, "/lists/list 1/item-1"));
+
+        Assert.True(linked.Succeeded, linked.Refusal?.Message);
+        Assert.Equal(item, linked.Value!.Id);
+        Assert.Equal("List item", linked.Value.Kind);
+        Assert.Equal("list1Edit", FieldWorksLinks.ToolOf(linked.Value.ObjData[1..]));
+    }
+
+    [Theory]
+    [InlineData("/lexicon/absent-1", RefusalCodes.GdrLinkNotFound)]
+    [InlineData("lexicon/entry-1", RefusalCodes.GdrLinkPathInvalid)]
+    [InlineData("/lexicon/entry-1#gloss", RefusalCodes.GdrLinkPathInvalid)]
+    public void APathThatFindsNoObjectIsRefused(string written, string code)
+    {
+        var path = ProjectWithGdrs(captureBaseline: true, SeededGdrs.SeedLinks);
+
+        Assert.Equal(code, GdrQuery.LinkToPath(new GdrLinkToPathRequest(path, written)).Refusal!.Code);
     }
 
     [Fact]
