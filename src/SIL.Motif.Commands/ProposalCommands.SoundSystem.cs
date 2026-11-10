@@ -396,7 +396,7 @@ public static partial class ProposalCommands
             ? CommandOutcome<ComposedOperationsResponse>.Success(outcome.Value![0])
             : CommandOutcome<ComposedOperationsResponse>.Refused(outcome.Refusal!);
 
-    /// <summary>One intent composed into a Draft, in the order its batch states it.</summary>
+    /// <summary>One intent composed into a Draft; an Independent step bridges what it replaces.</summary>
     private sealed record ComposeStep(
         string? Verb,
         string Composer,
@@ -408,7 +408,8 @@ public static partial class ProposalCommands
         OperationCitation? Citation = null,
         string? Label = null,
         IComposerDefinition? Definition = null,
-        bool ResolvePlacementLabels = false)
+        bool ResolvePlacementLabels = false,
+        bool Independent = false)
     {
         internal static ComposeStep From(IComposerDefinition composer, JsonElement authored,
             OperationCitation? citation = null, string? label = null, bool resolvePlacementLabels = false) =>
@@ -449,6 +450,10 @@ public static partial class ProposalCommands
             var identityReplaced = steps.SelectMany(step => draft.ComposerProvenance
                     .Where(provenance => SharesIdentity(provenance, step))
                     .SelectMany(provenance => ProvenanceOperationIds(provenance) ?? []))
+                .Concat(steps.Where(step => step.Independent).SelectMany(step =>
+                    step.Authored is { } authored && step.ReplacePrevious is { } replaces
+                        ? previous.Operations.Where(operation => replaces(authored, operation)).Select(operation => operation.OperationId.Value)
+                        : []))
                 .ToHashSet(StringComparer.Ordinal);
             var replacedSet = steps
                 .SelectMany(step => step.Authored is { } authored && step.ReplacePrevious is { } replaces

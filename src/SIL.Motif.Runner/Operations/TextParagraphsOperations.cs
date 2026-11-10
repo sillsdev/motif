@@ -120,7 +120,6 @@ public sealed record TextParagraphsPayload(
     private const string Kind = TextParagraphsOperationKinds.Set;
     private static readonly string[] Properties = ["field", "order", "changed", "removed", "expected"];
     private static readonly string[] ChangeProperties = ["index", "key", "style", "runs", "ints", "strings"];
-    private static readonly string[] RunProperties = ["text", "ws", "characterStyle", "ints", "strings", "objData"];
     private static readonly string[] ExpectedProperties = ["text", "style", "runs"];
 
     /// <summary>The <c>after</c> JSON this payload is written as.</summary>
@@ -129,15 +128,8 @@ public sealed record TextParagraphsPayload(
         var changed = Changed.Select(change =>
         {
             var item = new Dictionary<string, object?> { ["index"] = change.Index, ["key"] = change.Key, ["style"] = change.Style };
-            item["runs"] = change.Runs.Select(run =>
-            {
-                var written = new Dictionary<string, object?> { ["text"] = run.Text, ["ws"] = run.Ws };
-                if (run.CharacterStyle is not null) written["characterStyle"] = run.CharacterStyle;
-                WriteProps(written, run.Props);
-                if (run.ObjData is not null) written["objData"] = run.ObjData;
-                return written;
-            }).ToArray();
-            WriteProps(item, change.Props);
+            item["runs"] = change.Runs.Select(RichTextRuns.Write).ToArray();
+            RichTextRuns.WriteProps(item, change.Props);
             return item;
         }).ToArray();
         return JsonSerializer.SerializeToElement(new Dictionary<string, object?>
@@ -149,16 +141,6 @@ public sealed record TextParagraphsPayload(
             ["expected"] = Expected.ToDictionary(pair => pair.Key,
                 pair => new Dictionary<string, string> { ["text"] = pair.Value.Text, ["style"] = pair.Value.Style, ["runs"] = pair.Value.Runs }),
         });
-    }
-
-    private static void WriteProps(Dictionary<string, object?> into, TextProps? props)
-    {
-        if (props is null) return;
-        if (props.Ints.Count > 0)
-            into["ints"] = props.Ints.OrderBy(pair => pair.Key).ToDictionary(pair => pair.Key.ToString(CultureInfo.InvariantCulture),
-                pair => new[] { pair.Value.Variation, pair.Value.Value });
-        if (props.Strings.Count > 0)
-            into["strings"] = props.Strings.OrderBy(pair => pair.Key).ToDictionary(pair => pair.Key.ToString(CultureInfo.InvariantCulture), pair => pair.Value);
     }
 
     /// <summary>Reads only the field name, for the slot policy.</summary>
@@ -206,76 +188,9 @@ public sealed record TextParagraphsPayload(
         ClosedPayloadParsing.RejectUnknownProperties(item, ChangeProperties, Kind);
         var index = ClosedPayloadParsing.GetRequiredInteger(item, "index", Kind);
         var key = item.TryGetProperty("key", out var keyValue) && keyValue.ValueKind != JsonValueKind.Null ? Key(keyValue, "changed[].key") : null;
-        var style = OptionalString(item, "style");
-        var runs = Array(item, "runs").Select(Run).ToArray();
-        return new(index, key, style, runs, Props(item, inStyleRules: true));
-    }
-
-    private static TextRun Run(JsonElement run)
-    {
-        ClosedPayloadParsing.RequireObject(run, Kind);
-        ClosedPayloadParsing.RejectUnknownProperties(run, RunProperties, Kind);
-        var text = ClosedPayloadParsing.GetRequiredString(run, "text", Kind);
-        var objData = OptionalString(run, "objData");
-        if (text.Contains('￼') && (text.Length != 1 || objData is null))
-            throw Invalid("an embedded object (U+FFFC) must be a run of its own that carries its 'objData'");
-        if (objData is not null && TsStringConversion.WhyLiblcmRefuses((int)FwTextPropType.ktptObjData, objData, false) is { } why)
-            throw Invalid($"'objData' cannot be stored: {why}");
-        return new TextRun(text, ClosedPayloadParsing.GetRequiredString(run, "ws", Kind), OptionalString(run, "characterStyle"),
-            Props(run, inStyleRules: false), objData);
-    }
-
-    private static TextProps? Props(JsonElement owner, bool inStyleRules)
-    {
-        var hasInts = owner.TryGetProperty("ints", out var ints);
-        var hasStrings = owner.TryGetProperty("strings", out var strings);
-        if (!hasInts && !hasStrings) return null;
-        var intProps = new Dictionary<int, (int, int)>();
-        if (hasInts)
-        {
-            if (ints.ValueKind != JsonValueKind.Object) throw Invalid("'ints' must be an object of [variation, value] by property number");
-            foreach (var property in ints.EnumerateObject())
-            {
-                var number = PropertyNumber(property.Name, inStyleRules, isInt: true);
-                if (property.Value.ValueKind != JsonValueKind.Array || property.Value.GetArrayLength() != 2 ||
-                    !property.Value[0].TryGetInt32(out var variation) || !property.Value[1].TryGetInt32(out var value))
-                    throw Invalid($"'ints.{property.Name}' must be [variation, value]");
-                if (TsStringConversion.WhyLiblcmRefuses(number, variation, value, inStyleRules) is { } why)
-                    throw Invalid($"'ints.{property.Name}' cannot be stored: {why}");
-                intProps[number] = (variation, value);
-            }
-        }
-        var stringProps = new Dictionary<int, string>();
-        if (hasStrings)
-        {
-            if (strings.ValueKind != JsonValueKind.Object) throw Invalid("'strings' must be an object of text by property number");
-            foreach (var property in strings.EnumerateObject())
-            {
-                var number = PropertyNumber(property.Name, inStyleRules, isInt: false);
-                stringProps[number] = property.Value.ValueKind == JsonValueKind.String
-                    ? property.Value.GetString()!
-                    : throw Invalid($"'strings.{property.Name}' must be a string");
-                if (TsStringConversion.WhyLiblcmRefuses(number, stringProps[number], inStyleRules) is { } why)
-                    throw Invalid($"'strings.{property.Name}' cannot be stored: {why}");
-            }
-        }
-        return new(intProps, stringProps);
-    }
-
-    // Any FieldWorks text property, less those with a member of their own and those liblcm cannot load back.
-    private static int PropertyNumber(string name, bool inStyleRules, bool isInt)
-    {
-        if (!int.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number <= 0)
-            throw Invalid($"property '{name}' is not a FieldWorks text property number");
-        if (isInt && number == (int)FwTextPropType.ktptWs)
-            throw Invalid("the writing system is a run's 'ws', not a property");
-        if (!isInt && number == (int)FwTextPropType.ktptObjData)
-            throw Invalid("object data is a run's 'objData', not a property");
-        if (!isInt && number == (int)FwTextPropType.ktptNamedStyle)
-            throw Invalid("the named style is 'style' or 'characterStyle', not a property");
-        if (isInt && TsStringConversion.IsRefusedByLiblcm(number, inStyleRules))
-            throw Invalid($"integer property {number} is one liblcm cannot load back");
-        return number;
+        var style = RichTextRuns.OptionalString(item, "style", Kind);
+        var runs = RichTextRuns.ReadRuns(item, "runs", Kind);
+        return new(index, key, style, runs, RichTextRuns.ReadProps(item, inStyleRules: true, Kind));
     }
 
     private static Dictionary<string, TextParagraphExpected> Expectations(JsonElement after)
@@ -295,10 +210,7 @@ public sealed record TextParagraphsPayload(
         return expected;
     }
 
-    private static IEnumerable<JsonElement> Array(JsonElement owner, string name) =>
-        owner.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Array
-            ? value.EnumerateArray().ToArray()
-            : throw Invalid($"'{name}' is required and must be an array");
+    private static IEnumerable<JsonElement> Array(JsonElement owner, string name) => RichTextRuns.Array(owner, name, Kind);
 
     private static string Key(JsonElement item, string where) =>
         item.ValueKind == JsonValueKind.String && CanonicalId.TryParse(item.GetString(), out var id)
@@ -308,11 +220,7 @@ public sealed record TextParagraphsPayload(
     private static string Normalize(string key) =>
         CanonicalId.TryParse(key, out var id) ? OperationSlotRegistry.MemberKey(id) : throw Invalid($"'expected' key '{key}' is not a paragraph key");
 
-    private static string? OptionalString(JsonElement owner, string name) =>
-        !owner.TryGetProperty(name, out var value) || value.ValueKind == JsonValueKind.Null ? null
-        : value.ValueKind == JsonValueKind.String ? value.GetString() : throw Invalid($"'{name}' must be a string");
-
-    private static ContractParseException Invalid(string message) => new($"'{Kind}' operation: {message}.");
+    private static ContractParseException Invalid(string message) => RichTextRuns.Invalid(Kind, message);
 }
 
 internal sealed class TextParagraphsHandler : IOperationHandler
@@ -326,8 +234,7 @@ internal sealed class TextParagraphsHandler : IOperationHandler
         var text = TextParagraphFields.Read(owner, payload.Field);
         var before = State(text);
         CheckUnchanged(operation, id, payload, text);
-        var handles = payload.Changed.SelectMany(change => change.Runs).Select(run => run.Ws).Distinct(StringComparer.Ordinal)
-            .ToDictionary(tag => tag, tag => WritingSystem(cache, tag), StringComparer.Ordinal);
+        var handles = RichTextRuns.Handles(cache, payload.Changed.SelectMany(change => change.Runs), TextParagraphsOperationKinds.Set);
         touchedTargets.Add(id);
 
         if (text is null)
@@ -391,72 +298,21 @@ internal sealed class TextParagraphsHandler : IOperationHandler
         Digest(paragraph) == expected.Runs;
 
     /// <summary>The <see cref="TextRunsDigest"/> of a stored paragraph's runs.</summary>
-    internal static string Digest(IStTxtPara paragraph)
-    {
-        var contents = paragraph.Contents;
-        if (contents is null) return TextRunsDigest.Of([]);
-        var factory = paragraph.Cache.WritingSystemFactory;
-        return TextRunsDigest.Of(Enumerable.Range(0, contents.RunCount).Select(index =>
-        {
-            var props = contents.get_Properties(index);
-            var ints = new List<KeyValuePair<int, (int, int)>>();
-            for (var i = 0; i < props.IntPropCount; i++)
-            {
-                var value = props.GetIntProp(i, out var tpt, out var variation);
-                if (tpt != (int)FwTextPropType.ktptWs) ints.Add(KeyValuePair.Create(tpt, (variation, value)));
-            }
-            var strings = new List<KeyValuePair<int, string>>();
-            string? objData = null;
-            for (var i = 0; i < props.StrPropCount; i++)
-            {
-                var value = props.GetStrProp(i, out var tpt) ?? "";
-                if (tpt == (int)FwTextPropType.ktptObjData) objData = value;
-                else strings.Add(KeyValuePair.Create(tpt, value));
-            }
-            var ws = props.GetIntPropValues((int)FwTextPropType.ktptWs, out _);
-            return new TextRunsDigest.RunFacts(contents.get_RunText(index) ?? "", ws > 0 ? factory.GetStrFromWs(ws) : "", ints, strings, objData);
-        }));
-    }
+    internal static string Digest(IStTxtPara paragraph) => RichTextRuns.Digest(paragraph.Contents, paragraph.Cache.WritingSystemFactory);
 
     private static void Write(IStTxtPara paragraph, TextParagraphChange change, IReadOnlyDictionary<string, int> handles, int emptyWs)
     {
         // The paragraph keeps the properties it has (direction, alignment, indents); the edit sets its own over them.
         var rules = paragraph.StyleRules?.GetBldr() ?? TsStringUtils.MakePropsBldr();
-        Set(rules, change.Props);
+        RichTextRuns.Set(rules, change.Props);
         rules.SetStrPropValue((int)FwTextPropType.ktptNamedStyle, change.Style);
         paragraph.StyleRules = rules.GetTextProps();
 
-        var builder = TsStringUtils.MakeStrBldr();
-        foreach (var run in change.Runs.Where(run => run.Text.Length > 0))
-        {
-            var props = TsStringUtils.MakePropsBldr();
-            Set(props, run.Props);
-            props.SetIntPropValues((int)FwTextPropType.ktptWs, (int)FwTextPropVar.ktpvDefault, handles[run.Ws]);
-            props.SetStrPropValue((int)FwTextPropType.ktptNamedStyle, run.CharacterStyle);
-            if (run.ObjData is not null) props.SetStrPropValue((int)FwTextPropType.ktptObjData, run.ObjData);
-            builder.Replace(builder.Length, builder.Length, run.Text.Normalize(NormalizationForm.FormD), props.GetTextProps());
-        }
-        paragraph.Contents = builder.Length > 0
-            ? builder.GetString()
-            : TsStringUtils.EmptyString(change.Runs.Count > 0 ? handles[change.Runs[0].Ws] : emptyWs);
-    }
-
-    private static void Set(ITsPropsBldr builder, TextProps? props)
-    {
-        if (props is null) return;
-        foreach (var (number, (variation, value)) in props.Ints) builder.SetIntPropValues(number, variation, value);
-        foreach (var (number, value) in props.Strings) builder.SetStrPropValue(number, value);
+        paragraph.Contents = RichTextRuns.Build(change.Runs, handles, emptyWs);
     }
 
     private static int? FirstWs(IStTxtPara paragraph) =>
         paragraph.Contents is { } contents && contents.get_WritingSystemAt(0) is var ws && ws > 0 ? ws : null;
-
-    private static int WritingSystem(LcmCache cache, string tag)
-    {
-        var handle = cache.WritingSystemFactory.GetWsFromStr(tag);
-        return handle != 0 ? handle
-            : throw new ContractParseException($"'{TextParagraphsOperationKinds.Set}' operation: writing system '{tag}' is not in the project.");
-    }
 
     /// <summary>A new object's identity, the same on every run, so Dry Run and Apply capture one effect.</summary>
     private static Guid Minted(OperationEnvelope operation, string role)
@@ -487,11 +343,20 @@ internal sealed class TextParagraphsHandler : IOperationHandler
 }
 
 
-/// <summary>The field no longer holds the text the edit began from (ADR 0095 decision 3).</summary>
-internal sealed class TextFieldStaleException(OperationEnvelope operation, CanonicalId owner, string field)
+/// <summary>
+/// The field, or its alternative in <paramref name="ws"/>, no longer holds the text the edit began from (ADR 0095
+/// decision 3); the facts name the owner, the field and, for an alternative, its writing system.
+/// </summary>
+internal sealed class TextFieldStaleException(OperationEnvelope operation, CanonicalId owner, string field, string? ws = null)
     : ProposalRefusalException(RefusalCodes.TextFieldStale, FailureReason.Refused,
-        $"The {field} of {owner.Value} changed since this edit began; nothing was applied. Edit it again from the current text.",
-        new Dictionary<string, string>
-        {
-            ["operationId"] = operation.OperationId.Value, ["owner"] = owner.Value, ["field"] = field,
-        });
+        $"The {field}{(ws is null ? "" : $" ({ws})")} of {owner.Value} changed since this edit began; nothing was applied. " +
+        "Edit it again from the current text.",
+        StaleFacts(operation, owner, field, ws))
+{
+    private static Dictionary<string, string> StaleFacts(OperationEnvelope operation, CanonicalId owner, string field, string? ws)
+    {
+        var facts = new Dictionary<string, string> { ["operationId"] = operation.OperationId.Value, ["owner"] = owner.Value, ["field"] = field };
+        if (ws is not null) facts["ws"] = ws;
+        return facts;
+    }
+}

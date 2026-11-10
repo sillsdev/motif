@@ -572,3 +572,19 @@ public sealed record StageTextParagraphsRequest(
 /// <param name="Field">The field, as <c>Class.Field</c>.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store; the current one when null.</param>
 public sealed record TextParagraphsFieldRequest(string FwDataPath, string Target, string Field, string? ProductVersion = null);
+
+/// <summary>Requests a person's edit of one String field, or one writing system of a MultiString field, be staged.</summary>
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="Target">The canonical id of the object that owns the field.</param>
+/// <param name="RichString">The field, its writing system, its new runs and the text the edit began from.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store; the current one when null.</param>
+public sealed record StageTextRichStringRequest(
+    string FwDataPath, string Target, SIL.Motif.Runner.Operations.TextRichStringPayload RichString, string? ProductVersion = null);
+
+/// <summary>Requests the pending-changes Draft's edit of one String field or MultiString alternative: taken out, or read.</summary>
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="Target">The canonical id of the object that owns the field.</param>
+/// <param name="Field">The field, as <c>Class.Field</c>.</param>
+/// <param name="Ws">The alternative's writing system for a MultiString field; null for a String field.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store; the current one when null.</param>
+public sealed record TextRichStringFieldRequest(string FwDataPath, string Target, string Field, string? Ws, string? ProductVersion = null);

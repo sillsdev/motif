@@ -723,8 +723,41 @@ the edit is not one of the field's paragraphs, the operation is refused with `te
 operation, the owner and the field. A Proposal still applies whole or not at all, so the whole Apply is refused and
 the Draft stays as it was, every other edit included. The person either edits the field again from its current text,
 which replaces the operation, or takes the field's operation out of the Draft, which leaves the other edits there. A
-Draft whose every operation is `text/setParagraphs` needs no Correctness Assessment, because the parser reads none of
-these fields.
+Draft whose every operation is `text/setParagraphs` or `text/setRichString` needs no Correctness Assessment, because
+the parser reads none of these fields.
+
+### Rich-text string edits
+
+`text/setRichString` is a person's edit of one String field, or of one writing system of a MultiString field, such as
+a sense's Definition in English ([ADR 0095](adr/0095-rich-text-edits-are-two-generic-field-addressed-operations.md)).
+It sits in the `text` group beside `text/setParagraphs`. `target` is the object that owns the field. `after` is closed:
+
+```json
+{ "field": "LexSense.Definition", "ws": "en",
+  "runs": [{ "text": "a ", "ws": "en" }, { "text": "word", "ws": "en", "characterStyle": "Emphasis",
+             "ints": { "2": [0, 1] }, "strings": {}, "objData": null }],
+  "expected": { "text": "starting text", "runs": "<runs digest>" } }
+```
+
+- **`field`** is `Class.Field`: one of the inventory's in-scope String or MultiString fields that can be set and that
+  the parser neither references nor is known to reach (a reach still unconfirmed keeps a field out), except
+  `StTxtPara.Contents`, `WfiMorphBundle.Form` and `RnGenericRec.Title`, which other kinds own. A field the target's class does not have is refused when it is staged.
+- **`ws`** is the alternative's writing-system tag. It is required for a MultiString field and refused for a String
+  field. The slot is `(target, field, ws)`, named as the generated kinds name it where one edits the same field, such as
+  `lexical/lexSense/setDefinition`, so a Draft cannot hold both edits of one alternative. A later edit of the same
+  alternative replaces the earlier one; an editor carries the first edit's `expected` forward, so drift is measured
+  from where the person began. Taking one alternative's edit out leaves the field's other alternatives' edits.
+- **`runs`** are the alternative's runs after the edit, with the same members and the same refusals as a paragraph's
+  runs in `text/setParagraphs`. No runs is the empty string. A field holds one paragraph, so the payload has no
+  paragraph properties.
+- **`expected`** is the alternative as the edit began: its text and the digest of its runs, computed as for a
+  paragraph. An empty alternative is no runs, whatever writing system it is stored in.
+
+Apply writes the runs whole, with text in NFD. The effect's field is `text/<field>`, with `/<ws>` for a MultiString
+field, and Before and After give the text and runs digest. If the alternative's text or runs have changed since the
+edit began, the operation is refused with `text.field-stale`, whose facts name the operation, the owner, the field and
+the writing system, and the whole Apply is refused as for `text/setParagraphs`. A change to another writing system of
+the same field is not drift.
 
 ## IDs and GUID mapping
 
