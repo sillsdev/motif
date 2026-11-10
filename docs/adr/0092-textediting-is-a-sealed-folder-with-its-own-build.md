@@ -23,7 +23,8 @@ FieldWorks.
    itself, builds both lines, runs the net10.0 and net48 tests and publishes a native AOT check. `build.ps1`, `test.ps1` and the
    cross-platform matrix do not build or run `textediting/`'s own projects; `SIL.Motif.App` builds the two libraries it uses at
    net10.0 only. Amended 2026-11-09: `SIL.Motif.Host` also references `SIL.TextEditing.Project` (with `.LCModel`, `.Markdown` and the
-   core library) at net10.0, for the `gdr` read verbs, so the CLI, the worker and the cross-platform matrix build those four as well.
+   core library) at net10.0, for the `gdr` read verbs, so the CLI, the worker and the cross-platform matrix build those four as well; `SIL.Motif.Runner` references
+   `SIL.TextEditing.LCModel` for liblcm's load-back rules on rich-text edits (ADR 0095).
 6. **Its fixtures are not language data (amends ADR 0076).** `textediting/tests/conformance/` holds format-conformance fixtures:
    record-file and Markdown shapes with placeholder values such as `x`, written to test the format, not taken from any language.
    The owner's intent behind ADR 0076 is that no actual language data is in the repository; grammar terms and placeholder records are
