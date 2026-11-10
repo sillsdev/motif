@@ -97,7 +97,12 @@ public static class ProposalTextChecker
 
     private static MarkdownOptions Options(LcmCache? cache, string? projectName)
     {
-        var options = new MarkdownOptions { WriteFrontMatter = false, UnknownGuids = UnknownGuidPolicy.MarkBroken };
+        var options = new MarkdownOptions
+        {
+            WriteFrontMatter = false,
+            UnknownGuids = UnknownGuidPolicy.MarkBroken,
+            StyleNames = MotifMarkdownStyles.Names(),
+        };
         if (cache is null) return options;
         options.WritingSystems = new ProjectWritingSystems(cache);
         options.Styles = new ProjectStyles(cache);

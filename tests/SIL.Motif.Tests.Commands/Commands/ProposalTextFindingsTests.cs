@@ -20,6 +20,7 @@ namespace SIL.Motif.Tests.Commands;
 public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) : IDisposable
 {
     private const string Clean = "Glosses [entry-1](/lexicon/entry-1){.name} as the corpus does.";
+    private const string Table = "Glosses as the corpus does:\n\n| Form | Gloss |\n| --- | --- |\n| form-1 | gloss-1 |\n| form-2 | gloss-2 |\n";
     private const string MissingLink = "Glosses [entry-9](/lexicon/entry-9){.name} as the corpus does.";
     private static string Version => MotifProductVersion.CurrentText;
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.ProposalTextFindings", Guid.NewGuid().ToString("N"));
@@ -210,6 +211,48 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
         Assert.Equal("fwmd.link.not-found", Assert.Single(link.Value!.Findings).Id);
         Assert.Empty(plain.Value!.Findings);
         Assert.Equal("Why it is right.", Show(path, id).Rationale!.Markdown);
+        Assert.True(ProposalCommands.Finalize(new FinalizeRequest(path, Version, name)).Succeeded);
+    }
+
+    [Fact]
+    public void ARationaleWithAPipeTableHasNoFindingsIsStoredAsATableAndFinalizes()
+    {
+        var path = ProjectWithBaseline();
+        var (name, id) = Draft(path, "table");
+
+        var written = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, Table));
+
+        Assert.True(written.Succeeded, written.Refusal?.Message);
+        Assert.Empty(written.Value!.Findings);
+        var stored = Show(path, id).Rationale!.Markdown;
+        Assert.Contains("| form-1 | gloss-1 |", stored);
+        Assert.Contains("| form-2 | gloss-2 |", stored);
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, Version, name));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+    }
+
+    [Fact]
+    public void ATableWithARaggedRowIsAFinding()
+    {
+        var path = ProjectWithBaseline();
+        var (_, id) = Draft(path, "ragged");
+
+        var written = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id,
+            "| Form | Gloss |\n| --- | --- |\n| form-1 |\n"));
+
+        Assert.Equal("fwmd.table.ragged", Assert.Single(written.Value!.Findings).Id);
+    }
+
+    [Fact]
+    public void WithoutABaselineAPipeTableIsNoFindingEither()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        var (name, id) = Draft(path, "table-no-baseline");
+
+        var written = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, Table));
+
+        Assert.Empty(written.Value!.Findings);
         Assert.True(ProposalCommands.Finalize(new FinalizeRequest(path, Version, name)).Succeeded);
     }
 
