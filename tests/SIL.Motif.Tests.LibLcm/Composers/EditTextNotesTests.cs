@@ -200,4 +200,27 @@ public sealed class EditTextNotesTests : IDisposable
         Assert.Contains("line 2", error.Message);
         Assert.Contains("line 3", error.Message);
     }
+
+    [Fact]
+    public void EveryBadTsvRowAndShapeErrorIsReportedTogether()
+    {
+        var spaced = Assert.Throws<ContractParseException>(() =>
+            EditTextNotesIntentParser.FromTsv("Tracking\t1\tgood\nTracking\t2\ttrailing \nTracking\t3\t\u00e9\nbad\n"));
+        Assert.DoesNotContain("line 1", spaced.Message);
+        Assert.Contains("line 2", spaced.Message);
+        Assert.Contains("line 3", spaced.Message);
+        Assert.Contains("line 4", spaced.Message);
+        var shape = Assert.Throws<ContractParseException>(() => Intent(new
+        {
+            edits = new object[]
+            {
+                new { text = "Tracking", segment = 1, note = "ok " },
+                new { text = "Tracking", note = "x" },
+                new { text = "Tracking", segment = 0, note = "x" },
+            },
+        }));
+        Assert.Contains("edit 1", shape.Message);
+        Assert.Contains("edit 2", shape.Message);
+        Assert.Contains("edit 3", shape.Message);
+    }
 }

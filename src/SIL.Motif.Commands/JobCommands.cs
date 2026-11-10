@@ -442,7 +442,7 @@ public static class JobCommands
     {
         ArgumentNullException.ThrowIfNull(proposal);
         if (ChangeVocabulary.ChangesGrammar(proposal)) return null;
-        var touched = ProposalCommands.ChangedWords(proposal).ToArray();
+        var touched = ProposalCommands.TrialScopeWords(proposal).ToArray();
         return touched.Length == 0 ? null : touched;
     }
 

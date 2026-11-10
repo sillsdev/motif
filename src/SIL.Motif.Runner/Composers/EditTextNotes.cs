@@ -29,8 +29,15 @@ public static class EditTextNotesIntentParser
         var analysisWs = authored.TryGetProperty("analysisWs", out _) ? SoundSystemIntentParsing.Text(authored, "analysisWs") : null;
         if (analysisWs is not null && string.IsNullOrWhiteSpace(analysisWs))
             throw Refuse("'analysisWs' must name a writing system.");
-        var edits = SoundSystemIntentParsing.Array(authored, "edits").Select((edit, index) => Edit(edit, index + 1)).ToArray();
-        if (edits.Length == 0) throw Refuse("'edits' needs at least one edit.");
+        var edits = new List<EditTextNote>();
+        var problems = new List<string>();
+        foreach (var (edit, index) in SoundSystemIntentParsing.Array(authored, "edits").Select((edit, index) => (edit, index + 1)))
+        {
+            try { edits.Add(Edit(edit, index)); }
+            catch (ContractParseException failure) { problems.Add(Strip(failure.Message)); }
+        }
+        if (problems.Count > 0) throw Refuse(Summarize(problems));
+        if (edits.Count == 0) throw Refuse("'edits' needs at least one edit.");
         return new EditTextNotesIntent(edits, analysisWs);
     }
 
@@ -60,19 +67,31 @@ public static class EditTextNotesIntentParser
                 continue;
             }
             var at = $"line {lineNumber}";
-            var text = cells[0].Normalize(NormalizationForm.FormD);
-            var note = cells[2].Normalize(NormalizationForm.FormD);
+            var bad = cells.Select((cell, column) => (cell, column)).Where(c => !IsCleanCell(c.cell))
+                .Select(c => new[] { "Text", "Locator", "Note" }[c.column]).ToArray();
+            if (bad.Length > 0)
+            {
+                problems.Add($"{at}: {string.Join(", ", bad)} must be NFD without edge spaces.");
+                continue;
+            }
+            var text = cells[0];
+            var note = cells[2];
             edits.Add(int.TryParse(cells[1], NumberStyles.None, CultureInfo.InvariantCulture, out var segment)
                 ? new { text, segment, note, at }
-                : new { text, word = cells[1].Normalize(NormalizationForm.FormD), note, at });
+                : new { text, word = cells[1], note, at });
         }
         if (problems.Count > 0) throw Refuse(Summarize(problems));
         return JsonSerializer.SerializeToElement(analysisWs is null ? new { edits } : (object)new { analysisWs, edits });
     }
 
+    private static bool IsCleanCell(string cell) => cell == cell.Trim() && cell.IsNormalized(NormalizationForm.FormD);
+
     internal static string Summarize(IReadOnlyList<string> problems, int shown = 20) =>
         $"{problems.Count} problem(s):\n  " + string.Join("\n  ", problems.Take(shown)) +
         (problems.Count > shown ? $"\n  ... and {problems.Count - shown} more." : string.Empty);
+
+    private static string Strip(string message) => message.StartsWith($"'{ConstructName}': ", StringComparison.Ordinal)
+        ? message[($"'{ConstructName}': ").Length..] : message;
 
     private static EditTextNote Edit(JsonElement edit, int index)
     {

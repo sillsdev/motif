@@ -1825,9 +1825,17 @@ public static partial class ProposalCommands
     }
 
     internal static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
+        Distinct(proposal, FitWord);
+
+    // Trial scope only: never an Apply readiness or overlap "changed word".
+    internal static IReadOnlyCollection<string> TrialScopeWords(SIL.Motif.Contract.Model.Proposal proposal) =>
+        Distinct(proposal, extension => FitWord(extension).Concat(TrialWords(extension)));
+
+    private static IReadOnlyCollection<string> Distinct(
+        SIL.Motif.Contract.Model.Proposal proposal, Func<JsonElement, IEnumerable<string?>> pick) =>
         proposal.Operations.Select(operation => operation.Extensions)
             .Where(extension => extension is { ValueKind: JsonValueKind.Object })
-            .SelectMany(extension => FitWord(extension!.Value).Concat(TrialWords(extension.Value)))
+            .SelectMany(extension => pick(extension!.Value))
             .Where(word => !string.IsNullOrWhiteSpace(word))
             .Select(word => word!)
             .Distinct(StringComparer.Ordinal).ToArray();

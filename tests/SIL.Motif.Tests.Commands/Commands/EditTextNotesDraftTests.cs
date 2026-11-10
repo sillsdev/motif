@@ -4,6 +4,9 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Store;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Worker.Store;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
@@ -49,6 +52,16 @@ public sealed class EditTextNotesDraftTests(PristineProjectFixture pristine)
             JsonSerializer.Serialize(new { edits = new[] { new { text = "Nope", segment = 1, note = "x" } } })));
         Assert.False(unknown.Succeeded);
         Assert.Contains("no text named", unknown.Refusal!.Message);
+
+        var stored = ProjectStoreCommand.Run(path, "1.0", (database, _) =>
+            CommandOutcome<string>.Success(new ProposalRepository(database).GetDraft("notes").ProposalJson!));
+        Assert.True(stored.Succeeded, stored.Refusal?.Message);
+        var proposal = SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(
+            ProposalCommands.BuildProposalJson(ProposalCommands.DeserializeDraft(stored.Value!)));
+        Assert.Equal(2, proposal.Operations.Count);
+        Assert.All(proposal.Operations, operation => Assert.True(operation.Extensions.HasValue));
+        Assert.Equal(["alpha", "beta"], JobCommands.DerivedTrialWords(proposal)!.OrderBy(w => w, StringComparer.Ordinal));
+        Assert.Empty(ProposalCommands.ChangedWords(proposal));
 
         using var reopened = new FwDataProjectLoader().LoadCache(path);
         Assert.All(reopened.ServiceLocator.GetInstance<ITextRepository>().AllInstances()

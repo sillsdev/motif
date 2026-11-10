@@ -124,6 +124,17 @@ public sealed class ChangeVocabularyTests
         Assert.Equal(["alpha", "beta"], JobCommands.DerivedTrialWords(proposal)!.OrderBy(w => w, StringComparer.Ordinal));
     }
 
+    [Fact]
+    public void TrialWordsSelectTrialScopeOnlyAndNeverBecomeChangedWordsOfAMixedProposal()
+    {
+        var notes = new OperationEnvelope(CanonicalId.Mint(), "texts/segment/setNotes",
+            extensions: JsonSerializer.SerializeToElement(new { trialWords = new[] { "alpha" } }));
+        var mixed = Proposal(Operation("grammar/phPhonData/createPhonRules"), notes);
+        Assert.Empty(ProposalCommands.ChangedWords(mixed));
+        Assert.Null(JobCommands.DerivedTrialWords(mixed));
+        Assert.Equal(["alpha"], ProposalCommands.TrialScopeWords(Proposal(notes)));
+    }
+
     private static ChangeKind Evaluation(string member) =>
         ChangeVocabulary.Of(Operation(WfiAnalysisOperationKinds.AddRefEvaluations, new { member }));
 
