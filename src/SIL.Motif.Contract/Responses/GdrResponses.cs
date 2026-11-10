@@ -6,7 +6,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The wire version of the Grammar Design Record responses, raised when their shape changes.</summary>
 public static class GdrWire
 {
-    public const int SchemaVersion = 3;
+    public const int SchemaVersion = 4;
 }
 
 /// <summary>One Grammar Design Record as the list shows it.</summary>
@@ -64,10 +64,14 @@ public sealed record GdrLinkTarget(GdrLinkState State, string? Kind, string? Nam
 /// <param name="DefaultWritingSystem">The writing system an empty paragraph types in.</param>
 /// <param name="Properties">Every property of the paragraph, the style name and direction included.</param>
 /// <param name="Runs">The paragraph's runs, in order.</param>
+/// <param name="Key">
+/// The paragraph's canonical id, which an edit names it by (SIL.TextEditing ADR 0006); null only for a paragraph that
+/// the project has not stored yet.
+/// </param>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record GdrParagraph(
     string? Style, bool RightToLeft, string DefaultWritingSystem, GdrTextProperties Properties,
-    IReadOnlyList<GdrRun> Runs);
+    IReadOnlyList<GdrRun> Runs, string? Key = null);
 
 [JsonConverter(typeof(JsonStringEnumConverter<GdrStyleKind>))]
 public enum GdrStyleKind

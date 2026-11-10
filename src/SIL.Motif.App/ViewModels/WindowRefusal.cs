@@ -211,6 +211,7 @@ public sealed partial record WindowRefusal
         [C.ReviewWrongAssessmentKind] = () => MotifAppStrings.RefusalReviewWrongAssessmentKind,
 
         [C.SelectionDefaultMissing] = () => MotifAppStrings.RefusalSelectionDefaultMissing,
+        [C.TextFieldStale] = () => MotifAppStrings.RefusalTextFieldStale,
         [C.SelectionEmpty] = () => MotifAppStrings.RefusalSelectionEmpty,
         [C.SelectionInvalid] = () => MotifAppStrings.RefusalSelectionInvalid,
         [C.SelectionTextNotFound] = () => MotifAppStrings.RefusalSelectionTextNotFound,

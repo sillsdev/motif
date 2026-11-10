@@ -15,8 +15,8 @@ public sealed class GdrContractTests
             new Dictionary<int, GdrIntProperty> { [28] = new(0, 1) }, new Dictionary<int, string> { [133] = "Normal" });
         return new GdrShowResponse(new GdrSummary("id-1", "GDR-1", "title-1", "abstract-1", "id-0"),
             [new GdrParagraph("Normal", true, "ar", paragraphProperties,
-                [new GdrRun("abc", "ar", null, plain), new GdrRun("def", "en", "Emphasis", italic, "https://example.invalid/x",
-                new GdrLinkTarget(GdrLinkState.Resolved, "Lexical entry", "entry-1", "gloss-1"))])])
+                [new GdrRun("abc", "ar", null, plain), new GdrRun("def", "en", "Emphasis", italic, "https://example.invalid/x",
+                new GdrLinkTarget(GdrLinkState.Resolved, "Lexical entry", "entry-1", "gloss-1"))], "para-1")])
         {
             DefaultVernacular = "ar", DefaultAnalysis = "en",
             Styles = [new GdrStyle("Emphasis", GdrStyleKind.Character,
@@ -50,7 +50,7 @@ public sealed class GdrContractTests
         Assert.Equal(GdrWire.SchemaVersion, document.RootElement.GetProperty("schemaVersion").GetInt32());
 
         var paragraph = document.RootElement.GetProperty("discussion")[0];
-        Assert.Equal(Required(Definition(schema, "GdrParagraph")).Append("style").Order(), paragraph.EnumerateObject().Select(item => item.Name).Order());
+        Assert.Equal(Required(Definition(schema, "GdrParagraph")).Append("style").Append("key").Order(), paragraph.EnumerateObject().Select(item => item.Name).Order());
         var run = paragraph.GetProperty("runs")[1];
         Assert.Equal(Required(Definition(schema, "GdrRun")).Append("style").Append("objData").Append("target").Order(), run.EnumerateObject().Select(item => item.Name).Order());
         var target = run.GetProperty("target");

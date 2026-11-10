@@ -67,6 +67,7 @@ public static class ChangeVocabulary
     private static readonly IReadOnlyDictionary<string, ChangeKind> ByOperationKind =
         new Dictionary<string, ChangeKind>(StringComparer.Ordinal)
         {
+            [TextParagraphsOperationKinds.Set] = Word("text", "text edit", "text edits", "Edit text"),
             ["grammar/phPhonData/createPhonRules"] = Grammar("rule", "rule", "rules", "Add a phonological rule"),
             ["lexical/lexEntry/createLexemeForm"] = Grammar("allomorph", "allomorph", "allomorphs", "Add an allomorph"),
             ["lexical/lexEntry/createAlternateForms"] =
@@ -177,6 +178,7 @@ public static class ChangeVocabulary
             ["RetireAffixSlot"] = ("Retire affix slot", "Retire an unused affix slot"),
             ["RetireRedundantZeroAffix"] = ("Retire zero affix", "Retire a zero affix"),
             ["RecordParsimonyDisposition"] = ("Record a decision on", "Record a Parsimony decision"),
+            ["SetTextParagraphs"] = ("Edit text of", "Edit the paragraphs of a text field"),
         };
 
     /// <summary>

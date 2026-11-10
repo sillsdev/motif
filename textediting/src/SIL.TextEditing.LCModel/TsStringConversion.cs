@@ -58,6 +58,19 @@ namespace SIL.TextEditing.LCModel
         /// number check, for hosts that ask before they build; the conversions below also refuse values (ADR 0016).</summary>
         public static bool IsRefusedByLiblcm(int tpt, bool inStyleRules) => LiblcmRefusals.IsPropertyRefused(tpt, inStyleRules);
 
+        /// <summary>Why liblcm cannot load back the integer property <paramref name="tpt"/> with this variation and value, in words, or
+        /// null when it can: the value check the conversions below apply, for hosts that refuse a property rather than drop it.</summary>
+        public static string? WhyLiblcmRefuses(int tpt, int variation, int value, bool inStyleRules) =>
+            Why(LiblcmRefusals.ForInt(tpt, variation, value, inStyleRules));
+
+        /// <summary>Why liblcm cannot load back the string property <paramref name="tpt"/> with this value (object data is 6), in words,
+        /// or null when it can.</summary>
+        public static string? WhyLiblcmRefuses(int tpt, string value, bool inStyleRules) =>
+            Why(LiblcmRefusals.ForString(tpt, value, inStyleRules));
+
+        static string? Why(Refusal? refusal) =>
+            refusal == null ? null : refusal.Detail ?? "liblcm cannot load this property back";
+
         // A builder of what the bag holds that liblcm can load back. Refused properties and values are reported and left out; the bag is not touched.
         static ITsPropsBldr FillBuilder(PropertyBag bag, bool inStyleRules, int? paragraphIndex, int? runIndex, Action<DroppedProperty>? onDropped)
         {

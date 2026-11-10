@@ -56,7 +56,7 @@ public static class GdrReader
                     var style = run.Props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
                     if (style is not null) NoteStyle(styles, styleKinds, style);
                     return new GdrRun(run.Text, run.Ws, style, Properties(run.Props), run.ObjData, Target(resolver, run.ObjData));
-                }).ToArray());
+                }).ToArray(), paragraph.Key is Guid key ? CanonicalId.FromGuid(key).Value : null);
         }).ToArray();
 
         return new GdrShowResponse(Summary(cache, entry), converted)
