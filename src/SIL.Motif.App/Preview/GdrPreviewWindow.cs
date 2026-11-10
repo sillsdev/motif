@@ -154,6 +154,9 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>What the strip in the field says when the shown record's text was also changed in FieldWorks.</summary>
     public const string StaleMessage = "This Discussion was also changed in FieldWorks. Your typing is safe.";
 
+    /// <summary>What Compare says when the pending changes no longer hold an edit of the shown Discussion.</summary>
+    public const string NothingToCompareMessage = "There is nothing to compare: your pending changes no longer hold an edit of this Discussion.";
+
     /// <summary>Whether the strip saying the shown record was also changed in FieldWorks is showing.</summary>
     public bool IsStaleStripShown => _staleStrip.IsVisible;
 
@@ -251,7 +254,11 @@ public sealed class GdrPreviewWindow : Window
             _status.Text = refusal;
             return false;
         }
-        if (read.Paragraphs is not { } pending || _show(id) is not { } live) return false;
+        if (read.Paragraphs is not { } pending || _show(id) is not { } live)
+        {
+            _status.Text = NothingToCompareMessage;
+            return false;
+        }
         var discussion = GdrDiscussion.From(live);
         var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(pending, live.Discussion)));
         var window = new CompareWindow($"{live.Record.Abbreviation}  {live.Record.Title}, Discussion", comparison,

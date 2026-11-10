@@ -22,7 +22,7 @@ public sealed partial class CompareWindow
     private double _combinedWidth;
 
     /// <summary>Whether the side-by-side view is showing.</summary>
-    public bool IsSideBySide => _sideBySide is not null && ReferenceEquals(((DockPanel)Content!).Children[^1], _sideBySide);
+    public bool IsSideBySide => _sideBySide is not null && ReferenceEquals(((Grid)Content!).Children[0], _sideBySide);
 
     /// <summary>The editable field on the right for each sorted paragraph, while the side-by-side view shows.</summary>
     public IReadOnlyDictionary<int, RichTextField> ResultFields => _right;
@@ -78,9 +78,9 @@ public sealed partial class CompareWindow
 
     private void Swap(Control body)
     {
-        var frame = (DockPanel)Content!;
-        frame.Children.RemoveAt(frame.Children.Count - 1);
-        frame.Children.Add(body);
+        var frame = (Grid)Content!;
+        frame.Children.RemoveAt(0);
+        frame.Children.Insert(0, body);
     }
 
     private Control BuildSideBySide()

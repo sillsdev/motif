@@ -159,6 +159,60 @@ public sealed class CompareWindowTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
+    public void TabGoesSummaryShowResultOpenSideBySideMoreEachChangeTheListThenDecideLaterAndDone()
+    {
+        avalonia.Invoke(() =>
+        {
+            var window = Opened(TwoParagraphs(), out var closer);
+            using var _ = closer;
+            window.Comparison.Choose(BothChange(window), Choice.Mine);
+            var summary = window.GetVisualDescendants().OfType<TextBlock>().Single(block => block.Focusable && block.Text == window.SummaryText);
+            Assert.Equal(window.SummaryText, AutomationProperties.GetName(summary));
+            summary.Focus(NavigationMethod.Tab);
+
+            var stops = new List<string>();
+            for (var pressed = 0; pressed < 40; pressed++)
+            {
+                var focused = window.FocusManager!.GetFocusedElement() as Control;
+                var stop = focused switch
+                {
+                    TextBlock => "summary",
+                    Button { Tag: TextChange change } mark when window.Marks.Contains(mark) => $"mark {change.Id}",
+                    { Tag: TextChange } => "list",
+                    ContentControl { Content: string content } => content,
+                    _ => focused?.GetType().Name ?? "nothing",
+                };
+                if (stops.Count > 0 && stop == "summary") break;
+                if (stops.Count == 0 || stops[^1] != stop || stop.StartsWith("mark", StringComparison.Ordinal)) stops.Add(stop);
+                Press(window, Key.Tab);
+            }
+
+            var marks = window.Marks.Select(mark => $"mark {((TextChange)mark.Tag!).Id}");
+            Assert.Equal(["summary", ChangeWords.ShowResult, ChangeWords.OpenSideBySide, "More", ..marks, "list", ChangeWords.DecideLater, ChangeWords.Done],
+                stops);
+        });
+    }
+
+    [Fact]
+    public void DoneAResultTheFieldCannotHoldStaysOpenAndSaysWhy()
+    {
+        avalonia.Invoke(() =>
+        {
+            var window = new CompareWindow("A field of one paragraph", TwoParagraphs(),
+                checkResult: result => result.Count > 1 ? "One paragraph only." : null);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Comparison.Choose(BothChange(window), Choice.Mine);
+
+            Assert.False(window.Finish());
+
+            Assert.Null(window.Outcome);
+            Assert.Equal("One paragraph only.", window.WaitingText);
+            Assert.Equal(Choice.Mine, window.Comparison.ChoiceFor(BothChange(window)));
+        });
+    }
+
+    [Fact]
     public void ShowResultShowsTheCleanTextWithoutMarks()
     {
         avalonia.Invoke(() =>
@@ -182,21 +236,27 @@ public sealed class CompareWindowTests(AvaloniaHeadlessFixture avalonia)
             var window = Opened(TwoParagraphs(), out var closer);
             using var _ = closer;
             var said = Said(window).ToList();
+            var popover = (Control)((Flyout)window.MarkOf(BothChange(window))!.Flyout!).Content!;
+            said.AddRange(Said(popover));
+            var more = window.GetLogicalDescendants().OfType<Button>().Single(button => AutomationProperties.GetName(button) == "More choices");
+            said.AddRange(((MenuFlyout)more.Flyout!).ItemsSource!.OfType<MenuItem>().Select(item => (string)item.Header!));
             window.OpenSideBySide();
             said.AddRange(Said(window));
 
             Assert.Contains(ChangeWords.Done, said);
             Assert.Contains(ChangeWords.DecideLater, said);
+            Assert.Contains(ChangeWords.UseBoth, said);
+            Assert.Contains(ChangeWords.StartAgain, said);
             var banned = new Regex(@"\b(conflict|keep|accept|reject)", RegexOptions.IgnoreCase);
             Assert.DoesNotContain(said, words => banned.IsMatch(words));
         });
     }
 
-    private static IEnumerable<string> Said(Window window)
+    private static IEnumerable<string> Said(Control root)
     {
-        yield return window.Title ?? "";
-        foreach (var control in window.GetLogicalDescendants().OfType<Control>()
-                     .Concat(window.GetVisualDescendants().OfType<Control>()).Distinct())
+        if (root is Window window) yield return window.Title ?? "";
+        foreach (var control in root.GetSelfAndLogicalDescendants().OfType<Control>()
+                     .Concat(root.GetVisualDescendants().OfType<Control>()).Distinct())
         {
             if (AutomationProperties.GetName(control) is { Length: > 0 } name) yield return name;
             if (ToolTip.GetTip(control) is string tip) yield return tip;

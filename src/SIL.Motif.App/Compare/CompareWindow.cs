@@ -58,7 +58,9 @@ public sealed partial class CompareWindow : Window
     private readonly WritingSystemRegistry? _writingSystems;
     private readonly IStyleResolver? _styles;
     private readonly string? _savedAt;
-    private readonly TextBlock _summary = new() { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeight.SemiBold };
+    private readonly Func<IReadOnlyList<ParagraphVersion>, string?>? _checkResult;
+    // Focusable so Tab reaches the summary first, as the person's starting point.
+    private readonly TextBlock _summary = new() { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeight.SemiBold, Focusable = true };
     private readonly CheckBox _showResult = new() { Content = ChangeWords.ShowResult };
     private readonly Button _openSideBySide = new() { Content = ChangeWords.OpenSideBySide };
     private readonly StackPanel _text = new() { Spacing = 10, Margin = new Thickness(4) };
@@ -67,7 +69,7 @@ public sealed partial class CompareWindow : Window
     private readonly TextBlock _waiting = new() { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     private readonly Button _later = new() { Content = ChangeWords.DecideLater };
     private readonly Button _done = new() { Content = ChangeWords.Done, IsDefault = true };
-    private readonly DockPanel _combined;
+    private readonly Grid _combined;
     private readonly List<Button> _marks = [];
     private readonly Dictionary<int, Border> _rows = [];
     private TextChange? _selected;
@@ -75,11 +77,13 @@ public sealed partial class CompareWindow : Window
     /// <summary>
     /// Opens over <paramref name="comparison"/>. <paramref name="title"/> names the field and its record;
     /// <paramref name="writingSystems"/> and <paramref name="styles"/> lay the text out as the field does, and
-    /// <paramref name="savedAt"/> says when FieldWorks saved its version, when known.
+    /// <paramref name="savedAt"/> says when FieldWorks saved its version, when known. <paramref name="checkResult"/> says why the
+    /// field cannot hold a result, or null when it can; Done then stays in the window and shows that message.
     /// </summary>
     public CompareWindow(string title, TextComparison comparison, WritingSystemRegistry? writingSystems = null, IStyleResolver? styles = null,
-        string? savedAt = null)
+        string? savedAt = null, Func<IReadOnlyList<ParagraphVersion>, string?>? checkResult = null)
     {
+        _checkResult = checkResult;
         _comparison = comparison ?? throw new ArgumentNullException(nameof(comparison));
         _writingSystems = writingSystems;
         _styles = styles;
@@ -117,12 +121,16 @@ public sealed partial class CompareWindow : Window
         _textScroll = new ScrollViewer { Content = _text, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         var listScroll = new ScrollViewer { Content = _list, Width = 340, Margin = new Thickness(12, 0, 0, 0) };
         AutomationProperties.SetName(listScroll, "Changes");
-        _combined = new DockPanel { LastChildFill = true };
-        DockPanel.SetDock(header, Dock.Top);
+        // A grid rather than a dock panel so the children sit in Tab order: header, the marked text, then the list.
+        _combined = new Grid { RowDefinitions = new RowDefinitions("Auto,*"), ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        Grid.SetColumnSpan(header, 2);
         _combined.Children.Add(header);
-        DockPanel.SetDock(listScroll, Dock.Right);
+        var textBorder = new Border { BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1), Child = _textScroll };
+        Grid.SetRow(textBorder, 1);
+        _combined.Children.Add(textBorder);
+        Grid.SetRow(listScroll, 1);
+        Grid.SetColumn(listScroll, 1);
         _combined.Children.Add(listScroll);
-        _combined.Children.Add(new Border { BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1), Child = _textScroll });
 
         Content = Frame(_combined);
         _comparison.Changed += (_, _) => Refresh();
@@ -191,12 +199,21 @@ public sealed partial class CompareWindow : Window
         return true;
     }
 
-    /// <summary>Ends with the result of the choices, or of the right side in the side-by-side view; false while a choice waits.</summary>
+    /// <summary>
+    /// Ends with the result of the choices, or of the right side in the side-by-side view; false while a choice waits or while
+    /// the field cannot hold the result, which the footer then explains.
+    /// </summary>
     public bool Finish()
     {
         if (IsSideBySide) TakeRightSide();
         if (!_comparison.IsDecided) return false;
-        Outcome = new CompareOutcome(CompareEnd.Done, _comparison.Result());
+        var result = _comparison.Result();
+        if (_checkResult?.Invoke(result) is { } why)
+        {
+            _waiting.Text = why;
+            return false;
+        }
+        Outcome = new CompareOutcome(CompareEnd.Done, result);
         Close(Outcome);
         return true;
     }
@@ -215,19 +232,20 @@ public sealed partial class CompareWindow : Window
         Close(Outcome);
     }
 
+    // The body is the frame's first child and the footer its last, so Tab ends on Decide later and Done.
     private Control Frame(Control body)
     {
-        var footer = new DockPanel { Margin = new Thickness(0, 10, 0, 0), LastChildFill = true };
+        var footer = new Grid { Margin = new Thickness(0, 10, 0, 0), ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        footer.Children.Add(_waiting);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         buttons.Children.Add(_later);
         buttons.Children.Add(_done);
-        DockPanel.SetDock(buttons, Dock.Right);
+        Grid.SetColumn(buttons, 1);
         footer.Children.Add(buttons);
-        footer.Children.Add(_waiting);
-        var frame = new DockPanel { Margin = new Thickness(16), LastChildFill = true };
-        DockPanel.SetDock(footer, Dock.Bottom);
-        frame.Children.Add(footer);
+        var frame = new Grid { Margin = new Thickness(16), RowDefinitions = new RowDefinitions("*,Auto") };
         frame.Children.Add(body);
+        Grid.SetRow(footer, 1);
+        frame.Children.Add(footer);
         return frame;
     }
 
@@ -266,6 +284,7 @@ public sealed partial class CompareWindow : Window
     private void UpdateFooter()
     {
         _summary.Text = _comparison.Summary;
+        AutomationProperties.SetName(_summary, _comparison.Summary);
         _waiting.Text = IsSideBySide ? "" : _comparison.Waiting ?? "";
         _done.IsEnabled = IsSideBySide || _comparison.IsDecided;
         AutomationProperties.SetName(_textScroll, ReadableText);

@@ -62,6 +62,7 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
         public Task<string?> DiscardAsync(string senseId, string ws)
         {
             Discards.Add((senseId, ws));
+            if (RemembersStaged) Pending.Remove(ws);
             return Task.FromResult<string?>(null);
         }
 
@@ -305,9 +306,48 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
             Assert.Equal(SenseId, sense);
             Assert.Equal(Start(Canned("fw "), "en"), payload.Expected);
             Assert.Equal("fw y mine", string.Concat(payload.Runs.Select(run => run.Text)));
+            Assert.Empty(store.Discards);
             Assert.False(window.IsStaleStripShown);
             Assert.False(window.FieldFor("en")!.IsReadOnly);
             Assert.Equal("fw y mine", window.FieldFor("en")!.Editor.Document.Paragraphs[0].Text);
+        });
+    }
+
+    [Fact]
+    public void DoneOnADefinitionOfTwoParagraphsStaysInTheComparisonAndSaysWhy()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { RemembersStaged = true };
+            var started = Canned().Senses[0].Definition[0].Runs.Select(TextVersions.Run);
+            store.Pending["en"] = new TextRichStringPayload(SenseDefinitionStore.Field, "en", [.. started, new TextRun(" mine", "en")],
+                Start(Canned(), "en"));
+            string? waiting = null;
+            var window = new SenseDefinitionPreviewWindow(Canned("fw "), () => Canned("fw "), store, () => Task.FromResult(true), shown =>
+            {
+                shown.OpenSideBySide();
+                var field = shown.ResultFields[0];
+                field.Focus();
+                Assert.True(field.HandleKey(Key.End, KeyModifiers.Control));
+                Assert.True(field.HandleKey(Key.Enter, KeyModifiers.None));
+                shown.KeyTextInput("more");
+                Assert.Equal(2, field.Editor.Document.Paragraphs.Count);
+                Assert.False(shown.Finish());
+                Assert.Null(shown.Outcome);
+                waiting = shown.WaitingText;
+                shown.DecideLater();
+                return Task.FromResult(shown.Outcome);
+            });
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(SenseId);
+            Completed(window.Loading);
+
+            Assert.False(Completed(window.CompareAsync()));
+
+            Assert.Equal(SenseDefinitionPreviewWindow.OneParagraphResultMessage, waiting);
+            Assert.Empty(store.Staged);
+            Assert.True(window.IsStaleStripShown);
         });
     }
 

@@ -596,6 +596,53 @@ public sealed class GdrPreviewWindowTests
     }
 
     [Fact]
+    public void AnEditThatNoLongerFitsWhenTheRecordOpensIsComparedWithoutBeingDiscardedFirst()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { RemembersStaged = true };
+            var began = new TextParagraphExpected("Words end at spaces", "Normal", TextRunsDigest.Of(Canned(First).Discussion[0]));
+            store.Pending[First.Id] = new TextParagraphsPayload(GdrDiscussionPayload.Field, ["para-1", "para-2"],
+                [new TextParagraphChange(0, "para-1", "Normal", [new TextRun("aWords end at ", "en"), new TextRun("spaces", "en", "Emphasis")])], [],
+                new Dictionary<string, TextParagraphExpected> { ["para-1"] = began });
+            var window = new GdrPreviewWindow([First, Second], id => id == First.Id ? AddedAtTheEndInFieldWorks(First) : Canned(Second), store,
+                () => Task.FromResult(true), shown =>
+                {
+                    shown.Finish();
+                    return Task.FromResult(shown.Outcome);
+                });
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            Completed(window.Loading);
+            Assert.True(window.IsStaleStripShown);
+
+            Assert.True(Completed(window.CompareAsync()), window.StatusText);
+            Completed(window.Loading);
+
+            Assert.Empty(store.Discards);
+            Assert.Equal("aWords end at spaces always", string.Concat(store.Staged[^1].Paragraphs.Changed.Single().Runs.Select(run => run.Text)));
+            Assert.False(window.IsStaleStripShown);
+        });
+    }
+
+    [Fact]
+    public void CompareWhenThePendingChangesNoLongerHoldTheEditSaysSo()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (window, store, compared) = RefusedForDrift(_ => null);
+            using var closer = window.CloseOnExit();
+            store.Pending.Clear();
+
+            Assert.False(Completed(window.CompareAsync()));
+
+            Assert.Empty(compared);
+            Assert.Equal(GdrPreviewWindow.NothingToCompareMessage, window.StatusText);
+        });
+    }
+
+    [Fact]
     public void TheStripOffersCompareInPlaceOfStartingAgainAndNoButtonSaysKeep()
     {
         _avalonia.Invoke(() =>

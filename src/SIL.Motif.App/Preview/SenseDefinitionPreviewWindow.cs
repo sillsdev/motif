@@ -25,11 +25,17 @@ public sealed class SenseDefinitionPreviewWindow : Window
     /// <summary>What the strip says when one of the shown sense's Definitions was also changed in FieldWorks.</summary>
     public const string StaleMessage = "This Definition was also changed in FieldWorks. Your typing is safe.";
 
+    /// <summary>What Compare says when the pending changes no longer hold an edit of the Definition.</summary>
+    public const string NothingToCompareMessage = "There is nothing to compare: your pending changes no longer hold an edit of this Definition.";
+
     /// <summary>What the strip says when the shown sense holds an edit the Draft kept from an earlier window.</summary>
     public const string UnappliedMessage = "This Definition shows your edit that is not applied yet.";
 
     /// <summary>Why an edit is not staged while its field holds more than one paragraph.</summary>
     public const string OneParagraphMessage = "A Definition is one paragraph. Join the paragraphs to keep this edit.";
+
+    /// <summary>What the comparison's footer says when Done would give a Definition more than one paragraph.</summary>
+    public const string OneParagraphResultMessage = "A Definition is one paragraph. Join the paragraphs on the right, then press Done.";
 
     private readonly Func<SenseDefinitionsResponse?> _read;
     private readonly ISenseDefinitionStore? _store;
@@ -256,14 +262,19 @@ public sealed class SenseDefinitionPreviewWindow : Window
             _status.Text = refusal;
             return false;
         }
-        if (read.RichString is not { } pending || _read() is not { } current) return false;
+        if (read.RichString is not { } pending || _read() is not { } current)
+        {
+            _status.Text = NothingToCompareMessage;
+            return false;
+        }
         _senses = current;
         var sense = current.Senses.FirstOrDefault(item => item.Id == senseId);
         var live = sense?.Definition.FirstOrDefault(item => item.WritingSystem == ws)?.Runs ?? [];
         var location = $"the {ws} Definition";
         var comparison = new TextComparison(TextSort.Sort(TextVersions.FromRichString(pending, live, key), location));
         var shown = _opened[key].Discussion;
-        var window = new CompareWindow($"{sense?.Label}, Definition ({ws})", comparison, shown.WritingSystems, shown.Styles);
+        var window = new CompareWindow($"{sense?.Label}, Definition ({ws})", comparison, shown.WritingSystems, shown.Styles,
+            checkResult: result => result.Count > 1 ? OneParagraphResultMessage : null);
         var outcome = await _compare(window);
         if (outcome?.End == CompareEnd.StartAgain) return await StartAgainFromFieldWorksAsync();
         if (outcome?.End != CompareEnd.Done) return false;
