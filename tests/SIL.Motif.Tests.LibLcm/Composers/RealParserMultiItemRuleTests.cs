@@ -35,8 +35,12 @@ public sealed class RealParserMultiItemRuleTests(PristineProjectFixture pristine
         await Prove("nit", ["n", "V"], ["m"], "mt", ["nit", "mit"]);
     }
 
+    /// <summary>
+    /// The segments here have no features, so the Output class {a,i} shares nothing and the unspecified input matches every
+    /// member. A fully specified input keeps its own value instead; see RealParserMultiMemberOutputRuleTests.
+    /// </summary>
     [RealParserFact]
-    public Task ANaturalClassOutputProducesAnyMemberOfTheClass() =>
+    public Task AFeaturelessInputMatchesEveryMemberOfAMultiMemberOutputClass() =>
         Prove("nat", ["n", "V"], ["m", "V"], "mat", ["nat", "mt"], alsoAccepted: ["mit"]);
 
     [RealParserFact]

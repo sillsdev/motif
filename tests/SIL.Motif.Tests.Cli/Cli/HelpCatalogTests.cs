@@ -28,9 +28,11 @@ public sealed class HelpCatalogTests
 
         Assert.DoesNotContain(pages, entry => entry.HelpPage!.Contains("produces any member", StringComparison.Ordinal));
         Assert.DoesNotContain(pages, entry => entry.HelpPage!.Contains("both members can surface", StringComparison.Ordinal));
+        Assert.DoesNotContain(pages, entry => entry.HelpPage!.Contains("yields only r", StringComparison.Ordinal));
+        Assert.DoesNotContain(pages, entry => entry.HelpPage!.Contains("give only *r*", StringComparison.Ordinal));
         var learn = Assert.Single(pages, entry => entry.Code == "learn/phonological-rules").HelpPage!;
         Assert.Contains("alternate form", learn, StringComparison.Ordinal);
-        Assert.Contains("union of the two segments", learn, StringComparison.Ordinal);
+        Assert.Contains("applies only the features the members share", learn, StringComparison.Ordinal);
     }
 
     [Fact]

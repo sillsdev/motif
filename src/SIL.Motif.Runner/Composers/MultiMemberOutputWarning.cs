@@ -8,8 +8,9 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Runner.Composers;
 
 /// <summary>
-/// Warns when a rule Output names a segment-list class of several members. HermitCrab applies such a class as the
-/// union of its members' features, which leaves one underspecified segment; it never chooses a member.
+/// Warns when a rule Output names a segment-list class of several members. HermitCrab and PanGloss apply only the
+/// features the members share, so the input keeps its own value for every feature the members differ on; the Output
+/// never chooses a member (fieldworks-parser-conformance#38).
 /// </summary>
 public static class MultiMemberOutputWarning
 {
@@ -30,8 +31,8 @@ public static class MultiMemberOutputWarning
                 found is not IPhNCSegments { SegmentsRC.Count: > 1 } naturalClass) continue;
             var name = naturalClass.Name.BestAnalysisAlternative.Text;
             warnings.Add(new(Kind, id.Value, $"Output class '{name}' lists {naturalClass.SegmentsRC.Count} segments, but " +
-                "HermitCrab and PanGloss never choose one: the Output is the union of the members' features and leaves " +
-                "an underspecified segment. For free variation, author alternate forms on the entry; for a " +
+                "HermitCrab and PanGloss never choose one: the Output applies only the features the members share, and the " +
+                "input keeps its own value for every feature the members differ on. For free variation, author alternate forms on the entry; for a " +
                 "determinate change, use a feature-class Output or a single phoneme."));
         }
         return warnings;

@@ -50,7 +50,7 @@ public sealed class MultiMemberOutputWarningTests(PristineProjectFixture pristin
         var warning = Assert.Single(Compose(new { naturalClass = "@lw:naturalclasses" }).Related);
 
         Assert.Equal("multi-member-output", warning.Kind);
-        Assert.Contains("union of the members' features", warning.Name, StringComparison.Ordinal);
+        Assert.Contains("only the features the members share", warning.Name, StringComparison.Ordinal);
         Assert.Contains("alternate form", warning.Name, StringComparison.Ordinal);
         Assert.Contains("feature-class Output", warning.Name, StringComparison.Ordinal);
     }
@@ -90,6 +90,6 @@ public sealed class MultiMemberOutputWarningTests(PristineProjectFixture pristin
         Assert.True(edited.Succeeded, edited.Refusal?.Message);
         var warning = Assert.Single(edited.Value!.RelatedObjects ?? []);
         Assert.Equal("multi-member-output", warning.Kind);
-        Assert.Contains("union of the members' features", warning.Name, StringComparison.Ordinal);
+        Assert.Contains("only the features the members share", warning.Name, StringComparison.Ordinal);
     }
 }
