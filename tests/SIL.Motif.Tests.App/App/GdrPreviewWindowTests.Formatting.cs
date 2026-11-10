@@ -223,8 +223,91 @@ public sealed partial class GdrPreviewWindowTests
         };
     }
 
+    private static GdrShowResponse WithTwoLinksToOneTarget(GdrSummary record)
+    {
+        var canned = Canned(record);
+        var bold = new GdrTextProperties(new Dictionary<int, GdrIntProperty> { [TextPropertyNumbers.Bold] = new(0, 1) },
+            new Dictionary<int, string>());
+        var target = new GdrLinkTarget(GdrLinkState.External, null, "https://example.invalid/x", "");
+        return canned with
+        {
+            Discussion =
+            [
+                canned.Discussion[0] with
+                {
+                    Runs =
+                    [
+                        new GdrRun("one", "en", null, bold, LinkData, target),
+                        new GdrRun(" and ", "en", null, Props()),
+                        new GdrRun("two", "en", null, Props(), LinkData, target),
+                    ],
+                },
+                canned.Discussion[1],
+            ],
+        };
+    }
+
     [Fact]
-    public void TypingInAParagraphKeepsItsLinkWithTheLinksOwnPropertiesAndItsPicture()
+    public void TwoLinksToOneTargetEachKeepTheirOwnFormatting()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, WithTwoLinksToOneTarget);
+            using var closer = window.CloseOnExit();
+            window.Field!.Editor.SetCaret(new TextPosition(0, "one and two".Length));
+
+            window.KeyTextInput("!");
+            Leave(window);
+
+            var links = StagedFirst(store).Runs.Where(run => run.ObjData == LinkData).ToArray();
+            Assert.Equal(["one", "two"], links.Select(link => link.Text));
+            Assert.True(links[0].Props!.Ints.ContainsKey(TextPropertyNumbers.Bold));
+            Assert.False(links[1].Props!.Ints.ContainsKey(TextPropertyNumbers.Bold));
+            Assert.All(links, link => Assert.False(link.Props!.Ints.ContainsKey(TextPropertyNumbers.Underline)));
+        });
+    }
+
+    [Fact]
+    public void AnUnderlineThePersonGivesALinkIsKept()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, WithLinkAndPicture);
+            using var closer = window.CloseOnExit();
+
+            Select(window, 0, 0, "See here".Length);
+            Assert.True(window.ToggleUnderline());
+            Leave(window);
+
+            var runs = StagedFirst(store).Runs;
+            Assert.True(runs[0].Props!.Ints.ContainsKey(TextPropertyNumbers.Underline));
+            Assert.True(runs.Single(run => run.ObjData == LinkData).Props!.Ints.ContainsKey(TextPropertyNumbers.Underline));
+        });
+    }
+
+    [Fact]
+    public void ACharacterStyleThePersonGivesALinkIsKept()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, WithLinkAndPicture);
+            using var closer = window.CloseOnExit();
+
+            Select(window, 0, "See ".Length, "See here".Length);
+            Assert.True(window.ApplyCharacterStyle("Strong"));
+            Leave(window);
+
+            var link = StagedFirst(store).Runs.Single(run => run.ObjData == LinkData);
+            Assert.Equal(("here", "Strong"), (link.Text, link.CharacterStyle));
+            Assert.False(link.Props!.Ints.ContainsKey(TextPropertyNumbers.ForeColor));
+        });
+    }
+
+    [Fact]
+    public void TypingInAParagraphKeepsItsLinkWithItsOwnUnderlineAndColourThePersonsBoldAndItsPicture()
     {
         _avalonia.Invoke(() =>
         {
@@ -243,8 +326,10 @@ public sealed partial class GdrPreviewWindowTests
             Assert.Equal(("here", "Emphasis"), (link.Text, link.CharacterStyle));
             Assert.False(link.Props!.Ints.ContainsKey(TextPropertyNumbers.Underline));
             Assert.False(link.Props.Ints.ContainsKey(TextPropertyNumbers.ForeColor));
-            Assert.False(link.Props.Ints.ContainsKey(TextPropertyNumbers.Bold));
-            Assert.Equal("￼", runs.Single(run => run.ObjData == PictureData).Text);
+            Assert.True(link.Props.Ints.ContainsKey(TextPropertyNumbers.Bold));
+            var picture = runs.Single(run => run.ObjData == PictureData);
+            Assert.Equal("￼", picture.Text);
+            Assert.False(picture.Props?.Ints.ContainsKey(TextPropertyNumbers.Bold) ?? false);
             Assert.Equal("Now See ", runs[0].Text);
             Assert.True(runs[0].Props!.Ints.ContainsKey(TextPropertyNumbers.Bold));
         });
@@ -279,8 +364,7 @@ public sealed partial class GdrPreviewWindowTests
             Leave(window);
 
             Assert.Equal("gone after", string.Concat(StagedFirst(store).Runs.Select(run => run.Text)));
-            Assert.Equal((string?)null, StagedFirst(store).Runs[0].CharacterStyle);
-            Assert.Equal("Strong", StagedFirst(store).Runs[^1].CharacterStyle);
+            Assert.All(StagedFirst(store).Runs, run => Assert.Equal("Strong", run.CharacterStyle));
         });
     }
 

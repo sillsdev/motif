@@ -75,10 +75,11 @@ internal static class RichTextRuns
         return new(intProps, stringProps);
     }
 
-    // Any FieldWorks text property, less those with a member of their own and those liblcm cannot load back.
+    // The closed set of FwTextPropType, less those with a member of their own and those liblcm cannot load back.
     private static int PropertyNumber(string name, bool inStyleRules, bool isInt, string kind)
     {
-        if (!int.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number <= 0)
+        if (!int.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number <= 0 ||
+            !Enum.IsDefined((FwTextPropType)number))
             throw Invalid(kind, $"property '{name}' is not a FieldWorks text property number");
         if (isInt && number == (int)FwTextPropType.ktptWs)
             throw Invalid(kind, "the writing system is a run's 'ws', not a property");

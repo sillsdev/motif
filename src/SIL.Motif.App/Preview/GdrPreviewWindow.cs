@@ -43,6 +43,8 @@ public sealed class GdrPreviewWindow : Window
     private readonly Dictionary<string, string> _refused = new(StringComparer.Ordinal);
     // Records whose Draft edit has not been read yet, or could not be, or no longer fits the project.
     private readonly HashSet<string> _locked = new(StringComparer.Ordinal);
+    // Records whose Draft edit could not be read, with what they were shown from, read again when next selected.
+    private readonly Dictionary<string, GdrShowResponse> _unread = new(StringComparer.Ordinal);
     private bool _applying;
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
     private Task _staging = Task.CompletedTask;
@@ -425,6 +427,7 @@ public sealed class GdrPreviewWindow : Window
         if (await Staged(id, pending: false, () => _store.DiscardAsync(id)) is not null) return false;
         _stale.Remove(id);
         _opened.Remove(id);
+        _unread.Remove(id);
         Show(id);
         return true;
     }
@@ -518,6 +521,7 @@ public sealed class GdrPreviewWindow : Window
             return;
         }
         _opened.Remove(id);
+        _unread.Remove(id);
         if (_shownId == id) Show(id);
     }
 
@@ -545,7 +549,9 @@ public sealed class GdrPreviewWindow : Window
         _heading.Text = opened.Heading;
         _target.Text = string.Empty;
         ShowStrips();
-        if (first is not null && _store is not null) Loading = LoadPending(first, opened);
+        if (_store is null) return;
+        if (first is not null) Loading = LoadPending(first, opened);
+        else if (_unread.Remove(id, out var unread)) Loading = LoadPending(unread, opened);
     }
 
     private OpenedRecord Open(GdrShowResponse shown, TextParagraphsPayload? pending)
@@ -585,7 +591,8 @@ public sealed class GdrPreviewWindow : Window
         if (!_opened.TryGetValue(opened.RecordId, out var current) || current != opened) return;
         if (read.Refusal is { } refusal)
         {
-            _status.Text = "This Discussion stays read-only: its pending edit could not be read. " + refusal;
+            _unread[opened.RecordId] = shown;
+            _status.Text = "This Discussion stays read-only: its pending edit could not be read. Select it again to retry. " + refusal;
             return;
         }
         if (read.Paragraphs is not { } pending)

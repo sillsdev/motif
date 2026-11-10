@@ -695,8 +695,8 @@ owns the field. `after` is closed:
   other properties and its object data, such as a link's target. A paragraph not in `changed` is not written, so its
   runs, links and embedded objects stay as they are.
 - **`ints`** and **`strings`** are FieldWorks text properties by property number: `ints` as `[variation, value]`,
-  `strings` as text. The set is closed by what a project can store, not by a list in Motif: any property number
-  FieldWorks defines is carried as it is, except those with a member of their own, which are refused as properties
+  `strings` as text. The set is closed: it is the property numbers liblcm's `FwTextPropType` defines, each
+  carried as it is, and any other number is refused. Excepted are those with a member of their own, which are refused as properties
   (the writing system, 1, is `ws`; the named style, 133, is `style` or `characterStyle`; object data, 6, is
   `objData`), and the integer properties liblcm cannot load back (50, 129, 150 to 154, 159, 160, and 155 among
   paragraph properties). A value liblcm cannot load back is refused too, by SIL.TextEditing.LCModel's own rules: a

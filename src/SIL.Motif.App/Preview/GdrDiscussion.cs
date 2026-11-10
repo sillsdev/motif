@@ -23,11 +23,12 @@ public sealed class GdrDiscussion
 
     private const int RightToLeft = 128;
 
-    private readonly Dictionary<string, PropertyBag> _linkProps;
+    // What a link's underline and colour were before this view showed it as a link, by link target.
+    private readonly Dictionary<string, LinkLook> _linkLooks;
 
     private GdrDiscussion(TextDocument document, IStyleResolver styles, WritingSystemRegistry writingSystems,
         IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> targets,
-        IReadOnlyDictionary<string, TextParagraphExpected> expected, Dictionary<string, PropertyBag> linkProps,
+        IReadOnlyDictionary<string, TextParagraphExpected> expected, Dictionary<string, LinkLook> linkLooks,
         GdrShowResponse response)
     {
         Document = document;
@@ -35,7 +36,7 @@ public sealed class GdrDiscussion
         WritingSystems = writingSystems;
         Targets = targets;
         Expected = expected;
-        _linkProps = linkProps;
+        _linkLooks = linkLooks;
         ParagraphStyles = response.Styles.Where(style => style.Kind == GdrStyleKind.Paragraph).Select(style => style.Name).ToArray();
         CharacterStyles = response.Styles.Where(style => style.Kind == GdrStyleKind.Character).Select(style => style.Name).ToArray();
         WritingSystemChoices = response.WritingSystems;
@@ -59,10 +60,9 @@ public sealed class GdrDiscussion
     /// </summary>
     public Run LinkRun(string text, string ws, string objData)
     {
-        var stored = new PropertyBag();
-        if (CharacterStyles.Contains(HyperlinkStyle, StringComparer.Ordinal)) stored.SetStr(TextPropertyNumbers.NamedStyle, HyperlinkStyle);
-        _linkProps.TryAdd(objData, stored);
-        var props = stored.Clone();
+        var props = new PropertyBag();
+        if (CharacterStyles.Contains(HyperlinkStyle, StringComparer.Ordinal)) props.SetStr(TextPropertyNumbers.NamedStyle, HyperlinkStyle);
+        _linkLooks.TryAdd(objData, LinkLook.Of(props));
         props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
         props.SetInt(TextPropertyNumbers.ForeColor, LinkColor, 0);
         return new Run { Ws = ws, Text = text, Props = props, ObjData = objData };
@@ -101,12 +101,13 @@ public sealed class GdrDiscussion
         string.Concat(paragraph.Runs.Where(run => !IsMarker(run)).Select(run => run.Text));
 
     /// <summary>
-    /// The runs of <paramref name="paragraph"/> as the project is to hold them: without broken-link markers, and with
-    /// each link run's own properties in place of the colour and underline this view shows links with.
+    /// The runs of <paramref name="paragraph"/> as the project is to hold them: without broken-link markers, and with a
+    /// link run's own underline and colour in place of those this view shows links with, unless the person changed them.
+    /// Every other property of a link run, its style included, is the run's as edited.
     /// </summary>
     public IReadOnlyList<TextRun> ProjectRuns(Paragraph paragraph) => paragraph.Runs.Where(run => !IsMarker(run)).Select(run =>
     {
-        var props = run.ObjData is { } objData && _linkProps.TryGetValue(objData, out var stored) ? stored : run.Props;
+        var props = run.ObjData is { } objData && _linkLooks.TryGetValue(objData, out var look) ? look.Restore(run.Props) : run.Props;
         var style = props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
         return new TextRun(run.Text, run.Ws, style, Props(props), run.ObjData);
     }).ToArray();
@@ -130,7 +131,7 @@ public sealed class GdrDiscussion
         var document = new TextDocument();
         var targets = new Dictionary<(int Paragraph, int Offset), GdrLinkTarget>();
         var expected = new Dictionary<string, TextParagraphExpected>(StringComparer.Ordinal);
-        var linkProps = new Dictionary<string, PropertyBag>(StringComparer.Ordinal);
+        var linkLooks = new Dictionary<string, LinkLook>(StringComparer.Ordinal);
         foreach (var source in response.Discussion)
         {
             var paragraph = new Paragraph
@@ -147,7 +148,7 @@ public sealed class GdrDiscussion
                 var props = Bag(run.Properties);
                 if (run.Target is { } target)
                 {
-                    if (run.ObjData is { } objData) linkProps.TryAdd(objData, Bag(run.Properties));
+                    if (run.ObjData is { } objData) linkLooks.TryAdd(objData, LinkLook.Of(props));
                     targets[(document.Paragraphs.Count, offset)] = target;
                     props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
                     props.SetInt(TextPropertyNumbers.ForeColor, target.State == GdrLinkState.Broken ? BrokenColor : LinkColor, 0);
@@ -174,7 +175,7 @@ public sealed class GdrDiscussion
         foreach (var system in response.WritingSystems)
             writingSystems.Add(WritingSystemRegistry.Define(system.Tag, system.DefaultFont, WritingSystemSizePoints,
                 rtl: system.Direction == "rtl"));
-        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, linkProps, response);
+        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, linkLooks, response);
     }
 
     private static PropertyBag Bag(GdrTextProperties properties)
@@ -183,6 +184,31 @@ public sealed class GdrDiscussion
         foreach (var (number, value) in properties.Ints) bag.SetInt(number, value.Value, value.Variation);
         foreach (var (number, value) in properties.Strings) bag.SetStr(number, value);
         return bag;
+    }
+
+    // Two links to one target keep their own other properties; only these two are shared, and only as shown.
+    private readonly record struct LinkLook(IntPropValue? Underline, IntPropValue? ForeColor)
+    {
+        public static LinkLook Of(PropertyBag props) => new(Int(props, TextPropertyNumbers.Underline), Int(props, TextPropertyNumbers.ForeColor));
+
+        public PropertyBag Restore(PropertyBag shown)
+        {
+            var props = shown.Clone();
+            Put(props, TextPropertyNumbers.Underline, Underline, value => value == TextPropertyNumbers.UnderlineSingle);
+            Put(props, TextPropertyNumbers.ForeColor, ForeColor, value => value is LinkColor or BrokenColor);
+            return props;
+        }
+
+        private static IntPropValue? Int(PropertyBag props, int number) =>
+            props.IntProps.TryGetValue(number, out var value) ? value : null;
+
+        // The view shows links with variation 0, so a value set any other way, as the toolbar sets it, is the person's.
+        private static void Put(PropertyBag props, int number, IntPropValue? original, Func<int, bool> isShown)
+        {
+            if (!props.IntProps.TryGetValue(number, out var value) || value.Variation != 0 || !isShown(value.Value)) return;
+            if (original is { } kept) props.IntProps[number] = kept;
+            else props.IntProps.Remove(number);
+        }
     }
 
     private sealed class ResponseStyles(IReadOnlyList<GdrStyle> styles) : IStyleResolver

@@ -964,4 +964,26 @@ public sealed partial class GdrPreviewWindowTests
             Assert.Contains("The project store is busy.", window.StatusText, StringComparison.Ordinal);
         });
     }
+
+    [Fact]
+    public void SelectingARecordAgainRetriesAReadOfItsDraftEditThatFailed()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { PendingRefusal = "The project store is busy." };
+            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            Completed(window.Loading);
+            window.Show(Second.Id);
+            Completed(window.Loading);
+
+            store.PendingRefusal = null;
+            window.Show(First.Id);
+            Completed(window.Loading);
+
+            Assert.False(window.Field!.IsReadOnly);
+        });
+    }
 }

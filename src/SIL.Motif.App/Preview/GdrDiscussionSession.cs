@@ -197,7 +197,9 @@ public sealed class GdrDiscussionSession
         };
     });
 
-    // Links and objects keep their own properties, and the view's broken-link marker is not the project's text.
+    // An embedded object, such as a picture, keeps its own properties; a link's text formats like any other text.
+    private static bool IsEmbedded(Run run) => run.IsObject && run.Text == "￼";
+
     private bool FormatSelection(Func<IReadOnlyList<Run>, Action<Run>> plan)
     {
         var editor = _field.Editor;
@@ -211,7 +213,7 @@ public sealed class GdrDiscussionSession
             var first = edited.SplitRunAt(i == start.Paragraph ? start.Offset : 0);
             var last = edited.SplitRunAt(i == end.Paragraph ? end.Offset : edited.Length);
             for (var r = first; r < last; r++)
-                if (!edited.Runs[r].IsObject && !GdrDiscussion.IsMarker(edited.Runs[r])) targets.Add(edited.Runs[r]);
+                if (!IsEmbedded(edited.Runs[r]) && !GdrDiscussion.IsMarker(edited.Runs[r])) targets.Add(edited.Runs[r]);
             delta.Before.Add(editor.Document.Paragraphs[i].Clone());
             delta.After.Add(edited);
         }
