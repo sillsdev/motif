@@ -10,3 +10,6 @@ undo and redo of its own. Undo grouping, meaning which keystrokes become one und
 to the host. The host decides.
 
 Owner decision, 2026-11-03.
+
+Amended 2026-11-10 (ADR 0035): a field in source mode keeps the Markdown text's own undo history until it returns to
+rich mode; the host then receives the whole source-mode edit as one undo step.

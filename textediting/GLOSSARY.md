@@ -124,6 +124,14 @@ _Avoid_: GDR Markdown (for the general format), FWMD (in prose)
 A Grammar Design Record written in FieldWorks Markdown, following the GDR template.
 _Avoid_: GDR profile, GDR format
 
+**Source mode**:
+A field shown and edited as its FieldWorks Markdown, one field at a time; the Markdown returns to rich text only when the checker finds no errors (ADR 0035).
+_Avoid_: raw view, code view, Markdown view
+
+**Rich mode**:
+A field shown and edited as formatted text, the opposite of source mode.
+_Avoid_: WYSIWYG, normal view
+
 **Project path**:
 The path of a FieldWorks object in the designed project tree, used in links.
 
