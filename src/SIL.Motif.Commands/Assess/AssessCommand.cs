@@ -59,6 +59,7 @@ public static class AssessCommand
 {
     internal static readonly AsyncLocal<CancellationToken?> BudgetStopForTests = new();
     internal static readonly AsyncLocal<TimeSpan?> BudgetDurationForTests = new();
+    internal static readonly AsyncLocal<long?> ByteBudgetForTests = new();
 
     // assess has no configured query text; SelectionComposer already resolved the words themselves.
     private const string ScopeQuery = "assess";
@@ -100,14 +101,14 @@ public static class AssessCommand
         AssessRequest request, string managedRoot, string? parserPath,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, TrialLimits? limits, bool recordBudgetStop = true,
         ProjectParseLease? admission = null, bool reuseBefore = false, string? writingSystemId = null,
-        Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null)
+        Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null, IReadOnlyCollection<string>? alsoProtect = null)
     {
         var ownership = WorkspaceOwnership.Bootstrap(managedRoot);
         using var invoker = new PanGlossInvoker(parserPath);
         var assessor = new LazyPanGlossAssessor(() => new PanGlossAssessor(
             new StatsCacheStore(ownership, Path.ChangeExtension(Path.GetFullPath(request.ProjectPath), ".motif.db")), invoker), onPartial);
         return RunCore(request, managedRoot, assessor, invoker, onProgress, cancellationToken, admission, limits, recordBudgetStop,
-            reuseBefore ? parserPath : null, writingSystemId);
+            reuseBefore ? parserPath : null, writingSystemId, alsoProtect);
     }
 
     /// <summary>
@@ -132,7 +133,8 @@ public static class AssessCommand
     private static CommandOutcome<AssessCommandResponse> RunCore(
         AssessRequest request, string managedRoot, IAssessor assessor, IPanGlossInvoker invoker,
         Action<AssessmentProgress>? onProgress, CancellationToken cancellationToken, ProjectParseLease? admission,
-        TrialLimits? frozenLimits = null, bool recordBudgetStop = true, string? reuseParserPath = null, string? writingSystemId = null)
+        TrialLimits? frozenLimits = null, bool recordBudgetStop = true, string? reuseParserPath = null, string? writingSystemId = null,
+        IReadOnlyCollection<string>? alsoProtect = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(assessor);
@@ -342,7 +344,8 @@ public static class AssessCommand
                     try
                     {
                         var pruned = StorePruneCommand.RunHeld(database, project, admission ?? parseLease!,
-                            standaloneAssessmentCount, managedRoot, cancellationToken, protectedAssessments: [reused]);
+                            standaloneAssessmentCount, managedRoot, cancellationToken, byteBudget: ByteBudgetForTests.Value ?? StorePruneCommand.StoreBudgetBytes,
+                            protectedAssessments: [reused, .. alsoProtect ?? []]);
                         if (!pruned.Succeeded)
                             ProjectDiagnosticLog.Append(request.ProjectPath, "Assess reused evidence but could not prune old evidence.",
                                 new InvalidOperationException(pruned.Refusal!.Message));
@@ -731,7 +734,8 @@ public static class AssessCommand
                 try
                 {
                     var pruned = StorePruneCommand.RunHeld(database, project, admission ?? parseLease!, standaloneAssessmentCount, managedRoot,
-                        cancellationToken, protectedAssessments: assessmentIds);
+                        cancellationToken, byteBudget: ByteBudgetForTests.Value ?? StorePruneCommand.StoreBudgetBytes,
+                        protectedAssessments: [.. assessmentIds, .. alsoProtect ?? []]);
                     if (!pruned.Succeeded)
                         ProjectDiagnosticLog.Append(request.ProjectPath, "Assess saved its Assessment but could not prune old evidence.",
                             new InvalidOperationException(pruned.Refusal!.Message));

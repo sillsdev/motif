@@ -55,8 +55,8 @@ public static class TrialWorkflow
                     return CommandOutcome<TrialEnqueued>.Refused(baseline.Refusal!);
             }
             return EnqueueCore(request,
-                (words, limits, writingSystem, onPartial) => busy is null
-                    ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial)
+                (words, limits, writingSystem, onPartial, earlier) => busy is null
+                    ? TrialBaselines.Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial, earlier)
                     : CommandOutcome<AssessCommandResponse>.Refused(busy),
                 mode, parserPath ?? SIL.Motif.Host.Parser.PanGlossExecutable.TryLocate(), admission);
         }));
@@ -71,7 +71,7 @@ public static class TrialWorkflow
     internal static CommandOutcome<TrialEnqueued> Enqueue(EnqueueTrialRequest request,
         Func<IReadOnlyList<string>, TrialLimits?, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode,
         string? expectedParserPath = null, ProjectParseLease? admission = null) =>
-        EnqueueWithUpdateGate(() => EnqueueCore(request, (words, limits, _, _) => assess(words, limits), mode, expectedParserPath, admission));
+        EnqueueWithUpdateGate(() => EnqueueCore(request, (words, limits, _, _, _) => assess(words, limits), mode, expectedParserPath, admission));
 
     private static CommandOutcome<TrialEnqueued> EnqueueWithUpdateGate(Func<CommandOutcome<TrialEnqueued>> enqueue)
     {
@@ -84,7 +84,7 @@ public static class TrialWorkflow
     }
 
     private static CommandOutcome<TrialEnqueued> EnqueueCore(EnqueueTrialRequest request,
-        Func<IReadOnlyList<string>, TrialLimits?, string?, Action<IReadOnlyList<ParseWordEvidence>>?, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode,
+        Func<IReadOnlyList<string>, TrialLimits?, string?, Action<IReadOnlyList<ParseWordEvidence>>?, IReadOnlyCollection<string>, CommandOutcome<AssessCommandResponse>> assess, BaselineMode mode,
         string? expectedParserPath, ProjectParseLease? admission)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -94,9 +94,9 @@ public static class TrialWorkflow
         CommandOutcome<JobEnqueuedResponse> queued;
         try
         {
-            queued = TrialBaselines.EnqueueWithBaseline(request, (words, limits, writingSystem, onPartial) =>
+            queued = TrialBaselines.EnqueueWithBaseline(request, (words, limits, writingSystem, onPartial, earlier) =>
             {
-                try { return assess(words, limits, writingSystem, onPartial); }
+                try { return assess(words, limits, writingSystem, onPartial, earlier); }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
                     failed = true;

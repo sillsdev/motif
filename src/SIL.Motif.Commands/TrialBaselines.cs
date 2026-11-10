@@ -29,11 +29,11 @@ public static class TrialBaselines
     internal static CommandOutcome<AssessCommandResponse> Assess(string projectPath, IReadOnlyList<string> words,
         string managedRoot, string? parserPath, CancellationToken cancellationToken, TrialLimits? limits,
         ProjectParseLease? admission = null, string? writingSystemId = null,
-        Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null) =>
+        Action<IReadOnlyList<ParseWordEvidence>>? onPartial = null, IReadOnlyCollection<string>? alsoProtect = null) =>
         AssessCommand.AssessWithLimits(new AssessRequest(projectPath,
             words.Count == 0 ? null : new SelectionRequest(false, [], words, false, null)),
             managedRoot, parserPath ?? PanGlossExecutable.TryLocate(), null, cancellationToken, limits, recordBudgetStop: false,
-            admission: admission, reuseBefore: true, writingSystemId: writingSystemId, onPartial: onPartial);
+            admission: admission, reuseBefore: true, writingSystemId: writingSystemId, onPartial: onPartial, alsoProtect: alsoProtect);
 
     internal static CommandOutcome<T> WithAdmission<T>(EnqueueTrialRequest request,
         Func<ProjectParseLease?, Refusal?, CommandOutcome<T>> enqueue) where T : class?
@@ -75,8 +75,8 @@ public static class TrialBaselines
                     return CommandOutcome<JobEnqueuedResponse>.Refused(baseline.Refusal!);
             }
             return EnqueueWithBaseline(request,
-                (words, limits, writingSystem, onPartial) => busy is null
-                    ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial)
+                (words, limits, writingSystem, onPartial, earlier) => busy is null
+                    ? Assess(request.FwDataPath, words, managedRoot, parserPath, cancellationToken, limits, admission, writingSystem, onPartial, earlier)
                     : CommandOutcome<AssessCommandResponse>.Refused(busy),
                 onBaselineUnavailable, parserPath ?? PanGlossExecutable.TryLocate(), admission);
         });
@@ -106,10 +106,10 @@ public static class TrialBaselines
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
         Func<IReadOnlyList<string>, TrialLimits?, CommandOutcome<AssessCommandResponse>> assess,
         Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null, ProjectParseLease? admission = null) =>
-        EnqueueWithBaseline(request, (words, limits, _, _) => assess(words, limits), onBaselineUnavailable, expectedParserPath, admission);
+        EnqueueWithBaseline(request, (words, limits, _, _, _) => assess(words, limits), onBaselineUnavailable, expectedParserPath, admission);
 
     internal static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaseline(EnqueueTrialRequest request,
-        Func<IReadOnlyList<string>, TrialLimits?, string?, Action<IReadOnlyList<ParseWordEvidence>>?, CommandOutcome<AssessCommandResponse>> assess,
+        Func<IReadOnlyList<string>, TrialLimits?, string?, Action<IReadOnlyList<ParseWordEvidence>>?, IReadOnlyCollection<string>, CommandOutcome<AssessCommandResponse>> assess,
         Action<string>? onBaselineUnavailable = null, string? expectedParserPath = null, ProjectParseLease? admission = null)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -121,7 +121,7 @@ public static class TrialBaselines
     }
 
     private static CommandOutcome<JobEnqueuedResponse> EnqueueWithBaselineGuarded(EnqueueTrialRequest request,
-        Func<IReadOnlyList<string>, TrialLimits?, string?, Action<IReadOnlyList<ParseWordEvidence>>?, CommandOutcome<AssessCommandResponse>> assess,
+        Func<IReadOnlyList<string>, TrialLimits?, string?, Action<IReadOnlyList<ParseWordEvidence>>?, IReadOnlyCollection<string>, CommandOutcome<AssessCommandResponse>> assess,
         Action<string>? onBaselineUnavailable, string? expectedParserPath, ProjectParseLease? admission)
     {
         var proposal = JobCommands.FreezeTrialProposal(request);
@@ -153,7 +153,7 @@ public static class TrialBaselines
                     row.InvalidShape ? "skipped" : row.TimedOut ? "timed-out" : row.Capped ? "stopped" :
                     row.Analyses.Count > 0 || row.Unavailable.Count > 0 ? "analysed" : "no-analysis", []) { Morphology = row });
                 partialRows.AddRange(TrialReviewEvidence.Observe(snapshot, partition.CaseKeys, measuredWords));
-            }); }
+            }, assessmentIds); }
             catch (Exception exception) when (onBaselineUnavailable is not null && exception is not OperationCanceledException)
             {
                 onBaselineUnavailable(exception.Message);
