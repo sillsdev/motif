@@ -67,6 +67,32 @@ public static class GdrQuery
         });
     }
 
+    /// <summary>
+    /// A link to the object at a project path, found in the current Baseline and naming the project and the FieldWorks
+    /// tool that opens the object (<see cref="GdrReader.LinkToPath"/>).
+    /// </summary>
+    public static CommandOutcome<GdrPathLink> LinkToPath(GdrLinkToPathRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            if (request.ExpectedBaseline is { } expected && expected != baseline?.Token) return BaselineChanged<GdrPathLink>();
+            if (baseline is null) return NoBaseline<GdrPathLink>();
+            if (!File.Exists(baseline.FwDataPath)) return BaselineUnavailable<GdrPathLink>();
+            using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+            try
+            {
+                var link = GdrReader.LinkToPath(reader.Cache, Path.GetFileNameWithoutExtension(request.ProjectPath), request.Path);
+                return CommandOutcome<GdrPathLink>.Success(link with { Baseline = baseline.Token, IsStale = IsStale(project, baseline) });
+            }
+            catch (GdrRefusalException refused)
+            {
+                return CommandOutcome<GdrPathLink>.Refused(refused.Refusal);
+            }
+        });
+    }
+
     // Saved since the capture: the records shown may no longer be what FieldWorks holds.
     private static bool IsStale(ProjectLocator project, BaselineRecord baseline) =>
         File.Exists(project.FullFwDataPath) &&

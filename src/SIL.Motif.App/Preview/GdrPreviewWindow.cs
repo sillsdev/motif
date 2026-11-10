@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Baselines;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Gdr;
@@ -15,7 +17,7 @@ namespace SIL.Motif.App.Preview;
 /// <summary>
 /// A developer-only window that lists a project's Grammar Design Records and lets a person edit one's Discussion, with
 /// the project's own styles and writing systems, which its toolbar also offers with bold, italic, underline and links to
-/// other records. It reads through <see cref="GdrQuery"/>; each record's edits add up to
+/// other records or, by project path, to any project object. It reads through <see cref="GdrQuery"/>; each record's edits add up to
 /// one pending <see cref="GdrDiscussionEdit"/>, measured against the text the record was shown with, which an
 /// <see cref="IGdrEditStore"/> keeps as one operation in the pending-changes Draft and applies.
 /// </summary>
@@ -25,6 +27,7 @@ public sealed class GdrPreviewWindow : Window
     public const string StartupArgument = "--gdr-preview";
 
     private readonly Func<string, GdrShowResponse?> _show;
+    private readonly Func<string, BaselineToken?, CommandOutcome<GdrPathLink>>? _linkToPath;
     private readonly string? _projectName;
     private readonly IGdrEditStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
@@ -41,6 +44,8 @@ public sealed class GdrPreviewWindow : Window
     private readonly Dictionary<string, string> _refused = new(StringComparer.Ordinal);
     // Records whose Draft edit has not been read yet, or could not be, or no longer fits the project.
     private readonly HashSet<string> _locked = new(StringComparer.Ordinal);
+    // Records whose Draft edit could not be read, with what they were shown from, read again when next selected.
+    private readonly Dictionary<string, GdrShowResponse> _unread = new(StringComparer.Ordinal);
     private bool _applying;
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
     private Task _staging = Task.CompletedTask;
@@ -60,11 +65,15 @@ public sealed class GdrPreviewWindow : Window
     /// <paramref name="store"/>, when given, stages each edit and offers Apply. <paramref name="confirmStartAgain"/>
     /// asks the person before their edit of a record changed in FieldWorks is thrown away; by default a dialog asks.
     /// <paramref name="projectName"/> is the FieldWorks project a new link names; without it no link can be inserted.
+    /// <paramref name="linkToPath"/> finds the object at a project path for a link, in the Baseline the shown record was read
+    /// from; without it the path box finds nothing.
     /// </summary>
     public GdrPreviewWindow(IReadOnlyList<GdrSummary> records, Func<string, GdrShowResponse?> show, IGdrEditStore? store = null,
-        Func<Task<bool>>? confirmStartAgain = null, string? projectName = null)
+        Func<Task<bool>>? confirmStartAgain = null, string? projectName = null,
+        Func<string, BaselineToken?, CommandOutcome<GdrPathLink>>? linkToPath = null)
     {
         _show = show;
+        _linkToPath = linkToPath;
         _projectName = projectName;
         _store = store;
         _confirmStartAgain = confirmStartAgain ?? ConfirmStartAgainAsync;
@@ -144,6 +153,14 @@ public sealed class GdrPreviewWindow : Window
     private readonly ComboBox _characterStyles = Choice("Character style");
     private readonly ComboBox _writingSystems = Choice("Writing system");
     private readonly ComboBox _links = Choice("Link to a record");
+    private readonly TextBox _linkPath = new() { PlaceholderText = "Link to a project path, such as /lexicon/entry", MinWidth = 260 };
+    private readonly TextBlock _linkHint = new()
+    {
+        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+        Margin = new Thickness(6, 0, 0, 0),
+        TextWrapping = TextWrapping.Wrap,
+    };
+    private CancellationTokenSource? _hintCancel;
     private bool _resettingChoices;
 
     /// <summary>The paragraph styles the toolbar offers: the project's.</summary>
@@ -157,6 +174,59 @@ public sealed class GdrPreviewWindow : Window
 
     /// <summary>The records a link can point to, as the toolbar lists them: every record but the one shown.</summary>
     public IReadOnlyList<string> LinkChoices => Items(_links);
+
+    /// <summary>The time typing in the path box must pause before the path is looked up.</summary>
+    public static readonly TimeSpan LinkPathPause = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>The path box's text; setting it looks the path up as typing does.</summary>
+    public string LinkPath
+    {
+        get => _linkPath.Text ?? "";
+        set => _linkPath.Text = value;
+    }
+
+    /// <summary>What the typed path names, after <c>Resolved:</c>, or why it names nothing, after <c>Broken:</c>.</summary>
+    public string LinkPathHint => _linkHint.Text ?? "";
+
+    /// <summary>The look-up of the latest typed path, complete once <see cref="LinkPathHint"/> speaks for it.</summary>
+    public Task LinkPathResolving { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// Puts a link to the object at the project path <paramref name="path"/> at the caret, named by the object's name in
+    /// the writing system typing is in; false, with the reason in <see cref="LinkPathHint"/>, when the path finds none.
+    /// </summary>
+    public async Task<bool> InsertLinkToPathAsync(string path)
+    {
+        if (_linkToPath is not { } find || _shownId is not { } shown) return false;
+        var baseline = _opened.TryGetValue(shown, out var reading) ? reading.Baseline : null;
+        var found = await Task.Run(() => find(path, baseline));
+        _linkHint.Text = Hint(found);
+        if (found.Value is not { } link || _shownId != shown || !_opened.TryGetValue(shown, out var opened)) return false;
+        return opened.Session.InsertLink(opened.Discussion.LinkRun(link.Name, opened.Field.Editor.ActiveWs, link.ObjData));
+    }
+
+    private async Task ShowLinkPathHintAsync(string path)
+    {
+        _hintCancel?.Cancel();
+        var cancel = _hintCancel = new CancellationTokenSource();
+        _linkHint.Text = "";
+        if (_linkToPath is not { } find || string.IsNullOrWhiteSpace(path)) return;
+        try
+        {
+            await Task.Delay(LinkPathPause, cancel.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        var baseline = _shownId is { } shown && _opened.TryGetValue(shown, out var reading) ? reading.Baseline : null;
+        var found = await Task.Run(() => find(path, baseline));
+        if (!cancel.IsCancellationRequested) _linkHint.Text = Hint(found);
+    }
+
+    private static string Hint(CommandOutcome<GdrPathLink> found) => found.Value is { } link
+        ? $"Resolved: {link.Kind} {link.Name}" + (link.IsStale ? " (the project has been saved since this Baseline)" : "")
+        : $"Broken: {found.Refusal?.Message}";
 
     /// <summary>Gives the shown Discussion's selected paragraphs the paragraph style <paramref name="style"/>.</summary>
     public bool ApplyParagraphStyle(string style) => Session?.ApplyParagraphStyle(style) == true;
@@ -222,6 +292,18 @@ public sealed class GdrPreviewWindow : Window
         _toolbar.Children.Add(Toggle("U", "Underline", FontWeight.Normal, FontStyle.Normal, TextDecorations.Underline, ToggleUnderline));
         _toolbar.Children.Add(_writingSystems);
         _toolbar.Children.Add(_links);
+        var insertPathLink = new Button { Content = "Insert link", Focusable = false };
+        insertPathLink.Click += async (_, _) => await InsertLinkToPathAsync(LinkPath);
+        // TextChanged is raised later; the property change is not, so the look-up starts with the text.
+        _linkPath.PropertyChanged += (_, change) =>
+        {
+            if (change.Property == TextBox.TextProperty) LinkPathResolving = ShowLinkPathHintAsync(LinkPath);
+        };
+        var byPath = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 4, 0, 0) };
+        byPath.Children.Add(_linkPath);
+        byPath.Children.Add(insertPathLink);
+        byPath.Children.Add(_linkHint);
+        _toolbar.Children.Add(byPath);
         Chosen(_paragraphStyles, (item, _) => ApplyParagraphStyle(item));
         Chosen(_characterStyles, (item, _) => ApplyCharacterStyle(item == NoCharacterStyle ? null : item));
         Chosen(_writingSystems, (item, _) => SetWritingSystem(item));
@@ -349,6 +431,7 @@ public sealed class GdrPreviewWindow : Window
         if (await Staged(id, pending: false, () => _store.DiscardAsync(id)) is not null) return false;
         _stale.Remove(id);
         _opened.Remove(id);
+        _unread.Remove(id);
         Show(id);
         return true;
     }
@@ -442,6 +525,7 @@ public sealed class GdrPreviewWindow : Window
             return;
         }
         _opened.Remove(id);
+        _unread.Remove(id);
         if (_shownId == id) Show(id);
     }
 
@@ -469,7 +553,9 @@ public sealed class GdrPreviewWindow : Window
         _heading.Text = opened.Heading;
         _target.Text = string.Empty;
         ShowStrips();
-        if (first is not null && _store is not null) Loading = LoadPending(first, opened);
+        if (_store is null) return;
+        if (first is not null) Loading = LoadPending(first, opened);
+        else if (_unread.Remove(id, out var unread)) Loading = LoadPending(unread, opened);
     }
 
     private OpenedRecord Open(GdrShowResponse shown, TextParagraphsPayload? pending)
@@ -490,7 +576,7 @@ public sealed class GdrPreviewWindow : Window
         field.IsReadOnly = _applying || _locked.Contains(id);
         var session = new GdrDiscussionSession(field, id, starting: starting);
         var opened = new OpenedRecord(id, field, session, $"{shown.Record.Abbreviation}  {shown.Record.Title}\n{shown.Record.Description}",
-            discussion, pending?.Expected);
+            discussion, pending?.Expected, shown.Baseline);
         session.PendingChanged += (_, edit) =>
         {
             // A field set aside by "Start again" or by loading the Draft's edit no longer speaks for the record.
@@ -509,7 +595,8 @@ public sealed class GdrPreviewWindow : Window
         if (!_opened.TryGetValue(opened.RecordId, out var current) || current != opened) return;
         if (read.Refusal is { } refusal)
         {
-            _status.Text = "This Discussion stays read-only: its pending edit could not be read. " + refusal;
+            _unread[opened.RecordId] = shown;
+            _status.Text = "This Discussion stays read-only: its pending edit could not be read. Select it again to retry. " + refusal;
             return;
         }
         if (read.Paragraphs is not { } pending)
@@ -624,12 +711,13 @@ public sealed class GdrPreviewWindow : Window
         if (!listed.Succeeded) return null;
         var window = new GdrPreviewWindow(listed.Value!.Records,
             id => GdrQuery.Show(new GdrShowRequest(project, id)) is { Succeeded: true } shown ? shown.Value : null,
-            new GdrEditStore(project), projectName: Path.GetFileNameWithoutExtension(project));
+            new GdrEditStore(project), projectName: Path.GetFileNameWithoutExtension(project),
+            linkToPath: (path, baseline) => GdrQuery.LinkToPath(new GdrLinkToPathRequest(project, path, baseline)));
         window.Show();
         return window;
     }
 
 
     private sealed record OpenedRecord(string RecordId, RichTextField Field, GdrDiscussionSession Session, string Heading,
-        GdrDiscussion Discussion, IReadOnlyDictionary<string, TextParagraphExpected>? Began);
+        GdrDiscussion Discussion, IReadOnlyDictionary<string, TextParagraphExpected>? Began, BaselineToken? Baseline);
 }

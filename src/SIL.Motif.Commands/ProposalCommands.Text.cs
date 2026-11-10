@@ -83,15 +83,36 @@ public static partial class ProposalCommands
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion ?? MotifProductVersion.CurrentText, (database, _) =>
         {
             var target = CanonicalId.Parse(request.Target);
-            var repository = new ProposalRepository(database);
-            var operation = repository.FindPendingChangesDraft() is { DraftName: { } draftName } &&
-                TryLoadDraft(repository, draftName, out var draft, out string _)
-                ? SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(BuildProposalJson(draft)).Operations
-                    .LastOrDefault(item => IsFieldEdit(item, target, request.Field))
-                : null;
+            if (!TryPendingOperations(new ProposalRepository(database), out var operations, out var refusal))
+                return CommandOutcome<PendingTextParagraphsResponse>.Refused(refusal);
+            var operation = operations.LastOrDefault(item => IsFieldEdit(item, target, request.Field));
             return CommandOutcome<PendingTextParagraphsResponse>.Success(new PendingTextParagraphsResponse(
                 operation is null ? null : TextParagraphsPayload.Parse(OperationSlotRegistry.After(operation))));
         });
+
+    // False when the pending Draft is unreadable, so it is never taken for one without an edit.
+    private static bool TryPendingOperations(ProposalRepository repository,
+        out IReadOnlyList<SIL.Motif.Contract.Model.OperationEnvelope> operations, out Refusal refusal)
+    {
+        operations = [];
+        refusal = null!;
+        if (repository.FindPendingChangesDraft() is not { DraftName: { } draftName }) return true;
+        try
+        {
+            if (!TryLoadDraft(repository, draftName, out var draft, out string _))
+            {
+                refusal = DraftNotFound(draftName);
+                return false;
+            }
+            operations = SIL.Motif.Contract.Parsing.ProposalJsonParser.Parse(BuildProposalJson(draft)).Operations;
+            return true;
+        }
+        catch (Exception exception) when (!SqliteConnections.IsBusy(exception))
+        {
+            refusal = DraftInvalidFrom(exception, ("draftName", draftName));
+            return false;
+        }
+    }
 
     private static bool IsFieldEdit(SIL.Motif.Contract.Model.OperationEnvelope operation, CanonicalId target, string field) =>
         operation.Kind == TextParagraphsOperationKinds.Set && operation.Target == target &&
