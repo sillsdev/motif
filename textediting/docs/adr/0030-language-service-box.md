@@ -31,8 +31,9 @@ decisions and can change without superseding anything (as in ADR 0026).
 - **Data is the protocol's.** Positions are zero-based line and character, characters in UTF-16 units; ranges are start and end
   (end excluded); severities are the protocol's numbers (error 1 to hint 4); completion kinds and trigger kinds are its numbers too. The
   text a service gets is the field's one paragraph (embedded objects are U+FFFC); the line is 0 unless the text holds CR, LF or CR LF
-  (U+2028, the hard line break, is not a line end in the protocol). A field of several paragraphs has no language service at work (a
-  later version can send the paragraphs joined by line feeds, the line being the paragraph's index). Token kinds are the host's strings
+  (U+2028, the hard line break, is not a line end in the protocol). A field of several paragraphs (source mode's Markdown, ADR 0035) sends
+  them joined by line feeds, the line being the paragraph's index; its findings are drawn, hovered, carried and fixed in the paragraph they are
+  on, a fix that would cross a line end is refused, and completion and `CanInsert` stay with fields of one paragraph. Token kinds are the host's strings
   (`class`, `segment`, `boundary`, `slot`, `optional`, `punct`, `unknown` for the environment). Diagnostic ids are `fwmd.env.*`.
 - **Diagnostics are a view.** They are drawn as squiggles with the spelling marks' drawing (a second list in the layout, so spelling and
   language marks coexist and each is its own) and are never written into the document: the runs, the property bags (no property 5) and
@@ -41,7 +42,8 @@ decisions and can change without superseding anything (as in ADR 0026).
 - **Tokens are chips.** The host gives a `TokenStyleMap`: for each kind a style for the light theme and one for the dark theme, a fill
   and an outline, drawn behind the glyphs from the same rectangles as a selection. The text keeps its colours and runs, so copy, Markdown
   and undo see plain text, and a theme change is a redraw, not a layout. In a high contrast theme no chip is drawn at all and the text
-  stays in the system's colours. A kind with no style is not drawn.
+  stays in the system's colours. A kind with no style is not drawn. A style may instead **mute** its text (`TokenStyle.Mute`, 0 to 1): a wash
+  of the field's background over the glyphs, so source mode's `{…guid=…}` reads as quieter text; it is not drawn in high contrast either.
 - **Hover.** The pointer resting on text sets the field's tooltip: the messages of the diagnostics there (worst first), then the service's
   help, one per line. `GetLanguageHoverAsync(position)` is the same answer for a host that shows its own, and is null when the text
   changed meanwhile. The tooltip's delay is Avalonia's.
@@ -128,8 +130,6 @@ that is behaviour, not code. Only empty text has nothing to describe: whitespace
   `filterText` or additional edits; one fix per diagnostic; no document version; `CanInsert` is synchronous (a remote service answers from a
   cache); no optional `Constrain` hook (scope report 3.2). The popup does not follow a WinForms form that is moved while it is open.
 - A tooltip a host sets on the field itself is replaced while a service is set (the field sets the tip as the pointer moves).
-- Fields of several paragraphs (Markdown source mode, a later box): the paragraphs would go to the service joined by line feeds, the line being the
-  paragraph's index; not done.
 - Where the real service lives, and what it is called (owner question Q54, open).
 
 **Consequences:** the real service (liblcm's `PhonEnvRecognizer` with a project's phonemes and class abbreviations, then the Markdown

@@ -90,7 +90,9 @@ completion items. So a VS Code adapter and agents' findings can use the same ans
 - Every call that can take time is a `Task`, so Motif's backend can answer from another process.
 - `TextLanguageService` is a base class for one that answers at once.
 
-The field serves a field of one paragraph, and `SingleLine` (single-paragraph and no hard line break) is what a notation box sets.
+The field serves a field of one paragraph, and `SingleLine` (single-paragraph and no hard line break) is what a notation box sets. A field
+of several paragraphs (source mode's Markdown, ADR 0035) is sent its paragraphs joined by line feeds, the line being the paragraph's index;
+its findings and hover work in every paragraph, a fix may not cross a line end, and completion and `CanInsert` stay with one paragraph.
 
 ### How answers are applied
 

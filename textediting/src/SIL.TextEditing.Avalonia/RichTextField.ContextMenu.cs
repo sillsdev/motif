@@ -23,6 +23,7 @@ namespace SIL.TextEditing.Avalonia
         {
             ContextRequested += (sender, e) =>
             {
+                if (_source != null) return;   // a source view's request bubbling through: it is not about the rich text
                 bool pointer = e.TryGetPosition(this, out var at);
                 if (ContextMenuRequested == null) return;
                 e.Handled = true;

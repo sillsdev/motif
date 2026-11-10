@@ -87,6 +87,7 @@ namespace SIL.TextEditing.Playground
             public const string BarMore = "BarMoreToggle";
             public const string BarParaStyle = "BarParaStyleBox";
             public const string BarPicture = "BarPictureButton";
+            public const string BarSource = "BarSourceButton";
             public const string EventLog = "EventLog";
             public const string ScenarioDescription = "ScenarioDescription";
             public const string FindText = "FindText";
@@ -943,6 +944,13 @@ namespace SIL.TextEditing.Playground
                 },
             };
             field.ClipboardForms.Add(markdown);
+            // Source mode (ADR 0035): Ctrl+Shift+M or the bar's "Markdown" shows the field as FieldWorks Markdown; the return is one undo step.
+            field.SourceForm = new FieldWorksMarkdownSourceForm(clipboardOptions);   // the same reader and checker as paste
+            field.SourceModeChanged += (o, e) =>
+            {
+                Log("source mode: " + e.Announcement + " (a host gives this to its screen reader)");
+                if (e.IsSourceMode) HideSelectionBar();
+            };
             field.WritingSystemsMapped += (o, mapped) => Log("clipboard: notice, writing system(s) " + string.Join(", ", mapped.Missing.Select(m => m.Length == 0 ? "(none)" : m))
                 + " are not in this project; pasted text is now " + mapped.Target);
             field.BlocksFlattened += (o, flat) => Log("clipboard: notice, " + flat + " pasted into a field that does not allow them are now plain paragraphs");

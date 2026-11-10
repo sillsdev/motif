@@ -79,7 +79,8 @@ namespace SIL.TextEditing.Tests
 
         public bool CanInsert(string text, LanguageRange selection, string kind) => CanInsertOf(text, selection, kind);
 
-        /// <summary>The offsets of every occurrence of <paramref name="word"/> as a token of the given kind, and a diagnostic of that severity where a word is "bad".</summary>
+        /// <summary>Every word (split at spaces and line feeds) as a token of the given kind, and a diagnostic of that severity where a word is "bad"; positions are
+        /// the protocol's line and character, so a field of several paragraphs (joined by line feeds) gets them on the paragraph's line.</summary>
         public static Func<string, LanguageAnalysis> Words(string kind, string bad = "bad", DiagnosticSeverity severity = DiagnosticSeverity.Error, string? fixTo = null)
         {
             return text =>
@@ -89,10 +90,10 @@ namespace SIL.TextEditing.Tests
                 int i = 0;
                 while (i < text.Length)
                 {
-                    if (text[i] == ' ') { i++; continue; }
+                    if (text[i] == ' ' || text[i] == '\n') { i++; continue; }
                     int s = i;
-                    while (i < text.Length && text[i] != ' ') i++;
-                    var range = new LanguageRange(s, i);
+                    while (i < text.Length && text[i] != ' ' && text[i] != '\n') i++;
+                    var range = new LanguageRange(LanguageText.PositionOf(text, s), LanguageText.PositionOf(text, i));
                     string word = text.Substring(s, i - s);
                     tokens.Add(new LanguageToken(range, word == bad ? "unknown" : kind));
                     if (word == bad)

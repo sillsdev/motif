@@ -102,6 +102,20 @@ gives one focus-gain event. The event arguments cannot tell that from any other 
 
 Typing is one undo step, and a Backspace or Delete while typing stays in it, so a keyboard's replacement (Backspaces then the new text) is one step. The step ends at a caret move, a pause of about one second (`Editor.Clock` and `TypingPause`), a change of writing system or any command; a delete that starts after one of those is a step of its own, and typing after it joins that step. Every edit reaches the host at once.
 
+## Source mode (ADR 0035)
+
+A host offers source mode by setting `RichTextField.SourceForm`, normally `new FieldWorksMarkdownSourceForm(options)` with the options of its
+Markdown clipboard form. Ctrl+Shift+M, or the host's own toggle calling `EnterSourceMode()`, then shows the field's text as FieldWorks
+Markdown in a second `RichTextField` (`SourceView`) inside the field, under a strip with "Back to rich text" and "Throw away my Markdown
+changes". The checker's findings are underlined there, with the message on hover, and a link's `{…guid=…}` is muted.
+
+`LeaveSourceMode()` reads the Markdown with the same reader and checker as paste. An error keeps the field in source mode (the strip
+counts the errors) and returns false; warnings never block. A clean reading becomes one undo step, "Edit as Markdown", through
+`DocumentEditor.ReplaceParagraphs`: unchanged paragraphs stay as they were, changed ones keep their keys. Source with no change commits
+nothing. `DiscardSourceChanges()` goes back with nothing committed. `SourceModeChanged` gives each change and refusal, with a sentence for
+the host's screen reader. Undo inside the source view is the view's own and ends with the switch back. A host that changes the field
+itself (a conflict) returns it to rich mode first.
+
 ## Host hooks (ADR 0021, ADR 0025)
 
 The field owns one text; the window around it belongs to the host. These are the hooks:

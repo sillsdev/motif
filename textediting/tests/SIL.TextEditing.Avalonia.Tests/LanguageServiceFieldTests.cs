@@ -86,15 +86,17 @@ namespace SIL.TextEditing.Avalonia.Tests
         });
 
         [Fact]
-        public void A_field_of_several_paragraphs_has_no_language_service_at_work() => Headless.Run(() =>
+        public void A_field_of_several_paragraphs_is_asked_about_its_paragraphs_joined_by_line_feeds_but_has_no_insert_commands() => Headless.Run(() =>
         {
             var (window, field) = Fixtures.InWindow(Doc(Para("en", "en", "a bad"), Para("en", "en", "b")));
-            var service = new FakeLanguageService { Analysis = FakeLanguageService.Words("word") };
+            var service = new FakeLanguageService { Analysis = FakeLanguageService.Words("word"), CanInsertOf = (t, r, k) => true };
             var posts = new List<Action>();
             field.LanguageIdlePost = posts.Add;
             field.LanguageService = service;
-            Assert.Empty(posts);
-            Assert.Empty(field.LanguageTokens);
+            Assert.Single(posts);
+            posts[0]();
+            Assert.Equal(new[] { "a bad\nb" }, service.AnalyzedTexts);
+            Assert.Equal(3, field.LanguageTokens.Count);
             Assert.True(field.IsLanguageAnalysisCurrent);
             Assert.False(field.CanInsert("x"));
             window.Close();

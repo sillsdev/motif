@@ -82,8 +82,13 @@ namespace SIL.TextEditing.Avalonia
             Editor.CaretMoved += OnCaretMoved;
             Editor.CaretLimit = p => p >= 0 && p < _layouts.Count && p < Editor.Document.Paragraphs.Count && FormatOf(p).MaxLines > 0 ? VisibleLength(p) : int.MaxValue;
             _ime = new InputMethodClient(this);
-            TextInputMethodClientRequested += (o, e) => e.Client = _ime;
-            GotFocus += (o, e) => { InvalidateVisual(); ActiveWsChanged?.Invoke(Editor.ActiveWs, Editor.ActiveWs); };
+            TextInputMethodClientRequested += (o, e) => { if (_source == null) e.Client = _ime; };   // a source view's own request bubbles through the field
+            GotFocus += (o, e) =>
+            {
+                if (_source != null) { if (ReferenceEquals(e.Source, this)) FocusSourceView(); return; }
+                InvalidateVisual();
+                ActiveWsChanged?.Invoke(Editor.ActiveWs, Editor.ActiveWs);
+            };
             LostFocus += (o, e) => { Editor.CloseUndoGroup(); CloseCompletion(); InvalidateVisual(); };
             Editor.Committed += d => RestartPauseTimer();
             ActualThemeVariantChanged += (o, e) =>
@@ -461,6 +466,7 @@ namespace SIL.TextEditing.Avalonia
         protected override Size MeasureOverride(Size availableSize)
         {
             _hostEditNoticed = false;   // a change to a paragraph from here on asks for another measure (see OnParagraphTouched)
+            if (_source != null) return MeasureSource(availableSize);
             double w = double.IsInfinity(availableSize.Width) ? PreferredWidth : availableSize.Width;
             if (Math.Abs(w - _layoutWidth) > 0.5)
             {
@@ -501,7 +507,7 @@ namespace SIL.TextEditing.Avalonia
         public override void Render(DrawingContext context)
         {
             context.DrawRectangle(Background, null, new Rect(Bounds.Size));
-            if (_layouts.Count == 0) return;
+            if (_layouts.Count == 0 || _source != null) return;
             Editor.Ordered(out var a, out var b);
             var selectionBrush = Editor.HasSelection ? ResolveSelectionBrush() : null;
             var selectedText = Editor.HasSelection ? SelectedTextColour() : null;
@@ -530,6 +536,7 @@ namespace SIL.TextEditing.Avalonia
                     }
                     foreach (var li in pl.Lines) if (!li.IsEmpty) li.Draw(context, y);
                     pl.DrawDecorations(context, y);
+                    DrawLanguageMutes(context, pl, i, y);
                     if (selectedText != null && selection != null && pl.InColour(selectedText.Value) is ParagraphLayout recoloured)
                     {
                         // In a high contrast theme the selected text has a colour of its own: the selection's fill is laid again over the text drawn in its
@@ -859,6 +866,8 @@ namespace SIL.TextEditing.Avalonia
         /// <summary>Handles an editing key; returns false for keys it leaves to the host (Tab and the like).</summary>
         public bool HandleKey(Key key, KeyModifiers modifiers)
         {
+            if (_source != null) return HandleSourceKey(key, modifiers);
+            if (_sourceForm != null && IsSourceToggle(key, modifiers)) return EnterSourceMode();
             if (HandleLanguageKey(key, modifiers)) return true;
             bool shift = (modifiers & KeyModifiers.Shift) != 0, ctrl = (modifiers & KeyModifiers.Control) != 0;
             var lastPara = _layouts.Count - 1;
@@ -985,6 +994,14 @@ namespace SIL.TextEditing.Avalonia
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
+            if (_source != null)
+            {
+                // A key the source view left unhandled bubbles here: it is not the rich text's. One raised on the field itself goes to the view.
+                if (ReferenceEquals(e.Source, this) && HandleSourceKey(e.Key, e.KeyModifiers)) e.Handled = true;
+                FocusSourceView();
+                base.OnKeyDown(e);
+                return;
+            }
             FlushHeld();
             if (HandleKey(e.Key, e.KeyModifiers)) e.Handled = true;
             base.OnKeyDown(e);
@@ -992,6 +1009,7 @@ namespace SIL.TextEditing.Avalonia
 
         protected override void OnTextInput(TextInputEventArgs e)
         {
+            if (_source != null) return;
             if (string.IsNullOrEmpty(e.Text)) return;
             var text = e.Text!;
             // A platform may deliver one emoji as two events, one per UTF-16 half. A lone high surrogate is held until the
@@ -1025,6 +1043,7 @@ namespace SIL.TextEditing.Avalonia
 
         protected override void OnPointerPressed(PointerPressedEventArgs e)
         {
+            if (_source != null) { FocusSourceView(); return; }
             FlushHeld();
             var props = e.GetCurrentPoint(this).Properties;
             if (!props.IsLeftButtonPressed && !props.IsRightButtonPressed) return;
@@ -1082,12 +1101,14 @@ namespace SIL.TextEditing.Avalonia
 
         protected override void OnPointerExited(PointerEventArgs e)
         {
+            if (_source != null) { base.OnPointerExited(e); return; }
             ClearLanguageHover();
             base.OnPointerExited(e);
         }
 
         protected override void OnPointerMoved(PointerEventArgs e)
         {
+            if (_source != null) return;
             if (!_dragging)
             {
                 UpdateLanguageHover(e.GetPosition(this));
@@ -1100,6 +1121,7 @@ namespace SIL.TextEditing.Avalonia
 
         protected override void OnPointerReleased(PointerReleasedEventArgs e)
         {
+            if (_source != null) return;
             _dragging = false;
             e.Pointer.Capture(null);
             base.OnPointerReleased(e);   // Avalonia raises its context request for a right click from here
