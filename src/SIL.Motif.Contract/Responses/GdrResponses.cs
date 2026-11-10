@@ -80,7 +80,7 @@ public enum GdrStyleKind
     [JsonStringEnumMemberName("character")] Character,
 }
 
-/// <summary>A style the Discussion uses, with its resolved properties per writing system the Discussion uses.</summary>
+/// <summary>A style of the project or one the Discussion uses, with its resolved properties per listed writing system.</summary>
 /// <param name="Name">The style's name.</param>
 /// <param name="Kind">Paragraph or character.</param>
 /// <param name="ByWritingSystem">The properties after inheritance and the writing system's overrides, keyed by tag.</param>
@@ -88,7 +88,7 @@ public enum GdrStyleKind
 public sealed record GdrStyle(
     string Name, GdrStyleKind Kind, IReadOnlyDictionary<string, GdrTextProperties> ByWritingSystem);
 
-/// <summary>A writing system the Discussion uses.</summary>
+/// <summary>A writing system of the project or one the Discussion uses.</summary>
 /// <param name="Tag">The writing-system tag.</param>
 /// <param name="Direction"><c>ltr</c> or <c>rtl</c>.</param>
 /// <param name="DefaultFont">The writing system's default font family.</param>

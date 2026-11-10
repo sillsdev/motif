@@ -39,6 +39,8 @@ Read-only adapters over an already-loaded `LcmCache` (ADR 0031):
   use the LCModel adapter's `TsStringConversion.ToBag`. Default-font markers resolve to the writing system's font.
   Missing styles return null; an unknown writing-system id uses common style properties. Malformed inheritance
   cycles throw `InvalidOperationException` before liblcm traverses them.
+  `ResolveAll(styleNames, writingSystems)` resolves many styles in many writing systems against one reading of the
+  stylesheet, leaving out absent styles; use it when listing every style, since each `Resolve` call reads it afresh.
 - `ProjectWritingSystems` implements `IWritingSystemMapper`, `IWritingSystemDetails`, `IKnownWritingSystems`
   and `IWritingSystemHandles`. Defaults come from the cache; choices are the distinct analysis and vernacular
   writing systems, including configured systems outside the current lists. Details use the actual language tag,

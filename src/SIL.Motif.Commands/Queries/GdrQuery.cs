@@ -33,7 +33,7 @@ public static class GdrQuery
         });
     }
 
-    /// <summary>Reads one record's Discussion with the styles and writing systems it uses.</summary>
+    /// <summary>Reads one record's Discussion with the project's styles and writing systems and any others it uses.</summary>
     public static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
