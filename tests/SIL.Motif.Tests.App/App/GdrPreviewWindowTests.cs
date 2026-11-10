@@ -653,6 +653,24 @@ public sealed partial class GdrPreviewWindowTests
     }
 
     [Fact]
+    public void CompareWhenTheEditCouldNotBeStagedSaysWhy()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (window, store, compared) = RefusedForDrift(_ => null);
+            using var closer = window.CloseOnExit();
+            store.StageRefusal = "The pending changes are busy.";
+            window.Field!.Focus();
+            window.KeyTextInput("b");
+
+            Assert.False(Completed(window.CompareAsync()));
+
+            Assert.Empty(compared);
+            Assert.Equal(GdrPreviewWindow.CouldNotStageMessage + "The pending changes are busy.", window.StatusText);
+        });
+    }
+
+    [Fact]
     public void CompareWhenThePendingChangesNoLongerHoldTheEditSaysSo()
     {
         _avalonia.Invoke(() =>

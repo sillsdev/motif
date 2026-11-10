@@ -104,11 +104,16 @@ public sealed class TextComparison
     /// The text the choices make, paragraph by paragraph. A paragraph's key is the one it had on the side it comes
     /// from; a change both made that waits counts as the person's version.
     /// </summary>
-    public IReadOnlyList<ParagraphVersion> Result()
+    public IReadOnlyList<ParagraphVersion> Result(IReadOnlyDictionary<int, IReadOnlyList<ParagraphVersion>>? rows = null)
     {
         var result = new List<ParagraphVersion>();
         foreach (var paragraph in Sorted.Paragraphs)
         {
+            if (rows is not null && rows.TryGetValue(paragraph.Index, out var row))
+            {
+                result.AddRange(row);
+                continue;
+            }
             if (_rewritten.TryGetValue(paragraph.Index, out var rewritten))
             {
                 result.AddRange(rewritten);

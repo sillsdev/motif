@@ -166,6 +166,7 @@ public sealed class TextSortTests
         var change = Assert.Single(comparison.Sorted.Changes);
         Assert.Equal((ChangeAuthor.Mine, ChangeKind.WritingSystem), (change.Author, change.Kind));
         Assert.Contains("from en to ar", change.Description, StringComparison.Ordinal);
+        Assert.Contains("from English to Arabic", ChangeWords.Describe(change, tag => tag == "en" ? "English" : "Arabic"), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -192,10 +193,10 @@ public sealed class TextSortTests
     [Fact]
     public void ARightToLeftWordReplacedOnOneSideIsOneChange()
     {
-        var comparison = Compared(One(P("p1", R("كتاب قلم", "ar")), P("p1", R("كتاب دفتر", "ar")), P("p1", R("كتاب قلم", "ar"))));
+        var comparison = Compared(One(P("p1", R("ظغوت ثذيك", "ar")), P("p1", R("ظغوت ضخوج", "ar")), P("p1", R("ظغوت ثذيك", "ar"))));
 
         var change = Assert.Single(comparison.Sorted.Changes);
-        Assert.Equal(("قلم", "دفتر"), (ChangeWords.Text(change.Starting), ChangeWords.Text(change.Mine)));
+        Assert.Equal(("ثذيك", "ضخوج"), (ChangeWords.Text(change.Starting), ChangeWords.Text(change.Mine)));
     }
 
     [Fact]

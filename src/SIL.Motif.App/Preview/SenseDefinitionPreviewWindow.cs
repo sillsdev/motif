@@ -25,6 +25,9 @@ public sealed class SenseDefinitionPreviewWindow : Window
     /// <summary>What the strip says when one of the shown sense's Definitions was also changed in FieldWorks.</summary>
     public const string StaleMessage = "This Definition was also changed in FieldWorks. Your typing is safe.";
 
+    /// <summary>What Compare says, before the refusal, when the edit of the Definition could not be added to the pending changes.</summary>
+    public const string CouldNotStageMessage = "There is nothing to compare yet: your edit could not be added to the pending changes. ";
+
     /// <summary>What Compare says when the pending changes no longer hold an edit of the Definition.</summary>
     public const string NothingToCompareMessage = "There is nothing to compare: your pending changes no longer hold an edit of this Definition.";
 
@@ -41,6 +44,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
     private readonly ISenseDefinitionStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
     private readonly Func<CompareWindow, Task<CompareOutcome?>> _compare;
+    private readonly Func<string, string> _writingSystemName;
     private SenseDefinitionsResponse _senses;
     private readonly Dictionary<string, OpenedField> _opened = new(StringComparer.Ordinal);
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
@@ -69,12 +73,14 @@ public sealed class SenseDefinitionPreviewWindow : Window
     /// again, and <paramref name="store"/>, when given, stages each edit and offers Apply. <paramref name="confirmStartAgain"/>
     /// asks before an edit overtaken in FieldWorks is thrown away; by default a dialog asks. <paramref name="compare"/>
     /// shows the window that compares such an edit with FieldWorks' text and returns how the person left it; by default
-    /// it opens as a dialog.
+    /// it opens as a dialog. <paramref name="writingSystemName"/> names a writing system by its tag, as the project
+    /// does; without it the comparison says the tag.
     /// </summary>
     public SenseDefinitionPreviewWindow(SenseDefinitionsResponse senses, Func<SenseDefinitionsResponse?> read,
         ISenseDefinitionStore? store = null, Func<Task<bool>>? confirmStartAgain = null,
-        Func<CompareWindow, Task<CompareOutcome?>>? compare = null)
+        Func<CompareWindow, Task<CompareOutcome?>>? compare = null, Func<string, string>? writingSystemName = null)
     {
+        _writingSystemName = writingSystemName ?? (tag => tag);
         _senses = senses ?? throw new ArgumentNullException(nameof(senses));
         _read = read;
         _store = store;
@@ -258,7 +264,11 @@ public sealed class SenseDefinitionPreviewWindow : Window
         var ws = _opened[key].Ws;
         _opened[key].Session.EndSession();
         await _staging;
-        if (_refused.ContainsKey(key)) return false;
+        if (_refused.TryGetValue(key, out var unstaged))
+        {
+            _status.Text = CouldNotStageMessage + unstaged;
+            return false;
+        }
         var read = await _store.PendingAsync(senseId, ws);
         if (read.Refusal is { } refusal)
         {
@@ -273,12 +283,13 @@ public sealed class SenseDefinitionPreviewWindow : Window
         _senses = current;
         var sense = current.Senses.FirstOrDefault(item => item.Id == senseId);
         var live = sense?.Definition.FirstOrDefault(item => item.WritingSystem == ws)?.Runs ?? [];
-        var location = $"the {ws} Definition";
+        var name = _writingSystemName(ws);
+        var location = $"the {name} Definition";
         var comparison = new TextComparison(TextSort.Sort(TextVersions.FromRichString(pending, live, key,
             _opened[key].Discussion.Source.FirstOrDefault()?.Runs.Select(TextVersions.Run).ToArray()), location));
         var shown = _opened[key].Discussion;
-        var window = new CompareWindow($"{sense?.Label}, Definition ({ws})", comparison, shown.WritingSystems, shown.Styles,
-            checkResult: result => result.Count > 1 ? OneParagraphResultMessage : null);
+        var window = new CompareWindow($"{sense?.Label}, Definition ({name})", comparison, shown.WritingSystems, shown.Styles,
+            checkResult: result => result.Count > 1 ? OneParagraphResultMessage : null, writingSystemName: _writingSystemName);
         var outcome = await _compare(window);
         if (outcome?.End == CompareEnd.StartAgain) return await StartAgainFromFieldWorksAsync();
         if (outcome?.End != CompareEnd.Done) return false;
@@ -514,7 +525,8 @@ public sealed class SenseDefinitionPreviewWindow : Window
         var project = arguments[at + 1];
         SenseDefinitionsResponse? Read() => RichStringQuery.SenseDefinitions(project) is { Succeeded: true } read ? read.Value : null;
         if (Read() is not { } senses) return null;
-        var window = new SenseDefinitionPreviewWindow(senses, Read, new SenseDefinitionStore(project));
+        var window = new SenseDefinitionPreviewWindow(senses, Read, new SenseDefinitionStore(project),
+            writingSystemName: WritingSystemNames.For(project));
         window.Show();
         return window;
     }

@@ -370,6 +370,25 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
     }
 
     [Fact]
+    public void CompareWhenTheEditCouldNotBeStagedSaysWhy()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore(new GdrApplyRefusal("changed", SenseId, "en", SenseDefinitionStore.Field));
+            var window = Opened(store, out var closer);
+            using var _ = closer;
+            Type(window, "en", "z");
+            Assert.False(Completed(window.ApplyAsync()));
+            store.StageRefusal = "The pending changes are busy.";
+            Type(window, "en", "b");
+
+            Assert.False(Completed(window.CompareAsync()));
+
+            Assert.Equal(SenseDefinitionPreviewWindow.CouldNotStageMessage + "The pending changes are busy.", window.StatusText);
+        });
+    }
+
+    [Fact]
     public void DriftInASenseNotOpenSaysWhyAndStartAgainLeavesTheShownSenseAlone()
     {
         avalonia.Invoke(() =>

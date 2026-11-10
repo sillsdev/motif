@@ -33,8 +33,11 @@ public static class ChangeWords
     /// <summary>The words of <paramref name="tokens"/>, as a person reads them (NFC).</summary>
     public static string Text(IEnumerable<Token> tokens) => string.Concat(tokens.Select(token => token.Text)).Normalize(NormalizationForm.FormC);
 
-    /// <summary>What <paramref name="change"/> is, in a sentence without a full stop.</summary>
-    public static string Describe(TextChange change)
+    /// <summary>
+    /// What <paramref name="change"/> is, in a sentence without a full stop. <paramref name="writingSystemName"/> names a
+    /// writing system by its tag; without it the tag is said.
+    /// </summary>
+    public static string Describe(TextChange change, Func<string, string>? writingSystemName = null)
     {
         ArgumentNullException.ThrowIfNull(change);
         var who = change.Author switch
@@ -61,7 +64,7 @@ public static class ChangeWords
             ChangeKind.ParagraphAdded => mine ? "Paragraph added by you" : "Paragraph added in FieldWorks",
             ChangeKind.ParagraphRemoved => mine ? "Paragraph removed by you" : "Paragraph removed in FieldWorks",
             ChangeKind.ParagraphFormatting => $"Formatting only: paragraph style changed {(mine ? "by you" : "in FieldWorks")}",
-            ChangeKind.WritingSystem => $"Writing system changed: ‘{Text(after)}’ from {WritingSystems(before)} to {WritingSystems(after)}" +
+            ChangeKind.WritingSystem => $"Writing system changed: ‘{Text(after)}’ from {WritingSystems(before, writingSystemName)} to {WritingSystems(after, writingSystemName)}" +
                 (mine ? " by you" : " in FieldWorks"),
             ChangeKind.Formatting => $"Formatting only: ‘{Text(after)}’ {Formatting(before, after)} {(mine ? "by you" : "in FieldWorks")}",
             _ when before.Count == 0 => $"{who} added ‘{Text(after)}’",
@@ -73,11 +76,11 @@ public static class ChangeWords
     /// <summary>
     /// What a screen reader says on a change: what it is, where, and which version is in use, then the key that switches it.
     /// </summary>
-    public static string Announce(TextChange change, Choice? choice)
+    public static string Announce(TextChange change, Choice? choice, Func<string, string>? writingSystemName = null)
     {
         ArgumentNullException.ThrowIfNull(change);
         if (change.Author == ChangeAuthor.Both)
-            return $"{Describe(change)}, {change.Location}. " + choice switch
+            return $"{Describe(change, writingSystemName)}, {change.Location}. " + choice switch
             {
                 Choice.Mine => "Yours in use.",
                 Choice.FieldWorks => "FieldWorks in use.",
@@ -86,11 +89,11 @@ public static class ChangeWords
             };
         var inUse = choice == change.Initial;
         var other = change.Author == ChangeAuthor.Mine ? "Alt+F for FieldWorks." : "Alt+M for yours.";
-        return $"{Describe(change)}, in {change.Location}. {(inUse ? "In use." : "Not in use.")} {(inUse ? other : change.Author == ChangeAuthor.Mine ? "Alt+M to use it." : "Alt+F to use it.")}";
+        return $"{Describe(change, writingSystemName)}, in {change.Location}. {(inUse ? "In use." : "Not in use.")} {(inUse ? other : change.Author == ChangeAuthor.Mine ? "Alt+M to use it." : "Alt+F to use it.")}";
     }
 
-    private static string WritingSystems(IReadOnlyList<Token> tokens) =>
-        string.Join(", ", tokens.SelectMany(token => token.Pieces).Select(piece => piece.Ws).Distinct());
+    private static string WritingSystems(IReadOnlyList<Token> tokens, Func<string, string>? name) =>
+        string.Join(", ", tokens.SelectMany(token => token.Pieces).Select(piece => piece.Ws).Distinct().Select(ws => name?.Invoke(ws) ?? ws));
 
     // Names the few properties a person sets by hand; anything else is "reformatted".
     private static string Formatting(IReadOnlyList<Token> before, IReadOnlyList<Token> after)

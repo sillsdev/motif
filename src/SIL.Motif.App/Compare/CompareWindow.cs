@@ -59,6 +59,7 @@ public sealed partial class CompareWindow : Window
     private readonly IStyleResolver? _styles;
     private readonly string? _savedAt;
     private readonly Func<IReadOnlyList<ParagraphVersion>, string?>? _checkResult;
+    private readonly Func<string, string>? _writingSystemName;
     // Focusable so Tab reaches the summary first, as the person's starting point.
     private readonly TextBlock _summary = new() { TextWrapping = TextWrapping.Wrap, FontWeight = FontWeight.SemiBold, Focusable = true };
     private readonly CheckBox _showResult = new() { Content = ChangeWords.ShowResult };
@@ -79,11 +80,14 @@ public sealed partial class CompareWindow : Window
     /// <paramref name="writingSystems"/> and <paramref name="styles"/> lay the text out as the field does, and
     /// <paramref name="savedAt"/> says when FieldWorks saved its version, when known. <paramref name="checkResult"/> says why the
     /// field cannot hold a result, or null when it can; Done then stays in the window and shows that message.
+    /// <paramref name="writingSystemName"/> names a writing system by its tag, as the project does.
     /// </summary>
     public CompareWindow(string title, TextComparison comparison, WritingSystemRegistry? writingSystems = null, IStyleResolver? styles = null,
-        string? savedAt = null, Func<IReadOnlyList<ParagraphVersion>, string?>? checkResult = null)
+        string? savedAt = null, Func<IReadOnlyList<ParagraphVersion>, string?>? checkResult = null,
+        Func<string, string>? writingSystemName = null)
     {
         _checkResult = checkResult;
+        _writingSystemName = writingSystemName;
         _comparison = comparison ?? throw new ArgumentNullException(nameof(comparison));
         _writingSystems = writingSystems;
         _styles = styles;
@@ -151,7 +155,7 @@ public sealed partial class CompareWindow : Window
     /// <summary>What the footer says while Done waits, or empty.</summary>
     public string WaitingText => _waiting.Text ?? "";
 
-    /// <summary>Whether Done can be pressed: every change both made has a choice, or the side-by-side view is open.</summary>
+    /// <summary>Whether Done can be pressed: every change both made has a choice, or its row was written in the side-by-side view.</summary>
     public bool IsDoneEnabled => _done.IsEnabled;
 
     /// <summary>Whether the clean result is shown instead of the marked text.</summary>
@@ -201,18 +205,19 @@ public sealed partial class CompareWindow : Window
 
     /// <summary>
     /// Ends with the result of the choices, or of the right side in the side-by-side view; false while a choice waits or while
-    /// the field cannot hold the result, which the footer then explains.
+    /// the field cannot hold the result, which the footer then explains. Nothing changes until the result is taken.
     /// </summary>
     public bool Finish()
     {
-        if (IsSideBySide) TakeRightSide();
         if (!_comparison.IsDecided) return false;
-        var result = _comparison.Result();
+        var right = IsSideBySide ? RightSide() : null;
+        var result = _comparison.Result(right);
         if (_checkResult?.Invoke(result) is { } why)
         {
             _waiting.Text = why;
             return false;
         }
+        foreach (var (index, paragraphs) in right ?? []) _comparison.Rewrite(index, paragraphs);
         Outcome = new CompareOutcome(CompareEnd.Done, result);
         Close(Outcome);
         return true;
@@ -285,8 +290,9 @@ public sealed partial class CompareWindow : Window
     {
         _summary.Text = _comparison.Summary;
         AutomationProperties.SetName(_summary, _comparison.Summary);
-        _waiting.Text = IsSideBySide ? "" : _comparison.Waiting ?? "";
-        _done.IsEnabled = IsSideBySide || _comparison.IsDecided;
+        _waiting.Text = _comparison.Waiting is not { } waiting ? "" : IsSideBySide ? waiting + SideBySideWaiting : waiting;
+        _done.IsEnabled = _comparison.IsDecided;
+        if (IsSideBySide) MarkRowsThatNeedAChoice();
         AutomationProperties.SetName(_textScroll, ReadableText);
     }
 
@@ -397,7 +403,7 @@ public sealed partial class CompareWindow : Window
             switch (change.Kind)
             {
                 case ChangeKind.ParagraphFormatting:
-                    words.Inlines!.Add(new Run(change.Description) { FontStyle = FontStyle.Italic });
+                    words.Inlines!.Add(new Run(ChangeWords.Describe(change, _writingSystemName)) { FontStyle = FontStyle.Italic });
                     break;
                 case ChangeKind.Formatting or ChangeKind.WritingSystem:
                     foreach (var run in (inUse ? after : change.Starting).SelectMany(token => token.Pieces)) words.Inlines!.Add(Styled(run));
@@ -430,7 +436,7 @@ public sealed partial class CompareWindow : Window
             BorderThickness = new Thickness(1),
             BorderBrush = MarkBorder(change),
         };
-        AutomationProperties.SetName(mark, ChangeWords.Announce(change, choice));
+        AutomationProperties.SetName(mark, ChangeWords.Announce(change, choice, _writingSystemName));
         if (change.Author == ChangeAuthor.Both) mark.Flyout = Popover(change);
         else mark.Click += (_, _) => Select(change);
         mark.GotFocus += (_, _) =>
@@ -516,7 +522,7 @@ public sealed partial class CompareWindow : Window
             if (change.Author != ChangeAuthor.Mine) heading.Children.Add(AuthorTag(ChangeWords.FieldWorksTag, FieldWorksBrush));
             heading.Children.Add(new TextBlock { Text = $"{Capital(change.Location)} · {who}", FontWeight = FontWeight.SemiBold });
             row.Children.Add(heading);
-            row.Children.Add(new TextBlock { Text = change.Description, TextWrapping = TextWrapping.Wrap });
+            row.Children.Add(new TextBlock { Text = ChangeWords.Describe(change, _writingSystemName), TextWrapping = TextWrapping.Wrap });
             var switches = new WrapPanel();
             foreach (var (label, option) in Choices(change))
             {
@@ -544,7 +550,7 @@ public sealed partial class CompareWindow : Window
             row.Children.Add(switches);
             var border = new Border { Child = row, Padding = new Thickness(6), BorderBrush = Brushes.LightGray, BorderThickness = new Thickness(0, 0, 0, 1), Tag = change };
             border.PointerPressed += (_, _) => Select(change);
-            AutomationProperties.SetName(border, ChangeWords.Announce(change, choice));
+            AutomationProperties.SetName(border, ChangeWords.Announce(change, choice, _writingSystemName));
             _rows[change.Id] = border;
             _list.Children.Add(border);
         }

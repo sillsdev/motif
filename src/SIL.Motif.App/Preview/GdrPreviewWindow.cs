@@ -30,6 +30,7 @@ public sealed class GdrPreviewWindow : Window
     private readonly IGdrEditStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
     private readonly Func<CompareWindow, Task<CompareOutcome?>> _compare;
+    private readonly Func<string, string>? _writingSystemName;
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
     private readonly HashSet<string> _stale = new(StringComparer.Ordinal);
     private readonly Border _staleStrip;
@@ -63,11 +64,14 @@ public sealed class GdrPreviewWindow : Window
     /// asks the person before their edit of a record changed in FieldWorks is thrown away; by default a dialog asks.
     /// <paramref name="projectName"/> is the FieldWorks project a new link names; without it no link can be inserted.
     /// <paramref name="compare"/> shows the window that compares that edit with FieldWorks' text and returns how the
-    /// person left it; by default it opens as a dialog.
+    /// person left it; by default it opens as a dialog. <paramref name="writingSystemName"/> names a writing system by
+    /// its tag, as the project does; without it the comparison says the tag.
     /// </summary>
     public GdrPreviewWindow(IReadOnlyList<GdrSummary> records, Func<string, GdrShowResponse?> show, IGdrEditStore? store = null,
-        Func<Task<bool>>? confirmStartAgain = null, string? projectName = null, Func<CompareWindow, Task<CompareOutcome?>>? compare = null)
+        Func<Task<bool>>? confirmStartAgain = null, string? projectName = null, Func<CompareWindow, Task<CompareOutcome?>>? compare = null,
+        Func<string, string>? writingSystemName = null)
     {
+        _writingSystemName = writingSystemName;
         _show = show;
         _projectName = projectName;
         _store = store;
@@ -278,6 +282,9 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>What the strip in the field says when the shown record's text was also changed in FieldWorks.</summary>
     public const string StaleMessage = "This Discussion was also changed in FieldWorks. Your typing is safe.";
 
+    /// <summary>What Compare says, before the refusal, when the edit of the Discussion could not be added to the pending changes.</summary>
+    public const string CouldNotStageMessage = "There is nothing to compare yet: your edit could not be added to the pending changes. ";
+
     /// <summary>What Compare says when the pending changes no longer hold an edit of the shown Discussion.</summary>
     public const string NothingToCompareMessage = "There is nothing to compare: your pending changes no longer hold an edit of this Discussion.";
 
@@ -371,7 +378,11 @@ public sealed class GdrPreviewWindow : Window
         if (_store is null || _shownId is not { } id || !_stale.Contains(id)) return false;
         _opened[id].Session.EndSession();
         await _staging;
-        if (_refused.ContainsKey(id)) return false;
+        if (_refused.TryGetValue(id, out var unstaged))
+        {
+            _status.Text = CouldNotStageMessage + unstaged;
+            return false;
+        }
         var read = await _store.PendingAsync(id);
         if (read.Refusal is { } refusal)
         {
@@ -387,7 +398,7 @@ public sealed class GdrPreviewWindow : Window
         var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(pending, live.Discussion,
             _opened[id].Discussion.Source.Select(TextVersions.Paragraph))));
         var window = new CompareWindow($"{live.Record.Abbreviation}  {live.Record.Title}, Discussion", comparison,
-            discussion.WritingSystems, discussion.Styles);
+            discussion.WritingSystems, discussion.Styles, writingSystemName: _writingSystemName);
         var outcome = await _compare(window);
         if (outcome?.End == CompareEnd.StartAgain) return await StartAgainFromFieldWorksAsync();
         if (outcome?.End != CompareEnd.Done) return false;
@@ -672,7 +683,8 @@ public sealed class GdrPreviewWindow : Window
         if (!listed.Succeeded) return null;
         var window = new GdrPreviewWindow(listed.Value!.Records,
             id => GdrQuery.Show(new GdrShowRequest(project, id)) is { Succeeded: true } shown ? shown.Value : null,
-            new GdrEditStore(project), projectName: Path.GetFileNameWithoutExtension(project));
+            new GdrEditStore(project), projectName: Path.GetFileNameWithoutExtension(project),
+            writingSystemName: WritingSystemNames.For(project));
         window.Show();
         return window;
     }

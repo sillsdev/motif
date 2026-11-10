@@ -326,18 +326,70 @@ public sealed class CompareWindowTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void DoneInSideBySideTakesTheRightSideAsWrittenEvenWithAChoiceStillOpen()
+    public void DoneInSideBySideWaitsForARowBothChangedThatNobodyHasWrittenAndMarksIt()
+    {
+        avalonia.Invoke(() =>
+        {
+            var window = Opened(TwoParagraphs(), out var closer);
+            using var _ = closer;
+
+            window.OpenSideBySide();
+
+            Assert.False(window.IsDoneEnabled);
+            Assert.False(window.Finish());
+            Assert.Null(window.Outcome);
+            Assert.Null(window.Comparison.ChoiceFor(BothChange(window)));
+            Assert.Equal("1 change still needs a choice (paragraph 2): type on the right, use Use this →, or go back to choose", window.WaitingText);
+            Assert.EndsWith("needs a choice", AutomationProperties.GetName(window.ResultFields[1]), StringComparison.Ordinal);
+            Assert.DoesNotContain("needs a choice", AutomationProperties.GetName(window.ResultFields[0]), StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void ADoneTheFieldRefusesInSideBySideChangesNothingAndBackStillOffersEveryChoice()
+    {
+        avalonia.Invoke(() =>
+        {
+            var window = new CompareWindow("A field of one paragraph", TwoParagraphs(),
+                checkResult: result => result.Count > 1 ? "One paragraph only." : null);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Comparison.Choose(BothChange(window), Choice.Mine);
+            window.OpenSideBySide();
+
+            Assert.False(window.Finish());
+
+            Assert.Equal("One paragraph only.", window.WaitingText);
+            Assert.Null(window.Comparison.RewrittenAt(0));
+            Assert.Null(window.Comparison.RewrittenAt(1));
+            Press(window, Key.Escape);
+            Assert.False(window.IsSideBySide);
+            Assert.Equal(Choice.Mine, window.Comparison.ChoiceFor(BothChange(window)));
+            window.Select(BothChange(window));
+            Press(window, Key.F, RawInputModifiers.Alt);
+            Assert.Equal(Choice.FieldWorks, window.Comparison.ChoiceFor(BothChange(window)));
+            Assert.EndsWith("pala tumo", Result(window), StringComparison.Ordinal);
+            var yours = window.Comparison.Sorted.Changes.Single(change => change.Author == ChangeAuthor.Mine);
+            window.MarkOf(yours)!.Focus();
+            Press(window, Key.F, RawInputModifiers.Alt);
+            Assert.StartsWith("tavu mena kolo rupa", Result(window), StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void DoneInSideBySideTakesTheRightSideAsWrittenOnceTheRowBothChangedIsWritten()
     {
         avalonia.Invoke(() =>
         {
             var window = Opened(TwoParagraphs(), out var closer);
             using var _ = closer;
             window.OpenSideBySide();
-            Assert.True(window.IsDoneEnabled);
             var field = window.ResultFields[1];
             field.Focus();
             Press(window, Key.A, RawInputModifiers.Control);
             window.KeyTextInput("pala sinu");
+            Assert.True(window.IsDoneEnabled);
+            Assert.Equal("", window.WaitingText);
 
             Assert.True(window.Finish());
 

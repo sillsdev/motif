@@ -14,10 +14,12 @@ namespace SIL.Motif.App.Compare;
 public sealed partial class CompareWindow
 {
     private const double SideBySideWidth = 1600;
+    private const string SideBySideWaiting = ": type on the right, use Use this →, or go back to choose";
     private readonly Dictionary<int, RichTextField> _right = [];
     private readonly Dictionary<int, Control> _left = [];
     private readonly Dictionary<int, Stack<IReadOnlyList<ParagraphVersion>?>> _undo = [];
     private readonly Dictionary<int, Button> _undoButtons = [];
+    private readonly Dictionary<int, TextBlock> _needsChoice = [];
     private Control? _sideBySide;
     private double _combinedWidth;
 
@@ -51,6 +53,7 @@ public sealed partial class CompareWindow
         _right.Clear();
         _left.Clear();
         _undoButtons.Clear();
+        _needsChoice.Clear();
         Width = _combinedWidth > 0 ? _combinedWidth : Width;
         Swap(_combined);
         Render();
@@ -101,8 +104,16 @@ public sealed partial class CompareWindow
             var undo = new Button { Content = "Undo", Tag = paragraph.Index, IsVisible = false };
             undo.Click += (_, _) => UndoUseThis(paragraph.Index);
             _undoButtons[paragraph.Index] = undo;
+            // Flags a row both changed that nobody has written, which Done waits for.
+            var needsChoice = new TextBlock
+            {
+                Text = $"{ChangeWords.BothChanged}: needs a choice", TextWrapping = TextWrapping.Wrap, MaxWidth = 140,
+                FontWeight = FontWeight.SemiBold, Background = NeedsChoiceBrush, IsVisible = false,
+            };
+            _needsChoice[paragraph.Index] = needsChoice;
             gutter.Children.Add(useThis);
             gutter.Children.Add(undo);
+            gutter.Children.Add(needsChoice);
             _left[paragraph.Index] = left;
             AddRow(grid, row, left, gutter, new Border { BorderBrush = MineBrush, BorderThickness = new Thickness(1), Child = right, Tag = paragraph.Index });
         }
@@ -197,10 +208,20 @@ public sealed partial class CompareWindow
             if (_comparison.RewrittenAt(index) is not null) _comparison.Rewrite(index, Paragraphs(field));
     }
 
-    // Done in side by side takes every row on the right as written, so nothing waits for a choice.
-    private void TakeRightSide()
+    // Every row on the right as written, for Done to check before it takes them.
+    private Dictionary<int, IReadOnlyList<ParagraphVersion>> RightSide() =>
+        _right.ToDictionary(pair => pair.Key, pair => Paragraphs(pair.Value));
+
+    private void MarkRowsThatNeedAChoice()
     {
-        foreach (var (index, field) in _right) _comparison.Rewrite(index, Paragraphs(field));
+        var waiting = _comparison.Undecided.Select(change => change.Paragraph).ToHashSet();
+        foreach (var (index, flag) in _needsChoice)
+        {
+            flag.IsVisible = waiting.Contains(index);
+            if (_right.TryGetValue(index, out var field))
+                AutomationProperties.SetName(field, $"Yours, editable, the result, paragraph {index + 1}" +
+                    (flag.IsVisible ? $". {ChangeWords.BothChanged}: needs a choice" : ""));
+        }
     }
 
     private int? CurrentRow()
