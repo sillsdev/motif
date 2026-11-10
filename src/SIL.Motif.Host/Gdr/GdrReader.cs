@@ -3,6 +3,7 @@ using SIL.LCModel.Core.KernelInterfaces;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.PanGloss;
 using SIL.TextEditing;
 using SIL.TextEditing.LCModel;
 using SIL.TextEditing.Markdown;
@@ -11,11 +12,11 @@ using SIL.TextEditing.Project;
 namespace SIL.Motif.Host.Gdr;
 
 /// <summary>
-/// Reads Grammar Design Records from an open project copy: the possibility list named
-/// <see cref="ListName"/>, each record's title, number and abstract, and a Discussion as paragraphs of runs with every
-/// style and writing system of the project, and any other the Discussion uses, resolved beside them. Sub-items are part of the outline and are listed
-/// after their parent. It never opens a unit of work. An ambiguous list or abbreviation, or a style cycle, is thrown
-/// as <see cref="GdrRefusalException"/>.
+/// Reads Grammar Design Records from an open project copy: the possibility list named <see cref="ListName"/>, each
+/// record's title, number and abstract, and a Discussion as paragraphs of runs. Every style and writing system of the
+/// project, and any other the Discussion uses, is resolved beside them. Sub-items are part of the outline and are listed
+/// after their parent. It never opens a unit of work. An ambiguous list or abbreviation, or a style cycle, is thrown as
+/// <see cref="GdrRefusalException"/>.
 /// </summary>
 public static class GdrReader
 {
@@ -26,8 +27,11 @@ public static class GdrReader
     public static IReadOnlyList<GdrSummary> List(LcmCache cache) =>
         Records(cache).Select(entry => Summary(cache, entry)).ToArray();
 
-    /// <summary>The record whose number or canonical id is <paramref name="id"/>, or null.</summary>
-    public static GdrShowResponse? Show(LcmCache cache, string id)
+    /// <summary>
+    /// The record whose number or canonical id is <paramref name="id"/>, or null. A link naming the project
+    /// <paramref name="projectName"/>, or the open copy's own name, is a link into this project.
+    /// </summary>
+    public static GdrShowResponse? Show(LcmCache cache, string id, string? projectName = null)
     {
         var matches = Records(cache).Where(item => Matches(cache, item.Record, id)).ToArray();
         if (matches.Length == 0) return null;
@@ -59,7 +63,8 @@ public static class GdrReader
                     wsTags.Add(run.Ws);
                     var style = run.Props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
                     if (style is not null) NoteStyle(styles, styleKinds, style);
-                    return new GdrRun(run.Text, run.Ws, style, Properties(run.Props), run.ObjData, Target(resolver, run.ObjData));
+                    return new GdrRun(run.Text, run.Ws, style, Properties(run.Props), run.ObjData,
+                        Target(resolver, run.ObjData, cache.ProjectId.Name, projectName));
                 }).ToArray(), paragraph.Key is Guid key ? CanonicalId.FromGuid(key).Value : null);
         }).ToArray();
 
@@ -79,21 +84,32 @@ public static class GdrReader
     }
 
     /// <summary>
-    /// The object data FieldWorks stores in a run that links to the project object <paramref name="canonicalId"/>: a
-    /// <c>silfw://</c> link to this project, which <c>gdr show</c> resolves back to that object.
+    /// The FieldWorks tool that lists the records: FieldWorks names a custom list's tool by the list's name without white
+    /// space, followed by <c>Edit</c>.
     /// </summary>
-    public static string LinkData(string canonicalId)
+    public const string ListTool = "GrammarDesignRecordsEdit";
+
+    /// <summary>
+    /// The object data FieldWorks stores in a run that links to the record <paramref name="canonicalId"/> of the project
+    /// <paramref name="projectName"/>: a <c>silfw://</c> link naming the project and <see cref="ListTool"/>, as
+    /// <see cref="FieldWorksLinks"/> builds them, which <c>gdr show</c> resolves back to that record.
+    /// </summary>
+    public static string LinkData(string projectName, string canonicalId)
     {
-        var target = new MarkdownObject { Kind = MarkdownObjectKind.InternalLink, Guid = CanonicalId.Parse(canonicalId).ToGuid() };
+        ArgumentNullException.ThrowIfNull(projectName);
+        var guid = CanonicalId.Parse(canonicalId).ToGuid();
+        var url = FieldWorksLinks.ForTarget(projectName, new FieldWorksLinkTarget(ListTool, guid));
+        var target = new MarkdownObject { Kind = MarkdownObjectKind.InternalLink, Guid = guid, Url = url };
         DefaultObjectMapper.Instance.TryCreateObjData(target, out var objData, out _);
         return objData;
     }
 
-    private static GdrLinkTarget? Target(ProjectPathResolver resolver, string? objData)
+    private static GdrLinkTarget? Target(ProjectPathResolver resolver, string? objData, params string?[] projectNames)
     {
         var link = objData is null ? null : DefaultObjectMapper.Instance.Describe(objData);
         if (link is null || link.Kind == MarkdownObjectKind.Picture) return null;
-        if (link.Kind == MarkdownObjectKind.ExternalLink || link.Project is not null)
+        if (link.Kind == MarkdownObjectKind.ExternalLink ||
+            (link.Project is { } named && !projectNames.Contains(named, StringComparer.OrdinalIgnoreCase)))
             return new GdrLinkTarget(GdrLinkState.External, null, link.Url, "");
         var described = link.Guid is { } guid ? resolver.Describe(guid) : null;
         return described is null

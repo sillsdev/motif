@@ -16,12 +16,16 @@ namespace SIL.Motif.Tests.App;
 public sealed partial class GdrPreviewWindowTests
 {
     private static readonly GdrSummary Linked = new(CanonicalId.FromGuid(new Guid("6a3c0f4e-2b1d-4c8e-9f70-1d2e3f405162")).Value,
-        "GDR-9", "Clitics", "Where clitics attach.");
+        "GDR-9", "title-9", "abstract-9");
 
-    private static GdrPreviewWindow Staging(FakeStore store, Func<GdrSummary, GdrShowResponse>? show = null)
+    private const string ProjectName = "project-1";
+
+    private static GdrPreviewWindow Staging(FakeStore store, Func<GdrSummary, GdrShowResponse>? show = null,
+        GdrSummary[]? records = null)
     {
-        var records = new[] { First, Second, Linked };
-        var window = new GdrPreviewWindow(records, id => (show ?? Canned)(records.Single(record => record.Id == id)), store);
+        records ??= [First, Second, Linked];
+        var window = new GdrPreviewWindow(records, id => (show ?? Canned)(records.Single(record => record.Id == id)), store,
+            projectName: ProjectName);
         window.Show();
         window.Show(First.Id);
         window.Field!.Focus();
@@ -52,7 +56,7 @@ public sealed partial class GdrPreviewWindowTests
             Assert.Equal(["Normal", "Quote"], window.ParagraphStyleChoices);
             Assert.Equal([GdrPreviewWindow.NoCharacterStyle, "Emphasis", "Strong"], window.CharacterStyleChoices);
             Assert.Equal(["ar", "en"], window.WritingSystemChoices);
-            Assert.Equal(["GDR-2  Spelling variants", "GDR-9  Clitics"], window.LinkChoices);
+            Assert.Equal(["GDR-2  Spelling variants", "GDR-9  title-9"], window.LinkChoices);
             Assert.All(window.GetLogicalDescendants().OfType<ComboBox>(), box => Assert.False(box.Focusable));
         });
     }
@@ -184,12 +188,12 @@ public sealed partial class GdrPreviewWindowTests
             using var closer = window.CloseOnExit();
             window.Field!.Editor.SetCaret(new TextPosition(0, "Words end at ".Length));
 
-            List(window, "Link to a record").SelectedItem = "GDR-9  Clitics";
+            List(window, "Link to a record").SelectedItem = "GDR-9  title-9";
             Leave(window);
 
             var link = StagedFirst(store).Runs.Single(run => run.ObjData is not null);
             Assert.Equal(("GDR-9", "en", (string?)null), (link.Text, link.Ws, link.CharacterStyle));
-            Assert.Equal(GdrReader.LinkData(Linked.Id), link.ObjData);
+            Assert.Equal(GdrReader.LinkData(ProjectName, Linked.Id), link.ObjData);
             Assert.Empty(link.Props?.Ints ?? new Dictionary<int, (int, int)>());
             Assert.Equal("Words end at GDR-9spaces", string.Concat(StagedFirst(store).Runs.Select(run => run.Text)));
         });
@@ -302,6 +306,113 @@ public sealed partial class GdrPreviewWindowTests
             Assert.True(window.Field.Editor.Document.Paragraphs[0].Runs[0].Props.IntProps.Count == 0);
             store.PendingGate.SetResult();
             Completed(window.Loading);
+        });
+    }
+    private static GdrShowResponse WithHyperlinkStyle(GdrSummary record)
+    {
+        var canned = Canned(record);
+        var hyperlink = new GdrStyle(GdrDiscussion.HyperlinkStyle, GdrStyleKind.Character,
+            new Dictionary<string, GdrTextProperties> { ["en"] = Props(), ["ar"] = Props() });
+        return canned with { Styles = [.. canned.Styles, hyperlink] };
+    }
+
+    [Fact]
+    public void ANewLinkCarriesTheProjectsHyperlinkStyleAndALinkThatNamesTheProjectAndTheRecordsTool()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, WithHyperlinkStyle);
+            using var closer = window.CloseOnExit();
+            window.Field!.Editor.SetCaret(new TextPosition(0, 0));
+
+            Assert.True(window.InsertLink(Linked.Id));
+            Leave(window);
+
+            var link = StagedFirst(store).Runs.Single(run => run.ObjData is not null);
+            Assert.Equal(GdrDiscussion.HyperlinkStyle, link.CharacterStyle);
+            Assert.Equal(GdrReader.ListTool, SIL.Motif.Host.PanGloss.FieldWorksLinks.ToolOf(link.ObjData![1..]));
+            Assert.Contains("database%3d" + ProjectName, link.ObjData, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public void ARecordWithNeitherNumberNorTitleIsLinkedByItsId()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var unnamed = Linked with { Abbreviation = "", Title = "" };
+            var window = Staging(store, records: [First, Second, unnamed]);
+            using var closer = window.CloseOnExit();
+            window.Field!.Editor.SetCaret(new TextPosition(0, 0));
+
+            Assert.True(window.InsertLink(unnamed.Id));
+            Leave(window);
+
+            Assert.Equal(unnamed.Id, StagedFirst(store).Runs.Single(run => run.ObjData is not null).Text);
+        });
+    }
+
+    [Fact]
+    public void TheLinkListPicksTheRecordByItsPlaceWhenTwoRecordsShowTheSameText()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var twin = new GdrSummary(CanonicalId.FromGuid(new Guid("7b4d1f5a-3c2e-4d9f-8a81-2e3f40516273")).Value,
+                Linked.Abbreviation, Linked.Title, Linked.Description);
+            var window = Staging(store, records: [First, Linked, twin]);
+            using var closer = window.CloseOnExit();
+            window.Field!.Editor.SetCaret(new TextPosition(0, 0));
+
+            List(window, "Link to a record").SelectedIndex = 1;
+            Leave(window);
+
+            Assert.Equal(GdrReader.LinkData(ProjectName, twin.Id), StagedFirst(store).Runs.Single(run => run.ObjData is not null).ObjData);
+        });
+    }
+
+    [Fact]
+    public void AParagraphStyleTheParagraphAlreadyHasAddsNoUndoStep()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var window = Staging(new FakeStore());
+            using var closer = window.CloseOnExit();
+            window.Field!.Editor.SetCaret(new TextPosition(0, 3));
+            var style = window.Field.Editor.Document.Paragraphs[0].Style;
+
+            Assert.False(window.ApplyParagraphStyle(style));
+            Assert.Equal(0, window.Session!.UndoSteps);
+            Assert.True(window.ApplyParagraphStyle("Quote"));
+            Assert.False(window.ApplyParagraphStyle("Quote"));
+            Assert.Equal(1, window.Session.UndoSteps);
+        });
+    }
+
+    [Fact]
+    public void NoFormattingOrLinkReachesTheFieldWhileApplyRuns()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { ApplyGate = new TaskCompletionSource() };
+            var window = Staging(store);
+            using var closer = window.CloseOnExit();
+            window.KeyTextInput("a");
+            var applying = window.ApplyAsync();
+            while (store.Applies == 0) Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Select(window, 0, 0, "aWords".Length);
+
+            Assert.False(window.ToggleBold());
+            Assert.False(window.ApplyCharacterStyle("Strong"));
+            Assert.False(window.ApplyParagraphStyle("Quote"));
+            Assert.False(window.SetWritingSystem("ar"));
+            Assert.False(window.InsertLink(Linked.Id));
+            Assert.Empty(window.Field!.Editor.Document.Paragraphs[0].Runs[0].Props.IntProps);
+
+            store.ApplyGate.SetResult();
+            Assert.True(Completed(applying));
         });
     }
 }

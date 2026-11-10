@@ -14,6 +14,7 @@ using SIL.Motif.Generator.Manifest;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
@@ -144,14 +145,17 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
         var shown = Show(path, "GDR-1");
         var target = GdrQuery.List(new GdrListRequest(path)).Value!.Records.Single(record => record.Abbreviation == "GDR-2");
         var runs = shown.Discussion[0].Runs.Select(Carried).ToList();
-        runs.Insert(1, new TextRun("GDR-2", shown.DefaultAnalysis, ObjData: GdrReader.LinkData(target.Id)));
+        var linkData = GdrReader.LinkData(Path.GetFileNameWithoutExtension(path), target.Id);
+        runs.Insert(1, new TextRun("GDR-2", shown.DefaultAnalysis, SeededGdrs.HyperlinkStyle, ObjData: linkData));
 
         StagedFirst(path, shown, runs);
         Applied(path);
 
         var after = Show(path, "GDR-1").Discussion[0];
         var link = after.Runs.Single(run => run.Text == "GDR-2");
-        Assert.Equal(GdrReader.LinkData(target.Id), link.ObjData);
+        Assert.Equal(linkData, link.ObjData);
+        Assert.Equal(SeededGdrs.HyperlinkStyle, link.Style);
+        Assert.Equal(GdrReader.ListTool, FieldWorksLinks.ToolOf(link.ObjData![1..]));
         Assert.Equal(new GdrLinkTarget(GdrLinkState.Resolved, "List item", "title-2", "abstract-2"), link.Target);
         Assert.Equal(SeededGdrs.HyperlinkData, after.Runs.Single(run => run.Text == "link").ObjData);
         Assert.Equal(SeededGdrs.ObjectData, after.Runs.Single(run => run.Text == "￼").ObjData);

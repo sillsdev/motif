@@ -42,6 +42,13 @@ public static class SeededGdrs
             cache.LangProject.StylesOC.Add(quote);
             quote.Name = QuoteStyle;
             quote.Type = StyleType.kstParagraph;
+            if (cache.LangProject.StylesOC.All(style => style.Name != HyperlinkStyle))
+            {
+                var hyperlink = services.GetInstance<IStStyleFactory>().Create();
+                cache.LangProject.StylesOC.Add(hyperlink);
+                hyperlink.Name = HyperlinkStyle;
+                hyperlink.Type = StyleType.kstCharacter;
+            }
 
             var list = services.GetInstance<ICmPossibilityListFactory>().Create();
             cache.LangProject.CheckListsOC.Add(list);
@@ -77,6 +84,9 @@ public static class SeededGdrs
 
     /// <summary>A paragraph style no Discussion uses, which an edit can apply.</summary>
     public const string QuoteStyle = "Quote";
+
+    /// <summary>The character style FieldWorks gives a link, which a new FieldWorks project holds.</summary>
+    public const string HyperlinkStyle = "Hyperlink";
 
     /// <summary>The link target FieldWorks stores for an external hyperlink: a type character, then the address.</summary>
     public static readonly string HyperlinkData = (char)FwObjDataTypes.kodtExternalPathName + "https://example.invalid/x";

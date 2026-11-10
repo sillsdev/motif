@@ -50,14 +50,19 @@ public sealed class GdrDiscussion
     /// <summary>The project's writing systems, which an edit may give a run or type in.</summary>
     public IReadOnlyList<GdrWritingSystem> WritingSystemChoices { get; }
 
+    /// <summary>The character style FieldWorks gives a link, which a new link carries when the project has it.</summary>
+    public const string HyperlinkStyle = "Hyperlink";
+
     /// <summary>
-    /// A run that links to a project object, shown as this view shows links; the project receives it with no properties
-    /// but its writing system and <paramref name="objData"/>.
+    /// A run that links to a project object, shown as this view shows links; the project receives it with its writing
+    /// system, <paramref name="objData"/> and, when the project has it, the <see cref="HyperlinkStyle"/> character style.
     /// </summary>
     public Run LinkRun(string text, string ws, string objData)
     {
-        _linkProps.TryAdd(objData, new PropertyBag());
-        var props = new PropertyBag();
+        var stored = new PropertyBag();
+        if (CharacterStyles.Contains(HyperlinkStyle, StringComparer.Ordinal)) stored.SetStr(TextPropertyNumbers.NamedStyle, HyperlinkStyle);
+        _linkProps.TryAdd(objData, stored);
+        var props = stored.Clone();
         props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
         props.SetInt(TextPropertyNumbers.ForeColor, LinkColor, 0);
         return new Run { Ws = ws, Text = text, Props = props, ObjData = objData };

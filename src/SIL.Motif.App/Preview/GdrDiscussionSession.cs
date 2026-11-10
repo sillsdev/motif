@@ -151,11 +151,14 @@ public sealed class GdrDiscussionSession
         return true;
     }
 
-    /// <summary>Gives the paragraphs of the selection, or the caret's paragraph, the paragraph style <paramref name="style"/>.</summary>
+    /// <summary>
+    /// Gives the paragraphs of the selection, or the caret's paragraph, the paragraph style <paramref name="style"/>;
+    /// returns false, adding no undo step, when they all have it already.
+    /// </summary>
     public bool ApplyParagraphStyle(string style)
     {
         var editor = _field.Editor;
-        if (_field.IsReadOnly || !_field.IsParagraphStyleAllowed(style)) return false;
+        if (_field.IsReadOnly || !editor.CanEdit || !_field.IsParagraphStyleAllowed(style)) return false;
         editor.Ordered(out var start, out var end);
         var delta = new EditDelta { Start = start.Paragraph, Label = "paragraph style " + style, CaretBefore = editor.Caret, CaretAfter = editor.Caret };
         for (var i = start.Paragraph; i <= end.Paragraph; i++)
@@ -166,6 +169,8 @@ public sealed class GdrDiscussionSession
             delta.Before.Add(editor.Document.Paragraphs[i].Clone());
             delta.After.Add(edited);
         }
+        if (delta.Before.All(before => before.Style == style &&
+            (!before.Props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) || named == style))) return false;
         return Push(delta);
     }
 
@@ -217,7 +222,7 @@ public sealed class GdrDiscussionSession
         return Push(delta, start, end);
     }
 
-    // The editor applies a host's change without raising Committed, so the session records it as a step of its own.
+    // Records the change as one step on the session's own undo stack, beside the steps typing commits.
     private bool Push(EditDelta delta, TextPosition? anchor = null, TextPosition? caret = null)
     {
         var editor = _field.Editor;

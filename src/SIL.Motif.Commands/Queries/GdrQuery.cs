@@ -48,7 +48,7 @@ public static class GdrQuery
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
             try
             {
-                var shown = GdrReader.Show(reader.Cache, id);
+                var shown = GdrReader.Show(reader.Cache, id, Path.GetFileNameWithoutExtension(request.ProjectPath));
                 return shown is null
                     ? NotFound<GdrShowResponse>(id)
                     : CommandOutcome<GdrShowResponse>.Success(shown with { Baseline = baseline.Token });

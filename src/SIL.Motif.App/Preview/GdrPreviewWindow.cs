@@ -25,6 +25,7 @@ public sealed class GdrPreviewWindow : Window
     public const string StartupArgument = "--gdr-preview";
 
     private readonly Func<string, GdrShowResponse?> _show;
+    private readonly string? _projectName;
     private readonly IGdrEditStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
@@ -58,11 +59,13 @@ public sealed class GdrPreviewWindow : Window
     /// Creates the window over <paramref name="records"/>; <paramref name="show"/> reads one record by its id, and
     /// <paramref name="store"/>, when given, stages each edit and offers Apply. <paramref name="confirmStartAgain"/>
     /// asks the person before their edit of a record changed in FieldWorks is thrown away; by default a dialog asks.
+    /// <paramref name="projectName"/> is the FieldWorks project a new link names; without it no link can be inserted.
     /// </summary>
     public GdrPreviewWindow(IReadOnlyList<GdrSummary> records, Func<string, GdrShowResponse?> show, IGdrEditStore? store = null,
-        Func<Task<bool>>? confirmStartAgain = null)
+        Func<Task<bool>>? confirmStartAgain = null, string? projectName = null)
     {
         _show = show;
+        _projectName = projectName;
         _store = store;
         _confirmStartAgain = confirmStartAgain ?? ConfirmStartAgainAsync;
         var startAgain = new Button { Content = "Start again from the FieldWorks text" };
@@ -175,15 +178,15 @@ public sealed class GdrPreviewWindow : Window
 
     /// <summary>
     /// Puts a link to the record <paramref name="recordId"/> at the caret, named by the record's number or, without one,
-    /// its title, in the writing system typing is in.
+    /// its title or else its id, in the writing system typing is in.
     /// </summary>
     public bool InsertLink(string recordId)
     {
-        if (_shownId is not { } shown || Records.FirstOrDefault(record => record.Id == recordId) is not { } target ||
+        if (_projectName is not { } project || _shownId is not { } shown || Records.FirstOrDefault(record => record.Id == recordId) is not { } target ||
             !SIL.Motif.Contract.Ids.CanonicalId.TryParse(target.Id, out _)) return false;
         var opened = _opened[shown];
-        var name = target.Abbreviation.Length > 0 ? target.Abbreviation : target.Title;
-        return opened.Session.InsertLink(opened.Discussion.LinkRun(name, opened.Field.Editor.ActiveWs, GdrReader.LinkData(target.Id)));
+        var name = new[] { target.Abbreviation, target.Title, target.Id }.First(text => !string.IsNullOrWhiteSpace(text));
+        return opened.Session.InsertLink(opened.Discussion.LinkRun(name, opened.Field.Editor.ActiveWs, GdrReader.LinkData(project, target.Id)));
     }
 
     private static ComboBox Choice(string label) => new()
@@ -219,23 +222,22 @@ public sealed class GdrPreviewWindow : Window
         _toolbar.Children.Add(Toggle("U", "Underline", FontWeight.Normal, FontStyle.Normal, TextDecorations.Underline, ToggleUnderline));
         _toolbar.Children.Add(_writingSystems);
         _toolbar.Children.Add(_links);
-        Chosen(_paragraphStyles, item => ApplyParagraphStyle(item));
-        Chosen(_characterStyles, item => ApplyCharacterStyle(item == NoCharacterStyle ? null : item));
-        Chosen(_writingSystems, item => SetWritingSystem(item));
-        Chosen(_links, item =>
+        Chosen(_paragraphStyles, (item, _) => ApplyParagraphStyle(item));
+        Chosen(_characterStyles, (item, _) => ApplyCharacterStyle(item == NoCharacterStyle ? null : item));
+        Chosen(_writingSystems, (item, _) => SetWritingSystem(item));
+        Chosen(_links, (_, at) =>
         {
-            var at = Array.IndexOf(Items(_links).ToArray(), item);
             var targets = Records.Where(record => record.Id != _shownId).ToArray();
-            if (at >= 0 && at < targets.Length) InsertLink(targets[at].Id);
+            if (at < targets.Length) InsertLink(targets[at].Id);
         });
         return _toolbar;
     }
 
     // A list acts once per choice and then shows its label again, so the same choice can be made twice.
-    private void Chosen(ComboBox box, Action<string> act) => box.SelectionChanged += (_, _) =>
+    private void Chosen(ComboBox box, Action<string, int> act) => box.SelectionChanged += (_, _) =>
     {
-        if (_resettingChoices || box.SelectedItem is not string item) return;
-        act(item);
+        if (_resettingChoices || box.SelectedItem is not string item || box.SelectedIndex < 0) return;
+        act(item, box.SelectedIndex);
         _resettingChoices = true;
         box.SelectedIndex = -1;
         _resettingChoices = false;
@@ -622,7 +624,7 @@ public sealed class GdrPreviewWindow : Window
         if (!listed.Succeeded) return null;
         var window = new GdrPreviewWindow(listed.Value!.Records,
             id => GdrQuery.Show(new GdrShowRequest(project, id)) is { Succeeded: true } shown ? shown.Value : null,
-            new GdrEditStore(project));
+            new GdrEditStore(project), projectName: Path.GetFileNameWithoutExtension(project));
         window.Show();
         return window;
     }
