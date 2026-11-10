@@ -8253,6 +8253,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>A new Baseline was recorded.</value>
     <comment>Review: Apply result once the window has captured a new Baseline.</comment>
   </data>
+  <data name="MotifApp.ApplyResultBaselineRecording" xml:space="preserve">
+    <value>Recording a new Baseline…</value>
+    <comment>Review: Apply result while the Refresh that follows Apply is running.</comment>
+  </data>
   <data name="MotifApp.ApplyResultBaselinePending" xml:space="preserve">
     <value>Refresh to record a new Baseline.</value>
     <comment>Review: Apply result before the window has captured a new Baseline.</comment>

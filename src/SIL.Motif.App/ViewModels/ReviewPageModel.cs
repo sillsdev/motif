@@ -1385,8 +1385,11 @@ public sealed partial class ReviewPageModel : PageModel
         ClearRetirementReview();
         _measurementCancellation?.Cancel();
         _applyCancellation?.Cancel();
+        _baselineCancellation?.Cancel();
         Receipt = null;
         ApplyRefusal = null;
+        BaselineRefusal = null;
+        IsRecordingBaseline = false;
         MeasurementRefusal = null;
         NumbersText = NumbersPrompt;
         EvidenceComplete = false;
@@ -1395,6 +1398,9 @@ public sealed partial class ReviewPageModel : PageModel
         OnPropertyChanged(nameof(HasReceipt));
         OnPropertyChanged(nameof(ReceiptText));
         OnPropertyChanged(nameof(ApplyRefusal));
+        OnPropertyChanged(nameof(BaselineRefusal));
+        OnPropertyChanged(nameof(IsRecordingBaseline));
+        OnPropertyChanged(nameof(ApplyResultBaselineText));
         OnPropertyChanged(nameof(MeasurementRefusal));
         OnPropertyChanged(nameof(NumbersText));
         OnPropertyChanged(nameof(CanApply));

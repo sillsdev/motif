@@ -74,6 +74,7 @@
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ApplyReceipt}" />
           <views:CopyableTextBlock Text="{Binding ApplyResultWroteText}" TextWrapping="Wrap" />
           <views:CopyableTextBlock Text="{Binding ApplyResultBaselineText}" TextWrapping="Wrap" />
+          <views:RefusalBlock Classes="refusalFlow" DataContext="{Binding BaselineRefusal}" />
           <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ApplyResultReopen}" TextWrapping="Wrap" />
         </StackPanel>
         <views:CopyableTextBlock Classes="section-title" Text="{Binding ApplyTitle}"

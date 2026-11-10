@@ -4214,6 +4214,7 @@ public static class MotifAppStrings
     public static string ApplyCheckFieldWorksOpen => Text("MotifApp.ApplyCheckFieldWorksOpen");
     public static string ApplyResultWroteFormat => Text("MotifApp.ApplyResultWroteFormat");
     public static string ApplyResultBaselineRecorded => Text("MotifApp.ApplyResultBaselineRecorded");
+    public static string ApplyResultBaselineRecording => Text("MotifApp.ApplyResultBaselineRecording");
     public static string ApplyResultBaselinePending => Text("MotifApp.ApplyResultBaselinePending");
     public static string ApplyResultReopen => Text("MotifApp.ApplyResultReopen");
     public static string ApplyBackupLink => Text("MotifApp.ApplyBackupLink");

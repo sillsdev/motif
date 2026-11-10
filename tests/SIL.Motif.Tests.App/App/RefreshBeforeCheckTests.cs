@@ -296,9 +296,10 @@ public sealed class RefreshBeforeCheckTests
         await context.OpenProjectAsync(ProjectPath);
         var appliesWhenRefreshed = -1;
         var refresh = new RefreshProbe(context) { During = () => appliesWhenRefreshed = fake.ApplyPendingRequests.Count };
-        context.RefreshProjectCommand = refresh.Command;
         await page.MeasureCommand.ExecuteAsync(null);
+        // Apply's own Refresh stops with no Refresh to run, leaving the Baseline stale for the next check.
         await page.ApplyCommand.ExecuteAsync(null);
+        context.RefreshProjectCommand = refresh.Command;
         Assert.True(context.Evidence.AppliedSinceRefresh);
         Assert.Equal(0, refresh.Runs);
         fake.PendingChangesIs(Pending("revision/two"));

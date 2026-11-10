@@ -89,7 +89,16 @@ public sealed class ProjectSwitchTests
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
             "Applied pending changes.");
         await review.MeasureCommand.ExecuteAsync(null);
-        await review.ApplyCommand.ExecuteAsync(null);
+        // Without a Refresh to run, Apply's own Refresh stops and the Baseline stays stale for the check to settle.
+        parts.Workspace.Context.RefreshProjectCommand = null;
+        try
+        {
+            await review.ApplyCommand.ExecuteAsync(null);
+        }
+        finally
+        {
+            parts.Workspace.Context.RefreshProjectCommand = parts.Workspace.RefreshCommand;
+        }
         Assert.True(parts.Workspace.Context.Evidence.AppliedSinceRefresh);
         parts.Fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
             NewToken("2026-09-06T00:00:00Z"), ProjectA, DateTimeOffset.UtcNow, false, false));

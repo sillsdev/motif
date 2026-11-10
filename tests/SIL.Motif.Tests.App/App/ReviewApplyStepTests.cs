@@ -1,4 +1,5 @@
 using Avalonia.Input;
+using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
@@ -119,25 +120,136 @@ public sealed class ReviewApplyStepTests
         Assert.False(page.IsConfirmingApply);
     }
 
+    private static ApplyProjection Applied() => new(ProposalId, false, "Applied", [], "sha256:effect",
+        new AppliedLogEntrySummary(ProposalId, "2026-01-01", "Motif", "sha256:intent"));
+
     [Fact]
-    public async Task ConfirmingWritesOnceAndTheResultSaysWhatWasWritten()
+    public async Task ConfirmingWritesOnceThenRefreshesOnceAndTheResultSaysABaselineWasRecorded()
     {
         var (fake, context, page) = await Open(Entry("a", 3));
-        var applied = new ApplyProjection(ProposalId, false, "Applied", [], "sha256:effect",
-            new AppliedLogEntrySummary(ProposalId, "2026-01-01", "Motif", "sha256:intent"));
+        var order = new List<string>();
         fake.ApplyProposalHandler = (_, _) =>
-            Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied, "ok")));
+        {
+            order.Add("apply");
+            return Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(
+                ApplyPendingResult.AppliedWith(Applied(), "ok")));
+        };
+        var refreshes = 0;
+        string? during = null;
+        context.RefreshProjectCommand = new AsyncRelayCommand(() =>
+        {
+            refreshes++;
+            order.Add("refresh");
+            during = page.ApplyResultBaselineText;
+            context.Evidence.AppliedSinceRefresh = false;
+            return Task.CompletedTask;
+        });
         page.AskToApplyCommand.Execute(null);
 
         await page.ApplyCommand.ExecuteAsync(null);
 
         Assert.Single(fake.ApplyProposalRequests);
+        Assert.Equal(1, refreshes);
+        Assert.Equal(["apply", "refresh"], order);
+        Assert.Equal(MotifAppStrings.ApplyResultBaselineRecording, during);
         Assert.False(page.IsConfirmingApply);
         Assert.True(page.HasReceipt);
         Assert.Equal("Wrote 3 changes to Sample.fwdata.", page.ApplyResultWroteText);
-        Assert.Equal(MotifAppStrings.ApplyResultBaselinePending, page.ApplyResultBaselineText);
-        context.Evidence.AppliedSinceRefresh = false;
+        Assert.False(page.IsRecordingBaseline);
+        Assert.Null(page.BaselineRefusal);
         Assert.Equal(MotifAppStrings.ApplyResultBaselineRecorded, page.ApplyResultBaselineText);
+    }
+
+    [Fact]
+    public async Task AClickOnRefreshWhileTheAutomaticRefreshRunsJoinsItInsteadOfStartingAnother()
+    {
+        var (fake, context, page) = await Open(Entry("a", 1));
+        fake.ApplyProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(
+            ApplyPendingResult.AppliedWith(Applied(), "ok")));
+        var release = new TaskCompletionSource();
+        var refreshes = 0;
+        context.RefreshProjectCommand = new AsyncRelayCommand(async () =>
+        {
+            refreshes++;
+            await release.Task;
+            context.Evidence.AppliedSinceRefresh = false;
+        });
+        page.AskToApplyCommand.Execute(null);
+
+        var applying = page.ApplyCommand.ExecuteAsync(null);
+        while (!page.IsRecordingBaseline) await Task.Yield();
+        Assert.False(context.RefreshProjectCommand.CanExecute(null));
+        release.SetResult();
+        await applying;
+
+        Assert.Equal(1, refreshes);
+        Assert.Equal(MotifAppStrings.ApplyResultBaselineRecorded, page.ApplyResultBaselineText);
+    }
+
+    [Fact]
+    public async Task ARefreshThatHangsIsStoppedWaitingForAndTheManualPromptStays()
+    {
+        var (fake, context, page) = await Open(Entry("a", 1));
+        fake.ApplyProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(
+            ApplyPendingResult.AppliedWith(Applied(), "ok")));
+        page.BaselineWaitLimit = TimeSpan.FromMilliseconds(100);
+        context.RefreshProjectCommand = new AsyncRelayCommand(() => new TaskCompletionSource().Task);
+        page.AskToApplyCommand.Execute(null);
+
+        await page.ApplyCommand.ExecuteAsync(null);
+
+        Assert.False(page.ApplyCommand.IsRunning);
+        Assert.False(page.IsRecordingBaseline);
+        Assert.True(page.HasReceipt);
+        Assert.Equal(WindowRefusal.RefreshCancelledCode, page.BaselineRefusal?.Code);
+        Assert.Equal(MotifAppStrings.ApplyResultBaselinePending, page.ApplyResultBaselineText);
+    }
+
+    [Fact]
+    public async Task ARefusedApplyDoesNotRefresh()
+    {
+        var (fake, context, page) = await Open(Entry("a", 1));
+        fake.ApplyProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ApplyPendingResult>.Refused(
+            new Refusal("apply.refused", FailureReason.Refused, "no")));
+        var refreshes = 0;
+        context.RefreshProjectCommand = new AsyncRelayCommand(() =>
+        {
+            refreshes++;
+            return Task.CompletedTask;
+        });
+        page.AskToApplyCommand.Execute(null);
+
+        await page.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Single(fake.ApplyProposalRequests);
+        Assert.Equal(0, refreshes);
+        Assert.False(page.HasReceipt);
+        Assert.NotNull(page.ApplyRefusal);
+        Assert.Null(page.BaselineRefusal);
+    }
+
+    [Fact]
+    public async Task ARefreshThatDoesNotRecordABaselineKeepsTheReceiptAndAsksForARefresh()
+    {
+        var (fake, context, page) = await Open(Entry("a", 2));
+        fake.ApplyProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(
+            ApplyPendingResult.AppliedWith(Applied(), "ok")));
+        var refreshes = 0;
+        context.RefreshProjectCommand = new AsyncRelayCommand(() =>
+        {
+            refreshes++;
+            return Task.CompletedTask;
+        });
+        page.AskToApplyCommand.Execute(null);
+
+        await page.ApplyCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, refreshes);
+        Assert.True(page.HasReceipt);
+        Assert.False(page.IsRecordingBaseline);
+        Assert.Equal(WindowRefusal.RefreshFailedCode, page.BaselineRefusal?.Code);
+        Assert.Equal(MotifAppStrings.RefusalRefreshFailedCode, page.BaselineRefusal?.Sentence);
+        Assert.Equal(MotifAppStrings.ApplyResultBaselinePending, page.ApplyResultBaselineText);
     }
 
     [Fact]

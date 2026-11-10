@@ -74,8 +74,48 @@ public sealed partial class ReviewPageModel
         CountedChanges(_wroteCount), ProjectName);
 
     /// <summary>Whether the window has captured a new Baseline since that Apply; it says so only then.</summary>
-    public string ApplyResultBaselineText => Context.Evidence.AppliedSinceRefresh
-        ? MotifAppStrings.ApplyResultBaselinePending : MotifAppStrings.ApplyResultBaselineRecorded;
+    public string ApplyResultBaselineText => IsRecordingBaseline ? MotifAppStrings.ApplyResultBaselineRecording
+        : Context.Evidence.AppliedSinceRefresh
+            ? MotifAppStrings.ApplyResultBaselinePending : MotifAppStrings.ApplyResultBaselineRecorded;
+
+    /// <summary>Whether the Refresh that follows a successful Apply is still running.</summary>
+    public bool IsRecordingBaseline { get; private set; }
+
+    /// <summary>Why the Refresh after Apply did not record a Baseline; the receipt stays and Refresh is still offered.</summary>
+    public WindowRefusal? BaselineRefusal { get; private set; }
+
+    private CancellationTokenSource? _baselineCancellation;
+
+    /// <summary>How long Apply waits for its Refresh before it stops waiting and offers the manual Refresh.</summary>
+    internal TimeSpan BaselineWaitLimit { get; set; } = TimeSpan.FromMinutes(5);
+
+    // Runs the window's one Refresh (joining one already running), so the result never asks for a second.
+    private async Task RecordBaselineAfterApplyAsync(string project)
+    {
+        IsRecordingBaseline = true;
+        BaselineRefusal = null;
+        OnPropertyChanged(nameof(IsRecordingBaseline));
+        OnPropertyChanged(nameof(BaselineRefusal));
+        OnPropertyChanged(nameof(ApplyResultBaselineText));
+        Refusal? stopped;
+        _baselineCancellation?.Dispose();
+        var cancellation = _baselineCancellation = new CancellationTokenSource(BaselineWaitLimit);
+        try
+        {
+            stopped = await Context.RefreshBeforeCheckAsync(cancellation.Token).ConfigureAwait(true);
+        }
+        finally
+        {
+            IsRecordingBaseline = false;
+            if (ReferenceEquals(_baselineCancellation, cancellation)) _baselineCancellation = null;
+            cancellation.Dispose();
+        }
+        if (Context.ProjectPath != project) return;
+        BaselineRefusal = stopped is null ? null : WindowRefusal.From(stopped);
+        OnPropertyChanged(nameof(IsRecordingBaseline));
+        OnPropertyChanged(nameof(BaselineRefusal));
+        OnPropertyChanged(nameof(ApplyResultBaselineText));
+    }
 
     /// <summary>Opens FieldWorks' own help on backing up a project.</summary>
     public IAsyncRelayCommand OpenBackupHelpCommand => _openBackupHelp ??= new AsyncRelayCommand(async () =>
@@ -178,5 +218,7 @@ public sealed partial class ReviewPageModel
         OnPropertyChanged(nameof(ApplyResultWroteText));
         OnPropertyChanged(nameof(ApplyResultBaselineText));
         OnPropertyChanged(nameof(ApplyRefusal));
+        if (Context.ProjectPath != project) return;
+        if (result.Value.Applied) await RecordBaselineAfterApplyAsync(project).ConfigureAwait(true);
     }
 }

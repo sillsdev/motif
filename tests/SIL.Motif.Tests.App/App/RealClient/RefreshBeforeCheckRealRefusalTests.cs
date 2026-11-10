@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Avalonia.Input;
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands;
@@ -51,6 +52,32 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
                 window.Workspace.Baseline.SourceLastWriteUtc!.Value.UtcDateTime.Ticks);
         }, TimeSpan.FromMinutes(3));
         return Task.CompletedTask;
+    }
+
+    [Fact]
+    public Task ApplyThroughTheRealClientRefreshesOnceAndRecordsTheNewBaseline()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            using var project = new WalkthroughProject(pristine);
+            await using var window = await OpenAppliedWindowAsync(project, holdOffAutomaticRefresh: false);
+            var review = window.Workspace.PageModel<ReviewPageModel>();
+
+            Assert.Equal(1, window.Refreshes);
+            Assert.False(window.Workspace.Context.Evidence.AppliedSinceRefresh);
+            Assert.Null(review.BaselineRefusal);
+            Assert.Equal(MotifAppStrings.ApplyResultBaselineRecorded, review.ApplyResultBaselineText);
+            await AssertTheStoreHoldsACurrentBaselineAsync(window);
+        }, TimeSpan.FromMinutes(3));
+        return Task.CompletedTask;
+    }
+
+    private static async Task AssertTheStoreHoldsACurrentBaselineAsync(AppliedWindow window)
+    {
+        var current = await window.Client.GetCurrentBaselineAsync(
+            new CurrentBaselineRequest(window.ProjectPath), CancellationToken.None);
+        Assert.True(current.Succeeded, current.Refusal?.Message);
+        Assert.NotNull(current.Value!.Token);
     }
 
     // A Baseline captured outside the window is what lets a change be staged after the Apply.
@@ -124,7 +151,8 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
     }
 
     // The person's own Apply from Review, through the real client, on a disposable copy of a synthetic project.
-    private async Task<AppliedWindow> OpenAppliedWindowAsync(WalkthroughProject project)
+    private async Task<AppliedWindow> OpenAppliedWindowAsync(
+        WalkthroughProject project, bool holdOffAutomaticRefresh = true)
     {
         PendingChangeFixture.AddIncorrectSpelling(project.FwDataPath, project.ManagedRoot, "refresh-before-check");
         var parser = FakeParser.Copy(project.ManagedRoot);
@@ -139,11 +167,20 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
             Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
             var before = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(project.FwDataPath)));
 
-            await review.ApplyCommand.ExecuteAsync(null);
+            // Most tests are about the check's own Refresh, so Apply's automatic one is held off for them.
+            if (holdOffAutomaticRefresh) window.Workspace.Context.RefreshProjectCommand = null;
+            try
+            {
+                await review.ApplyCommand.ExecuteAsync(null);
+            }
+            finally
+            {
+                window.Workspace.Context.RefreshProjectCommand = window.Workspace.RefreshCommand;
+            }
 
             Assert.Null(review.ApplyRefusal);
             Assert.NotEqual(before, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(project.FwDataPath))));
-            Assert.True(window.Workspace.Context.Evidence.AppliedSinceRefresh);
+            if (holdOffAutomaticRefresh) Assert.True(window.Workspace.Context.Evidence.AppliedSinceRefresh);
             return window;
         }
         catch
