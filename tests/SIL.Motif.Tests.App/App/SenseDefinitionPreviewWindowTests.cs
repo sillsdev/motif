@@ -274,7 +274,7 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
     {
         avalonia.Invoke(() =>
         {
-            var store = new FakeStore(new GdrApplyRefusal("changed", SenseId, "en"));
+            var store = new FakeStore(new GdrApplyRefusal("changed", SenseId, "en", SenseDefinitionStore.Field));
             var window = Opened(store, out var closer);
             using var _ = closer;
             Type(window, "en", "z");
@@ -284,6 +284,41 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
             Assert.True(window.IsStaleStripShown);
             Assert.Equal("zx y", window.FieldFor("en")!.Editor.Document.Paragraphs[0].Text);
             Assert.Equal("Nothing was applied.", window.StatusText);
+        });
+    }
+
+    [Fact]
+    public void DriftInASenseNotOpenSaysWhyAndStartAgainLeavesTheShownSenseAlone()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore(new GdrApplyRefusal("The other sense changed.", "sense-2", "en", SenseDefinitionStore.Field));
+            var window = Opened(store, out var closer, confirm: () => Task.FromResult(true));
+            using var _ = closer;
+            Type(window, "en", "z");
+
+            Assert.False(Completed(window.ApplyAsync()));
+            Assert.False(Completed(window.StartAgainFromFieldWorksAsync()));
+
+            Assert.False(window.IsStaleStripShown);
+            Assert.Contains("The other sense changed.", window.StatusText, StringComparison.Ordinal);
+            Assert.Empty(store.Discards);
+        });
+    }
+
+    [Fact]
+    public void DriftInAnotherFieldIsReportedNotTakenForADefinition()
+    {
+        avalonia.Invoke(() =>
+        {
+            var window = Opened(new FakeStore(new GdrApplyRefusal("Source changed.", SenseId, null, "LexSense.Source")), out var closer);
+            using var _ = closer;
+            Type(window, "en", "z");
+
+            Assert.False(Completed(window.ApplyAsync()));
+
+            Assert.False(window.IsStaleStripShown);
+            Assert.Equal("Source changed.", window.StatusText);
         });
     }
 

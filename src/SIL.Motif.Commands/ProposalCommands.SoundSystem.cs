@@ -662,7 +662,15 @@ public static partial class ProposalCommands
                 }
                 if (IdentityOf(step) is not null)
                     draft.ComposerProvenance.RemoveAll(provenance => SharesIdentity(provenance, step));
-                if (step.ReplacePrevious is not null && !EditsCreatedNaturalClass(step, result.Input, createdNaturalClasses) &&
+                // An independent step drops only the provenance of the edits it replaced, not its target's other edits.
+                if (step is { Independent: true, Authored: { } independentInput, ReplacePrevious: { } replacesPrevious })
+                {
+                    var replacedByStep = previous.Operations.Where(operation => replacesPrevious(independentInput, operation))
+                        .Select(operation => operation.OperationId.Value).ToHashSet(StringComparer.Ordinal);
+                    draft.ComposerProvenance.RemoveAll(provenance =>
+                        (ProvenanceOperationIds(provenance) ?? []).Any(replacedByStep.Contains));
+                }
+                else if (step.ReplacePrevious is not null && !EditsCreatedNaturalClass(step, result.Input, createdNaturalClasses) &&
                     result.Input.ValueKind == JsonValueKind.Object &&
                     result.Input.TryGetProperty("target", out var replacementTarget) &&
                     replacementTarget.ValueKind == JsonValueKind.String)

@@ -480,6 +480,28 @@ public sealed class GdrPreviewWindowTests
         });
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("en")]
+    public void DriftInAnotherFieldOfTheSameObjectIsReportedNotTakenForTheDiscussion(string? ws)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore(new GdrApplyRefusal("The Source changed.", First.Id, ws, "LexSense.Source"));
+            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            window.Field!.Focus();
+            window.KeyTextInput("a");
+
+            Assert.False(Completed(window.ApplyAsync()));
+
+            Assert.Equal("The Source changed.", window.StatusText);
+            Assert.False(window.IsStaleStripShown);
+        });
+    }
+
     private static GdrShowResponse ChangedInFieldWorks(GdrSummary record)
     {
         var canned = Canned(record);
@@ -495,7 +517,7 @@ public sealed class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id));
+            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
             var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
@@ -522,7 +544,7 @@ public sealed class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id));
+            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
             var confirm = false;
             var refused = false;
             var window = new GdrPreviewWindow([First, Second],
@@ -672,7 +694,7 @@ public sealed class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id));
+            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
             var refused = false;
             var window = new GdrPreviewWindow([First, Second],
                 id => refused && id == First.Id ? ChangedInFieldWorks(First) : Canned(id == First.Id ? First : Second), store,

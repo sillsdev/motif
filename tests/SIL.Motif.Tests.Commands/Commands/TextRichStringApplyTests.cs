@@ -7,6 +7,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
@@ -225,6 +226,87 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ARichStringEditOfAnAlternativeTheDraftAlreadyEditsWithTheGeneratedKindIsRefused()
+    {
+        var path = Project();
+        var sense = Sense(path);
+        Staged(path, sense.Id, Edit(Alternative(sense, SeededProject.RightToLeftTag), [new TextRun("ar-x", SeededProject.RightToLeftTag)]));
+        EditDraft(path, draft => draft.Operations.Add(Generated(sense.Id, "en")));
+
+        var staged = ProposalCommands.StageTextRichString(new StageTextRichStringRequest(path, sense.Id,
+            Edit(Alternative(sense, "en"), [new TextRun("mine", "en")])));
+
+        Assert.False(staged.Succeeded);
+        Assert.Contains("slot", staged.Refusal!.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, PendingOperations(path));
+    }
+
+    [Fact]
+    public void AnOperationThatWaitedOnAReplacedEditWaitsOnWhatThatEditWaitedOn()
+    {
+        var path = Project();
+        var sense = Sense(path);
+        var english = Alternative(sense, "en");
+        Staged(path, sense.Id, Edit(english, [new TextRun("first", "en")]));
+        var replaced = ReadDraft(path).Operations.Single().OperationId;
+        var waiting = Generated(CanonicalId.FromGuid(pristine.Seed.SecondSenseId).Value, "en");
+        waiting.DependsOn.Add(replaced);
+        EditDraft(path, draft => draft.Operations.Add(waiting));
+
+        Staged(path, sense.Id, Edit(english, [new TextRun("second", "en")]));
+
+        var kept = ReadDraft(path).Operations.Single(operation => operation.OperationId == waiting.OperationId);
+        Assert.DoesNotContain(replaced, kept.DependsOn);
+        Assert.Equal(2, PendingOperations(path));
+    }
+
+    [Fact]
+    public void ReplacingOrDiscardingOneWritingSystemsEditKeepsTheOthersProvenance()
+    {
+        var path = Project();
+        var sense = Sense(path);
+        Staged(path, sense.Id, Edit(Alternative(sense, "en"), [new TextRun("first", "en")]));
+        Staged(path, sense.Id, Edit(Alternative(sense, SeededProject.RightToLeftTag), [new TextRun("ar-x", SeededProject.RightToLeftTag)]));
+        var arabic = ReadDraft(path).Operations.Single(operation => operation.After["ws"].GetString() == SeededProject.RightToLeftTag).OperationId;
+
+        Staged(path, sense.Id, Edit(Alternative(sense, "en"), [new TextRun("second", "en")]));
+        Assert.Contains(arabic, ProvenanceOperationIds(path));
+        Assert.True(ProposalCommands.DiscardTextRichString(new TextRichStringFieldRequest(path, sense.Id, Definition, "en")).Succeeded);
+
+        Assert.Equal([arabic], ProvenanceOperationIds(path));
+    }
+
+    [Fact]
+    public void AnEditBackToTheStartIsNoEditWhateverItsNormalization()
+    {
+        var path = Project();
+        Staged(path, Sense(path).Id, Edit(Alternative(Sense(path), "en"), [new TextRun("café", "en")]));
+        Applied(path);
+        var stored = Alternative(Sense(path), "en");
+
+        var composed = stored.Runs.Select(Carried).Select(run => run with { Text = run.Text.Normalize(System.Text.NormalizationForm.FormC) }).ToArray();
+        var staged = Staged(path, Sense(path).Id, Edit(stored, composed));
+
+        Assert.Equal(0, staged.OperationCount);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void AWritingSystemTagIsStagedAsTheProjectSpellsItSoACasedTagReplacesTheSameEdit()
+    {
+        var path = Project();
+        var sense = Sense(path);
+        var english = Alternative(sense, "en");
+        Staged(path, sense.Id, new TextRichStringPayload(Definition, "EN", [new TextRun("first", "EN")], new(english.Text, english.Digest)));
+
+        Staged(path, sense.Id, Edit(english, [new TextRun("second", "en")]));
+
+        var operation = Assert.Single(ReadDraft(path).Operations);
+        Assert.Equal("en", operation.After["ws"].GetString());
+        Assert.Equal("second", ProposalCommands.PendingTextRichString(new TextRichStringFieldRequest(path, sense.Id, Definition, "En")).Value!.RichString!.Text);
+    }
+
+    [Fact]
     public void AValueTheProjectCouldNotLoadBackIsRefusedWhenStaged()
     {
         var path = Project();
@@ -271,6 +353,39 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
 
     private static TextRichStringPayload Edit(RichStringAlternative began, IReadOnlyList<TextRun> runs) =>
         new(Definition, began.WritingSystem, runs, new(began.Text, began.Digest));
+
+    private static DraftOperation Generated(string target, string ws) => new()
+    {
+        OperationId = CanonicalId.Mint().Value,
+        Kind = "lexical/lexSense/setDefinition",
+        Target = target,
+        After = new Dictionary<string, JsonElement>
+        {
+            ["ws"] = JsonSerializer.SerializeToElement(ws),
+            ["text"] = JsonSerializer.SerializeToElement("y"),
+        },
+    };
+
+    private static DraftDocument ReadDraft(string path)
+    {
+        using var database = ProjectMotifDatabase.Open(path);
+        return ProposalCommands.DeserializeDraft(new ProposalRepository(database).FindPendingChangesDraft()!.ProposalJson!);
+    }
+
+    // The Draft is written straight, as an agent's or another screen's edits would already be there.
+    private static void EditDraft(string path, Action<DraftDocument> change)
+    {
+        using var database = ProjectMotifDatabase.Open(path);
+        var repository = new ProposalRepository(database);
+        var pending = repository.FindPendingChangesDraft()!;
+        var draft = ProposalCommands.DeserializeDraft(pending.ProposalJson!);
+        change(draft);
+        draft.ContractVersions["lexical"] = "1.0";
+        Assert.True(repository.TrySaveDraft(pending.DraftName!, pending.ProposalJson!, ProposalCommands.SerializeDraft(draft)));
+    }
+
+    private static string[] ProvenanceOperationIds(string path) => ReadDraft(path).ComposerProvenance
+        .SelectMany(entry => entry.GetProperty("operationIds").EnumerateArray().Select(id => id.GetString()!)).ToArray();
 
     private static TextRun Carried(GdrRun run) => new(run.Text, run.WritingSystem, run.Style, new(
         run.Properties.Ints.ToDictionary(pair => pair.Key, pair => (pair.Value.Variation, pair.Value.Value)),
