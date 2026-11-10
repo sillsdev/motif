@@ -314,6 +314,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.AgentIdentityConflict, FailureReason.Refused),
         Spec(RefusalCodes.AgentVersionConflict, FailureReason.Refused),
         Spec(RefusalCodes.GdrAmbiguous, FailureReason.Refused),
+        Spec(RefusalCodes.GdrBaselineChanged, FailureReason.Refused),
         Spec(RefusalCodes.GdrBaselineUnavailable, FailureReason.StoreInconsistent),
         Spec(RefusalCodes.GdrEmptyId, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GdrNoBaseline, FailureReason.NotFound),

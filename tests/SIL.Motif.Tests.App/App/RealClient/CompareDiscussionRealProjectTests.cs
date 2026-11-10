@@ -40,7 +40,7 @@ public sealed class CompareDiscussionRealProjectTests(PristineProjectFixture pri
             var store = new GdrEditStore(path, root, runner);
             var compared = new List<CompareWindow>();
             var window = new GdrPreviewWindow([record.Record], shown => GdrQuery.Show(new GdrShowRequest(path, shown)).Value, store,
-                () => Task.FromResult(true), compare =>
+                () => Task.FromResult(true), compare: compare =>
                 {
                     compared.Add(compare);
                     Assert.Empty(compare.Comparison.Undecided);

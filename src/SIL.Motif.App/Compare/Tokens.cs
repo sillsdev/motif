@@ -88,13 +88,15 @@ public static class Tokens
         foreach (var run in runs)
         {
             if (run.Text.Length == 0) continue;
-            // An object run stays alone, so its object data is never stretched over text.
-            if (joined.Count > 0 && run.ObjData is null && joined[^1].ObjData is null && FormatOf(joined[^1]) == FormatOf(run))
+            // An embedded object stays alone; the pieces of one link, text with the same object data, join again.
+            if (joined.Count > 0 && !IsObject(run) && !IsObject(joined[^1]) && FormatOf(joined[^1]) == FormatOf(run))
                 joined[^1] = joined[^1] with { Text = joined[^1].Text + run.Text };
             else joined.Add(run);
         }
         return joined;
     }
+
+    private static bool IsObject(TextRun run) => run.Text.Contains(ObjectCharacter, StringComparison.Ordinal);
 
     internal static string FormatOf(TextRun run) =>
         run.Ws + "\u0001" + run.CharacterStyle + "\u0001" + TextVersions.Signature(run.Props) + "\u0001" + run.ObjData;

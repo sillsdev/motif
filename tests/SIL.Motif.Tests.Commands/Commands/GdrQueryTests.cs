@@ -190,6 +190,22 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public void ShowOffersEveryStyleAndWritingSystemOfTheProjectEvenWhenTheDiscussionUsesNone()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true);
+
+        var response = GdrQuery.Show(new GdrShowRequest(path, "GDR-1a")).Value!;
+
+        Assert.Equal(GdrStyleKind.Character, response.Styles.Single(style => style.Name == SeededGdrs.StrongStyle).Kind);
+        Assert.Equal(GdrStyleKind.Character, response.Styles.Single(style => style.Name == "Emphasis").Kind);
+        Assert.Equal(GdrStyleKind.Paragraph, response.Styles.Single(style => style.Name == SeededGdrs.QuoteStyle).Kind);
+        var strong = response.Styles.Single(style => style.Name == SeededGdrs.StrongStyle);
+        Assert.Equal(1, strong.ByWritingSystem[SeededProject.RightToLeftTag].Ints[TextPropertyNumbers.Bold].Value);
+        Assert.Equal("rtl", response.WritingSystems.Single(system => system.Tag == SeededProject.RightToLeftTag).Direction);
+        Assert.Contains(response.WritingSystems, system => system.Tag == response.DefaultVernacular);
+    }
+
+    [Fact]
     public void ShowAcceptsTheCanonicalIdAsWellAsTheNumber()
     {
         var path = ProjectWithGdrs(captureBaseline: true);
@@ -225,6 +241,58 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public void ListAndShowSayWhenTheProjectWasSavedSinceTheBaseline()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true);
+        Assert.False(GdrQuery.List(new GdrListRequest(path)).Value!.IsStale);
+        Assert.False(GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!.IsStale);
+
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(5));
+
+        Assert.True(GdrQuery.List(new GdrListRequest(path)).Value!.IsStale);
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"));
+        Assert.True(shown.Value!.IsStale);
+        Assert.Equal("title-1", shown.Value.Record.Title);
+    }
+
+    [Fact]
+    public void ListAndShowRefuseWhenTheBaselineIsNotTheOneExpected()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true);
+        var token = GdrQuery.List(new GdrListRequest(path)).Value!.Baseline!;
+        var other = new SIL.Motif.Contract.Baselines.BaselineToken(token.ProjectIdentity, token.SemanticSnapshotDigest,
+            token.ProjectionVersion, token.CapturedUtc, "sha256:" + new string('f', 64));
+
+        Assert.True(GdrQuery.Show(new GdrShowRequest(path, "GDR-1", token)).Succeeded);
+        Assert.True(GdrQuery.List(new GdrListRequest(path, token)).Succeeded);
+        Assert.Equal(RefusalCodes.GdrBaselineChanged, GdrQuery.Show(new GdrShowRequest(path, "GDR-1", other)).Refusal!.Code);
+        Assert.Equal(RefusalCodes.GdrBaselineChanged, GdrQuery.List(new GdrListRequest(path, other)).Refusal!.Code);
+    }
+
+    [Fact]
+    public void FindsTheListUnownedAsFieldWorksStoresACustomList()
+    {
+        using var cache = pristine.NewScratch();
+        SeededGdrs.Seed(cache);
+
+        Assert.Null(SeededGdrs.Records(cache).Owner);
+        Assert.Equal("title-1", GdrReader.List(cache)[0].Title);
+    }
+
+    [Theory]
+    [InlineData("GDR-é", "GDR-é")]
+    [InlineData("GDR-é", "GDR-é")]
+    [InlineData("GDR-é", "GDR-é")]
+    public void ShowMatchesAnAbbreviationWhicheverWayItsAccentsAreComposed(string stored, string typed)
+    {
+        using var cache = pristine.NewScratch();
+        SeededGdrs.Seed(cache);
+        SeededGdrs.SeedRecord(cache, stored, "title-accented");
+
+        Assert.Equal("title-accented", GdrReader.Show(cache, typed)?.Record.Title);
+    }
+
+    [Fact]
     public void AProjectWithoutTheListHasNoRecords()
     {
         using var cache = pristine.NewScratch();
@@ -237,8 +305,7 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     public void ShowNamesEachParagraphByItsProjectKey()
     {
         string[] expected = [];
-        var path = ProjectWithGdrs(captureBaseline: true, cache => expected = cache.LangProject.CheckListsOC
-            .Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == GdrReader.ListName).PossibilitiesOS[0]
+        var path = ProjectWithGdrs(captureBaseline: true, cache => expected = SeededGdrs.Records(cache).PossibilitiesOS[0]
             .DiscussionOA.ParagraphsOS.Select(paragraph => CanonicalId.FromGuid(paragraph.Guid).Value).ToArray());
 
         var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"));

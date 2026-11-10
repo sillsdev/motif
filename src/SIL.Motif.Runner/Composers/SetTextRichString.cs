@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
@@ -23,10 +24,11 @@ public static class SetTextRichStringComposer
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
-        var after = intent.RichString.ToJson();
-        var payload = TextRichStringPayload.Parse(after);
+        var payload = Canonical(cache, TextRichStringPayload.Parse(intent.RichString.ToJson()));
+        var after = payload.ToJson();
         TextRichStringFields.Flid(CanonicalIdResolver.Resolve(cache, intent.Target), payload.Field);
-        if (payload.Text == payload.Expected.Text && RunsDigest(payload) == payload.Expected.Runs) return [];
+        if (payload.Text.Normalize(NormalizationForm.FormC) == payload.Expected.Text.Normalize(NormalizationForm.FormC) &&
+            RunsDigest(payload) == payload.Expected.Runs) return [];
         return [new(CanonicalId.Mint(), TextRichStringOperationKinds.Set, target: intent.Target, after: after,
             rationale: $"Edit the {payload.Field}{(payload.Ws is null ? "" : $" ({payload.Ws})")}.")];
     }
@@ -38,6 +40,18 @@ public static class SetTextRichStringComposer
         var authored = new Dictionary<string, JsonElement> { ["target"] = JsonSerializer.SerializeToElement(intent.Target.Value) };
         foreach (var property in after.EnumerateObject()) authored[property.Name] = property.Value.Clone();
         return JsonSerializer.SerializeToElement(authored);
+    }
+
+    /// <summary>
+    /// <paramref name="payload"/> with every writing-system tag as the project spells it, so an edit's slot and its
+    /// replacement match however the tag was cased; a tag the project lacks is refused.
+    /// </summary>
+    public static TextRichStringPayload Canonical(LcmCache cache, TextRichStringPayload payload)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        ArgumentNullException.ThrowIfNull(payload);
+        string Tag(string ws) => cache.WritingSystemFactory.GetStrFromWs(RichTextRuns.WritingSystem(cache, ws, TextRichStringOperationKinds.Set));
+        return payload with { Ws = payload.Ws is { } ws ? Tag(ws) : null, Runs = payload.Runs.Select(run => run with { Ws = Tag(run.Ws) }).ToArray() };
     }
 
     // The digest the runs would have once stored, as the payload states them; empty text has no runs.

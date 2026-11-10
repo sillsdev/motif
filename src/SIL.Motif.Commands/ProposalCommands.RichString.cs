@@ -95,10 +95,11 @@ public static partial class ProposalCommands
                 operation is null ? null : TextRichStringPayload.Parse(OperationSlotRegistry.After(operation))));
         });
 
-    // One edit per owner, field and writing system: a sense's Definition in English and in Arabic are two edits.
+    // One edit per owner, field and writing system (tags are case-insensitive); English and Arabic are two edits.
     private static bool IsRichStringEdit(OperationEnvelope operation, CanonicalId target, string field, string? ws) =>
         operation.Kind == TextRichStringOperationKinds.Set && operation.Target is { } existing && CanonicalId.ByGuid.Equals(existing, target) &&
-        operation.After is { } after && TextRichStringPayload.AddressOf(after) == (field, ws);
+        operation.After is { } after && TextRichStringPayload.AddressOf(after) is var (staged, stagedWs) && staged == field &&
+        string.Equals(stagedWs, ws, StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>The pending-changes Draft's edit of one String field or MultiString alternative, or null when it holds none.</summary>

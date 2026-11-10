@@ -124,6 +124,8 @@ public static class RefusalCodes
     public const string GdrAmbiguous = "gdr.ambiguous";
     /// <summary>The exact Baseline file is missing, so no Grammar Design Record can be read.</summary>
     public const string GdrBaselineUnavailable = "gdr.baseline-unavailable";
+    /// <summary>The current Baseline is not the one the request named.</summary>
+    public const string GdrBaselineChanged = "gdr.baseline-changed";
     /// <summary>A style in the project is based on itself, so no style can be resolved.</summary>
     public const string GdrStyleCycle = "gdr.style-cycle";
     /// <summary>A gdr show request named no record.</summary>

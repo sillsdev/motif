@@ -106,6 +106,9 @@ public static class AutomationIds
     public const string TryWordHandOff = "motif-try-word-handoff";
     public const string DragAllHandoffFiles = "motif-drag-all-handoff-files";
     public const string ApplyReceipt = "motif-apply-receipt";
+    public const string ApplyConfirm = "motif-apply-confirm";
+    public const string ApplyConfirmCancel = "motif-apply-confirm-cancel";
+    public const string ApplyBackupHelp = "motif-apply-backup-help";
     public const string TryWordInput = "motif-try-word-input";
     public const string TryWordRun = "motif-try-word-run";
     public const string TryWordResult = "motif-try-word-result";

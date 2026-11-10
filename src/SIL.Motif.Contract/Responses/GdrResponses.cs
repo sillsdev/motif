@@ -6,7 +6,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The wire version of the Grammar Design Record responses, raised when their shape changes.</summary>
 public static class GdrWire
 {
-    public const int SchemaVersion = 4;
+    public const int SchemaVersion = 5;
 }
 
 /// <summary>One Grammar Design Record as the list shows it.</summary>
@@ -80,7 +80,7 @@ public enum GdrStyleKind
     [JsonStringEnumMemberName("character")] Character,
 }
 
-/// <summary>A style the Discussion uses, with its resolved properties per writing system the Discussion uses.</summary>
+/// <summary>A style of the project or one the Discussion uses, with its resolved properties per listed writing system.</summary>
 /// <param name="Name">The style's name.</param>
 /// <param name="Kind">Paragraph or character.</param>
 /// <param name="ByWritingSystem">The properties after inheritance and the writing system's overrides, keyed by tag.</param>
@@ -88,7 +88,7 @@ public enum GdrStyleKind
 public sealed record GdrStyle(
     string Name, GdrStyleKind Kind, IReadOnlyDictionary<string, GdrTextProperties> ByWritingSystem);
 
-/// <summary>A writing system the Discussion uses.</summary>
+/// <summary>A writing system of the project or one the Discussion uses.</summary>
 /// <param name="Tag">The writing-system tag.</param>
 /// <param name="Direction"><c>ltr</c> or <c>rtl</c>.</param>
 /// <param name="DefaultFont">The writing system's default font family.</param>
@@ -100,6 +100,8 @@ public sealed record GdrListResponse(bool HasBaseline, IReadOnlyList<GdrSummary>
 {
     public int SchemaVersion { get; init; } = GdrWire.SchemaVersion;
     public BaselineToken? Baseline { get; init; }
+    /// <summary>Whether the live file has been saved since this Baseline; its records remain readable.</summary>
+    public bool IsStale { get; init; }
 }
 
 /// <summary>One Grammar Design Record with its Discussion as paragraphs of runs, and what they need to be drawn.</summary>
@@ -107,6 +109,8 @@ public sealed record GdrShowResponse(GdrSummary Record, IReadOnlyList<GdrParagra
 {
     public int SchemaVersion { get; init; } = GdrWire.SchemaVersion;
     public BaselineToken? Baseline { get; init; }
+    /// <summary>Whether the live file has been saved since this Baseline; its records remain readable.</summary>
+    public bool IsStale { get; init; }
     public string DefaultVernacular { get; init; } = "";
     public string DefaultAnalysis { get; init; } = "";
     public IReadOnlyList<GdrStyle> Styles { get; init; } = [];

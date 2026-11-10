@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// <summary>
 /// Writes Grammar Design Records into a run-time project: GDR-1 with a right-to-left paragraph, a character style, a
 /// hyperlink and an object run, and a sub-item GDR-1a under it; GDR-2 with no Discussion; and a record with neither an
-/// abbreviation nor an abstract.
+/// abbreviation nor an abstract. It also adds a character and a paragraph style that no Discussion uses.
 /// </summary>
 public static class SeededGdrs
 {
@@ -31,10 +31,27 @@ public static class SeededGdrs
             var italic = TsStringUtils.MakePropsBldr();
             italic.SetIntPropValues((int)FwTextPropType.ktptItalic, (int)FwTextPropVar.ktpvEnum, 1);
             emphasis.Rules = italic.GetTextProps();
+            var strong = services.GetInstance<IStStyleFactory>().Create();
+            cache.LangProject.StylesOC.Add(strong);
+            strong.Name = StrongStyle;
+            strong.Type = StyleType.kstCharacter;
+            var bold = TsStringUtils.MakePropsBldr();
+            bold.SetIntPropValues((int)FwTextPropType.ktptBold, (int)FwTextPropVar.ktpvEnum, 1);
+            strong.Rules = bold.GetTextProps();
+            var quote = services.GetInstance<IStStyleFactory>().Create();
+            cache.LangProject.StylesOC.Add(quote);
+            quote.Name = QuoteStyle;
+            quote.Type = StyleType.kstParagraph;
+            if (cache.LangProject.StylesOC.All(style => style.Name != HyperlinkStyle))
+            {
+                var hyperlink = services.GetInstance<IStStyleFactory>().Create();
+                cache.LangProject.StylesOC.Add(hyperlink);
+                hyperlink.Name = HyperlinkStyle;
+                hyperlink.Type = StyleType.kstCharacter;
+            }
 
-            var list = services.GetInstance<ICmPossibilityListFactory>().Create();
-            cache.LangProject.CheckListsOC.Add(list);
-            list.Name.set_String(analysis, GdrReader.ListName);
+            // Unowned, as FieldWorks' Add Custom List makes it.
+            var list = services.GetInstance<ICmPossibilityListFactory>().CreateUnowned(GdrReader.ListName, analysis);
             var first = AddRecord(cache, list.PossibilitiesOS, "GDR-1", "title-1", "abstract-1", stText =>
             {
                 var contents = TsStringUtils.MakeStrBldr();
@@ -60,6 +77,15 @@ public static class SeededGdrs
             AddRecord(cache, list.PossibilitiesOS, "", "title-3", "", discussion: null);
         });
     }
+
+    /// <summary>A character style no Discussion uses, which an edit can apply.</summary>
+    public const string StrongStyle = "Strong";
+
+    /// <summary>A paragraph style no Discussion uses, which an edit can apply.</summary>
+    public const string QuoteStyle = "Quote";
+
+    /// <summary>The character style FieldWorks gives a link, which a new FieldWorks project holds.</summary>
+    public const string HyperlinkStyle = "Hyperlink";
 
     /// <summary>The link target FieldWorks stores for an external hyperlink: a type character, then the address.</summary>
     public static readonly string HyperlinkData = (char)FwObjDataTypes.kodtExternalPathName + "https://example.invalid/x";
@@ -122,7 +148,11 @@ public static class SeededGdrs
     public static void SeedDuplicateAbbreviation(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         AddRecord(cache, Records(cache).PossibilitiesOS, "gdr-2", "title-4", "abstract-4", discussion: null));
 
-    /// <summary>Adds a second list with the records' list name.</summary>
+    /// <summary>Adds a record without a Discussion to the seeded list.</summary>
+    public static void SeedRecord(LcmCache cache, string number, string title) => NonUndoableUnitOfWorkHelper.Do(
+        cache.ActionHandlerAccessor, () => AddRecord(cache, Records(cache).PossibilitiesOS, number, title, "", discussion: null));
+
+    /// <summary>Adds a second list with the records' list name, owned where the first is not.</summary>
     public static void SeedSecondList(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
     {
         var list = cache.ServiceLocator.GetInstance<ICmPossibilityListFactory>().Create();
@@ -145,8 +175,9 @@ public static class SeededGdrs
         styles[1].BasedOnRA = styles[0];
     });
 
-    private static ICmPossibilityList Records(LcmCache cache) => cache.LangProject.CheckListsOC
-        .Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == GdrReader.ListName);
+    /// <summary>The seeded Grammar Design Records list.</summary>
+    public static ICmPossibilityList Records(LcmCache cache) => cache.ServiceLocator
+        .GetInstance<ICmPossibilityListRepository>().AllInstances().Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == GdrReader.ListName);
 
     private static ICmPossibility AddRecord(LcmCache cache, ILcmOwningSequence<ICmPossibility> owner, string number, string title,
         string abstractText, Action<IStText>? discussion)

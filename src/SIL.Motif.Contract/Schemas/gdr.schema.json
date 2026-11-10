@@ -10,6 +10,49 @@
     }
   ],
   "$defs": {
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "BaselineToken": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectIdentity",
+        "semanticSnapshotDigest",
+        "projectionVersion",
+        "capturedUtc",
+        "bundleDigest"
+      ],
+      "properties": {
+        "projectIdentity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semanticSnapshotDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "projectionVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capturedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "bundleDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "capturedHostSessionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capturedEditGeneration": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "GdrSummary": {
       "type": "object",
       "additionalProperties": false,
@@ -218,7 +261,8 @@
       "required": [
         "hasBaseline",
         "records",
-        "schemaVersion"
+        "schemaVersion",
+        "isStale"
       ],
       "properties": {
         "hasBaseline": {
@@ -231,10 +275,13 @@
           }
         },
         "schemaVersion": {
-          "const": 4
+          "const": 5
         },
         "baseline": {
-          "type": "object"
+          "$ref": "#/$defs/BaselineToken"
+        },
+        "isStale": {
+          "type": "boolean"
         }
       }
     },
@@ -248,7 +295,8 @@
         "defaultVernacular",
         "defaultAnalysis",
         "styles",
-        "writingSystems"
+        "writingSystems",
+        "isStale"
       ],
       "properties": {
         "record": {
@@ -261,7 +309,7 @@
           }
         },
         "schemaVersion": {
-          "const": 4
+          "const": 5
         },
         "defaultVernacular": {
           "type": "string"
@@ -282,7 +330,10 @@
           }
         },
         "baseline": {
-          "type": "object"
+          "$ref": "#/$defs/BaselineToken"
+        },
+        "isStale": {
+          "type": "boolean"
         }
       }
     }

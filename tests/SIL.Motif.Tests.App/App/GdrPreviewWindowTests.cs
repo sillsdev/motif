@@ -14,7 +14,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed class GdrPreviewWindowTests
+public sealed partial class GdrPreviewWindowTests
 {
     private readonly AvaloniaHeadlessFixture _avalonia;
 
@@ -44,6 +44,10 @@ public sealed class GdrPreviewWindowTests
             new GdrStyle("Emphasis", GdrStyleKind.Character,
                 new Dictionary<string, GdrTextProperties> { ["en"] = Props(italic: 1), ["ar"] = Props(italic: 1) }),
             new GdrStyle("Normal", GdrStyleKind.Paragraph,
+                new Dictionary<string, GdrTextProperties> { ["en"] = Props(), ["ar"] = Props() }),
+            new GdrStyle("Quote", GdrStyleKind.Paragraph,
+                new Dictionary<string, GdrTextProperties> { ["en"] = Props(), ["ar"] = Props() }),
+            new GdrStyle("Strong", GdrStyleKind.Character,
                 new Dictionary<string, GdrTextProperties> { ["en"] = Props(), ["ar"] = Props() }),
         ],
         WritingSystems = [new GdrWritingSystem("ar", "rtl", "Segoe UI"), new GdrWritingSystem("en", "ltr", "Segoe UI")],
@@ -485,6 +489,28 @@ public sealed class GdrPreviewWindowTests
         });
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("en")]
+    public void DriftInAnotherFieldOfTheSameObjectIsReportedNotTakenForTheDiscussion(string? ws)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore(new GdrApplyRefusal("The Source changed.", First.Id, ws, "LexSense.Source"));
+            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            window.Field!.Focus();
+            window.KeyTextInput("a");
+
+            Assert.False(Completed(window.ApplyAsync()));
+
+            Assert.Equal("The Source changed.", window.StatusText);
+            Assert.False(window.IsStaleStripShown);
+        });
+    }
+
     private static GdrShowResponse ChangedInFieldWorks(GdrSummary record)
     {
         var canned = Canned(record);
@@ -500,7 +526,7 @@ public sealed class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id));
+            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
             var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
@@ -527,7 +553,7 @@ public sealed class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id));
+            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
             var confirm = false;
             var refused = false;
             var window = new GdrPreviewWindow([First, Second],
@@ -574,13 +600,13 @@ public sealed class GdrPreviewWindowTests
     private (GdrPreviewWindow Window, FakeStore Store, List<CompareWindow> Compared) RefusedForDrift(
         Func<CompareWindow, CompareOutcome?> leave, Func<Task<bool>>? confirm = null)
     {
-        var store = new FakeStore(new GdrApplyRefusal("stale", First.Id)) { RemembersStaged = true };
+        var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field)) { RemembersStaged = true };
         var refused = false;
         var compared = new List<CompareWindow>();
         var window = new GdrPreviewWindow([First, Second],
             id => refused && id == First.Id ? AddedAtTheEndInFieldWorks(First) : Canned(id == First.Id ? First : Second), store,
             confirm ?? (() => Task.FromResult(true)),
-            shown =>
+            compare: shown =>
             {
                 compared.Add(shown);
                 return Task.FromResult(leave(shown));
@@ -606,7 +632,7 @@ public sealed class GdrPreviewWindowTests
                 [new TextParagraphChange(0, "para-1", "Normal", [new TextRun("aWords end at ", "en"), new TextRun("spaces", "en", "Emphasis")])], [],
                 new Dictionary<string, TextParagraphExpected> { ["para-1"] = began });
             var window = new GdrPreviewWindow([First, Second], id => id == First.Id ? AddedAtTheEndInFieldWorks(First) : Canned(Second), store,
-                () => Task.FromResult(true), shown =>
+                () => Task.FromResult(true), compare: shown =>
                 {
                     shown.Finish();
                     return Task.FromResult(shown.Outcome);
@@ -639,6 +665,42 @@ public sealed class GdrPreviewWindowTests
 
             Assert.Empty(compared);
             Assert.Equal(GdrPreviewWindow.NothingToCompareMessage, window.StatusText);
+        });
+    }
+
+    [Fact]
+    public void ComparingKeepsAnUnderlineAddedHereAndEveryLinkInTheText()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field)) { RemembersStaged = true };
+            var unkeyed = WithLinks();
+            var linked = unkeyed with { Discussion = [unkeyed.Discussion[0] with { Key = "para-1" }] };
+            var later = linked with { Discussion = [linked.Discussion[0] with { Runs = [.. linked.Discussion[0].Runs, new GdrRun(" always", "en", null, Props())] }] };
+            var refused = false;
+            var window = new GdrPreviewWindow([First], _ => refused ? later : linked, store, () => Task.FromResult(true), compare: shown =>
+            {
+                Assert.True(shown.Finish());
+                return Task.FromResult(shown.Outcome);
+            });
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(First.Id);
+            Completed(window.Loading);
+            Select(window, 0, 0, "see".Length);
+            Assert.True(window.ToggleUnderline());
+            window.Session!.EndSession();
+            Assert.False(Completed(window.ApplyAsync()));
+            refused = true;
+
+            Assert.True(Completed(window.CompareAsync()), window.StatusText);
+
+            var runs = store.Staged[^1].Paragraphs.Changed.Single().Runs;
+            Assert.Equal("see entry-1 and entry-2 and site always", string.Concat(runs.Select(run => run.Text)));
+            Assert.Equal((TextPropertyNumbers.VariationEnum, TextPropertyNumbers.UnderlineSingle), runs[0].Props!.Ints[TextPropertyNumbers.Underline]);
+            Assert.Equal("see", runs[0].Text);
+            Assert.Equal(["link-1", "link-2", "link-3"], runs.Where(run => run.ObjData is not null).Select(run => run.ObjData));
+            Assert.Equal(1, runs.Single(run => run.Text == "entry-1").Props!.Ints[TextPropertyNumbers.Italic].Value);
         });
     }
 
@@ -849,7 +911,7 @@ public sealed class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id));
+            var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
             var refused = false;
             var window = new GdrPreviewWindow([First, Second],
                 id => refused && id == First.Id ? ChangedInFieldWorks(First) : Canned(id == First.Id ? First : Second), store,

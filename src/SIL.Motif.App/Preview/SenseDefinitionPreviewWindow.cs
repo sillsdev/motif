@@ -199,10 +199,13 @@ public sealed class SenseDefinitionPreviewWindow : Window
         }
         if (refusal is not null)
         {
-            if (refusal is { StaleRecordId: { } owner, StaleWritingSystem: { } ws })
+            if (refusal is { StaleRecordId: { } owner, StaleWritingSystem: { } ws, StaleField: SenseDefinitionStore.Field })
             {
-                _stale.Add(Key(owner, ws));
-                _status.Text = "Nothing was applied.";
+                // The Baseline was recaptured, so a field not open yet finds itself stale when it opens.
+                if (_read() is { } current) _senses = current;
+                var key = Key(owner, ws);
+                if (_opened.ContainsKey(key)) _stale.Add(key);
+                _status.Text = _opened.ContainsKey(key) ? "Nothing was applied." : "Nothing was applied. " + refusal.Message;
                 ShowStrips();
             }
             else
@@ -226,11 +229,11 @@ public sealed class SenseDefinitionPreviewWindow : Window
     public async Task<bool> StartAgainFromFieldWorksAsync()
     {
         if (_store is null || _shownId is not { } senseId) return false;
-        var stale = _stale.Where(key => _opened[key].SenseId == senseId).ToArray();
+        var stale = _stale.Where(key => _opened.TryGetValue(key, out var field) && field.SenseId == senseId).ToArray();
         if (stale.Length == 0 || !await _confirmStartAgain()) return false;
         foreach (var key in stale)
         {
-            var opened = _opened[key];
+            if (!_opened.TryGetValue(key, out var opened)) continue;
             opened.Session.EndSession();
             if (await Staged(key, pending: false, () => _store.DiscardAsync(senseId, opened.Ws)) is not null) return false;
             _stale.Remove(key);
@@ -250,7 +253,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
     public async Task<bool> CompareAsync()
     {
         if (_store is null || _shownId is not { } senseId) return false;
-        var key = _stale.FirstOrDefault(stale => _opened[stale].SenseId == senseId);
+        var key = _stale.FirstOrDefault(stale => _opened.TryGetValue(stale, out var field) && field.SenseId == senseId);
         if (key is null) return false;
         var ws = _opened[key].Ws;
         _opened[key].Session.EndSession();
@@ -271,7 +274,8 @@ public sealed class SenseDefinitionPreviewWindow : Window
         var sense = current.Senses.FirstOrDefault(item => item.Id == senseId);
         var live = sense?.Definition.FirstOrDefault(item => item.WritingSystem == ws)?.Runs ?? [];
         var location = $"the {ws} Definition";
-        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromRichString(pending, live, key), location));
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromRichString(pending, live, key,
+            _opened[key].Discussion.Source.FirstOrDefault()?.Runs.Select(TextVersions.Run).ToArray()), location));
         var shown = _opened[key].Discussion;
         var window = new CompareWindow($"{sense?.Label}, Definition ({ws})", comparison, shown.WritingSystems, shown.Styles,
             checkResult: result => result.Count > 1 ? OneParagraphResultMessage : null);
@@ -404,6 +408,9 @@ public sealed class SenseDefinitionPreviewWindow : Window
         if (alternative is null)
         {
             _opened.Remove(key);
+            _stale.Remove(key);
+            _locked.Remove(key);
+            _refused.Remove(key);
             return;
         }
         opened.Session.Applied();

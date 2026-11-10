@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
@@ -19,12 +20,17 @@ public static class GdrQuery
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            if (request.ExpectedBaseline is { } expected && expected != baseline?.Token) return BaselineChanged<GdrListResponse>();
             if (baseline is null) return CommandOutcome<GdrListResponse>.Success(new(false, []));
             if (!File.Exists(baseline.FwDataPath)) return BaselineUnavailable<GdrListResponse>();
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
             try
             {
-                return CommandOutcome<GdrListResponse>.Success(new(true, GdrReader.List(reader.Cache)) { Baseline = baseline.Token });
+                return CommandOutcome<GdrListResponse>.Success(new(true, GdrReader.List(reader.Cache))
+                {
+                    Baseline = baseline.Token,
+                    IsStale = IsStale(project, baseline),
+                });
             }
             catch (GdrRefusalException refused)
             {
@@ -33,7 +39,7 @@ public static class GdrQuery
         });
     }
 
-    /// <summary>Reads one record's Discussion with the styles and writing systems it uses.</summary>
+    /// <summary>Reads one record's Discussion with the project's styles and writing systems and any others it uses.</summary>
     public static CommandOutcome<GdrShowResponse> Show(GdrShowRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -43,15 +49,16 @@ public static class GdrQuery
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            if (request.ExpectedBaseline is { } expected && expected != baseline?.Token) return BaselineChanged<GdrShowResponse>();
             if (baseline is null) return NoBaseline<GdrShowResponse>();
             if (!File.Exists(baseline.FwDataPath)) return BaselineUnavailable<GdrShowResponse>();
             using var reader = BaselineReadCache.Open(baseline.FwDataPath);
             try
             {
-                var shown = GdrReader.Show(reader.Cache, id);
+                var shown = GdrReader.Show(reader.Cache, id, Path.GetFileNameWithoutExtension(request.ProjectPath));
                 return shown is null
                     ? NotFound<GdrShowResponse>(id)
-                    : CommandOutcome<GdrShowResponse>.Success(shown with { Baseline = baseline.Token });
+                    : CommandOutcome<GdrShowResponse>.Success(shown with { Baseline = baseline.Token, IsStale = IsStale(project, baseline) });
             }
             catch (GdrRefusalException refused)
             {
@@ -59,6 +66,15 @@ public static class GdrQuery
             }
         });
     }
+
+    // Saved since the capture: the records shown may no longer be what FieldWorks holds.
+    private static bool IsStale(ProjectLocator project, BaselineRecord baseline) =>
+        File.Exists(project.FullFwDataPath) &&
+        new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero) > baseline.SourceLastWriteUtc;
+
+    private static CommandOutcome<T> BaselineChanged<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
+        RefusalCodes.GdrBaselineChanged, FailureReason.Refused,
+        "The Baseline changed before this record was read. Refresh and try again."));
 
     private static CommandOutcome<T> EmptyId<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
         RefusalCodes.GdrEmptyId, FailureReason.InvalidArgument, "Name a Grammar Design Record, for example GDR-1."));

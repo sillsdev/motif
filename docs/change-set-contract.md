@@ -743,7 +743,8 @@ It sits in the `text` group beside `text/setParagraphs`. `target` is the object 
   the parser neither references nor is known to reach (a reach still unconfirmed keeps a field out), except
   `StTxtPara.Contents`, `WfiMorphBundle.Form` and `RnGenericRec.Title`, which other kinds own. A field the target's class does not have is refused when it is staged.
 - **`ws`** is the alternative's writing-system tag. It is required for a MultiString field and refused for a String
-  field. The slot is `(target, field, ws)`, named as the generated kinds name it where one edits the same field, such as
+  field. When an edit is staged, it and each run's tag are rewritten as the project spells them, so `EN` and `en` name
+  one alternative; a tag the project lacks is refused. The slot is `(target, field, ws)`, named as the generated kinds name it where one edits the same field, such as
   `lexical/lexSense/setDefinition`, so a Draft cannot hold both edits of one alternative. A later edit of the same
   alternative replaces the earlier one; an editor carries the first edit's `expected` forward, so drift is measured
   from where the person began. Taking one alternative's edit out leaves the field's other alternatives' edits.

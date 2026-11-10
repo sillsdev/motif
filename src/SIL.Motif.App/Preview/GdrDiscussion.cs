@@ -8,7 +8,8 @@ namespace SIL.Motif.App.Preview;
 
 /// <summary>
 /// What a <c>gdr show</c> response becomes for a text field: the Discussion as a document, the project's styles as a
-/// resolver, and the project's writing systems as a registry. Nothing here reads a project.
+/// resolver and as the choices an edit offers, and the project's writing systems as a registry. Nothing here reads a
+/// project.
 /// </summary>
 public sealed class GdrDiscussion
 {
@@ -22,11 +23,12 @@ public sealed class GdrDiscussion
 
     private const int RightToLeft = 128;
 
-    private readonly IReadOnlyDictionary<string, PropertyBag> _linkProps;
+    private readonly Dictionary<string, PropertyBag> _linkProps;
 
     private GdrDiscussion(TextDocument document, IStyleResolver styles, WritingSystemRegistry writingSystems,
         IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> targets,
-        IReadOnlyDictionary<string, TextParagraphExpected> expected, IReadOnlyDictionary<string, PropertyBag> linkProps)
+        IReadOnlyDictionary<string, TextParagraphExpected> expected, Dictionary<string, PropertyBag> linkProps,
+        GdrShowResponse response)
     {
         Document = document;
         Styles = styles;
@@ -34,6 +36,40 @@ public sealed class GdrDiscussion
         Targets = targets;
         Expected = expected;
         _linkProps = linkProps;
+        ParagraphStyles = response.Styles.Where(style => style.Kind == GdrStyleKind.Paragraph).Select(style => style.Name).ToArray();
+        CharacterStyles = response.Styles.Where(style => style.Kind == GdrStyleKind.Character).Select(style => style.Name).ToArray();
+        WritingSystemChoices = response.WritingSystems;
+        Source = response.Discussion;
+    }
+
+    /// <summary>The paragraphs as the project returned them, before this view laid them out.</summary>
+    public IReadOnlyList<GdrParagraph> Source { get; }
+
+    /// <summary>The project's paragraph styles, which an edit may give a paragraph.</summary>
+    public IReadOnlyList<string> ParagraphStyles { get; }
+
+    /// <summary>The project's character styles, which an edit may give a run.</summary>
+    public IReadOnlyList<string> CharacterStyles { get; }
+
+    /// <summary>The project's writing systems, which an edit may give a run or type in.</summary>
+    public IReadOnlyList<GdrWritingSystem> WritingSystemChoices { get; }
+
+    /// <summary>The character style FieldWorks gives a link, which a new link carries when the project has it.</summary>
+    public const string HyperlinkStyle = "Hyperlink";
+
+    /// <summary>
+    /// A run that links to a project object, shown as this view shows links; the project receives it with its writing
+    /// system, <paramref name="objData"/> and, when the project has it, the <see cref="HyperlinkStyle"/> character style.
+    /// </summary>
+    public Run LinkRun(string text, string ws, string objData)
+    {
+        var stored = new PropertyBag();
+        if (CharacterStyles.Contains(HyperlinkStyle, StringComparer.Ordinal)) stored.SetStr(TextPropertyNumbers.NamedStyle, HyperlinkStyle);
+        _linkProps.TryAdd(objData, stored);
+        var props = stored.Clone();
+        props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
+        props.SetInt(TextPropertyNumbers.ForeColor, LinkColor, 0);
+        return new Run { Ws = ws, Text = text, Props = props, ObjData = objData };
     }
 
     /// <summary>What each stored paragraph held as the project returned it, by key: what an edit of it began from.</summary>
@@ -142,7 +178,7 @@ public sealed class GdrDiscussion
         foreach (var system in response.WritingSystems)
             writingSystems.Add(WritingSystemRegistry.Define(system.Tag, system.DefaultFont, WritingSystemSizePoints,
                 rtl: system.Direction == "rtl"));
-        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, linkProps);
+        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, linkProps, response);
     }
 
     private static PropertyBag Bag(GdrTextProperties properties)

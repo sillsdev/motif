@@ -27,9 +27,10 @@ public interface IGdrEditStore
 /// <summary>
 /// Why Apply wrote nothing. <paramref name="StaleRecordId"/> names an object whose text changed in FieldWorks since its
 /// edit began, and <paramref name="StaleWritingSystem"/> the alternative when the field has several; the Baseline is
-/// recaptured then too, so the object reads as it now is.
+/// recaptured then too, so the object reads as it now is. <paramref name="StaleField"/> is the field, as <c>Class.Field</c>.
 /// </summary>
-public sealed record GdrApplyRefusal(string Message, string? StaleRecordId = null, string? StaleWritingSystem = null);
+public sealed record GdrApplyRefusal(string Message, string? StaleRecordId = null, string? StaleWritingSystem = null,
+    string? StaleField = null);
 
 /// <summary>A read of a record's edit in the Draft: the edit, or null for none, unless <paramref name="Refusal"/> says why it failed.</summary>
 public sealed record GdrPendingRead(TextParagraphsPayload? Paragraphs, string? Refusal = null);
@@ -76,7 +77,7 @@ public sealed class GdrEditStore(string projectPath, string? managedRoot = null,
         var captured = Capture();
         if (!applied.Succeeded)
             return new GdrApplyRefusal(applied.Refusal!.Message, applied.Refusal.Facts.GetValueOrDefault("owner"),
-                applied.Refusal.Facts.GetValueOrDefault("ws"));
+                applied.Refusal.Facts.GetValueOrDefault("ws"), applied.Refusal.Facts.GetValueOrDefault("field"));
         return captured.Succeeded ? null : new GdrApplyRefusal(captured.Refusal!.Message);
     });
 

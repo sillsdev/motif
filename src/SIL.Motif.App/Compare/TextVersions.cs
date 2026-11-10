@@ -78,13 +78,18 @@ public sealed record TextVersions(
     /// The three versions of a StText field: the person's <paramref name="edit"/> (a <c>text/setParagraphs</c> payload)
     /// and the field as FieldWorks now holds it, <paramref name="live"/>. A paragraph the edit did not touch is the
     /// FieldWorks one on every side, since the edit does not remember it; one FieldWorks has since removed is left out.
+    /// <paramref name="remembered"/> are the paragraphs as the editing session began, when the window still holds them; one
+    /// whose runs match the edit's fingerprint is its start even when both sides have since changed.
     /// </summary>
-    public static TextVersions FromParagraphs(TextParagraphsPayload edit, IReadOnlyList<GdrParagraph> live)
+    public static TextVersions FromParagraphs(TextParagraphsPayload edit, IReadOnlyList<GdrParagraph> live,
+        IEnumerable<ParagraphVersion>? remembered = null)
     {
         ArgumentNullException.ThrowIfNull(edit);
         ArgumentNullException.ThrowIfNull(live);
         var fieldWorks = live.Select(Paragraph).ToArray();
         var byKey = fieldWorks.Where(paragraph => paragraph.Key is not null).ToDictionary(paragraph => paragraph.Key!, StringComparer.Ordinal);
+        var began = (remembered ?? []).Where(paragraph => paragraph.Key is not null)
+            .GroupBy(paragraph => paragraph.Key!, StringComparer.Ordinal).ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         var changed = edit.Changed.ToDictionary(change => change.Index);
         var mine = new List<ParagraphVersion>();
         var starting = new List<StartingParagraph>();
@@ -104,7 +109,7 @@ public sealed record TextVersions(
         {
             var ownVersion = mine.FirstOrDefault(paragraph => paragraph.Key == key);
             starting.Add(new StartingParagraph(key, expected.Text, expected.Style,
-                Exact(expected.Text, expected.Style, expected.Runs, byKey.GetValueOrDefault(key), ownVersion)));
+                Exact(expected.Text, expected.Style, expected.Runs, byKey.GetValueOrDefault(key), ownVersion, began.GetValueOrDefault(key))));
         }
         return new TextVersions(starting, mine, fieldWorks);
     }
@@ -113,21 +118,24 @@ public sealed record TextVersions(
     /// The three versions of one formatted string, or one writing system's alternative of a MultiString: the person's
     /// <paramref name="edit"/> and the runs FieldWorks now holds, <paramref name="live"/>, as one paragraph keyed <paramref name="key"/>.
     /// </summary>
-    public static TextVersions FromRichString(TextRichStringPayload edit, IReadOnlyList<GdrRun> live, string key)
+    public static TextVersions FromRichString(TextRichStringPayload edit, IReadOnlyList<GdrRun> live, string key,
+        IReadOnlyList<TextRun>? remembered = null)
     {
         ArgumentNullException.ThrowIfNull(edit);
         ArgumentNullException.ThrowIfNull(live);
         var fieldWorks = new ParagraphVersion(key, "", TextProps.None, live.Select(Run).ToArray());
         var mine = new ParagraphVersion(key, "", TextProps.None, edit.Runs);
         var starting = new StartingParagraph(key, edit.Expected.Text, "",
-            Exact(edit.Expected.Text, "", edit.Expected.Runs, fieldWorks, mine));
+            Exact(edit.Expected.Text, "", edit.Expected.Runs, fieldWorks, mine,
+                remembered is null ? null : new ParagraphVersion(key, "", TextProps.None, remembered)));
         return new TextVersions([starting], [mine], [fieldWorks]);
     }
 
     // The starting runs are whichever side's runs still match the remembered fingerprint, if either does.
-    private static ParagraphVersion? Exact(string text, string style, string digest, ParagraphVersion? fieldWorks, ParagraphVersion? mine)
+    private static ParagraphVersion? Exact(string text, string style, string digest, ParagraphVersion? fieldWorks, ParagraphVersion? mine,
+        ParagraphVersion? remembered)
     {
-        foreach (var side in new[] { fieldWorks, mine })
+        foreach (var side in new[] { fieldWorks, mine, remembered })
             if (side is not null && side.Style == style && Same(side.Text, text) && Digest(side.Runs) == digest) return side;
         return null;
     }
