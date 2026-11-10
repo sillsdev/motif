@@ -91,14 +91,15 @@ discarding the Draft leaves it as it was.
 _Avoid_: state, closed-out, archived, cancelled
 
 **Rationale**:
-A Proposal's account of what it changes and why, in Markdown, written and revised by people and agents while the
-Proposal is open. Finalize requires it. It records the Proposal content it was written for, so a reader can see when
+A Proposal's account of what it changes and why, in FieldWorks Markdown, written and revised by people and agents
+while the Proposal is open. Finalize requires it, with no checker findings; once Ready, a revision with findings is
+refused and the last clean one stays (ADR 0099). It records the Proposal content it was written for, so a reader can see when
 later changes have left it out of date. Its earlier versions are kept until the Proposal is decided, then dropped; the
 latest stays, frozen. A reply belongs in a **Comment**.
 _Avoid_: description (that is Help text), summary, commit message
 
 **Comment**:
-A remark attached to a Proposal, shown under its Rationale. A Proposal can have many and they can grow. People can add,
+A remark attached to a Proposal, shown under its Rationale, in FieldWorks Markdown; its findings never block. A Proposal can have many and they can grow. People can add,
 edit and delete any Comment; an agent can only add its own, attributed to it, and cannot change or remove one. Comments
 freeze when the Proposal is decided. The window also records, as a Comment, which choice a person made for a change
 that no longer fits. A Comment is a label for readers, not an approval.
