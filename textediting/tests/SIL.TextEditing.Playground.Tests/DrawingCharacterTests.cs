@@ -174,10 +174,11 @@ namespace SIL.TextEditing.Playground.Tests
         });
 
         /// <summary>The ink runs (start, length) along the row below the letters of a run, where its underline is.</summary>
-        static List<int> UnderlineSegments(DrawingParagraphTests.Shot shot, Rect box)
+        static List<int> UnderlineSegments(DrawingParagraphTests.Shot shot, Rect box, double baseline)
         {
+            // From the baseline row down: above it are the letters, and a font whose underline sits close under the baseline must not be mistaken for them.
             int bestRow = -1, best = 0;
-            for (int y = (int)(box.Y + box.Height * 0.75); y < box.Bottom + 3; y++)
+            for (int y = (int)System.Math.Round(baseline); y < box.Bottom + 3; y++)
             {
                 int n = 0;
                 for (int x = (int)box.X + 1; x < box.Right - 1; x++) if (shot.IsInk(x, y, 220)) n++;
@@ -201,9 +202,15 @@ namespace SIL.TextEditing.Playground.Tests
             using (var s = new Session(Scenarios.Drawing))
             {
                 var shot = new DrawingParagraphTests.Shot(s);
-                var dashed = UnderlineSegments(shot, BoxOf(s, 4, "dashed"));
-                var dotted = UnderlineSegments(shot, BoxOf(s, 4, "dotted"));
-                var dbl = UnderlineSegments(shot, BoxOf(s, 4, "double"));
+                double Baseline(string token)
+                {
+                    var pl = s.Field.ParagraphLayoutFor(4);
+                    var li = pl.Lines[pl.LineIndexOf(s.ParagraphText(4).IndexOf(token, System.StringComparison.Ordinal))];
+                    return s.Field.ParagraphTop(4) + li.TextY + li.Line.Baseline;
+                }
+                var dashed = UnderlineSegments(shot, BoxOf(s, 4, "dashed"), Baseline("dashed"));
+                var dotted = UnderlineSegments(shot, BoxOf(s, 4, "dotted"), Baseline("dotted"));
+                var dbl = UnderlineSegments(shot, BoxOf(s, 4, "double"), Baseline("double"));
                 Assert.True(dashed.Count >= 3, "dashed: " + string.Join(",", dashed));
                 Assert.Contains(dashed, n => n >= 5);
                 Assert.True(dotted.Count >= dashed.Count, "dotted: " + string.Join(",", dotted));
@@ -258,7 +265,8 @@ namespace SIL.TextEditing.Playground.Tests
 
         // Justification is the one drawing property not drawn yet (an ADR 0005 exception tracked as an issue; it is pinned in DrawingParagraphTests).
 
-        static bool IsRed(DrawingParagraphTests.Shot shot, int x, int y) { var c = shot.At(x, y); return c.R > 200 && c.G < 90 && c.B < 90; }
+        // (A thin wave's crests are anti-aliased to pale red, so pale red counts.)
+        static bool IsRed(DrawingParagraphTests.Shot shot, int x, int y) { var c = shot.At(x, y); return c.R > 200 && c.G < 170 && c.B < 170 && c.R - c.G > 80; }
 
         /// <summary>For each column of the box that has red ink in the rows below the baseline, the topmost such row; and the number of red
         /// pixels in the rows above the baseline.</summary>
@@ -273,7 +281,8 @@ namespace SIL.TextEditing.Playground.Tests
             int above = 0;
             for (int x = (int)x0 + 1; x < (int)x1 - 1; x++)
             {
-                for (int y = baseline - 14; y < baseline; y++) if (IsRed(shot, x, y)) above++;   // (the line above has its own squiggle further up)
+                // (The line above has its own squiggle further up: at most 6 rows under its baseline, one line height above this one.)
+                for (int y = System.Math.Max(baseline - 14, baseline - (int)System.Math.Ceiling(li.Line.Height) + 7); y < baseline; y++) if (IsRed(shot, x, y)) above++;
                 for (int y = baseline; y < baseline + 12; y++) if (IsRed(shot, x, y)) { tops.Add(y - baseline); break; }
             }
             return (tops, above, System.Math.Max(0, (int)x1 - 1 - ((int)x0 + 1)));
@@ -299,7 +308,10 @@ namespace SIL.TextEditing.Playground.Tests
                 int upP = InkBottomRow(shot, BoxOf(s, 5, ": up", 3, 1)), plainP = InkBottomRow(shot, BoxOf(s, 5, "pt", 0, 1));
                 Assert.InRange(plainP - upP, 3, 5);
                 // (The o, whose bowl is dark in the middle of its box wherever the letter falls between pixels, and not the n, whose stems are at its edges.)
-                int downN = InkBottomRow(shot, BoxOf(s, 5, "down", 1, 1)), plainN = InkBottomRow(shot, BoxOf(s, 5, "ordinary run", 0, 1));
+                // The plain o must be on the same line as the lowered one; where the words wrap depends on the font, so take the nearest plain o that is.
+                int downLine = paragraph.LineIndexOf(text.IndexOf("down", System.StringComparison.Ordinal) + 1);
+                var plainO = new[] { ("lowered", 1), ("ordinary run", 0) }.First(c => paragraph.LineIndexOf(text.IndexOf(c.Item1, System.StringComparison.Ordinal) + c.Item2) == downLine);
+                int downN = InkBottomRow(shot, BoxOf(s, 5, "down", 1, 1)), plainN = InkBottomRow(shot, BoxOf(s, 5, plainO.Item1, plainO.Item2, 1));
                 Assert.InRange(downN - plainN, 3, 5);
             }
         });

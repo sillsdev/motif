@@ -47,10 +47,24 @@ public sealed class TunnelProcessRegistry(string directory)
     /// <summary>Records the actual child executable and start time under the owning app's identity.</summary>
     public void Record(int ownerPid, long ownerStart, Process tunnel, int pgid = 0, long leaderStart = 0, string bundledDirectory = "")
     {
+        var executable = ExecutablePath(tunnel);
         using var guard = Acquire();
-        var executable = tunnel.MainModule?.FileName ?? throw new InvalidOperationException();
         var record = new TunnelProcessRecord(ownerPid, ownerStart, tunnel.Id, TunnelProcessIdentity.Start(tunnel), executable, pgid, leaderStart, bundledDirectory);
         Write(record);
+    }
+
+    // A child still inside exec has no readable path; Process caches that.
+    private static string ExecutablePath(Process tunnel)
+    {
+        var wait = Stopwatch.StartNew();
+        while (true)
+        {
+            var path = tunnel.MainModule?.FileName;
+            if (path is not null) return path;
+            if (tunnel.HasExited || wait.Elapsed > TimeSpan.FromSeconds(5)) throw new InvalidOperationException();
+            Thread.Sleep(10);
+            tunnel.Refresh();
+        }
     }
 
     /// <summary>Persists group ownership before the tunnel child is started.</summary>

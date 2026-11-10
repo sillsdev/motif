@@ -22,6 +22,7 @@ namespace SIL.TextEditing.Playground.Tests
         /// <summary>The middle of the first picture in a paragraph, in window coordinates.</summary>
         static Point PointOnPicture(Session s, int paragraph)
         {
+            s.Settle();
             var centre = s.Field.ParagraphLayoutFor(paragraph).ObjectRects().First().Key.Center;
             return s.Field.TranslatePoint(new Point(centre.X, s.Field.ParagraphTop(paragraph) + centre.Y), TopLevel.GetTopLevel(s.Field)!)!.Value;
         }

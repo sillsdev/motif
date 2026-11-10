@@ -38,7 +38,7 @@ public sealed class ChatGptSetupTests
         var run = new FakeProcess(complete: false, "{\"msg\":\"poll failed; backing off\",\"error\":\"private-key\"}\n");
         using var client = new TunnelClient("fake-tunnel", "/installed/motif", _ => ++calls == 1 ? init : run);
         await client.ConnectAsync("private-key", "tunnel-id");
-        await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => client.Status == TunnelStatus.Error);
+        await UntilAsync(() => client.Status == TunnelStatus.Error);
         Assert.Equal(TunnelStatus.Error, client.Status);
     }
 
@@ -54,7 +54,7 @@ public sealed class ChatGptSetupTests
             return starts.Count == 1 ? init : run;
         });
         await client.ConnectAsync("private-key", "tunnel-id");
-        await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => client.Status == TunnelStatus.Connected);
+        await UntilAsync(() => client.Status == TunnelStatus.Connected);
 
         Assert.All(starts, start => Assert.Equal("/installed/motif", start.FileName));
         Assert.All(starts, start => Assert.Equal("tunnel-supervise", start.ArgumentList[0]));
@@ -111,7 +111,7 @@ public sealed class ChatGptSetupTests
         try
         {
             process.StandardInput.Close();
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => process.HasExited);
+            await UntilAsync(() => process.HasExited);
             Assert.True(process.ExitCode == 0, await stderr);
         }
         finally { if (!process.HasExited) process.Kill(entireProcessTree: true); }
@@ -133,7 +133,7 @@ public sealed class ChatGptSetupTests
         {
             using var client = new TunnelClient(executable, SIL.Motif.Tests.TestFixtures.BuildOutput.Cli, stateDirectory: directory);
             await client.ConnectAsync("private-key", "tunnel-id");
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => client.Status is TunnelStatus.Connected or TunnelStatus.Error);
+            await UntilAsync(() => client.Status is TunnelStatus.Connected or TunnelStatus.Error);
             Assert.Equal(TunnelStatus.Connected, client.Status);
             client.Disconnect();
             Assert.Equal(TunnelStatus.NotConnected, client.Status);
@@ -157,7 +157,7 @@ public sealed class ChatGptSetupTests
             Assert.False(tunnel.HasExited);
             owner.Kill();
             await owner.WaitForExitAsync();
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => supervisor.HasExited && tunnel.HasExited);
+            await UntilAsync(() => supervisor.HasExited && tunnel.HasExited);
             Assert.Single(Directory.EnumerateFiles(directory, "tunnel-*.json"));
             new TunnelProcessRegistry(directory).ForgetGroup(record.OwnerPid, record.OwnerStart, record.Pgid, record.LeaderStart);
             Assert.Empty(Directory.EnumerateFiles(directory, "tunnel-*.json"));
@@ -184,7 +184,7 @@ public sealed class ChatGptSetupTests
             var record = await ReadRecordAsync(directory, supervisor);
             tunnel = Process.GetProcessById(record.TunnelPid);
             supervisor.StandardInput.Close();
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => supervisor.HasExited && tunnel.HasExited);
+            await UntilAsync(() => supervisor.HasExited && tunnel.HasExited);
             Assert.Single(Directory.EnumerateFiles(directory, "tunnel-*.json"));
             new TunnelProcessRegistry(directory).ForgetGroup(record.OwnerPid, record.OwnerStart, record.Pgid, record.LeaderStart);
             Assert.Empty(Directory.EnumerateFiles(directory, "tunnel-*.json"));
@@ -235,6 +235,14 @@ public sealed class ChatGptSetupTests
         }
     }
 
+    // A saturated machine slows process starts 3-10x.
+    private static readonly TimeSpan ProcessDeadline = TimeSpan.FromSeconds(120);
+
+    private static Task UntilAsync(Func<bool> condition, string? why = null, TimeSpan? timeout = null, Func<string>? detail = null,
+        [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(condition))] string conditionText = "") =>
+        SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(condition, why ?? "Timed out waiting for " + conditionText,
+            timeout ?? ProcessDeadline, detail);
+
     [LinuxFact]
     public async Task KillingSupervisorThenDisconnectStopsItsEntireGroup()
     {
@@ -261,14 +269,19 @@ public sealed class ChatGptSetupTests
         {
             using var client = new TunnelClient(executable, SIL.Motif.Tests.TestFixtures.BuildOutput.Cli, stateDirectory: directory);
             await client.ConnectAsync("private-key", "tunnel-id");
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => client.Status == TunnelStatus.Connected && File.Exists(marker));
+            // Two cold apphost starts come before the first line; measured 3-4x slower on a saturated machine.
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            await UntilAsync(() => client.Status == TunnelStatus.Connected && File.Exists(marker),
+                "the tunnel to report Connected and its child to write the marker", null,
+                () => $"status {client.Status}, marker {(File.Exists(marker) ? "written" : "missing")}, after {started.Elapsed.TotalSeconds:F1} s");
             var path = Directory.EnumerateFiles(directory, "tunnel-*.json").Single();
             record = System.Text.Json.JsonSerializer.Deserialize<TunnelProcessRecord>(await File.ReadAllTextAsync(path))!;
             using var supervisor = Process.GetProcessById(record.Pgid);
             supervisor.Kill();
             await supervisor.WaitForExitAsync();
             client.Disconnect();
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => !TunnelUnixGroup.HasMembers(record.Pgid));
+            await UntilAsync(() => !TunnelUnixGroup.HasMembers(record.Pgid),
+                "the whole group to be gone after the supervisor was killed");
             Assert.Empty(Directory.EnumerateFiles(directory, "tunnel-*.json"));
         }
         finally
@@ -297,16 +310,16 @@ public sealed class ChatGptSetupTests
         try
         {
             record = await ReadRecordAsync(directory, supervisor);
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => File.Exists(marker));
+            await UntilAsync(() => File.Exists(marker));
             using var child = Process.GetProcessById(int.Parse(await File.ReadAllTextAsync(marker)));
             Assert.False(child.HasExited);
             new TunnelProcessRegistry(directory).ForgetGroup(record.OwnerPid, record.OwnerStart, record.Pgid, record.LeaderStart);
             Assert.Single(Directory.EnumerateFiles(directory, "tunnel-*.json"));
             await File.WriteAllTextAsync(release, string.Empty);
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() =>
+            await UntilAsync(() =>
                 !TunnelProcessRegistry.IsOwnerAlive(record.TunnelPid, record.TunnelStart));
             Assert.Single(Directory.EnumerateFiles(directory, "tunnel-*.json"));
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => supervisor.HasExited && !TunnelUnixGroup.HasMembers(record.Pgid));
+            await UntilAsync(() => supervisor.HasExited && !TunnelUnixGroup.HasMembers(record.Pgid));
             Assert.Single(Directory.EnumerateFiles(directory, "tunnel-*.json"));
             new TunnelProcessRegistry(directory).ForgetGroup(record.OwnerPid, record.OwnerStart, record.Pgid, record.LeaderStart);
             Assert.Empty(Directory.EnumerateFiles(directory, "tunnel-*.json"));
@@ -343,7 +356,7 @@ public sealed class ChatGptSetupTests
         try
         {
             var leaderStart = TunnelProcessIdentity.Start(leader);
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => File.Exists(marker));
+            await UntilAsync(() => File.Exists(marker));
             child = Process.GetProcessById(int.Parse(await File.ReadAllTextAsync(marker)));
             registry.RecordLeader(owner.Id, TunnelProcessIdentity.Start(owner) + 1, leader.Id, leaderStart + 1,
                 TunnelUnixGroup.CanonicalDirectory(bundle));
@@ -391,10 +404,10 @@ public sealed class ChatGptSetupTests
         try
         {
             var leaderStart = TunnelProcessIdentity.Start(leader);
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => File.Exists(marker) && File.Exists(unrelatedMarker));
+            await UntilAsync(() => File.Exists(marker) && File.Exists(unrelatedMarker));
             unrelated = Process.GetProcessById(int.Parse(await File.ReadAllTextAsync(unrelatedMarker)));
             child = Process.GetProcessById(int.Parse(await File.ReadAllTextAsync(marker)));
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() =>
+            await UntilAsync(() =>
                 File.ResolveLinkTarget($"/proc/{child.Id}/exe", true)?.FullName == executable);
             registry.RecordLeader(owner.Id, TunnelProcessIdentity.Start(owner) + 1, leader.Id, leaderStart,
                 TunnelUnixGroup.CanonicalDirectory(bundle));
@@ -402,7 +415,7 @@ public sealed class ChatGptSetupTests
             await leader.WaitForExitAsync();
             Assert.False(child.HasExited);
             registry.Recover();
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => child.HasExited);
+            await UntilAsync(() => child.HasExited);
             Assert.False(unrelated.HasExited);
             Assert.Empty(Directory.EnumerateFiles(directory, "tunnel-*.json"));
         }
@@ -429,7 +442,7 @@ public sealed class ChatGptSetupTests
             tunnel = Process.GetProcessById(record.TunnelPid);
             supervisor.Kill();
             await supervisor.WaitForExitAsync();
-            await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() => tunnel.HasExited);
+            await UntilAsync(() => tunnel.HasExited);
         }
         finally
         {
@@ -456,7 +469,7 @@ public sealed class ChatGptSetupTests
 
     private static async Task<TunnelProcessRecord> ReadRecordAsync(string directory, Process supervisor)
     {
-        await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(() =>
+        await UntilAsync(() =>
         {
             var path = Directory.EnumerateFiles(directory, "tunnel-*.json").FirstOrDefault();
             return supervisor.HasExited || path is not null &&

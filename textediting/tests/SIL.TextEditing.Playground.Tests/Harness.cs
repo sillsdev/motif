@@ -61,9 +61,22 @@ namespace SIL.TextEditing.Playground.Tests
         {
             View = new PlaygroundView(scenario, developerMode);
             _window = new Window { Width = width, Height = height, Content = View };
+            // The developer toolbar wraps by the width of its labels, which depends on the machine's fonts: a label that fills in at the first
+            // click would add a row and move the field under a mouse event already on its way. Reserve its width so the layout is the same
+            // before and after, whichever font the machine falls back on.
+            var selection = View.GetLogicalDescendants().OfType<TextBlock>().FirstOrDefault(t => t.Name == PlaygroundView.Names.SelectionLabel);
+            if (selection != null) selection.MinWidth = 220;
             _window.Show();
             Headless.Pump();
             Field.Focus();
+            Headless.Pump();
+            Settle();
+        }
+
+        /// <summary>Runs any layout pass still pending, so a point computed from the controls' bounds is where the next mouse event lands.</summary>
+        public void Settle()
+        {
+            _window.UpdateLayout();
             Headless.Pump();
         }
 
@@ -123,6 +136,7 @@ namespace SIL.TextEditing.Playground.Tests
         /// <summary>The middle of the character at a model index, in the coordinates of the window.</summary>
         public Point PointAt(int paragraph, int index)
         {
+            Settle();
             var pl = Field.ParagraphLayoutFor(paragraph);
             var li = pl.Lines[pl.LineIndexOf(index)];
             double x0 = li.Line.GetDistanceFromCharacterHit(new CharacterHit(index)), x1 = li.Line.GetDistanceFromCharacterHit(new CharacterHit(index, 1));

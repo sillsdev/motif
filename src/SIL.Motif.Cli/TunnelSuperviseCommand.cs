@@ -11,7 +11,7 @@ internal static class TunnelSuperviseCommand
         if (args.Length < 9 || args[0] != "--owner-pid" || !int.TryParse(args[1], out var ownerPid) ||
             args[2] != "--owner-start" || !long.TryParse(args[3], out var ownerStart) ||
             args[4] != "--executable" || args[6] != "--state-dir" || args[8] != "--") return 1;
-        if (!TunnelProcessRegistry.IsOwnerAlive(ownerPid, ownerStart)) return 1;
+        if (!TunnelProcessRegistry.IsOwnerAlive(ownerPid, ownerStart)) return Fail("the owner is not running");
         Microsoft.Win32.SafeHandles.SafeFileHandle? job = null;
         Process? child = null;
         var registry = new TunnelProcessRegistry(args[7]);
@@ -31,7 +31,7 @@ internal static class TunnelSuperviseCommand
                 leaderStart = TunnelProcessIdentity.Start(leader);
                 registry.RecordLeader(ownerPid, ownerStart, leader.Id, leaderStart, bundledDirectory);
             }
-            if (!TunnelProcessRegistry.IsOwnerAlive(ownerPid, ownerStart)) return 1;
+            if (!TunnelProcessRegistry.IsOwnerAlive(ownerPid, ownerStart)) return Fail("the owner stopped before the tunnel started");
             var start = new ProcessStartInfo(args[5]) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true };
             foreach (var argument in args[9..]) start.ArgumentList.Add(argument);
             start.Environment.Remove("ICU_DATA");
@@ -65,7 +65,7 @@ internal static class TunnelSuperviseCommand
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException or
             System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
         {
-            return 1;
+            return Fail(error.ToString());
         }
         finally
         {
@@ -90,6 +90,12 @@ internal static class TunnelSuperviseCommand
             }
             GC.KeepAlive(job);
         }
+    }
+
+    private static int Fail(string reason)
+    {
+        Console.Error.WriteLine("tunnel-supervise: " + reason);
+        return 1;
     }
 
     private static async Task WaitForInputClosedAsync()

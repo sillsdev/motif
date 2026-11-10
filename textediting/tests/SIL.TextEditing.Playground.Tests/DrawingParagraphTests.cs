@@ -64,7 +64,7 @@ namespace SIL.TextEditing.Playground.Tests
                     for (int i = 0; i < pl.Lines.Count; i++)
                     {
                         var li = pl.Lines[i];
-                        var columns = shot.InkColumns(0, shot.Width, top + li.TextY + 1, top + li.TextY + li.Line.Height - 1);
+                        var columns = shot.InkColumns(0, shot.Width, top + li.TextY + 1, top + li.TextY + li.Line.Height - 1, 200);   // (a thin stem at the edge is light grey)
                         Assert.NotEmpty(columns);
                         if (i < pl.Lines.Count - 1)
                         {
@@ -100,7 +100,7 @@ namespace SIL.TextEditing.Playground.Tests
                 var li = pl.Lines[0];
                 // The row of the underline is the one under the baseline with the most ink.
                 int baseline = (int)System.Math.Round(top + li.TextY + li.Line.Baseline), best = 0, row = -1;
-                for (int y = baseline + 1; y < baseline + 8; y++)
+                for (int y = baseline - 1; y < baseline + 8; y++)   // (a font's underline can sit right on the baseline)
                 {
                     int n = 0;
                     for (int x = (int)pl.ContentLeft; x < (int)(pl.ContentLeft + pl.ContentWidth); x++) if (shot.IsInk(x, y, 200)) n++;
@@ -120,8 +120,15 @@ namespace SIL.TextEditing.Playground.Tests
                 foreach (int p in new[] { Justified, ArabicJustified })
                 {
                     var pl = s.Field.ParagraphLayoutFor(p);
+                    // A caret edge inside a ligature (fi) is not a place a click can land, so move on to the next offset that has its own edge.
+                    int Own(LineInfo li, int offset)
+                    {
+                        double X(int o) => pl.CaretRect(o).X;
+                        while (offset < li.End - 1 && (Math.Abs(X(offset) - X(offset - 1)) < 0.5 || Math.Abs(X(offset) - X(offset + 1)) < 0.5)) offset++;
+                        return offset;
+                    }
                     foreach (var li in pl.Lines)
-                        foreach (int offset in new[] { li.Start + 1, (li.Start + pl.TextEnd(li)) / 2, pl.TextEnd(li) - 2 })
+                        foreach (int offset in new[] { Own(li, li.Start + 1), Own(li, (li.Start + pl.TextEnd(li)) / 2), Own(li, pl.TextEnd(li) - 2) })
                         {
                             s.MouseClick(Edge(s, p, offset));
                             Assert.Equal(new TextPosition(p, offset), s.Editor.Caret);
@@ -515,12 +522,12 @@ namespace SIL.TextEditing.Playground.Tests
             }
 
             /// <summary>The columns in [from, to) that have dark ink anywhere in the rows [top, bottom).</summary>
-            public List<int> InkColumns(double from, double to, double top, double bottom)
+            public List<int> InkColumns(double from, double to, double top, double bottom, int threshold = 140)
             {
                 var result = new List<int>();
                 for (int x = Math.Max(0, (int)Math.Floor(from)); x < Math.Min(Width, (int)Math.Ceiling(to)); x++)
                     for (int y = Math.Max(0, (int)Math.Floor(top)); y < Math.Min(Height, (int)Math.Ceiling(bottom)); y++)
-                        if (IsInk(x, y)) { result.Add(x); break; }
+                        if (IsInk(x, y, threshold)) { result.Add(x); break; }
                 return result;
             }
         }
@@ -657,11 +664,18 @@ namespace SIL.TextEditing.Playground.Tests
         [Fact]
         public void A_label_that_fits_the_line_stays_on_the_first_line_even_when_the_first_word_does_not_fit_beside_it() => Headless.Run(() =>
         {
-            using (var s = new Session(Scenarios.Paragraphs, 240, 6000))
+            // The label is as wide as the font makes it, so the window is the narrowest (from 240 up, in steps of 4) where the label fits the
+            // line with less than 8 to spare: there the first word cannot fit beside it, whichever font the machine has.
+            for (double width = 240; ; width += 4)
             {
-                var pl = s.Field.ParagraphLayoutFor(WideLabel);
-                Assert.True(pl.LabelRect.Width - 24 < pl.ContentWidth, "the label (less its hang) " + pl.LabelRect.Width + " fits the line " + pl.ContentWidth);
-                Assert.Equal(pl.Lines[0].TextY, pl.LabelRect.Y, 3);
+                Assert.True(width < 600, "the label never fits");
+                using (var s = new Session(Scenarios.Paragraphs, width, 6000))
+                {
+                    var pl = s.Field.ParagraphLayoutFor(WideLabel);
+                    if (pl.LabelRect.Width - 24 >= pl.ContentWidth - 4) continue;   // (4 clear of the line: the layout also keeps a gap of its own after the label)
+                    Assert.Equal(pl.Lines[0].TextY, pl.LabelRect.Y, 3);
+                    return;
+                }
             }
         });
 
