@@ -60,6 +60,9 @@ public sealed class SenseDefinitionPreviewWindow : Window
     private readonly TextBlock _heading = new() { FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
     private readonly Border _staleStrip;
+    private readonly WrapPanel _bar = new() { Margin = new Thickness(0, 0, 0, 6) };
+    // The field the bar acts on: the one the person was last in.
+    private RichTextField? _focused;
     private readonly Border _unappliedStrip = new()
     {
         Background = Brushes.LightYellow,
@@ -104,22 +107,24 @@ public sealed class SenseDefinitionPreviewWindow : Window
             if (_list.SelectedIndex >= 0) Show(Senses[_list.SelectedIndex].Id);
         };
 
+        _bar.Children.Add(PreviewSourceMode.Toggle(() => ToggleSourceMode()));
         var right = new DockPanel { Margin = new Thickness(12, 0, 0, 0), LastChildFill = true };
-        foreach (var top in new Control[] { _heading, _staleStrip, _unappliedStrip })
+        foreach (var top in new Control[] { _heading, _bar, _staleStrip, _unappliedStrip })
         {
             DockPanel.SetDock(top, Dock.Top);
             right.Children.Add(top);
         }
+        PreviewSourceMode.Speak(_status);
+        var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
         if (store is not null)
         {
             var apply = new Button { Content = "Apply", Margin = new Thickness(0, 6, 0, 0) };
             apply.Click += async (_, _) => await ApplyAsync();
-            var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
             actions.Children.Add(apply);
-            actions.Children.Add(_status);
-            DockPanel.SetDock(actions, Dock.Bottom);
-            right.Children.Add(actions);
         }
+        actions.Children.Add(_status);
+        DockPanel.SetDock(actions, Dock.Bottom);
+        right.Children.Add(actions);
         right.Children.Add(new ScrollViewer { Content = _fields });
         var panel = new DockPanel { Margin = new Thickness(12), LastChildFill = true };
         DockPanel.SetDock(_list, Dock.Left);
@@ -139,6 +144,22 @@ public sealed class SenseDefinitionPreviewWindow : Window
 
     /// <summary>What the last staging or Apply said: a refusal's message, "Applied." or nothing.</summary>
     public string StatusText => _status.Text ?? string.Empty;
+
+    /// <summary>What Compare and Apply say when a field cannot go back to rich text first.</summary>
+    public const string MarkdownFixFirstMessage = PreviewSourceMode.FixFirstMessage;
+
+    /// <summary>
+    /// Shows the shown sense's Definition in <paramref name="ws"/> as FieldWorks Markdown, or returns it to rich text, as
+    /// the bar's Markdown button and Ctrl+Shift+M in the field do; without <paramref name="ws"/>, the field the person was
+    /// last in, or else the first. Returns whether it switched; going back is refused while the Markdown has an error.
+    /// </summary>
+    public bool ToggleSourceMode(string? ws = null)
+    {
+        var shown = _opened.Values.Where(opened => opened.SenseId == _shownId).ToArray();
+        var target = ws is not null ? shown.FirstOrDefault(opened => opened.Ws == ws)
+            : shown.FirstOrDefault(opened => opened.Field == _focused) ?? shown.FirstOrDefault();
+        return target?.Session.ToggleSourceMode() == true;
+    }
 
     /// <summary>Whether the strip saying a shown Definition was also changed in FieldWorks is showing.</summary>
     public bool IsStaleStripShown => _staleStrip.IsVisible;
@@ -181,6 +202,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
     public async Task<bool> ApplyAsync()
     {
         if (_store is null) return false;
+        if (!PreviewSourceMode.ReturnToRichText(_opened.Values.Select(opened => opened.Field), _status)) return false;
         foreach (var opened in _opened.Values) opened.Session.EndSession();
         // A refused staging is tried again, so a busy Draft only holds Apply back while it stays busy.
         foreach (var key in _refused.Keys.ToArray())
@@ -240,6 +262,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
         foreach (var key in stale)
         {
             if (!_opened.TryGetValue(key, out var opened)) continue;
+            opened.Field.DiscardSourceChanges();
             opened.Session.EndSession();
             if (await Staged(key, pending: false, () => _store.DiscardAsync(senseId, opened.Ws)) is not null) return false;
             _stale.Remove(key);
@@ -262,6 +285,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
         var key = _stale.FirstOrDefault(stale => _opened.TryGetValue(stale, out var field) && field.SenseId == senseId);
         if (key is null) return false;
         var ws = _opened[key].Ws;
+        if (!PreviewSourceMode.ReturnToRichText([_opened[key].Field], _status)) return false;
         _opened[key].Session.EndSession();
         await _staging;
         if (_refused.TryGetValue(key, out var unstaged))
@@ -326,11 +350,20 @@ public sealed class SenseDefinitionPreviewWindow : Window
             WritingSystems = discussion.WritingSystems,
             StyleResolver = discussion.Styles,
             MinHeight = 48,
+            SourceForm = new DiscussionSourceForm(discussion, projectName: null, richString: true),
+        };
+        field.GotFocus += (_, _) => _focused = field;
+        // The field offers no menu of its own; in Markdown the source view's menu is about the Markdown.
+        field.ContextMenuRequested += (_, e) =>
+        {
+            if (e.Field is { } view && view != field) new ContextMenu { ItemsSource = PreviewSourceMode.Menu(view, e.Info) }.Open(field);
         };
         // Until the Draft has been read, typing could start an edit that would replace the one it holds.
         if (_store is not null && pending is null) _locked.Add(key);
         field.IsReadOnly = _applying || _locked.Contains(key);
         var session = new GdrDiscussionSession(field, key, starting: starting);
+        // After the session's handler, which stages the edit and so rewrites the status line.
+        field.SourceModeChanged += (_, change) => _status.Text = change.Announcement;
         var opened = new OpenedField(sense.Id, alternative.WritingSystem, field, session, discussion,
             new TextRichStringExpected(alternative.Text, alternative.Digest), pending?.Expected);
         session.PendingChanged += (_, edit) =>

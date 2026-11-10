@@ -1,7 +1,9 @@
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.RichText;
 using SIL.Motif.Runner.Operations;
 using SIL.TextEditing;
 using SIL.TextEditing.Avalonia;
+using SIL.TextEditing.Markdown;
 using TextDocument = SIL.TextEditing.Document;
 
 namespace SIL.Motif.App.Preview;
@@ -26,11 +28,18 @@ public sealed class GdrDiscussion
     // What a link's underline and colour were before this view showed it as a link, by link target.
     private readonly Dictionary<string, LinkLook> _linkLooks;
 
+    // The targets of links the project could not resolve, which this view marks as broken.
+    private readonly HashSet<string> _brokenLinks;
+
+    private readonly ResponseCatalog _catalog;
+
     private GdrDiscussion(TextDocument document, IStyleResolver styles, WritingSystemRegistry writingSystems,
         IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> targets,
         IReadOnlyDictionary<string, TextParagraphExpected> expected, Dictionary<string, LinkLook> linkLooks,
-        GdrShowResponse response)
+        HashSet<string> brokenLinks, GdrShowResponse response)
     {
+        _brokenLinks = brokenLinks;
+        _catalog = new ResponseCatalog(response);
         Document = document;
         Styles = styles;
         WritingSystems = writingSystems;
@@ -136,6 +145,7 @@ public sealed class GdrDiscussion
         var targets = new Dictionary<(int Paragraph, int Offset), GdrLinkTarget>();
         var expected = new Dictionary<string, TextParagraphExpected>(StringComparer.Ordinal);
         var linkLooks = new Dictionary<string, LinkLook>(StringComparer.Ordinal);
+        var brokenLinks = new HashSet<string>(StringComparer.Ordinal);
         foreach (var source in response.Discussion)
         {
             var paragraph = new Paragraph
@@ -161,11 +171,8 @@ public sealed class GdrDiscussion
                 offset += run.Text.Length;
                 if (run.Target is { State: GdrLinkState.Broken })
                 {
-                    // The marker is text so a screen reader, which reads the field's text, says the link is broken too.
-                    var marker = new Run { Ws = run.WritingSystem, Text = BrokenMarker, Props = new PropertyBag() };
-                    marker.Props.SetInt(TextPropertyNumbers.Italic, 1, 0);
-                    marker.Props.SetInt(TextPropertyNumbers.ForeColor, BrokenColor, 0);
-                    paragraph.Runs.Add(marker);
+                    if (run.ObjData is { } broken) brokenLinks.Add(broken);
+                    paragraph.Runs.Add(Marker(run.WritingSystem));
                     offset += BrokenMarker.Length;
                 }
             }
@@ -179,7 +186,62 @@ public sealed class GdrDiscussion
         foreach (var system in response.WritingSystems)
             writingSystems.Add(WritingSystemRegistry.Define(system.Tag, system.DefaultFont, WritingSystemSizePoints,
                 rtl: system.Direction == "rtl"));
-        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, linkLooks, response);
+        return new GdrDiscussion(document, new ResponseStyles(response.Styles), writingSystems, targets, expected, linkLooks, brokenLinks, response);
+    }
+
+    /// <summary>
+    /// The FieldWorks Markdown options for this text: unmarked text is the response's default analysis writing system,
+    /// <c>.v</c> its default vernacular, and the response's writing systems and styles are the ones that exist. A link
+    /// to an object keeps its GUID, since nothing here reads the project's paths. <paramref name="projectName"/> is the
+    /// project a link names.
+    /// </summary>
+    public MarkdownOptions MarkdownOptions(string? projectName) => MotifMarkdownOptions.Create(_catalog, _catalog, projectName: projectName);
+
+    /// <summary>
+    /// <paramref name="paragraph"/> as the project holds it: without the broken-link markers this view adds, and with each
+    /// link run's own underline and colour in place of those this view shows links with.
+    /// </summary>
+    public Paragraph AsProject(Paragraph paragraph)
+    {
+        ArgumentNullException.ThrowIfNull(paragraph);
+        var copy = paragraph.Clone();
+        for (var i = copy.Runs.Count - 1; i >= 0; i--)
+            if (IsMarker(copy.Runs[i])) copy.Runs.RemoveAt(i);
+        foreach (var run in copy.Runs)
+            if (run.ObjData is { } objData && _linkLooks.TryGetValue(objData, out var look)) run.Props = look.Restore(run.Props);
+        return copy;
+    }
+
+    /// <summary>
+    /// <paramref name="paragraph"/>, as the project would hold it, shown as this view shows text: each link underlined and
+    /// coloured, and a link the project could not resolve followed by its marker. The inverse of <see cref="AsProject"/>.
+    /// </summary>
+    public Paragraph AsShown(Paragraph paragraph)
+    {
+        ArgumentNullException.ThrowIfNull(paragraph);
+        var copy = paragraph.Clone();
+        for (var i = 0; i < copy.Runs.Count; i++)
+        {
+            var run = copy.Runs[i];
+            if (run.ObjData is not { } objData || run.Text == ObjectReplacement) continue;
+            _linkLooks.TryAdd(objData, LinkLook.Of(run.Props));
+            var broken = _brokenLinks.Contains(objData);
+            run.Props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
+            run.Props.SetInt(TextPropertyNumbers.ForeColor, broken ? BrokenColor : LinkColor, 0);
+            if (broken) copy.Runs.Insert(++i, Marker(run.Ws));
+        }
+        return copy;
+    }
+
+    private const string ObjectReplacement = "\uFFFC";
+
+    // The marker is text so a screen reader, which reads the field's text, says the link is broken too.
+    private static Run Marker(string ws)
+    {
+        var marker = new Run { Ws = ws, Text = BrokenMarker, Props = new PropertyBag() };
+        marker.Props.SetInt(TextPropertyNumbers.Italic, 1, 0);
+        marker.Props.SetInt(TextPropertyNumbers.ForeColor, BrokenColor, 0);
+        return marker;
     }
 
     private static PropertyBag Bag(GdrTextProperties properties)
@@ -213,6 +275,33 @@ public sealed class GdrDiscussion
             if (original is { } kept) props.IntProps[number] = kept;
             else props.IntProps.Remove(number);
         }
+    }
+
+    // What the response says exists, as the Markdown reader asks it: an unknown tag or style name is a finding.
+    private sealed class ResponseCatalog(GdrShowResponse response) : IWritingSystemMapper, IKnownWritingSystems, IStyleCatalog, IKnownStyles
+    {
+        public string DefaultAnalysis { get; } = Default(response.DefaultAnalysis, response);
+
+        public string DefaultVernacular { get; } = Default(response.DefaultVernacular, response);
+
+        public IReadOnlyList<string> KnownTags { get; } = response.WritingSystems.Select(system => system.Tag).ToArray();
+
+        public IReadOnlyList<string> ParagraphStyleNames { get; } = Names(response, GdrStyleKind.Paragraph);
+
+        public IReadOnlyList<string> CharacterStyleNames { get; } = Names(response, GdrStyleKind.Character);
+
+        public bool IsKnown(string tag) => KnownTags.Contains(tag, StringComparer.Ordinal);
+
+        public bool IsParagraphStyle(string name) => ParagraphStyleNames.Contains(name, StringComparer.Ordinal);
+
+        public bool IsCharacterStyle(string name) => CharacterStyleNames.Contains(name, StringComparer.Ordinal);
+
+        // A response without defaults, such as one Definition alternative's, types in its first writing system.
+        private static string Default(string tag, GdrShowResponse response) =>
+            tag.Length > 0 ? tag : response.WritingSystems.FirstOrDefault()?.Tag ?? "en";
+
+        private static string[] Names(GdrShowResponse response, GdrStyleKind kind) =>
+            response.Styles.Where(style => style.Kind == kind).Select(style => style.Name).ToArray();
     }
 
     private sealed class ResponseStyles(IReadOnlyList<GdrStyle> styles) : IStyleResolver
