@@ -113,6 +113,17 @@ public sealed class ChangeVocabularyTests
         Assert.Null(JobCommands.DerivedTrialWords(Proposal(Operation(WfiAnalysisOperationKinds.DeleteAnalysis))));
     }
 
+    [Fact]
+    public void ANotesOnlyProposalChangesNoGrammarAndIsTriedOnlyOnTheWordsItNames()
+    {
+        Assert.False(ChangeVocabulary.Of("texts/segment/setNotes").ChangesGrammar);
+        var op = new OperationEnvelope(CanonicalId.Mint(), "texts/segment/setNotes",
+            extensions: JsonSerializer.SerializeToElement(new { trialWords = new[] { "alpha", "beta" } }));
+        var proposal = Proposal(op);
+        Assert.False(ChangeVocabulary.ChangesGrammar(proposal));
+        Assert.Equal(["alpha", "beta"], JobCommands.DerivedTrialWords(proposal)!.OrderBy(w => w, StringComparer.Ordinal));
+    }
+
     private static ChangeKind Evaluation(string member) =>
         ChangeVocabulary.Of(Operation(WfiAnalysisOperationKinds.AddRefEvaluations, new { member }));
 

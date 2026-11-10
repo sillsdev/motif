@@ -140,8 +140,64 @@ public sealed class EditTextNotesTests : IDisposable
     {
         var json = EditTextNotesIntentParser.FromTsv("Text\tLocator\tNote\nTracking\t1\tfirst\nTracking\tgamma\tproper name\n");
         var intent = EditTextNotesIntentParser.Parse(json);
-        Assert.Equal(new EditTextNote("Tracking", 1, null, "first"), intent.Edits[0]);
-        Assert.Equal(new EditTextNote("Tracking", null, "gamma", "proper name"), intent.Edits[1]);
+        Assert.Equal(new EditTextNote("Tracking", 1, null, "first", "line 2"), intent.Edits[0]);
+        Assert.Equal(new EditTextNote("Tracking", null, "gamma", "proper name", "line 3"), intent.Edits[1]);
         Assert.Throws<ContractParseException>(() => EditTextNotesIntentParser.FromTsv("Tracking\t1\n"));
+    }
+
+    [Fact]
+    public void ContentInAnotherWritingSystemOfAnyNoteIsGuardedAndRemoved()
+    {
+        var other = _cache.ServiceLocator.WritingSystems.AnalysisWritingSystems
+            .Select(w => w.Handle).Concat(_cache.ServiceLocator.WritingSystems.VernacularWritingSystems.Select(w => w.Handle))
+            .First(h => h != _cache.DefaultAnalWs);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            Segments[0].NotesOS[1].Content.set_String(other, TsStringUtils.MakeString("elsewhere", other)));
+        var proposal = Proposal(EditTextNotesComposer.Build(_cache,
+            Intent(new { edits = new[] { new { text = "Tracking", segment = 1, note = "x" } } })));
+
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            Segments[0].NotesOS[1].Content.set_String(other, TsStringUtils.MakeString("changed", other)));
+        var refusal = Assert.ThrowsAny<ProposalRefusalException>(() => ScratchDryRun.Of(_cache, proposal));
+        Assert.Equal(RefusalCodes.TextNotesStaleSource, refusal.Code);
+
+        var fresh = Proposal(EditTextNotesComposer.Build(_cache,
+            Intent(new { edits = new[] { new { text = "Tracking", segment = 1, note = "x" } } })));
+        var dry = ScratchDryRun.Of(_cache, fresh);
+        ProposalApplier.Apply(_cache, fresh, dry.Anchor, "tester");
+        Assert.Single(Segments[0].NotesOS);
+        Assert.Equal(["x"], NoteTexts(Segments[0]));
+    }
+
+    [Fact]
+    public void EveryBadEditIsReportedOnceWithItsNumber()
+    {
+        var error = Assert.Throws<ContractParseException>(() => EditTextNotesComposer.Build(_cache, Intent(new
+        {
+            edits = new object[]
+            {
+                new { text = "Tracking", segment = 1, note = "ok" },
+                new { text = "Nope", segment = 1, note = "x" },
+                new { text = "Tracking", word = "alpha", note = "x" },
+                new { text = "Tracking", segment = 99, note = "x" },
+            },
+        })));
+        Assert.Contains("edit 2", error.Message);
+        Assert.Contains("edit 3", error.Message);
+        Assert.Contains("edit 4", error.Message);
+        Assert.DoesNotContain("edit 1", error.Message);
+    }
+
+    [Fact]
+    public void OnlyTheExactHeaderLineIsSkippedAndBadRowsNameTheirLines()
+    {
+        var kept = EditTextNotesIntentParser.Parse(EditTextNotesIntentParser.FromTsv("Text\t1\tnote\n"));
+        Assert.Equal(new EditTextNote("Text", 1, null, "note", "line 1"), kept.Edits[0]);
+        var skipped = EditTextNotesIntentParser.Parse(EditTextNotesIntentParser.FromTsv("text\tLOCATOR\tnote\nTracking\t1\ta\n"));
+        Assert.Single(skipped.Edits);
+        var error = Assert.Throws<ContractParseException>(() =>
+            EditTextNotesIntentParser.FromTsv("Tracking\t1\ta\nbad\nTracking\tx\n"));
+        Assert.Contains("line 2", error.Message);
+        Assert.Contains("line 3", error.Message);
     }
 }

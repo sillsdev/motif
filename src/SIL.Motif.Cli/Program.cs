@@ -196,9 +196,10 @@ try
     switch (verb)
     {
         case var typedVerb when ProposalCommands.ComposerDescriptors.Any(composer => composer.Verb == typedVerb):
-            if (typedVerb == "compose-edit-text-notes" && !flags.ContainsKey("intent") &&
-                flags.TryGetValue("notes-tsv", out var notesTsv))
+            if (typedVerb == "compose-edit-text-notes" && flags.TryGetValue("notes-tsv", out var notesTsv))
             {
+                if (flags.ContainsKey("intent"))
+                    return Usage("Give --notes-tsv or --intent, not both.", asJson);
                 if (!File.Exists(notesTsv)) return Usage($"The --notes-tsv file '{notesTsv}' does not exist.", asJson);
                 try
                 {

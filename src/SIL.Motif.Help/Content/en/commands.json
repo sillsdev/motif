@@ -1205,12 +1205,12 @@
   },
   "compose-edit-text-notes": {
     "title": "Edit the Notes of existing text segments",
-    "description": "Stages, in bulk, the replacement of the Notes of segments in existing Texts: each edit names a Text, a segment or a word in it, and the one Note the segment is to hold. Apply refuses a segment whose Notes changed since the edit was composed. Dry Run and Trial before a person Applies the Proposal.",
+    "description": "Stages, in bulk, the replacement of the Notes of segments in existing Texts: each edit names a Text, a segment or a word in it, and the one Note the segment is to hold. Apply refuses a segment whose Notes, in any writing system, changed since the edit was composed. Other Notes of the segment are removed. Give one intent with many edits, or --notes-tsv, never one intent per edit. A Trial reparses nothing of the grammar. Dry Run and Trial before a person Applies the Proposal.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
       "analysisWs": "Analysis writing system of the Notes; the project's default when omitted.",
-      "edits": "The edits: each has text (the Text's name or id), segment (1-based number across the Text) or word (a word in exactly one segment), and note (the Note text, NFD)."
+      "edits": "The edits: each has text (the Text's name or id), segment (1-based number across the Text) or word (a word in exactly one segment), and note (the Note text, NFD); at optionally labels the edit in refusals."
     },
     "goals": [
       "Replace placeholder Notes on many words of an existing Text",

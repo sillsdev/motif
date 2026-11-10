@@ -83,6 +83,7 @@ public static class ChangeVocabulary
             ["grammar/partOfSpeech/createAffixSlots"] =
                 Grammar("slot", "affix slot", "affix slots", "Add an affix slot"),
             ["texts/langProject/createTexts"] = Word("text", "text", "texts", "Add a text"),
+            ["texts/segment/setNotes"] = Word("note", "Note", "Notes", "Set a Note"),
             ["analysis/langProject/createWordforms"] = Word("wordform", "wordform", "wordforms", "Add a wordform"),
             ["lexical/lexDb/createEntries"] = Grammar("entry", "entry", "entries", "Add a dictionary entry"),
             ["lists/cmPossibilityList/createPossibilities"] =
@@ -130,6 +131,7 @@ public static class ChangeVocabulary
     private static readonly IReadOnlyDictionary<string, (string Named, string Unnamed)> ByComposer =
         new Dictionary<string, (string, string)>(StringComparer.Ordinal)
         {
+            ["EditTextNotes"] = ("Set Note on", "Set the Notes of text segments"),
             ["AuthorPhoneme"] = ("Add phoneme", "Add a phoneme"),
             ["AuthorNaturalClass"] = ("Add natural class", "Add a natural class"),
             ["AuthorEnvironment"] = ("Add environment", "Add an environment"),

@@ -611,8 +611,9 @@ public static class CliVerbCatalog
         .ToArray());
 
     /// <summary>The usage text every typed composer verb shares, before the citation options.</summary>
-    internal static string ComposerUsage(string verb) =>
-        verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>'";
+    internal static string ComposerUsage(string verb) => verb == "compose-edit-text-notes"
+        ? verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>', or --notes-tsv <file> [--analysis-ws <tag>] in place of --intent"
+        : verb + " --draft <name> --project <fwdata> --intent '<closed intent JSON>'";
 
     private static IReadOnlyList<CliVerbDescriptor> AddCitationOptions(
         IReadOnlyList<CliVerbDescriptor> descriptors) => descriptors.Select(descriptor =>

@@ -18,7 +18,8 @@ namespace SIL.Motif.Runner.Operations;
 /// </summary>
 /// <remarks>
 /// Targets the Segment. The closed <c>after</c> payload is <c>{ "ws", "note": { "id", "text" }, "expected": [text, ...] }</c>:
-/// <c>expected</c> lists the Segment's current Note texts in <c>ws</c>, in order, and Apply stops if they differ.
+/// <c>expected</c> lists, for each of the Segment's current Notes in order, its text in every writing system that has one
+/// (tag to text), and Apply stops if any differ.
 /// The Note named by <c>id</c> is kept when the Segment already owns it and is created otherwise; every other Note of the
 /// Segment is removed. Only the <c>ws</c> alternative of the kept Note is written.
 /// </remarks>
@@ -43,11 +44,11 @@ internal sealed class EditTextNotesHandler : IOperationHandler
 
     public ExpectedEffect ApplyAndCaptureEffect(LcmCache cache, OperationEnvelope operation, List<CanonicalId> touchedTargets)
     {
-        var (ws, tag, noteId, text, expected) = Parse(cache, operation);
+        var (ws, noteId, text, expected) = Parse(cache, operation);
         var (id, segment) = TargetResolution.Resolve<ISegment>(cache, operation, Kind);
-        var current = Texts(segment, ws);
-        if (!current.SequenceEqual(expected, StringComparer.Ordinal))
-            throw new TextNotesStaleSourceException(id, string.Join(" | ", expected), string.Join(" | ", current));
+        var current = Contents(cache, segment);
+        if (JsonSerializer.Serialize(current) != JsonSerializer.Serialize(expected))
+            throw new TextNotesStaleSourceException(id, JsonSerializer.Serialize(expected), JsonSerializer.Serialize(current));
         var before = Read(cache, segment);
         touchedTargets.Add(id);
         INote? kept = segment.NotesOS.FirstOrDefault(note => note.Guid == noteId.ToGuid());
@@ -71,7 +72,7 @@ internal sealed class EditTextNotesHandler : IOperationHandler
         return new ExpectedEffect(id, SnapshotFields.TextSegmentNotes, current, current);
     }
 
-    private static (int Ws, string Tag, CanonicalId NoteId, string Text, string[] Expected) Parse(
+    private static (int Ws, CanonicalId NoteId, string Text, List<SortedDictionary<string, string>> Expected) Parse(
         LcmCache cache, OperationEnvelope operation)
     {
         var after = OperationSlotRegistry.After(operation);
@@ -87,13 +88,29 @@ internal sealed class EditTextNotesHandler : IOperationHandler
         var text = ClosedPayloadParsing.GetRequiredString(note, "text", Kind);
         if (!after.TryGetProperty("expected", out var list) || list.ValueKind != JsonValueKind.Array)
             throw new ContractParseException($"'{Kind}' operation 'after.expected' is required and must be an array.");
-        var expected = list.EnumerateArray().Select(item => item.ValueKind == JsonValueKind.String
-            ? item.GetString()! : throw new ContractParseException($"'{Kind}' operation 'after.expected' holds strings.")).ToArray();
-        return (ws, tag, noteId, text, expected);
+        var expected = list.EnumerateArray().Select(item =>
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+                throw new ContractParseException($"'{Kind}' operation 'after.expected' holds objects of tag to text.");
+            var note = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var property in item.EnumerateObject())
+                note[property.Name] = property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString()!
+                    : throw new ContractParseException($"'{Kind}' operation 'after.expected' holds strings.");
+            return note;
+        }).ToList();
+        return (ws, noteId, text, expected);
     }
 
-    internal static string[] Texts(ISegment segment, int ws) =>
-        segment.NotesOS.Select(note => note.Content.get_String(ws).Text ?? string.Empty).ToArray();
+    /// <summary>Each Note's nonempty text per writing system tag, in Note order.</summary>
+    internal static List<SortedDictionary<string, string>> Contents(LcmCache cache, ISegment segment) =>
+        segment.NotesOS.Select(note =>
+        {
+            var texts = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var ws in note.Content.AvailableWritingSystemIds)
+                if (note.Content.get_String(ws).Text is { Length: > 0 } value)
+                    texts[cache.WritingSystemFactory.GetStrFromWs(ws)] = value;
+            return texts;
+        }).ToList();
 
     private static Dictionary<string, string> Read(LcmCache cache, ISegment segment)
     {

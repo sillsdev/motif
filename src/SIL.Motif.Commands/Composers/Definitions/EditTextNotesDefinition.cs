@@ -21,7 +21,8 @@ internal sealed class EditTextNotesDefinition : ComposerDefinition<EditTextNotes
             Field.Text("text", required: true),
             Field.Number("segment"),
             Field.Text("word"),
-            Field.Text("note", required: true)).AtMostOne("segment", "word"), required: true, many: true));
+            Field.Text("note", required: true),
+            Field.Text("at")).AtMostOne("segment", "word"), required: true, many: true));
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =
         new(CommandSurface.AdvancedAi, AgentClass.Draft, AgentTool: false);

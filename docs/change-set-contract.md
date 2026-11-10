@@ -204,6 +204,13 @@ parser. Punctuation remains in the baseline and in Punctuation Forms, never word
 has no word bindings. Free Translation, Literal Translation and ordered Notes are optional and use the project's
 analysis writing system named by `analysisWs`. Annotation-bearing payloads require that tag.
 
+The Notes of an existing Segment are replaced by `texts/segment/setNotes`, which targets the Segment with the closed payload
+`{ "ws": <tag>, "note": { "id", "text" }, "expected": [ { <tag>: <text>, ... }, ... ] }`. `expected` lists each current Note's
+nonempty text per writing system, in order; Apply stops with `text-notes.stale-source` if any differ. The Segment then holds
+exactly one Note: the first existing Note keeps its identity and has its `ws` text replaced, any other Notes are removed,
+and with none the Note is created under `note.id`. The operation may carry `extensions.trialWords`, the words of the Segment,
+which a Trial measures when the Proposal changes no grammar. It is a non-grammar change.
+
 Legacy paragraphs omit `text` and `beginOffset` and join their segments' wordform forms with single spaces, retaining
 the declared segment boundaries. Each legacy segment needs a word. For either shape, a wordform that does not exist
 or has no form in the paragraph's writing system fails the create. A wordform created in the same Proposal must be

@@ -1826,15 +1826,22 @@ public static partial class ProposalCommands
 
     internal static IReadOnlyCollection<string> ChangedWords(SIL.Motif.Contract.Model.Proposal proposal) =>
         proposal.Operations.Select(operation => operation.Extensions)
-            .Where(extension => extension is { ValueKind: JsonValueKind.Object } &&
-                extension.Value.TryGetProperty("changeFit", out _))
-            .Select(extension => extension!.Value.GetProperty("changeFit"))
-            .Where(fit => fit.ValueKind == JsonValueKind.Object &&
-                fit.TryGetProperty("wordformForm", out _))
-            .Select(fit => fit.GetProperty("wordformForm").GetString())
+            .Where(extension => extension is { ValueKind: JsonValueKind.Object })
+            .SelectMany(extension => FitWord(extension!.Value).Concat(TrialWords(extension.Value)))
             .Where(word => !string.IsNullOrWhiteSpace(word))
             .Select(word => word!)
             .Distinct(StringComparer.Ordinal).ToArray();
+
+    private static IEnumerable<string?> FitWord(JsonElement extension) =>
+        extension.TryGetProperty("changeFit", out var fit) && fit.ValueKind == JsonValueKind.Object &&
+        fit.TryGetProperty("wordformForm", out var form)
+            ? [form.GetString()] : [];
+
+    // An operation that moves no parse may still name the words it sits on, so a Trial measures just those.
+    private static IEnumerable<string?> TrialWords(JsonElement extension) =>
+        extension.TryGetProperty("trialWords", out var words) && words.ValueKind == JsonValueKind.Array
+            ? words.EnumerateArray().Where(word => word.ValueKind == JsonValueKind.String).Select(word => word.GetString())
+            : [];
 
     internal static CommandOutcome<ApplyProjection> BuildApplyProjection(
         MotifDatabase database, ProjectLocator project, string proposalId, bool force = false,
