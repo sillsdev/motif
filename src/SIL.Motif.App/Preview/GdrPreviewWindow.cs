@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using SIL.Motif.App.Compare;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Requests;
@@ -25,6 +26,7 @@ public sealed class GdrPreviewWindow : Window
     private readonly Func<string, GdrShowResponse?> _show;
     private readonly IGdrEditStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
+    private readonly Func<CompareWindow, Task<CompareOutcome?>> _compare;
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
     private readonly HashSet<string> _stale = new(StringComparer.Ordinal);
     private readonly Border _staleStrip;
@@ -56,15 +58,18 @@ public sealed class GdrPreviewWindow : Window
     /// Creates the window over <paramref name="records"/>; <paramref name="show"/> reads one record by its id, and
     /// <paramref name="store"/>, when given, stages each edit and offers Apply. <paramref name="confirmStartAgain"/>
     /// asks the person before their edit of a record changed in FieldWorks is thrown away; by default a dialog asks.
+    /// <paramref name="compare"/> shows the window that compares that edit with FieldWorks' text and returns how the
+    /// person left it; by default it opens as a dialog.
     /// </summary>
     public GdrPreviewWindow(IReadOnlyList<GdrSummary> records, Func<string, GdrShowResponse?> show, IGdrEditStore? store = null,
-        Func<Task<bool>>? confirmStartAgain = null)
+        Func<Task<bool>>? confirmStartAgain = null, Func<CompareWindow, Task<CompareOutcome?>>? compare = null)
     {
         _show = show;
         _store = store;
         _confirmStartAgain = confirmStartAgain ?? ConfirmStartAgainAsync;
-        var startAgain = new Button { Content = "Start again from the FieldWorks text" };
-        startAgain.Click += async (_, _) => await StartAgainFromFieldWorksAsync();
+        _compare = compare ?? (window => window.ShowDialog<CompareOutcome?>(this));
+        var compareButton = new Button { Content = ChangeWords.Compare };
+        compareButton.Click += async (_, _) => await CompareAsync();
         var strip = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
         strip.Children.Add(new TextBlock
         {
@@ -72,7 +77,7 @@ public sealed class GdrPreviewWindow : Window
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
         });
-        strip.Children.Add(startAgain);
+        strip.Children.Add(compareButton);
         _staleStrip = new Border
         {
             Background = Brushes.LightYellow,
@@ -229,6 +234,41 @@ public sealed class GdrPreviewWindow : Window
         return true;
     }
 
+    /// <summary>
+    /// Compares the shown record's edit, which the record's text in FieldWorks has overtaken, with that text, and lets
+    /// the person choose change by change. Done stages the result measured against FieldWorks' text, so it fits again;
+    /// Decide later leaves the edit as it was, and Apply keeps waiting. Returns whether the edit fits again.
+    /// </summary>
+    public async Task<bool> CompareAsync()
+    {
+        if (_store is null || _shownId is not { } id || !_stale.Contains(id)) return false;
+        _opened[id].Session.EndSession();
+        await _staging;
+        if (_refused.ContainsKey(id)) return false;
+        var read = await _store.PendingAsync(id);
+        if (read.Refusal is { } refusal)
+        {
+            _status.Text = refusal;
+            return false;
+        }
+        if (read.Paragraphs is not { } pending || _show(id) is not { } live) return false;
+        var discussion = GdrDiscussion.From(live);
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(pending, live.Discussion)));
+        var window = new CompareWindow($"{live.Record.Abbreviation}  {live.Record.Title}, Discussion", comparison,
+            discussion.WritingSystems, discussion.Styles);
+        var outcome = await _compare(window);
+        if (outcome?.End == CompareEnd.StartAgain) return await StartAgainFromFieldWorksAsync();
+        if (outcome?.End != CompareEnd.Done) return false;
+        var payload = ComparedPayloads.Paragraphs(GdrDiscussionPayload.Field, outcome.Result, live.Discussion);
+        var write = payload is null ? (Func<Task<string?>>)(() => _store.DiscardAsync(id)) : () => _store.StageAsync(id, payload);
+        if (await Staged(id, pending: payload is not null, write) is not null) return false;
+        _stale.Remove(id);
+        _opened.Remove(id);
+        Show(id);
+        _status.Text = payload is null ? "Your edit now matches FieldWorks; nothing is left to apply." : "Your edit now fits. Apply when ready.";
+        return true;
+    }
+
     private Task<string?> Stage(OpenedRecord opened, GdrDiscussionEdit? edit) => edit is null
         ? Staged(opened.RecordId, pending: false, () => _store!.DiscardAsync(opened.RecordId))
         : Staged(opened.RecordId, pending: true,
@@ -281,7 +321,7 @@ public sealed class GdrPreviewWindow : Window
             SizeToContent = SizeToContent.WidthAndHeight,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
         };
-        var keep = new Button { Content = "Keep my edit", IsDefault = true, IsCancel = true };
+        var keep = new Button { Content = "Go back", IsDefault = true, IsCancel = true };
         var discard = new Button { Content = "Discard my edit" };
         keep.Click += (_, _) => dialog.Close(false);
         discard.Click += (_, _) => dialog.Close(true);
@@ -395,7 +435,7 @@ public sealed class GdrPreviewWindow : Window
         }
         if (!Fits(pending, shown, opened.Discussion))
         {
-            // Shown over this project, the edit would drop what FieldWorks changed, so only Start again remains.
+            // Shown over this project, the edit would drop what FieldWorks changed, so it waits for Compare.
             _stale.Add(opened.RecordId);
             _staged.Add(opened.RecordId);
             ShowStrips();

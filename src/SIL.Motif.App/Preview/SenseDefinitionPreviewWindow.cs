@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using SIL.Motif.App.Compare;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
@@ -33,6 +34,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
     private readonly Func<SenseDefinitionsResponse?> _read;
     private readonly ISenseDefinitionStore? _store;
     private readonly Func<Task<bool>> _confirmStartAgain;
+    private readonly Func<CompareWindow, Task<CompareOutcome?>> _compare;
     private SenseDefinitionsResponse _senses;
     private readonly Dictionary<string, OpenedField> _opened = new(StringComparer.Ordinal);
     private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
@@ -59,24 +61,28 @@ public sealed class SenseDefinitionPreviewWindow : Window
     /// <summary>
     /// Creates the window over <paramref name="senses"/>; <paramref name="read"/> reads them again after Apply or Start
     /// again, and <paramref name="store"/>, when given, stages each edit and offers Apply. <paramref name="confirmStartAgain"/>
-    /// asks before an edit overtaken in FieldWorks is thrown away; by default a dialog asks.
+    /// asks before an edit overtaken in FieldWorks is thrown away; by default a dialog asks. <paramref name="compare"/>
+    /// shows the window that compares such an edit with FieldWorks' text and returns how the person left it; by default
+    /// it opens as a dialog.
     /// </summary>
     public SenseDefinitionPreviewWindow(SenseDefinitionsResponse senses, Func<SenseDefinitionsResponse?> read,
-        ISenseDefinitionStore? store = null, Func<Task<bool>>? confirmStartAgain = null)
+        ISenseDefinitionStore? store = null, Func<Task<bool>>? confirmStartAgain = null,
+        Func<CompareWindow, Task<CompareOutcome?>>? compare = null)
     {
         _senses = senses ?? throw new ArgumentNullException(nameof(senses));
         _read = read;
         _store = store;
         _confirmStartAgain = confirmStartAgain ?? ConfirmStartAgainAsync;
+        _compare = compare ?? (window => window.ShowDialog<CompareOutcome?>(this));
         Title = "Sense Definitions preview (developer only)";
         Width = 900;
         Height = 560;
 
-        var startAgain = new Button { Content = "Start again from the FieldWorks text" };
-        startAgain.Click += async (_, _) => await StartAgainFromFieldWorksAsync();
+        var compareButton = new Button { Content = ChangeWords.Compare };
+        compareButton.Click += async (_, _) => await CompareAsync();
         var strip = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
         strip.Children.Add(new TextBlock { Text = StaleMessage, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
-        strip.Children.Add(startAgain);
+        strip.Children.Add(compareButton);
         _staleStrip = new Border { Background = Brushes.LightYellow, Padding = new Thickness(8, 4), IsVisible = false, Child = strip };
 
         Senses = senses.Senses;
@@ -230,6 +236,54 @@ public sealed class SenseDefinitionPreviewWindow : Window
         return true;
     }
 
+    /// <summary>
+    /// Compares the shown sense's first Definition edit that FieldWorks has overtaken with FieldWorks' text, and lets the
+    /// person choose change by change. Done stages the result measured against FieldWorks' text, so it fits again;
+    /// Decide later leaves the edit as it was, and Apply keeps waiting. Returns whether the edit fits again.
+    /// </summary>
+    public async Task<bool> CompareAsync()
+    {
+        if (_store is null || _shownId is not { } senseId) return false;
+        var key = _stale.FirstOrDefault(stale => _opened[stale].SenseId == senseId);
+        if (key is null) return false;
+        var ws = _opened[key].Ws;
+        _opened[key].Session.EndSession();
+        await _staging;
+        if (_refused.ContainsKey(key)) return false;
+        var read = await _store.PendingAsync(senseId, ws);
+        if (read.Refusal is { } refusal)
+        {
+            _status.Text = refusal;
+            return false;
+        }
+        if (read.RichString is not { } pending || _read() is not { } current) return false;
+        _senses = current;
+        var sense = current.Senses.FirstOrDefault(item => item.Id == senseId);
+        var live = sense?.Definition.FirstOrDefault(item => item.WritingSystem == ws)?.Runs ?? [];
+        var location = $"the {ws} Definition";
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromRichString(pending, live, key), location));
+        var shown = _opened[key].Discussion;
+        var window = new CompareWindow($"{sense?.Label}, Definition ({ws})", comparison, shown.WritingSystems, shown.Styles);
+        var outcome = await _compare(window);
+        if (outcome?.End == CompareEnd.StartAgain) return await StartAgainFromFieldWorksAsync();
+        if (outcome?.End != CompareEnd.Done) return false;
+        if (outcome.Result.Count > 1)
+        {
+            _status.Text = OneParagraphMessage;
+            return false;
+        }
+        // A result of no paragraph at all is an empty Definition.
+        var result = outcome.Result.Count == 0 ? new ParagraphVersion(key, "", TextProps.None, []) : outcome.Result[0];
+        var payload = ComparedPayloads.RichString(SenseDefinitionStore.Field, ws, result, live);
+        var write = payload is null ? (Func<Task<string?>>)(() => _store.DiscardAsync(senseId, ws)) : () => _store.StageAsync(senseId, payload);
+        if (await Staged(key, pending: payload is not null, write) is not null) return false;
+        _stale.Remove(key);
+        _opened.Remove(key);
+        Show(senseId);
+        _status.Text = payload is null ? "Your edit now matches FieldWorks; nothing is left to apply." : "Your edit now fits. Apply when ready.";
+        return true;
+    }
+
     private OpenedField Open(SenseDefinitions sense, RichStringAlternative alternative, TextRichStringPayload? pending)
     {
         var key = Key(sense.Id, alternative.WritingSystem);
@@ -283,7 +337,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
         _staged.Add(key);
         if (pending.Expected != opened.Start)
         {
-            // Shown over this project, the edit would drop what FieldWorks changed, so only Start again remains.
+            // Shown over this project, the edit would drop what FieldWorks changed, so it waits for Compare.
             _stale.Add(key);
             ShowStrips();
             return;
@@ -402,7 +456,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
             SizeToContent = SizeToContent.WidthAndHeight,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
         };
-        var keep = new Button { Content = "Keep my edit", IsDefault = true, IsCancel = true };
+        var keep = new Button { Content = "Go back", IsDefault = true, IsCancel = true };
         var discard = new Button { Content = "Discard my edit" };
         keep.Click += (_, _) => dialog.Close(false);
         discard.Click += (_, _) => dialog.Close(true);

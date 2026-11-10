@@ -81,5 +81,19 @@
   "shortcut-table-next-action": {"titleResource":"MotifApp.ShortcutTableNextAction","description":"Focus the next row or group action.","source":"Motif interface text"},
   "shortcut-table-previous-action": {"titleResource":"MotifApp.ShortcutTablePreviousAction","description":"Focus the previous row or group action.","source":"Motif interface text"},
   "shortcut-table-open-actions": {"titleResource":"MotifApp.ShortcutTableOpenActions","description":"Open the actions menu for the selected row.","source":"Motif interface text"},
-  "shortcut-table-open-details": {"titleResource":"MotifApp.ShortcutTableOpenDetails","description":"Show the selected row's details.","source":"Motif interface text"}
+  "shortcut-table-open-details": {"titleResource":"MotifApp.ShortcutTableOpenDetails","description":"Show the selected row's details.","source":"Motif interface text"},
+  "shortcut-group-compare-versions": {"titleResource":"MotifApp.ShortcutCompareVersions","description":"Keyboard shortcuts for comparing your version of a text with the FieldWorks version.","source":"Motif interface text"},
+  "shortcut-scope-compare-versions": {"titleResource":"MotifApp.ShortcutCompareVersions","description":"Available in the combined view that compares your version of a text with the FieldWorks version.","source":"Motif interface text"},
+  "shortcut-scope-compare-side-by-side": {"titleResource":"MotifApp.ShortcutCompareSideBySide","description":"Available in the side-by-side view of that comparison.","source":"Motif interface text"},
+  "shortcut-compare-use-mine": {"titleResource":"MotifApp.ShortcutCompareUseMine","description":"Use your version of the focused change.","source":"Motif interface text"},
+  "shortcut-compare-use-fieldworks": {"titleResource":"MotifApp.ShortcutCompareUseFieldWorks","description":"Use the FieldWorks version of the focused change.","source":"Motif interface text"},
+  "shortcut-compare-use-both": {"titleResource":"MotifApp.ShortcutCompareUseBoth","description":"Use both versions of the focused change, yours first, where both added words at the same place.","source":"Motif interface text"},
+  "shortcut-compare-edit-side-by-side": {"titleResource":"MotifApp.ShortcutCompareEditSideBySide","description":"Open the side-by-side view to write the focused change by hand.","source":"Motif interface text"},
+  "shortcut-compare-next-choice": {"titleResource":"MotifApp.ShortcutCompareNextChoice","description":"Go to the next change both versions made.","source":"Motif interface text"},
+  "shortcut-compare-previous-choice": {"titleResource":"MotifApp.ShortcutComparePreviousChoice","description":"Go to the previous change both versions made.","source":"Motif interface text"},
+  "shortcut-compare-open-side-by-side": {"titleResource":"MotifApp.ShortcutCompareOpenSideBySide","description":"Show the FieldWorks version and yours next to each other in a larger window.","source":"Motif interface text"},
+  "shortcut-compare-decide-later": {"titleResource":"MotifApp.ShortcutCompareDecideLater","description":"Close the comparison and change nothing.","source":"Motif interface text"},
+  "shortcut-compare-use-this": {"titleResource":"MotifApp.ShortcutCompareUseThis","description":"Copy the FieldWorks paragraph across into your version, on the focused row.","source":"Motif interface text"},
+  "shortcut-compare-switch-side": {"titleResource":"MotifApp.ShortcutCompareSwitchSide","description":"Move between the FieldWorks side and yours.","source":"Motif interface text"},
+  "shortcut-compare-back-to-combined": {"titleResource":"MotifApp.ShortcutCompareBackToCombined","description":"Return to the combined view with every choice kept.","source":"Motif interface text"}
 }

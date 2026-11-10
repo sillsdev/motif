@@ -117,6 +117,32 @@ public static class MotifAppStrings
 
     public static string ShortcutChooseCell => Text("MotifApp.ShortcutChooseCell");
 
+    public static string ShortcutCompareVersions => Text("MotifApp.ShortcutCompareVersions");
+
+    public static string ShortcutCompareSideBySide => Text("MotifApp.ShortcutCompareSideBySide");
+
+    public static string ShortcutCompareUseMine => Text("MotifApp.ShortcutCompareUseMine");
+
+    public static string ShortcutCompareUseFieldWorks => Text("MotifApp.ShortcutCompareUseFieldWorks");
+
+    public static string ShortcutCompareUseBoth => Text("MotifApp.ShortcutCompareUseBoth");
+
+    public static string ShortcutCompareEditSideBySide => Text("MotifApp.ShortcutCompareEditSideBySide");
+
+    public static string ShortcutCompareNextChoice => Text("MotifApp.ShortcutCompareNextChoice");
+
+    public static string ShortcutComparePreviousChoice => Text("MotifApp.ShortcutComparePreviousChoice");
+
+    public static string ShortcutCompareOpenSideBySide => Text("MotifApp.ShortcutCompareOpenSideBySide");
+
+    public static string ShortcutCompareDecideLater => Text("MotifApp.ShortcutCompareDecideLater");
+
+    public static string ShortcutCompareUseThis => Text("MotifApp.ShortcutCompareUseThis");
+
+    public static string ShortcutCompareSwitchSide => Text("MotifApp.ShortcutCompareSwitchSide");
+
+    public static string ShortcutCompareBackToCombined => Text("MotifApp.ShortcutCompareBackToCombined");
+
     public static string ShortcutOpenInspector => Text("MotifApp.ShortcutOpenInspector");
 
     public static string ShortcutOpenHelp => Text("MotifApp.ShortcutOpenHelp");

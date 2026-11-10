@@ -161,6 +161,11 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("Enter", "Enter", "Settings"), ("Escape", "Esc", "Settings"),
             ("← or →", "← or →", "Settings"),
             ("Tab", "Tab", "Settings"), ("Tab", "Shift+Tab", "Settings"),
+            ("M", "Alt+M", "Compare Two Versions"), ("F", "Alt+F", "Compare Two Versions"),
+            ("B", "Alt+B", "Compare Two Versions"), ("E", "Alt+E", "Compare Two Versions"),
+            ("F8", "F8", "Compare Two Versions"), ("F8", "Shift+F8", "Compare Two Versions"),
+            ("S", "Ctrl+Alt+S", "Compare Two Versions"), ("Escape", "Esc", "Compare Two Versions"),
+            ("→", "Alt+→", "Side by Side"), ("F6", "F6", "Side by Side"), ("Escape", "Esc", "Side by Side"),
         });
         if (CurrentPlatform == ShortcutPlatform.MacOS)
         {

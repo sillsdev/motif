@@ -23,6 +23,8 @@ internal enum KeyboardShortcutScope
     NavigationRail,
     Table,
     Menu,
+    CompareVersions,
+    CompareSideBySide,
 }
 
 internal enum KeyboardShortcutBehavior
@@ -79,6 +81,16 @@ internal enum KeyboardShortcutBehavior
     OpenDetails,
     ActivateMenuItem,
     OpenMenu,
+    UseMine,
+    UseFieldWorks,
+    UseBoth,
+    EditSideBySide,
+    NextUndecided,
+    PreviousUndecided,
+    OpenSideBySide,
+    DecideLater,
+    UseThis,
+    SwitchSide,
 }
 
 public sealed record KeyboardShortcutEntry(string Key, string Gesture, string Scope, string Action);
@@ -152,6 +164,10 @@ public static class KeyboardShortcutRegistry
         [ShortcutKey.K] = Key.K,
         [ShortcutKey.F10] = Key.F10,
         [ShortcutKey.Apps] = Key.Apps,
+        [ShortcutKey.M] = Key.M,
+        [ShortcutKey.B] = Key.B,
+        [ShortcutKey.F6] = Key.F6,
+        [ShortcutKey.F8] = Key.F8,
     };
     private static readonly IReadOnlyDictionary<Key, ShortcutKey> ShortcutKeys =
         AvaloniaKeys.ToDictionary(pair => pair.Value, pair => pair.Key);
@@ -289,6 +305,8 @@ public static class KeyboardShortcutRegistry
         ShortcutScope.NavigationRail => KeyboardShortcutScope.NavigationRail,
         ShortcutScope.Table => KeyboardShortcutScope.Table,
         ShortcutScope.Menu => KeyboardShortcutScope.Menu,
+        ShortcutScope.CompareVersions => KeyboardShortcutScope.CompareVersions,
+        ShortcutScope.CompareSideBySide => KeyboardShortcutScope.CompareSideBySide,
         _ => throw new InvalidOperationException($"Shortcut scope '{scope}' has no App route."),
     };
 

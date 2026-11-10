@@ -1,5 +1,8 @@
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Controls;
+using Avalonia.LogicalTree;
+using SIL.Motif.App.Compare;
 using SIL.Motif.App.Preview;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
@@ -46,11 +49,13 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
         public TaskCompletionSource? ApplyGate { get; set; }
         public GdrApplyRefusal? ApplyRefusal { get; set; } = applyRefusal;
         public int Applies { get; private set; }
+        public bool RemembersStaged { get; set; }
 
         public Task<string?> StageAsync(string senseId, TextRichStringPayload richString)
         {
             if (StageRefusal is { } refusal) return Task.FromResult<string?>(refusal);
             Staged.Add((senseId, richString));
+            if (RemembersStaged) Pending[richString.Ws!] = richString;
             return Task.FromResult<string?>(null);
         }
 
@@ -266,6 +271,43 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
             Assert.Equal([(SenseId, "en")], store.Discards);
             Assert.False(window.IsStaleStripShown);
             Assert.False(window.FieldFor("en")!.IsReadOnly);
+        });
+    }
+
+    [Fact]
+    public void DoneInTheComparisonStagesTheMergedDefinitionMeasuredAgainstFieldWorksAndItFitsAgain()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore { RemembersStaged = true };
+            var started = Canned().Senses[0].Definition[0].Runs.Select(TextVersions.Run);
+            store.Pending["en"] = new TextRichStringPayload(SenseDefinitionStore.Field, "en", [.. started, new TextRun(" mine", "en")],
+                Start(Canned(), "en"));
+            var compared = new List<CompareWindow>();
+            var window = new SenseDefinitionPreviewWindow(Canned("fw "), () => Canned("fw "), store, () => Task.FromResult(true), shown =>
+            {
+                compared.Add(shown);
+                shown.Finish();
+                return Task.FromResult(shown.Outcome);
+            });
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(SenseId);
+            Completed(window.Loading);
+            Assert.True(window.IsStaleStripShown);
+            Assert.Contains(ChangeWords.Compare, window.GetLogicalDescendants().OfType<Button>().Select(button => button.Content as string));
+
+            Assert.True(Completed(window.CompareAsync()));
+            Completed(window.Loading);
+
+            Assert.Equal(2, Assert.Single(compared).Comparison.Sorted.Changes.Count);
+            var (sense, payload) = store.Staged[^1];
+            Assert.Equal(SenseId, sense);
+            Assert.Equal(Start(Canned("fw "), "en"), payload.Expected);
+            Assert.Equal("fw y mine", string.Concat(payload.Runs.Select(run => run.Text)));
+            Assert.False(window.IsStaleStripShown);
+            Assert.False(window.FieldFor("en")!.IsReadOnly);
+            Assert.Equal("fw y mine", window.FieldFor("en")!.Editor.Document.Paragraphs[0].Text);
         });
     }
 

@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using SIL.Motif.App.Compare;
 using SIL.Motif.App.Preview;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
@@ -321,16 +322,20 @@ public sealed class GdrPreviewWindowTests
 
         public int Applies { get; private set; }
 
+        public bool RemembersStaged { get; set; }
+
         public Task<string?> StageAsync(string recordId, TextParagraphsPayload paragraphs)
         {
             if (StageRefusal is { } refusal) return Task.FromResult<string?>(refusal);
             Staged.Add((recordId, paragraphs));
+            if (RemembersStaged) Pending[recordId] = paragraphs;
             return Task.FromResult<string?>(null);
         }
 
         public Task<string?> DiscardAsync(string recordId)
         {
             Discards.Add(recordId);
+            if (RemembersStaged) Pending.Remove(recordId);
             return Task.FromResult<string?>(null);
         }
 
@@ -552,6 +557,131 @@ public sealed class GdrPreviewWindowTests
             window.KeyTextInput("b");
             Leave(window);
             Assert.Equal("Changed in FieldWorks", store.Staged[^1].Paragraphs.Expected["para-1"].Text);
+        });
+    }
+
+    // FieldWorks added a word at the end of the first paragraph, away from anything typed at its start.
+    private static GdrShowResponse AddedAtTheEndInFieldWorks(GdrSummary record)
+    {
+        var canned = Canned(record);
+        return canned with
+        {
+            Discussion = [canned.Discussion[0] with { Runs = [.. canned.Discussion[0].Runs, new GdrRun(" always", "en", null, Props())] },
+                canned.Discussion[1]],
+        };
+    }
+
+    private (GdrPreviewWindow Window, FakeStore Store, List<CompareWindow> Compared) RefusedForDrift(
+        Func<CompareWindow, CompareOutcome?> leave, Func<Task<bool>>? confirm = null)
+    {
+        var store = new FakeStore(new GdrApplyRefusal("stale", First.Id)) { RemembersStaged = true };
+        var refused = false;
+        var compared = new List<CompareWindow>();
+        var window = new GdrPreviewWindow([First, Second],
+            id => refused && id == First.Id ? AddedAtTheEndInFieldWorks(First) : Canned(id == First.Id ? First : Second), store,
+            confirm ?? (() => Task.FromResult(true)),
+            shown =>
+            {
+                compared.Add(shown);
+                return Task.FromResult(leave(shown));
+            });
+        window.Show();
+        window.Show(First.Id);
+        Completed(window.Loading);
+        window.Field!.Focus();
+        window.KeyTextInput("a");
+        Assert.False(Completed(window.ApplyAsync()));
+        refused = true;
+        return (window, store, compared);
+    }
+
+    [Fact]
+    public void TheStripOffersCompareInPlaceOfStartingAgainAndNoButtonSaysKeep()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (window, _, _) = RefusedForDrift(_ => null);
+            using var closer = window.CloseOnExit();
+
+            Assert.True(window.IsStaleStripShown);
+            var buttons = window.GetLogicalDescendants().OfType<Button>().Select(button => button.Content as string).ToArray();
+            Assert.Contains(ChangeWords.Compare, buttons);
+            Assert.DoesNotContain(ChangeWords.StartAgain, buttons);
+        });
+    }
+
+    [Fact]
+    public void DoneInTheComparisonStagesTheMergedTextMeasuredAgainstFieldWorksAndTheEditFitsAgain()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (window, store, compared) = RefusedForDrift(shown =>
+            {
+                Assert.Empty(shown.Comparison.Undecided);
+                shown.Finish();
+                return shown.Outcome;
+            });
+            using var closer = window.CloseOnExit();
+
+            Assert.True(Completed(window.CompareAsync()));
+            Completed(window.Loading);
+
+            var compare = Assert.Single(compared);
+            Assert.Equal(2, compare.Comparison.Sorted.Changes.Count);
+            var (record, payload) = store.Staged[^1];
+            Assert.Equal(First.Id, record);
+            Assert.Equal("Words end at spaces always", payload.Expected["para-1"].Text);
+            Assert.Equal("aWords end at spaces always", string.Concat(payload.Changed.Single().Runs.Select(run => run.Text)));
+            Assert.False(window.IsStaleStripShown);
+            Assert.False(window.Field!.IsReadOnly);
+            Assert.Equal("aWords end at spaces always", window.Field.Editor.Document.Paragraphs[0].Text);
+        });
+    }
+
+    [Fact]
+    public void DecideLaterLeavesTheEditAsItWasAndApplyStillWaits()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var (window, store, _) = RefusedForDrift(shown =>
+            {
+                shown.DecideLater();
+                return shown.Outcome;
+            });
+            using var closer = window.CloseOnExit();
+            var staged = store.Staged.Count;
+
+            Assert.False(Completed(window.CompareAsync()));
+
+            Assert.Equal(staged, store.Staged.Count);
+            Assert.True(window.IsStaleStripShown);
+            Assert.Empty(store.Discards);
+        });
+    }
+
+    [Fact]
+    public void StartingAgainFromInsideTheComparisonStillAsksAndThenShowsTheFieldWorksText()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var asked = 0;
+            var (window, store, _) = RefusedForDrift(shown =>
+            {
+                shown.StartAgain();
+                return shown.Outcome;
+            }, () =>
+            {
+                asked++;
+                return Task.FromResult(true);
+            });
+            using var closer = window.CloseOnExit();
+
+            Assert.True(Completed(window.CompareAsync()));
+
+            Assert.Equal(1, asked);
+            Assert.Equal([First.Id], store.Discards);
+            Assert.False(window.IsStaleStripShown);
+            Assert.Equal("Words end at spaces always", window.Field!.Editor.Document.Paragraphs[0].Text);
         });
     }
 
