@@ -92,6 +92,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             Assert.True(walkthrough.Find<Button>("Apply to FieldWorks project").IsEffectivelyEnabled);
 
             walkthrough.Click("Apply to FieldWorks project");
+            walkthrough.ClickAutomationId(AutomationIds.ApplyConfirm);
             walkthrough.WaitUntil(
                 () => review.HasReceipt && review.Changes.Items.Count == 0,
                 WalkthroughSteps.Remaining(deadline), "Apply did not show its Receipt and clear the pending change");
@@ -103,8 +104,6 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                 InteractiveControlFamily.SelectableText,
                 InteractiveControlFamily.Collection);
 
-            Assert.True(walkthrough.Workspace.Context.Evidence.AppliedSinceRefresh);
-            Assert.True(walkthrough.Workspace.Context.Evidence.IsStale);
             Assert.False(reviewBadge.IsEffectivelyVisible);
             Assert.Contains("Changes applied to", review.ReceiptText, StringComparison.Ordinal);
             var receiptTitle = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
@@ -121,18 +120,6 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                 Assert.Equal(2, wordform.SpellingStatus);
             }
 
-            var appliedCard = ProjectCardAccess.Open(walkthrough.Window);
-            var appliedLabel = appliedCard.GetVisualDescendants().OfType<CopyableTextBlock>()
-                .Single(text => text.Classes.Contains("freshLabel"));
-            var appliedDetail = appliedCard.GetVisualDescendants().OfType<CopyableTextBlock>()
-                .Single(text => text.Classes.Contains("freshDetail") &&
-                    AutomationProperties.GetAutomationId(text) == AutomationIds.FreshnessDetail);
-            Assert.True(appliedLabel.IsEffectivelyVisible);
-            Assert.Equal("Changes applied", appliedLabel.Text);
-            Assert.True(appliedDetail.IsEffectivelyVisible);
-            Assert.Contains("changes applied after it", appliedDetail.Text,
-                StringComparison.Ordinal);
-            ProjectCardAccess.Close(walkthrough.Window);
             InteractiveControlSweep.AssertScene(walkthrough, "stale Review values",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
@@ -143,7 +130,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
 
             var batchInvocationsBeforeRefresh = FakeParser.Invocations(parserPath)
                 .Count(command => command == "batch");
-            walkthrough.Click("Refresh the project");
+            // Apply runs the Refresh itself, so wait for it instead of clicking Refresh.
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.RefreshCommand.IsRunning &&
                     walkthrough.Workspace.Freshness == ProjectFreshness.Refreshed &&

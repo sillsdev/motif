@@ -64,6 +64,11 @@
       "automationId": "motif-apply-changes"
     },
     {
+      "id": "confirm-apply",
+      "kind": "click",
+      "automationId": "motif-apply-confirm"
+    },
+    {
       "id": "wait-for-receipt",
       "kind": "waitFor",
       "automationId": "motif-apply-receipt",

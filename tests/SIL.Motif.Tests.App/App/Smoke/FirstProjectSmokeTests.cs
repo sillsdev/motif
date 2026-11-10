@@ -239,6 +239,7 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
             var remainingBeforeApply = WalkthroughSteps.Remaining(deadline);
             var applyClock = Stopwatch.StartNew();
             walkthrough.Click("Apply to FieldWorks project");
+            walkthrough.ClickAutomationId(AutomationIds.ApplyConfirm);
             var remainingAfterApplyClick = WalkthroughSteps.Remaining(deadline);
             var applyTimeout = StepTimeout(deadline);
             try
@@ -267,6 +268,41 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
                 InteractiveControlFamily.Collection);
+            // Apply now runs the Refresh that records a new Baseline, which drops the old Assessment; parse again.
+            walkthrough.WaitUntil(() => !review.IsRecordingBaseline && !walkthrough.Workspace.RefreshCommand.IsRunning &&
+                !walkthrough.Workspace.Context.Evidence.HasAssessment,
+                StepTimeout(deadline), "the Refresh after Apply did not finish");
+            walkthrough.SetFakeParserBehavior(new
+            {
+                subcommands = new Dictionary<string, object>
+                {
+                    ["batch"] = new
+                    {
+                        words = new object[]
+                        {
+                            new
+                            {
+                                word = SeededProject.AnalysedWordForm,
+                                outcome = "complete",
+                                signature = "authored-reading",
+                                analyses = new[] { firstReading },
+                            },
+                            new
+                            {
+                                word = SeededProject.UnanalysedWordForm,
+                                outcome = "no-analysis",
+                                signature = "-",
+                            },
+                        },
+                    },
+                },
+            });
+            walkthrough.ShowPage(WorkspacePage.Texts);
+            SetupWalkthroughActions.ClickParseAllWordsFromTexts(walkthrough);
+            walkthrough.WaitUntil(() => walkthrough.Workspace.Context.Evidence.HasAssessment &&
+                walkthrough.Workspace.Assess.State == RunState.Completed &&
+                walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
+                StepTimeout(deadline), "parsing again after Apply did not publish an Assessment");
             walkthrough.ShowPage(WorkspacePage.Timing);
             var statistics = walkthrough.Window.GetLogicalDescendants().OfType<Expander>()
                 .Single(expander => Equals(expander.Header, MotifAppStrings.TimingDetailedStatisticsHeading));

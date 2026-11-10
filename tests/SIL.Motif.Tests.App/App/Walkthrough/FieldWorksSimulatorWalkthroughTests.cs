@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using SIL.LCModel;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.Views;
@@ -118,6 +119,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.WaitUntil(() => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
                 WalkthroughSteps.Remaining(deadline), "checking the confirmed change did not enable Apply");
             walkthrough.Click("Apply to FieldWorks project");
+            walkthrough.ClickAutomationId(AutomationIds.ApplyConfirm);
             walkthrough.WaitUntil(() => review.HasReceipt && review.Changes.Items.Count == 0,
                 WalkthroughSteps.Remaining(deadline), "Apply did not finish after the uncertain decision was confirmed");
             return Task.CompletedTask;
@@ -306,6 +308,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
             Assert.True(applyButton.IsEffectivelyEnabled);
             walkthrough.Click("Apply to FieldWorks project");
+            walkthrough.ClickAutomationId(AutomationIds.ApplyConfirm);
             walkthrough.WaitUntil(
                 () => (review.HasReceipt && review.Changes.Items.Count == 0) || review.ApplyRefusal is not null,
                 StepFor(deadline), "Apply returned neither a Receipt nor a refusal");
