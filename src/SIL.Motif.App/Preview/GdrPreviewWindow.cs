@@ -173,6 +173,8 @@ public sealed class GdrPreviewWindow : Window
     private CancellationTokenSource? _hintCancel;
     private bool _resettingChoices;
     private readonly Button _sourceToggle;
+    // The last thing source mode said on the status line.
+    private string? _announced;
 
     /// <summary>The paragraph styles the toolbar offers: the project's.</summary>
     public IReadOnlyList<string> ParagraphStyleChoices => Items(_paragraphStyles);
@@ -545,7 +547,8 @@ public sealed class GdrPreviewWindow : Window
         {
             _refused[recordId] = refusal;
         }
-        _status.Text = refusal ?? string.Empty;
+        // A stage that went through leaves the source-mode announcement for the screen reader to finish.
+        if (refusal is not null || _status.Text != _announced) _status.Text = refusal ?? string.Empty;
         return refusal;
     }
 
@@ -659,7 +662,7 @@ public sealed class GdrPreviewWindow : Window
         field.ContextMenuRequested += OnContextMenuRequested;
         field.SourceModeChanged += (_, change) =>
         {
-            _status.Text = change.Announcement;
+            _status.Text = _announced = change.Announcement;
             if (_opened.TryGetValue(id, out var current) && current.Field == field) ShowToolbar();
         };
         // Until the Draft has been read, typing could start an edit that would replace the one it holds.

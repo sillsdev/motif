@@ -103,6 +103,7 @@ public sealed partial class GdrPreviewWindowTests
             Assert.True(window.ToggleSourceMode());
 
             Settle(() => store.Staged.Count == 1);
+            Assert.Equal("Back to rich text", window.StatusText);
             var paragraph = field.Editor.Document.Paragraphs[0];
             Assert.Equal("Now See GDR-9 and gone" + GdrDiscussion.BrokenMarker + ".", paragraph.Text);
             Assert.Equal("para-1", paragraph.Key);

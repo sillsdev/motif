@@ -68,6 +68,8 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
             Assert.True(window.ToggleSourceMode(), view.Editor.Document.PlainText());
             Assert.NotNull(window.Session!.Pending);
             await Staged(path, id);
+            for (var i = 0; i < 20; i++) await Task.Delay(25);
+            Assert.Equal("Back to rich text", window.StatusText);
             Assert.True(await window.ApplyAsync(), window.StatusText);
         }, TimeSpan.FromMinutes(4));
 

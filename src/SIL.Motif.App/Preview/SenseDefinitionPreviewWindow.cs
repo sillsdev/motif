@@ -63,6 +63,8 @@ public sealed class SenseDefinitionPreviewWindow : Window
     private readonly WrapPanel _bar = new() { Margin = new Thickness(0, 0, 0, 6) };
     // The field the bar acts on: the one the person was last in.
     private RichTextField? _focused;
+    // The last thing source mode said on the status line.
+    private string? _announced;
     private readonly Border _unappliedStrip = new()
     {
         Background = Brushes.LightYellow,
@@ -353,6 +355,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
             SourceForm = new DiscussionSourceForm(discussion, projectName: null, richString: true),
         };
         field.GotFocus += (_, _) => _focused = field;
+        field.SourceModeChanged += (_, change) => _status.Text = _announced = change.Announcement;
         // The field offers no menu of its own; in Markdown the source view's menu is about the Markdown.
         field.ContextMenuRequested += (_, e) =>
         {
@@ -362,8 +365,6 @@ public sealed class SenseDefinitionPreviewWindow : Window
         if (_store is not null && pending is null) _locked.Add(key);
         field.IsReadOnly = _applying || _locked.Contains(key);
         var session = new GdrDiscussionSession(field, key, starting: starting);
-        // After the session's handler, which stages the edit and so rewrites the status line.
-        field.SourceModeChanged += (_, change) => _status.Text = change.Announcement;
         var opened = new OpenedField(sense.Id, alternative.WritingSystem, field, session, discussion,
             new TextRichStringExpected(alternative.Text, alternative.Digest), pending?.Expected);
         session.PendingChanged += (_, edit) =>
@@ -439,7 +440,8 @@ public sealed class SenseDefinitionPreviewWindow : Window
         {
             _refused[key] = refusal;
         }
-        _status.Text = refusal ?? string.Empty;
+        // A stage that went through leaves the source-mode announcement for the screen reader to finish.
+        if (refusal is not null || _status.Text != _announced) _status.Text = refusal ?? string.Empty;
         return refusal;
     }
 
