@@ -3271,6 +3271,8 @@ public static class MotifAppStrings
     public static string RefusalProposalPictureInvalid => Text("MotifApp.RefusalProposalPictureInvalid");
     public static string RefusalProposalRationaleEmpty => Text("MotifApp.RefusalProposalRationaleEmpty");
     public static string RefusalProposalRationaleFindings => Text("MotifApp.RefusalProposalRationaleFindings");
+    public static string RefusalProposalRationaleStale => Text("MotifApp.RefusalProposalRationaleStale");
+    public static string RefusalProposalRationaleUnchecked => Text("MotifApp.RefusalProposalRationaleUnchecked");
 
     public static string RefusalProposalUnreadable => Text("MotifApp.RefusalProposalUnreadable");
 

@@ -185,6 +185,8 @@ public static class RefusalCodes
     public const string RequestProposalOpen = "request.proposal-open";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
     public const string ProposalRationaleFindings = "proposal.rationale-findings";
+    public const string ProposalRationaleUnchecked = "proposal.rationale-unchecked";
+    public const string ProposalRationaleStale = "proposal.rationale-stale";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";

@@ -1,3 +1,4 @@
+using SIL.LCModel;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host;
 using SIL.Motif.Host.Baselines;
@@ -30,12 +31,19 @@ public static class ProposalTexts
     public const int MaxAuthorLength = 100;
 
     /// <summary>Writes a Proposal's Rationale, replacing the one there; allowed until the Proposal is closed.</summary>
-    public static CommandOutcome<ProposalTextChangedResponse> SetRationale(SetRationaleRequest request)
+    public static CommandOutcome<ProposalTextChangedResponse> SetRationale(SetRationaleRequest request) =>
+        SetRationale(request, Check);
+
+    /// <summary>Writes a Rationale with <paramref name="check"/> as its check, which a test may interleave a write with.</summary>
+    internal static CommandOutcome<ProposalTextChangedResponse> SetRationale(SetRationaleRequest request, TextCheck check)
     {
         ArgumentNullException.ThrowIfNull(request);
         return Write(request.FwDataPath, request.ProductVersion, request.ProposalId, request.Text,
-            request.AuthorLabel, request.PersonName);
+            request.AuthorLabel, request.PersonName, check);
     }
+
+    /// <summary>A Rationale or Comment check against a project's store and Baseline.</summary>
+    internal delegate CheckedProposalText TextCheck(MotifDatabase database, ProjectLocator project, string text);
 
     /// <summary>
     /// Whether a person wrote after the builder last did, for the Proposal a full id or a Draft name selects; null
@@ -70,7 +78,7 @@ public static class ProposalTexts
             new ProposalDiscussionRepository(database).ListComments(record.ProposalId)));
 
     private static CommandOutcome<ProposalTextChangedResponse> Write(string fwDataPath, string productVersion,
-        string proposalId, string text, string? authorLabel, string? personName)
+        string proposalId, string text, string? authorLabel, string? personName, TextCheck check)
     {
         return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
         {
@@ -98,14 +106,24 @@ public static class ProposalTexts
                     FailureReason.Refused, $"Proposal '{id.Value}' is {record.Status}, so its rationale can no longer change.",
                     id.Value));
 
-            var checkedText = Check(database, project, text);
+            var checkedText = check(database, project, text);
+            if (IsReady(record) && checkedText.ProjectUnavailable)
+                return CommandOutcome<ProposalTextChangedResponse>.Refused(RationaleUnchecked(
+                    $"Proposal '{id.Value}' is Ready and its Rationale links to the project, but the project's " +
+                    "Baseline could not be read to check it, so it is not saved. Try again, or capture a Baseline first.",
+                    ("proposalId", id.Value)));
             if (!checkedText.IsClean && IsReady(record))
                 return CommandOutcome<ProposalTextChangedResponse>.Refused(RationaleFindings(
                     $"Proposal '{id.Value}' is Ready, so a Rationale a reader would find wrong is not saved; the " +
                     "last clean one stays. Fix these and write it again:", checkedText.Findings,
                     ("proposalId", id.Value)));
 
-            repository.SetRationale(id, checkedText.Text, new DiscussionAuthor(authorLabel, personName ?? ""));
+            // Only onto the state the check was for: a Draft finalized meanwhile must not take unchecked findings.
+            if (!repository.SetRationale(id, checkedText.Text, new DiscussionAuthor(authorLabel, personName ?? ""),
+                    new RationaleWriteExpectation(record.Status, record.DraftName)))
+                return CommandOutcome<ProposalTextChangedResponse>.Refused(RationaleStale(
+                    $"Proposal '{id.Value}' changed while its Rationale was being checked, so it was not saved. " +
+                    "Write it again.", ("proposalId", id.Value)));
             var written = repository.Get(id);
             return CommandOutcome<ProposalTextChangedResponse>.Success(new ProposalTextChangedResponse(
                 id.Value, "rationale", written.RationaleUpdatedUtc, CommentsChanged(database, written))
@@ -124,14 +142,36 @@ public static class ProposalTexts
     /// links to something or names a writing system or style. With no Baseline only the markup is checked, and a link
     /// must carry its GUID.
     /// </summary>
+    /// <remarks>
+    /// A Baseline that is recorded but cannot be read (its file gone or replaced, or not a project LibLCM can open)
+    /// gives the markup-only check, marked <see cref="CheckedProposalText.ProjectUnavailable"/>.
+    /// </remarks>
     internal static CheckedProposalText Check(MotifDatabase database, ProjectLocator project, string text)
     {
         if (!ProposalTextChecker.NeedsProject(text)) return ProposalTextChecker.Check(text, null, null);
         var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
-        if (baseline is null || !File.Exists(baseline.FwDataPath)) return ProposalTextChecker.Check(text, null, null);
-        using var reader = BaselineReadCache.Open(baseline.FwDataPath);
-        return ProposalTextChecker.Check(text, reader.Cache, Path.GetFileNameWithoutExtension(project.FullFwDataPath));
+        if (baseline is null) return ProposalTextChecker.Check(text, null, null);
+        try
+        {
+            if (!File.Exists(baseline.FwDataPath)) throw new FileNotFoundException(null, baseline.FwDataPath);
+            using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+            return ProposalTextChecker.Check(text, reader.Cache, Path.GetFileNameWithoutExtension(project.FullFwDataPath));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or LcmInitializationException)
+        {
+            return ProposalTextChecker.Check(text, null, null) with { ProjectUnavailable = true };
+        }
     }
+
+    /// <summary>The refusal for a Rationale that needed the project when its Baseline could not be read.</summary>
+    internal static Refusal RationaleUnchecked(string message, params (string Key, string Value)[] facts) =>
+        new(RefusalCodes.ProposalRationaleUnchecked, FailureReason.Refused, message,
+            facts.ToDictionary(fact => fact.Key, fact => fact.Value, StringComparer.Ordinal));
+
+    /// <summary>The refusal for a Rationale write or Finalize that found the Proposal changed since its check.</summary>
+    internal static Refusal RationaleStale(string message, params (string Key, string Value)[] facts) =>
+        new(RefusalCodes.ProposalRationaleStale, FailureReason.Refused, message,
+            facts.ToDictionary(fact => fact.Key, fact => fact.Value, StringComparer.Ordinal));
 
     /// <summary>The refusal that lists a Rationale's findings, one per line with its line and column.</summary>
     internal static Refusal RationaleFindings(string lead, IReadOnlyList<TextFinding> findings,

@@ -6019,6 +6019,14 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>The explanation of these changes has something a reader would see as wrong, such as a link to something not in the project. Fix it first.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProposalRationaleFindings. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalProposalRationaleStale" xml:space="preserve">
+    <value>These changes were edited somewhere else while this was being saved, so nothing was saved. Try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.ProposalRationaleStale. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalProposalRationaleUnchecked" xml:space="preserve">
+    <value>The explanation of these changes links to the project, and the Baseline could not be read to check it. Try again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.ProposalRationaleUnchecked. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalProposalUnreadable" xml:space="preserve">
     <value>Motif could not read these changes, so it did not use them. Nothing was changed or deleted.</value>
     <comment>Sentence the window shows when the command refuses with code C.ProposalUnreadable. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

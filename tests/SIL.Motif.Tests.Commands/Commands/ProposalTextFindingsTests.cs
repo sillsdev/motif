@@ -9,7 +9,11 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.RichText;
+using SIL.Motif.Projection.Store;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
 
@@ -23,6 +27,7 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
     private const string Table = "Glosses as the corpus does:\n\n| Form | Gloss |\n| --- | --- |\n| form-1 | gloss-1 |\n| form-2 | gloss-2 |\n";
     private const string MissingLink = "Glosses [entry-9](/lexicon/entry-9){.name} as the corpus does.";
     private static string Version => MotifProductVersion.CurrentText;
+    private Guid _entry1;
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.ProposalTextFindings", Guid.NewGuid().ToString("N"));
 
     [Fact]
@@ -118,21 +123,18 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
     }
 
     [Fact]
-    public void ACleanTextIsStoredInItsCanonicalSpellingWithTheLinkItsGuid()
+    public void ACleanTextIsStoredAsWrittenWithItsLineEndingsTidiedAndThePathLinkGivenItsGuid()
     {
         var path = ProjectWithBaseline();
-        var (_, id) = Draft(path, "canonical");
+        var (_, id) = Draft(path, "tidied");
 
         var written = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, Clean));
         var comment = ProposalComments.Add(new AddCommentRequest(path, Version, id, "First line.\r\n\r\nSecond line.\r\n", "person-1"));
 
         Assert.True(written.Succeeded, written.Refusal?.Message);
         Assert.Empty(written.Value!.Findings);
-        var stored = Show(path, id).Rationale!.Markdown;
-        Assert.StartsWith("Glosses [entry-1](/lexicon/entry-1){", stored, StringComparison.Ordinal);
-        Assert.Contains("guid=", stored, StringComparison.Ordinal);
-        Assert.EndsWith(" as the corpus does.", stored, StringComparison.Ordinal);
-        Assert.DoesNotContain("fwmd:", stored, StringComparison.Ordinal);
+        Assert.Equal($"Glosses [entry-1](/lexicon/entry-1){{.name guid={_entry1}}} as the corpus does.",
+            Show(path, id).Rationale!.Markdown);
         Assert.Empty(comment.Value!.Findings);
         Assert.Equal("First line.\n\nSecond line.", Assert.Single(Show(path, id).Comments!).Markdown);
     }
@@ -148,7 +150,8 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
 
         Assert.True(written.Succeeded, written.Refusal?.Message);
         Assert.Empty(written.Value!.Findings);
-        Assert.Contains("guid=", Show(path, id).Rationale!.Markdown, StringComparison.Ordinal);
+        Assert.Equal($"Glosses [entry-1](/lexicon/entry-1){{guid={_entry1}}} as the corpus does.",
+            Show(path, id).Rationale!.Markdown);
     }
 
     [Fact]
@@ -256,6 +259,185 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
         Assert.True(ProposalCommands.Finalize(new FinalizeRequest(path, Version, name)).Succeeded);
     }
 
+    [Theory]
+    [InlineData("**Evidence:**\n- a\n- b", ProposalTextChecker.ListNeedsBlankLine, 2)]
+    [InlineData("Intro\n1. a\n2. b", ProposalTextChecker.ListNeedsBlankLine, 2)]
+    [InlineData("1. x\n\ny\n\n2. z", ProposalTextChecker.ListRenumbered, 5)]
+    [InlineData("3. a\n4. b", ProposalTextChecker.ListRenumbered, 1)]
+    public void AListACommonMarkReaderWouldShowDifferentlyIsAFindingAndTheTextIsKeptAsWritten(string text, string id, int line)
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        var (_, proposal) = Draft(path, "structure");
+
+        var written = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, proposal, text));
+
+        var finding = Assert.Single(written.Value!.Findings);
+        Assert.Equal((id, line), (finding.Id, finding.Line));
+        Assert.Equal(text, Show(path, proposal).Rationale!.Markdown);
+    }
+
+    [Theory]
+    [InlineData("1. a\n\n2. b")]
+    [InlineData("Intro\n2. a")]
+    [InlineData("- a\n- b")]
+    [InlineData("Intro\n\n- a\n- b")]
+    [InlineData("[x]{ws=en} and **bold**")]
+    public void ATextFieldWorksAndCommonMarkReadAlikeIsCleanAndStoredExactlyAsWritten(string text)
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        var (_, proposal) = Draft(path, "alike");
+
+        var written = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, proposal, text));
+
+        Assert.Empty(written.Value!.Findings);
+        Assert.Equal(text, Show(path, proposal).Rationale!.Markdown);
+    }
+
+    [Fact]
+    public void ADraftFinalizedWhileItsRationaleIsCheckedDoesNotTakeTheRationale()
+    {
+        var path = ProjectWithBaseline();
+        var (name, id) = Draft(path, "race-write");
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, Clean)).Succeeded);
+        var before = Show(path, id).Rationale!.Markdown;
+
+        var refused = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, MissingLink), (database, project, text) =>
+        {
+            var checkedText = ProposalTexts.Check(database, project, text);
+            var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, Version, name));
+            Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+            return checkedText;
+        });
+
+        Assert.Equal(RefusalCodes.ProposalRationaleStale, refused.Refusal?.Code);
+        var shown = Show(path, id);
+        Assert.Null(shown.DraftName);
+        Assert.Equal(before, shown.Rationale!.Markdown);
+    }
+
+    [Fact]
+    public void ARationaleWrittenWhileFinalizeChecksItLeavesTheDraftADraft()
+    {
+        var path = ProjectWithBaseline();
+        var (name, id) = Draft(path, "race-finalize");
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, Clean)).Succeeded);
+
+        var refused = ProposalCommands.Finalize(new FinalizeRequest(path, Version, name), (database, project, text) =>
+        {
+            var checkedText = ProposalTexts.Check(database, project, text);
+            Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, MissingLink)).Succeeded);
+            return checkedText;
+        });
+
+        Assert.Equal(RefusalCodes.ProposalRationaleStale, refused.Refusal?.Code);
+        Assert.Equal(name, Show(path, id).DraftName);
+        Assert.Equal(RefusalCodes.ProposalRationaleFindings,
+            ProposalCommands.Finalize(new FinalizeRequest(path, Version, name)).Refusal?.Code);
+    }
+
+    [Fact]
+    public void FinalizeChecksAgainstTheBaselineAsItIsNowNotAsTheRationaleWasWritten()
+    {
+        var path = ProjectWithBaseline();
+        var (name, id) = Draft(path, "baseline-moved");
+        Assert.Empty(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, Clean)).Value!.Findings);
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(_entry1);
+            SIL.LCModel.Infrastructure.NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                cache.DomainDataByFlid.DeleteObj(entry.Hvo));
+            new FwDataProjectLoader().Save(cache);
+        }
+        Captured(path);
+
+        var refused = ProposalCommands.Finalize(new FinalizeRequest(path, Version, name));
+
+        Assert.Equal(RefusalCodes.ProposalRationaleFindings, refused.Refusal?.Code);
+        Assert.Contains("fwmd.link.broken", refused.Refusal!.Facts["findings"]);
+    }
+
+    [Fact]
+    public void ADeferredProposalRefusesARevisionWithFindings()
+    {
+        var path = ProjectWithBaseline();
+        var id = Finalized(path, "deferred");
+        Assert.True(ProposalCommands.Defer(new DeferRequest(path, Version, id)).Succeeded);
+        var before = Show(path, id).Rationale!.Markdown;
+
+        var refused = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, MissingLink));
+
+        Assert.Equal(RefusalCodes.ProposalRationaleFindings, refused.Refusal?.Code);
+        Assert.Equal(before, Show(path, id).Rationale!.Markdown);
+    }
+
+    [Fact]
+    public void ADuplicateOrSplitCopyOfARationaleWithFindingsCannotBeFinalizedUntilItIsFixed()
+    {
+        var path = ProjectWithBaseline();
+        var id = Finalized(path, "copied");
+        Assert.True(ProjectStoreCommand.Run(path, Version, (database, _) => CommandOutcome<string>.Success(
+            new ProposalRepository(database).SetRationale(CanonicalId.Parse(id), MissingLink) ? "" : null!)).Succeeded);
+        var operation = Assert.Single(Show(path, id).Operations).OperationId;
+
+        Assert.True(ProposalCommands.Duplicate(new DuplicateRequest(path, Version, id, "copied-duplicate")).Succeeded);
+        Assert.True(ProposalCommands.Split(new SplitRequest(path, Version, id,
+            [new SplitGroup("copied-split", [operation])], Force: false)).Succeeded);
+
+        foreach (var copy in new[] { "copied-duplicate", "copied-split" })
+            Assert.Equal(RefusalCodes.ProposalRationaleFindings,
+                ProposalCommands.Finalize(new FinalizeRequest(path, Version, copy)).Refusal?.Code);
+    }
+
+    [Fact]
+    public void WhenTheBaselineCannotBeReadAReadyRevisionAndFinalizeAreRefusedAndACommentStillSaves()
+    {
+        var path = ProjectWithBaseline();
+        var ready = Finalized(path, "unreadable-ready");
+        var (name, draft) = Draft(path, "unreadable-draft");
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, draft, Clean)).Succeeded);
+        File.Delete(ProjectStoreCommand.Run(path, Version, (database, project) => CommandOutcome<string>.Success(
+            new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project))!.FwDataPath)).Value!);
+
+        var revision = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, ready, Clean));
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, Version, name));
+        var comment = ProposalComments.Add(new AddCommentRequest(path, Version, ready, Clean, "person-1"));
+
+        Assert.Equal(RefusalCodes.ProposalRationaleUnchecked, revision.Refusal?.Code);
+        Assert.Equal(RefusalCodes.ProposalRationaleUnchecked, finalized.Refusal?.Code);
+        Assert.True(comment.Succeeded, comment.Refusal?.Message);
+    }
+
+    [Fact]
+    public void OnlyADeclineOrWithdrawAtFinalizeSkipsTheRationaleCheck()
+    {
+        var path = ProjectWithBaseline();
+        var (name, id) = Draft(path, "finalize-then-defer");
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, MissingLink)).Succeeded);
+
+        var refused = ProposalCommands.Finalize(new FinalizeRequest(path, Version, name, null,
+            new FinalizeMove([ManifestStatus.Proposed], ManifestStatus.Deferred)));
+
+        Assert.Equal(RefusalCodes.ProposalRationaleFindings, refused.Refusal?.Code);
+        Assert.Equal(name, Show(path, id).DraftName);
+    }
+
+    [Fact]
+    public void ADeclinesReasonIsAComment()
+    {
+        var path = ProjectWithBaseline();
+        var ready = Finalized(path, "decline-reason");
+        var (_, draft) = Draft(path, "decline-draft-reason");
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, draft, Clean)).Succeeded);
+
+        Assert.True(ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, ready, "Not yet.\r\nLater.\r\n")).Succeeded);
+        Assert.True(ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, draft, "Some <b>raw</b> reason.")).Succeeded);
+
+        Assert.Equal("Not yet.\nLater.", Assert.Single(Show(path, ready).Comments!).Markdown);
+        Assert.Equal("Some <b>raw</b> reason.", Assert.Single(Show(path, draft).Comments!).Markdown);
+    }
+
     private (string Name, string Id) Draft(string path, string name)
     {
         var created = ProposalCommands.New(new NewDraftRequest(path, Version, name, name));
@@ -279,12 +461,19 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
         using var cache = pristine.NewScratch();
         SeededGdrs.Seed(cache);
         SeededGdrs.SeedLinks(cache);
+        _entry1 = cache.ServiceLocator.GetInstance<ILexEntryRepository>().AllInstances()
+            .Single(entry => entry.LexemeFormOA?.Form.VernacularDefaultWritingSystem.Text == "entry-1").Guid;
         var path = cache.ProjectId.Path;
         new FwDataProjectLoader().Save(cache);
+        Captured(path);
+        return path;
+    }
+
+    private void Captured(string path)
+    {
         var root = Path.Combine(_root, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
-        return path;
     }
 
     private static ProposalDetailProjection Show(string path, string id)

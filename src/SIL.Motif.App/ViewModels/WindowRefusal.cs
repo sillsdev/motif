@@ -99,6 +99,8 @@ public sealed partial record WindowRefusal
         [C.RequestNotOpen] = () => MotifAppStrings.RefusalRequestNotOpen,
         [C.ProposalRationaleEmpty] = () => MotifAppStrings.RefusalProposalRationaleEmpty,
         [C.ProposalRationaleFindings] = () => MotifAppStrings.RefusalProposalRationaleFindings,
+        [C.ProposalRationaleStale] = () => MotifAppStrings.RefusalProposalRationaleStale,
+        [C.ProposalRationaleUnchecked] = () => MotifAppStrings.RefusalProposalRationaleUnchecked,
         [C.ProposalUnreadable] = () => MotifAppStrings.RefusalProposalUnreadable,
         [C.ApplyPreconditionFailed] = () => MotifAppStrings.RefusalApplyPreconditionFailed,
         [C.ApplyNotReady] = () => MotifAppStrings.RefusalApplyNotReady,

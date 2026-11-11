@@ -646,7 +646,10 @@ public static partial class ProposalCommands
         });
     }
 
-    public static CommandOutcome<ProposalFinalizedResponse> Finalize(FinalizeRequest request)
+    public static CommandOutcome<ProposalFinalizedResponse> Finalize(FinalizeRequest request) => Finalize(request, ProposalTexts.Check);
+
+    /// <summary>Finalizes with <paramref name="check"/> as the Rationale check, which a test may interleave a write with.</summary>
+    internal static CommandOutcome<ProposalFinalizedResponse> Finalize(FinalizeRequest request, ProposalTexts.TextCheck check)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
@@ -679,16 +682,26 @@ public static partial class ProposalCommands
                         Fact(("draftName", request.DraftName), ("proposalId", draft.ProposalId))));
                 }
 
-                // Rechecked as the Baseline may have moved; a Draft finalized into a decision reaches no reviewer.
-                if (request.ThenMove is null &&
-                    ProposalTexts.Check(database, project, draftRecord.Rationale) is { IsClean: false } rationale)
+                // Rechecked as the Baseline may have moved; a Draft declined or withdrawn reaches no reviewer.
+                var reachesReviewer = request.ThenMove?.To is not (ManifestStatus.Rejected or ManifestStatus.Withdrawn);
+                if (reachesReviewer)
                 {
-                    return CommandOutcome<ProposalFinalizedResponse>.Refused(ProposalTexts.RationaleFindings(
-                        $"Draft '{request.DraftName}' cannot be finalized while its Rationale has something a reader " +
-                        $"would see as wrong. Fix these with 'proposal rationale {draft.ProposalId} --text <markdown>', " +
-                        "then finalize again:", rationale.Findings,
-                        ("draftName", request.DraftName), ("proposalId", draft.ProposalId)));
+                    var rationale = check(database, project, draftRecord.Rationale);
+                    if (rationale.ProjectUnavailable)
+                        return CommandOutcome<ProposalFinalizedResponse>.Refused(ProposalTexts.RationaleUnchecked(
+                            $"Draft '{request.DraftName}' cannot be finalized yet: its Rationale links to the project, " +
+                            "but the project's Baseline could not be read to check it. Try again, or capture a Baseline first.",
+                            ("draftName", request.DraftName), ("proposalId", draft.ProposalId)));
+                    if (!rationale.IsClean)
+                        return CommandOutcome<ProposalFinalizedResponse>.Refused(ProposalTexts.RationaleFindings(
+                            $"Draft '{request.DraftName}' cannot be finalized while its Rationale has something a reader " +
+                            $"would see as wrong. Fix these with 'proposal rationale {draft.ProposalId} --text <markdown>', " +
+                            "then finalize again:", rationale.Findings,
+                            ("draftName", request.DraftName), ("proposalId", draft.ProposalId)));
                 }
+                var thenMove = request.ThenMove is { Comment: { } comment } move
+                    ? move with { Comment = ProposalTexts.Check(database, project, comment).Text }
+                    : request.ThenMove;
 
                 if (draft.Operations.Count == 0)
                 {
@@ -718,9 +731,13 @@ public static partial class ProposalCommands
                 var intentDigest = IntentDigest.Compute(envelope);
 
                 var finalization = repository.Finalize(request.DraftName, intentDigest, proposalJson,
-                    draft.Label!, request.ExpectedRevision, request.ThenMove);
+                    draft.Label!, request.ExpectedRevision, thenMove, reachesReviewer ? draftRecord.Rationale : null);
                 if (finalization == DraftFinalizationResult.DraftChanged)
                     return CommandOutcome<ProposalFinalizedResponse>.Refused(DraftRevisionConflict(request.DraftName));
+                if (finalization == DraftFinalizationResult.RationaleChanged)
+                    return CommandOutcome<ProposalFinalizedResponse>.Refused(ProposalTexts.RationaleStale(
+                        $"Draft '{request.DraftName}' was not finalized: its Rationale changed after it was checked. " +
+                        "Finalize again.", ("draftName", request.DraftName), ("proposalId", draft.ProposalId)));
                 if (finalization == DraftFinalizationResult.MoveRefused)
                     return CommandOutcome<ProposalFinalizedResponse>.Refused(new Refusal(
                         "proposal.invalid-status", FailureReason.Refused,
@@ -901,27 +918,27 @@ public static partial class ProposalCommands
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Deferred,
             DeferrableFrom, null,
-            (repository, id) => repository.Transition(id, DeferrableFrom, ManifestStatus.Deferred));
+            (repository, id, _) => repository.Transition(id, DeferrableFrom, ManifestStatus.Deferred));
 
     /// <summary>Moves a Proposal to <c>rejected</c>: not wanted, as opposed to wanted later.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Reject(RejectRequest request) =>
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Rejected,
             RejectableFrom, null,
-            (repository, id) => repository.Transition(id, RejectableFrom, ManifestStatus.Rejected));
+            (repository, id, _) => repository.Transition(id, RejectableFrom, ManifestStatus.Rejected));
 
     /// <summary>Declines a Proposal and saves the person's reason as one store transaction.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> RejectWithComment(RejectRequest request, string reason) =>
         TransitionStatus(request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Rejected,
             RejectableFrom, null,
-            (repository, id) => repository.TransitionWithComment(id, RejectableFrom, ManifestStatus.Rejected, reason));
+            (repository, id, tidy) => repository.TransitionWithComment(id, RejectableFrom, ManifestStatus.Rejected, tidy(reason)));
 
     /// <summary>Moves an open Proposal to <c>withdrawn</c>: its author took it back; it can be reopened as a Draft.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Withdraw(RejectRequest request) =>
         TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Withdrawn,
             WithdrawableFrom, null,
-            (repository, id) => repository.Transition(id, WithdrawableFrom, ManifestStatus.Withdrawn));
+            (repository, id, _) => repository.Transition(id, WithdrawableFrom, ManifestStatus.Withdrawn));
 
     /// <summary>Marks a Proposal <c>superseded</c> by another, naming which one replaced it.</summary>
     public static CommandOutcome<ProposalStatusChangedResponse> Supersede(SupersedeRequest request)
@@ -961,7 +978,7 @@ public static partial class ProposalCommands
         return TransitionStatus(
             request.FwDataPath, request.ProductVersion, request.ProposalId, ManifestStatus.Superseded,
             SupersedableFrom, supersededById,
-            (repository, id) =>
+            (repository, id, _) =>
             {
                 // Any status counts as existing: a replacement may itself be rejected or applied.
                 try
@@ -983,9 +1000,9 @@ public static partial class ProposalCommands
     /// <summary>Moves a Proposal to a new status, refusing if its current status is not an allowed origin.</summary>
     private static CommandOutcome<ProposalStatusChangedResponse> TransitionStatus(
         string fwDataPath, string productVersion, string proposalId, string newStatus, string[] allowedFrom,
-        string? relatedProposalId, Func<ProposalRepository, CanonicalId, StatusTransitionOutcome> persist)
+        string? relatedProposalId, Func<ProposalRepository, CanonicalId, Func<string, string>, StatusTransitionOutcome> persist)
     {
-        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
         {
             try
             {
@@ -1013,7 +1030,7 @@ public static partial class ProposalCommands
                 if (Array.IndexOf(allowedFrom, record.Status) < 0) return InvalidStatus(record.Status);
 
                 // The write re-checks status in its own transaction; an Apply may commit after the read.
-                var outcome = persist(repository, canonicalId);
+                var outcome = persist(repository, canonicalId, text => ProposalTexts.Check(database, project, text).Text);
                 if (!outcome.Moved) return InvalidStatus(outcome.Status);
 
                 return CommandOutcome<ProposalStatusChangedResponse>.Success(
