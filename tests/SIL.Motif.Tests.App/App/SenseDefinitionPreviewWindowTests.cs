@@ -513,8 +513,9 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
             Assert.False(arabic.IsSourceMode);
             Assert.Equal("Editing as Markdown", window.StatusText);
 
-            // A Definition has no paragraph of its own in the project, so its Markdown is the text alone.
-            Assert.Equal("[x&#x20;]{ws=en}[y]{ws=en custom-style=Emphasis}", english.SourceView!.Editor.Document.PlainText());
+            // A Definition has no paragraph of its own in the project, so its Markdown is the text alone, and English is
+            // unmarked in the English alternative though Arabic comes first among the writing systems.
+            Assert.Equal("x [y]{custom-style=Emphasis}", english.SourceView!.Editor.Document.PlainText());
             english.SourceView.Editor.SetCaret(new TextPosition(0, 0));
             window.KeyTextInput("**b** ");
             Assert.True(window.ToggleSourceMode("en"));
@@ -524,6 +525,35 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
             Assert.Equal("b x y", staged.Text);
             Assert.Equal(TextPropertyNumbers.ToggleOn, staged.Runs[0].Props!.Ints[TextPropertyNumbers.Bold].Item2);
             Assert.Equal("Emphasis", staged.Runs[^1].CharacterStyle);
+            Assert.All(staged.Runs, run => Assert.Equal("en", run.Ws));
+        });
+    }
+
+    [Fact]
+    public void ASenseWhoseMarkdownCannotGoBackStaysShownAndTheWindowStaysOpen()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Opened(store, out var closer);
+            using var _ = closer;
+            var english = window.FieldFor("en")!;
+            english.Focus();
+            Assert.True(window.ToggleSourceMode());
+            english.SourceView!.Editor.SetCaret(new TextPosition(0, 0));
+            window.KeyTextInput("[t](/lexicon/nothing-here) ");
+
+            window.Show("sense-2");
+            Assert.Equal("motifa  gloss", window.HeadingText);
+            Assert.Same(english, window.FieldFor("en"));
+            Assert.Equal(SenseDefinitionPreviewWindow.MarkdownFixFirstMessage, window.StatusText);
+            window.Close();
+            Assert.True(window.IsVisible);
+
+            english.DiscardSourceChanges();
+            window.Show("sense-2");
+            Assert.Equal("motifb  other", window.HeadingText);
+            Assert.Empty(store.Staged);
         });
     }
 

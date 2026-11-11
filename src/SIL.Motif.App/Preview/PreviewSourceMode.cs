@@ -19,6 +19,10 @@ internal static class PreviewSourceMode
     public const string FixFirstMessage =
         "Your Markdown has an error. Fix what is marked, or throw away your Markdown changes, first.";
 
+    /// <summary>What the window says when a field holding Markdown has been made read-only, so it cannot take the Markdown back.</summary>
+    public const string ReadOnlyMessage =
+        "This field cannot be edited now, so your Markdown cannot go back into it. Copy your Markdown, or throw away your Markdown changes, first.";
+
     /// <summary>A bar button that switches the field <paramref name="toggle"/> acts on; it never takes focus from the field.</summary>
     public static Button Toggle(Func<bool> toggle)
     {
@@ -58,17 +62,27 @@ internal static class PreviewSourceMode
     }
 
     /// <summary>
-    /// Returns every field of <paramref name="fields"/> to rich text; false, with <see cref="FixFirstMessage"/> in
-    /// <paramref name="status"/>, when one holds Markdown with an error. A clean return stages as any edit does.
+    /// Returns every field of <paramref name="fields"/> to rich text; false when one cannot go, with
+    /// <see cref="FixFirstMessage"/> in <paramref name="status"/> for Markdown with an error, or
+    /// <see cref="ReadOnlyMessage"/> for a field made read-only meanwhile. A clean return stages as any edit does.
     /// </summary>
     public static bool ReturnToRichText(IEnumerable<RichTextField> fields, TextBlock status)
     {
         foreach (var field in fields)
         {
             if (field.LeaveSourceMode()) continue;
-            status.Text = FixFirstMessage;
+            status.Text = field.IsReadOnly ? ReadOnlyMessage : FixFirstMessage;
             return false;
         }
         return true;
+    }
+
+    /// <summary>
+    /// Keeps a closing window open when one of <paramref name="fields"/> holds Markdown that cannot go back to rich text,
+    /// saying why in <paramref name="status"/>, so the person's Markdown is never dropped by closing.
+    /// </summary>
+    public static void KeepUnreturnedMarkdown(WindowClosingEventArgs closing, IEnumerable<RichTextField> fields, TextBlock status)
+    {
+        if (!ReturnToRichText(fields, status)) closing.Cancel = true;
     }
 }

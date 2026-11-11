@@ -120,7 +120,8 @@ public sealed class GdrDiscussion
     /// </summary>
     public IReadOnlyList<TextRun> ProjectRuns(Paragraph paragraph) => paragraph.Runs.Where(run => !IsMarker(run)).Select(run =>
     {
-        var props = run.ObjData is { } objData && _linkLooks.TryGetValue(objData, out var look) ? look.Restore(run.Props) : run.Props;
+        var props = run.ObjData is { } objData && run.Text != ObjectReplacement
+            ? (_linkLooks.TryGetValue(objData, out var look) ? look : default).Restore(run.Props) : run.Props;
         var style = props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
         return new TextRun(run.Text, run.Ws, style, Props(props), run.ObjData);
     }).ToArray();
@@ -207,14 +208,19 @@ public sealed class GdrDiscussion
         var copy = paragraph.Clone();
         for (var i = copy.Runs.Count - 1; i >= 0; i--)
             if (IsMarker(copy.Runs[i])) copy.Runs.RemoveAt(i);
+        // A link this view has no look on record for had none of its own: it came from Markdown, which AsShown leaves alone.
         foreach (var run in copy.Runs)
-            if (run.ObjData is { } objData && _linkLooks.TryGetValue(objData, out var look)) run.Props = look.Restore(run.Props);
+            if (run.ObjData is { } objData && run.Text != ObjectReplacement)
+                run.Props = (_linkLooks.TryGetValue(objData, out var look) ? look : default).Restore(run.Props);
         return copy;
     }
 
     /// <summary>
-    /// <paramref name="paragraph"/>, as the project would hold it, shown as this view shows text: each link underlined and
-    /// coloured, and a link the project could not resolve followed by its marker. The inverse of <see cref="AsProject"/>.
+    /// <paramref name="paragraph"/>, as the project would hold it, shown as this view shows text: a link the project could
+    /// not resolve followed by its marker, and a link with no underline or colour of its own underlined and coloured as
+    /// this view shows links. A link that has its own, as Markdown can give it, keeps them, so what was typed is what the
+    /// project receives; an underline or colour that is exactly this view's link look reads as that look. The inverse of
+    /// <see cref="AsProject"/>; it records nothing, so reading half-typed Markdown changes no later reading.
     /// </summary>
     public Paragraph AsShown(Paragraph paragraph)
     {
@@ -224,10 +230,13 @@ public sealed class GdrDiscussion
         {
             var run = copy.Runs[i];
             if (run.ObjData is not { } objData || run.Text == ObjectReplacement) continue;
-            _linkLooks.TryAdd(objData, LinkLook.Of(run.Props));
             var broken = _brokenLinks.Contains(objData);
-            run.Props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
-            run.Props.SetInt(TextPropertyNumbers.ForeColor, broken ? BrokenColor : LinkColor, 0);
+            var own = run.Props.IntProps.ContainsKey(TextPropertyNumbers.Underline) || run.Props.IntProps.ContainsKey(TextPropertyNumbers.ForeColor);
+            if (!own)
+            {
+                run.Props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
+                run.Props.SetInt(TextPropertyNumbers.ForeColor, broken ? BrokenColor : LinkColor, 0);
+            }
             if (broken) copy.Runs.Insert(++i, Marker(run.Ws));
         }
         return copy;

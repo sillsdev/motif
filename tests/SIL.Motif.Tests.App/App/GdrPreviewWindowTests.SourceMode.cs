@@ -190,12 +190,90 @@ public sealed partial class GdrPreviewWindowTests
     }
 
     [Fact]
+    public void ALinksOwnUnderlineAndColourFromMarkdownAreKeptAndHalfTypedMarkdownLeavesNoTrace()
+    {
+        var discussion = GdrDiscussion.From(WithLinks(First));
+        var objData = GdrReader.LinkData(ProjectName, Linked.Id);
+        Paragraph Link(int? underline)
+        {
+            var paragraph = new Paragraph { DefaultWs = "en" };
+            var run = new Run { Ws = "en", Text = "GDR-9", ObjData = objData };
+            if (underline is { } value) run.Props.SetInt(TextPropertyNumbers.Underline, value, 0);
+            paragraph.Runs.Add(run);
+            return paragraph;
+        }
+
+        // Typed as Markdown: shown and staged as typed, not as the preview's link look.
+        var typed = discussion.AsShown(Link(TextPropertyNumbers.UnderlineDouble));
+        Assert.Equal(TextPropertyNumbers.UnderlineDouble, typed.Runs[0].Props.IntProps[TextPropertyNumbers.Underline].Value);
+        Assert.False(typed.Runs[0].Props.IntProps.ContainsKey(TextPropertyNumbers.ForeColor));
+        Assert.Equal(TextPropertyNumbers.UnderlineDouble, discussion.AsProject(typed).Runs[0].Props.IntProps[TextPropertyNumbers.Underline].Value);
+        Assert.Equal((0, TextPropertyNumbers.UnderlineDouble), discussion.ProjectRuns(typed)[0].Props!.Ints[TextPropertyNumbers.Underline]);
+
+        // Reading that did not record it, so the same link without its own look is shown as a link and stored with none.
+        var plain = discussion.AsShown(Link(null));
+        Assert.Equal(TextPropertyNumbers.UnderlineSingle, plain.Runs[0].Props.IntProps[TextPropertyNumbers.Underline].Value);
+        Assert.False(discussion.AsProject(plain).Runs[0].Props.IntProps.ContainsKey(TextPropertyNumbers.Underline));
+        Assert.False(discussion.ProjectRuns(plain)[0].Props!.Ints.ContainsKey(TextPropertyNumbers.ForeColor));
+    }
+
+    [Fact]
+    public void ALinkTypedWithAGuidThePreviewCannotCheckIsTakenAsWrittenAndNotMarkedBroken()
+    {
+        var discussion = GdrDiscussion.From(Canned(First));
+        var form = new DiscussionSourceForm(discussion, ProjectName);
+        var guid = new Guid("0d3c0f4e-2b1d-4c8e-9f70-1d2e3f405163");
+        var read = form.Read($"x [t](/objects/{guid:D})", singleParagraph: false);
+        Assert.False(read.HasErrors, string.Join("; ", read.Diagnostics.Select(finding => finding.Message)));
+        var link = read.Paragraphs[0].Runs.Single(run => run.Text == "t");
+        Assert.Contains(guid.ToString("D"), link.ObjData!, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(read.Paragraphs[0].Runs, GdrDiscussion.IsMarker);
+        // A path with no tool of its own, such as /objects/, gives FieldWorks a link that names no tool to open it in.
+        Assert.Equal($"\u0004silfw://localhost/link?database%3dthis%24%26guid%3d{guid:D}%26tag%3d", link.ObjData);
+    }
+
+    [Fact]
+    public void ARecordWhoseMarkdownCannotGoBackStaysShownAndAWindowWithItStaysOpen()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store);
+            using var closer = window.CloseOnExit();
+            var field = window.Field!;
+            var shown = window.Records[0].Id;
+            Assert.True(window.ToggleSourceMode());
+            field.SourceView!.Editor.SetCaret(new TextPosition(0, 0));
+            window.KeyTextInput("[t](/lexicon/nothing-here) ");
+
+            window.Show(Linked.Id);
+            Assert.Same(field, window.Field);
+            Assert.Equal(GdrPreviewWindow.MarkdownFixFirstMessage, window.StatusText);
+            window.Close();
+            Assert.True(window.IsVisible);
+            Assert.True(field.IsSourceMode);
+
+            // Fixed, the switch takes the Markdown back to rich text and stages it on the way.
+            var view = field.SourceView!;
+            view.Editor.SetCaret(new TextPosition(0, 0));
+            view.Editor.SetCaret(new TextPosition(0, "[t](/lexicon/nothing-here) ".Length), extend: true);
+            window.KeyTextInput("zz ");
+            window.Show(Linked.Id);
+            Assert.False(field.IsSourceMode);
+            Assert.NotSame(field, window.Field);
+            Settle(() => store.Staged.Count == 1);
+            Assert.Equal(shown, store.Staged[0].RecordId);
+        });
+    }
+
+    [Fact]
     public void OnlyThePreviewWindowsGiveAFieldASourceForm()
     {
         // Ctrl+Shift+M works in a field with a source form, so outside the preview gate no field has one.
         var app = Path.Combine(SIL.Motif.Generator.RepoPaths.FindRepoRoot(), "src", "SIL.Motif.App");
+        var assigns = new System.Text.RegularExpressions.Regex(@"\bSourceForm\s*=(?!=)");
         var setting = Directory.GetFiles(app, "*.cs", SearchOption.AllDirectories)
-            .Where(file => File.ReadAllText(file).Contains("SourceForm =", StringComparison.Ordinal))
+            .Where(file => assigns.IsMatch(File.ReadAllText(file)))
             .Select(file => Path.GetRelativePath(app, file).Replace('\\', '/')).Order(StringComparer.Ordinal).ToArray();
         Assert.Equal(["Preview/GdrPreviewWindow.cs", "Preview/SenseDefinitionPreviewWindow.cs"], setting);
     }

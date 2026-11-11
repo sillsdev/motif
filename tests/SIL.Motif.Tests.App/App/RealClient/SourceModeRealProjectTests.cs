@@ -1,5 +1,6 @@
 using Avalonia.Headless;
 using SIL.LCModel;
+using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Core.Text;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.App.Compare;
@@ -155,6 +156,79 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
         Assert.Equal("mm zz " + starting + " fw", Text(Show(path, "GDR-1").Discussion[0]));
     }
 
+    [Fact]
+    public void ADefinitionInAWritingSystemThatIsNotFirstEditedAsMarkdownAppliesAndReadsBackInItsOwnWritingSystem()
+    {
+        var path = ProjectWithGdrs(SeedDefinition);
+        var root = RootFor(path);
+        var senses = Senses(path);
+        Assert.NotEqual("en", senses.WritingSystems[0].Tag);
+        var senseId = senses.Senses.Single(sense => sense.Label.StartsWith(DefinedForm, StringComparison.Ordinal)).Id;
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            await using var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(root));
+            var window = new SenseDefinitionPreviewWindow(senses, () => Senses(path), new SenseDefinitionStore(path, root, runner));
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(senseId);
+            await window.Loading;
+            var english = window.FieldFor("en")!;
+            english.Focus();
+
+            Assert.True(window.ToggleSourceMode("en"));
+            english.SourceView!.Editor.SetCaret(new TextPosition(0, 0));
+            window.KeyTextInput("**b** ");
+            Assert.True(window.ToggleSourceMode("en"), english.SourceView?.Editor.Document.PlainText());
+            var request = new TextRichStringFieldRequest(path, senseId, SenseDefinitionStore.Field, "en");
+            for (var waited = 0; waited < 200 && ProposalCommands.PendingTextRichString(request) is not { Succeeded: true, Value.RichString: not null }; waited++)
+                await Task.Delay(50);
+            Assert.True(await window.ApplyAsync(), window.StatusText);
+        }, TimeSpan.FromMinutes(4));
+
+        var runs = Senses(path).Senses.Single(sense => sense.Id == senseId).Definition.Single(alternative => alternative.WritingSystem == "en").Runs;
+        Assert.Equal("b x y link", string.Concat(runs.Select(run => run.Text)));
+        Assert.All(runs, run => Assert.Equal("en", run.WritingSystem));
+        Assert.Equal(1, runs.Single(run => run.Text == "b").Properties.Ints[TextPropertyNumbers.Bold].Value);
+        Assert.Equal("Emphasis", runs.Single(run => run.Text == "y").Style);
+        Assert.Equal(SeededGdrs.HyperlinkData, runs.Single(run => run.Text == "link").ObjData);
+    }
+
+    private const string DefinedForm = "defined-1";
+
+    // A sense whose English Definition has plain text, a character style and a link.
+    private static void SeedDefinition(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+    {
+        var services = cache.ServiceLocator;
+        var entry = services.GetInstance<ILexEntryFactory>().Create();
+        var form = services.GetInstance<IMoStemAllomorphFactory>().Create();
+        entry.LexemeFormOA = form;
+        form.Form.set_String(cache.DefaultVernWs, DefinedForm);
+        var sense = services.GetInstance<ILexSenseFactory>().Create();
+        entry.SensesOS.Add(sense);
+        sense.Gloss.set_String(cache.DefaultAnalWs, "gloss-1");
+        var english = services.WritingSystemManager.Get("en").Handle;
+        var definition = TsStringUtils.MakeStrBldr();
+        definition.Replace(0, 0, "x ", TsStringUtils.MakeProps(null, english));
+        var styled = TsStringUtils.MakePropsBldr();
+        styled.SetIntPropValues((int)FwTextPropType.ktptWs, 0, english);
+        styled.SetStrPropValue((int)FwTextPropType.ktptNamedStyle, "Emphasis");
+        definition.Replace(definition.Length, definition.Length, "y", styled.GetTextProps());
+        definition.Replace(definition.Length, definition.Length, " ", TsStringUtils.MakeProps(null, english));
+        var link = TsStringUtils.MakePropsBldr();
+        link.SetIntPropValues((int)FwTextPropType.ktptWs, 0, english);
+        link.SetStrPropValue((int)FwTextPropType.ktptObjData, SeededGdrs.HyperlinkData);
+        definition.Replace(definition.Length, definition.Length, "link", link.GetTextProps());
+        sense.Definition.set_String(english, definition.GetString());
+    });
+
+    private static SenseDefinitionsResponse Senses(string path)
+    {
+        var read = RichStringQuery.SenseDefinitions(path);
+        Assert.True(read.Succeeded, read.Refusal?.Message);
+        return read.Value!;
+    }
+
     // The window stages on a thread of its own, so the test waits until the Draft holds the edit.
     private static async Task Staged(string path, string id)
     {
@@ -185,10 +259,11 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
         return shown.Value!;
     }
 
-    private string ProjectWithGdrs()
+    private string ProjectWithGdrs(Action<LcmCache>? more = null)
     {
         using var cache = pristine.NewScratch();
         SeededGdrs.Seed(cache);
+        more?.Invoke(cache);
         var path = cache.ProjectId.Path;
         new FwDataProjectLoader().Save(cache);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);

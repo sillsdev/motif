@@ -23,8 +23,13 @@ public interface ISenseDefinitionStore
 /// <summary>A read of an alternative's edit in the Draft: the edit, or null for none, unless <paramref name="Refusal"/> says why it failed.</summary>
 public sealed record RichStringPendingRead(TextRichStringPayload? RichString, string? Refusal = null);
 
-/// <summary>Stages and applies through the project's own commands, off the UI thread.</summary>
-public sealed class SenseDefinitionStore(string projectPath) : ISenseDefinitionStore
+/// <summary>
+/// Stages and applies through the project's own commands, off the UI thread. <paramref name="managedRoot"/> and
+/// <paramref name="runnerLauncher"/>, when given, replace the installation's managed root and Runner for Apply, as
+/// <see cref="GdrEditStore"/>'s do.
+/// </summary>
+public sealed class SenseDefinitionStore(string projectPath, string? managedRoot = null, IJobRunnerLauncher? runnerLauncher = null)
+    : ISenseDefinitionStore
 {
     /// <summary>The field the preview edits.</summary>
     public const string Field = "LexSense.Definition";
@@ -48,5 +53,5 @@ public sealed class SenseDefinitionStore(string projectPath) : ISenseDefinitionS
     });
 
     // Apply covers the whole Draft, so it refreshes and reports drift exactly as the GDR preview does.
-    public Task<GdrApplyRefusal?> ApplyAsync() => new GdrEditStore(projectPath).ApplyAsync();
+    public Task<GdrApplyRefusal?> ApplyAsync() => new GdrEditStore(projectPath, managedRoot, runnerLauncher).ApplyAsync();
 }

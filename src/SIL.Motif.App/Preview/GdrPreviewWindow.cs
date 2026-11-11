@@ -257,6 +257,9 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>What Compare and Apply say when a field cannot go back to rich text first.</summary>
     public const string MarkdownFixFirstMessage = PreviewSourceMode.FixFirstMessage;
 
+    /// <summary>What Compare and Apply say when a field holding Markdown was made read-only and cannot take it back.</summary>
+    public const string MarkdownReadOnlyMessage = PreviewSourceMode.ReadOnlyMessage;
+
     /// <summary>Turns bold on or off for the selected text.</summary>
     public bool ToggleBold() => Session?.ToggleBold() == true;
 
@@ -619,13 +622,27 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>The heading above the field: the selected record's number, title and abstract.</summary>
     public string HeadingText => _heading.Text ?? string.Empty;
 
+    /// <summary>Closes unless a Discussion holds Markdown that cannot go back to rich text, which stays with the window.</summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        PreviewSourceMode.KeepUnreturnedMarkdown(e, _opened.Values.Select(opened => opened.Field), _status);
+        base.OnClosing(e);
+    }
+
     /// <summary>
     /// Selects the record <paramref name="id"/> and shows its Discussion, with any edits made to it already. A record
     /// opened for the first time shows the edit the pending-changes Draft holds for it, once <see cref="Loading"/>
-    /// has read it.
+    /// has read it. While the shown record holds Markdown that cannot go back to rich text, it stays shown.
     /// </summary>
     public void Show(string id)
     {
+        // Markdown is never dropped: the shown record goes back to rich text first, or stays shown while it cannot.
+        if (_shownId is { } shown && shown != id && _opened.TryGetValue(shown, out var leaving) &&
+            !PreviewSourceMode.ReturnToRichText([leaving.Field], _status))
+        {
+            _records.SelectedIndex = Records.ToList().FindIndex(record => record.Id == shown);
+            return;
+        }
         GdrShowResponse? first = null;
         if (!_opened.TryGetValue(id, out var opened))
         {

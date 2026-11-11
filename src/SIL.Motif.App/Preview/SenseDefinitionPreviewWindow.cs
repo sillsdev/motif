@@ -175,13 +175,28 @@ public sealed class SenseDefinitionPreviewWindow : Window
     /// <summary>The heading above the fields: the shown sense's label.</summary>
     public string HeadingText => _heading.Text ?? string.Empty;
 
+    /// <summary>Closes unless a Definition holds Markdown that cannot go back to rich text, which stays with the window.</summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        PreviewSourceMode.KeepUnreturnedMarkdown(e, _opened.Values.Select(opened => opened.Field), _status);
+        base.OnClosing(e);
+    }
+
     /// <summary>
     /// Shows sense <paramref name="senseId"/>'s Definition, one field per writing system, with any edits made to it
     /// already. A field opened for the first time shows the edit the Draft holds for it, once <see cref="Loading"/> has read it.
+    /// While the shown sense holds Markdown that cannot go back to rich text, it stays shown.
     /// </summary>
     public void Show(string senseId)
     {
         if (_senses.Senses.FirstOrDefault(sense => sense.Id == senseId) is not { } sense) return;
+        // Markdown is never dropped: the shown sense's fields go back to rich text first, or the sense stays shown.
+        if (_shownId is { } shown && shown != senseId &&
+            !PreviewSourceMode.ReturnToRichText(_opened.Values.Where(opened => opened.SenseId == shown).Select(opened => opened.Field), _status))
+        {
+            _list.SelectedIndex = Senses.ToList().FindIndex(item => item.Id == shown);
+            return;
+        }
         _shownId = senseId;
         _heading.Text = sense.Label;
         var loads = new List<Task>();
@@ -494,7 +509,8 @@ public sealed class SenseDefinitionPreviewWindow : Window
 
     private static string Key(string senseId, string ws) => senseId + "\n" + ws;
 
-    // One alternative as a one-paragraph record, so the GDR preview's conversions build its document and styles.
+    // One alternative as a one-paragraph record, so the GDR preview's conversions build its document and styles. Its own
+    // writing system is the default, so text typed unmarked in its Markdown is in it.
     private GdrShowResponse Response(SenseDefinitions sense, string ws, IReadOnlyList<GdrRun> runs) =>
         new(new GdrSummary(sense.Id, "", sense.Label, ""),
             [new GdrParagraph(null, _senses.WritingSystems.Any(item => item.Tag == ws && item.Direction == "rtl"), ws,
@@ -502,6 +518,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
         {
             Styles = _senses.Styles,
             WritingSystems = _senses.WritingSystems,
+            DefaultAnalysis = ws,
         };
 
     private static GdrRun Run(TextRun run)
