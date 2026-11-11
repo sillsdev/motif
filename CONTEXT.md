@@ -191,6 +191,20 @@ invalid model; Grammar Health and Parsimony advise and never forbid
 to ADRs, `AGENTS.md`, `CLAUDE.md` and this file go straight to `main`, which is how decisions are made visible.
 _Avoid_: override, exception, waiver
 
+## Stages of use
+
+**Grow**:
+The first stage of using Motif: simple local analysis to get the text at hand working, one chapter at a time, with
+Errors only, a speed light, Proposals and GDRs
+([ADR 0100](docs/adr/0100-motif-has-two-stages-grow-and-polish.md)). The owner's "mode" and the ADR's "stage" mean
+the same thing.
+_Avoid_: Build, Explore, Workshop
+
+**Polish**:
+The second stage: making the grammar ready for everyone, with deployment, FST, Warnings, speed targets, coverage and
+Parsimony, besides Proposals and GDRs. People move back and forth between Grow and Polish.
+_Avoid_: Deploy, Release, Publish, Production, Send
+
 ## Evaluating a Proposal
 
 Two different evaluations, deliberately named apart. One asks *does the grammar parse better?*; the
