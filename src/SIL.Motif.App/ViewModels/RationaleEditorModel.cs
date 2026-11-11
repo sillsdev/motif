@@ -266,14 +266,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
         or ManifestStatus.Superseded or ManifestStatus.Withdrawn;
 
     // Read as the checker reads it with no project; a link is written back with the path it was read with.
-    private MarkdownOptions Options() => new()
-    {
-        WriteFrontMatter = false,
-        UnknownGuids = UnknownGuidPolicy.MarkBroken,
-        StyleNames = MotifMarkdownStyles.Names(),
-        Paths = _paths,
-        WritingSystems = new FixedWritingSystems(UnmarkedAnalysis, UnmarkedVernacular),
-    };
+    private MarkdownOptions Options() =>
+        MotifMarkdownOptions.Create(new FixedWritingSystems(UnmarkedAnalysis, UnmarkedVernacular), paths: _paths);
 
     private TextDocument Read(string markdown, out bool plainText)
     {

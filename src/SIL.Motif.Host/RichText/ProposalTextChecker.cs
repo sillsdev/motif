@@ -7,7 +7,6 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Responses;
 using SIL.TextEditing;
 using SIL.TextEditing.Markdown;
-using SIL.TextEditing.Project;
 
 namespace SIL.Motif.Host.RichText;
 
@@ -164,19 +163,7 @@ public static class ProposalTextChecker
             pair.First.Runs.Zip(pair.Second.Runs).All(runs => runs.First.Text == runs.Second.Text &&
                 runs.First.Ws == runs.Second.Ws && runs.First.ObjData == runs.Second.ObjData));
 
-    private static MarkdownOptions Options(LcmCache? cache, string? projectName)
-    {
-        var options = new MarkdownOptions
-        {
-            WriteFrontMatter = false,
-            UnknownGuids = UnknownGuidPolicy.MarkBroken,
-            StyleNames = MotifMarkdownStyles.Names(),
-        };
-        if (cache is null) return options;
-        options.WritingSystems = new ProjectWritingSystems(cache);
-        options.Styles = new ProjectStyles(cache);
-        options.Paths = new ProjectPathResolver(cache);
-        options.ProjectName = projectName;
-        return options;
-    }
+    private static MarkdownOptions Options(LcmCache? cache, string? projectName) => cache is null
+        ? MotifMarkdownOptions.Create(new FixedWritingSystems("en", "en"))
+        : MotifMarkdownOptions.For(cache, projectName);
 }
