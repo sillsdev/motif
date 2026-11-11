@@ -12,6 +12,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class ProposalsPageModel
 {
     private int _detailGeneration;
+    private RationaleEditorModel? _lastRationaleEditor;
     private string? _markingReadId;
     private string? _pendingUserSelectionId;
     private bool _selectionByUser;
@@ -66,7 +67,10 @@ public sealed partial class ProposalsPageModel
             return;
         }
         Detail = shown.Value;
-        RationaleEditor = new RationaleEditorModel(Context, shown.Value!);
+        // A re-read of the list must not throw away a Rationale the person is editing.
+        RationaleEditor = _lastRationaleEditor is { IsEditing: true } editing && editing.ProposalId == proposalId
+            ? editing : new RationaleEditorModel(Context, shown.Value!);
+        _lastRationaleEditor = RationaleEditor;
         MarkSelectedRead();
         var review = await Context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(path, proposalId),
             CancellationToken.None).ConfigureAwait(true);

@@ -85,6 +85,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
             });
 
         editor.EditCommand.Execute(null);
+        Typed(editor, " More.");
         await editor.SaveCommand.ExecuteAsync(null);
 
         Assert.False(editor.IsEditing);
@@ -154,9 +155,10 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(editor.IsPlainText);
         Assert.Equal(2, editor.Document.Paragraphs.Count);
         editor.EditCommand.Execute(null);
+        Typed(editor, " Fixed.");
         await editor.SaveCommand.ExecuteAsync(null);
 
-        Assert.Equal("Some <b>raw</b> HTML.\nSecond line.", Assert.Single(fake.SetRationaleRequests).Text);
+        Assert.Equal("Some <b>raw</b> HTML.\nSecond line. Fixed.", Assert.Single(fake.SetRationaleRequests).Text);
     }
 
     [Fact]
@@ -173,6 +175,51 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
             editor.CancelCommand.Execute(null);
             Assert.True(view.Field!.IsReadOnly);
         });
+    }
+
+    [Theory]
+    [InlineData("Glosses **gloss-1** as the corpus does.")]
+    [InlineData("Some *x* and **y** and [z](https://example.org).")]
+    public async Task AnEditSavedWithNoChangeKeepsTheStoredTextAndWritesNothing(string markdown)
+    {
+        var (fake, editor) = await OpenAsync(markdown);
+
+        editor.EditCommand.Execute(null);
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(fake.SetRationaleRequests);
+        Assert.False(editor.IsEditing);
+        Assert.Equal(markdown, editor.Markdown);
+    }
+
+    [Theory]
+    [InlineData("**Evidence:**\n- a\n- b")]
+    [InlineData("1. x\n\ny\n\n2. z")]
+    public async Task TextTheCheckerWouldReadDifferentlyIsEditedAsWrittenAndSavedByteForByte(string markdown)
+    {
+        var (fake, editor) = await OpenAsync(markdown);
+
+        Assert.True(editor.IsPlainText);
+        editor.EditCommand.Execute(null);
+        Typed(editor, " c");
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(markdown + " c", Assert.Single(fake.SetRationaleRequests).Text);
+    }
+
+    [Fact]
+    public async Task AnExplicitWritingSystemIsKeptWhenTheRationaleIsSaved()
+    {
+        var (fake, editor) = await OpenAsync("[x]{ws=en} and y");
+
+        Assert.False(editor.IsPlainText);
+        editor.EditCommand.Execute(null);
+        Typed(editor, " more");
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(fake.SetRationaleRequests).Text;
+        Assert.Contains("{ws=en}", saved, StringComparison.Ordinal);
+        Assert.EndsWith("and y more", saved, StringComparison.Ordinal);
     }
 
     private static void Typed(RationaleEditorModel editor, string text)

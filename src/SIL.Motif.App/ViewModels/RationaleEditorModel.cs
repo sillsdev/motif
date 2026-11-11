@@ -26,9 +26,13 @@ public sealed partial class RationaleEditorModel : ObservableObject
     public const string HyperlinkStyle = "Hyperlink";
 
     private readonly WorkspaceContext _context;
-    private readonly string _proposalId;
+    // Unmarked text reads as a tag no project has, so an explicit ws= is always written back.
+    private const string UnmarkedAnalysis = "qaa-x-unmarked";
+    private const string UnmarkedVernacular = "qaa-x-unmarked-v";
+
     private readonly KnownPaths _paths = new();
     private string _markdown;
+    private string? _began;
 
     /// <summary>The Rationale of <paramref name="detail"/>, editable when its Proposal is still open.</summary>
     public RationaleEditorModel(WorkspaceContext context, ProposalDetailProjection detail)
@@ -36,7 +40,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(detail);
         _context = context;
-        _proposalId = detail.ProposalId;
+        ProposalId = detail.ProposalId;
         _markdown = detail.Rationale?.Markdown ?? string.Empty;
         CanEdit = detail.DraftName is not null || !IsDecided(detail.Status);
         _document = Read(_markdown, out _isPlainText);
@@ -75,6 +79,9 @@ public sealed partial class RationaleEditorModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasRevisions))]
     private IReadOnlyList<RationaleRevisionChoice> _revisions = [];
 
+    /// <summary>The Proposal whose Rationale this is.</summary>
+    public string ProposalId { get; }
+
     /// <summary>Whether the Proposal is open, so its Rationale may be edited.</summary>
     public bool CanEdit { get; }
 
@@ -105,6 +112,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
         Findings = [];
         Refusal = null;
         IsEditing = true;
+        _began = Text();
         Working = ReadRevisionsAsync();
     }
 
@@ -157,11 +165,17 @@ public sealed partial class RationaleEditorModel : ObservableObject
     {
         if (_context.ProjectPath is not { } path) return;
         var text = Text();
+        if (text == _began)
+        {
+            // Nothing was changed: the stored text stays exactly as it is, and no revision is written.
+            Cancel();
+            return;
+        }
         IsSaving = true;
         try
         {
             var saved = await _context.Commands.SetRationaleAsync(
-                new SetRationaleRequest(path, MotifProductVersion.CurrentText, _proposalId, text), CancellationToken.None)
+                new SetRationaleRequest(path, MotifProductVersion.CurrentText, ProposalId, text), CancellationToken.None)
                 .ConfigureAwait(true);
             if (!saved.Succeeded)
             {
@@ -188,7 +202,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     {
         if (_context.ProjectPath is not { } path) return;
         var read = await _context.Commands.ListRationaleRevisionsAsync(
-            new RationaleRevisionsRequest(path, MotifProductVersion.CurrentText, _proposalId), CancellationToken.None)
+            new RationaleRevisionsRequest(path, MotifProductVersion.CurrentText, ProposalId), CancellationToken.None)
             .ConfigureAwait(true);
         if (!read.Succeeded || !IsEditing) return;
         Revisions = read.Value!.Where(revision => revision.Markdown != _markdown)
@@ -213,6 +227,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
         UnknownGuids = UnknownGuidPolicy.MarkBroken,
         StyleNames = MotifMarkdownStyles.Names(),
         Paths = _paths,
+        WritingSystems = new FixedWritingSystems(UnmarkedAnalysis, UnmarkedVernacular),
     };
 
     private TextDocument Read(string markdown, out bool plainText)
@@ -222,7 +237,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
         foreach (var link in MarkdownConverter.Parse(markdown, withoutPaths).Objects)
             if (link is { Guid: { } guid, Path: { } spelled } && ProjectPath.Parse(spelled) is { } path) _paths.Add(guid, path);
         var parsed = MarkdownConverter.Parse(markdown, Options());
-        plainText = parsed.HasErrors;
+        // What the checker finds is edited as written, so a save cannot rewrite what it would read differently.
+        plainText = parsed.HasErrors || !ProposalTextChecker.Check(markdown, null, null).IsClean;
         if (!plainText) return parsed.Document;
         var document = new TextDocument();
         foreach (var line in markdown.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
