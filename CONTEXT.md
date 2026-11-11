@@ -195,14 +195,14 @@ _Avoid_: override, exception, waiver
 
 **Grow**:
 The first stage of using Motif: simple local analysis to get the text at hand working, one chapter at a time, with
-Errors only, a speed light, Proposals and GDRs
-([ADR 0100](docs/adr/0100-motif-has-two-stages-grow-and-polish.md)). The owner's "mode" and the ADR's "stage" mean
-the same thing.
+Errors only, a speed light, Proposals and GDRs. Tagline: "Find the Pattern in the Words"
+([ADR 0100](docs/adr/0100-motif-has-two-stages-grow-and-polish.md)).
 _Avoid_: Build, Explore, Workshop
 
 **Polish**:
 The second stage: making the grammar ready for everyone, with deployment, FST, Warnings, speed targets, coverage and
-Parsimony, besides Proposals and GDRs. People move back and forth between Grow and Polish.
+Parsimony, besides Proposals and GDRs. Tagline: "Make It Ready for Everyone". People move back and forth between
+Grow and Polish.
 _Avoid_: Deploy, Release, Publish, Production, Send
 
 ## Evaluating a Proposal
