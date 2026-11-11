@@ -112,13 +112,18 @@ changes". The checker's findings are underlined there, with the message on hover
 `LeaveSourceMode()` reads the Markdown with the same reader and checker as paste. An error keeps the field in source mode (the strip
 counts the errors) and returns false; warnings never block. A clean reading becomes one undo step, "Edit as Markdown", through
 `DocumentEditor.ReplaceParagraphs`: the paragraphs the source left as they were stay (found by a longest common subsequence), and a
-changed paragraph keeps the key of the old one it replaces, so keys stay on their own text when paragraphs are added or removed. Source
-with no change commits nothing. `DiscardSourceChanges()` goes back with nothing committed. `SourceModeChanged` gives each change and
+changed paragraph keeps the key of the old one it replaces, so keys stay on their own text when paragraphs are added or removed; a moved
+paragraph loses its key, as cut and paste does. A form that implements `ISourceFormFingerprint`, as the Markdown form does, is matched in
+a few comparisons a paragraph up to about two thousand paragraphs each way; one without is compared pair by pair up to
+`DocumentEditor.PairwiseComparisonBudget`. Beyond those limits keys go by position. If the host's `Committed` handler throws after the
+text changed, the field is back in rich text with the edit and `SourceModeChanged` says the commit failed. Source with no change commits
+nothing. `DiscardSourceChanges()` goes back with nothing committed. `SourceModeChanged` gives each change and
 refusal, with a sentence for the host's screen reader. Undo inside the source view is the view's own and ends with the switch back.
 
 While the field is in source mode its editor refuses edits (`CanEdit` and `CanFormatSelection` are false), and the field is not a tab
 stop, so Tab and Shift+Tab pass through the strip's buttons and the view. The view's context menu reaches the host through the field's
 `ContextMenuRequested` with `ContextMenuRequestedEventArgs.Field` set to the view: Cut, Copy, Paste and a finding's fix go there. A host
+that only sets `ContextMenu` on the field gets that menu instead. The field's own spelling choices and language fixes return false. A host
 that changes the field itself (a conflict, its own undo) returns it to rich mode first.
 
 ## Host hooks (ADR 0021, ADR 0025)

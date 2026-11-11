@@ -8,7 +8,7 @@ namespace SIL.TextEditing.Markdown
     /// file (no front matter: the host's options name the writing systems), and leaving reads it with the same reader and checker as the Markdown clipboard
     /// form and the record reader. A field of one paragraph uses the inline grammar, as a one-paragraph field of a record file does, so block syntax there is
     /// <c>fwmd.field.block-syntax</c>. A link's or picture's attributes are reported as <see cref="SourceTokenKinds.Muted"/> tokens when they carry a GUID.</summary>
-    public sealed class FieldWorksMarkdownSourceForm : ISourceForm
+    public sealed class FieldWorksMarkdownSourceForm : ISourceForm, ISourceFormFingerprint
     {
         public FieldWorksMarkdownSourceForm(MarkdownOptions? options = null)
         {
@@ -78,7 +78,17 @@ namespace SIL.TextEditing.Markdown
         public bool AreEquivalent(Paragraph original, Paragraph read)
         {
             if (MarkdownConverter.AreEquivalent(original, read)) return true;
+            // The same text that is not equivalent differs in what decomposing cannot change, so only text that differs is decomposed and compared again.
+            if (original.Text == read.Text) return false;
             return MarkdownConverter.AreEquivalent(Decomposed(original), Decomposed(read));
+        }
+
+        /// <summary>The paragraph's text, decomposed (NFD): equivalent paragraphs have the same text, or text that decomposes the same, since their runs say
+        /// the same once empty runs are dropped, neighbours merged and each run's text decomposed.</summary>
+        public string Fingerprint(Paragraph paragraph)
+        {
+            if (paragraph == null) throw new ArgumentNullException(nameof(paragraph));
+            return TextNormalizer.Normalize(paragraph.Text, System.Text.NormalizationForm.FormD);
         }
 
         static Paragraph Decomposed(Paragraph p)

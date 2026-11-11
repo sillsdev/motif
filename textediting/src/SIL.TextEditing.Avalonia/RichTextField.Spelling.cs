@@ -263,7 +263,8 @@ namespace SIL.TextEditing.Avalonia
 
         bool ReplaceSpelling(SpellingSuggestions suggestions, List<Run> runs)
         {
-            if (Editor.IsReadOnly || !Editor.CanEditRange(suggestions.Start, suggestions.End)) return false;
+            // In source mode the editor refuses the edit, so the answer must be false, not a success that changed nothing.
+            if (Editor.IsReadOnly || IsSourceMode || !Editor.CanEditRange(suggestions.Start, suggestions.End)) return false;
             var fragment = new Paragraph { DefaultWs = runs[0].Ws };
             fragment.Runs.AddRange(runs);
             Editor.CloseUndoGroup();

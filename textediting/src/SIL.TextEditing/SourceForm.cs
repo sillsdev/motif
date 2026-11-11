@@ -26,6 +26,16 @@ namespace SIL.TextEditing
         bool AreEquivalent(Paragraph original, Paragraph read);
     }
 
+    /// <summary>A source form that can tell cheaply that two paragraphs are not equivalent, so a return from source mode compares a long text's paragraphs
+    /// in a few steps each rather than pair by pair (ADR 0035). Optional: a form without it is compared pair by pair, up to
+    /// <see cref="DocumentEditor.PairwiseComparisonBudget"/> comparisons, and beyond that gives keys by position.</summary>
+    public interface ISourceFormFingerprint
+    {
+        /// <summary>A string that is the same for any two paragraphs <see cref="ISourceForm.AreEquivalent"/> accepts; paragraphs that are not equivalent
+        /// may share it. A fingerprint that differs for two equivalent paragraphs would give a paragraph's key to other text, so when unsure, say less.</summary>
+        string Fingerprint(Paragraph paragraph);
+    }
+
     /// <summary>What <see cref="ISourceForm.Read"/> found.</summary>
     public sealed class SourceReading
     {

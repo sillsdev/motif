@@ -9,7 +9,8 @@ namespace SIL.TextEditing.Avalonia
     // Context-menu information (ADR 0021, ADR 0025). The field rides on Avalonia's own context request (a right click, the Menu
     // key, a long press), so one request gives one event, whatever raised it; Avalonia does not raise one for Shift+F10 on either
     // line, so the field raises that one itself. A host builds its menu from this event or sets Avalonia's ContextMenu on the
-    // field; when it does both, the event wins and the ContextMenu does not open.
+    // field; when it does both, the event wins and the ContextMenu does not open. In source mode (ADR 0035) the same holds for a
+    // request in the source view: the event when the host listens, otherwise the field's ContextMenu.
     public partial class RichTextField
     {
         /// <summary>A context menu was asked for: the host builds it from <see cref="ContextMenuRequestedEventArgs.Info"/> (the word
@@ -25,7 +26,8 @@ namespace SIL.TextEditing.Avalonia
             {
                 if (_source != null) return;   // the source view answers its own request and forwards it (CreateSourceView)
                 bool pointer = e.TryGetPosition(this, out var at);
-                if (ContextMenuRequested == null) return;
+                // A source view's listener only forwards to its field: with no one listening there, the request goes on up to the field's ContextMenu.
+                if (ContextMenuRequested == null || (_sourceOwner != null && _sourceOwner.ContextMenuRequested == null)) return;
                 e.Handled = true;
                 RaiseContextMenuRequested(pointer, at);
             };

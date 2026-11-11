@@ -70,8 +70,16 @@ Not owner decisions; names and choices the decision above does not fix. Each can
   left as they were, and those stay, the very objects with their keys. Between two of them, a changed run of old paragraphs gives its
   keys to the new run's paragraphs by position, as far as both go; a paragraph beyond that is new and has no key until the host gives it
   one, and an old paragraph beyond it is removed. So adding a paragraph at the top and editing the last leaves every key on its own
-  text. The Markdown form's `AreEquivalent` ignores normalisation, so a paragraph stored composed that the person did not touch stays
-  as it is. All of it is one delta labelled "Edit as Markdown".
+  text. A moved paragraph is a removal and an addition, so it loses its key, as cut and paste does. The Markdown form's `AreEquivalent`
+  ignores normalisation, so a paragraph stored composed that the person did not touch stays as it is. All of it is one delta labelled
+  "Edit as Markdown".
+- The matching is bounded so a long text does not stall the UI thread. A form that implements `ISourceFormFingerprint` (the Markdown
+  form's fingerprint is the paragraph's decomposed text) has its paragraphs grouped once, each compared only with one of each kind under
+  its fingerprint, and the subsequence found over the groups, for a stretch of up to about two thousand paragraphs each way. A form
+  without one is compared pair by pair up to `DocumentEditor.PairwiseComparisonBudget` comparisons. Beyond either limit the stretch's
+  keys go by position, each new paragraph taking the key of the old one at its place.
+- If the host's `Committed` handler throws after the field's text has changed, the field returns to rich text with the edit and says
+  the commit failed; an exception before the change keeps the Markdown, as an error does.
 - While the field is in source mode its editor is held: every edit a user or host command makes (typing, paste, formatting checked
   with `CanFormatSelection`, find and replace, `ReplaceRange`) is refused, as when read-only. `Apply` and `ExternalReplaceParagraph`
   are not refused, because a host's undo must not fail silently; a host returns the field to rich mode before it uses them (the

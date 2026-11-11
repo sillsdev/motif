@@ -184,11 +184,15 @@ namespace SIL.TextEditing
             d.CaretAfter = caret;
             _wsOverride = false;
             RefreshWs();
-            Committed?.Invoke(d);
+            // The document has changed whatever the host's handler does, so the field still hears of it before the host's exception goes on.
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo? hostFailure = null;
+            try { Committed?.Invoke(d); }
+            catch (Exception ex) { hostFailure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); }
             if (edit != null) TextEdited?.Invoke(edit.Value);
             DocumentChanged?.Invoke(d.Start, d.Before.Count, d.After.Count);
             CaretMoved?.Invoke();
             EndSingleEditGroup();
+            hostFailure?.Throw();
         }
 
         // ---- editing ----

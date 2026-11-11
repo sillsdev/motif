@@ -171,6 +171,99 @@ namespace SIL.TextEditing.Tests
             Assert.True(e.CanEdit);
         }
 
+        static readonly Func<Paragraph, string> TextOf = p => p.Text;
+
+        /// <summary>n paragraphs, and the same with a paragraph added at the top and the last one changed: the case that asks the most of the matching.</summary>
+        static (DocumentEditor Editor, List<Paragraph> Incoming) AddedAtTopAndChangedAtBottom(int n, Func<int, string> text)
+        {
+            var e = new DocumentEditor(Doc(Enumerable.Range(0, n).Select(i => Para("en", "en", text(i))).ToArray()));
+            var incoming = Read(new[] { "New" }.Concat(Enumerable.Range(0, n).Select(text)).ToArray());
+            incoming[n] = Para("en", "en", text(n - 1) + " changed");
+            return (e, incoming);
+        }
+
+        static void AssertEveryUntouchedParagraphStays(DocumentEditor e, List<Paragraph> before)
+        {
+            Assert.Null(e.Document.Paragraphs[0].Key);
+            for (int i = 0; i < before.Count - 1; i++) Assert.Same(before[i], e.Document.Paragraphs[i + 1]);
+            Assert.Equal(before[before.Count - 1].Key, e.Document.Paragraphs[before.Count].Key);
+        }
+
+        [Fact]
+        public void With_a_fingerprint_two_thousand_paragraphs_are_matched_with_a_few_comparisons_each_and_keep_their_keys()
+        {
+            var (e, incoming) = AddedAtTopAndChangedAtBottom(2000, i => "Paragraph " + i + " has some words in it.");
+            var before = e.Document.Paragraphs.ToList();
+            int calls = 0;
+            Assert.True(e.ReplaceParagraphs(incoming, (a, b) => { calls++; return SameText(a, b); }, TextOf, "Edit as Markdown"));
+            AssertEveryUntouchedParagraphStays(e, before);
+            Assert.InRange(calls, 0, 4 * 2000);
+        }
+
+        [Fact]
+        public void With_a_fingerprint_many_empty_and_repeated_paragraphs_are_compared_once_per_kind()
+        {
+            var (e, incoming) = AddedAtTopAndChangedAtBottom(2000, i => i % 3 == 0 ? "" : i % 3 == 1 ? "the same line" : "Paragraph " + i);
+            var before = e.Document.Paragraphs.ToList();
+            int calls = 0;
+            Assert.True(e.ReplaceParagraphs(incoming, (a, b) => { calls++; return SameText(a, b); }, TextOf, "Edit as Markdown"));
+            AssertEveryUntouchedParagraphStays(e, before);
+            Assert.InRange(calls, 0, 4 * 2000);
+        }
+
+        [Fact]
+        public void A_fingerprint_that_matches_still_needs_the_comparison_to_agree()
+        {
+            var (e, _) = Of("A", "B", "C");
+            var heading = Para("en", "en", "B");
+            heading.Style = "Heading 1";
+            var incoming = Read("New", "A");
+            incoming.Add(heading);
+            incoming.Add(Para("en", "en", "C"));
+            var b = e.Document.Paragraphs[1];
+            Assert.True(e.ReplaceParagraphs(incoming, SameText, TextOf, "Edit as Markdown"));
+            Assert.Equal("Heading 1", e.Document.Paragraphs[2].Style);
+            Assert.NotSame(b, e.Document.Paragraphs[2]);
+            Assert.Equal(new object?[] { null, "key0", "key1", "key2" }, Keys(e));
+        }
+
+        [Fact]
+        public void Without_a_fingerprint_a_stretch_too_long_to_compare_pair_by_pair_gives_its_keys_by_position()
+        {
+            int n = 300;
+            var (e, incoming) = AddedAtTopAndChangedAtBottom(n, i => "Paragraph " + i);
+            int calls = 0;
+            Assert.True(e.ReplaceParagraphs(incoming, (a, b) => { calls++; return SameText(a, b); }, "Edit as Markdown"));
+            Assert.InRange(calls, 0, DocumentEditor.PairwiseComparisonBudget + 4 * n);
+            Assert.Equal(Enumerable.Range(0, n).Select(i => (object?)("key" + i)).Concat(new object?[] { null }), Keys(e));
+            Assert.Equal(incoming.Select(p => p.Text), e.Document.Paragraphs.Select(p => p.Text));
+        }
+
+        [Fact]
+        public void Without_a_fingerprint_a_stretch_within_the_budget_still_keeps_each_key_on_its_own_text()
+        {
+            var (e, incoming) = AddedAtTopAndChangedAtBottom(60, i => "Paragraph " + i);
+            var before = e.Document.Paragraphs.ToList();
+            Assert.True(e.ReplaceParagraphs(incoming, SameText, "Edit as Markdown"));
+            AssertEveryUntouchedParagraphStays(e, before);
+        }
+
+        [Fact]
+        public void A_host_commit_handler_that_throws_still_lets_the_field_hear_of_the_change_and_the_failure_reaches_the_caller()
+        {
+            var (e, undo) = Three();
+            var changed = new List<(int, int, int)>();
+            int caretMoves = 0;
+            e.Committed += d => throw new InvalidOperationException("the host broke");
+            e.DocumentChanged += (s, r, a) => changed.Add((s, r, a));
+            e.CaretMoved += () => caretMoves++;
+            var thrown = Assert.Throws<InvalidOperationException>(() => e.ReplaceParagraphs(Read("one", "TWO", "three"), SameText, "Edit as Markdown"));
+            Assert.Equal("the host broke", thrown.Message);
+            Assert.Equal(new[] { (1, 1, 1) }, changed);
+            Assert.Equal(1, caretMoves);
+            Assert.Equal(1, undo.DoneSteps);
+        }
+
         [Fact]
         public void Nothing_left_gives_one_empty_paragraph()
         {
