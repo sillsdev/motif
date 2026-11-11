@@ -24,7 +24,9 @@ unchecked format let an agent's Rationale contain links and spans no reader coul
 3. **Concurrent edits.** If the Rationale changed while a person was editing it, Save offers "Compare…", the #88
    conflict viewer, with the other side named by its author label.
 4. **Findings** are only what a reader would see as wrong: unreadable markup, a link to an object not in the project,
-   an unknown writing system or style. Canonical-spelling tidy-ups are made silently on save.
+   an unknown writing system or style. Text is stored as written; the only tidy-ups made on save are line endings,
+   trailing whitespace at the end, and filling in a link's `guid=`, and only when rereading shows the meaning unchanged.
+   A list marker inside a paragraph and a renumbered ordered list are findings, since reading them would change the list.
 5. **Draft:** a Rationale with findings saves as the latest version and the findings are returned. **Finalize is
    refused** while the Rationale has findings. Earlier versions can be restored from the kept history.
 6. **Ready:** a Rationale revision with findings is **refused**; the last clean Rationale stays.
@@ -38,4 +40,5 @@ unchecked format let an agent's Rationale contain links and spans no reader coul
   still being written; before Finalize the history is enough.
 - Refuse every save with findings. Rejected: it would break agents' drafting loops over a typo.
 
-Owner decision, 2026-11-10.
+Owner decision, 2026-11-10. Amended 2026-11-11: rule 4's tidy-ups narrowed after the PR #141 review found that
+rewriting to the canonical spelling could change meaning.

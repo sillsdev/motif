@@ -173,6 +173,44 @@ public sealed class WritingSystemCharacterClassTests(PristineProjectFixture pris
     }
 
     [Fact]
+    public void AParagraphWhoseFirstRunIsAnotherWritingSystemIsRetokenised()
+    {
+        var cache = CebuanoLikeProject();
+        var other = cache.ServiceLocator.WritingSystems.DefaultAnalysisWritingSystem.Handle;
+        var paragraph = AddParsedParagraph(cache, $"{Open}baba{Close} ug.");
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var builder = TsStringUtils.MakeStrBldr();
+            builder.Replace(0, 0, "Hi ", TsStringUtils.MakeProps(string.Empty, other));
+            builder.Replace(builder.Length, builder.Length, $"{Open}baba{Close} ug.", TsStringUtils.MakeProps(string.Empty, cache.DefaultVernWs));
+            paragraph.Contents = builder.GetString();
+            ParagraphParser.ParseParagraph(paragraph);
+        });
+        Assert.Equal(other, paragraph.Contents.get_WritingSystem(0));
+        Assert.Contains($"{Open}baba{Close}", Words(cache, paragraph));
+
+        var proposal = Propose(PunctuationFor(cache));
+        var dryRun = ScratchDryRun.Of(cache, proposal);
+        ProposalApplier.Apply(cache, proposal, dryRun.Anchor, "motif-tests");
+
+        Assert.Contains("baba", Words(cache, paragraph));
+        Assert.DoesNotContain($"{Open}baba{Close}", Words(cache, paragraph));
+    }
+
+    [Fact]
+    public void ListingAnUnlistedNonLetterAsPunctuationReclassesNothingSoNothingIsParsed()
+    {
+        var ws = Vernacular(CebuanoLikeProject());
+        var tilde = new[] { (int)'~' };
+
+        Assert.Empty(WritingSystemCharacterSets.Set(ws, WritingSystemCharacterClass.Punctuation, tilde));
+        Assert.True(ws.CharacterSets.TryGet("punctuation", out var listed));
+        Assert.Equal(["~"], listed.Characters);
+        Assert.Equal([(int)Open[0]], WritingSystemCharacterSets.Set(ws, WritingSystemCharacterClass.Punctuation, new[] { (int)Open[0] }));
+        Assert.Equal([(int)Open[0]], WritingSystemCharacterSets.Set(ws, WritingSystemCharacterClass.WordForming, new[] { (int)Open[0] }));
+    }
+
+    [Fact]
     public void ATrialCopyOfTheChangedScratchReadsTheChangedWritingSystem()
     {
         var cache = CebuanoLikeProject();

@@ -124,7 +124,8 @@ While the field is in source mode its editor refuses edits (`CanEdit` and `CanFo
 stop, so Tab and Shift+Tab pass through the strip's buttons and the view. The view's context menu reaches the host through the field's
 `ContextMenuRequested` with `ContextMenuRequestedEventArgs.Field` set to the view: Cut, Copy, Paste and a finding's fix go there. A host
 that only sets `ContextMenu` on the field gets that menu instead. The field's own spelling choices and language fixes return false. A host
-that changes the field itself (a conflict, its own undo) returns it to rich mode first.
+that changes the field itself (a conflict, its own undo) returns it to rich mode first. The view follows the field's `IsReadOnly`, so a
+host that locks the field in source mode locks the Markdown too, and a read-only field does not enter source mode.
 
 ## Host hooks (ADR 0021, ADR 0025)
 
