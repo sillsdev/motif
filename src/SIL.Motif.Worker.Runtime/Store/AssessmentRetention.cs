@@ -179,17 +179,56 @@ internal static class AssessmentRetention
         Action<string>? progress, Func<bool>? satisfied)
     {
         if (removable.Count == 0) return [];
-        removable.ExceptWith(currentEvidence);
-        removable.ExceptWith(ReadIds(connection, transaction, """
-            SELECT AssessmentId FROM Reports WHERE AssessmentId IS NOT NULL
-            UNION SELECT AssessmentId FROM AssessmentPins
-            UNION SELECT AssessmentId FROM BeforeAssessmentBinding
-            UNION SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;
-            """));
-        removable.ExceptWith(ReadFrozenReportAssessmentIds(connection, transaction));
-        removable.ExceptWith(ReadJsonReferences(connection, transaction,
-            "SELECT InputReferencesJson FROM ReviewReports WHERE InputReferencesJson != '[]';",
-            ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;")));
+        foreach (var (_, held) in Holds(connection, transaction, currentEvidence, all)) removable.ExceptWith(held);
+        var invocationMembers = KeepLineage(connection, transaction, removable, all);
+        if (removable.Count == 0) return [];
+        // An artifact goes only when every Assessment needing it was removed.
+        var found = new List<(string Artifact, string[] Requires)>();
+        foreach (var (assessment, invocation) in ReadPairs(connection, transaction,
+                     "SELECT AssessmentId, InvocationId FROM Assessments WHERE InvocationId IS NOT NULL;"))
+            if (removable.Contains(assessment)) found.Add((invocation, [assessment]));
+        foreach (var (assessment, path) in ReadPairs(connection, transaction,
+                     "SELECT AssessmentId, CachePath FROM Assessments WHERE CachePath IS NOT NULL;"))
+            if (removable.Contains(assessment) && Path.IsPathFullyQualified(path) && Path.GetDirectoryName(path) is { } directory)
+                found.Add((Path.GetFullPath(directory), [assessment]));
+        foreach (var (invocation, artifact) in ReadPairs(connection, transaction,
+                     "SELECT InvocationId, ArtifactInvocationId FROM RetainedInvocations;"))
+            if (invocationMembers.TryGetValue(invocation, out var members) && members.All(removable.Contains))
+                found.Add((artifact, members));
+        foreach (var (assessment, retry) in ReadPairs(connection, transaction, """
+                     SELECT a.AssessmentId, json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId')
+                     FROM Assessments a JOIN AssessmentInvocations i ON a.InvocationId = i.InvocationId
+                     WHERE json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId') IS NOT NULL;
+                     """))
+            if (removable.Contains(assessment)) found.Add((retry, [assessment]));
+        var deleted = DeleteAssessments(connection, transaction, removable, removeInvocations: true, cancellationToken,
+            progress, order, satisfied);
+        artifacts.AddRange(found);
+        return deleted;
+    }
+
+    // What a Trial Job cites stays needed while the Job is active or its Proposal is undecided.
+    private const string TrialJobsThatHold = $"""
+        FROM Jobs j WHERE j.Kind = 'trial' AND (j.Status IN {ActiveJobStatuses} OR NOT EXISTS (
+            SELECT 1 FROM Proposals p WHERE p.Status IN {ClosedStatuses} AND json_valid(j.InputJson)
+                AND json_valid(json_extract(j.InputJson, '$.proposalJson'))
+                AND p.ProposalId = json_extract(json_extract(j.InputJson, '$.proposalJson'), '$.proposalId')))
+        """;
+
+    private const string ActiveJobStatuses = "('queued', 'running', 'waiting-for-baseline', 'waiting-for-project-host')";
+
+    // The Assessments each retention reason holds directly, before lineage; store prune reports these reasons.
+    private static List<(string Reason, HashSet<string> Ids)> Holds(SqliteConnection connection,
+        SqliteTransaction transaction, IReadOnlyCollection<string> currentEvidence, HashSet<string> all)
+    {
+        var current = currentEvidence.ToHashSet(StringComparer.Ordinal);
+        current.UnionWith(ReadIds(connection, transaction,
+            "SELECT CurrentAssessmentId FROM MotifMetadata WHERE CurrentAssessmentId IS NOT NULL;"));
+        var reports = ReadIds(connection, transaction, "SELECT AssessmentId FROM Reports WHERE AssessmentId IS NOT NULL;");
+        reports.UnionWith(ReadFrozenReportAssessmentIds(connection, transaction));
+        reports.UnionWith(ReadJsonReferences(connection, transaction,
+            "SELECT InputReferencesJson FROM ReviewReports WHERE InputReferencesJson != '[]';", all));
+        var record = new HashSet<string>(StringComparer.Ordinal);
         foreach (var sql in new[]
         {
             "SELECT ProposalJson FROM ProposalRevisions;",
@@ -197,13 +236,38 @@ internal static class AssessmentRetention
             "SELECT AnchorJson FROM Proposals WHERE AnchorJson IS NOT NULL;",
             "SELECT ReceiptJson FROM Receipts;",
             "SELECT RecordJson FROM AppliedIndex WHERE RecordJson IS NOT NULL;",
-            "SELECT InputJson FROM Jobs WHERE Kind = 'trial';",
-            "SELECT ResultJson FROM Jobs WHERE Kind = 'trial' AND ResultJson IS NOT NULL;",
-            "SELECT InputJson FROM Jobs WHERE Kind IN ('parsimony-report', 'parsimony-candidate') " +
-                "AND Status IN ('queued', 'running', 'waiting-for-baseline', 'waiting-for-project-host');",
         })
-            removable.ExceptWith(ReadJsonReferences(connection, transaction, sql, all));
+            record.UnionWith(ReadJsonReferences(connection, transaction, sql, all));
+        var trials = ReadJsonReferences(connection, transaction, $"SELECT j.InputJson {TrialJobsThatHold};", all);
+        trials.UnionWith(ReadJsonReferences(connection, transaction,
+            $"SELECT j.ResultJson {TrialJobsThatHold} AND j.ResultJson IS NOT NULL;", all));
+        return
+        [
+            ("current", current),
+            ("pinned", ReadIds(connection, transaction, "SELECT AssessmentId FROM AssessmentPins;")),
+            ("report", reports),
+            ("openTrial", trials),
+            ("activeJob", ReadJsonReferences(connection, transaction,
+                $"SELECT InputJson FROM Jobs WHERE Kind IN ('parsimony-report', 'parsimony-candidate') AND Status IN {ActiveJobStatuses};",
+                all)),
+            ("proposalRecord", record),
+            ("beforeBinding", ReadIds(connection, transaction, "SELECT AssessmentId FROM BeforeAssessmentBinding;")),
+            // The Before runs measured at the current Baseline are what the next Trial reuses instead of reparsing.
+            ("currentBaselineBefore", ReadIds(connection, transaction, """
+                SELECT m.AssessmentId FROM RetainedInvocationMembers m
+                JOIN RetainedInvocations r ON r.InvocationId = m.InvocationId
+                JOIN Baselines b ON b.ProjectKey = r.ProjectKey
+                WHERE json_valid(r.BaselineToken)
+                    AND json_extract(r.BaselineToken, '$.BundleDigest') = b.BundleDigest
+                    AND json_extract(r.BaselineToken, '$.SemanticSnapshotDigest') = b.SemanticSnapshotDigest;
+                """)),
+        ];
+    }
 
+    // Keeps whatever a surviving Assessment or retained invocation still links to; returns the invocation members.
+    private static Dictionary<string, string[]> KeepLineage(SqliteConnection connection, SqliteTransaction transaction,
+        HashSet<string> removable, HashSet<string> all)
+    {
         var replacements = ReadPairs(connection, transaction,
             "SELECT AssessmentId, ReplacesAssessmentId FROM Assessments WHERE ReplacesAssessmentId IS NOT NULL;");
         var invocationMembers = ReadPairs(connection, transaction,
@@ -238,30 +302,38 @@ internal static class AssessmentRetention
                 foreach (var reference in references) if (removable.Remove(reference)) changed = true;
             }
         } while (changed);
-        if (removable.Count == 0) return [];
-        // An artifact goes only when every Assessment needing it was removed.
-        var found = new List<(string Artifact, string[] Requires)>();
-        foreach (var (assessment, invocation) in ReadPairs(connection, transaction,
-                     "SELECT AssessmentId, InvocationId FROM Assessments WHERE InvocationId IS NOT NULL;"))
-            if (removable.Contains(assessment)) found.Add((invocation, [assessment]));
-        foreach (var (assessment, path) in ReadPairs(connection, transaction,
-                     "SELECT AssessmentId, CachePath FROM Assessments WHERE CachePath IS NOT NULL;"))
-            if (removable.Contains(assessment) && Path.IsPathFullyQualified(path) && Path.GetDirectoryName(path) is { } directory)
-                found.Add((Path.GetFullPath(directory), [assessment]));
-        foreach (var (invocation, artifact) in ReadPairs(connection, transaction,
-                     "SELECT InvocationId, ArtifactInvocationId FROM RetainedInvocations;"))
-            if (invocationMembers.TryGetValue(invocation, out var members) && members.All(removable.Contains))
-                found.Add((artifact, members));
-        foreach (var (assessment, retry) in ReadPairs(connection, transaction, """
-                     SELECT a.AssessmentId, json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId')
-                     FROM Assessments a JOIN AssessmentInvocations i ON a.InvocationId = i.InvocationId
-                     WHERE json_extract(i.EvidenceJson, '$.StoppedWordRetry.RetryInvocationId') IS NOT NULL;
-                     """))
-            if (removable.Contains(assessment)) found.Add((retry, [assessment]));
-        var deleted = DeleteAssessments(connection, transaction, removable, removeInvocations: true, cancellationToken,
-            progress, order, satisfied);
-        artifacts.AddRange(found);
-        return deleted;
+        return invocationMembers;
+    }
+
+    /// <summary>
+    /// Counts the surviving Assessments by the first reason that keeps them: an undecided Proposal's evidence, a
+    /// direct hold, a link from other kept evidence, or <c>withinLimits</c> when nothing needs it but the count caps
+    /// and the byte budget left it.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, int> ExplainKept(SqliteConnection connection,
+        SqliteTransaction transaction, IReadOnlyCollection<string> currentEvidence)
+    {
+        var all = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;");
+        var counts = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        var left = new HashSet<string>(all, StringComparer.Ordinal);
+        Take("openProposal", ReadIds(connection, transaction, $"""
+            SELECT a.AssessmentId FROM Assessments a JOIN Proposals p ON p.ProposalId = a.ProposalId
+            WHERE p.Status NOT IN {ClosedStatuses};
+            """));
+        foreach (var (reason, held) in Holds(connection, transaction, currentEvidence, all)) Take(reason, held);
+        var unlinked = new HashSet<string>(left, StringComparer.Ordinal);
+        KeepLineage(connection, transaction, unlinked, all);
+        Take("lineage", left.Where(id => !unlinked.Contains(id)).ToHashSet(StringComparer.Ordinal));
+        Take("withinLimits", left.ToHashSet(StringComparer.Ordinal));
+        return counts;
+
+        void Take(string reason, HashSet<string> ids)
+        {
+            var taken = left.Count(ids.Contains);
+            if (taken == 0) return;
+            left.ExceptWith(ids);
+            counts[reason] = taken;
+        }
     }
 
     private static List<string> ReadOrderedIds(SqliteConnection connection, SqliteTransaction transaction, string sql)

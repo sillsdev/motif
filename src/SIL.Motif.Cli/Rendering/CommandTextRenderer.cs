@@ -60,11 +60,7 @@ public static class CommandTextRenderer
             CorpusListProjection p => ProjectionText.Render(p),
             CorpusDetailProjection p => ProjectionText.Render(p),
             ProjectConfigurationProjection p => ProjectionText.Render(p),
-            StorePruneResponse r => string.Format(CultureInfo.CurrentCulture, CliStrings.StorePruneFormat,
-                r.AssessmentsRemoved, r.BytesBefore, r.BytesAfter, r.InvocationDirectoriesRemoved,
-                r.UnownedDirectoriesKept, r.UnownedBytesKept, r.InvocationParentPath) +
-                (r.UnownedSizeComplete ? "" : CliStrings.StorePruneSizeIncomplete) +
-                (r.CheckpointComplete ? "" : CliStrings.StorePruneIncomplete) + Environment.NewLine,
+            StorePruneResponse r => RenderStorePrune(r),
             DryRunProjection p => ProjectionText.Render(p),
             RetirementProposalReviewProjection p => ProjectionText.Render(p),
             RetirementReviewQueryResponse r => RenderRetirementReview(r),
@@ -312,6 +308,28 @@ public static class CommandTextRenderer
         return new CommandResult(
             FailureEnvelope.ExitCodeFor(refusal.Reason), prefix + refusal.Message + Environment.NewLine,
             refusal.Reason);
+    }
+
+    private static string RenderStorePrune(StorePruneResponse r)
+    {
+        var text = string.Format(CultureInfo.CurrentCulture, CliStrings.StorePruneFormat,
+            r.AssessmentsRemoved, r.BytesBefore, r.BytesAfter, r.InvocationDirectoriesRemoved,
+            r.UnownedDirectoriesKept, r.UnownedBytesKept, r.InvocationParentPath);
+        if (r.ByteBudget > 0)
+            text += string.Format(CultureInfo.CurrentCulture, CliStrings.StorePruneBudgetFormat, r.ByteBudget,
+                r.BytesInUse, r.OverBudget ? CliStrings.StorePruneOverBudget : "");
+        text += Reasons(CliStrings.StorePruneKeptAssessments, r.AssessmentsKept) +
+            Reasons(CliStrings.StorePruneKeptRuns, r.RunDirectoriesKept);
+        if (r.UserDataKept is not null)
+            text += string.Format(CultureInfo.CurrentCulture, CliStrings.StorePruneUserDataFormat, r.SourcesRemoved,
+                r.BaselinesRemoved, r.UserDataBytesRemoved, r.UserDataBytesKept) +
+                Reasons(CliStrings.StorePruneKeptUserData, r.UserDataKept);
+        return text + (r.UnownedSizeComplete ? "" : CliStrings.StorePruneSizeIncomplete) +
+            (r.CheckpointComplete ? "" : CliStrings.StorePruneIncomplete) + Environment.NewLine;
+
+        static string Reasons(string format, IReadOnlyDictionary<string, int>? counts) =>
+            counts is null || counts.Count == 0 ? "" : string.Format(CultureInfo.CurrentCulture, format,
+                string.Join(", ", counts.Select(pair => $"{pair.Key}={pair.Value}")));
     }
 
     private static string RenderCorpusAdded(CorpusAddedResponse r)

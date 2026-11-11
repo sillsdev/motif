@@ -482,6 +482,81 @@ public sealed class StatsCacheStoreTests : IDisposable
         finally { Directory.Delete(path); }
     }
 
+    [Fact]
+    public void StorePruneRemovesUnreferencedRunsAndSourcesAnHourOldAndSaysWhatItKept()
+    {
+        var stale = _store.DirectoryFor("stale");
+        var fresh = _store.DirectoryFor("fresh");
+        foreach (var directory in new[] { stale, fresh })
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "stats.sqlite"), "cache");
+        }
+        Age(Path.Combine(stale, "stats.sqlite"), stale);
+        var sources = Path.Combine(_root, "assessment-sources");
+        Directory.CreateDirectory(sources);
+        var loose = Path.Combine(sources, new string('a', 64) + ".fwdata");
+        var cited = Path.Combine(sources, new string('b', 64) + ".fwdata");
+        File.WriteAllText(loose, "copy");
+        File.WriteAllText(cited, "copy");
+        Age(loose, null);
+        Age(cited, null);
+        using (var connection = _database.OpenConnection())
+        using (var insert = connection.CreateCommand())
+        {
+            insert.CommandText = "INSERT INTO Proposals (ProposalId, Status, DraftJson) VALUES ('p', 'proposed', $draft);";
+            insert.Parameters.AddWithValue("$draft", $"{{\"source\":\"{cited}\"}}");
+            insert.ExecuteNonQuery();
+        }
+
+        var result = PruneAll();
+
+        Assert.False(Directory.Exists(stale));
+        Assert.True(Directory.Exists(fresh));
+        Assert.False(File.Exists(loose));
+        Assert.True(File.Exists(cited));
+        Assert.Equal(1, result.InvocationDirectoriesRemoved);
+        Assert.Equal(1, result.RunDirectoriesKept!["recent"]);
+        Assert.Equal(1, result.SourcesRemoved);
+        Assert.Equal(1, result.UserDataKept!["referenced"]);
+        Assert.Equal(StorePruneCommand.StoreBudgetBytes, result.ByteBudget);
+        Assert.True(result.BytesInUse > 0);
+        Assert.False(result.OverBudget);
+    }
+
+    [Fact]
+    public void ThePruneAfterAnAssessKeepsAnUnreferencedRunForThirtyDaysAndLeavesSourcesToTheWorker()
+    {
+        var stale = _store.DirectoryFor("stale");
+        Directory.CreateDirectory(stale);
+        File.WriteAllText(Path.Combine(stale, "stats.sqlite"), "cache");
+        Age(Path.Combine(stale, "stats.sqlite"), stale);
+        var sources = Path.Combine(_root, "assessment-sources");
+        Directory.CreateDirectory(sources);
+        var loose = Path.Combine(sources, new string('a', 64) + ".fwdata");
+        File.WriteAllText(loose, "copy");
+        Age(loose, null);
+
+        Prune();
+
+        Assert.True(Directory.Exists(stale));
+        Assert.True(File.Exists(loose));
+    }
+
+    private static void Age(string file, string? directory)
+    {
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddHours(-2));
+        if (directory is not null) Directory.SetLastWriteTimeUtc(directory, DateTime.UtcNow.AddHours(-2));
+    }
+
+    private StorePruneResponse PruneAll()
+    {
+        using var lease = ProjectParseLease.TryAcquire(_database)!;
+        var result = StorePruneCommand.RunHeld(_database, _project, lease, 20, _root, sweepUserData: true);
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        return result.Value!;
+    }
+
     private void Prune()
     {
         using var lease = ProjectParseLease.TryAcquire(_database)!;

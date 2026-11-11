@@ -70,9 +70,15 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
         }
     }
 
-    /// <summary>Reclaims this project's unreferenced runs and reports directories of unproven ownership.</summary>
-    public (int Pruned, int UnownedCount, long UnownedBytes, bool SizeComplete, string Parent) Reclaim(
-        MotifDatabase database, ProjectParseLease lease, IReadOnlyCollection<string> invocations)
+    /// <summary>
+    /// Reclaims this project's unreferenced runs and reports directories of unproven ownership, and counts the runs it
+    /// kept by reason: <c>referenced</c> by the store, <c>recent</c> (unreferenced but younger than
+    /// <paramref name="unreferencedAfter"/>, 30 days by default), <c>inUse</c> by a reader, or <c>unknown</c> when the
+    /// store or the directory could not be checked.
+    /// </summary>
+    public (int Pruned, int UnownedCount, long UnownedBytes, bool SizeComplete, string Parent,
+        IReadOnlyDictionary<string, int> Kept) Reclaim(MotifDatabase database, ProjectParseLease lease,
+        IReadOnlyCollection<string> invocations, TimeSpan? unreferencedAfter = null)
     {
         ArgumentNullException.ThrowIfNull(database);
         ArgumentNullException.ThrowIfNull(lease);
@@ -84,7 +90,9 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
             lease.EnsureHeld(connection, transaction);
         var root = Path.Combine(_ownership.WorkerRoot, RootSegment);
         RequireOwned(root);
-        if (!Directory.Exists(root)) return (0, 0, 0, true, root);
+        var kept = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        if (!Directory.Exists(root)) return (0, 0, 0, true, root, kept);
+        var cutoff = DateTime.UtcNow - (unreferencedAfter ?? MaximumAge());
         var candidates = invocations.ToHashSet(StringComparer.Ordinal);
         var pruned = 0;
         var unowned = 0;
@@ -109,13 +117,22 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
                 if (candidate) MarkPending(pending);
                 var retry = IsPending(pending);
                 using var cacheLock = StatsCacheLock.Create(directory);
-                if (!cacheLock.TryAcquire()) continue;
+                if (!cacheLock.TryAcquire()) { Keep("inUse"); continue; }
                 if (!MarkerMatchesProject(owner)) continue;
                 var state = StoreReferenceStatus(database.FullPath, directory);
                 if (state == ReferenceState.Referenced && retry) File.Delete(pending);
-                var expired = IsOlderThan(directory, cache, DateTime.UtcNow - MaximumAge());
+                var expired = IsOlderThan(directory, cache, cutoff);
                 if (state != ReferenceState.Unreferenced || (!candidate && !retry && !expired) ||
-                    !ContainsOnlyOwnedEntries(directory)) continue;
+                    !ContainsOnlyOwnedEntries(directory))
+                {
+                    Keep(state switch
+                    {
+                        ReferenceState.Referenced => "referenced",
+                        ReferenceState.Unreferenced when !candidate && !retry && !expired => "recent",
+                        _ => "unknown",
+                    });
+                    continue;
+                }
                 Directory.Delete(directory, recursive: true);
                 try { File.Delete(owner); File.Delete(pending); }
                 catch (IOException) { }
@@ -140,7 +157,9 @@ public sealed class StatsCacheStore : IAssessorCachePathResolver
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
-        return (pruned, unowned, unownedBytes, sizeComplete, root);
+        return (pruned, unowned, unownedBytes, sizeComplete, root, kept);
+
+        void Keep(string reason) => kept[reason] = kept.GetValueOrDefault(reason) + 1;
     }
 
     private bool TryMeasure(string directory, out long bytes)
