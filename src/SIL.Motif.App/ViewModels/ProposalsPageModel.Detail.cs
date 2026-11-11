@@ -67,9 +67,13 @@ public sealed partial class ProposalsPageModel
             return;
         }
         Detail = shown.Value;
-        // A re-read of the list must not throw away a Rationale the person is editing.
-        RationaleEditor = _lastRationaleEditor is { IsEditing: true } editing && editing.ProposalId == proposalId
-            ? editing : new RationaleEditorModel(Context, shown.Value!);
+        // A re-read of the list keeps a Rationale the person is editing, and says so if it changed meanwhile.
+        if (_lastRationaleEditor is { IsEditing: true } editing && editing.ProposalId == proposalId)
+        {
+            if (editing.Markdown != (shown.Value!.Rationale?.Markdown ?? string.Empty)) editing.MarkChangedElsewhere();
+            RationaleEditor = editing;
+        }
+        else RationaleEditor = new RationaleEditorModel(Context, shown.Value!);
         _lastRationaleEditor = RationaleEditor;
         MarkSelectedRead();
         var review = await Context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(path, proposalId),

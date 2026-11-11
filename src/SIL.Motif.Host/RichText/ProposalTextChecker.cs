@@ -82,8 +82,7 @@ public static class ProposalTextChecker
         var options = Options(cache, projectName);
         var parsed = MarkdownConverter.Parse(text, options);
         var findings = parsed.Diagnostics
-            .Where(diagnostic => diagnostic.Severity == MarkdownSeverity.Error
-                ? !TidyUps.Contains(diagnostic.Id) : AlsoVisible.Contains(diagnostic.Id))
+            .Where(IsFinding)
             .Concat(Structure(parsed))
             .OrderBy(diagnostic => diagnostic.Start)
             .Select(diagnostic => new TextFinding(diagnostic.Id, diagnostic.Line, diagnostic.Column, diagnostic.Message)
@@ -93,6 +92,16 @@ public static class ProposalTextChecker
             }).ToArray();
         if (findings.Length > 0) return new CheckedProposalText(text, findings);
         return new CheckedProposalText(Tidied(text, parsed, options), []);
+    }
+
+    /// <summary>
+    /// Whether a reader would see what the parser reported as wrong: any error but a spelling note, so an id this
+    /// checker does not know blocks, and a link to a deleted object.
+    /// </summary>
+    public static bool IsFinding(MarkdownDiagnostic diagnostic)
+    {
+        ArgumentNullException.ThrowIfNull(diagnostic);
+        return diagnostic.Severity == MarkdownSeverity.Error ? !TidyUps.Contains(diagnostic.Id) : AlsoVisible.Contains(diagnostic.Id);
     }
 
     // CommonMark starts a list right after a paragraph line and keeps its first number; FieldWorks does neither.

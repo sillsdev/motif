@@ -1280,6 +1280,8 @@
   <data name="MotifApp.ProposalStageStatesFormat" xml:space="preserve"><value>{0} · {1} · {2} · {3} · {4}</value><comment>States of the Rationale, Trial, Parsimony, review and Apply stages, respectively.</comment></data>
   <data name="MotifApp.ProposalRationale" xml:space="preserve"><value>Rationale</value><comment>Heading for the builder's explanation of a Proposal.</comment></data>
   <data name="MotifApp.ProposalWhatItChanges" xml:space="preserve"><value>What It Changes</value><comment>Heading for a Proposal's operation descriptions.</comment></data>
+  <data name="MotifApp.RationaleChangedElsewhere" xml:space="preserve"><value>This Rationale was changed somewhere else while you were editing it, so your text was not saved. It stays here; Cancel shows the current Rationale.</value><comment>Said under a Rationale being edited when the stored one changed meanwhile; the person's text is kept until Cancel.</comment></data>
+  <data name="MotifApp.RationaleSaveOrCancelFirst" xml:space="preserve"><value>Save or cancel your edit of this Rationale before choosing another Proposal.</value><comment>Said under a Rationale being edited when the person chose another Proposal; the choice was not made.</comment></data>
   <data name="MotifApp.RationaleEdit" xml:space="preserve"><value>Edit</value><comment>The button that makes a Proposal's Rationale editable.</comment></data>
   <data name="MotifApp.RationaleSave" xml:space="preserve"><value>Save</value><comment>The button that saves an edited Rationale.</comment></data>
   <data name="MotifApp.RationaleFindingsHeading" xml:space="preserve"><value>A reader would see these as wrong:</value><comment>Heading over the findings of a saved or refused Rationale.</comment></data>

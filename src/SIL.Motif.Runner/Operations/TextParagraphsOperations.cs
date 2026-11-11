@@ -342,17 +342,17 @@ internal sealed class TextParagraphsHandler : IOperationHandler
     }
 }
 
-
-/// <summary>
-/// The field, or its alternative in <paramref name="ws"/>, no longer holds the text the edit began from (ADR 0095
-/// decision 3); the facts name the owner, the field and, for an alternative, its writing system.
-/// </summary>
 /// <summary>A rich-text edit names a style the project lacks; creating styles is not part of a text edit.</summary>
 internal sealed class TextStyleUnknownException(string style, bool paragraph)
     : ProposalRefusalException(RefusalCodes.TextStyleUnknown, FailureReason.InvalidArgument,
         $"The project has no {(paragraph ? "paragraph" : "character")} style named '{style}', so this edit was not added. " +
         "Choose a style the project has, or add this one in FieldWorks first.",
         new Dictionary<string, string> { ["style"] = style, ["styleKind"] = paragraph ? "paragraph" : "character" });
+
+/// <summary>
+/// The field, or its alternative in <paramref name="ws"/>, no longer holds the text the edit began from (ADR 0095
+/// decision 3); the facts name the owner, the field and, for an alternative, its writing system.
+/// </summary>
 
 internal sealed class TextFieldStaleException(OperationEnvelope operation, CanonicalId owner, string field, string? ws = null)
     : ProposalRefusalException(RefusalCodes.TextFieldStale, FailureReason.Refused,

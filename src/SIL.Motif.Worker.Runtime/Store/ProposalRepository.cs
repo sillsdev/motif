@@ -36,8 +36,11 @@ public enum DraftFinalizationResult
     RationaleChanged,
 }
 
-/// <summary>The status and Draft name a Proposal had when its new Rationale was checked; the write needs both unchanged.</summary>
-public sealed record RationaleWriteExpectation(string Status, string? DraftName);
+/// <summary>
+/// The status and Draft name a Proposal had when its new Rationale was checked, which the write needs unchanged, and,
+/// when <paramref name="Rationale"/> is given, the Rationale it replaces.
+/// </summary>
+public sealed record RationaleWriteExpectation(string Status, string? DraftName, string? Rationale = null);
 
 /// <summary>A status move a finalize performs in its own transaction, so both happen or neither does.</summary>
 public sealed record FinalizeMove(IReadOnlyCollection<string> AllowedFrom, string To, string? Comment = null);
@@ -884,8 +887,11 @@ public sealed class ProposalRepository : IProposalRepository
         update.CommandText = """
             UPDATE Proposals SET Rationale = $text, RationaleIntentDigest = CurrentIntentDigest,
                 RationaleUpdatedUtc = $now WHERE ProposalId = $id
-                AND ($expected = 0 OR (Status IS $status AND DraftName IS $draftName));
+                AND ($expected = 0 OR (Status IS $status AND DraftName IS $draftName))
+                AND ($replaces = 0 OR Rationale IS $replaced);
             """;
+        update.Parameters.AddWithValue("$replaces", expected?.Rationale is null ? 0 : 1);
+        update.Parameters.AddWithValue("$replaced", (object?)expected?.Rationale ?? DBNull.Value);
         update.Parameters.AddWithValue("$expected", expected is null ? 0 : 1);
         update.Parameters.AddWithValue("$status", (object?)expected?.Status ?? DBNull.Value);
         update.Parameters.AddWithValue("$draftName", (object?)expected?.DraftName ?? DBNull.Value);

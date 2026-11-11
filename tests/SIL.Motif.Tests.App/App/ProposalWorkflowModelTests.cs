@@ -79,6 +79,19 @@ public sealed class ProposalWorkflowModelTests
 
         Assert.Same(editor, page.RationaleEditor);
         Assert.Equal("Why this helps Typed.", editor.Text());
+        Assert.False(editor.IsChangedElsewhere);
+
+        fake.ProposalDetail = fake.ProposalDetail! with
+        {
+            Rationale = new RationaleView("Changed elsewhere.", null, "2026-10-02", false, null, false),
+        };
+        page.SelectedProposal = null;
+        page.SelectedProposal = card;
+        await page.DetailReading;
+
+        Assert.Same(editor, page.RationaleEditor);
+        Assert.True(editor.IsChangedElsewhere);
+        Assert.Equal("Why this helps Typed.", editor.Text());
     }
 
     [Fact]

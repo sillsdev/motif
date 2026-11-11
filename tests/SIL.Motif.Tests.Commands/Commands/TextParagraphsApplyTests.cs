@@ -266,6 +266,22 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void AStyleTheFieldAlreadyUsesStillStagesThoughTheProjectLacksIt()
+    {
+        var path = ProjectWithGdrs();
+        InFieldWorks(path, "GDR-1a", (_, text) => ((IStTxtPara)text.ParagraphsOS[0]).StyleName = "Legacy Style");
+        Recaptured(path);
+        var shown = Show(path, "GDR-1a");
+        var only = Assert.Single(shown.Discussion);
+        Assert.Equal("Legacy Style", only.Style);
+
+        Staged(path, shown.Record.Id, Edit([only.Key],
+            [new TextParagraphChange(0, only.Key, "Legacy Style", [new TextRun("edited", only.Runs[0].WritingSystem)])], [], only));
+
+        Assert.Equal(1, PendingOperations(path));
+    }
+
+    [Fact]
     public void AParagraphStyleTheProjectLacksIsRefusedAtStagingNamingTheStyle()
     {
         var path = ProjectWithGdrs();

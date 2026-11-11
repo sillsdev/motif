@@ -66,6 +66,42 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
     }
 
     [Fact]
+    public void AnEditOfARationaleChangedMeanwhileIsRefusedAndTheOtherWriteStays()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        var (_, id) = Draft(path, "changed-meanwhile");
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Theirs.", "agent-1")).Succeeded);
+
+        var refused = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Mine.", ExpectedRationale: "Before."));
+        var saved = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Mine.", ExpectedRationale: "Theirs."));
+
+        Assert.Equal(RefusalCodes.ProposalRationaleStale, refused.Refusal?.Code);
+        Assert.True(saved.Succeeded, saved.Refusal?.Message);
+        Assert.Equal("Mine.", Show(path, id).Rationale!.Markdown);
+    }
+
+    [Fact]
+    public void ARationaleWrittenWhileAnEditIsCheckedIsNotOverwritten()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        var (_, id) = Draft(path, "written-meanwhile");
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Theirs.")).Succeeded);
+
+        var refused = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Mine.", ExpectedRationale: "Theirs."),
+            (database, project, text) =>
+            {
+                var checkedText = ProposalTexts.Check(database, project, text);
+                Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Another.")).Succeeded);
+                return checkedText;
+            });
+
+        Assert.Equal(RefusalCodes.ProposalRationaleStale, refused.Refusal?.Code);
+        Assert.Equal("Another.", Show(path, id).Rationale!.Markdown);
+    }
+
+    [Fact]
     public void AReadyRevisionWithFindingsIsRefusedAndTheLastCleanRationaleStays()
     {
         var path = ProjectWithBaseline();

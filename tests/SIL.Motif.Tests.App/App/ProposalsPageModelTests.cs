@@ -165,6 +165,32 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task AnotherProposalIsNotChosenWhileARationaleEditIsUnsaved()
+    {
+        var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
+            Card("p/two", "Two", ProposalGroup.WaitingForYou)));
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label",
+                new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false), null, [])));
+        var cards = page.Groups[0].Cards;
+        page.SelectProposalCommand.Execute(cards[1]);
+        page.SelectProposalCommand.Execute(cards[0]);
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[^1].Text += " Typed.";
+
+        page.SelectProposalCommand.Execute(cards[1]);
+
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.Same(editor, page.RationaleEditor);
+        Assert.True(editor.IsSwitchRefused);
+        editor.CancelCommand.Execute(null);
+        page.SelectProposalCommand.Execute(cards[1]);
+        Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
+    }
+
+    [Fact]
     public async Task OpenEntersProposalMode()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/waiting", "Waiting one",

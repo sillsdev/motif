@@ -25,10 +25,14 @@ public static class SetTextParagraphsComposer
         ArgumentNullException.ThrowIfNull(intent);
         var after = intent.Paragraphs.ToJson();
         var payload = TextParagraphsPayload.Parse(after);
-        TextParagraphFields.Read(CanonicalIdResolver.Resolve(cache, intent.Target), payload.Field);
+        var current = TextParagraphFields.Read(CanonicalIdResolver.Resolve(cache, intent.Target), payload.Field);
         if (payload.Changed.Count == 0 && payload.Removed.Count == 0) return [];
+        var paragraphs = current?.ParagraphsOS.OfType<IStTxtPara>().ToArray() ?? [];
+        var present = paragraphs.Select(paragraph => paragraph.StyleName).OfType<string>()
+            .Concat(paragraphs.SelectMany(paragraph => RichTextRuns.StylesIn(paragraph.Contents)))
+            .ToHashSet(StringComparer.Ordinal);
         RichTextRuns.RequireStyles(cache, payload.Changed.Select(change => change.Style),
-            payload.Changed.SelectMany(change => change.Runs));
+            payload.Changed.SelectMany(change => change.Runs), present);
         return [new(CanonicalId.Mint(), TextParagraphsOperationKinds.Set, target: intent.Target, after: after,
             rationale: $"Edit the paragraphs of {payload.Field}.")];
     }

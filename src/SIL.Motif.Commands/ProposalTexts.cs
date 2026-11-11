@@ -39,7 +39,7 @@ public static class ProposalTexts
     {
         ArgumentNullException.ThrowIfNull(request);
         return Write(request.FwDataPath, request.ProductVersion, request.ProposalId, request.Text,
-            request.AuthorLabel, request.PersonName, check);
+            request.AuthorLabel, request.PersonName, request.ExpectedRationale, check);
     }
 
     /// <summary>A Rationale or Comment check against a project's store and Baseline.</summary>
@@ -98,7 +98,8 @@ public static class ProposalTexts
             new ProposalDiscussionRepository(database).ListComments(record.ProposalId)));
 
     private static CommandOutcome<ProposalTextChangedResponse> Write(string fwDataPath, string productVersion,
-        string proposalId, string text, string? authorLabel, string? personName, TextCheck check)
+        string proposalId, string text, string? authorLabel, string? personName, string? expectedRationale,
+        TextCheck check)
     {
         return ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
         {
@@ -126,6 +127,8 @@ public static class ProposalTexts
                     FailureReason.Refused, $"Proposal '{id.Value}' is {record.Status}, so its rationale can no longer change.",
                     id.Value));
 
+            if (expectedRationale is not null && !string.Equals(record.Rationale, expectedRationale, StringComparison.Ordinal))
+                return CommandOutcome<ProposalTextChangedResponse>.Refused(ChangedWhileEditing(id));
             var checkedText = check(database, project, text);
             if (IsReady(record) && checkedText.ProjectUnavailable)
                 return CommandOutcome<ProposalTextChangedResponse>.Refused(RationaleUnchecked(
@@ -140,8 +143,8 @@ public static class ProposalTexts
 
             // Only onto the state the check was for: a Draft finalized meanwhile must not take unchecked findings.
             if (!repository.SetRationale(id, checkedText.Text, new DiscussionAuthor(authorLabel, personName ?? ""),
-                    new RationaleWriteExpectation(record.Status, record.DraftName)))
-                return CommandOutcome<ProposalTextChangedResponse>.Refused(RationaleStale(
+                    new RationaleWriteExpectation(record.Status, record.DraftName, expectedRationale)))
+                return CommandOutcome<ProposalTextChangedResponse>.Refused(expectedRationale is not null ? ChangedWhileEditing(id) : RationaleStale(
                     $"Proposal '{id.Value}' changed while its Rationale was being checked, so it was not saved. " +
                     "Write it again.", ("proposalId", id.Value)));
             var written = repository.Get(id);
@@ -187,6 +190,10 @@ public static class ProposalTexts
     internal static Refusal RationaleUnchecked(string message, params (string Key, string Value)[] facts) =>
         new(RefusalCodes.ProposalRationaleUnchecked, FailureReason.Refused, message,
             facts.ToDictionary(fact => fact.Key, fact => fact.Value, StringComparer.Ordinal));
+
+    private static Refusal ChangedWhileEditing(CanonicalId id) => RationaleStale(
+        $"The Rationale of Proposal '{id.Value}' was changed by someone else while this edit was being made, so the " +
+        "edit was not saved. Read the current Rationale and make the edit again.", ("proposalId", id.Value));
 
     /// <summary>The refusal for a Rationale write or Finalize that found the Proposal changed since its check.</summary>
     internal static Refusal RationaleStale(string message, params (string Key, string Value)[] facts) =>

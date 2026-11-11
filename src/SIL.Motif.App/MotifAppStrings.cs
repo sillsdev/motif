@@ -924,6 +924,12 @@ public static class MotifAppStrings
     /// <summary>The button that makes the Rationale editable.</summary>
     public static string RationaleEdit => Text("MotifApp.RationaleEdit");
 
+    /// <summary>Says the Rationale changed elsewhere during the edit.</summary>
+    public static string RationaleChangedElsewhere => Text("MotifApp.RationaleChangedElsewhere");
+
+    /// <summary>Asks to save or cancel the Rationale edit before switching.</summary>
+    public static string RationaleSaveOrCancelFirst => Text("MotifApp.RationaleSaveOrCancelFirst");
+
     /// <summary>The button that saves the edited Rationale.</summary>
     public static string RationaleSave => Text("MotifApp.RationaleSave");
 

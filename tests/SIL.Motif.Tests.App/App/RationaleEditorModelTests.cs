@@ -222,6 +222,52 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.EndsWith("and y more", saved, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task EditingOneParagraphKeepsEveryOtherParagraphExactlyAsWritten()
+    {
+        const string first = "The first paragraph wraps\nonto a second line with **bold** in it.";
+        const string second = "The second paragraph has *italic*\nand a [link](https://example.org).";
+        const string list = "- item one\n- item two";
+        var (fake, editor) = await OpenAsync(first + "\n\n" + second + "\n\n" + list);
+        Assert.False(editor.IsPlainText);
+
+        editor.EditCommand.Execute(null);
+        var run = editor.Document.Paragraphs[1].Runs[0];
+        run.Text = run.Text.Replace("second", "changed", StringComparison.Ordinal);
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        var saved = Assert.Single(fake.SetRationaleRequests).Text;
+        Assert.StartsWith(first + "\n\n", saved, StringComparison.Ordinal);
+        Assert.EndsWith("\n\n" + list, saved, StringComparison.Ordinal);
+        Assert.Contains("The changed paragraph", saved, StringComparison.Ordinal);
+        Assert.Equal("Why it is right.", (await OpenAsync("Why it is right.")).Editor.Text());
+    }
+
+    [Fact]
+    public async Task ASaveOfARationaleChangedElsewhereKeepsThePersonsTextAndCancelShowsTheCurrentOne()
+    {
+        var (fake, editor) = await OpenAsync("Why.");
+        fake.SetRationaleHandler = _ => CommandOutcome<ProposalTextChangedResponse>.Refused(new Refusal(
+            RefusalCodes.ProposalRationaleStale, FailureReason.Refused, "Changed meanwhile.",
+            new Dictionary<string, string> { ["proposalId"] = Id }));
+        fake.ProposalDetail = new ProposalDetailProjection(Id, "proposed", "Label",
+            new RationaleView("Theirs.", null, "2026-11-11T00:00:00Z", false, null, false), null, []);
+
+        editor.EditCommand.Execute(null);
+        Typed(editor, " Mine.");
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Why.", Assert.Single(fake.SetRationaleRequests).ExpectedRationale);
+        Assert.True(editor.IsEditing);
+        Assert.True(editor.IsChangedElsewhere);
+        Assert.Equal("Why. Mine.", editor.Text());
+        editor.CancelCommand.Execute(null);
+        await editor.Working;
+        Assert.False(editor.IsEditing);
+        Assert.Equal("Theirs.", editor.Markdown);
+        Assert.Equal("Theirs.", editor.Text());
+    }
+
     private static void Typed(RationaleEditorModel editor, string text)
     {
         var runs = editor.Document.Paragraphs[^1].Runs;

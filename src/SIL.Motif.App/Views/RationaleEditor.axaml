@@ -17,6 +17,10 @@
       <Button x:Name="RationaleCancelButton" Content="{x:Static app:MotifAppStrings.Cancel}"
               Command="{Binding CancelCommand}" IsVisible="{Binding IsEditing}" />
     </StackPanel>
+    <TextBlock Classes="error" Text="{x:Static app:MotifAppStrings.RationaleChangedElsewhere}" TextWrapping="Wrap"
+               IsVisible="{Binding IsChangedElsewhere}" />
+    <TextBlock Classes="error" Text="{x:Static app:MotifAppStrings.RationaleSaveOrCancelFirst}" TextWrapping="Wrap"
+               IsVisible="{Binding IsSwitchRefused}" />
     <views:RefusalBlock DataContext="{Binding Refusal}" />
     <StackPanel IsVisible="{Binding HasFindings}">
       <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.RationaleFindingsHeading}" />

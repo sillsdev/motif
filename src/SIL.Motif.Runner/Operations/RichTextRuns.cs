@@ -20,19 +20,30 @@ internal static class RichTextRuns
     private static readonly string[] RunProperties = ["text", "ws", "characterStyle", "ints", "strings", "objData"];
 
     /// <summary>
-    /// Checks that every paragraph and character style an edit names is one of the project's styles of that kind; a
-    /// text edit never creates a style.
+    /// Checks that every paragraph and character style an edit brings into a field is one of the project's styles of
+    /// that kind; a text edit never creates a style. A style the field already uses (<paramref name="present"/>) is
+    /// kept as it is, so a field that carries a style the project lacks can still be edited.
     /// </summary>
-    /// <exception cref="TextStyleUnknownException">A named style is not one of the project's styles of that kind.</exception>
-    public static void RequireStyles(LcmCache cache, IEnumerable<string?> paragraphStyles, IEnumerable<TextRun> runs)
+    /// <exception cref="TextStyleUnknownException">A new style is not one of the project's styles of that kind.</exception>
+    public static void RequireStyles(LcmCache cache, IEnumerable<string?> paragraphStyles, IEnumerable<TextRun> runs,
+        IReadOnlySet<string> present)
     {
         var styles = cache.LangProject.StylesOC;
-        bool Has(string name, StyleType type) => styles.Any(style => style.Name == name && style.Type == type);
+        bool Has(string name, StyleType type) => present.Contains(name) || styles.Any(style => style.Name == name && style.Type == type);
         foreach (var name in paragraphStyles.OfType<string>().Where(name => name.Length > 0).Distinct(StringComparer.Ordinal))
             if (!Has(name, StyleType.kstParagraph)) throw new TextStyleUnknownException(name, paragraph: true);
         foreach (var name in runs.Select(run => run.CharacterStyle).OfType<string>().Where(name => name.Length > 0)
                      .Distinct(StringComparer.Ordinal))
             if (!Has(name, StyleType.kstCharacter)) throw new TextStyleUnknownException(name, paragraph: false);
+    }
+
+    /// <summary>The named styles of a stored string's runs.</summary>
+    public static IEnumerable<string> StylesIn(ITsString? text)
+    {
+        if (text is null) yield break;
+        for (var run = 0; run < text.RunCount; run++)
+            if (text.get_Properties(run).GetStrPropValue((int)FwTextPropType.ktptNamedStyle) is { Length: > 0 } name)
+                yield return name;
     }
 
     /// <summary>The <paramref name="name"/> array of runs of <paramref name="owner"/>.</summary>

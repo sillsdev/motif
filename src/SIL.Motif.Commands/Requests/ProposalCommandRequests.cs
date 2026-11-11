@@ -353,9 +353,12 @@ public sealed record LabelRequest(string FwDataPath, string ProductVersion, stri
 /// <param name="Text">The Rationale in Markdown: what the Proposal changes and why.</param>
 /// <param name="AuthorLabel">What an agent calls itself, kept as typed with the revision; null when a person writes.</param>
 /// <param name="PersonName">The person the revision is by or for; null when unknown.</param>
+/// <param name="ExpectedRationale">
+/// The Rationale the writer's edit began from; when given, the write is refused if the stored one is no longer it.
+/// </param>
 public sealed record SetRationaleRequest(
     string FwDataPath, string ProductVersion, string ProposalId, string Text, string? AuthorLabel = null,
-    string? PersonName = null);
+    string? PersonName = null, string? ExpectedRationale = null);
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
