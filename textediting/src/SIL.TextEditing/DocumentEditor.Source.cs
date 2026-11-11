@@ -47,7 +47,7 @@ namespace SIL.TextEditing
         /// stretch's keys go by position, so a long text with changes far apart is not compared pair by pair on the UI thread.</summary>
         public const int PairwiseComparisonBudget = 10000;
 
-        /// <summary>With a fingerprint, the largest matching table (old stretch times new): about two thousand paragraphs each way. Beyond it keys go by position.</summary>
+        /// <summary>With a fingerprint, the largest matching table: the changed stretch's old paragraphs times its new ones. Beyond it keys go by position.</summary>
         const long FingerprintTableBudget = 2100L * 2100;
 
         /// <summary>Makes the field's paragraphs <paramref name="paragraphs"/>, as one undo step labelled <paramref name="label"/>, the way a source-mode return
@@ -63,7 +63,7 @@ namespace SIL.TextEditing
         /// is a removal and an addition, so it loses its key, as cut and paste does.
         /// <para><paramref name="fingerprint"/>, when given, must be the same for any two paragraphs <paramref name="same"/> accepts
         /// (<see cref="ISourceFormFingerprint"/>); <paramref name="same"/> is then taken to be an equivalence, the paragraphs are grouped once, and a stretch of up to
-        /// about two thousand paragraphs each way is matched in a few comparisons a paragraph. Without one, the stretch is compared pair by pair up to
+        /// whose old paragraphs times its new ones is at most 2100² is matched in a few comparisons a paragraph. Without one, the stretch is compared pair by pair up to
         /// <see cref="PairwiseComparisonBudget"/> comparisons. Beyond either limit the stretch's keys go by position: each new paragraph takes the key of the old one
         /// at its place.</para>
         /// In a single-paragraph field the paragraph keeps its style and properties (a source form of one paragraph has no paragraph syntax). False, and nothing
@@ -96,17 +96,26 @@ namespace SIL.TextEditing
             if (head == oldEnd && head == newEnd) return false;
             if (head < oldEnd && !CanEditRange(new TextPosition(head, 0), new TextPosition(oldEnd - 1, old[oldEnd - 1].Length))) return false;
             var replacement = Matched(old, head, oldEnd, incoming, newEnd, same, fingerprint);
-            InOneUndoStep(() =>
+            bool changed = false;
+            try
             {
-                var d = Begin(head, oldEnd - 1, label);
-                old.RemoveRange(head, oldEnd - head);
-                old.InsertRange(head, replacement);
-                d.After.AddRange(replacement.Select(p => p.Clone()));
-                var caret = replacement.Count > 0 ? new TextPosition(head + replacement.Count - 1, replacement[replacement.Count - 1].Length)
-                    : new TextPosition(Math.Min(head, old.Count - 1), head < old.Count ? 0 : old[old.Count - 1].Length);
-                Finish(d, caret);
-            });
-            RaiseBlocksFlattened(flattening);
+                InOneUndoStep(() =>
+                {
+                    var d = Begin(head, oldEnd - 1, label);
+                    old.RemoveRange(head, oldEnd - head);
+                    old.InsertRange(head, replacement);
+                    changed = true;
+                    d.After.AddRange(replacement.Select(p => p.Clone()));
+                    var caret = replacement.Count > 0 ? new TextPosition(head + replacement.Count - 1, replacement[replacement.Count - 1].Length)
+                        : new TextPosition(Math.Min(head, old.Count - 1), head < old.Count ? 0 : old[old.Count - 1].Length);
+                    Finish(d, caret);
+                });
+            }
+            finally
+            {
+                // A host's commit handler that throws comes after the change, so the flattening the change made is still reported.
+                if (changed) RaiseBlocksFlattened(flattening);
+            }
             return true;
         }
 

@@ -9,7 +9,7 @@ namespace SIL.Motif.App.Preview;
 /// shows links with are left out of it, and given back to what it reads, so a link reads the same either way and an
 /// untouched paragraph stays as it was.
 /// </summary>
-public sealed class DiscussionSourceForm : ISourceForm
+public sealed class DiscussionSourceForm : ISourceForm, ISourceFormFingerprint
 {
     private readonly GdrDiscussion _discussion;
     private readonly FieldWorksMarkdownSourceForm _markdown;
@@ -62,4 +62,7 @@ public sealed class DiscussionSourceForm : ISourceForm
     /// <inheritdoc/>
     public bool AreEquivalent(Paragraph original, Paragraph read) =>
         _markdown.AreEquivalent(_discussion.AsProject(original), _discussion.AsProject(read));
+
+    /// <inheritdoc/>
+    public string Fingerprint(Paragraph paragraph) => _markdown.Fingerprint(_discussion.AsProject(paragraph));
 }

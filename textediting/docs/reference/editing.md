@@ -114,7 +114,7 @@ counts the errors) and returns false; warnings never block. A clean reading beco
 `DocumentEditor.ReplaceParagraphs`: the paragraphs the source left as they were stay (found by a longest common subsequence), and a
 changed paragraph keeps the key of the old one it replaces, so keys stay on their own text when paragraphs are added or removed; a moved
 paragraph loses its key, as cut and paste does. A form that implements `ISourceFormFingerprint`, as the Markdown form does, is matched in
-a few comparisons a paragraph up to about two thousand paragraphs each way; one without is compared pair by pair up to
+a few comparisons a paragraph while the changed stretch's old paragraphs times its new ones is at most 2100²; one without is compared pair by pair up to
 `DocumentEditor.PairwiseComparisonBudget`. Beyond those limits keys go by position. If the host's `Committed` handler throws after the
 text changed, the field is back in rich text with the edit and `SourceModeChanged` says the commit failed. Source with no change commits
 nothing. `DiscardSourceChanges()` goes back with nothing committed. `SourceModeChanged` gives each change and
