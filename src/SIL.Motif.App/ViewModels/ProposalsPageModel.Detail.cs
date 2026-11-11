@@ -20,6 +20,10 @@ public sealed partial class ProposalsPageModel
     [ObservableProperty]
     private ProposalDetailProjection? _detail;
 
+    /// <summary>The selected Proposal's Rationale in the rich field, editable while the Proposal is open.</summary>
+    [ObservableProperty]
+    private RationaleEditorModel? _rationaleEditor;
+
     /// <summary>The selected Proposal's operation descriptions.</summary>
     [ObservableProperty]
     private IReadOnlyList<string> _operationDescriptions = [];
@@ -42,6 +46,7 @@ public sealed partial class ProposalsPageModel
     {
         var generation = ++_detailGeneration;
         Detail = null;
+        RationaleEditor = null;
         DetailRefusal = null;
         OperationDescriptions = [];
         ReviewProgress = string.Empty;
@@ -61,6 +66,7 @@ public sealed partial class ProposalsPageModel
             return;
         }
         Detail = shown.Value;
+        RationaleEditor = new RationaleEditorModel(Context, shown.Value!);
         MarkSelectedRead();
         var review = await Context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(path, proposalId),
             CancellationToken.None).ConfigureAwait(true);

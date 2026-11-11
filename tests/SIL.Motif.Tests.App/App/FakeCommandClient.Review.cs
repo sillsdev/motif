@@ -16,6 +16,25 @@ public sealed partial class FakeCommandClient
         ShowProposalHandler?.Invoke(request, cancellationToken) ??
         Completed(ProposalDetail ?? new ProposalDetailProjection(request.ProposalId, "proposed", null, null, null, []));
 
+    public List<SetRationaleRequest> SetRationaleRequests { get; } = [];
+
+    /// <summary>What a Rationale save answers; null saves it clean.</summary>
+    public Func<SetRationaleRequest, CommandOutcome<ProposalTextChangedResponse>>? SetRationaleHandler { get; set; }
+
+    public Task<CommandOutcome<ProposalTextChangedResponse>> SetRationaleAsync(
+        SetRationaleRequest request, CancellationToken cancellationToken)
+    {
+        SetRationaleRequests.Add(request);
+        return Task.FromResult(SetRationaleHandler?.Invoke(request) ?? CommandOutcome<ProposalTextChangedResponse>.Success(
+            new ProposalTextChangedResponse(request.ProposalId, "rationale", "2026-11-11T00:00:00.0000000Z", false)));
+    }
+
+    public IReadOnlyList<RationaleRevisionView> RationaleRevisions { get; set; } = [];
+
+    public Task<CommandOutcome<IReadOnlyList<RationaleRevisionView>>> ListRationaleRevisionsAsync(
+        RationaleRevisionsRequest request, CancellationToken cancellationToken) =>
+        Completed(RationaleRevisions);
+
     public List<DeferRequest> DeferProposalRequests { get; } = [];
 
     public Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(

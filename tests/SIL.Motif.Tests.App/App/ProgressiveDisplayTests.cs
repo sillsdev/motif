@@ -60,7 +60,7 @@ public sealed class ProgressiveDisplayTests
         "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
         "Inspector", "MiniMatrix", "MotifWorkspaceView", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
-        "ProposalDifferencePanel", "ProposalParsimonyPanel", "ProposalPicturesPanel", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
+        "ProposalDifferencePanel", "ProposalParsimonyPanel", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
         "TraceAnalysesView", "TryWordAttemptInspector", "TryWordPanel", "WarningsFilterPanel", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
     ];
@@ -1138,6 +1138,11 @@ public sealed class ProgressiveDisplayTests
                 (_, _) => Task.FromResult(CommandOutcome<SIL.Motif.Contract.Parsimony.ProposalParsimonyStatus>.Success(
                     ProposalParsimonyStatusFixtures.Ready("proposal/scale")))) },
             "ProposalPicturesPanel" => new ProposalPicturesPanel { DataContext = ManyPictures() },
+            "RationaleEditor" => new RationaleEditor
+            {
+                DataContext = new RationaleEditorModel(workspace.Context, new ProposalDetailProjection("proposal/scale",
+                    "proposed", "Label", new RationaleView("Why.", null, "2026-01-01T00:00:00Z", false, null, false), null, [])),
+            },
             "RefusalBlock" => new RefusalBlock { DataContext = CompileRefusal(1) },
             "ResultsInTextPanel" => new ResultsInTextPanel(texts.ResultsInText),
             "RetirementProposalReviewPanel" => new RetirementProposalReviewPanel

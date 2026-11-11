@@ -921,6 +921,33 @@ public static class MotifAppStrings
     /// <summary>Warns that a Proposal's Rationale describes older content.</summary>
     public static string ProposalRationaleOutOfDate => Text("MotifApp.ProposalRationaleOutOfDate");
 
+    /// <summary>The button that makes the Rationale editable.</summary>
+    public static string RationaleEdit => Text("MotifApp.RationaleEdit");
+
+    /// <summary>The button that saves the edited Rationale.</summary>
+    public static string RationaleSave => Text("MotifApp.RationaleSave");
+
+    /// <summary>Heading over the findings of a Rationale.</summary>
+    public static string RationaleFindingsHeading => Text("MotifApp.RationaleFindingsHeading");
+
+    /// <summary>Heading over the earlier versions of a Rationale.</summary>
+    public static string RationaleRestoreHeading => Text("MotifApp.RationaleRestoreHeading");
+
+    /// <summary>The button that puts an earlier Rationale into the field.</summary>
+    public static string RationaleRestore => Text("MotifApp.RationaleRestore");
+
+    /// <summary>Formats when an earlier Rationale was saved and by whom.</summary>
+    public static string RationaleRevisionFormat => Text("MotifApp.RationaleRevisionFormat");
+
+    /// <summary>Names a person who wrote an earlier Rationale without a name.</summary>
+    public static string RationaleRevisionAPerson => Text("MotifApp.RationaleRevisionAPerson");
+
+    /// <summary>Notes that a Rationale is shown as plain text.</summary>
+    public static string RationalePlainText => Text("MotifApp.RationalePlainText");
+
+    /// <summary>The menu item that opens a link in the Rationale.</summary>
+    public static string RationaleOpenLink => Text("MotifApp.RationaleOpenLink");
+
     /// <summary>Formats an operation description and its affected word count phrase.</summary>
     public static string ProposalOperationSentenceFormat => Text("MotifApp.ProposalOperationSentenceFormat");
 

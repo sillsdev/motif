@@ -1280,6 +1280,15 @@
   <data name="MotifApp.ProposalStageStatesFormat" xml:space="preserve"><value>{0} · {1} · {2} · {3} · {4}</value><comment>States of the Rationale, Trial, Parsimony, review and Apply stages, respectively.</comment></data>
   <data name="MotifApp.ProposalRationale" xml:space="preserve"><value>Rationale</value><comment>Heading for the builder's explanation of a Proposal.</comment></data>
   <data name="MotifApp.ProposalWhatItChanges" xml:space="preserve"><value>What It Changes</value><comment>Heading for a Proposal's operation descriptions.</comment></data>
+  <data name="MotifApp.RationaleEdit" xml:space="preserve"><value>Edit</value><comment>The button that makes a Proposal's Rationale editable.</comment></data>
+  <data name="MotifApp.RationaleSave" xml:space="preserve"><value>Save</value><comment>The button that saves an edited Rationale.</comment></data>
+  <data name="MotifApp.RationaleFindingsHeading" xml:space="preserve"><value>A reader would see these as wrong:</value><comment>Heading over the findings of a saved or refused Rationale.</comment></data>
+  <data name="MotifApp.RationaleRestoreHeading" xml:space="preserve"><value>Restore an earlier version</value><comment>Heading over the kept earlier versions of a Rationale a person may restore while editing.</comment></data>
+  <data name="MotifApp.RationaleRestore" xml:space="preserve"><value>Restore</value><comment>The button that puts an earlier version of the Rationale into the field; it is saved only with Save.</comment></data>
+  <data name="MotifApp.RationaleRevisionFormat" xml:space="preserve"><value>{0}, by {1}</value><comment>One earlier version of a Rationale. {0} is when it was saved; {1} is who wrote it.</comment></data>
+  <data name="MotifApp.RationaleRevisionAPerson" xml:space="preserve"><value>a person</value><comment>Who wrote an earlier Rationale when it was a person with no name recorded.</comment></data>
+  <data name="MotifApp.RationalePlainText" xml:space="preserve"><value>This Rationale does not read as formatted text, so it is shown as plain text.</value><comment>Note under a Rationale whose markup could not be read; it is shown and edited as plain text.</comment></data>
+  <data name="MotifApp.RationaleOpenLink" xml:space="preserve"><value>Open link</value><comment>Context menu item that opens what a link in the Rationale names, in FieldWorks or a browser.</comment></data>
   <data name="MotifApp.ProposalRationaleOutOfDate" xml:space="preserve"><value>Out of date</value><comment>Marker on a Rationale written for older Proposal content.</comment></data>
   <data name="MotifApp.ProposalOperationSentenceFormat" xml:space="preserve"><value>{0} ({1}).</value><comment>One operation with the number of words it affects. {0} is what it changes; {1} is the count phrase, such as "affects 12 words".</comment></data>
   <data name="MotifApp.ProposalOperationSentenceNoCountFormat" xml:space="preserve"><value>{0}.</value><comment>One operation when no affected word count is known. {0} is what it changes.</comment></data>

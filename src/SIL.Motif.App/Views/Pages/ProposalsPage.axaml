@@ -439,7 +439,7 @@
         <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalRationale}" />
         <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProposalRationaleOutOfDate}"
                    IsVisible="{Binding Detail.Rationale.OutOfDate}" />
-        <views:CopyableTextBlock Text="{Binding Detail.Rationale.Markdown}" TextWrapping="Wrap" />
+        <views:RationaleEditor x:Name="ProposalRationaleEditor" DataContext="{Binding RationaleEditor}" />
         <views:RefusalBlock DataContext="{Binding DetailRefusal}" />
         <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalWhatItChanges}" />
         <views:ProgressiveItemsControl x:Name="ProposalOperationDescriptions" FullItemsSource="{Binding OperationDescriptions}">

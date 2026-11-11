@@ -39,6 +39,7 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.DeclineProposalAsync)] = "reject --proposal",
             [nameof(ICommandClient.DeferProposalAsync)] = "defer",
             [nameof(ICommandClient.ShowProposalAsync)] = "show",
+            [nameof(ICommandClient.SetRationaleAsync)] = "proposal rationale",
             [nameof(ICommandClient.ReopenProposalAsync)] = "reopen --proposal",
             [nameof(ICommandClient.DiscardDraftAsync)] = "discard-draft",
             [nameof(ICommandClient.LoadPendingChangesAsync)] = "pending-changes",
@@ -75,6 +76,7 @@ public sealed class ICommandClientCatalogParityTests
     {
         nameof(ICommandClient.ListKnownProjectsAsync),
         nameof(ICommandClient.GetCurrentBaselineAsync),
+        nameof(ICommandClient.ListRationaleRevisionsAsync),
         nameof(ICommandClient.ReadCurrentEvidenceAsync),
         nameof(ICommandClient.GetProjectHistoryAsync),
         nameof(ICommandClient.ReadStoredGrammarCheckAsync),

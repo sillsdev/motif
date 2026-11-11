@@ -78,6 +78,14 @@ public sealed record PromoteGlossAddedResponse(
     string? Licence,
     int OperationCount);
 
+/// <summary>One kept version of a Proposal's Rationale, which a person may restore while the Proposal is open.</summary>
+/// <param name="RevisionId">The version's id, larger for a later one.</param>
+/// <param name="Markdown">The Rationale as it was saved.</param>
+/// <param name="AuthorLabel">What the agent that wrote it called itself; null when a person wrote it.</param>
+/// <param name="PersonName">The person it was by or for; empty when unknown.</param>
+/// <param name="CreatedUtc">When it was saved, as a round-trip UTC timestamp.</param>
+public sealed record RationaleRevisionView(long RevisionId, string Markdown, string? AuthorLabel, string PersonName, string CreatedUtc);
+
 /// <summary>A Proposal's Rationale or the person's note written or cleared.</summary>
 /// <param name="ProposalId">The Proposal the text belongs to.</param>
 /// <param name="Field">Which text changed: <c>rationale</c> or <c>note</c>.</param>

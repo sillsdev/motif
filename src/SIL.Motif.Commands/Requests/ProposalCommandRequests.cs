@@ -359,6 +359,11 @@ public sealed record SetRationaleRequest(
 
 /// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
 /// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
+/// <param name="ProposalId">The full id of the Proposal whose kept Rationale versions are read.</param>
+public sealed record RationaleRevisionsRequest(string FwDataPath, string ProductVersion, string ProposalId);
+
+/// <param name="FwDataPath">The saved FieldWorks project path supplied by the caller.</param>
+/// <param name="ProductVersion">The Motif product version used to open its paired store.</param>
 /// <param name="ProposalId">The full id of the Proposal the Comment is on.</param>
 /// <param name="Text">The Comment in Markdown.</param>
 /// <param name="PersonName">The person the Comment is by or for; empty when unknown.</param>

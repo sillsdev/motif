@@ -51,6 +51,8 @@ public sealed class ProposalWorkflowModelTests
         await page.DetailReading;
 
         Assert.Equal("Why this helps", page.Detail!.Rationale!.Markdown);
+        Assert.Equal("Why this helps", page.RationaleEditor!.Markdown);
+        Assert.True(page.RationaleEditor.CanStartEdit);
         Assert.True(page.Detail.Rationale.OutOfDate);
         Assert.Equal(["Add a phonological rule.", "Add a wordform (affects 1 word)."],
             page.OperationDescriptions);

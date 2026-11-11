@@ -46,6 +46,26 @@ public static class ProposalTexts
     internal delegate CheckedProposalText TextCheck(MotifDatabase database, ProjectLocator project, string text);
 
     /// <summary>
+    /// The kept versions of a Proposal's Rationale, newest first, which a person may restore while it is open; none
+    /// once it is decided.
+    /// </summary>
+    public static CommandOutcome<IReadOnlyList<RationaleRevisionView>> RationaleRevisions(RationaleRevisionsRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        {
+            if (!CanonicalId.TryParse(request.ProposalId, out var id))
+                return CommandOutcome<IReadOnlyList<RationaleRevisionView>>.Refused(Refuse("proposal.not-found",
+                    FailureReason.NotFound, $"'{request.ProposalId}' is not a full Proposal id.", request.ProposalId));
+            IReadOnlyList<RationaleRevisionView> revisions = new ProposalDiscussionRepository(database)
+                .ListRationaleRevisions(id).Reverse()
+                .Select(revision => new RationaleRevisionView(revision.RevisionId, revision.Text, revision.Author.Label,
+                    revision.Author.PersonName, revision.CreatedUtc)).ToArray();
+            return CommandOutcome<IReadOnlyList<RationaleRevisionView>>.Success(revisions);
+        });
+    }
+
+    /// <summary>
     /// Whether a person wrote after the builder last did, for the Proposal a full id or a Draft name selects; null
     /// when the selector names no Proposal.
     /// </summary>

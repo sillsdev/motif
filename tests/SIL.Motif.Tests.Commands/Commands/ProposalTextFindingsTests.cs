@@ -438,6 +438,22 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
         Assert.Equal("Some <b>raw</b> reason.", Assert.Single(Show(path, draft).Comments!).Markdown);
     }
 
+    [Fact]
+    public void TheKeptVersionsOfARationaleAreReadNewestFirstWithTheirAuthors()
+    {
+        using var scratch = pristine.NewScratch();
+        var path = scratch.ProjectId.Path;
+        var (_, id) = Draft(path, "versions");
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "First.", "agent-1")).Succeeded);
+        Assert.True(ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Second.", null, "person-1")).Succeeded);
+
+        var read = ProposalTexts.RationaleRevisions(new RationaleRevisionsRequest(path, Version, id));
+
+        Assert.True(read.Succeeded, read.Refusal?.Message);
+        Assert.Equal([("Second.", null, "person-1"), ("First.", "agent-1", "")],
+            read.Value!.Select(revision => (revision.Markdown, revision.AuthorLabel, revision.PersonName)));
+    }
+
     private (string Name, string Id) Draft(string path, string name)
     {
         var created = ProposalCommands.New(new NewDraftRequest(path, Version, name, name));
