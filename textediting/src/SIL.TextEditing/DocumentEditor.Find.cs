@@ -192,7 +192,7 @@ namespace SIL.TextEditing
         {
             CheckAccess();
             var plan = NewPlan(options);
-            if (!plan.Valid || IsReadOnly) return 0;
+            if (!plan.Valid || Refusing) return 0;
             var todo = new List<(int Paragraph, Hit Hit)>();
             for (int pi = 0; pi < Document.Paragraphs.Count; pi++)
                 foreach (var h in HitsIn(pi, plan, false, replacement))

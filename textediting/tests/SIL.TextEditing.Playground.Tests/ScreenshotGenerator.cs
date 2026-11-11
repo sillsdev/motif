@@ -272,6 +272,23 @@ namespace SIL.TextEditing.Playground.Tests
                 s.View.CloseContextMenu();
             }
         });
+
+        [ScreenshotFact]
+        public void Source_mode() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.MixedBidi, W, H, developerMode: false))
+            {
+                Assert.True(s.View.EditAsSource());
+                var view = s.Field.SourceView!;
+                view.Editor.SetCaret(new TextPosition(0, view.Editor.Document.Paragraphs[0].Length));
+                view.RaiseEvent(new global::Avalonia.Input.TextInputEventArgs { RoutedEvent = global::Avalonia.Input.InputElement.TextInputEvent, Text = " [x](/lexicon/palit)", Source = view });
+                for (int i = 0; i < 20 && !view.IsLanguageAnalysisCurrent; i++) Headless.Pump();
+                s.Field.LeaveSourceMode();   // refused: the strip counts the error
+                Headless.Pump();
+                Save(s, "source-mode", FieldStrip(s, 300));
+                s.Field.DiscardSourceChanges();
+            }
+        });
     }
 
     static class VisualExtensions

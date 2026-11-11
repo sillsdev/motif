@@ -11,7 +11,7 @@ $env:TEXTEDITING_SCREENSHOTS=1; pwsh ./test.ps1 -Project tests\SIL.TextEditing.P
 ```
 
 - `bidi-selection.png`: Latin and Arabic in one paragraph, one selection running across the direction changes ("Latin and Arabic" scenario), the selection bar over it, and the same text as FieldWorks Markdown beside it.
-- `selection-bar.png`: the selection bar over French text with More open: bold, italic, underline, writing system, character style, then paragraph style and Picture.
+- `selection-bar.png`: the selection bar over French text with More open: bold, italic, underline, writing system, character style, Markdown, then paragraph style and Picture.
 - `indic-thai-shaping.png`: Hindi, Tamil and Thai shaped correctly, with a Devanagari conjunct selected as one cluster.
 - `nfd-surrogates.png`: composed and decomposed accents, stacked marks, and emoji (surrogate pairs and a ZWJ family), with the emoji selected.
 - `inline-pictures.png`: inline picture objects (U+FFFC) in left-to-right and right-to-left text, selected along with the text around them.
@@ -20,6 +20,7 @@ $env:TEXTEDITING_SCREENSHOTS=1; pwsh ./test.ps1 -Project tests\SIL.TextEditing.P
 - `environment-fix-menu.png`: right-click on a problem in the environment box: the service's message, its fix ("Insert the closing parenthesis") and the Insert items.
 - `spelling-squiggles.png`: red squiggles on misspelled words, blue on a word that glues two writing systems, nothing on do-not-check or read-only text.
 - `spelling-context-menu.png`: the context menu on a misspelled word: the word, its suggestions, Find, Cut, Copy, Paste and Copy as.
+- `source-mode.png`: a field in source mode (ADR 0035): its FieldWorks Markdown in a monospaced second field under the strip, an error underlined, and the strip counting it after a refused "Back to rich text".
 - `copy-as-submenu.png`: the "Copy as" submenu open (plain text, a debug dump of the runs, and a disabled Markdown entry when no converter is registered).
 - `block-features.png`: a heading, a bulleted list and a table (as table-styled paragraphs, one column for now) with the Tables, Lists and Headings switches visible and on.
 - `long-document.png`: the 200-paragraph scenario scrolled to the caret in the middle, mixed writing systems; the Markdown tab shows the document as FieldWorks Markdown from its start.

@@ -4,18 +4,26 @@ using Avalonia.Media;
 
 namespace SIL.TextEditing.Avalonia
 {
-    /// <summary>How the field draws one kind of language-service token (ADR 0030): a chip behind the glyphs, a fill and an outline. Either may be null. The
-    /// text keeps its own colour and its runs, so what the user copies, saves and undoes is the plain text it was.</summary>
+    /// <summary>How the field draws one kind of language-service token (ADR 0030): a chip behind the glyphs, a fill and an outline, either of which may be null,
+    /// and a mute that draws the text fainter (ADR 0035: a link's GUID in source mode). The text keeps its own colour and its runs, so what the user copies,
+    /// saves and undoes is the plain text it was.</summary>
     public sealed class TokenStyle
     {
-        public TokenStyle(IBrush? fill, IBrush? outline = null)
+        public TokenStyle(IBrush? fill, IBrush? outline = null, double mute = 0)
         {
             Fill = fill;
             Outline = outline;
+            Mute = Math.Max(0, Math.Min(1, mute));
         }
 
         public IBrush? Fill { get; }
         public IBrush? Outline { get; }
+
+        /// <summary>How much fainter the text is drawn, from 0 (as it is) to 1 (not seen): a wash of the field's background at this opacity is laid over the
+        /// glyphs. Like chips, it is not drawn in a high contrast theme.</summary>
+        public double Mute { get; }
+
+        internal bool Draws => Fill != null || Outline != null || Mute > 0;
     }
 
     /// <summary>The host's map from a token kind to the way it is drawn, for the light theme and the dark one (<c>RichTextField.TokenStyles</c>). A kind with no entry is not drawn. In a

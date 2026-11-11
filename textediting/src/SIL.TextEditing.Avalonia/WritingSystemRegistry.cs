@@ -22,6 +22,14 @@ namespace SIL.TextEditing.Avalonia
         /// too; a host registers its writing systems.</summary>
         internal static WritingSystemInfo Fallback(string id, double size = DefaultFallbackSize) => new WritingSystemInfo(id, size);
 
+        /// <summary>A writing system of the library's own that touches no libpalaso type: a source view's monospaced text (ADR 0035).</summary>
+        internal WritingSystemInfo(string id, string font, double size)
+        {
+            Tag = id;
+            Font = font;
+            Size = size;
+        }
+
         internal WritingSystemInfo(WritingSystemDefinition ws)
         {
             Tag = ws.Id;
@@ -50,6 +58,13 @@ namespace SIL.TextEditing.Avalonia
         public WritingSystemRegistry Add(WritingSystemDefinition ws)
         {
             _byId[ws.Id] = new WritingSystemInfo(ws);
+            return this;
+        }
+
+        /// <summary>Registers a writing system of the library's own (a source view's), with no libpalaso definition behind it.</summary>
+        internal WritingSystemRegistry Add(string id, WritingSystemInfo info)
+        {
+            _byId[id] = info;
             return this;
         }
 
