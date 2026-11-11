@@ -494,4 +494,119 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
         var args = argument ? new[] { SenseDefinitionPreviewWindow.StartupArgument } : [];
         Assert.Equal(expected, SenseDefinitionPreviewWindow.IsRequested(flag, args));
     }
+
+    [Fact]
+    public void TheMarkdownButtonActsOnTheFieldLastInAndItsEditStagesWithItsFormatting()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Opened(store, out var closer);
+            using var _ = closer;
+            var arabic = window.FieldFor("ar")!;
+            var english = window.FieldFor("en")!;
+            english.Focus();
+
+            var toggle = window.GetLogicalDescendants().OfType<Button>().Single(button => Equals(button.Content, "Markdown"));
+            toggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Assert.True(english.IsSourceMode);
+            Assert.False(arabic.IsSourceMode);
+            Assert.Equal("Editing as Markdown", window.StatusText);
+
+            // A Definition's Markdown is its text alone, English unmarked in it though Arabic is listed first.
+            Assert.Equal("x [y]{custom-style=Emphasis}", english.SourceView!.Editor.Document.PlainText());
+            english.SourceView.Editor.SetCaret(new TextPosition(0, 0));
+            window.KeyTextInput("**b** ");
+            Assert.True(window.ToggleSourceMode("en"));
+            Assert.Equal("Back to rich text", window.StatusText);
+
+            var staged = Assert.Single(store.Staged).RichString;
+            Assert.Equal("b x y", staged.Text);
+            Assert.Equal(TextPropertyNumbers.ToggleOn, staged.Runs[0].Props!.Ints[TextPropertyNumbers.Bold].Item2);
+            Assert.Equal("Emphasis", staged.Runs[^1].CharacterStyle);
+            Assert.All(staged.Runs, run => Assert.Equal("en", run.Ws));
+        });
+    }
+
+    [Fact]
+    public void ASenseWhoseMarkdownCannotGoBackStaysShownAndTheWindowStaysOpen()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Opened(store, out var closer);
+            using var _ = closer;
+            var english = window.FieldFor("en")!;
+            english.Focus();
+            Assert.True(window.ToggleSourceMode());
+            english.SourceView!.Editor.SetCaret(new TextPosition(0, 0));
+            window.KeyTextInput("[t](/lexicon/nothing-here) ");
+
+            window.Show("sense-2");
+            Assert.Equal("motifa  gloss", window.HeadingText);
+            Assert.Same(english, window.FieldFor("en"));
+            Assert.Equal(SenseDefinitionPreviewWindow.MarkdownFixFirstMessage, window.StatusText);
+            window.Close();
+            Assert.True(window.IsVisible);
+
+            english.DiscardSourceChanges();
+            window.Show("sense-2");
+            Assert.Equal("motifb  other", window.HeadingText);
+            Assert.Empty(store.Staged);
+        });
+    }
+
+    [Fact]
+    public void MarkdownWithAnErrorStaysAndApplyWaitsUntilItIsFixedOrThrownAway()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Opened(store, out var closer);
+            using var _ = closer;
+            var english = window.FieldFor("en")!;
+            english.Focus();
+            Assert.True(window.ToggleSourceMode());
+            english.SourceView!.Editor.SetCaret(new TextPosition(0, 0));
+            window.KeyTextInput("[t](/lexicon/nothing-here) ");
+
+            Assert.False(window.ToggleSourceMode("en"));
+            Assert.True(english.IsSourceMode);
+            Assert.False(Completed(window.ApplyAsync()));
+            Assert.Equal(SenseDefinitionPreviewWindow.MarkdownFixFirstMessage, window.StatusText);
+            Assert.Equal(0, store.Applies);
+            Assert.Empty(store.Staged);
+
+            english.DiscardSourceChanges();
+            Assert.False(english.IsSourceMode);
+            Assert.Equal("x y", english.Editor.Document.Paragraphs[0].Text);
+            Assert.True(Completed(window.ApplyAsync()));
+            Assert.Equal(1, store.Applies);
+        });
+    }
+
+    [Fact]
+    public void AStaleOrLockedDefinitionCannotBeShownAsMarkdown()
+    {
+        avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            store.Pending["en"] = new TextRichStringPayload(SenseDefinitionStore.Field, "en", [new TextRun("mine", "en")], Start(Canned(), "en"));
+            var window = Opened(store, out var closer, () => Canned("fw "));
+            using var _ = closer;
+
+            Assert.True(window.IsStaleStripShown);
+            Assert.False(window.ToggleSourceMode("en"));
+            Assert.False(window.FieldFor("en")!.IsSourceMode);
+
+            var arabic = window.FieldFor("ar")!;
+            arabic.Focus();
+            window.KeyTextInput("ب");
+            window.SessionFor("ar")!.EndSession();
+            Assert.True(window.ToggleSourceMode("ar"));
+            Assert.True(window.ToggleSourceMode("ar"));
+            Assert.True(arabic.Editor.Document.Paragraphs.Single().Rtl);
+            Assert.Equal("ب", Assert.Single(store.Staged).RichString.Text);
+        });
+    }
 }

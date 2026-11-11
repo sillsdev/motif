@@ -430,6 +430,26 @@ namespace SIL.TextEditing.Avalonia.Tests
         });
 
         [Fact]
+        public void A_host_that_makes_the_field_read_only_in_source_mode_stops_the_source_being_edited_too() => Headless.Run(() =>
+        {
+            var r = new Rig("one");
+            r.Field.EnterSourceMode();
+            r.Field.IsReadOnly = true;
+            Headless.Pump();
+            Assert.True(r.View.IsReadOnly);
+            r.View.Editor.SetCaret(new TextPosition(0, 3));
+            r.View.Editor.TypeText("x");
+            Assert.Equal("one", r.Source);
+            r.Field.IsReadOnly = false;
+            Headless.Pump();
+            Assert.False(r.View.IsReadOnly);
+            r.TypeAtEndOf(0, " two");
+            Assert.True(r.Field.LeaveSourceMode());
+            Assert.Equal(new[] { "one two" }, r.Texts);
+            r.Window.Close();
+        });
+
+        [Fact]
         public void Text_input_raised_on_the_field_in_source_mode_goes_to_the_view() => Headless.Run(() =>
         {
             var r = new Rig("one");

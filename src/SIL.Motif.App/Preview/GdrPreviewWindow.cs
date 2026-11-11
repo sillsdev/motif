@@ -79,6 +79,7 @@ public sealed class GdrPreviewWindow : Window
         Func<string, string>? writingSystemName = null, Func<string, BaselineToken?, CommandOutcome<GdrPathLink>>? linkToPath = null)
     {
         _writingSystemName = writingSystemName;
+        _sourceToggle = PreviewSourceMode.Toggle(ToggleSourceMode);
         _show = show;
         _linkToPath = linkToPath;
         _projectName = projectName;
@@ -132,16 +133,17 @@ public sealed class GdrPreviewWindow : Window
         right.Children.Add(_heading);
         DockPanel.SetDock(_target, Dock.Bottom);
         right.Children.Add(_target);
+        PreviewSourceMode.Speak(_status);
+        var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
         if (store is not null)
         {
             var apply = new Button { Content = "Apply", Margin = new Thickness(0, 6, 0, 0) };
             apply.Click += async (_, _) => await ApplyAsync();
-            var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 12 };
             actions.Children.Add(apply);
-            actions.Children.Add(_status);
-            DockPanel.SetDock(actions, Dock.Bottom);
-            right.Children.Add(actions);
         }
+        actions.Children.Add(_status);
+        DockPanel.SetDock(actions, Dock.Bottom);
+        right.Children.Add(actions);
         right.Children.Add(reading);
         var panel = new DockPanel { Margin = new Thickness(12), LastChildFill = true };
         DockPanel.SetDock(_records, Dock.Left);
@@ -170,6 +172,9 @@ public sealed class GdrPreviewWindow : Window
     };
     private CancellationTokenSource? _hintCancel;
     private bool _resettingChoices;
+    private readonly Button _sourceToggle;
+    // The last thing source mode said on the status line.
+    private string? _announced;
 
     /// <summary>The paragraph styles the toolbar offers: the project's.</summary>
     public IReadOnlyList<string> ParagraphStyleChoices => Items(_paragraphStyles);
@@ -242,6 +247,19 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>Gives the selected text the character style <paramref name="style"/>, or takes it away when null.</summary>
     public bool ApplyCharacterStyle(string? style) => Session?.ApplyCharacterStyle(style) == true;
 
+    /// <summary>
+    /// Shows the selected record's Discussion as FieldWorks Markdown, or returns it to rich text, as the bar's Markdown
+    /// button and Ctrl+Shift+M in the field do; returns whether it switched. Going back is refused while the Markdown has
+    /// an error.
+    /// </summary>
+    public bool ToggleSourceMode() => Session?.ToggleSourceMode() == true;
+
+    /// <summary>What Compare and Apply say when a field cannot go back to rich text first.</summary>
+    public const string MarkdownFixFirstMessage = PreviewSourceMode.FixFirstMessage;
+
+    /// <summary>What Compare and Apply say when a field holding Markdown was made read-only and cannot take it back.</summary>
+    public const string MarkdownReadOnlyMessage = PreviewSourceMode.ReadOnlyMessage;
+
     /// <summary>Turns bold on or off for the selected text.</summary>
     public bool ToggleBold() => Session?.ToggleBold() == true;
 
@@ -293,6 +311,7 @@ public sealed class GdrPreviewWindow : Window
             return button;
         }
 
+        _toolbar.Children.Add(_sourceToggle);
         _toolbar.Children.Add(_paragraphStyles);
         _toolbar.Children.Add(_characterStyles);
         _toolbar.Children.Add(Toggle("B", "Bold", FontWeight.Bold, FontStyle.Normal, null, ToggleBold));
@@ -332,6 +351,13 @@ public sealed class GdrPreviewWindow : Window
         box.SelectedIndex = -1;
         _resettingChoices = false;
     };
+
+    // In Markdown the formatting is typed, so only the toggle back is offered.
+    private void ShowToolbar()
+    {
+        var markdown = Field?.IsSourceMode == true;
+        foreach (var control in _toolbar.Children) control.IsEnabled = control == _sourceToggle || !markdown;
+    }
 
     private void ShowChoices(GdrDiscussion discussion)
     {
@@ -390,6 +416,7 @@ public sealed class GdrPreviewWindow : Window
     public async Task<bool> ApplyAsync()
     {
         if (_store is null) return false;
+        if (!PreviewSourceMode.ReturnToRichText(_opened.Values.Select(opened => opened.Field), _status)) return false;
         Session?.EndSession();
         // A refused staging is tried again, so a busy Draft only holds Apply back while it stays busy.
         foreach (var id in _refused.Keys.ToArray())
@@ -441,6 +468,7 @@ public sealed class GdrPreviewWindow : Window
     {
         if (_store is null || _shownId is not { } id || !_stale.Contains(id)) return false;
         if (!await _confirmStartAgain()) return false;
+        _opened[id].Field.DiscardSourceChanges();
         _opened[id].Session.EndSession();
         if (await Staged(id, pending: false, () => _store.DiscardAsync(id)) is not null) return false;
         _stale.Remove(id);
@@ -458,6 +486,7 @@ public sealed class GdrPreviewWindow : Window
     public async Task<bool> CompareAsync()
     {
         if (_store is null || _shownId is not { } id || !_stale.Contains(id)) return false;
+        if (!PreviewSourceMode.ReturnToRichText([_opened[id].Field], _status)) return false;
         _opened[id].Session.EndSession();
         await _staging;
         if (_refused.TryGetValue(id, out var unstaged))
@@ -521,7 +550,8 @@ public sealed class GdrPreviewWindow : Window
         {
             _refused[recordId] = refusal;
         }
-        _status.Text = refusal ?? string.Empty;
+        // A stage that went through leaves the source-mode announcement for the screen reader to finish.
+        if (refusal is not null || _status.Text != _announced) _status.Text = refusal ?? string.Empty;
         return refusal;
     }
 
@@ -579,7 +609,9 @@ public sealed class GdrPreviewWindow : Window
         {
             for (var i = 0; i < paragraphs.Count; i++) paragraphs[i].Key = reloaded.Discussion[i].Key;
             opened.Session.Applied();
-            _opened[id] = opened with { Discussion = GdrDiscussion.From(reloaded), Began = null };
+            var discussion = GdrDiscussion.From(reloaded);
+            opened.Field.SourceForm = new DiscussionSourceForm(discussion, _projectName);
+            _opened[id] = opened with { Discussion = discussion, Began = null };
             return;
         }
         _opened.Remove(id);
@@ -590,13 +622,27 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>The heading above the field: the selected record's number, title and abstract.</summary>
     public string HeadingText => _heading.Text ?? string.Empty;
 
+    /// <summary>Closes unless a Discussion holds Markdown that cannot go back to rich text, which stays with the window.</summary>
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        PreviewSourceMode.KeepUnreturnedMarkdown(e, _opened.Values.Select(opened => opened.Field), _status);
+        base.OnClosing(e);
+    }
+
     /// <summary>
     /// Selects the record <paramref name="id"/> and shows its Discussion, with any edits made to it already. A record
     /// opened for the first time shows the edit the pending-changes Draft holds for it, once <see cref="Loading"/>
-    /// has read it.
+    /// has read it. While the shown record holds Markdown that cannot go back to rich text, it stays shown.
     /// </summary>
     public void Show(string id)
     {
+        // Markdown is never dropped: the shown record goes back to rich text first, or stays shown while it cannot.
+        if (_shownId is { } shown && shown != id && _opened.TryGetValue(shown, out var leaving) &&
+            !PreviewSourceMode.ReturnToRichText([leaving.Field], _status))
+        {
+            _records.SelectedIndex = Records.ToList().FindIndex(record => record.Id == shown);
+            return;
+        }
         GdrShowResponse? first = null;
         if (!_opened.TryGetValue(id, out var opened))
         {
@@ -608,6 +654,7 @@ public sealed class GdrPreviewWindow : Window
         _shownId = id;
         _scroll.Content = opened.Field;
         ShowChoices(opened.Discussion);
+        ShowToolbar();
         _heading.Text = opened.Heading;
         _target.Text = string.Empty;
         ShowStrips();
@@ -628,7 +675,13 @@ public sealed class GdrPreviewWindow : Window
             WritingSystems = discussion.WritingSystems,
             StyleResolver = discussion.Styles,
         };
+        field.SourceForm = new DiscussionSourceForm(discussion, _projectName);
         field.ContextMenuRequested += OnContextMenuRequested;
+        field.SourceModeChanged += (_, change) =>
+        {
+            _status.Text = _announced = change.Announcement;
+            if (_opened.TryGetValue(id, out var current) && current.Field == field) ShowToolbar();
+        };
         // Until the Draft has been read, typing could start an edit that would replace the one it holds.
         if (_store is not null && pending is null) _locked.Add(id);
         field.IsReadOnly = _applying || _locked.Contains(id);
@@ -745,6 +798,11 @@ public sealed class GdrPreviewWindow : Window
     private void OnContextMenuRequested(object? sender, ContextMenuRequestedEventArgs e)
     {
         if (sender is not Control field) return;
+        if (e.Field is { } view && view != sender)
+        {
+            new ContextMenu { ItemsSource = PreviewSourceMode.Menu(view, e.Info) }.Open(field);
+            return;
+        }
         var place = e.Info;
         var item = new MenuItem { Header = "Show target", IsEnabled = ShownDiscussion?.Targets.ContainsKey((place.RunRange.Start.Paragraph, place.RunRange.Start.Offset)) == true };
         item.Click += (_, _) => ShowTarget(place);
