@@ -12,6 +12,11 @@ release unneeded computed data at committed close and after seven days without P
 open Proposals. Historical citations no longer pin raw files indefinitely. The byte targets below remain
 housekeeping targets, not physical ceilings; ADR 0093 adds no project cap or budget-reservation subsystem.
 
+**Amended 2026-11-11:** a completed Trial Job holds the Assessments it names only while the Job is active or its
+Proposal is undecided, and the Before runs retained at the current Baseline are held. `store prune` also removes the
+project's unreferenced run directories after an hour and runs the per-user sweep of decision 4 at once with no byte
+budget and a one-hour minimum age, holding the project's parse lease, and reports what it kept by reason.
+
 ## Decision
 
 1. **A project store has a byte budget of 100 MB** (`StorePruneCommand.StoreBudgetBytes`), counted as the pages in
