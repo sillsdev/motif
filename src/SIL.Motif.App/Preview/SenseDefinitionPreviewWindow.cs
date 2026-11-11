@@ -509,8 +509,7 @@ public sealed class SenseDefinitionPreviewWindow : Window
 
     private static string Key(string senseId, string ws) => senseId + "\n" + ws;
 
-    // One alternative as a one-paragraph record, so the GDR preview's conversions build its document and styles. Its own
-    // writing system is the default, so text typed unmarked in its Markdown is in it.
+    // One alternative as a one-paragraph record whose default writing system is its own, for unmarked Markdown.
     private GdrShowResponse Response(SenseDefinitions sense, string ws, IReadOnlyList<GdrRun> runs) =>
         new(new GdrSummary(sense.Id, "", sense.Label, ""),
             [new GdrParagraph(null, _senses.WritingSystems.Any(item => item.Tag == ws && item.Direction == "rtl"), ws,

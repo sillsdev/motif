@@ -210,7 +210,7 @@ public sealed partial class GdrPreviewWindowTests
         Assert.Equal(TextPropertyNumbers.UnderlineDouble, discussion.AsProject(typed).Runs[0].Props.IntProps[TextPropertyNumbers.Underline].Value);
         Assert.Equal((0, TextPropertyNumbers.UnderlineDouble), discussion.ProjectRuns(typed)[0].Props!.Ints[TextPropertyNumbers.Underline]);
 
-        // Reading that did not record it, so the same link without its own look is shown as a link and stored with none.
+        // That reading recorded nothing: the link without a look of its own is shown as a link and stored with none.
         var plain = discussion.AsShown(Link(null));
         Assert.Equal(TextPropertyNumbers.UnderlineSingle, plain.Runs[0].Props.IntProps[TextPropertyNumbers.Underline].Value);
         Assert.False(discussion.AsProject(plain).Runs[0].Props.IntProps.ContainsKey(TextPropertyNumbers.Underline));

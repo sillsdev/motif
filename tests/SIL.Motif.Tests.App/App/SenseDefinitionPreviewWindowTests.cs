@@ -513,8 +513,7 @@ public sealed class SenseDefinitionPreviewWindowTests(AvaloniaHeadlessFixture av
             Assert.False(arabic.IsSourceMode);
             Assert.Equal("Editing as Markdown", window.StatusText);
 
-            // A Definition has no paragraph of its own in the project, so its Markdown is the text alone, and English is
-            // unmarked in the English alternative though Arabic comes first among the writing systems.
+            // A Definition's Markdown is its text alone, English unmarked in it though Arabic is listed first.
             Assert.Equal("x [y]{custom-style=Emphasis}", english.SourceView!.Editor.Document.PlainText());
             english.SourceView.Editor.SetCaret(new TextPosition(0, 0));
             window.KeyTextInput("**b** ");

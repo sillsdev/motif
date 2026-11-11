@@ -208,7 +208,7 @@ public sealed class GdrDiscussion
         var copy = paragraph.Clone();
         for (var i = copy.Runs.Count - 1; i >= 0; i--)
             if (IsMarker(copy.Runs[i])) copy.Runs.RemoveAt(i);
-        // A link this view has no look on record for had none of its own: it came from Markdown, which AsShown leaves alone.
+        // A link with no recorded look came from Markdown and had none of its own; AsShown leaves such links alone.
         foreach (var run in copy.Runs)
             if (run.ObjData is { } objData && run.Text != ObjectReplacement)
                 run.Props = (_linkLooks.TryGetValue(objData, out var look) ? look : default).Restore(run.Props);
