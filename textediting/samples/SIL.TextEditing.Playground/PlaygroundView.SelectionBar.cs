@@ -65,6 +65,7 @@ namespace SIL.TextEditing.Playground
             simple.Children.Add(StyleBox(Names.BarCharStyle, SampleStyles.CharacterStyles, "Character style", name => ApplyCharacterStyle(name), "Style"));
             var more = new ToggleButton { Name = Names.BarMore, Content = "More", Focusable = false, Padding = new Thickness(8, 3) };
             ToolTip.SetTip(more, "More: paragraph style and pictures");
+            simple.Children.Add(BarTool(Names.BarSource, "Markdown", "Edit this field as Markdown (Ctrl+Shift+M)", () => EditAsSource()));
             simple.Children.Add(more);
 
             _selectionMore = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, IsVisible = false, Margin = new Thickness(0, 2, 0, 0) };
@@ -108,6 +109,13 @@ namespace SIL.TextEditing.Playground
             var button = Tool(name, content, tip, click);
             button.Margin = new Thickness(0);
             return button;
+        }
+
+        /// <summary>Shows the active field as Markdown (ADR 0035). The field's strip says how to go back.</summary>
+        public bool EditAsSource()
+        {
+            HideSelectionBar();
+            return _active.Field.EnterSourceMode();
         }
 
         /// <summary>Hides the bar until the selection changes again: a context menu replaces it, and focus leaving the field hides it.</summary>

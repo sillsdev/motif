@@ -23,6 +23,7 @@ namespace SIL.TextEditing.Avalonia
         {
             ContextRequested += (sender, e) =>
             {
+                if (_source != null) return;   // the source view answers its own request and forwards it (CreateSourceView)
                 bool pointer = e.TryGetPosition(this, out var at);
                 if (ContextMenuRequested == null) return;
                 e.Handled = true;
@@ -69,12 +70,12 @@ namespace SIL.TextEditing.Avalonia
             if (pointer)
                 {
                 var loc = Locate(at);
-                handler(this, new ContextMenuRequestedEventArgs(ContextMenuTrigger.Pointer, at, WithLanguage(WithSpelling(Editor.DescribeContext(loc.Character, false, PointerIsOverText(loc, at)), true))));
+                handler(this, new ContextMenuRequestedEventArgs(ContextMenuTrigger.Pointer, at, WithLanguage(WithSpelling(Editor.DescribeContext(loc.Character, false, PointerIsOverText(loc, at)), true))) { Field = this });
             }
             else
             {
                 var caret = CaretRect();
-                handler(this, new ContextMenuRequestedEventArgs(ContextMenuTrigger.Keyboard, new Point(caret.X, caret.Bottom), WithLanguage(WithSpelling(Editor.DescribeContext(Editor.Caret, true), false))));
+                handler(this, new ContextMenuRequestedEventArgs(ContextMenuTrigger.Keyboard, new Point(caret.X, caret.Bottom), WithLanguage(WithSpelling(Editor.DescribeContext(Editor.Caret, true), false))) { Field = this });
             }
         }
     }

@@ -18,7 +18,8 @@ namespace SIL.TextEditing.Avalonia
     // The host's language service (ADR 0030, owner decision Q58): token chips, diagnostic squiggles, hover, completion and fixes for a box whose text is
     // a notation. It follows the spell checker's rules: the field asks while it is idle, the answer is applied only to the paragraph it was asked about at
     // the stamp it had (a later one is dropped and the text asked again), the diagnostics are a view and never written into the document, and the host may
-    // answer from another thread or process. It serves a field of one paragraph; a field of several has no language service at work.
+    // answer from another thread or process. A field of several paragraphs gives the service its paragraphs joined by line feeds (the line is the
+    // paragraph's index); completion and insert commands serve a field of one paragraph only.
     public partial class RichTextField
     {
         ITextLanguageService? _lang;
@@ -30,13 +31,63 @@ namespace SIL.TextEditing.Avalonia
         bool _langPosted;
         bool _langFailed;
 
-        /// <summary>What the service found, in offsets of the paragraph, for the paragraph as it was at <see cref="Stamp"/>. After an edit, results that lie
-        /// clear of the edit are carried to where they now are (<see cref="Provisional"/>) so the chips do not flicker while the text is asked again; a diagnostic
+        /// <summary>The paragraphs as they were when a text was asked about: each one, its stamp and where it starts in the text the service was given (the
+        /// paragraphs joined by line feeds, so the line is the paragraph's index; one paragraph is its own text).</summary>
+        sealed class LangSnapshot
+        {
+            public Paragraph[] Paragraphs = null!;
+            public long[] Stamps = null!;
+            public int[] Starts = null!;
+            public string Text = string.Empty;
+
+            public static LangSnapshot Of(IReadOnlyList<Paragraph> paragraphs)
+            {
+                var s = new LangSnapshot { Paragraphs = new Paragraph[paragraphs.Count], Stamps = new long[paragraphs.Count], Starts = new int[paragraphs.Count] };
+                var text = new System.Text.StringBuilder();
+                for (int i = 0; i < paragraphs.Count; i++)
+                {
+                    if (i > 0) text.Append('\n');
+                    s.Paragraphs[i] = paragraphs[i];
+                    s.Stamps[i] = paragraphs[i].ChangeStamp;
+                    s.Starts[i] = text.Length;
+                    text.Append(paragraphs[i].Text);
+                }
+                s.Text = text.ToString();
+                return s;
+            }
+
+            public bool Matches(IReadOnlyList<Paragraph> paragraphs)
+            {
+                if (paragraphs.Count != Paragraphs.Length) return false;
+                for (int i = 0; i < Paragraphs.Length; i++)
+                    if (!ReferenceEquals(paragraphs[i], Paragraphs[i]) || paragraphs[i].ChangeStamp != Stamps[i]) return false;
+                return true;
+            }
+
+            public bool SameAs(LangSnapshot other) => other.Paragraphs.Length == Paragraphs.Length && other.Matches(Paragraphs) && Stamps.SequenceEqual(other.Stamps);
+
+            /// <summary>Where paragraph <paramref name="index"/> starts in <see cref="Text"/>; the paragraph count gives one past the end, as if a paragraph followed.</summary>
+            public int StartOf(int index) => index < Starts.Length ? Starts[index] : Text.Length + 1;
+
+            public int EndOf(int index) => StartOf(index + 1) - 1;
+
+            public int Global(TextPosition p) => Starts[p.Paragraph] + p.Offset;
+
+            public TextPosition Local(int offset)
+            {
+                int i = Array.BinarySearch(Starts, offset);
+                if (i < 0) i = ~i - 1;
+                i = Math.Max(0, i);
+                return new TextPosition(i, Math.Min(offset - Starts[i], EndOf(i) - Starts[i]));
+            }
+        }
+
+        /// <summary>What the service found, in offsets of the text it was given, for the paragraphs as they were in <see cref="Snapshot"/>. After an edit, results that lie
+        /// clear of it are carried to where they now are (<see cref="Provisional"/>) so the chips do not flicker while the text is asked again; a diagnostic
         /// carried this way has lost its fix, which was made for text that has changed.</summary>
         sealed class LangState
         {
-            public Paragraph Paragraph = null!;
-            public long Stamp;
+            public LangSnapshot Snapshot = null!;
             public bool Provisional;
             public readonly List<LangToken> Tokens = new List<LangToken>();
             public readonly List<LangDiag> Diagnostics = new List<LangDiag>();
@@ -66,10 +117,9 @@ namespace SIL.TextEditing.Avalonia
 
         sealed class LangRequest
         {
-            public Paragraph Paragraph = null!;
-            public long Stamp;
+            public LangSnapshot Snapshot = null!;
             public int Epoch;
-            public string Text = string.Empty;
+            public string Text => Snapshot.Text;
             public CancellationTokenSource Cancel = null!;
         }
 
@@ -149,20 +199,24 @@ namespace SIL.TextEditing.Avalonia
         /// <summary>True when the service's answer is for the text as it is now (nothing is out, nothing carried from before an edit). Also true with no service.</summary>
         public bool IsLanguageAnalysisCurrent => !LanguageActive || (LiveLanguage() is LangState s && !s.Provisional && _langOut == null);
 
-        bool LanguageActive => _lang != null && Editor.Document.Paragraphs.Count == 1;
+        bool LanguageActive => _lang != null && Editor.Document.Paragraphs.Count > 0;
 
-        /// <summary>The tokens of the paragraph as last answered (carried to where edits have put them), in order; empty when there is no answer for this text yet.</summary>
+        /// <summary>Completion and insert commands work in a field of one paragraph only (ADR 0030); a field of several has tokens, diagnostics, hover and fixes.</summary>
+        bool LanguageSingle => _lang != null && Editor.Document.Paragraphs.Count == 1;
+
+        /// <summary>The tokens as last answered (carried to where edits have put them), in order; empty when there is no answer for this text yet. Positions are
+        /// those of the text the service was given: the paragraph's text, or for a field of several the paragraphs joined by line feeds, the line being the
+        /// paragraph's index.</summary>
         public IReadOnlyList<LanguageToken> LanguageTokens
         {
             get
             {
                 var s = LiveLanguage();
-                var text = Editor.Document.Paragraphs.Count == 1 ? Editor.Document.Paragraphs[0].Text : string.Empty;
-                return s == null ? new LanguageToken[0] : s.Tokens.Select(t => new LanguageToken(OffsetRange(text, t.Start, t.End), t.Kind, t.Target)).ToList();
+                return s == null ? new LanguageToken[0] : s.Tokens.Select(t => new LanguageToken(OffsetRange(s.Snapshot.Text, t.Start, t.End), t.Kind, t.Target)).ToList();
             }
         }
 
-        /// <summary>The diagnostics of the paragraph as last answered, in order. After an edit those clear of it are carried to where they now are, without their fix
+        /// <summary>The diagnostics as last answered, in order. After an edit those clear of it are carried to where they now are, without their fix
         /// (<see cref="ApplyDiagnosticFix"/> needs an answer for the text as it is). Diagnostics are a view: none of them is in the document.</summary>
         public IReadOnlyList<LanguageDiagnostic> LanguageDiagnostics => LiveLanguage()?.Diagnostics.Select(d => d.Diagnostic).ToList() ?? (IReadOnlyList<LanguageDiagnostic>)new LanguageDiagnostic[0];
 
@@ -172,26 +226,30 @@ namespace SIL.TextEditing.Avalonia
         public IReadOnlyList<LanguageDiagnostic> DiagnosticsAt(TextPosition position)
         {
             var s = LiveLanguage();
-            if (s == null || position.Paragraph != 0) return new LanguageDiagnostic[0];
-            int at = position.Offset;
+            if (s == null || position.Paragraph < 0 || position.Paragraph >= s.Snapshot.Paragraphs.Length) return new LanguageDiagnostic[0];
+            int at = s.Snapshot.Global(position);
             return s.Diagnostics.Where(d => (at >= d.Start && at < d.End) || (d.Start == d.End && at == d.Start)).OrderBy(d => d.Diagnostic.Severity).Select(d => d.Diagnostic).ToList();
         }
 
         /// <summary>Applies the fix of a diagnostic this field showed, as one undo step. False, and nothing changes, when the field is read-only or the range may not be
-        /// edited, the diagnostic has no fix, or the answer it came from is not for the text as it is (an edit since, or one still being asked). The diagnostic is
-        /// one of <see cref="LanguageDiagnostics"/>, or from <c>ContextInfo.Diagnostics</c>.</summary>
+        /// edited, the diagnostic has no fix, its edits do not all lie in one paragraph, or the answer it came from is not for the text as it is (an edit since, or
+        /// one still being asked). The diagnostic is one of <see cref="LanguageDiagnostics"/>, or from <c>ContextInfo.Diagnostics</c>.</summary>
         public bool ApplyDiagnosticFix(LanguageDiagnostic diagnostic)
         {
             if (diagnostic == null) throw new ArgumentNullException(nameof(diagnostic));
             var s = LiveLanguage();
             var fix = diagnostic.Fix;
             if (s == null || s.Provisional || fix == null || fix.Edits.Count == 0 || !s.Diagnostics.Any(d => ReferenceEquals(d.Diagnostic, diagnostic) || d.Diagnostic.Equals(diagnostic))) return false;
-            var paragraph = Editor.Document.Paragraphs[0];
-            string text = paragraph.Text;
-            var edits = fix.Edits.Select(e => (Start: LanguageText.StartOffset(text, e.Range), End: LanguageText.EndOffset(text, e.Range), e.NewText)).OrderBy(e => e.Start).ThenBy(e => e.End).ToList();
-            for (int i = 0; i < edits.Count; i++)
-                if (edits[i].End < edits[i].Start || (i > 0 && edits[i].Start < edits[i - 1].End)) return false;
-            return ReplaceLanguage(edits.First().Start, edits.Last().End, ApplyEdits(text, edits), "language fix");
+            var snap = s.Snapshot;
+            string text = snap.Text;
+            var global = fix.Edits.Select(e => (Start: LanguageText.StartOffset(text, e.Range), End: LanguageText.EndOffset(text, e.Range), e.NewText)).OrderBy(e => e.Start).ThenBy(e => e.End).ToList();
+            for (int i = 0; i < global.Count; i++)
+                if (global[i].End < global[i].Start || (i > 0 && global[i].Start < global[i - 1].End)) return false;
+            int paragraph = snap.Local(global[0].Start).Paragraph;
+            int from = snap.StartOf(paragraph), to = snap.EndOf(paragraph);
+            if (global.Any(e => e.Start < from || e.End > to)) return false;
+            var edits = global.Select(e => (Start: e.Start - from, End: e.End - from, e.NewText)).ToList();
+            return ReplaceLanguage(paragraph, edits.First().Start, edits.Last().End, ApplyEdits(snap.Paragraphs[paragraph].Text, edits), "language fix");
         }
 
         static string ApplyEdits(string text, List<(int Start, int End, string NewText)> edits)
@@ -208,14 +266,14 @@ namespace SIL.TextEditing.Avalonia
             return sb.ToString();
         }
 
-        /// <summary>Replaces [start, end) of the paragraph with text in the writing system and properties of the text there, as one undo step; false when the
+        /// <summary>Replaces [start, end) of a paragraph with text in the writing system and properties of the text there, as one undo step; false when the
         /// field is read-only or the range may not be edited.</summary>
-        bool ReplaceLanguage(int start, int end, string replacement, string label)
+        bool ReplaceLanguage(int index, int start, int end, string replacement, string label)
         {
-            var a = new TextPosition(0, start);
-            var b = new TextPosition(0, end);
+            var a = new TextPosition(index, start);
+            var b = new TextPosition(index, end);
             if (Editor.IsReadOnly || !Editor.CanEditRange(a, b)) return false;
-            var paragraph = Editor.Document.Paragraphs[0];
+            var paragraph = Editor.Document.Paragraphs[index];
             var run = paragraph.RunAfter(start, out _) ?? paragraph.RunBefore(start, out _);
             var fragment = new Paragraph { DefaultWs = run?.Ws ?? paragraph.DefaultWs };
             if (replacement.Length > 0) fragment.Runs.Add(new Run { Ws = run?.Ws ?? paragraph.DefaultWs, Text = replacement, Props = run != null && !run.IsObject ? run.Props.Clone() : new PropertyBag() });
@@ -229,7 +287,7 @@ namespace SIL.TextEditing.Avalonia
         /// false with no service, in a read-only field, or when the field is not of one paragraph.</summary>
         public bool CanInsert(string kind)
         {
-            if (!LanguageActive || Editor.IsReadOnly || !Editor.CanEdit) return false;
+            if (!LanguageSingle || Editor.IsReadOnly || !Editor.CanEdit) return false;
             Editor.Ordered(out var a, out var b);
             string text = Editor.Document.Paragraphs[0].Text;
             return _lang!.CanInsert(text, OffsetRange(text, a.Offset, b.Offset), kind);
@@ -241,9 +299,8 @@ namespace SIL.TextEditing.Avalonia
         {
             var s = _langState;
             if (s == null || !LanguageActive) return null;
-            var p = Editor.Document.Paragraphs[0];
             // Not dropped here: an edit moves the stamp before the field is told of it, and what the edit leaves alone is carried over then (LanguageAfterChange).
-            return ReferenceEquals(p, s.Paragraph) && p.ChangeStamp == s.Stamp ? s : null;
+            return s.Snapshot.Matches(Editor.Document.Paragraphs) ? s : null;
         }
 
         static (int Start, int End) Offsets(string text, LanguageRange range)
@@ -255,7 +312,7 @@ namespace SIL.TextEditing.Avalonia
 
         void ApplyAnalysis(LangRequest request, LanguageAnalysis analysis)
         {
-            var state = new LangState { Paragraph = request.Paragraph, Stamp = request.Stamp };
+            var state = new LangState { Snapshot = request.Snapshot };
             string text = request.Text;
             foreach (var t in analysis.Tokens)
             {
@@ -271,31 +328,33 @@ namespace SIL.TextEditing.Avalonia
             bool same = old != null && old.Tokens.SequenceEqual(state.Tokens) && old.Diagnostics.Count == state.Diagnostics.Count
                 && old.Diagnostics.Zip(state.Diagnostics, (x, y) => x.Start == y.Start && x.End == y.End && x.Diagnostic.Equals(y.Diagnostic)).All(v => v);
             // The fixes carried over an edit were dropped; a new answer for the same marks brings them back, so it is not "the same" while the old was carried.
-            if (same && !old!.Provisional && ReferenceEquals(old.Paragraph, state.Paragraph) && old.Stamp == state.Stamp) return;
+            if (same && !old!.Provisional && old.Snapshot.SameAs(state.Snapshot)) return;
             _langState = state;
             RefreshLanguageLayout();
             LanguageAnalysisChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        /// <summary>Puts the diagnostics on the paragraph's layout, and redraws. A paragraph's tokens are drawn by the field itself, from the state.</summary>
+        /// <summary>Puts the diagnostics on the paragraphs' layouts, and redraws. Tokens are drawn by the field itself, from the state.</summary>
         void RefreshLanguageLayout()
         {
-            if (_layouts.Count > 0) ApplyDiagnostics(0, _layouts[0]);
+            for (int i = 0; i < _layouts.Count; i++) ApplyDiagnostics(i, _layouts[i]);
             InvalidateVisual();
         }
 
         void ApplyDiagnostics(int index, ParagraphLayout? layout)
         {
-            if (layout == null || index != 0) return;
+            if (layout == null) return;
             var s = LiveLanguage();
-            if (s == null || s.Diagnostics.Count == 0) { layout.SetDiagnosticMarks(null); return; }
+            if (s == null || s.Diagnostics.Count == 0 || index >= s.Snapshot.Paragraphs.Length) { layout.SetDiagnosticMarks(null); return; }
+            int from = s.Snapshot.StartOf(index), to = s.Snapshot.EndOf(index);
             var marks = new List<(int, int, IBrush)>();
             foreach (var d in s.Diagnostics)
             {
                 var brush = SeverityBrush(d.Diagnostic.Severity);
-                if (brush != null && d.End > d.Start) marks.Add((d.Start, d.End, brush));
+                int a = Math.Max(d.Start, from), b = Math.Min(d.End, to);
+                if (brush != null && b > a) marks.Add((a - from, b - from, brush));
             }
-            layout.SetDiagnosticMarks(marks);
+            layout.SetDiagnosticMarks(marks.Count == 0 ? null : marks);
         }
 
         static IBrush? SeverityBrush(DiagnosticSeverity severity)
@@ -323,30 +382,50 @@ namespace SIL.TextEditing.Avalonia
             var old = _langState;
             var edit = _pendingEdit;
             _langState = null;
-            if (old != null && edit != null && Editor.Document.Paragraphs.Count == 1 && start == 0 && removed == 1 && added == 1)
-            {
-                var e = edit.Value;
-                if (old.Stamp == e.FirstOldStamp && e.Start.Paragraph == 0 && e.OldEnd.Paragraph == 0 && e.NewEnd.Paragraph == 0)
-                {
-                    var p = Editor.Document.Paragraphs[0];
-                    var carried = new LangState { Paragraph = p, Stamp = p.ChangeStamp, Provisional = true };
-                    int a = e.Start.Offset, b = e.OldEnd.Offset, shift = e.NewEnd.Offset - b;
-                    foreach (var t in old.Tokens)
-                    {
-                        if (t.End <= a) carried.Tokens.Add(t);
-                        else if (t.Start >= b) carried.Tokens.Add(new LangToken(t.Start + shift, t.End + shift, t.Kind, t.Target));
-                    }
-                    foreach (var d in old.Diagnostics)
-                    {
-                        if (d.End <= a && d.End > d.Start) carried.Diagnostics.Add(new LangDiag { Start = d.Start, End = d.End, Diagnostic = WithoutFix(d.Diagnostic, d.Diagnostic.Range) });
-                        else if (d.Start >= b) carried.Diagnostics.Add(new LangDiag { Start = d.Start + shift, End = d.End + shift, Diagnostic = WithoutFix(d.Diagnostic, OffsetRange(p.Text, d.Start + shift, d.End + shift)) });
-                    }
-                    _langState = carried;
-                }
-            }
+            if (old != null && Editor.Document.Paragraphs.Count > 0) _langState = Carry(old, edit, start, removed, added);
             RefreshLanguageLayout();
             ScheduleLanguageIfWanted();
             if (_completion != null) ScheduleCompletionRefresh();
+        }
+
+        /// <summary>The results of <paramref name="old"/> that the change of paragraphs [start, start + removed) into <paramref name="added"/> paragraphs left alone,
+        /// moved to where they now are; null when the old results were not for the text as it was just before the change. Within the changed paragraphs only the
+        /// editor's own edit (<see cref="TextEdit"/>) says what is untouched; a change without one (the host's undo) keeps only the paragraphs around it.</summary>
+        LangState? Carry(LangState old, TextEdit? edit, int start, int removed, int added)
+        {
+            var paragraphs = Editor.Document.Paragraphs;
+            var was = old.Snapshot;
+            if (was.Paragraphs.Length - removed + added != paragraphs.Count || start + removed > was.Paragraphs.Length) return null;
+            for (int i = 0; i < start; i++)
+                if (!ReferenceEquals(was.Paragraphs[i], paragraphs[i]) || was.Stamps[i] != paragraphs[i].ChangeStamp) return null;
+            for (int i = start + removed; i < was.Paragraphs.Length; i++)
+            {
+                var p = paragraphs[i - removed + added];
+                if (!ReferenceEquals(was.Paragraphs[i], p) || was.Stamps[i] != p.ChangeStamp) return null;
+            }
+            var now = LangSnapshot.Of(paragraphs);
+            // The stretch the change replaced, in the old text, and where its end now is.
+            int a = was.StartOf(start), b = was.StartOf(start + removed) - 1, newB = now.StartOf(start + added) - 1;
+            if (edit is TextEdit e && e.Start.Paragraph == start && e.OldEnd.Paragraph == start + removed - 1 && e.NewEnd.Paragraph == start + added - 1
+                && was.Stamps[e.Start.Paragraph] == e.FirstOldStamp && was.Stamps[e.OldEnd.Paragraph] == e.LastOldStamp)
+            {
+                a = was.Global(e.Start);
+                b = was.Global(e.OldEnd);
+                newB = now.Global(e.NewEnd);
+            }
+            int shift = newB - b;
+            var carried = new LangState { Snapshot = now, Provisional = true };
+            foreach (var t in old.Tokens)
+            {
+                if (t.End <= a) carried.Tokens.Add(t);
+                else if (t.Start >= b) carried.Tokens.Add(new LangToken(t.Start + shift, t.End + shift, t.Kind, t.Target));
+            }
+            foreach (var d in old.Diagnostics)
+            {
+                if (d.End <= a && d.End > d.Start) carried.Diagnostics.Add(new LangDiag { Start = d.Start, End = d.End, Diagnostic = WithoutFix(d.Diagnostic, d.Diagnostic.Range) });
+                else if (d.Start >= b) carried.Diagnostics.Add(new LangDiag { Start = d.Start + shift, End = d.End + shift, Diagnostic = WithoutFix(d.Diagnostic, OffsetRange(now.Text, d.Start + shift, d.End + shift)) });
+            }
+            return carried;
         }
 
         static LanguageDiagnostic WithoutFix(LanguageDiagnostic d, LanguageRange range) => new LanguageDiagnostic(range, d.Severity, d.Message, d.Code, d.Source, null);
@@ -419,14 +498,13 @@ namespace SIL.TextEditing.Avalonia
         {
             var service = _lang;
             if (service == null || _langFailed) return;
-            var paragraph = Editor.Document.Paragraphs[0];
             var live = LiveLanguage();
             if (live != null && !live.Provisional) return;
             var asking = _langOut;
-            if (asking != null && asking.Epoch == _langEpoch && ReferenceEquals(asking.Paragraph, paragraph) && asking.Stamp == paragraph.ChangeStamp) return;
+            if (asking != null && asking.Epoch == _langEpoch && asking.Snapshot.Matches(Editor.Document.Paragraphs)) return;
             CancelLanguageRequest();
             _langEdited = false;
-            var request = new LangRequest { Paragraph = paragraph, Stamp = paragraph.ChangeStamp, Epoch = _langEpoch, Text = paragraph.Text, Cancel = new CancellationTokenSource() };
+            var request = new LangRequest { Snapshot = LangSnapshot.Of(Editor.Document.Paragraphs), Epoch = _langEpoch, Cancel = new CancellationTokenSource() };
             Task<LanguageAnalysis> task;
             try
             {
@@ -443,7 +521,7 @@ namespace SIL.TextEditing.Avalonia
             else task.ContinueWith(t => Post(() => FinishLanguageRequest(request, t)), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
-        /// <summary>On the field's thread: the service has answered. The answer is applied only when the field has the same service, the same paragraph at the same stamp and has not started over.</summary>
+        /// <summary>On the field's thread: the service has answered. The answer is applied only when the field has the same service, the same paragraphs at the same stamps and has not started over.</summary>
         void FinishLanguageRequest(LangRequest request, Task<LanguageAnalysis> task)
         {
             if (ReferenceEquals(_langOut, request)) _langOut = null;
@@ -459,8 +537,7 @@ namespace SIL.TextEditing.Avalonia
                 if (wanted && ++_langCancelledRuns <= MaxCancelledRetries) ScheduleLanguageIfWanted();
                 return;
             }
-            var paragraphs = Editor.Document.Paragraphs;
-            bool current = wanted && LanguageActive && ReferenceEquals(paragraphs[0], request.Paragraph) && request.Paragraph.ChangeStamp == request.Stamp;
+            bool current = wanted && LanguageActive && request.Snapshot.Matches(Editor.Document.Paragraphs);
             if (current) { _langCancelledRuns = 0; ApplyAnalysis(request, task.Result); }
             else ScheduleLanguageIfWanted();
         }
@@ -531,16 +608,19 @@ namespace SIL.TextEditing.Avalonia
 
         void DrawLanguageChips(DrawingContext context, ParagraphLayout layout, int index, double top)
         {
-            if (index != 0 || _tokenStyles == null || SystemColours.IsHighContrast()) return;
+            if (_tokenStyles == null || SystemColours.IsHighContrast()) return;
             var s = LiveLanguage();
-            if (s == null || s.Tokens.Count == 0) return;
+            if (s == null || s.Tokens.Count == 0 || index >= s.Snapshot.Paragraphs.Length) return;
             bool dark = ActualThemeVariant == ThemeVariant.Dark;
+            int from = s.Snapshot.StartOf(index), to = s.Snapshot.EndOf(index);
             foreach (var token in s.Tokens)
             {
+                int a = Math.Max(token.Start, from), b = Math.Min(token.End, to);
+                if (b <= a) continue;
                 var style = _tokenStyles.Resolve(token.Kind, dark);
                 if (style == null || (style.Fill == null && style.Outline == null)) continue;
                 var pen = style.Outline == null ? null : new Pen(style.Outline, 1);
-                foreach (var r in layout.SelectionRects(token.Start, token.End))
+                foreach (var r in layout.SelectionRects(a - from, b - from))
                 {
                     var box = new Rect(r.X + 0.5, r.Y + top + 0.5, Math.Max(0, r.Width - 1), Math.Max(0, r.Height - 1));
                     context.DrawRectangle(style.Fill, pen, new RoundedRect(box, 3));
@@ -548,7 +628,37 @@ namespace SIL.TextEditing.Avalonia
             }
         }
 
-        /// <summary>For a test: the chips that would be drawn, as start, end and style, for the theme the field is in; empty with none, or in a high contrast theme.</summary>
+        /// <summary>Lays a wash of the background over the glyphs of tokens whose style mutes them; drawn after the text, before the squiggles.</summary>
+        void DrawLanguageMutes(DrawingContext context, ParagraphLayout layout, int index, double top)
+        {
+            if (_tokenStyles == null || SystemColours.IsHighContrast()) return;
+            var s = LiveLanguage();
+            if (s == null || s.Tokens.Count == 0 || index >= s.Snapshot.Paragraphs.Length) return;
+            bool dark = ActualThemeVariant == ThemeVariant.Dark;
+            var page = MuteColour(dark);
+            int from = s.Snapshot.StartOf(index), to = s.Snapshot.EndOf(index);
+            foreach (var token in s.Tokens)
+            {
+                int a = Math.Max(token.Start, from), b = Math.Min(token.End, to);
+                var style = b > a ? _tokenStyles.Resolve(token.Kind, dark) : null;
+                if (style == null || style.Mute <= 0) continue;
+                var wash = new global::Avalonia.Media.Immutable.ImmutableSolidColorBrush(page, style.Mute);
+                foreach (var r in layout.SelectionRects(a - from, b - from))
+                    context.DrawRectangle(wash, null, new Rect(r.X, r.Y + top, r.Width, r.Height));
+            }
+        }
+
+        /// <summary>The colour a mute washes text with: the field's own background when it is an opaque enough solid colour, else the theme's page colour
+        /// (a gradient, an image or no background at all), else white or, in a dark theme, near black.</summary>
+        internal Color MuteColour(bool dark)
+        {
+            if (Background is ISolidColorBrush own && own.Color.A * own.Opacity >= 128) return Color.FromRgb(own.Color.R, own.Color.G, own.Color.B);
+            if (ResolveBackgroundBrush() is ISolidColorBrush theme && theme.Color.A >= 128) return Color.FromRgb(theme.Color.R, theme.Color.G, theme.Color.B);
+            return dark ? Color.FromRgb(0x1F, 0x1F, 0x1F) : Colors.White;
+        }
+
+        /// <summary>For a test: the chips that would be drawn, as start, end (offsets of the text the service was given) and style, for the theme the field is in;
+        /// empty with none, or in a high contrast theme.</summary>
         internal IReadOnlyList<(int Start, int End, TokenStyle Style)> ChipsDrawn()
         {
             var result = new List<(int, int, TokenStyle)>();
@@ -558,7 +668,7 @@ namespace SIL.TextEditing.Avalonia
             foreach (var token in s.Tokens)
             {
                 var style = _tokenStyles.Resolve(token.Kind, dark);
-                if (style != null && (style.Fill != null || style.Outline != null)) result.Add((token.Start, token.End, style));
+                if (style != null && style.Draws) result.Add((token.Start, token.End, style));
             }
             return result;
         }
@@ -573,7 +683,8 @@ namespace SIL.TextEditing.Avalonia
 
         // ------------------------------------------------ hover
 
-        int _hoverOffset = -1;
+        TextPosition _hoverAt = NoHover;
+        static readonly TextPosition NoHover = new TextPosition(-1, -1);
         int _hoverRequest;
 
         /// <summary>The help for a place: the messages of the diagnostics there (worst first), then the service's own hover text, one per line; null when there is none, or when the
@@ -583,14 +694,14 @@ namespace SIL.TextEditing.Avalonia
         async Task<string?> GetLanguageHoverAsync(TextPosition position, CancellationToken cancellation)
         {
             var service = _lang;
-            if (service == null || !LanguageActive || position.Paragraph != 0) return null;
-            var paragraph = Editor.Document.Paragraphs[0];
-            long stamp = paragraph.ChangeStamp;
+            var paragraphs = Editor.Document.Paragraphs;
+            if (service == null || !LanguageActive || position.Paragraph < 0 || position.Paragraph >= paragraphs.Count) return null;
+            var snap = LangSnapshot.Of(paragraphs);
             int epoch = _langEpoch;
-            string text = paragraph.Text;
+            int at = snap.Global(new TextPosition(position.Paragraph, Math.Min(position.Offset, paragraphs[position.Paragraph].Length)));
             var lines = DiagnosticsAt(position).Select(d => d.Message).ToList();
             LanguageHover? hover;
-            try { hover = await service.HoverAsync(text, LanguageText.PositionOf(text, Math.Min(position.Offset, text.Length)), cancellation); }
+            try { hover = await service.HoverAsync(snap.Text, LanguageText.PositionOf(snap.Text, at), cancellation); }
             catch (OperationCanceledException) { return null; }
             catch (Exception e)
             {
@@ -598,7 +709,7 @@ namespace SIL.TextEditing.Avalonia
                 hover = null;
             }
             if (cancellation.IsCancellationRequested) return null;
-            if (epoch != _langEpoch || !LanguageActive || !ReferenceEquals(Editor.Document.Paragraphs[0], paragraph) || paragraph.ChangeStamp != stamp) return null;
+            if (epoch != _langEpoch || !LanguageActive || !snap.Matches(Editor.Document.Paragraphs)) return null;
             if (hover != null && hover.Contents.Length > 0) lines.Add(hover.Contents);
             return lines.Count == 0 ? null : string.Join("\n", lines);
         }
@@ -607,29 +718,29 @@ namespace SIL.TextEditing.Avalonia
         {
             if (_lang == null || !LanguageActive) return;
             var loc = Locate(at);
-            int offset = PointerIsOverText(loc, at) ? loc.Character.Offset : -1;
-            if (offset == _hoverOffset) return;
-            _hoverOffset = offset;
+            var place = PointerIsOverText(loc, at) ? loc.Character : NoHover;
+            if (place.Equals(_hoverAt)) return;
+            _hoverAt = place;
             int request = ++_hoverRequest;
             _hoverCancel?.Cancel();
             _hoverCancel = null;
-            if (offset < 0) { ToolTip.SetTip(this, null); return; }
+            if (place.Paragraph < 0) { ToolTip.SetTip(this, null); return; }
             var cancel = _hoverCancel = new CancellationTokenSource();
-            _ = ShowHover(request, offset, cancel.Token);
+            _ = ShowHover(request, place, cancel.Token);
         }
 
         CancellationTokenSource? _hoverCancel;
 
-        async Task ShowHover(int request, int offset, CancellationToken cancellation)
+        async Task ShowHover(int request, TextPosition place, CancellationToken cancellation)
         {
-            var text = await GetLanguageHoverAsync(new TextPosition(0, offset), cancellation);
+            var text = await GetLanguageHoverAsync(place, cancellation);
             if (request == _hoverRequest) ToolTip.SetTip(this, text);
         }
 
         void ClearLanguageHover()
         {
-            if (_hoverOffset < 0) return;
-            _hoverOffset = -1;
+            if (_hoverAt.Paragraph < 0) return;
+            _hoverAt = NoHover;
             _hoverRequest++;
             _hoverCancel?.Cancel();
             _hoverCancel = null;

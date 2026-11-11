@@ -26,6 +26,15 @@ namespace SIL.TextEditing
         /// text is not checked.</summary>
         public event Action? IsReadOnlyChanged;
 
+        /// <summary>True while the field shows its source form (ADR 0035): the editor then refuses every edit a user command or a host command makes
+        /// (typing, paste, formatting, styles, find and replace, <see cref="ReplaceRange"/>), as when read-only, so nothing changes the text the source
+        /// was written from. <see cref="Apply"/> and <see cref="ExternalReplaceParagraph"/> are not refused; a host returns the field to rich mode before
+        /// using them.</summary>
+        internal bool HeldForSource { get; set; }
+
+        /// <summary>Read-only, or held while the field is in source mode.</summary>
+        bool Refusing => _isReadOnly || HeldForSource;
+
         /// <summary>Text the user may change: editable and semi-editable runs. FieldWorks' views treat semi-editable text (used
         /// in type-ahead edit boxes) as editable for typing and deletion and refuse only formatting in it.</summary>
         internal static bool AllowsEditing(Run r) => r.Editable != RunEditable.NotEditable;
@@ -106,7 +115,7 @@ namespace SIL.TextEditing
 
         /// <summary>True when typing, Enter or paste would change the text now: the field is not read-only and the selection
         /// (or, with none, the caret) lies in editable text.</summary>
-        public bool CanEdit => !IsReadOnly && CanEditSelectionOrCaret();
+        public bool CanEdit => !Refusing && CanEditSelectionOrCaret();
 
         /// <summary>True when the selection can be formatted: it is not read-only and every run in it is fully editable.
         /// FieldWorks refuses formatting in not-editable and semi-editable text alike.</summary>
@@ -122,7 +131,7 @@ namespace SIL.TextEditing
 
         /// <summary>True when the field is not read-only and the range can be edited and every run in it is fully editable: the
         /// test for formatting and for a find replacement.</summary>
-        internal bool CanFormatRange(TextPosition a, TextPosition b) => !IsReadOnly && CanEditRange(a, b) && AllFullyEditable(a, b);
+        internal bool CanFormatRange(TextPosition a, TextPosition b) => !Refusing && CanEditRange(a, b) && AllFullyEditable(a, b);
 
         bool AllFullyEditable(TextPosition a, TextPosition b)
         {
@@ -144,7 +153,7 @@ namespace SIL.TextEditing
 
         bool CanEditSelectionOrCaret()
         {
-            if (IsReadOnly) return false;
+            if (Refusing) return false;
             if (!HasSelection) return IsEditableAt(Caret);
             Ordered(out var a, out var b);
             return CanEditRange(a, b);
@@ -159,7 +168,7 @@ namespace SIL.TextEditing
         List<(TextPosition Start, TextPosition End)> EditablePlaces()
         {
             var places = new List<(TextPosition, TextPosition)>();
-            if (IsReadOnly) return places;
+            if (Refusing) return places;
             for (int pi = 0; pi < Document.Paragraphs.Count; pi++)
                 foreach (var (s, e) in PlacesIn(pi)) places.Add((new TextPosition(pi, s), new TextPosition(pi, e)));
             return places;

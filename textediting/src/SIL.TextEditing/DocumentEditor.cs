@@ -351,7 +351,8 @@ namespace SIL.TextEditing
         public void ReplaceRange(TextPosition a, TextPosition b, List<Paragraph>? fragment, string label)
         {
             CheckAccess();
-            if (IsReadOnly || !CanEditRange(a, b)) return;
+            if (Refusing || !CanEditRange(a, b)) return;
+            BlockFlattening? flattening = null;
             if (fragment != null)
             {
                 // Pasted text takes the editability of where it lands: a copied read-only run must not become text the user
@@ -360,33 +361,7 @@ namespace SIL.TextEditing
                 var landing = Document.Paragraphs[a.Paragraph].RunBefore(a.Offset, out _);
                 if (landing == null || !AllowsEditing(landing)) landing = Document.Paragraphs[b.Paragraph].RunAfter(b.Offset, out _);
                 bool semi = landing != null && landing.Editable == RunEditable.SemiEditable;
-                fragment = fragment.Select(p => p.Clone()).ToList();
-                foreach (var p in fragment)
-                    foreach (var r in p.Runs)
-                    {
-                        r.Props.IntProps.Remove(TextPropertyNumbers.Editable);
-                        if (semi) r.Props.SetInt(TextPropertyNumbers.Editable, TextPropertyNumbers.EditableSemi);
-                    }
-            }
-            // A block the field does not allow becomes plain paragraphs first (ADR 0033), so a table's cell tabs are spaces before tabs are removed below.
-            var flattening = fragment != null ? FlattenFragment(fragment) : null;
-            if (SingleParagraph && fragment != null)
-            {
-                if (fragment.Count > 1) fragment = JoinIntoOne(fragment);
-                foreach (var p in fragment) SeparatorsToSpaces(p);
-                if (SingleLine) LineBreaksToSpaces(fragment);
-            }
-            else if (fragment != null)
-            {
-                foreach (var p in fragment) RemoveTabs(p);
-            }
-            // Every insertion passes through here or TypeText, so the host's normalisation form always applies.
-            if (fragment != null && Document.Normalization is NormalizationForm form)
-            {
-                fragment = fragment.Select(p => p.Clone()).ToList();
-                foreach (var p in fragment)
-                    foreach (var r in p.Runs)
-                        if (!r.IsObject) r.Text = TextNormalizer.Normalize(r.Text, form);
+                fragment = PrepareFragment(fragment, semi, out flattening);
             }
             var d = Begin(a.Paragraph, b.Paragraph, label);
             var first = Document.Paragraphs[a.Paragraph];

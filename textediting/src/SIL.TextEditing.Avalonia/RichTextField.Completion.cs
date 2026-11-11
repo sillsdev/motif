@@ -89,7 +89,7 @@ namespace SIL.TextEditing.Avalonia
         async Task RequestCompletion(CompletionTriggerKind kind)
         {
             var service = _lang;
-            if (service == null || !LanguageActive || Editor.IsReadOnly || !Editor.CanEdit || _preedit != null) return;
+            if (service == null || !LanguageSingle || Editor.IsReadOnly || !Editor.CanEdit || _preedit != null) return;
             var paragraph = Editor.Document.Paragraphs[0];
             long stamp = paragraph.ChangeStamp;
             string text = paragraph.Text;
@@ -106,7 +106,7 @@ namespace SIL.TextEditing.Avalonia
                 if (request == _complRequest) ReportLanguageFailure(e);
                 return;
             }
-            if (request != _complRequest || epoch != _langEpoch || !LanguageActive || !ReferenceEquals(Editor.Document.Paragraphs[0], paragraph)
+            if (request != _complRequest || epoch != _langEpoch || !LanguageSingle || !ReferenceEquals(Editor.Document.Paragraphs[0], paragraph)
                 || paragraph.ChangeStamp != stamp || !Editor.Caret.Equals(caret) || Editor.HasSelection || _preedit != null) return;
             if (items == null || items.Count == 0) { CloseCompletion(); return; }
             var list = items.ToList();
@@ -150,7 +150,7 @@ namespace SIL.TextEditing.Avalonia
             if (c == null) return false;
             var item = c.Items[c.Index];
             CloseCompletion();
-            if (!LanguageActive || !ReferenceEquals(Editor.Document.Paragraphs[0], c.Paragraph) || c.Paragraph.ChangeStamp != c.Stamp) return false;
+            if (!LanguageSingle || !ReferenceEquals(Editor.Document.Paragraphs[0], c.Paragraph) || c.Paragraph.ChangeStamp != c.Stamp) return false;
             string text = c.Paragraph.Text;
             int start, end;
             if (item.ReplaceRange is LanguageRange range) (start, end) = Offsets(text, range);
@@ -163,7 +163,7 @@ namespace SIL.TextEditing.Avalonia
             _complAccepting = true;
             try
             {
-                if (!ReplaceLanguage(start, end, item.Inserted, "completion")) return false;
+                if (!ReplaceLanguage(0, start, end, item.Inserted, "completion")) return false;
                 if (item.CaretOffset is int caretOffset) Editor.SetCaret(new TextPosition(0, Math.Min(start + Math.Max(0, caretOffset), Editor.Document.Paragraphs[0].Length)));
             }
             finally { _complAccepting = false; }
@@ -193,9 +193,12 @@ namespace SIL.TextEditing.Avalonia
 
         /// <summary>Whether the field wants a key for itself while a language service is set, so a host that routes keys (WinForms: IsInputKey, ProcessCmdKey; a dialog's
         /// default and cancel buttons) can leave it to the field: Ctrl+Space always, and while the completion popup is open Enter, Tab, Esc, Up, Down, PageUp and PageDown.
+        /// With a <see cref="SourceForm"/> it also wants Ctrl+Shift+M, and in source mode whatever the source view wants (ADR 0035).
         /// The field handles them itself once it has them (<see cref="HandleKey"/>).</summary>
         public bool WantsKey(Key key, KeyModifiers modifiers)
         {
+            if (_source != null) return IsSourceToggle(key, modifiers) || _source.View.WantsKey(key, modifiers);
+            if (_sourceForm != null && IsSourceToggle(key, modifiers)) return true;
             if (_lang == null) return false;
             bool ctrl = (modifiers & KeyModifiers.Control) != 0, other = (modifiers & (KeyModifiers.Alt | KeyModifiers.Meta | KeyModifiers.Shift)) != 0;
             if (key == Key.Space && ctrl && !other) return true;
@@ -253,7 +256,7 @@ namespace SIL.TextEditing.Avalonia
         void CompletionAfterTyping(string typed)
         {
             var service = _lang;
-            if (service == null || typed.Length == 0 || !LanguageActive || _preedit != null) return;
+            if (service == null || typed.Length == 0 || !LanguageSingle || _preedit != null) return;
             if (!service.CompletionTriggerCharacters.Contains(typed[typed.Length - 1])) return;
             _complRefreshPending = false;   // the trigger is asked as itself; the refresh the edit scheduled would only ask the same thing again as Refresh
             _ = RequestCompletion(CompletionTriggerKind.TriggerCharacter);

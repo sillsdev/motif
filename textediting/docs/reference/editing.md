@@ -102,6 +102,25 @@ gives one focus-gain event. The event arguments cannot tell that from any other 
 
 Typing is one undo step, and a Backspace or Delete while typing stays in it, so a keyboard's replacement (Backspaces then the new text) is one step. The step ends at a caret move, a pause of about one second (`Editor.Clock` and `TypingPause`), a change of writing system or any command; a delete that starts after one of those is a step of its own, and typing after it joins that step. Every edit reaches the host at once.
 
+## Source mode (ADR 0035)
+
+A host offers source mode by setting `RichTextField.SourceForm`, normally `new FieldWorksMarkdownSourceForm(options)` with the options of its
+Markdown clipboard form. Ctrl+Shift+M, or the host's own toggle calling `EnterSourceMode()`, then shows the field's text as FieldWorks
+Markdown in a second `RichTextField` (`SourceView`) inside the field, under a strip with "Back to rich text" and "Throw away my Markdown
+changes". The checker's findings are underlined there, with the message on hover, and a link's `{…guid=…}` is muted.
+
+`LeaveSourceMode()` reads the Markdown with the same reader and checker as paste. An error keeps the field in source mode (the strip
+counts the errors) and returns false; warnings never block. A clean reading becomes one undo step, "Edit as Markdown", through
+`DocumentEditor.ReplaceParagraphs`: the paragraphs the source left as they were stay (found by a longest common subsequence), and a
+changed paragraph keeps the key of the old one it replaces, so keys stay on their own text when paragraphs are added or removed. Source
+with no change commits nothing. `DiscardSourceChanges()` goes back with nothing committed. `SourceModeChanged` gives each change and
+refusal, with a sentence for the host's screen reader. Undo inside the source view is the view's own and ends with the switch back.
+
+While the field is in source mode its editor refuses edits (`CanEdit` and `CanFormatSelection` are false), and the field is not a tab
+stop, so Tab and Shift+Tab pass through the strip's buttons and the view. The view's context menu reaches the host through the field's
+`ContextMenuRequested` with `ContextMenuRequestedEventArgs.Field` set to the view: Cut, Copy, Paste and a finding's fix go there. A host
+that changes the field itself (a conflict, its own undo) returns it to rich mode first.
+
 ## Host hooks (ADR 0021, ADR 0025)
 
 The field owns one text; the window around it belongs to the host. These are the hooks:

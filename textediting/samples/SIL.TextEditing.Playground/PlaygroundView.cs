@@ -87,6 +87,7 @@ namespace SIL.TextEditing.Playground
             public const string BarMore = "BarMoreToggle";
             public const string BarParaStyle = "BarParaStyleBox";
             public const string BarPicture = "BarPictureButton";
+            public const string BarSource = "BarSourceButton";
             public const string EventLog = "EventLog";
             public const string ScenarioDescription = "ScenarioDescription";
             public const string FindText = "FindText";
@@ -756,7 +757,7 @@ namespace SIL.TextEditing.Playground
         {
             var info = e.Info;
             LastContextInfo = info;
-            var field = session.Field;
+            var field = e.Field ?? session.Field;   // in source mode the menu is about the source view (ADR 0035)
             var items = new List<Control>();
             var captions = new List<string>();
             void Add(string caption, bool enabled, Action? click = null)
@@ -793,15 +794,15 @@ namespace SIL.TextEditing.Playground
             }
             if (info.EmbeddedObject != null)
                 Add((info.EmbeddedObject.IsLink ? "Open link" : "Object") + ": " + info.EmbeddedObject.Data.Substring(Math.Min(1, info.EmbeddedObject.Data.Length)), info.EmbeddedObject.IsLink);
-            Add("Cut", field.Editor.HasSelection && field.Editor.CanEdit, () => ClipboardIdle = CopyAsync(true));
-            Add("Copy", field.Editor.HasSelection, () => ClipboardIdle = CopyAsync(false));
-            Add("Paste", field.Editor.CanEdit, () => ClipboardIdle = PasteAsync());
+            Add("Cut", field.Editor.HasSelection && field.Editor.CanEdit, () => ClipboardIdle = CopyAsync(true, field));
+            Add("Copy", field.Editor.HasSelection, () => ClipboardIdle = CopyAsync(false, field));
+            Add("Paste", field.Editor.CanEdit, () => ClipboardIdle = PasteAsync(field));
             var copyAs = new MenuItem { Header = CopyAsCaption, IsEnabled = field.Editor.HasSelection };
             var copyAsItems = new List<Control>();
             void AddCopyAs(string caption, bool enabled, string? formId)
             {
                 var item = new MenuItem { Header = caption, IsEnabled = enabled };
-                if (formId != null) item.Click += (s, a) => ClipboardIdle = CopyAsAsync(formId);
+                if (formId != null) item.Click += (s, a) => ClipboardIdle = CopyAsAsync(formId, field);
                 copyAsItems.Add(item);
                 LastCopyAsItems.Add(caption);
             }
@@ -943,6 +944,13 @@ namespace SIL.TextEditing.Playground
                 },
             };
             field.ClipboardForms.Add(markdown);
+            // Source mode (ADR 0035): Ctrl+Shift+M or the bar's "Markdown" shows the field as FieldWorks Markdown; the return is one undo step.
+            field.SourceForm = new FieldWorksMarkdownSourceForm(clipboardOptions);   // the same reader and checker as paste
+            field.SourceModeChanged += (o, e) =>
+            {
+                Log("source mode: " + e.Announcement + " (a host gives this to its screen reader)");
+                if (e.IsSourceMode) HideSelectionBar();
+            };
             field.WritingSystemsMapped += (o, mapped) => Log("clipboard: notice, writing system(s) " + string.Join(", ", mapped.Missing.Select(m => m.Length == 0 ? "(none)" : m))
                 + " are not in this project; pasted text is now " + mapped.Target);
             field.BlocksFlattened += (o, flat) => Log("clipboard: notice, " + flat + " pasted into a field that does not allow them are now plain paragraphs");
@@ -1188,6 +1196,12 @@ namespace SIL.TextEditing.Playground
 
         public bool UndoLast(string source = "button")
         {
+            if (_active.Field.IsSourceMode)
+            {
+                // ADR 0035: the host returns the field to rich text before it changes it; inside source mode Ctrl+Z is the Markdown's own.
+                Log("undo requested (" + source + "): refused, the field is in source mode");
+                return false;
+            }
             var undo = _active.Undo;
             string label = undo.Done.Count > 0 ? undo.Done[undo.Done.Count - 1].Label : string.Empty;
             bool ok = undo.Undo();
@@ -1198,6 +1212,12 @@ namespace SIL.TextEditing.Playground
 
         public bool RedoLast(string source = "button")
         {
+            if (_active.Field.IsSourceMode)
+            {
+                // ADR 0035: the host returns the field to rich text before it changes it; inside source mode Ctrl+Z is the Markdown's own.
+                Log("redo requested (" + source + "): refused, the field is in source mode");
+                return false;
+            }
             var undo = _active.Undo;
             string label = undo.Undone.Count > 0 ? undo.Undone[undo.Undone.Count - 1].Label : string.Empty;
             bool ok = undo.Redo();
@@ -1356,9 +1376,9 @@ namespace SIL.TextEditing.Playground
         public List<string> LastCopyAsItems { get; } = new List<string>();
 
         /// <summary>Copy as: one form on the clipboard as text (a registered form's id, or <see cref="ClipboardForms.PlainTextId"/>).</summary>
-        public async Task CopyAsAsync(string formId)
+        public async Task CopyAsAsync(string formId, RichTextField? target = null)
         {
-            var field = _active.Field;
+            var field = target ?? _active.Field;
             try
             {
                 bool done = await field.CopyAsAsync(formId);
@@ -1370,9 +1390,9 @@ namespace SIL.TextEditing.Playground
             }
         }
 
-        public async Task CopyAsync(bool cut)
+        public async Task CopyAsync(bool cut, RichTextField? target = null)
         {
-            var field = _active.Field;
+            var field = target ?? _active.Field;
             if (!field.Editor.HasSelection)
             {
                 Log("clipboard: " + (cut ? "cut" : "copy") + " ignored, nothing selected");
@@ -1391,9 +1411,9 @@ namespace SIL.TextEditing.Playground
             }
         }
 
-        public async Task PasteAsync()
+        public async Task PasteAsync(RichTextField? target = null)
         {
-            var field = _active.Field;
+            var field = target ?? _active.Field;
             var before = field.Editor.Document.Paragraphs.Count;
             try
             {
