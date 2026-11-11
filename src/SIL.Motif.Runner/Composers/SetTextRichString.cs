@@ -29,6 +29,7 @@ public static class SetTextRichStringComposer
         TextRichStringFields.Flid(CanonicalIdResolver.Resolve(cache, intent.Target), payload.Field);
         if (payload.Text.Normalize(NormalizationForm.FormC) == payload.Expected.Text.Normalize(NormalizationForm.FormC) &&
             RunsDigest(payload) == payload.Expected.Runs) return [];
+        RichTextRuns.RequireStyles(cache, [], payload.Runs);
         return [new(CanonicalId.Mint(), TextRichStringOperationKinds.Set, target: intent.Target, after: after,
             rationale: $"Edit the {payload.Field}{(payload.Ws is null ? "" : $" ({payload.Ws})")}.")];
     }

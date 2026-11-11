@@ -27,6 +27,8 @@ public static class SetTextParagraphsComposer
         var payload = TextParagraphsPayload.Parse(after);
         TextParagraphFields.Read(CanonicalIdResolver.Resolve(cache, intent.Target), payload.Field);
         if (payload.Changed.Count == 0 && payload.Removed.Count == 0) return [];
+        RichTextRuns.RequireStyles(cache, payload.Changed.Select(change => change.Style),
+            payload.Changed.SelectMany(change => change.Runs));
         return [new(CanonicalId.Mint(), TextParagraphsOperationKinds.Set, target: intent.Target, after: after,
             rationale: $"Edit the paragraphs of {payload.Field}.")];
     }

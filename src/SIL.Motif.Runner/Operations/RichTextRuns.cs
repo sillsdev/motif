@@ -19,6 +19,22 @@ internal static class RichTextRuns
 {
     private static readonly string[] RunProperties = ["text", "ws", "characterStyle", "ints", "strings", "objData"];
 
+    /// <summary>
+    /// Checks that every paragraph and character style an edit names is one of the project's styles of that kind; a
+    /// text edit never creates a style.
+    /// </summary>
+    /// <exception cref="TextStyleUnknownException">A named style is not one of the project's styles of that kind.</exception>
+    public static void RequireStyles(LcmCache cache, IEnumerable<string?> paragraphStyles, IEnumerable<TextRun> runs)
+    {
+        var styles = cache.LangProject.StylesOC;
+        bool Has(string name, StyleType type) => styles.Any(style => style.Name == name && style.Type == type);
+        foreach (var name in paragraphStyles.OfType<string>().Where(name => name.Length > 0).Distinct(StringComparer.Ordinal))
+            if (!Has(name, StyleType.kstParagraph)) throw new TextStyleUnknownException(name, paragraph: true);
+        foreach (var name in runs.Select(run => run.CharacterStyle).OfType<string>().Where(name => name.Length > 0)
+                     .Distinct(StringComparer.Ordinal))
+            if (!Has(name, StyleType.kstCharacter)) throw new TextStyleUnknownException(name, paragraph: false);
+    }
+
     /// <summary>The <paramref name="name"/> array of runs of <paramref name="owner"/>.</summary>
     public static TextRun[] ReadRuns(JsonElement owner, string name, string kind) =>
         Array(owner, name, kind).Select(run => ReadRun(run, kind)).ToArray();

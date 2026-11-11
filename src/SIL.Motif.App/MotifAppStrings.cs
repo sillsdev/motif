@@ -3246,6 +3246,7 @@ public static class MotifAppStrings
     public static string RefusalStoreDamaged => Text("MotifApp.RefusalStoreDamaged");
 
     public static string RefusalTextFieldStale => Text("MotifApp.RefusalTextFieldStale");
+    public static string RefusalTextStyleUnknown => Text("MotifApp.RefusalTextStyleUnknown");
 
     public static string RefusalGeneric => Text("MotifApp.RefusalGeneric");
 

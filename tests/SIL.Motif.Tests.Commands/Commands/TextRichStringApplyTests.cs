@@ -78,6 +78,20 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void ACharacterStyleTheProjectLacksIsRefusedAtStagingNamingTheStyle()
+    {
+        var path = Project();
+        var id = CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value;
+
+        var refused = ProposalCommands.StageTextRichString(new StageTextRichStringRequest(path, id,
+            new TextRichStringPayload("LexSense.Source", null, [new TextRun("src", "en", "No Such Style")], new("", TextRunsDigest.Of([])))));
+
+        Assert.Equal(RefusalCodes.TextStyleUnknown, refused.Refusal?.Code);
+        Assert.Equal(("No Such Style", "character"), (refused.Refusal!.Facts["style"], refused.Refusal.Facts["styleKind"]));
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
     public void ADraftStartedByATextEditIsLabelledAsThePersonsChanges()
     {
         var path = Project();

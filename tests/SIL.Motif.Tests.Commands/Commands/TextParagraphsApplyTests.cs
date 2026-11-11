@@ -266,19 +266,32 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void ATableInStylesTheProjectLacksIsWrittenAsNamedAndGdrShowListsNoSuchStyle()
+    public void AParagraphStyleTheProjectLacksIsRefusedAtStagingNamingTheStyle()
     {
         var path = ProjectWithGdrs();
         var shown = Show(path, "GDR-2");
-        Assert.DoesNotContain(shown.Styles, style => style.Name is MotifMarkdownStyles.TableHeader or MotifMarkdownStyles.TableRow);
 
-        Staged(path, shown.Record.Id, Edit([null, null, null], TableRows(shown.DefaultAnalysis), []));
-        Applied(path);
+        var refused = ProposalCommands.StageTextParagraphs(new StageTextParagraphsRequest(path, shown.Record.Id,
+            Edit([null, null, null], TableRows(shown.DefaultAnalysis), [])));
 
-        var after = Show(path, "GDR-2");
-        Assert.Equal([MotifMarkdownStyles.TableHeader, MotifMarkdownStyles.TableRow, MotifMarkdownStyles.TableRow],
-            after.Discussion.Select(paragraph => paragraph.Style));
-        Assert.DoesNotContain(after.Styles, style => style.Name is MotifMarkdownStyles.TableHeader or MotifMarkdownStyles.TableRow);
+        Assert.Equal(RefusalCodes.TextStyleUnknown, refused.Refusal?.Code);
+        Assert.Equal(MotifMarkdownStyles.TableHeader, refused.Refusal!.Facts["style"]);
+        Assert.Equal("paragraph", refused.Refusal.Facts["styleKind"]);
+        Assert.Contains($"'{MotifMarkdownStyles.TableHeader}'", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void ACharacterStyleTheProjectLacksIsRefusedAtStaging()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-2");
+
+        var refused = ProposalCommands.StageTextParagraphs(new StageTextParagraphsRequest(path, shown.Record.Id,
+            Edit([null], [new TextParagraphChange(0, null, "Normal", [new TextRun("x", shown.DefaultAnalysis, "No Such Style")])], [])));
+
+        Assert.Equal(RefusalCodes.TextStyleUnknown, refused.Refusal?.Code);
+        Assert.Equal(("No Such Style", "character"), (refused.Refusal!.Facts["style"], refused.Refusal.Facts["styleKind"]));
     }
 
     private static TextParagraphChange[] TableRows(string ws) =>
