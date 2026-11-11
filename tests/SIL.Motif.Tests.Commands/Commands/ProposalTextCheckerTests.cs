@@ -27,6 +27,36 @@ public sealed class ProposalTextCheckerTests
         Assert.True(ProposalTextChecker.NeedsProject(text));
 
     [Fact]
+    public void ACodeSpanBesideAnObjectLinkStillNeedsTheProject() =>
+        Assert.True(ProposalTextChecker.NeedsProject("Run `motif show` on [entry-1](/lexicon/entry-1)."));
+
+    [Theory]
+    [InlineData("Run `motif proposals` to see it.")]
+    [InlineData("The ``double `tick` span`` and `<b>` are text.")]
+    [InlineData("A span that wraps `over\ntwo lines` here.")]
+    [InlineData("- item `one`\n- item two")]
+    public void ACodeSpanIsPlainTextAndNoFindingAndIsKeptAsWritten(string text)
+    {
+        var checkedText = ProposalTextChecker.Check(text, null, null);
+
+        Assert.Empty(checkedText.Findings);
+        Assert.Equal(text, checkedText.Text);
+    }
+
+    [Theory]
+    [InlineData("Some <b>raw</b> HTML.")]
+    [InlineData("Above.\n\n---\n\nBelow.")]
+    [InlineData("Raw <i>HTML</i> beside a `code span`.")]
+    public void RawHtmlAndAThematicBreakAreStillFindings(string text)
+    {
+        var findings = ProposalTextChecker.Check(text, null, null).Findings;
+
+        Assert.NotEmpty(findings);
+        Assert.All(findings, finding => Assert.Equal(MarkdownDiagnosticIds.UnsupportedMarkup, finding.Id));
+        Assert.DoesNotContain(findings, finding => finding.Observed?.Contains('`', StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
     public void AnErrorWhoseIdTheCheckerDoesNotKnowIsAFinding() =>
         Assert.True(ProposalTextChecker.IsFinding(new MarkdownDiagnostic("fwmd.future.unknown", MarkdownSeverity.Error, "x", 0, 1)));
 

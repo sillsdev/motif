@@ -240,7 +240,7 @@
         },
         "rationale": {
           "type": "string",
-          "description": "What this Proposal changes and why, in FieldWorks Markdown: the evidence, in a few sentences. Finalize needs it free of findings."
+          "description": "What this Proposal changes and why, in FieldWorks Markdown: the evidence, in a few sentences. Write a word or morpheme of the language as [form]{.v}, or [form]{ws=code} for another writing system, so it links to its writing system; backticks are plain text. Finalize needs it free of findings."
         },
         "request_id": {
           "type": "string",
@@ -9038,7 +9038,7 @@
         },
         "rationale": {
           "type": "string",
-          "description": "What this Proposal changes and why, in FieldWorks Markdown. Replaces the earlier text and returns its findings; a Draft with findings cannot be finalized, and a Ready Proposal refuses them and keeps its last clean Rationale."
+          "description": "What this Proposal changes and why, in FieldWorks Markdown. Write a word or morpheme of the language as [form]{.v}, or [form]{ws=code} for another writing system, so it links to its writing system; backticks are plain text. Replaces the earlier text and returns its findings; a Draft with findings cannot be finalized, and a Ready Proposal refuses them and keeps its last clean Rationale."
         },
         "author": {
           "type": "string",
@@ -9072,7 +9072,7 @@
         },
         "comment": {
           "type": "string",
-          "description": "Your Comment in FieldWorks Markdown, such as an answer to the person. Its findings come back but never block."
+          "description": "Your Comment in FieldWorks Markdown, such as an answer to the person. Write a word or morpheme of the language as [form]{.v}, or [form]{ws=code} for another writing system, so it links to its writing system; backticks are plain text. Its findings come back but never block."
         },
         "author": {
           "type": "string",

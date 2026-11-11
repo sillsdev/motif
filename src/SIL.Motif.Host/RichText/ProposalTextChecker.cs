@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Block = Markdig.Syntax.Block;
+using CodeInline = Markdig.Syntax.Inlines.CodeInline;
 using ListBlock = Markdig.Syntax.ListBlock;
 using ParagraphBlock = Markdig.Syntax.ParagraphBlock;
 using SIL.LCModel;
@@ -26,8 +27,8 @@ public sealed record CheckedProposalText(string Text, IReadOnlyList<TextFinding>
 
 /// <summary>
 /// Checks a Proposal's Rationale or Comment as FieldWorks Markdown (ADR 0099). Unmarked text is the project's default
-/// analysis writing system. Every error the parser reports is a finding unless it is only a spelling note, and so are
-/// a link to a deleted object and what a CommonMark reader would show differently from FieldWorks: a list that starts
+/// analysis writing system. Every error the parser reports is a finding unless it is only a spelling note or a code
+/// span, which is plain analysis text (ADR 0099 rule 9), and so are a link to a deleted object and what a CommonMark reader would show differently from FieldWorks: a list that starts
 /// inside a paragraph, or a numbered list FieldWorks would renumber. The text is stored as written; when it is clean,
 /// line endings become LF, trailing whitespace at its end goes and a path link gains its <c>guid=</c>, and only if
 /// reading the tidied text gives the same paragraphs.
@@ -54,6 +55,8 @@ public static class ProposalTextChecker
     // Not errors to the parser, but a reader sees them.
     private static readonly HashSet<string> AlsoVisible = new(StringComparer.Ordinal) { MarkdownDiagnosticIds.LinkBroken };
 
+    private static readonly Markdig.MarkdownPipeline Located = Markdig.MarkdownExtensions.UsePreciseSourceLocation(new Markdig.MarkdownPipelineBuilder()).Build();
+
     private static readonly Regex ProjectAttribute = new(@"\{[^}]*(?<![\w-])(?:ws|custom-style|style)=", RegexOptions.CultureInvariant);
 
     /// <summary>
@@ -64,7 +67,9 @@ public static class ProposalTextChecker
     {
         ArgumentNullException.ThrowIfNull(text);
         var parsed = MarkdownConverter.Parse(text, Options(null, null));
-        var errors = parsed.Diagnostics.Where(diagnostic => diagnostic.Severity == MarkdownSeverity.Error).ToArray();
+        var codeSpans = CodeSpans(parsed);
+        var errors = parsed.Diagnostics
+            .Where(diagnostic => diagnostic.Severity == MarkdownSeverity.Error && !InCodeSpan(diagnostic, codeSpans)).ToArray();
         if (errors.Any(diagnostic => !diagnostic.Id.StartsWith("fwmd.link.", StringComparison.Ordinal))) return false;
         return errors.Any(diagnostic => diagnostic.Id == MarkdownDiagnosticIds.LinkNotFound) ||
             parsed.Objects.Any(item => item.Kind != MarkdownObjectKind.ExternalLink) ||
@@ -80,8 +85,9 @@ public static class ProposalTextChecker
         ArgumentNullException.ThrowIfNull(text);
         var options = Options(cache, projectName);
         var parsed = MarkdownConverter.Parse(text, options);
+        var codeSpans = CodeSpans(parsed);
         var findings = parsed.Diagnostics
-            .Where(IsFinding)
+            .Where(diagnostic => IsFinding(diagnostic) && !InCodeSpan(diagnostic, codeSpans))
             .Concat(Structure(parsed))
             .OrderBy(diagnostic => diagnostic.Start)
             .Select(diagnostic => new TextFinding(diagnostic.Id, diagnostic.Line, diagnostic.Column, diagnostic.Message)
@@ -102,6 +108,15 @@ public static class ProposalTextChecker
         ArgumentNullException.ThrowIfNull(diagnostic);
         return diagnostic.Severity == MarkdownSeverity.Error ? !TidyUps.Contains(diagnostic.Id) : AlsoVisible.Contains(diagnostic.Id);
     }
+
+    // Where CommonMark reads a code span: its backticks are plain text (ADR 0099 rule 9), never a finding.
+    private static (int Start, int End)[] CodeSpans(MarkdownParseResult parsed) =>
+        Markdig.Syntax.MarkdownObjectExtensions.Descendants<CodeInline>(Markdig.Markdown.Parse(parsed.Source, Located))
+            .Select(code => (code.Span.Start, code.Span.End + 1)).ToArray();
+
+    private static bool InCodeSpan(MarkdownDiagnostic diagnostic, (int Start, int End)[] codeSpans) =>
+        diagnostic.Id == MarkdownDiagnosticIds.UnsupportedMarkup &&
+        codeSpans.Any(span => span.Start <= diagnostic.Start && diagnostic.End <= span.End);
 
     // CommonMark starts a list right after a paragraph line and keeps its first number; FieldWorks does neither.
     private static IEnumerable<MarkdownDiagnostic> Structure(MarkdownParseResult parsed)

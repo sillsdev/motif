@@ -121,6 +121,23 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
     }
 
     [Fact]
+    public void ACodeSpanInAReadyRationaleOrACommentIsPlainTextAndNoFinding()
+    {
+        const string withCode = "Run `motif proposals` and read [form-1]{.v} beside it.";
+        var path = ProjectWithBaseline();
+        var id = Finalized(path, "ready-code-span");
+
+        var revised = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, withCode, "Claude"));
+        var commented = ProposalComments.Add(new AddCommentRequest(path, Version, id, withCode, "person-1", "agent-1"));
+
+        Assert.True(revised.Succeeded, revised.Refusal?.Message);
+        Assert.Empty(revised.Value!.Findings);
+        Assert.Equal(withCode, Show(path, id).Rationale!.Markdown);
+        Assert.True(commented.Succeeded, commented.Refusal?.Message);
+        Assert.Empty(commented.Value!.Findings);
+    }
+
+    [Fact]
     public void AReopenedReadyProposalStillRefusesARevisionWithFindings()
     {
         var path = ProjectWithBaseline();
