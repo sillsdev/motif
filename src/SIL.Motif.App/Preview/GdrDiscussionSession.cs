@@ -72,7 +72,18 @@ public sealed class GdrDiscussionSession
         field.UndoRequested += () => Undo();
         field.RedoRequested += () => Redo();
         field.LostFocus += (_, _) => EndSession();
+        // Back from Markdown with clean text is one edit, staged at once as a rich edit is when the person moves on.
+        field.SourceModeChanged += (_, change) =>
+        {
+            if (!change.IsSourceMode && !change.Refused) EndSession();
+        };
     }
+
+    /// <summary>
+    /// Switches the field to FieldWorks Markdown (SIL.TextEditing ADR 0035), or back to rich text; returns whether it
+    /// switched. Back is refused while the Markdown has an error, and the field stays in Markdown with it marked.
+    /// </summary>
+    public bool ToggleSourceMode() => _field.IsSourceMode ? _field.LeaveSourceMode() : _field.EnterSourceMode();
 
     /// <summary>The edit the sessions so far add up to, or null when the Discussion is as it began.</summary>
     public GdrDiscussionEdit? Pending { get; private set; }
@@ -97,9 +108,10 @@ public sealed class GdrDiscussionSession
         PendingChanged?.Invoke(this, pending);
     }
 
-    /// <summary>Undoes the last step, if any; returns whether there was one.</summary>
+    /// <summary>Undoes the last step, if any; returns whether there was one. In Markdown the source view's own undo is used instead.</summary>
     public bool Undo()
     {
+        if (_field.IsSourceMode) return false;
         _field.Editor.CloseUndoGroup();
         if (_done.Count == 0) return false;
         var step = _done[^1];
@@ -113,6 +125,7 @@ public sealed class GdrDiscussionSession
     /// <summary>Redoes the last undone step, if any; returns whether there was one.</summary>
     public bool Redo()
     {
+        if (_field.IsSourceMode) return false;
         _field.Editor.CloseUndoGroup();
         if (_undone.Count == 0) return false;
         var step = _undone[^1];
@@ -145,7 +158,7 @@ public sealed class GdrDiscussionSession
     /// </summary>
     public bool SetWritingSystem(string tag)
     {
-        if (_field.IsReadOnly) return false;
+        if (_field.IsReadOnly || _field.IsSourceMode) return false;
         if (_field.Editor.HasSelection) return FormatSelection(_ => run => run.Ws = tag);
         _field.Editor.SetActiveWs(tag);
         return true;

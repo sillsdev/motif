@@ -30,7 +30,9 @@ namespace SIL.Motif.Runner.Operations;
 /// <para>
 /// The effect records, for each named character, the class the writing system gives it and the set that lists it,
 /// read back after the write. Texts that hold a changed character are parsed again, pinned by
-/// `TextsAreRetokenisedSoTheQuotesStopFormingWords`. The writing system sits outside the unit of work, so only
+/// `TextsAreRetokenisedSoTheQuotesStopFormingWords`, when the character's effective class changed, pinned by
+/// `ListingAnUnlistedNonLetterAsPunctuationReclassesNothingSoNothingIsParsed`, and when any run of the paragraph is in the writing
+/// system, pinned by `AParagraphWhoseFirstRunIsAnotherWritingSystemIsRetokenised`. The writing system sits outside the unit of work, so only
 /// discarding the cache undoes the change.
 /// </para>
 /// </remarks>
@@ -135,19 +137,24 @@ internal static class WritingSystemCharacterSets
             return $"{LangProjectWritingSystemOperationKinds.Notation(codePoint)}={effective}/{listing}";
         }));
 
-    /// <summary>Moves each character to the set that gives it <paramref name="characterClass"/>; true when any set changed.</summary>
-    public static bool Set(CoreWritingSystemDefinition ws, WritingSystemCharacterClass characterClass, IEnumerable<int> characters)
+    /// <summary>
+    /// Moves each character to the set that gives it <paramref name="characterClass"/> and returns those whose
+    /// effective class changed, the only ones that can change a segmentation.
+    /// </summary>
+    public static int[] Set(CoreWritingSystemDefinition ws, WritingSystemCharacterClass characterClass, IEnumerable<int> characters)
     {
-        var changed = false;
+        var reclassed = new List<int>();
         foreach (var codePoint in characters)
         {
             var text = char.ConvertFromUtf32(codePoint);
             var (add, remove) = characterClass == WritingSystemCharacterClass.WordForming
                 ? (Main, PunctuationSet) : (PunctuationSet, Main);
-            if (Lists(ws, remove, text)) { Remove(ws, remove, text); changed = true; }
-            if (!Lists(ws, add, text)) { Add(ws, add, text); changed = true; }
+            var wasWordForming = ws.get_IsWordForming(codePoint);
+            if (Lists(ws, remove, text)) Remove(ws, remove, text);
+            if (!Lists(ws, add, text)) Add(ws, add, text);
+            if (ws.get_IsWordForming(codePoint) != wasWordForming) reclassed.Add(codePoint);
         }
-        return changed;
+        return reclassed.ToArray();
     }
 
     private static bool Lists(CoreWritingSystemDefinition ws, string set, string text) =>
@@ -188,7 +195,8 @@ internal sealed class WritingSystemCharacterClassHandler : IOperationHandler
         RequireChangeable(payload);
 
         var before = Alternatives(ws, payload);
-        if (WritingSystemCharacterSets.Set(ws, payload.Class, payload.Characters)) Retokenise(cache, ws, payload.Characters);
+        var reclassed = WritingSystemCharacterSets.Set(ws, payload.Class, payload.Characters);
+        if (reclassed.Length > 0) Retokenise(cache, ws, reclassed);
         return new ExpectedEffect(id, SnapshotFields.LangProjectWritingSystemCharacterClass, before, Alternatives(ws, payload));
     }
 
@@ -232,13 +240,21 @@ internal sealed class WritingSystemCharacterClassHandler : IOperationHandler
         return (id, Find(cache, payload.WritingSystem));
     }
 
+    // A paragraph can mix writing systems, so the first run alone does not say whether the changed one is used.
+    private static bool HasRunIn(ITsString contents, int handle)
+    {
+        for (var run = 0; run < contents.RunCount; run++)
+            if (contents.get_WritingSystem(run) == handle) return true;
+        return false;
+    }
+
     // FieldWorks segments a paragraph when it is parsed, so Texts keep the old words until they are parsed again.
     private static void Retokenise(LcmCache cache, CoreWritingSystemDefinition ws, IReadOnlyList<int> characters)
     {
         var needles = characters.Select(char.ConvertFromUtf32).ToArray();
         var paragraphs = cache.ServiceLocator.GetInstance<IStTxtParaRepository>().AllInstances()
             .Where(paragraph => paragraph.Contents is { Length: > 0 } contents &&
-                contents.get_WritingSystem(0) == ws.Handle &&
+                HasRunIn(contents, ws.Handle) &&
                 needles.Any(needle => contents.Text.Contains(needle, StringComparison.Ordinal)))
             .ToArray();
         if (paragraphs.Length == 0) return;

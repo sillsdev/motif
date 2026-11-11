@@ -98,7 +98,8 @@ namespace SIL.TextEditing.Avalonia
         bool _reportedReadOnly;
 
         /// <summary>The editor's read-only flag changed, by the field's <see cref="IsReadOnly"/> or by the editor directly, on whatever thread: on the
-        /// field's own thread, an input method stops composing, automation hears of it, and spell checking starts over (read-only text is not checked).</summary>
+        /// field's own thread, an input method stops composing, automation hears of it, spell checking starts over (read-only text is not checked), and
+        /// in source mode the source view takes the same flag, so a host that makes the field read-only stops the source being edited too.</summary>
         void OnEditorReadOnlyChanged()
         {
             if (CheckAccess()) ReadOnlyChanged();
@@ -108,6 +109,7 @@ namespace SIL.TextEditing.Avalonia
         void ReadOnlyChanged()
         {
             bool now = Editor.IsReadOnly;
+            if (_source != null) _source.View.IsReadOnly = now;
             if (now && _preedit != null) SetPreedit(null, null);
             if (now) CloseCompletion();
             if (now != _reportedReadOnly)

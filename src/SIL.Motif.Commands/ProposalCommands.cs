@@ -2017,7 +2017,8 @@ public static partial class ProposalCommands
                             ReconciliationBoundary.Save,
                             $"Proposal {id} committed to the live project, but saving it to the .fwdata " +
                             "file failed partway through. This is not a rollback: the file's on-disk " +
-                            "state is not guaranteed intact. Do not retry automatically -- inspect the " +
+                            "state is not guaranteed intact, and the project's WritingSystemStore (the LDML files) may also " +
+                            "have changed, because it is written just before the commit. Do not retry automatically -- inspect the " +
                             "project file before doing anything else with it.",
                             ex);
                     }
