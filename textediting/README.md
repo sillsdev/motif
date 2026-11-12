@@ -81,8 +81,7 @@ the playground, edit the Markdown beside the field and press Apply; `MarkdownTab
   fails, and runs the Markdown converter, record files and the libpalaso writing-system path in the published exe.
 
 The whole suite passes with 0 failures on net48 and net10.0. Passing tests per target, Release, main 7e77466 (2026-11-06), Pandoc on PATH.
-Opt-in tests that skip by default are not counted: 11 screenshot generators (`TEXTEDITING_SCREENSHOTS`) and 3 real-clipboard tests
-(`TEXTEDITING_REAL_CLIPBOARD`).
+Opt-in tests that skip by default are not counted: 11 screenshot generators (`TEXTEDITING_SCREENSHOTS`). Every automated test runs headless.
 
 | Tests | Model | Avalonia | Markdown | LCModel | Playground | SecondDispatcher |
 |---|---|---|---|---|---|---|

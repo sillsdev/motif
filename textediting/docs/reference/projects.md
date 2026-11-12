@@ -91,7 +91,6 @@ properties, an environment box with a language service, 200 paragraphs, many fie
 | `tests/SIL.TextEditing.Tests` | net48, net10.0 | Unit tests for the model. |
 | `tests/SIL.TextEditing.Avalonia.Tests` | net48, net10.0 | Avalonia.Headless tests for the surface (Skia, real shaping). |
 | `tests/SIL.TextEditing.SecondDispatcher.Tests` | net10.0 | The tests that make a dispatcher on a second thread (Avalonia 12 allows it). |
-| `tests/SIL.TextEditing.RealClipboard.Tests` | net48, net10.0 | Bytes and Arabic text through the default clipboard backend and the real Windows clipboard. Opt-in. |
 | `tests/SIL.TextEditing.LCModel.Tests` | net48, net10.0 | The adapter ([details](lcmodel.md#tests)). |
 | `tests/SIL.TextEditing.Project.Tests` | net48, net10.0 | Styles, writing systems and Markdown/TsString integration over real memory-only caches, built with public liblcm APIs. |
 | `tests/SIL.TextEditing.Markdown.Tests` | net48, net10.0 | Conformance, Pandoc agreement, random round trips ([details](markdown.md#tests)). |
@@ -102,17 +101,6 @@ properties, an environment box with a language service, 200 paragraphs, many fie
 
 `Dispatcher.UIThread` is process-wide, so the tests that make a dispatcher on a second thread run in a test host of their own and cannot
 change it for the other tests (issue #72).
-
-### RealClipboard
-
-It runs in a real Avalonia window (Avalonia.Desktop), not Avalonia.Headless.
-
-- **Opt-in.** Skipped unless `TEXTEDITING_REAL_CLIPBOARD=1` (and on any system but Windows), because it overwrites the clipboard of whoever
-  runs it and needs an interactive desktop.
-- On GitHub's windows-latest runner the net48 test host crashed (cause not found; Avalonia 11.3 Win32 in a non-interactive session is the
-  suspect) while net10.0 passed.
-- When it runs, the two target frameworks take turns through a `Global\` mutex, and a turn or a test over 60 s fails.
-- If the Win32 platform cannot start, the tests say so and end.
 
 ## Build environment
 
