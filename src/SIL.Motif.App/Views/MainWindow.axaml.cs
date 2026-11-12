@@ -165,6 +165,7 @@ public sealed partial class MainWindow : Window
         workspace.ProposalBar.Left += (_, _) =>
             Dispatcher.UIThread.Post(() => _workspaceView?.FocusCurrentPage(), DispatcherPriority.Background);
         workspace.Context.ViewMemory.UseStore(_preferences);
+        workspace.Context.UseStagePreferences(_preferences);
         _host = new MotifWorkspaceHost(workspace, this, _preferences, _applicationFacts, _uriLauncher,
             _problemReportServices, ShowProblemReportAsync);
         ConfigureZoom();

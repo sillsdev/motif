@@ -43,13 +43,6 @@ public enum WorkspacePage
     Settings,
 }
 
-/// <summary>Which pages exist only while Advanced AI mode is on; the sidebar omits them and opening one does nothing.</summary>
-public static class WorkspacePages
-{
-    /// <summary>Whether <paramref name="page"/> requires the assistant tools setting.</summary>
-    public static bool RequiresAdvancedAi(WorkspacePage page) => false;
-}
-
 /// <summary>The views of the Texts page, each one a tab.</summary>
 public enum TextsTab
 {
@@ -156,7 +149,7 @@ public sealed partial class PageViewModel : ObservableObject
     public bool HasBadge => BadgeCount is not null;
 
     /// <summary>Whether the window offers this page; a page it does not offer is left out of the sidebar.</summary>
-    public bool IsAvailable { get; init; } = true;
+    public bool IsAvailable { get; set; } = true;
 
     /// <summary>Whether this is the page the window is showing.</summary>
     [ObservableProperty]
