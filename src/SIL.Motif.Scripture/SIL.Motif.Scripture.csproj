@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Host brings LibLCM (to read the Source list), UserDataHome and AmbientEnvironment (the per-user file's place). -->
+    <ProjectReference Include="..\SIL.Motif.Host\SIL.Motif.Host.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- TODO: SilMachineVersion pin (motif-app) -->
     <PackageReference Include="SIL.Machine" Version="3.9.7" />
   </ItemGroup>
