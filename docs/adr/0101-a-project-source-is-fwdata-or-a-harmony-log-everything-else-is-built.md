@@ -29,6 +29,8 @@ almost never see this happen.
    Trial, Measure and review, like code needing full CI. FW Lite does not edit grammar, so the convention costs nothing today.
 6. **LibLCM stays as the compiler** for a log source: a Build may load the log into a memory-only LCM cache
    (`kMemoryOnly`) so LCM's rules and Motif's existing Lowering and checks keep working.
+   *Amended 2026-11-12 (Q28, ADR 0103):* a Trial or Measure builds the PanGloss snapshot straight from the log, with no
+   LibLCM. A .fwdata is built only on demand: for FLEx classic, an export or a Proposal snapshot.
 
 ## Why this answers Plan A's objections
 

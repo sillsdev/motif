@@ -36,7 +36,7 @@ kept aside, as in a pull request, until a person applies them. Applying them add
 - **Commit Drafts to a local branch log:** Harmony has no branches and syncs everything newer than the remote.
 - **Upstream a preview API** (Harmony's internal `SnapshotReplay`): cheaper than a file copy, but not needed to start.
 
-## Amendment, 2026-11-12: Trial timing (proposed; grill Q28 open)
+## Amendment, 2026-11-12: Trial timing (owner accepted route 1, grill Q28)
 
 [spike-trial.md](../source-build/spike-trial.md) timed a Trial on a 20,000-entry log. The Harmony side is cheap:
 - copy: 0.3 s;
@@ -51,5 +51,8 @@ kept aside, as in a pull request, until a person applies them. Applying them add
    for export, or for a Proposal snapshot.
 2. An incremental .fwdata Build: copy the last built base .fwdata and apply only the touched objects.
 
-Route 1 is proposed. The spike also found that FW Lite's `GetEntries()` returns 1,000 entries by default, so a Build
+**Decision (owner, Q28): route 1.** A Trial never builds a .fwdata. The .fwdata Build stays slow for the cases that
+still need it; the owner raised a LibLCM **batch creation mode** for it (create many objects without per-object undo,
+notification and save overhead). Where the 100 s goes is measured before any LibLCM change, and such a change stays
+on a local branch until the owner has talked to the FieldWorks team. The spike also found that FW Lite's `GetEntries()` returns 1,000 entries by default, so a Build
 must query all entries and treat any mismatch as a build error.
