@@ -1,4 +1,4 @@
-# Questions for the interlinearizer team (Alex Rawlings and others), from the Source/Build grill 2026-11-10
+# Questions for the interlinearizer team, from the Source/Build grill 2026-11-10
 
 These are the owner's questions to ask before Motif decides grill Q8: whether the analyses in a project's log use the
 interlinearizer's shapes. Their extension is sillsdev/interlinearizer-extension; it is described in

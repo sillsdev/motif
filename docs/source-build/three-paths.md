@@ -120,7 +120,7 @@ The paths differ in one thing: **what a Proposal is applied to**.
 
 ## Shared asks (all paths)
 
-To the Interlinearizer team (Alex Rawlings), before their suggestion and lexicon-port shapes set:
+To the Interlinearizer team (the interlinearizer team), before their suggestion and lexicon-port shapes set:
 1. **A suggestion-provider hook**: a network object the engine asks per surface form, derived on read. The fallback, writing `status: 'suggested'`, `producer: 'pangloss'` records, works today by inference (interlinearizer.md §5), but Harmony keeps every rewrite forever and the suggestions change whenever the grammar improves.
 2. **A supported read of approved analyses** for other extensions (form, gloss, morphemes, status, user, token refs). `repository.findLinksInBooks` has the shape; third-party access is unverified.
 3. **#229 guard**: create lexicon entries only from morpheme-level items, never from a whole inflected word.
@@ -159,7 +159,7 @@ Candid cost: for a few months the best grammar knowledge lives in a private fork
 4. Is the back-translation the Interlinearizer's joined glosses (#149), so we own no output path? What if #149 slips past the pilot?
 5. Is "no parse" shown to translators in phase 1 (the spell flag), or not at all? The pitch and the 2026-11-07 note disagree.
 6. Do we supersede ADR 0013 now? Paths 1 and 2 follow Plan A.
-7. Who talks to Alex Rawlings this week, and do we offer to write the provider hook ourselves?
+7. Who talks to the interlinearizer team this week, and do we offer to write the provider hook ourselves?
 
 ## Verify before deciding
 
@@ -179,4 +179,4 @@ Candid cost: for a few months the best grammar knowledge lives in a private fork
 | Child-process lifetime and cross-extension command rules in packaged Paratext 10 | Read `create-process.service.ts` and test in a packaged build; ask the Platform.Bible team |
 | Paratext 10's packaged runtime, and AGPL reach for a combined plugin (Path 3) | Read `paratext-10-studio`; ask SIL legal |
 | Whether pilot teams have classic FieldWorks projects, FW Lite only, or neither | Ask the pilot coordinators; this decides how much the CRDT case matters |
-| LexBox's appetite and dates for #2558/#2559 (Path 3) | Ask Tim Haasdyk on the issues |
+| LexBox's appetite and dates for #2558/#2559 (Path 3) | Ask the LexBox team on the issues |
