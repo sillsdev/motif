@@ -267,12 +267,12 @@ namespace SIL.TextEditing.Avalonia
         }
 
         /// <summary>Replaces [start, end) of a paragraph with text in the writing system and properties of the text there, as one undo step; false when the
-        /// field is read-only or the range may not be edited.</summary>
+        /// field is read-only, in source mode (its editor refuses the edit), or the range may not be edited.</summary>
         bool ReplaceLanguage(int index, int start, int end, string replacement, string label)
         {
             var a = new TextPosition(index, start);
             var b = new TextPosition(index, end);
-            if (Editor.IsReadOnly || !Editor.CanEditRange(a, b)) return false;
+            if (Editor.IsReadOnly || IsSourceMode || !Editor.CanEditRange(a, b)) return false;
             var paragraph = Editor.Document.Paragraphs[index];
             var run = paragraph.RunAfter(start, out _) ?? paragraph.RunBefore(start, out _);
             var fragment = new Paragraph { DefaultWs = run?.Ws ?? paragraph.DefaultWs };

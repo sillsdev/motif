@@ -267,6 +267,48 @@ public sealed partial class GdrPreviewWindowTests
     }
 
     [Fact]
+    public void ALongDiscussionWithAParagraphAddedAtTheTopAndTheLastEditedKeepsEveryKeyOnItsOwnText()
+    {
+        // 101 by 102 paragraphs is past the pair-by-pair budget: the keys hold only through the fingerprint.
+        const int count = 101;
+        GdrShowResponse Long(GdrSummary record) => Canned(record) with
+        {
+            Discussion = Enumerable.Range(0, count).Select(i => new GdrParagraph("Normal", false, "en", Props(style: "Normal"),
+                [new GdrRun($"Paragraph {i}.", "en", null, Props())], $"para-{i}")).ToArray(),
+        };
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, Long);
+            using var closer = window.CloseOnExit();
+            var field = window.Field!;
+            Assert.True(count * (count + 1) > DocumentEditor.PairwiseComparisonBudget);
+
+            Assert.True(window.ToggleSourceMode());
+            var view = field.SourceView!.Editor;
+            var lines = view.Document.Paragraphs.Select(paragraph => paragraph.Text).ToList();
+            var separated = lines.Count > 1 && lines[1].Length == 0;
+            var last = lines.FindLastIndex(line => line.Length > 0);
+            lines[last] += " Edited.";
+            lines.InsertRange(0, separated ? ["Added.", ""] : ["Added."]);
+            Assert.True(view.ReplaceParagraphs(lines.Select(line => new Paragraph { Runs = { new Run { Ws = view.Document.Paragraphs[0].DefaultWs, Text = line } } }).ToArray(),
+                (a, b) => a.Text == b.Text, "edit"));
+            Assert.True(window.ToggleSourceMode());
+            Assert.False(field.IsSourceMode);
+
+            var paragraphs = field.Editor.Document.Paragraphs;
+            Assert.Equal(count + 1, paragraphs.Count);
+            Assert.Equal("Added.", paragraphs[0].Text);
+            for (var i = 0; i < count; i++)
+            {
+                Assert.Equal($"para-{i}", paragraphs[i + 1].Key);
+                Assert.StartsWith($"Paragraph {i}.", paragraphs[i + 1].Text, StringComparison.Ordinal);
+            }
+            Assert.Equal($"Paragraph {count - 1}. Edited.", paragraphs[count].Text);
+        });
+    }
+
+    [Fact]
     public void OnlyThePreviewWindowsGiveAFieldASourceForm()
     {
         // Ctrl+Shift+M works in a field with a source form, so outside the preview gate no field has one.
