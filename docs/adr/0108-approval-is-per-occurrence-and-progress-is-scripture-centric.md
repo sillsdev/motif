@@ -55,8 +55,8 @@ replay and checkpoints upstream. Open; it joins the "one store or two" question 
 
 ## Note, 2026-11-12: ADR 0110
 
-[ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md) settles the storage for the Paratext 10 flow with a .fwdata Home: per-occurrence judgements are a versioned
-JSON field on WfiWordform, anchored `MAT 5:3#2`, and scripture is never copied into the project. This ADR's states
+[ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md) settles the storage for the Paratext 10 flow with a .fwdata Home: per-occurrence judgements are one custom-list item per Source and chapter
+(0110 decision 5, amended; the WfiWordform field is a local cache), anchored `MAT 5:3#2`, and scripture is never copied into the project. This ADR's states
 (approved, rejected, Passed over as derived) and its re-anchoring rules (section 5) still apply; 0110 cites them.
 For a log Home, the same judgements would be a Motif-registered field on the wordform, not separate link objects,
 which also removes the 700k-link replay cost in the scale consequences. That is to be decided with the first backend
