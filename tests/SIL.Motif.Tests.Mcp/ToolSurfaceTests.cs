@@ -345,6 +345,8 @@ public sealed class ToolSurfaceTests
             "compose-author-lexeme-form",
             "compose-delete-empty-sense",
             "compose-link-variant",
+            "compose-strip-variant-senses",
+            "compose-author-variant-entry",
             "compose-make-variant-of",
             "compose-make-variants-of",
             "compose-merge-lexical-entries",

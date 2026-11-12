@@ -808,9 +808,7 @@
     "source": "Hand-written from the closed intent and composer contract.",
     "fields": {
       "draft": "Draft name.",
-      "entries": "The variants to strip: each has an entry and, where the main entry has several senses, a component naming the main sense.",
-      "entry": "Id of the variant entry whose copied sense is removed.",
-      "component": "Id of the main entry's sense the variant should vary; optional."
+      "entries": "The variants to strip: each has an entry and, where the main entry has several senses, a component naming the main sense."
     },
     "goals": [
       "Replace a copied gloss and analysis on a stem variant with the main sense",
