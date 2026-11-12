@@ -54,5 +54,10 @@ kept aside, as in a pull request, until a person applies them. Applying them add
 **Decision (owner, Q28): route 1.** A Trial never builds a .fwdata. The .fwdata Build stays slow for the cases that
 still need it; the owner raised a LibLCM **batch creation mode** for it (create many objects without per-object undo,
 notification and save overhead). Where the 100 s goes is measured before any LibLCM change, and such a change stays
-on a local branch until the owner has talked to the FieldWorks team. The spike also found that FW Lite's `GetEntries()` returns 1,000 entries by default, so a Build
+on a local branch until the owner has talked to the FieldWorks team. [spike-build-speed.md](../source-build/spike-build-speed.md) then measured it: the 100 s is not
+per-object overhead but one quadratic call. Setting `LexSense.MorphoSyntaxAnalysisRA` runs
+`MoMorphSynAnalysis.CanDeleteIfSenseDeleted`, which scans every MSA in the project. Attaching the POS to the MSA directly
+took a 20k Build from 142 s to 16 s, with identical objects at 1,500 entries. A batch creation mode is not needed; a
+~10-line LibLCM fix (use referring objects, not `AllInstances()`) is worth proposing later, local only for now.
+The spike also found that FW Lite's `GetEntries()` returns 1,000 entries by default, so a Build
 must query all entries and treat any mismatch as a build error.
