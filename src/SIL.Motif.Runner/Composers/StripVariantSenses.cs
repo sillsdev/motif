@@ -134,9 +134,9 @@ public static class StripVariantSensesComposer
         feature.Name.BestAnalysisAlternative.Text is { Length: > 0 } text && text != "***"
             ? text : CanonicalId.FromGuid(feature.Guid).Value;
 
-    private sealed record Plan(ILexEntry Entry, ILexEntryRef? Reference, ILexSense Main);
+    private sealed record StripPlan(ILexEntry Entry, ILexEntryRef? Reference, ILexSense Main);
 
-    private static Plan Plan(LcmCache cache, StripVariantSensesItem item)
+    private static StripPlan Plan(LcmCache cache, StripVariantSensesItem item)
     {
         var entry = LexicalFormAuthoring.Resolve<ICmObject>(cache, item.Entry, ConstructName) as ILexEntry
             ?? throw new InvalidOperationException($"'{ConstructName}': '{item.Entry.Value}' is not an entry.");
@@ -174,6 +174,6 @@ public static class StripVariantSensesComposer
             throw new InvalidOperationException(
                 $"'{ConstructName}': {SenseRemoval.Describe(main)} has no stem analysis, so the parser would load nothing " +
                 "for a sense-less variant of it.");
-        return new Plan(entry, reference, main);
+        return new StripPlan(entry, reference, main);
     }
 }
