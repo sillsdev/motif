@@ -17,6 +17,53 @@ namespace SIL.Motif.Tests.Cli;
 public sealed class CatalogTextRenderingTests
 {
     [Fact]
+    public void ParsimonyJsonCarriesEachFindingOnceAsAFullObject()
+    {
+        var token = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+            "2026-10-05T00:00:00Z", "sha256:" + new string('b', 64));
+        var inputs = new ParsimonyReportInputs("bundle-1", token, "baseline", null, "fingerprint-1",
+            new ParsimonyArtifactDigest(4, new string('c', 64)),
+            new ParsimonyArtifactDigest(1, new string('d', 64)), null, null, []);
+        using var arguments = JsonDocument.Parse("{}");
+        var finding = new ParsimonyFinding("finding/one", "P-adhoc-duplicate", ParsimonyAxis.Parsimony,
+            ParsimonyTier.Static,
+            new ParsimonyFindingAttachment(ParsimonyAttachmentKind.AuthoredObject,
+                "18f47b40-0c5f-4d08-a9b4-9988f2e47702", ParsimonyAuthoredObjectKind.AdhocProhibition),
+            "group/one", new ParsimonyMeasureNumber(2, 3, "prohibitions"),
+            new ParsimonyMeasureThreshold(ParsimonyThresholdOperator.GreaterThan, 1, "1"), new string('a', 64),
+            [new ParsimonyEvidenceReference("bundle/one", "adhoc-context", arguments.RootElement.Clone())],
+            "guide:parsimony/recipes/p-adhoc-duplicate", [], ParsimonyVerification.NotRun);
+        var row = new ParsimonyFindingDispositionViewRow("report/one", "bundle-1", "active", finding,
+            null, null, null, null, null, null);
+        var projection = new ParsimonyDispositionProjection("bundle-1", "report/one", null, "project", "digest",
+            1, 0, 0, 0, [row], [], []);
+        var response = new ParsimonyReportResponse("report/one", inputs, [finding], "text")
+        {
+            Notes = [],
+            DispositionProjection = projection,
+        };
+
+        foreach (object payload in new object[] { response, new ParsimonyReportSetResponse("job/one", "bundle-1", [response]) })
+        {
+            var json = payload is ParsimonyReportResponse single
+                ? CommandTextRenderer.Render(CommandOutcome<ParsimonyReportResponse>.Success(single), asJson: true)
+                : CommandTextRenderer.Render(CommandOutcome<ParsimonyReportSetResponse>.Success(
+                    (ParsimonyReportSetResponse)payload), asJson: true);
+            var root = JsonNode.Parse(json.Output)!;
+            var report = root["reports"]?[0] ?? root;
+            var rowNode = report["dispositionProjection"]!["findings"]![0]!;
+            Assert.Equal("finding/one", (string?)rowNode["findingId"]);
+            Assert.Null(rowNode["finding"]);
+            var full = report["findings"]!.AsArray().Where(f => (string?)f!["findingId"] == "finding/one").ToList();
+            Assert.Single(full);
+            Assert.Equal(1, CountOccurrences(json.Output, "\"evidenceDigest\""));
+        }
+    }
+
+    private static int CountOccurrences(string text, string needle) =>
+        (text.Length - text.Replace(needle, string.Empty, StringComparison.Ordinal).Length) / needle.Length;
+
+    [Fact]
     public void AParsimonyNoteShowsAsAnInformationLineNotAFinding()
     {
         var token = new BaselineToken("project", "sha256:" + new string('a', 64), "1",

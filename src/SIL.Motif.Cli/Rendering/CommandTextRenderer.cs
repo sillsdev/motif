@@ -49,6 +49,7 @@ public static class CommandTextRenderer
                 value is TrialRecord trial ? AssessSummary.Trial(trial).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
                 value is TimingResponse timing ? TimingPresentation.Timing(timing).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
                 value is OverviewResponse overview ? TimingPresentation.Overview(overview).ToJsonString(new JsonSerializerOptions { WriteIndented = true }) :
+                value is ParsimonyReportResponse or ParsimonyReportSetResponse ? ParsimonyReportJson.Serialize(value) :
                 ProjectionJson.Serialize(value)) +
                 Environment.NewLine);
 
