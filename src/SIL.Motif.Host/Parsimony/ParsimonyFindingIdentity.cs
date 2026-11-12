@@ -45,6 +45,13 @@ public static class ParsimonyFindingIdentity
     /// <summary>The attachment identity of one sense under its entry.</summary>
     public static string SenseIdentity(string entryGuid, string senseGuid) => $"entry/{entryGuid}/sense/{senseGuid}";
 
+    /// <summary>The group key shared by every duplicate-entry group of one kind, "duplicate" or "clone".</summary>
+    public static string DuplicateEntriesGroupKey(string kind) => "entries/" + kind;
+
+    /// <summary>The attachment identity of one duplicate-entry group: its kind, first member and member digest.</summary>
+    public static string DuplicateEntriesIdentity(string kind, IReadOnlyList<string> memberIds) =>
+        $"entries/{kind}/{memberIds[0]}/" + Digest(string.Join("\n", memberIds));
+
     /// <summary>The Finding ID of an item-attached Finding, one per item and digested site key.</summary>
     public static string SiteFindingId(string measureId, string itemGuid, string siteKey) =>
         $"{measureId}:{itemGuid}:{Digest(siteKey)}";
@@ -121,6 +128,9 @@ public static class ParsimonyFindingIdentity
             ParsimonyGroupKind.GlossEchoesForm => key is not null &&
                 key.StartsWith("entry/", StringComparison.Ordinal) &&
                 identity.StartsWith(key + "/sense/", StringComparison.Ordinal),
+            ParsimonyGroupKind.DuplicateEntries => key is not null &&
+                key.StartsWith("entries/", StringComparison.Ordinal) &&
+                identity.StartsWith(key + "/", StringComparison.Ordinal),
             ParsimonyGroupKind.AlternationFamily or ParsimonyGroupKind.DuplicateEnvironments => identity == key,
             ParsimonyGroupKind.AdhocSlotOrder => key is not null && identity == AdhocSlotOrderIdentity(key),
             ParsimonyGroupKind.LiteralContext => key is not null &&
@@ -177,6 +187,7 @@ public static class ParsimonyFindingIdentity
         ParsimonyGroupKind.DuplicateEnvironments => className == "PhEnvironment",
         ParsimonyGroupKind.MsaWithoutCategory => className == "MoStemMsa",
         ParsimonyGroupKind.GlossEchoesForm => className == "LexSense",
+        ParsimonyGroupKind.DuplicateEntries => className == "LexEntry",
         _ => false,
     };
 

@@ -53,7 +53,11 @@ public sealed partial class ParsimonyQuerySession
         {
             command.CommandText = "SELECT guid, lexeme_morph_type FROM facts.lex_entry;";
             using var reader = command.ExecuteReader();
-            while (reader.Read()) entries[reader.GetString(0)] = new LexiconEntryBuilder(reader.GetString(0), reader.GetString(1));
+            while (reader.Read())
+            {
+                var guid = reader.GetString(0);
+                entries[guid] = new LexiconEntryBuilder(guid, reader.GetString(1));
+            }
         }
         var allomorphs = new Dictionary<string, (LexiconEntryBuilder Entry, int Ordinal)>(StringComparer.Ordinal);
         using (var command = NewCommand())
@@ -63,8 +67,9 @@ public sealed partial class ParsimonyQuerySession
             while (reader.Read())
                 if (entries.TryGetValue(reader.GetString(1), out var entry))
                 {
-                    allomorphs[reader.GetString(0)] = (entry, reader.GetInt32(2));
-                    entry.AddAllomorph(reader.GetString(0), reader.GetInt32(2));
+                    var guid = reader.GetString(0);
+                    allomorphs[guid] = (entry, reader.GetInt32(2));
+                    entry.AddAllomorph(guid, reader.GetInt32(2));
                 }
         }
         using (var command = NewCommand())
@@ -72,8 +77,11 @@ public sealed partial class ParsimonyQuerySession
             command.CommandText = "SELECT allomorph_guid, ordinal, writing_system, form FROM facts.allomorph_form;";
             using var reader = command.ExecuteReader();
             while (reader.Read())
-                if (allomorphs.TryGetValue(reader.GetString(0), out var owner))
-                    owner.Entry.AddForm(reader.GetString(0), reader.GetInt32(1), reader.GetString(2), reader.GetString(3));
+            {
+                var guid = reader.GetString(0);
+                if (allomorphs.TryGetValue(guid, out var owner))
+                    owner.Entry.AddForm(guid, reader.GetInt32(1), reader.GetString(2), reader.GetString(3));
+            }
         }
         var senses = new Dictionary<string, LexiconSenseBuilder>(StringComparer.Ordinal);
         using (var command = NewCommand())
@@ -82,7 +90,10 @@ public sealed partial class ParsimonyQuerySession
             using var reader = command.ExecuteReader();
             while (reader.Read())
                 if (entries.TryGetValue(reader.GetString(1), out var entry))
-                    entry.Senses.Add(senses[reader.GetString(0)] = new LexiconSenseBuilder(reader.GetString(0)));
+                {
+                    var guid = reader.GetString(0);
+                    entry.Senses.Add(senses[guid] = new LexiconSenseBuilder(guid));
+                }
         }
         using (var command = NewCommand())
         {

@@ -130,6 +130,10 @@ public enum ParsimonyGroupKind
     /// <summary>A sense whose gloss only repeats its entry's form, under its entry.</summary>
     [JsonStringEnumMemberName("gloss-echoes-form")]
     GlossEchoesForm,
+
+    /// <summary>Lexical entries that duplicate or clone each other.</summary>
+    [JsonStringEnumMemberName("duplicate-entries")]
+    DuplicateEntries,
 }
 
 /// <summary>The completeness of recipe-level before and after verification.</summary>

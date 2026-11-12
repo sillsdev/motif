@@ -38,6 +38,9 @@ public static class ParsimonyQueryIds
     /// <summary>The wire spelling <c>environment-literal-host/v1</c>.</summary>
     public const string EnvironmentLiteralHost = "environment-literal-host/v1";
 
+    /// <summary>The wire spelling <c>entry-duplicate/v1</c>.</summary>
+    public const string EntryDuplicate = "entry-duplicate/v1";
+
     /// <summary>The wire spelling <c>gloss-echoes-form/v1</c>.</summary>
     public const string GlossEchoesForm = "gloss-echoes-form/v1";
 

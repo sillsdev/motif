@@ -20,6 +20,8 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class ParsimonyGroupEnqueueTests
 {
+    private static readonly int GrammarMeasureCount = MeasureCatalog.All.Count(item => item.Group == ParsimonyMeasureGroup.Grammar);
+
     private static readonly Guid TextId = Guid.NewGuid();
 
     [Fact]
@@ -34,7 +36,7 @@ public sealed class ParsimonyGroupEnqueueTests
     }
 
     [Fact]
-    public void TheGrammarGroupQueuesItsFiveMeasuresWithoutAnyTextOrNote()
+    public void TheGrammarGroupQueuesItsMeasuresWithoutAnyTextOrNote()
     {
         using var fixture = Fixture();
 
@@ -43,7 +45,7 @@ public sealed class ParsimonyGroupEnqueueTests
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
         Assert.Null(queued.Value!.Note);
         var input = ReadInput(fixture.ProjectPath, queued.Value.JobId);
-        Assert.Equal(9, Prop(input, "measureIds").GetArrayLength());
+        Assert.Equal(GrammarMeasureCount, Prop(input, "measureIds").GetArrayLength());
         Assert.Equal("project-approved", Prop(Prop(input, "scopeBinding"), "kind").GetString());
     }
 
@@ -91,7 +93,7 @@ public sealed class ParsimonyGroupEnqueueTests
 
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
         Assert.Equal(ParsimonyCommands.TextGroupSkippedNote, queued.Value!.Note);
-        Assert.Equal(9, ReadInput(fixture.ProjectPath, queued.Value.JobId).GetProperty("measureIds").GetArrayLength());
+        Assert.Equal(GrammarMeasureCount, ReadInput(fixture.ProjectPath, queued.Value.JobId).GetProperty("measureIds").GetArrayLength());
     }
 
     [Fact]

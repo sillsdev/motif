@@ -105,4 +105,115 @@ public sealed class LexiconMeasureDecisionTests
 
         Assert.Single(result.Findings);
     }
+
+    // ---- P-entry-duplicate
+
+    private static LexiconEntryFact Lexeme(string guid, string morphType, string[] forms, string[] glosses,
+        string[]? msas = null) =>
+        new(guid, morphType, guid + "-lexeme", forms.Select(form => new LexiconTextFact("qaa", form)).ToArray(), forms,
+            glosses.Length == 0 ? [] : [new LexiconSenseFact(guid + "-sense",
+                glosses.Select(gloss => new LexiconTextFact("en", gloss)).ToArray())], msas ?? []);
+
+    private static string[][] DuplicateGroups(string kind, params LexiconEntryFact[] entries) =>
+        MeasureRunner.DecideDuplicateEntries(Measure("P-entry-duplicate"), new LexiconInput(entries), Context())
+            .Findings.Where(finding => finding.AttachesTo.Identity.StartsWith($"entries/{kind}/", StringComparison.Ordinal))
+            .Select(finding => finding.EvidenceRefs.Select(reference =>
+                reference.Arguments.GetProperty("objectGuid").GetString()!.Replace("-lexeme", "")).ToArray()).ToArray();
+
+    [Fact]
+    public void FormsThatDifferOnlyByHyphensOrEqualsSignsAreOneForm()
+    {
+        var groups = DuplicateGroups("duplicate",
+            Lexeme("a", "prefix", ["xy"], ["AV"], ["inflectional"]),
+            Lexeme("b", "prefix", ["xy-"], ["AV"], ["inflectional"]),
+            Lexeme("c", "prefix", ["=xy"], ["AV"], ["inflectional"]));
+
+        Assert.Equal([["a", "b", "c"]], groups);
+    }
+
+    [Fact]
+    public void DifferentMorphTypeClassesWritingSystemsGlossesOrMsasAreNotDuplicates()
+    {
+        var other = Lexeme("e", "suffix", ["xy"], ["AV"], ["inflectional"]) with
+        {
+            LexemeForms = [new LexiconTextFact("qab", "xy")],
+        };
+
+        Assert.Empty(DuplicateGroups("duplicate",
+            Lexeme("a", "prefix", ["xy"], ["AV"], ["inflectional"]),
+            Lexeme("b", "suffix", ["xy"], ["AV"], ["inflectional"]),
+            Lexeme("c", "prefix", ["xy"], ["PV"], ["inflectional"]),
+            Lexeme("d", "prefix", ["xy"], ["AV"], ["derivational"]),
+            other with { EntryGuid = "f", MorphType = "prefix" }));
+    }
+
+    [Fact]
+    public void StemRootAndBoundStemShareAClassAndPrefixAndSuffixDoNot()
+    {
+        var groups = DuplicateGroups("duplicate",
+            Lexeme("a", "stem", ["xy"], ["go"], ["stem|"]), Lexeme("b", "root", ["xy"], ["go"], ["stem|"]),
+            Lexeme("c", "boundStem", ["xy"], ["go"], ["stem|"]), Lexeme("d", "prefix", ["xy"], ["go"], ["stem|"]));
+
+        Assert.Equal([["a", "b", "c"]], groups);
+    }
+
+    [Fact]
+    public void PureVariantEntriesAndBlankEntriesNeverGroup()
+    {
+        Assert.Empty(DuplicateGroups("duplicate",
+            Lexeme("a", "stem", ["xy"], []), Lexeme("b", "stem", ["xy"], []),
+            Lexeme("c", "suffix", [], []),
+            Lexeme("d", "suffix", [], [])));
+    }
+
+    [Fact]
+    public void EntriesWithNoFormTextGroupByClassGlossAndMsa()
+    {
+        var groups = DuplicateGroups("duplicate",
+            Lexeme("a", "suffix", [], ["REDUP"], ["derivational|"]), Lexeme("b", "suffix", [], ["REDUP"], ["derivational|"]),
+            Lexeme("c", "suffix", [], ["OTHER"], ["derivational|"]));
+
+        Assert.Equal([["a", "b"]], groups);
+    }
+
+    [Fact]
+    public void ACloneNeedsEveryGlossToExtendAHomographGlossOrTheCapitalisedForm()
+    {
+        var clones = DuplicateGroups("clone",
+            Lexeme("a", "suffix", ["ka"], ["go", "stay"]), Lexeme("b", "suffix", ["ka"], ["go.V", "stay.N"]),
+            Lexeme("c", "suffix", ["ka"], ["go.V", "other"]), Lexeme("f", "suffix", ["ka"], ["ka.V"]),
+            Lexeme("d", "suffix", ["pa"], ["KA.V"]),
+            Lexeme("e", "suffix", ["xe"], ["XE.V"]), Lexeme("g", "suffix", ["xe"], ["other"]));
+
+        var groups = clones.Select(group => string.Join("", group.Order())).Order().ToArray();
+        Assert.Equal(["ab", "eg"], groups);
+    }
+
+    [Fact]
+    public void AnExactGlossMatchOrAnEmptyDottedSuffixIsNotAClone()
+    {
+        Assert.Empty(DuplicateGroups("clone",
+            Lexeme("a", "suffix", ["ka"], ["go"]), Lexeme("b", "suffix", ["ka"], ["go"]),
+            Lexeme("c", "suffix", ["ka"], ["go."]), Lexeme("d", "suffix", ["ka"], [".go"])));
+    }
+
+    [Fact]
+    public void ACloneChainFormsOneGroupAndCostsOneEntryPerExtraMember()
+    {
+        var result = MeasureRunner.DecideDuplicateEntries(Measure("P-entry-duplicate"),
+            new LexiconInput([Lexeme("a", "suffix", ["ka"], ["go"]), Lexeme("b", "suffix", ["ka"], ["go.V"]),
+                Lexeme("c", "suffix", ["ka"], ["go.V.PL"])]), Context());
+
+        Assert.Single(result.Findings);
+        Assert.Equal(2, result.Run.FindingItems);
+    }
+
+    [Fact]
+    public void NoEntriesMeansNothingToCheck()
+    {
+        var result = MeasureRunner.DecideDuplicateEntries(Measure("P-entry-duplicate"), new LexiconInput([]), Context());
+
+        Assert.Equal(ParsimonyMeasureStatus.Computed, result.Run.Status);
+        Assert.Empty(result.Findings);
+    }
 }
