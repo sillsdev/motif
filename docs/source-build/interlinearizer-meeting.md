@@ -23,3 +23,7 @@ interlinearizer's shapes. Their extension is sillsdev/interlinearizer-extension;
    #148/#218, through a provider interface?
 7. **#229 (create lexicon entry from a morpheme).** How do we stop whole inflected words becoming lexicon entries?
    Motif's view is that a word gloss is a test target, not an entry.
+8. **One anchor format** ([ADR 0110](../adr/0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md) decision 12).
+   Motif anchors an occurrence as `MAT 5:3#2`: the verse in the Source's versification, then the 1-based index of words
+   with a letter or digit. Your tokens are keyed by verse and character offset. Can we agree on one format, or a fixed
+   conversion between the two?
