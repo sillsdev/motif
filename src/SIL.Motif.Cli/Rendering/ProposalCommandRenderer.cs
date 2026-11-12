@@ -5,6 +5,7 @@ using System.Text;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
 using ProjectionText = SIL.Motif.Projection.Rendering.CommandTextRenderer;
 
@@ -229,8 +230,11 @@ public static class ProposalCommandRenderer
                 : $"  {op.OperationId}  ({op.Kind})");
         if (r.RelatedObjects is { Count: > 0 } related)
         {
-            sb.AppendLine("The changed slot is used by:");
-            foreach (var item in related)
+            foreach (var direction in related.Where(item => item.Kind == DerivationDirection.Kind))
+                sb.AppendLine($"Derivation: {direction.Name}");
+            var others = related.Where(item => item.Kind != DerivationDirection.Kind).ToArray();
+            if (others.Length > 0) sb.AppendLine("The changed slot is used by:");
+            foreach (var item in others)
                 sb.AppendLine($"  {item.Kind}: {item.Name} ({item.Id})");
         }
         sb.AppendLine($"Draft now has {r.OperationCount} operation(s).");

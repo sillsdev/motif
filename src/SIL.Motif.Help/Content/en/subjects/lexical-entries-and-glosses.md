@@ -38,7 +38,7 @@ A homograph is a separate entry with the same lexeme form, not a second analysis
 ## Pitfalls
 
 - Do not add a second entry for each inflected shape of the same stem.
-- An inflectional affix needs an inflectional analysis; a derivational one needs both its source and its destination category.
+- An inflectional affix needs an inflectional analysis; a derivational one needs both its source and its destination category. The composer summary shows `Derivation: From -> To`, and Dry Run warns when no stem or derivation can supply the From category, the usual sign that the two are swapped.
 - Check the new entry with words that use it and words that should not gain an analysis.
 
 Use `compose-edit-gloss` for a guarded short translation equivalent and `compose-edit-definition` for the full meaning. `compose-edit-lexical-note` edits the entry Note or any named sense note, including General Note and Grammar Note. Each checks the current text per writing system and permits a guarded clear. Record examples for particular allomorphs in the entry Note: FieldWorks has no built-in allomorph Note field.

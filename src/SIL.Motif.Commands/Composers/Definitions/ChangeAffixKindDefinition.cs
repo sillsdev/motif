@@ -39,5 +39,5 @@ internal sealed class ChangeAffixKindDefinition : ComposerDefinition<ChangeAffix
 
     /// <inheritdoc />
     public override IReadOnlyList<ComposedRelatedObject>? RelatedObjects(LcmCache cache, ChangeAffixKindIntent intent) =>
-        ChangeAffixKindComposer.ReadWarnings(cache, intent);
+        [.. ChangeAffixKindComposer.ReadDirection(cache, intent), .. ChangeAffixKindComposer.ReadWarnings(cache, intent)];
 }

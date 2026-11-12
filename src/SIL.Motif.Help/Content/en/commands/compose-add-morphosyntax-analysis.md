@@ -24,6 +24,8 @@ The inflection classes already set on the entry's affix form apply to every infl
 
 Dry Run and Trial the Draft on words in both roles and on words that should not gain an analysis, then Finalize it for a person to review and Apply.
 
+A derivational affix's composed summary lists a `Derivation: From -> To` line naming both categories, so a swapped pair shows at once, and its Dry Run warns when the project has no stem, subcategory stem or derivation that makes the From category, which usually means the categories are the wrong way round.
+
 ## When not to use this
 
 - To turn the one analysis an affix has into another affix kind, use `compose-change-affix-kind`.

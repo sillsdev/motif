@@ -1,3 +1,5 @@
+using SIL.LCModel;
+using SIL.Motif.Contract.Responses;
 using System.Text.Json;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Runner.Composers;
@@ -52,4 +54,8 @@ internal sealed class AuthorAffixProcessDefinition : ComposerDefinition<AuthorAf
     /// <inheritdoc />
     public override IReadOnlyList<OperationEnvelope> Lower(ComposeContext context, AuthorAffixProcessIntent intent) =>
         AuthorAffixProcessComposer.Build(context.Cache, intent, context.MintId);
+
+    /// <inheritdoc />
+    public override IReadOnlyList<ComposedRelatedObject>? RelatedObjects(LcmCache cache, AuthorAffixProcessIntent intent) =>
+        DerivationDirection.Read(cache, intent.Msa);
 }

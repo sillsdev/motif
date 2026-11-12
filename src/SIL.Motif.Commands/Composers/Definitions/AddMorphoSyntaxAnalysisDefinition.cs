@@ -1,3 +1,5 @@
+using SIL.LCModel;
+using SIL.Motif.Contract.Responses;
 using System.Text.Json;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Model;
@@ -44,4 +46,8 @@ internal sealed class AddMorphoSyntaxAnalysisDefinition : ComposerDefinition<Add
     /// <inheritdoc />
     public override IReadOnlyList<OperationEnvelope> Lower(ComposeContext context, AddMorphoSyntaxAnalysisIntent intent) =>
         AddMorphoSyntaxAnalysisComposer.Build(context.Cache, intent, context.MintId);
+
+    /// <inheritdoc />
+    public override IReadOnlyList<ComposedRelatedObject>? RelatedObjects(LcmCache cache, AddMorphoSyntaxAnalysisIntent intent) =>
+        DerivationDirection.Read(cache, intent.Msa);
 }
