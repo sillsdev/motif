@@ -131,6 +131,7 @@ public sealed class ParsimonyRecipeCatalogTests
                     "EditInflectionalAffix"],
             ["B-affix-null-vs-optional"] = ["RetireRedundantZeroAffix"],
             ["P-allo-duplicate-form"] = ["RetireAllomorph"],
+            ["P-feature-few-carriers"] = [],
             ["P-statement-unused"] = [],
             ["P-env-duplicate"] = [],
             ["P-env-literal-host"] = [],

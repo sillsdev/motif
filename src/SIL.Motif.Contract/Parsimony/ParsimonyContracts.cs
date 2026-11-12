@@ -118,6 +118,10 @@ public enum ParsimonyGroupKind
     /// <summary>One environment side or rule context side made only of literal segments.</summary>
     [JsonStringEnumMemberName("literal-context")]
     LiteralContext,
+
+    /// <summary>An exception feature that few entries carry but an affix or rule requires.</summary>
+    [JsonStringEnumMemberName("exception-feature")]
+    ExceptionFeature,
 }
 
 /// <summary>The completeness of recipe-level before and after verification.</summary>

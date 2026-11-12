@@ -195,6 +195,16 @@
       ]
     },
     {
+      "measureId": "P-feature-few-carriers",
+      "recipeVersion": 1,
+      "title": "Features with few carriers",
+      "shortTitle": "features with few carriers",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1.6"
+      ]
+    },
+    {
       "measureId": "P-statement-unused",
       "recipeVersion": 1,
       "title": "Unused grammar statements",

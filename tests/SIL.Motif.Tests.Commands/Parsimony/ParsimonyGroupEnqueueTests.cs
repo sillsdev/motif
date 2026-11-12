@@ -43,7 +43,7 @@ public sealed class ParsimonyGroupEnqueueTests
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
         Assert.Null(queued.Value!.Note);
         var input = ReadInput(fixture.ProjectPath, queued.Value.JobId);
-        Assert.Equal(5, Prop(input, "measureIds").GetArrayLength());
+        Assert.Equal(6, Prop(input, "measureIds").GetArrayLength());
         Assert.Equal("project-approved", Prop(Prop(input, "scopeBinding"), "kind").GetString());
     }
 
@@ -91,7 +91,7 @@ public sealed class ParsimonyGroupEnqueueTests
 
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
         Assert.Equal(ParsimonyCommands.TextGroupSkippedNote, queued.Value!.Note);
-        Assert.Equal(5, ReadInput(fixture.ProjectPath, queued.Value.JobId).GetProperty("measureIds").GetArrayLength());
+        Assert.Equal(6, ReadInput(fixture.ProjectPath, queued.Value.JobId).GetProperty("measureIds").GetArrayLength());
     }
 
     [Fact]

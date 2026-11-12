@@ -29,6 +29,12 @@ public static class ParsimonyFindingIdentity
     public static string DuplicateFormsIdentity(string entryGuid, string morphType, IEnumerable<string> memberIds) =>
         $"entry/{entryGuid}/duplicate-forms/{morphType}/" + Digest(string.Join("\n", memberIds));
 
+    /// <summary>The group key shared by every few-carrier exception-feature finding.</summary>
+    public const string ExceptionFeatureGroupKey = "exception-features";
+
+    /// <summary>The attachment identity of one exception feature.</summary>
+    public static string ExceptionFeatureIdentity(string featureGuid) => "exception-feature/" + featureGuid;
+
     /// <summary>The Finding ID of an item-attached Finding, one per item and digested site key.</summary>
     public static string SiteFindingId(string measureId, string itemGuid, string siteKey) =>
         $"{measureId}:{itemGuid}:{Digest(siteKey)}";
@@ -104,6 +110,8 @@ public static class ParsimonyFindingIdentity
             ParsimonyGroupKind.LiteralContext => key is not null &&
                 key.StartsWith("literal-context/", StringComparison.Ordinal) &&
                 identity.StartsWith(key + "/", StringComparison.Ordinal),
+            ParsimonyGroupKind.ExceptionFeature => key == ExceptionFeatureGroupKey &&
+                identity.StartsWith("exception-feature/", StringComparison.Ordinal),
             _ => false,
         };
     }

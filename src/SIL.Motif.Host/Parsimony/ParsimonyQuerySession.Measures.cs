@@ -443,7 +443,9 @@ public sealed partial class ParsimonyQuerySession
               (SELECT form FROM evidence.wordform_forms WHERE wordform_guid=$guid
                  ORDER BY writing_system LIMIT 1),
               (SELECT coalesce(nullif(name, ''), nullif(representation, '')) FROM facts.environment WHERE guid=$guid),
-              (SELECT coalesce(nullif(display_name, ''), nullif(name, '')) FROM facts.natural_class WHERE guid=$guid));
+              (SELECT coalesce(nullif(display_name, ''), nullif(name, '')) FROM facts.natural_class WHERE guid=$guid),
+              (SELECT coalesce(nullif(name, ''), nullif(abbreviation, '')) FROM facts.exception_feature
+                 WHERE guid=$guid));
             """;
         command.Parameters.AddWithValue("$guid", guid);
         return command.ExecuteScalar() as string ?? DescribeProhibition(guid) ?? DescribeApprovedSequence(guid);

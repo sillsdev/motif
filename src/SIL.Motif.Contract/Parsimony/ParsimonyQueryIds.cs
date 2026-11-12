@@ -38,6 +38,9 @@ public static class ParsimonyQueryIds
     /// <summary>The wire spelling <c>natural-class-excess/v1</c>.</summary>
     public const string NaturalClassExcess = "natural-class-excess/v1";
 
+    /// <summary>The wire spelling <c>feature-few-carriers/v1</c>.</summary>
+    public const string FeatureFewCarriers = "feature-few-carriers/v1";
+
     /// <summary>The wire spelling <c>negative-accepted/v1</c>.</summary>
     public const string NegativeAccepted = "negative-accepted/v1";
 
