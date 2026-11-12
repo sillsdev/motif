@@ -39,3 +39,17 @@ interlinearizer's allomorph and MSA references all point at them.
    FieldWorks does when a sense's MSA is shared. An MSA that lacks grammar is underdefined grammar, which FieldWorks
    already allows. It is an ordinary Motif Warning only where an existing grammar check says so; the Build adds
    nothing of its own.
+
+## Amendment, 2026-11-12: proven by the format spike
+
+[spike-format.md](../source-build/spike-format.md) proves decisions 2 and 3: two clients completing one entry make one
+allomorph and one MSA; a Build to a new .fwdata keeps every GUID from the log; two Builds give identical GUIDs; and
+PanGloss parses the built .fwdata (an environment change in the log changes the parse after a rebuild). It also found:
+
+1. **Re-creating is a no-op only for a live object.** A re-sent create revives a deleted object and wipes its fields.
+   A deterministic "complete" create must not revive a tombstone; Motif's types return the deleted object unchanged.
+2. **FW Lite's bridge mints random GUIDs** for the lexeme-form allomorph and for the stem MSA of a sense with a POS. The
+   Build replaces them with the log's GUIDs right after creation, reading the old allomorph's Form and MorphType first.
+   LibLCM deletes the orphaned MSA itself. Every LibLCM factory has `Create(Guid)`, so an upstream bridge change that
+   takes GUIDs would remove the replacement step.
+3. **Export (.fwdata → log) is not proven yet.**

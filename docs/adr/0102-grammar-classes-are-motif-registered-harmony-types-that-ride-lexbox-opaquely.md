@@ -39,3 +39,21 @@ and the LexBox server carry those additions along unchanged without needing to u
 
 - **Contribute grammar to MiniLcm first:** blocked on another team's schedule.
 - **Grammar outside Harmony** (Motif's own store, linked by GUID): two logs, two sync stories, and no FW Lite path.
+
+## Amendment, 2026-11-12: proven by the format spike
+
+[spike-format.md](../source-build/spike-format.md) (`sb-spike-format`, 10 tests, Linux, .NET 10) confirms decisions 1 to 4.
+Motif's types register next to LcmCrdt's with a new ModelVersion, without editing LcmCrdt. A plain FW Lite client keeps
+Motif commits opaque and returns them byte-identical. Deletes cascade through `RemoveReference`. It also found:
+
+1. **Registration needs `AddWithCustomPolymorphicMapping`**, not `Add<T>()`.
+2. **Migrations.** LcmCrdt's EF migrations do not know Motif's tables, and a ModelVersion reconcile drops and
+   re-projects every registered table. A product needs its own migration route for Motif's tables. The spike used a
+   connection-open interceptor, which is not a product answer.
+3. **A poison commit is possible.** An LcmCrdt change aimed at an entity a client knows only as an opaque create makes
+   that client's `AddRangeFromSync` throw. The whole batch, legitimate commits included, rolls back on every retry,
+   and marking the commit as a newer model version does not get it skipped. No client can author one locally, so only
+   a bug in Motif could send one. Motif's Apply therefore refuses any LcmCrdt change type whose target is a Motif
+   type, and an upstream Harmony fix (skip, don't throw) is wanted.
+4. **Tests must sync over JSON.** `DataModel.SyncWith` passes typed changes and never exercises the opaque path. Tests
+   use a JSON-wire syncable shaped like LexBox's HTTP sync.
