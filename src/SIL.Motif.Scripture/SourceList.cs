@@ -12,7 +12,7 @@ public static class SourceList
 {
     /// <summary>
     /// The Sources in list order; empty when the project has no such list. A malformed item comes back with its
-    /// <see cref="SourceListEntry.Error"/> set. Throws <see cref="SourceListAmbiguousException"/> when two lists carry the name.
+    /// <see cref="SourceListEntry.Error"/> set. A Removed Source is returned with <see cref="SourceListEntry.Status"/> Removed so callers can hide it. Throws <see cref="SourceListAmbiguousException"/> when two lists carry the name.
     /// </summary>
     public static IReadOnlyList<SourceListEntry> Read(LcmCache cache)
     {
@@ -26,7 +26,8 @@ public static class SourceList
 
         var kindField = FindField(cache, SourceListFormat.KindField);
         var versificationField = FindField(cache, SourceListFormat.VersificationField);
-        var entries = lists[0].PossibilitiesOS.Select(item => ReadItem(cache, item, kindField, versificationField)).ToArray();
+        var statusField = FindField(cache, SourceListFormat.StatusField);
+        var entries = lists[0].PossibilitiesOS.Select(item => ReadItem(cache, item, kindField, versificationField, statusField)).ToArray();
 
         // A repeated id would make "which Source?" a guess, so every item that repeats one is unusable.
         var repeated = entries.Where(entry => entry.Id.Length > 0).GroupBy(entry => entry.Id, StringComparer.OrdinalIgnoreCase)
@@ -36,16 +37,24 @@ public static class SourceList
             : entry).ToArray();
     }
 
-    private static SourceListEntry ReadItem(LcmCache cache, ICmPossibility item, int kindField, int versificationField)
+    private static SourceListEntry ReadItem(LcmCache cache, ICmPossibility item, int kindField, int versificationField, int statusField)
     {
         var id = Real(item.Abbreviation).Trim();
         var name = Real(item.Name);
         var contextText = Real(item.Description).Trim();
         var kindText = Custom(cache, item, kindField);
         var versificationName = Custom(cache, item, versificationField);
+        var statusText = Custom(cache, item, statusField);
+
+        var status = SourceStatus.Active;
+        var statusKnown = statusText.Length == 0
+            || (Enum.TryParse(statusText, ignoreCase: true, out status) && Enum.IsDefined(status));
 
         SourceListEntry Bad(SourceKind kind, string error) =>
-            new(id, name, kind, contextText, versificationName, null, error);
+            new(id, name, kind, contextText, versificationName, null, error, status);
+
+        if (!statusKnown)
+            return Bad(SourceKind.Paratext, $"The Source status '{statusText}' is not known. Use Active or Removed.");
 
         SourceKind kind;
         if (kindText.Length == 0) kind = SourceKind.Paratext;
@@ -54,14 +63,14 @@ public static class SourceList
 
         if (id.Length == 0) return Bad(kind, "The Source has no id. Write one in its Abbreviation.");
         if (kind == SourceKind.Corpus)
-            return new(id, name, kind, contextText, versificationName, null, "A corpus Source is not supported yet.");
+            return new(id, name, kind, contextText, versificationName, null, "A corpus Source is not supported yet.", status);
         if (versificationName.Length == 0)
             return Bad(kind, $"The Source '{id}' has no versification. Use one of: {string.Join(", ", SourceListFormat.Versifications.Keys)}.");
         if (!SourceListFormat.Versifications.TryGetValue(versificationName, out var versification))
             return Bad(kind, $"The versification '{versificationName}' is not known. Use one of: {string.Join(", ", SourceListFormat.Versifications.Keys)}.");
         if (!ScriptureContext.TryParse(contextText, versification, out var context, out var error))
             return Bad(kind, $"The Context of '{id}' is not valid. {error}");
-        return new(id, name, kind, contextText, versificationName, context, null);
+        return new(id, name, kind, contextText, versificationName, context, null, status);
     }
 
     private static IEnumerable<string> Texts(IMultiAccessorBase text) =>

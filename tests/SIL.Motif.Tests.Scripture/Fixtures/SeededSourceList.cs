@@ -15,13 +15,13 @@ namespace SIL.Motif.Tests.Scripture;
 internal static class SeededSourceList
 {
     /// <summary>One item to write; null kind or versification leaves that custom field empty.</summary>
-    public sealed record Item(string Id, string Name, string Context, string? Kind, string? Versification);
+    public sealed record Item(string Id, string Name, string Context, string? Kind, string? Versification, string? Status = null);
 
     /// <summary>Adds the two custom fields once.</summary>
     public static void AddFields(LcmCache cache)
     {
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
-        foreach (var name in new[] { SourceListFormat.KindField, SourceListFormat.VersificationField })
+        foreach (var name in new[] { SourceListFormat.KindField, SourceListFormat.VersificationField, SourceListFormat.StatusField })
         {
             if (metadata.GetFieldIds().Any(flid => metadata.GetFieldName(flid) == name)) continue;
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
@@ -42,6 +42,7 @@ internal static class SeededSourceList
         var metadata = (IFwMetaDataCacheManaged)cache.MetaDataCacheAccessor;
         var kindField = metadata.GetFieldIds().FirstOrDefault(flid => metadata.GetFieldName(flid) == SourceListFormat.KindField);
         var versificationField = metadata.GetFieldIds().FirstOrDefault(flid => metadata.GetFieldName(flid) == SourceListFormat.VersificationField);
+        var statusField = metadata.GetFieldIds().FirstOrDefault(flid => metadata.GetFieldName(flid) == SourceListFormat.StatusField);
         var analysis = cache.DefaultAnalWs;
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
         {
@@ -59,6 +60,8 @@ internal static class SeededSourceList
                     cache.DomainDataByFlid.SetString(possibility.Hvo, kindField, TsStringUtils.MakeString(item.Kind, analysis));
                 if (item.Versification is not null && versificationField != 0)
                     cache.DomainDataByFlid.SetString(possibility.Hvo, versificationField, TsStringUtils.MakeString(item.Versification, analysis));
+                if (item.Status is not null && statusField != 0)
+                    cache.DomainDataByFlid.SetString(possibility.Hvo, statusField, TsStringUtils.MakeString(item.Status, analysis));
             }
         });
     }

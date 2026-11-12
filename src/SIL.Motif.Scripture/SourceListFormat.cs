@@ -14,6 +14,8 @@ namespace SIL.Motif.Scripture;
 /// <item><description>Item Description: the Context string, in Machine's range grammar (for example <c>GEN-ROM; 1CO 13-15</c>), as plain text with no formatting.</description></item>
 /// <item><description>Custom string field <see cref="KindField"/> on CmPossibility: <c>Paratext</c> or <c>Corpus</c>. Absent or empty means Paratext.</description></item>
 /// <item><description>Custom string field <see cref="VersificationField"/> on CmPossibility: one of the built-in versification names in <see cref="Versifications"/>.</description></item>
+/// <item><description>Custom string field <see cref="StatusField"/> on CmPossibility: <c>Active</c> or <c>Removed</c>. Absent or empty means Active.
+/// A Source is never deleted: removing one sets Removed, and the item keeps its id and Context. A Removed id is never reused.</description></item>
 /// </list>
 /// The folder of a Source is not stored here: it differs per machine and lives in <see cref="ScriptureLocalStore"/>.
 /// The custom fields are created like the human-judgement fields: <c>IFwMetaDataCacheManaged.AddCustomField</c> with
@@ -30,11 +32,17 @@ public static class SourceListFormat
     /// <summary>The internal name of the custom field that holds the versification name.</summary>
     public const string VersificationField = "MotifSourceVersification";
 
+    /// <summary>The internal name of the custom field that holds the status (<c>Active</c> or <c>Removed</c>).</summary>
+    public const string StatusField = "MotifSourceStatus";
+
     /// <summary>The CmPossibility class name the custom fields belong to.</summary>
     public const string FieldOwnerClass = "CmPossibility";
 
     /// <summary>The kind written as stored text.</summary>
     public static string KindText(SourceKind kind) => kind.ToString();
+
+    /// <summary>The status written as stored text.</summary>
+    public static string StatusText(SourceStatus status) => status.ToString();
 
     /// <summary>The built-in versifications by the name stored in the list, matched ignoring case.</summary>
     public static IReadOnlyDictionary<string, SIL.Scripture.ScrVers> Versifications { get; } =

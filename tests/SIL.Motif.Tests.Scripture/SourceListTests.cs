@@ -123,4 +123,68 @@ public sealed class SourceListTests(PristineProjectFixture pristine)
 
         Assert.Contains("2 possibility lists", refusal.Message);
     }
+
+    [Fact]
+    public void ItemWithNoStatusIsActive()
+    {
+        using var cache = pristine.NewScratch();
+        SeededSourceList.AddList(cache, Web, Web with { Id = "BSB", Status = "" });
+
+        Assert.All(SourceList.Read(cache), entry =>
+        {
+            Assert.True(entry.IsValid, entry.Error);
+            Assert.Equal(SourceStatus.Active, entry.Status);
+        });
+    }
+
+    [Fact]
+    public void ListMadeByHandWithoutTheStatusFieldReadsAsActive()
+    {
+        using var cache = pristine.NewScratch();
+        SeededSourceList.AddListWithoutFields(cache, Web);
+
+        Assert.Equal(SourceStatus.Active, Assert.Single(SourceList.Read(cache)).Status);
+    }
+
+    [Fact]
+    public void RemovedSourceIsReturnedMarkedWithItsIdAndContext()
+    {
+        using var cache = pristine.NewScratch();
+        SeededSourceList.AddList(cache, Web with { Status = "Removed" }, new SeededSourceList.Item("CEB", "Cebuano", "NT", "Paratext", "Original", "Active"));
+
+        var sources = SourceList.Read(cache);
+
+        Assert.Equal(2, sources.Count);
+        Assert.Equal("WEB", sources[0].Id);
+        Assert.Equal(SourceStatus.Removed, sources[0].Status);
+        Assert.True(sources[0].IsValid, sources[0].Error);
+        Assert.Equal("GEN-ROM; 1CO 13-15", sources[0].ContextText);
+        Assert.Equal(SourceStatus.Active, sources[1].Status);
+    }
+
+    [Fact]
+    public void StatusIsMatchedIgnoringCase()
+    {
+        using var cache = pristine.NewScratch();
+        SeededSourceList.AddList(cache, Web with { Status = "removed" });
+
+        Assert.Equal(SourceStatus.Removed, Assert.Single(SourceList.Read(cache)).Status);
+    }
+
+    [Fact]
+    public void UnknownStatusIsAnErrorEntryAndTheOthersStillRead()
+    {
+        using var cache = pristine.NewScratch();
+        SeededSourceList.AddList(cache, Web with { Status = "Archived" }, new SeededSourceList.Item("CEB", "Cebuano", "NT", "Paratext", "Original"));
+
+        var sources = SourceList.Read(cache);
+
+        Assert.False(sources[0].IsValid);
+        Assert.Contains("'Archived'", sources[0].Error);
+        Assert.Contains("Active or Removed", sources[0].Error);
+        Assert.True(sources[1].IsValid, sources[1].Error);
+    }
+
+    [Fact]
+    public void AmbiguityRefusalCodeIsDotted() => Assert.Equal("source.list-ambiguous", SourceListAmbiguousException.Code);
 }
