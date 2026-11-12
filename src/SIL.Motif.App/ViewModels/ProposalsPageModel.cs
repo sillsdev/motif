@@ -565,12 +565,46 @@ public sealed partial class ProposalsPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(IsFilteredEmpty), nameof(IsNoProposalsToShow), nameof(ShowSelectProposalPrompt))]
     private IReadOnlyList<object> _rows = [];
 
-    /// <summary>The selected Proposal whose details and actions appear beside the list.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSelectedProposal), nameof(ShowSelectProposalPrompt),
-        nameof(SelectedOpenAutomationId), nameof(SelectedTryAgainAutomationId), nameof(SelectedReopenAutomationId),
-        nameof(SelectedDeleteAutomationId))]
     private ProposalCardViewModel? _selectedProposal;
+    private bool _selectingInCode;
+
+    /// <summary>
+    /// The selected Proposal whose details and actions appear beside the list. A person's choice of another one, by a
+    /// row click or an arrow key, is refused while the selected one's Rationale edit is unsaved, and the list is told
+    /// the selection stayed; a re-read, Finalize or Delete reselects through.
+    /// </summary>
+    public ProposalCardViewModel? SelectedProposal
+    {
+        get => _selectedProposal;
+        set
+        {
+            if (ReferenceEquals(_selectedProposal, value)) return;
+            if (!_selectingInCode && KeepsUnsavedEdit(value?.ProposalId))
+            {
+                OnPropertyChanged();
+                return;
+            }
+            OnSelectedProposalChanging(value);
+            OnPropertyChanging();
+            _selectedProposal = value;
+            OnSelectedProposalChanged(value);
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelectedProposal));
+            OnPropertyChanged(nameof(ShowSelectProposalPrompt));
+            OnPropertyChanged(nameof(SelectedOpenAutomationId));
+            OnPropertyChanged(nameof(SelectedTryAgainAutomationId));
+            OnPropertyChanged(nameof(SelectedReopenAutomationId));
+            OnPropertyChanged(nameof(SelectedDeleteAutomationId));
+        }
+    }
+
+    // True, and says so on the editor, when choosing proposalId would leave an unsaved Rationale edit.
+    private bool KeepsUnsavedEdit(string? proposalId)
+    {
+        if (RationaleEditor is not { HasUnsavedChanges: true } editing || editing.ProposalId == proposalId) return false;
+        editing.MarkSwitchRefused();
+        return true;
+    }
 
     /// <summary>The selected Proposal's saved Difference, or the offer to make one.</summary>
     public ProposalDifferenceViewModel Difference { get; }
@@ -893,6 +927,10 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         ProposalListFilter? nextFilter = SelectedGroupFilter == filter ? null : filter;
         if (nextFilter is { } requested && CountFor(requested) == 0) return;
+        // A filter that would hide the Proposal whose Rationale edit is unsaved is not applied.
+        if (nextFilter is { } hiding && RationaleEditor is { HasUnsavedChanges: true } editing &&
+            _standings.Proposals.FirstOrDefault(card => card.ProposalId == editing.ProposalId) is { } edited &&
+            !IsInFilter(edited.Group, hiding) && KeepsUnsavedEdit(null)) return;
         SelectedGroupFilter = nextFilter;
         if (SelectedGroupFilter == ProposalListFilter.Closed && !_includeSetAside)
         {
@@ -920,11 +958,7 @@ public sealed partial class ProposalsPageModel : PageModel
     // A person's choice marks a row read and is refused (false) while another Proposal's Rationale edit is unsaved.
     private bool SelectByUser(ProposalCardViewModel card)
     {
-        if (RationaleEditor is { HasUnsavedChanges: true } editing && editing.ProposalId != card.ProposalId)
-        {
-            editing.MarkSwitchRefused();
-            return false;
-        }
+        if (KeepsUnsavedEdit(card.ProposalId)) return false;
         _pendingUserSelectionId = card.ProposalId;
         SetSelectedProposal(card);
         _pendingUserSelectionId = null;
@@ -953,15 +987,25 @@ public sealed partial class ProposalsPageModel : PageModel
     private static string ProposalCountText(int count) =>
         PluralText.Format(MotifAppStrings.ProposalCountPattern, count);
 
+    // Selection by the page itself: a re-read, Finalize, Delete, or a person's choice SelectByUser has let through.
     private void SetSelectedProposal(ProposalCardViewModel? proposal)
     {
         if (ReferenceEquals(SelectedProposal, proposal)) return;
-        SelectedProposal = proposal;
+        var outer = _selectingInCode;
+        _selectingInCode = true;
+        try
+        {
+            SelectedProposal = proposal;
+        }
+        finally
+        {
+            _selectingInCode = outer;
+        }
     }
 
-    partial void OnSelectedProposalChanging(ProposalCardViewModel? value) => _selectedProposal?.SetSelected(false);
+    private void OnSelectedProposalChanging(ProposalCardViewModel? value) => _selectedProposal?.SetSelected(false);
 
-    partial void OnSelectedProposalChanged(ProposalCardViewModel? value)
+    private void OnSelectedProposalChanged(ProposalCardViewModel? value)
     {
         _selectionByUser = value is not null && value.ProposalId == _pendingUserSelectionId;
         value?.SetSelected(true);

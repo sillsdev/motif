@@ -730,6 +730,65 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task ARowClickOrArrowKeyDoesNotLeaveAnUnsavedRationaleEditAndTheListSnapsBack()
+    {
+        var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
+            Card("p/two", "Two", ProposalGroup.WaitingForYou)));
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label",
+                new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false), null, [])));
+        var cards = page.Groups[0].Cards;
+        page.SelectProposalCommand.Execute(cards[1]);
+        page.SelectProposalCommand.Execute(cards[0]);
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[^1].Text += " Typed.";
+        var told = 0;
+        page.PropertyChanged += (_, e) => told += e.PropertyName == nameof(ProposalsPageModel.SelectedProposal) ? 1 : 0;
+
+        page.SelectedProposal = cards[1];
+
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.Equal(1, told);
+        Assert.Same(editor, page.RationaleEditor);
+        Assert.True(editor.IsEditing);
+        Assert.True(editor.IsSwitchRefused);
+        Assert.Equal("Why. Typed.", editor.Text());
+        editor.CancelCommand.Execute(null);
+        page.SelectedProposal = cards[1];
+        Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
+    }
+
+    [Fact]
+    public async Task AGroupFilterThatWouldHideAnUnsavedRationaleEditIsNotApplied()
+    {
+        var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
+            Card("p/mine", "Mine", ProposalGroup.NotAppliedYet)));
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label",
+                new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false), null, [])));
+        var cards = page.Groups.SelectMany(group => group.Cards).ToArray();
+        page.SelectProposalCommand.Execute(cards.Single(card => card.ProposalId == "p/mine"));
+        page.SelectProposalCommand.Execute(cards.Single(card => card.ProposalId == "p/one"));
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[^1].Text += " Typed.";
+
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.YourChangesNotAppliedYet);
+
+        Assert.Null(page.SelectedGroupFilter);
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.Same(editor, page.RationaleEditor);
+        Assert.True(editor.IsSwitchRefused);
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+        Assert.Equal(ProposalListFilter.WaitingForYou, page.SelectedGroupFilter);
+        Assert.Same(editor, page.RationaleEditor);
+        Assert.Equal("Why. Typed.", editor.Text());
+    }
+
+    [Fact]
     public async Task ARowsDeleteMenuDoesNotLeaveAnUnsavedRationaleEdit()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(

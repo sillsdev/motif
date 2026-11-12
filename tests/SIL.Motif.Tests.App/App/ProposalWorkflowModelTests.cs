@@ -69,7 +69,6 @@ public sealed class ProposalWorkflowModelTests
         await context.OpenProjectAsync(Path);
         await page.DetailReading;
         var editor = page.RationaleEditor!;
-        var card = page.SelectedProposal;
         var marked = false;
         fake.SetRationaleHandler = request =>
         {
@@ -78,8 +77,8 @@ public sealed class ProposalWorkflowModelTests
             {
                 Rationale = new RationaleView(request.Text, null, "2026-10-02", false, null, false),
             };
-            page.SelectedProposal = null;
-            page.SelectedProposal = card;
+            // A real re-read of the list: the fake answers at once.
+            _ = page.EvidencePublishedAsync(context.EvidenceLens, CancellationToken.None);
             marked = editor.IsChangedElsewhere;
             return null;
         };
@@ -107,10 +106,8 @@ public sealed class ProposalWorkflowModelTests
         var editor = page.RationaleEditor!;
         editor.EditCommand.Execute(null);
         editor.Document.Paragraphs[0].Runs[^1].Text += " Typed.";
-        var card = page.SelectedProposal;
 
-        page.SelectedProposal = null;
-        page.SelectedProposal = card;
+        await page.EvidencePublishedAsync(context.EvidenceLens, CancellationToken.None);
         await page.DetailReading;
 
         Assert.Same(editor, page.RationaleEditor);
@@ -121,8 +118,7 @@ public sealed class ProposalWorkflowModelTests
         {
             Rationale = new RationaleView("Changed elsewhere.", null, "2026-10-02", false, null, false),
         };
-        page.SelectedProposal = null;
-        page.SelectedProposal = card;
+        await page.EvidencePublishedAsync(context.EvidenceLens, CancellationToken.None);
         await page.DetailReading;
 
         Assert.Same(editor, page.RationaleEditor);
