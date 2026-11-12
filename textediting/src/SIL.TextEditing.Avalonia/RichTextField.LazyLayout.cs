@@ -17,6 +17,8 @@ namespace SIL.TextEditing.Avalonia
         int _heightAnchor;
         double _anchorShift;
         bool _anchorAtEnd;
+        bool _drawing;
+        bool _measureAfterDrawing;
 
         void ViewportChanged(object? sender, EffectiveViewportChangedEventArgs e)
         {
@@ -84,7 +86,20 @@ namespace SIL.TextEditing.Avalonia
             info.Height = height;
             if (Math.Abs(change) < 0.001) return;
             if (_onScreen && index < _heightAnchor) _anchorShift += change;
-            InvalidateMeasure();
+            if (_drawing) AskForMeasureAfterDrawing();
+            else InvalidateMeasure();
+        }
+
+        // Avalonia throws when a visual is invalidated during the render pass, and a layout built while drawing can change a height.
+        void AskForMeasureAfterDrawing()
+        {
+            if (_measureAfterDrawing) return;
+            _measureAfterDrawing = true;
+            OwnDispatcher.Post(() =>
+            {
+                _measureAfterDrawing = false;
+                InvalidateMeasure();
+            }, global::Avalonia.Threading.DispatcherPriority.Background);
         }
 
         void LayoutVisibleParagraphs()
