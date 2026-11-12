@@ -21,6 +21,8 @@ public static partial class MeasureRunner
             DecideAlternationFamilies),
         [ParsimonyQueryIds.StatementUnused] = Query(session => session.ReadStatementUsageInput(),
             DecideUnusedStatements),
+        [ParsimonyQueryIds.EnvironmentDuplicate] = Query(session => session.ReadEnvironmentDuplicateInput(),
+            DecideDuplicateEnvironments),
         [ParsimonyQueryIds.TemplatePrecedence] = Query(session => session.ReadTemplateSequenceFacts(),
             DecideTemplatePrecedence),
         [ParsimonyQueryIds.SlotBlocking] = Query(session => session.ReadTemplateSequenceFacts(),

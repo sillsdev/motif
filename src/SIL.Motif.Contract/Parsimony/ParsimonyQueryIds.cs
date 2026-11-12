@@ -26,6 +26,9 @@ public static class ParsimonyQueryIds
     /// <summary>The wire spelling <c>disapproved-produced/v1</c>.</summary>
     public const string DisapprovedProduced = "disapproved-produced/v1";
 
+    /// <summary>The wire spelling <c>environment-duplicate/v1</c>.</summary>
+    public const string EnvironmentDuplicate = "environment-duplicate/v1";
+
     /// <summary>The wire spelling <c>environment-excess/v1</c>.</summary>
     public const string EnvironmentExcess = "environment-excess/v1";
 

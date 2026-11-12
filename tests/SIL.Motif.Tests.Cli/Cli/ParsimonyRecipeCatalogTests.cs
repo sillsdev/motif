@@ -132,6 +132,7 @@ public sealed class ParsimonyRecipeCatalogTests
             ["B-affix-null-vs-optional"] = ["RetireRedundantZeroAffix"],
             ["P-allo-duplicate-form"] = ["RetireAllomorph"],
             ["P-statement-unused"] = [],
+            ["P-env-duplicate"] = [],
         };
 
         Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), catalog.Recipes.Select(recipe => recipe.MeasureId));

@@ -110,6 +110,10 @@ public enum ParsimonyGroupKind
     /// <summary>A set of authored environment or natural-class statements.</summary>
     [JsonStringEnumMemberName("unused-statement")]
     UnusedStatement,
+
+    /// <summary>A set of environments whose left and right sides match token for token.</summary>
+    [JsonStringEnumMemberName("duplicate-environments")]
+    DuplicateEnvironments,
 }
 
 /// <summary>The completeness of recipe-level before and after verification.</summary>

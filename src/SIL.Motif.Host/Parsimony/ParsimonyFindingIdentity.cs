@@ -67,6 +67,10 @@ public static class ParsimonyFindingIdentity
     /// <summary>The group key shared by every unused statement of one kind.</summary>
     public static string StatementGroupKey(string statementKind) => $"statement/{statementKind}";
 
+    /// <summary>The identity and group key of a set of duplicate environments, named by its member GUIDs.</summary>
+    public static string DuplicateEnvironmentsIdentity(IEnumerable<string> memberIds) =>
+        "duplicate-environments/" + Digest(string.Join("\n", memberIds));
+
     /// <summary>The identity of an alternation family, derived from its exact family key.</summary>
     public static string AlternationFamilyIdentity(string familyKey) => "alternation-family/" + Digest(familyKey);
 
@@ -95,7 +99,7 @@ public static class ParsimonyFindingIdentity
             ParsimonyGroupKind.AllomorphDuplicateForms => key is not null &&
                 key.StartsWith("entry/", StringComparison.Ordinal) &&
                 identity.StartsWith(key + "/duplicate-forms/", StringComparison.Ordinal),
-            ParsimonyGroupKind.AlternationFamily => identity == key,
+            ParsimonyGroupKind.AlternationFamily or ParsimonyGroupKind.DuplicateEnvironments => identity == key,
             ParsimonyGroupKind.AdhocSlotOrder => key is not null && identity == AdhocSlotOrderIdentity(key),
             _ => false,
         };
@@ -143,6 +147,7 @@ public static class ParsimonyFindingIdentity
             AllomorphClasses.Contains(className),
         ParsimonyGroupKind.AdhocSlotOrder => AdhocClasses.Contains(className),
         ParsimonyGroupKind.UnusedStatement => StatementClasses.Contains(className),
+        ParsimonyGroupKind.DuplicateEnvironments => className == "PhEnvironment",
         _ => false,
     };
 
