@@ -61,9 +61,9 @@ The paths differ in one thing: **what a Proposal is applied to**.
 - Processes: as Path 1.
 - Stores: live data (read only for us); the fork folder beside `motif.db` (disposable); `motif.db` (Proposals, GDRs, targets: the only thing worth backing up).
 - The seam is one function, `CopyLive(source) → .fwdata`:
-  - `.fwdata` source: copy the file. No LibLCM lock is needed to copy, and Baseline capture already works with FieldWorks open (motif.md §2).
-  - CRDT source: write the CRDT's lexicon into a blank template `.fwdata` using LexBox's `MiniLcmImport.ImportProject(importTo, importFrom)` (checked: the signature is generic over `IMiniLcmApi`; this direction is untested). Grammar starts empty, because the CRDT has none, and the Proposals build it.
-  - After that both sources look identical to Motif. Apply targets the fork path instead of the live path; the engine is unchanged.
+  - `.fwdata` Home: copy the file. No LibLCM lock is needed to copy, and Baseline capture already works with FieldWorks open (motif.md §2).
+  - CRDT Home: write the CRDT's lexicon into a blank template `.fwdata` using LexBox's `MiniLcmImport.ImportProject(importTo, importFrom)` (checked: the signature is generic over `IMiniLcmApi`; this direction is untested). Grammar starts empty, because the CRDT has none, and the Proposals build it.
+  - After that both Homes look identical to Motif. Apply targets the fork path instead of the live path; the engine is unchanged.
 - Rebase is a rebuild: when the live data changes, `CopyLive` again and replay the approved Proposals through the existing gates. No merge code. A Proposal that no longer fits stops the replay at that card: Use mine / Use theirs / Fix with chatbot. Then the tests rerun, as CI would.
 - PanGloss: `pangloss serve` on the fork, restarted after each rebuild.
 - Evidence: as Path 1. Because nothing we do reaches the live lexicon, a translator's inflected-word gloss can never become an entry through us.

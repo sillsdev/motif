@@ -1,4 +1,4 @@
-# Spike 4: Trial timing on a log source
+# Spike 4: Trial timing on a log Home
 
 Branch `trial-timing` (worktree ~/work/sb-spike-trial, from 76e200c; commits 46864ab, 143f128). Harness: `tests/SbSpike.Tests/TrialTiming.cs`. Run: `TRIAL_ENTRIES=20000 TRIAL_SIZES=20,5,50 dotnet test --filter Time_a_trial`.
 

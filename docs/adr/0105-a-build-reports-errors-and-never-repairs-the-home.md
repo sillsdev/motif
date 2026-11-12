@@ -1,9 +1,9 @@
-# 0105. A Build reports errors and never repairs the source
+# 0105. A Build reports errors and never repairs the Home
 
 **In plain terms:** Like a compiler, a Build says what is wrong and where. It never quietly changes the grammar to
 make the error go away.
 
-**Status:** proposed, 2026-11-10. Depends on [ADR 0101](0101-a-project-source-is-fwdata-or-a-harmony-log-everything-else-is-built.md).
+**Status:** proposed, 2026-11-10. Depends on [ADR 0101](0101-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md).
 
 ## Decision
 

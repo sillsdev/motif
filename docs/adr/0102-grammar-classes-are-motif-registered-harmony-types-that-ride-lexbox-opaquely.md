@@ -3,7 +3,7 @@
 **In plain terms:** FW Lite has no grammar yet. Motif adds the grammar to the same history FW Lite keeps. FW Lite
 and the LexBox server carry those additions along unchanged without needing to understand them.
 
-**Status:** proposed, 2026-11-10. Depends on [ADR 0101](0101-a-project-source-is-fwdata-or-a-harmony-log-everything-else-is-built.md).
+**Status:** proposed, 2026-11-10. Depends on [ADR 0101](0101-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md).
 
 ## Decision
 
@@ -32,7 +32,7 @@ and the LexBox server carry those additions along unchanged without needing to u
 - A known change against an entity whose create FW Lite saw as opaque throws during replay (`EditChange` calls
   `NewEntity`). Motif must never emit an LcmCrdt change type against a Motif-typed entity. **Not yet tested.**
 - The FwHeadless sync writes grammar-adjacent objects as side effects: it creates a lexeme-form allomorph per new
-  entry and an MSA when a sense's POS is set. Those writes target the team's .fwdata, not the source. While a
+  entry and an MSA when a sense's POS is set. Those writes target the team's .fwdata, not the Home. While a
   project still syncs .fwdata through FwHeadless, the .fwdata has two writers. Open (ADR 0101).
 
 ## Alternatives

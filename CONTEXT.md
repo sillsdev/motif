@@ -134,14 +134,14 @@ Proposal on request and deleted when the Proposal's content changes or it is dec
 applied. Not a **Baseline**.
 _Avoid_: preview project, backup, baseline
 
-**Source** (of a project):
-Where a project's lexicon and grammar really live: a FieldWorks project or an FW Lite project's history. A Proposal is
-applied to the source; everything else is built from it
-([ADR 0101](docs/adr/0101-a-project-source-is-fwdata-or-a-harmony-log-everything-else-is-built.md)).
-_Avoid_: master copy, database, backend
+**Home** (of a project):
+Where a project's lexicon and grammar really live: a FieldWorks project (.fwdata) or an FW Lite project's history (a
+Harmony log). A Proposal is applied to the Home; everything else is built from it
+([ADR 0101](docs/adr/0101-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md)).
+_Avoid_: source (that is the Paratext project), master copy, database, backend
 
 **Build**:
-Making what a tool reads, such as the parser's grammar or a FieldWorks project, from a project's Source. A Build
+Making what a tool reads, such as the parser's grammar or a FieldWorks project, from a project's Home. A Build
 reports problems and never fixes them. It is internal: people see "parser updated" or a problem to fix, not a Build.
 _Avoid_: compile, realize, materialize, render, Lowering (which turns one operation into store changes)
 
@@ -221,7 +221,7 @@ _Avoid_: Deploy, Release, Publish, Production, Send
 **Source** (of scripture):
 A whole Paratext project, or a folder of corpus files, with one versification. Motif reads its text and never copies it
 into the FieldWorks project ([ADR 0110](docs/adr/0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md)).
-_Avoid_: import, corpus copy
+_Avoid_: import, corpus copy, home
 
 **Passage**:
 One chapter of a Source; for a corpus, one document.

@@ -8,7 +8,7 @@ a meeting with the interlinearizer team ([interlinearizer-meeting.md](../source-
 
 ## Decision
 
-1. **Per-occurrence approval is the source.** FieldWorks' per-analysis approval is derived from it when a .fwdata is
+1. **Per-occurrence approval is the ground truth.** FieldWorks' per-analysis approval is derived from it when a .fwdata is
    built, and an export from .fwdata turns each `AnalysesRS` slot whose analysis is human-approved into an approved
    occurrence. That holds for a legacy FieldWorks USFM import. For the Paratext 10 flow,
    [ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md) stores the approvals directly on
@@ -55,9 +55,9 @@ replay and checkpoints upstream. Open; it joins the "one store or two" question 
 
 ## Note, 2026-11-12: ADR 0110
 
-[ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md) settles the storage for the Paratext 10 flow with a .fwdata source: per-occurrence judgements are a versioned
+[ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md) settles the storage for the Paratext 10 flow with a .fwdata Home: per-occurrence judgements are a versioned
 JSON field on WfiWordform, anchored `MAT 5:3#2`, and scripture is never copied into the project. This ADR's states
 (approved, rejected, Passed over as derived) and its re-anchoring rules (section 5) still apply; 0110 cites them.
-For a log source, the same judgements would be a Motif-registered field on the wordform, not separate link objects,
+For a log Home, the same judgements would be a Motif-registered field on the wordform, not separate link objects,
 which also removes the 700k-link replay cost in the scale consequences. That is to be decided with the first backend
 slice and the interlinearizer meeting (one anchor format, 0110 decision 12).

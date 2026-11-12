@@ -3,7 +3,7 @@
 **In plain terms:** Ordinary edits in FW Lite are saved immediately, as in Google Docs. A Proposal's changes are
 kept aside, as in a pull request, until a person applies them. Applying them adds them to the history like any other edit.
 
-**Status:** proposed, 2026-11-10. Depends on [ADR 0101](0101-a-project-source-is-fwdata-or-a-harmony-log-everything-else-is-built.md).
+**Status:** proposed, 2026-11-10. Depends on [ADR 0101](0101-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md).
 
 ## Decision
 
@@ -16,7 +16,7 @@ kept aside, as in a pull request, until a person applies them. Applying them add
    because Harmony cannot sync only some commits; Apply, by the one grammar owner (phase-1 decision #23), commits
    them as ordinary changes.
 3. **Recorded base.** Each revision records the head commit it was written against, as its base.
-4. **Dry Run and Trial** copy the source (`BackupDatabase`, the route FW Lite's sync dry run uses), commit the
+4. **Dry Run and Trial** copy the Home (`BackupDatabase`, the route FW Lite's sync dry run uses), commit the
    Proposal to the copy, Build and measure. The copy is thrown away.
 5. **Stale check before Apply.** For every property the Proposal touches, Apply compares base with head. If someone
    else changed that property since the base, the change "no longer fits" and goes to the existing Update baseline
