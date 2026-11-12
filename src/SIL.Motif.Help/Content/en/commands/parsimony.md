@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Capture a Baseline first. This command does not capture or refresh one. Creating the Report requires PanGloss to import the Baseline and write grammar facts; the completed Report can be read later without PanGloss.
+A Grammar-group check (or `--measure all`) captures a Baseline first when none is current, as `--group` does; it never refreshes an existing one. Text and Parser-tier checks need a Baseline already. Creating the Report requires PanGloss to import the Baseline and write grammar facts; the completed Report can be read later without PanGloss.
 
 ## Minimal CLI path
 

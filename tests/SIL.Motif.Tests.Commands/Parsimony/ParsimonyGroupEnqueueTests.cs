@@ -7,7 +7,9 @@ using SIL.Motif.Contract.Requests;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
@@ -111,6 +113,61 @@ public sealed class ParsimonyGroupEnqueueTests
             Assert.Equal("parsimony-selection", Prop(scope, "kind").GetString());
             Assert.Equal("Texts", Prop(Prop(scope, "selection"), "name").GetString());
         }
+    }
+
+    [Fact]
+    public void AGrammarMeasureOrAllTriesToCaptureAMissingBaselineBeforeQueueing()
+    {
+        // A marker file cannot be captured, so the refusal is the capture's own: nothing is queued.
+        foreach (var measureId in new[] { "P-statement-unused", ParsimonyAdmission.AllMeasures })
+        {
+            var path = NewMarkerProject();
+            var refused = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(path, "1.0", measureId,
+                ParsimonyEvidenceScopeKind.ProjectApproved, []));
+
+            Assert.False(refused.Succeeded);
+            Assert.NotEqual("baseline.missing", refused.Refusal!.Code);
+            Assert.False(HasBaseline(path));
+        }
+    }
+
+    [Fact]
+    public void AMeasureOutsideTheGrammarGroupDoesNotTryToCapture()
+    {
+        var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(NewMarkerProject(), "1.0",
+            "B-affix-unslotted", ParsimonyEvidenceScopeKind.ProjectApproved, []));
+
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+    }
+
+    private static string NewMarkerProject()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ParsimonyMeasureBaseline", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "project.fwdata");
+        File.WriteAllText(path, "project marker");
+        return path;
+    }
+
+    [Fact]
+    public void AllWithNamedAssessmentsDoesNotCaptureABaselineAndRefusesWithoutOne()
+    {
+        var path = NewMarkerProject();
+
+        var refused = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(path, "1.0",
+            ParsimonyAdmission.AllMeasures, ParsimonyEvidenceScopeKind.ProjectApproved, ["assessment/one"]));
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal("parsimony.assessment-baseline-mismatch", refused.Refusal!.Code);
+        Assert.False(HasBaseline(path));
+    }
+
+    private static bool HasBaseline(string fwDataPath)
+    {
+        var project = new ProjectLocator(fwDataPath, "project");
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        return new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project)) is not null;
     }
 
     private static StoredSelectionFixture Fixture()
