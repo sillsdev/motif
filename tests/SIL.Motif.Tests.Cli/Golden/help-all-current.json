@@ -629,6 +629,32 @@
     },
     {
       "kind": "command",
+      "code": "compose-delete-environment",
+      "slug": "compose-delete-environment",
+      "title": "Delete a phonological environment",
+      "description": "Deletes a phonological environment that no allomorph, rule or other object uses. It refuses an environment still in use and names each user. Motif stages a Draft for a person to review and Apply.",
+      "helpPage": "# Delete a phonological environment\n\nDeletes a phonological environment that no allomorph, rule or other object uses. It refuses an environment still in use and names each user.\n\n\u0060\u0060\u0060sh\nmotif compose-delete-environment --project language.fwdata --draft cleanup \\\n  --intent \u0027{\u0022environment\u0022: \u0022\u003Cenvironment-id\u003E\u0022, \u0022expectedText\u0022: \u0022/ _ [C]\u0022}\u0027\n\u0060\u0060\u0060\n\n\u0060environment\u0060 and \u0060expectedText\u0060 are required and the intent is closed. \u0060expectedText\u0060 must match the current value, so a wrong or stale target is refused and nothing is staged. The command refuses, changing nothing, while any allomorph, rule or other object refers to the environment, and names each with its class, id and entry.\n\nIn FieldWorks: Grammar, Phonology, Environments, select the environment, Delete.\n\nUse this editor through the CLI. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 to cite the operation. Only a person can Apply the Proposal.\n",
+      "usage": [
+        "Usage: motif compose-delete-environment --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-environment/"
+    },
+    {
+      "kind": "command",
+      "code": "compose-delete-exception-feature",
+      "slug": "compose-delete-exception-feature",
+      "title": "Delete an exception feature",
+      "description": "Deletes an item of the Exception Features list that nothing refers to any more. It refuses while anything still uses it and names each user. Motif stages a Draft for a person to review and Apply.",
+      "helpPage": "# Delete an exception feature\n\nDeletes an item of the Exception Features list that nothing refers to any more.\n\n\u0060\u0060\u0060sh\nmotif compose-delete-exception-feature --project language.fwdata --draft cleanup \\\n  --intent \u0027{\u0022feature\u0022: \u0022\u003Cfeature-id\u003E\u0022, \u0022expectedName\u0022: \u0022\u003Ccurrent feature name\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\n\u0060feature\u0060 and \u0060expectedName\u0060 are required and the intent is closed. \u0060expectedName\u0060 must match the current value, so a wrong or stale target is refused and nothing is staged. The command refuses, changing nothing, while any other object refers to the feature, an item that has sub-items, or an item that is not in the Exception Features list. The message names each referrer with its class, id and entry. Take the feature off those with \u0060compose-edit-exception-features\u0060 (or \u0060compose-edit-derivational-affix-restriction\u0060 for affix from and to features) first, in the same Draft or an earlier one.\n\nIn FieldWorks: Grammar, Exception Features, select the item, Delete. \u0060compose-edit-exception-features\u0060 takes the feature off the stems and affixes that carry it first.\n\nUse this editor through the CLI. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 to cite the operation. Only a person can Apply the Proposal.\n",
+      "usage": [
+        "Usage: motif compose-delete-exception-feature --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-exception-feature/"
+    },
+    {
+      "kind": "command",
       "code": "compose-delete-lexical-entry",
       "slug": "compose-delete-lexical-entry",
       "title": "Delete an entry",
@@ -639,6 +665,19 @@
       ],
       "surface": "AdvancedAi",
       "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-lexical-entry/"
+    },
+    {
+      "kind": "command",
+      "code": "compose-delete-natural-class",
+      "slug": "compose-delete-natural-class",
+      "title": "Delete a natural class",
+      "description": "Deletes a natural class that nothing uses: no rule or other class refers to it, and no environment string writes its name or abbreviation in square brackets. It refuses otherwise and names each user. Motif stages a Draft for a person to review and Apply.",
+      "helpPage": "# Delete a natural class\n\nDeletes a natural class that nothing uses: no rule or other class refers to it, and no environment string writes its name or abbreviation in square brackets. It refuses otherwise and names each user.\n\n\u0060\u0060\u0060sh\nmotif compose-delete-natural-class --project language.fwdata --draft cleanup \\\n  --intent \u0027{\u0022naturalClass\u0022: \u0022\u003Cnatural-class-id\u003E\u0022, \u0022expectedName\u0022: \u0022\u003Ccurrent class name\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\n\u0060naturalClass\u0060 and \u0060expectedName\u0060 are required and the intent is closed. \u0060expectedName\u0060 must match the current value, so a wrong or stale target is refused and nothing is staged. The command refuses, changing nothing, while a rule, another natural class or an object refers to the class, or an environment string contains \u0060[Name]\u0060 or \u0060[Abbreviation]\u0060 for it, and names each.\n\nIn FieldWorks: Grammar, Phonology, Natural Classes, select the class, Delete. Use \u0060compose-relink-natural-class\u0060 to point the users at another class first.\n\nUse this editor through the CLI. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 to cite the operation. Only a person can Apply the Proposal.\n",
+      "usage": [
+        "Usage: motif compose-delete-natural-class --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-natural-class/"
     },
     {
       "kind": "command",
@@ -665,6 +704,19 @@
       ],
       "surface": "AdvancedAi",
       "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-sense/"
+    },
+    {
+      "kind": "command",
+      "code": "compose-delete-text-segment-note",
+      "slug": "compose-delete-text-segment-note",
+      "title": "Delete a text segment Note",
+      "description": "Deletes one Note of a Text Segment, the objects compose-edit-text-notes sets. Motif stages a Draft for a person to review and Apply.",
+      "helpPage": "# Delete a text segment Note\n\nDeletes one Note of a Text Segment, the objects compose-edit-text-notes sets.\n\n\u0060\u0060\u0060sh\nmotif compose-delete-text-segment-note --project language.fwdata --draft cleanup \\\n  --intent \u0027{\u0022note\u0022: \u0022\u003Cnote-id\u003E\u0022, \u0022expectedText\u0022: \u0022\u003Ccurrent note text\u003E\u0022}\u0027\n\u0060\u0060\u0060\n\n\u0060note\u0060 and \u0060expectedText\u0060 are required and the intent is closed. \u0060expectedText\u0060 must match the current value, so a wrong or stale target is refused and nothing is staged. The command refuses, changing nothing, when the text differs from the Note\u0027s current text, or the id is not a Note of a Text Segment. Use \u0060compose-edit-text-notes\u0060 to replace a Note instead of deleting it.\n\nIn FieldWorks: Texts \u0026 Words, Interlinear Text, clear the Note line of the segment.\n\nUse this editor through the CLI. Add \u0060--cite-source \u003Ctext\u003E\u0060 and optionally \u0060--cite-locator \u003Ctext\u003E\u0060 to cite the operation. Only a person can Apply the Proposal.\n",
+      "usage": [
+        "Usage: motif compose-delete-text-segment-note --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-delete-text-segment-note/"
     },
     {
       "kind": "command",

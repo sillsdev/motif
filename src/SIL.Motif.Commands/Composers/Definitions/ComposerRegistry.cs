@@ -71,6 +71,10 @@ internal static class ComposerDefinitions
         new RetireBoundaryMarkerDefinition(),
         new MergeBoundaryMarkersDefinition(),
         new RetireAffixSlotDefinition(),
+        new DeleteExceptionFeatureDefinition(),
+        new DeleteEnvironmentDefinition(),
+        new DeleteNaturalClassDefinition(),
+        new DeleteTextSegmentNoteDefinition(),
         new RecordParsimonyDispositionDefinition(),
         new RecordSourceValidatedDecisionDefinition(),
     ];

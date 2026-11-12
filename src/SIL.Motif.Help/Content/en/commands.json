@@ -980,6 +980,63 @@
     ],
     "redirect": "Move the slot's affixes and drop it from its templates first. To rename it or make it optional, edit it instead (guide suffix-prefix-slots)."
   },
+  "compose-delete-exception-feature": {
+    "title": "Delete an exception feature",
+    "description": "Deletes an item of the Exception Features list that nothing refers to any more. It refuses while anything still uses it and names each user. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "feature": "Id of the exception feature to delete.",
+      "expectedName": "The feature's current name, in any writing system."
+    },
+    "goals": [
+      "Free room under the 64-feature cap",
+      "Drop a tag that nothing refers to any more",
+      "Delete a duplicate after merging its uses"
+    ]
+  },
+  "compose-delete-environment": {
+    "title": "Delete a phonological environment",
+    "description": "Deletes a phonological environment that no allomorph, rule or other object uses. It refuses an environment still in use and names each user. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "environment": "Id of the environment to delete.",
+      "expectedText": "The environment's current string, such as / _ [C], or its name."
+    },
+    "goals": [
+      "Delete an environment nothing uses",
+      "Clean up environments left behind by a rule or allomorph change"
+    ]
+  },
+  "compose-delete-natural-class": {
+    "title": "Delete a natural class",
+    "description": "Deletes a natural class that nothing uses: no rule or other class refers to it, and no environment string writes its name or abbreviation in square brackets. It refuses otherwise and names each user. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "naturalClass": "Id of the natural class to delete.",
+      "expectedName": "The class's current name, in any writing system."
+    },
+    "goals": [
+      "Delete a natural class nothing uses",
+      "Clean up classes left behind after a merge"
+    ]
+  },
+  "compose-delete-text-segment-note": {
+    "title": "Delete a text segment Note",
+    "description": "Deletes one Note of a Text Segment, the objects compose-edit-text-notes sets. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "note": "Id of the Note to delete.",
+      "expectedText": "The Note's current text, in any writing system."
+    },
+    "goals": [
+      "Remove a stale placeholder Note",
+      "Clear a Note that no longer applies"
+    ]
+  },
   "compose-retire-boundary-marker": {
     "title": "Retire a boundary marker",
     "description": "Removes a stray duplicate of the word or morpheme boundary marker from the first phoneme set, so a phonological rule with a boundary can be authored again. It refuses the standard marker and any marker a rule, environment or other object still uses; Motif stages a Draft for a person to review and Apply.",
