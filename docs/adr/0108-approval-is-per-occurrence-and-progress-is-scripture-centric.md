@@ -32,3 +32,21 @@ a meeting with the interlinearizer team ([interlinearizer-meeting.md](../source-
      guess, which is marked as such.
    - An occurrence that cannot be placed becomes *stale*.
    - Suggested and stale occurrences count as not approved. Nothing is ever approved automatically.
+
+## Consequences (spike, 2026-11-12)
+
+[spike-scale.md](../source-build/spike-scale.md) measured about 700k occurrence links in one Harmony log, a whole Bible
+approved. Steady-state single-user work is fine:
+- cold open: 0.04 s;
+- a book's links: 1 s;
+- 1000 approvals: about 5 s;
+- the Dry Run copy: 1–3 s.
+
+Two things do not scale:
+- **Replaying an out-of-order commit** took 326 s at full size and 10 s at 70k, so it grows faster than linearly.
+- **A full sync to a new client** took 205 s and used 4.3 GB of memory.
+
+Approvals arrive chapter by chapter, so a phase-1 project holds a small fraction of this. But a team syncing a mostly
+approved Bible in one log would hit both problems. Before that scale, either split the occurrence links into their own
+log per book or per Paratext project, which the interlinearizer's per-project store already does, or fix Harmony's
+replay and checkpoints upstream. Open; it joins the "one store or two" question for the interlinearizer meeting.
