@@ -41,3 +41,19 @@ named against Harmony's last-writer-wins `SetOrderChange`.
   intent, so a feeding order would still need a test.
 - **`double Order` with midpoint insertion, as FW Lite does today:** concurrent inserts get equal values and are
   interleaved by id. The result is valid but unintended, and nothing reports it.
+
+## Amendment, 2026-11-12: definitions from the spike
+
+The spike `sb-spike-order` (19 tests, including three 1000-seed property tests; [spike-order.md](../source-build/spike-order.md))
+pinned down what decision 2 left open:
+
+1. **Moved** means the common members outside a longest common subsequence of base and mine: the fewest members to
+   relocate. Ties break deterministically.
+2. **Not placeable is stale.** If head's changes leave no position that satisfies all of mine's before and after
+   constraints for a touched member, the result is stale and goes to Update baseline. It is never placed by a guess.
+3. Placement uses **all** of mine's before and after constraints, not only the predecessor.
+4. When both sides insert at the same spot, **mine goes after head's.** A Proposal is replayed onto head, as in a rebase.
+5. Both sides inserting the **same GUID** (possible with deterministic GUIDs) is stale unless both put it in the same
+   relative position.
+6. A duplicate GUID in any list is invalid input. A missing member is checked against the owner's member set, which the
+   Build supplies, and is a build error (ADR 0105).
