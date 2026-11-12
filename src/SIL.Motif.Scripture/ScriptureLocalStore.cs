@@ -23,7 +23,7 @@ public sealed record ScriptureLocalState(
 /// <remarks>
 /// It lives outside every project folder and Baseline, so it is never synced and never copied with a project. The file is
 /// read whole and written whole through a temporary file that is then moved over it, so a reader sees the old file or the
-/// new one, never half of either. A file that is missing or unreadable reads as empty. Each change reads the file again
+/// new one, never half of either. A file that is missing or unreadable reads as empty; one that is not valid JSON is first moved aside to <c>scripture-local.json.bad</c> so the next write cannot destroy it. Each change reads the file again
 /// first, so two projects in different processes do not lose each other's entries (only two writes in the very same
 /// instant can, and the later wins). The project id is any stable text the caller chooses for the project.
 /// </remarks>
@@ -80,23 +80,23 @@ public sealed class ScriptureLocalStore
         var normalized = chapter with { Book = chapter.Book.ToUpperInvariant() };
         if (source is not null && !source.HasChapter(normalized))
             throw new ArgumentException($"The Source '{sourceId}' has no chapter {normalized}.", nameof(chapter));
-        Change(projectId, sourceId, record => record.Current[sourceId] = normalized.ToString());
+        Change(projectId, sourceId, record => record.Current![sourceId] = normalized.ToString());
     }
 
     /// <summary>Forgets the Current chapter of the Source.</summary>
     public void ClearCurrent(string projectId, string sourceId) =>
-        Change(projectId, sourceId, record => record.Current.Remove(sourceId));
+        Change(projectId, sourceId, record => record.Current!.Remove(sourceId));
 
     /// <summary>Records the folder of the Source on this machine.</summary>
     public void SetSourcePath(string projectId, string sourceId, string folder)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(folder);
-        Change(projectId, sourceId, record => record.SourcePaths[sourceId] = folder);
+        Change(projectId, sourceId, record => record.SourcePaths![sourceId] = folder);
     }
 
     /// <summary>Forgets the folder of the Source.</summary>
     public void ClearSourcePath(string projectId, string sourceId) =>
-        Change(projectId, sourceId, record => record.SourcePaths.Remove(sourceId));
+        Change(projectId, sourceId, record => record.SourcePaths!.Remove(sourceId));
 
     /// <summary>
     /// The folder to open for the Source: <paramref name="pluginPath"/> when the Paratext plugin supplied one (it always
@@ -116,8 +116,10 @@ public sealed class ScriptureLocalStore
         {
             var all = Load();
             if (!all.TryGetValue(projectId, out var record)) all[projectId] = record = new ProjectRecord();
+            record.Current ??= new(StringComparer.OrdinalIgnoreCase);
+            record.SourcePaths ??= new(StringComparer.OrdinalIgnoreCase);
             change(record);
-            if (record.Current.Count == 0 && record.SourcePaths.Count == 0) all.Remove(projectId);
+            if (record.Current!.Count == 0 && record.SourcePaths!.Count == 0) all.Remove(projectId);
             Save(all);
         }
     }
@@ -125,10 +127,10 @@ public sealed class ScriptureLocalStore
     private static ScriptureLocalState ToState(ProjectRecord? record)
     {
         if (record is null) return ScriptureLocalState.Empty;
-        var current = new Dictionary<string, ChapterRef>();
-        foreach (var (sourceId, text) in record.Current)
+        var current = new Dictionary<string, ChapterRef>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (sourceId, text) in record.Current!)
             if (TryParseChapter(text, out var chapter)) current[sourceId] = chapter;
-        return new ScriptureLocalState(current, new Dictionary<string, string>(record.SourcePaths));
+        return new ScriptureLocalState(current, new Dictionary<string, string>(record.SourcePaths!, StringComparer.OrdinalIgnoreCase));
     }
 
     private static bool TryParseChapter(string text, out ChapterRef chapter)
@@ -146,11 +148,46 @@ public sealed class ScriptureLocalStore
         {
             if (!File.Exists(_path)) return [];
             var document = JsonSerializer.Deserialize<FileDocument>(File.ReadAllText(_path), JsonOptions);
-            return document?.Projects ?? [];
+            return Normalize(document?.Projects);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
+        catch (JsonException)
+        {
+            SetAsideCorruptFile();
+            return [];
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             return [];
+        }
+    }
+
+    // A file that parses but holds nulls reads as empty; source ids match ignoring case, like the Source list.
+    private static Dictionary<string, ProjectRecord> Normalize(Dictionary<string, ProjectRecord?>? projects)
+    {
+        var result = new Dictionary<string, ProjectRecord>();
+        foreach (var (projectId, record) in projects ?? [])
+        {
+            if (record is null) continue;
+            result[projectId] = new ProjectRecord
+            {
+                Current = new Dictionary<string, string>(
+                    (record.Current ?? []).Where(pair => pair.Value is not null), StringComparer.OrdinalIgnoreCase),
+                SourcePaths = new Dictionary<string, string>(
+                    (record.SourcePaths ?? []).Where(pair => pair.Value is not null), StringComparer.OrdinalIgnoreCase),
+            };
+        }
+        return result;
+    }
+
+    // The next write would replace the damaged file, so keep it beside the real one for the person to recover.
+    private void SetAsideCorruptFile()
+    {
+        try
+        {
+            File.Move(_path, _path + ".bad", overwrite: true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
         }
     }
 
@@ -163,7 +200,7 @@ public sealed class ScriptureLocalStore
         {
             using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                JsonSerializer.Serialize(stream, new FileDocument { Projects = projects }, JsonOptions);
+                JsonSerializer.Serialize(stream, new FileDocument { Projects = projects.ToDictionary(pair => pair.Key, pair => (ProjectRecord?)pair.Value) }, JsonOptions);
                 stream.Flush(flushToDisk: true);
             }
             File.Move(temporary, _path, overwrite: true);
@@ -177,15 +214,15 @@ public sealed class ScriptureLocalStore
     private sealed class FileDocument
     {
         [JsonPropertyName("projects")]
-        public Dictionary<string, ProjectRecord> Projects { get; set; } = [];
+        public Dictionary<string, ProjectRecord?> Projects { get; set; } = [];
     }
 
     private sealed class ProjectRecord
     {
         [JsonPropertyName("current")]
-        public Dictionary<string, string> Current { get; set; } = [];
+        public Dictionary<string, string>? Current { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
         [JsonPropertyName("sourcePaths")]
-        public Dictionary<string, string> SourcePaths { get; set; } = [];
+        public Dictionary<string, string>? SourcePaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 }

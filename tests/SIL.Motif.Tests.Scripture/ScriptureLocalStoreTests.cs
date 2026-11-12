@@ -125,4 +125,51 @@ public sealed class ScriptureLocalStoreTests : IDisposable
     {
         Assert.NotEqual(ScriptureLocalStore.DefaultPath, ScriptureLocalStore.ForInstallation().FilePath);
     }
+
+    [Fact]
+    public void FileWithNullRecordsReadsAsEmptyAndCanBeWritten()
+    {
+        var store = Store();
+        Directory.CreateDirectory(Path.GetDirectoryName(store.FilePath)!);
+        File.WriteAllText(store.FilePath, """{"projects":{"P1":null,"P2":{"current":null,"sourcePaths":null}}}""");
+
+        Assert.Empty(store.Read("P1").Current);
+        Assert.Empty(store.Read("P2").SourcePaths);
+        store.SetCurrent("P1", "WEB", new ChapterRef("MAT", 1));
+        store.SetSourcePath("P2", "WEB", "/x");
+        Assert.Equal(new ChapterRef("MAT", 1), store.Read("P1").Current["WEB"]);
+        Assert.Equal("/x", store.Read("P2").SourcePaths["WEB"]);
+    }
+
+    [Fact]
+    public void CorruptFileIsKeptAsBadBeforeTheNextWrite()
+    {
+        var store = Store();
+        store.SetCurrent("P1", "WEB", new ChapterRef("MAT", 5));
+        File.WriteAllText(store.FilePath + ".bad", "older");
+        File.WriteAllText(store.FilePath, "{ damaged");
+
+        store.SetCurrent("P2", "WEB", new ChapterRef("LUK", 1));
+
+        Assert.Equal("{ damaged", File.ReadAllText(store.FilePath + ".bad"));
+        Assert.Equal(new ChapterRef("LUK", 1), store.Read("P2").Current["WEB"]);
+    }
+
+    [Fact]
+    public void SourceIdsMatchIgnoringCaseAcrossWritesAndReads()
+    {
+        var store = Store();
+        store.SetCurrent("P1", "web", new ChapterRef("MAT", 5));
+        store.SetSourcePath("P1", "web", "/a");
+        store.SetCurrent("P1", "WEB", new ChapterRef("MAT", 6));
+
+        var state = Store().Read("P1");
+
+        Assert.Single(state.Current);
+        Assert.Equal(new ChapterRef("MAT", 6), state.Current["WEB"]);
+        Assert.Equal("/a", state.SourcePaths["Web"]);
+        Assert.Equal("/a", store.ResolveSourcePath("P1", "WEB"));
+        store.ClearCurrent("P1", "wEb");
+        Assert.Empty(store.Read("P1").Current);
+    }
 }
