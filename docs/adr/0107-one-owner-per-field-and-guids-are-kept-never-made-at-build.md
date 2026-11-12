@@ -53,3 +53,28 @@ PanGloss parses the built .fwdata (an environment change in the log changes the 
    LibLCM deletes the orphaned MSA itself. Every LibLCM factory has `Create(Guid)`, so an upstream bridge change that
    takes GUIDs would remove the replacement step.
 3. **Export (.fwdata → log) is not proven yet.**
+
+## Amendment, 2026-11-12: export proven on two real projects
+
+[spike-export.md](../source-build/spike-export.md) exported .fwdata → log → new .fwdata.
+
+**Indonesian:**
+- Every grammar and lexical GUID is kept.
+- 100% of PanGloss parse sets are identical (70 words).
+- Two exports give identical rows.
+
+**Cebuano (24,856 entries):**
+- Timings: FW Lite import 2m35s; Motif export 1m17s (120,886 rows, 410 MB log); Build 9 s for the lexical part and 7m02s for the grammar part, object by object through LibLCM.
+- GUIDs match for every class except two:
+  - **LexEtymology** (418 objects): FW Lite does not carry it, so ADR 0107 decision 1 needs an owner for it.
+  - Objects the blank project template creates itself (one PartOfSpeech, semantic domains, some lists).
+- Parses: **96.8%** of 1,999 words are identical once variant `LexEntryRef`s are exported (91.7% without them). Of the 64 words that differ:
+  - 47 have extra parses in the rebuilt file;
+  - 30 lost a parse;
+  - 1 involves a MoAffixProcess.
+  Not yet root-caused.
+- Determinism across two exports is not yet confirmed.
+
+**What ADR 0107 missed:**
+- The blank template mints its own GUIDs. A Build must start from an empty project or overwrite the template's objects with the log's.
+- Classes FW Lite drops, such as etymologies, need a Motif type.
