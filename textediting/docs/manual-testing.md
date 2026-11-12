@@ -5,7 +5,8 @@ Only what a person has to do is left here: a real installed Keyman keyboard, rea
 row says in the **Why a person** column why a test cannot do it. The rest is automated: the headless suites
 (`SIL.TextEditing.Avalonia.Tests` and `SIL.TextEditing.Playground.Tests`, which include the scripted input method) and
 the real-window input driver (`SIL.TextEditing.InputDriver.Tests`, which types into the three real hosts and checks Tab
-and the popup in the WinForms host). Row numbers are unchanged, so a number quoted in an older note still points at the
+and the popup in the WinForms host). Motif ADR 0111 makes all automated testing headless, so the input driver is being
+converted or replaced by rows here. Row numbers are unchanged, so a number quoted in an older note still points at the
 same step. You use the **playground**, the shared sample UI that all three hosts show. It is meant for a tester who has
 not seen the code.
 

@@ -22,11 +22,11 @@ types, and it disturbs the person who is typing.
    - take the foreground or focus;
    - send real keyboard or mouse input;
    - read or write the real clipboard;
-   - start a program that shows a window. A child process that runs headless, like the App's `--smoke` start, is allowed.
+   - start a program that shows a window. Starting the App headless in-process, like the `--smoke` start test, is allowed.
 2. **No opt-in route for real-window tests.** There is no category, trait or environment variable that brings them
    back into a run, so a full-solution run is always safe on a shared desktop.
-3. **What only the real OS can show is a manual check.** Each case gets one row in the manual checklist (textediting
-   #67, and a Motif one if needed). A person runs it and records the run. The automated test is deleted or turned
+3. **What only the real OS can show is a manual check.** Each case gets one row in the manual checklist ([textediting/docs/manual-testing.md](../../textediting/docs/manual-testing.md),
+   and a Motif one if needed). A person runs it and records the run. The automated test is deleted or turned
    into a headless test of the part that does not need the OS.
 4. **Agents never launch the real app to verify a change.** A headless test is the check. Looking at the change in
    the real app is the owner's step, or an explicit request.
@@ -42,7 +42,6 @@ types, and it disturbs the person who is typing.
     gated only by a preflight.
   - `SIL.TextEditing.RealClipboard.Tests`: 3 tests on the real clipboard, gated by `TEXTEDITING_REAL_CLIPBOARD=1`.
     Decision 2 removes that gate.
-
   Each is converted to a headless test or replaced by a manual row. Motif's own test projects are already headless.
 - Converting these tests is work. Some coverage of real Win32
   input moves from the automated suite to manual rows. It returns only through better fakes.
@@ -51,7 +50,7 @@ types, and it disturbs the person who is typing.
 
 ## Alternatives
 
-- **Gate real-window tests behind a category or flag:** rejected by the owner ("all testing headless"). A gate is
+- **Gate real-window tests behind a category or flag:** rejected. The owner ruled "all testing headless", and a gate is
   forgotten, and the next full run pops windows again.
 - **Run real-window tests on a separate desktop or CI only:** there is no such machine today, and CI already runs
   headless.

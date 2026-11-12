@@ -45,4 +45,5 @@ The default paste order remains TsString first. A host that registers both forms
 ## The real clipboard
 
 `tests/SIL.TextEditing.RealClipboard.Tests` puts bytes and Arabic text through the default backend and the real Windows clipboard. See
-[Projects and tests](projects.md#test-projects).
+[Projects and tests](projects.md#test-projects). Motif ADR 0111 makes all automated testing headless, so these tests are being converted or
+replaced by a manual check.
