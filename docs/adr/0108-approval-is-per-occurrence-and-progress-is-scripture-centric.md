@@ -50,3 +50,12 @@ Approvals arrive chapter by chapter, so a phase-1 project holds a small fraction
 approved Bible in one log would hit both problems. Before that scale, either split the occurrence links into their own
 log per book or per Paratext project, which the interlinearizer's per-project store already does, or fix Harmony's
 replay and checkpoints upstream. Open; it joins the "one store or two" question for the interlinearizer meeting.
+
+## Note, 2026-11-12: ADR 0110
+
+[ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md) settles the storage for the Paratext 10 flow with a .fwdata source: per-occurrence judgements are a versioned
+JSON field on WfiWordform, anchored `MAT 5:3#2`, and scripture is never copied into the project. This ADR's states
+(approved, rejected, Passed over as derived) and its re-anchoring rules (section 5) still apply; 0110 cites them.
+For a log source, the same judgements would be a Motif-registered field on the wordform, not separate link objects,
+which also removes the 700k-link replay cost in the scale consequences. That is to be decided with the first backend
+slice and the interlinearizer meeting (one anchor format, 0110 decision 12).

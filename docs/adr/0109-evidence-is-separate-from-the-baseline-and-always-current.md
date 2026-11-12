@@ -18,7 +18,9 @@ against old evidence are marked out of date and rerun for only the words that ch
    - the bump marks the affected progress numbers and Proposal results as outdated;
    - only the changed words are rerun.
    Apply always re-measures against current Evidence.
-3. **Paratext's words refresh instantly and automatically.** They belong to the translator, not to a reviewer.
+3. *Replaced for the Paratext 10 flow by [ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md): scripture stays in Paratext and is never written as `StText`;
+   judgements ride on WfiWordform. What follows holds only for a legacy FieldWorks USFM import.*
+   **Paratext's words refresh instantly and automatically.** They belong to the translator, not to a reviewer.
    - With a .fwdata source, the refresh writes the `StText` through LibLCM, so FieldWorks' `AnalysisAdjuster` keeps
      the analyses of untouched words. It runs whenever FieldWorks is closed and is shown as stale while FieldWorks is open.
    - Words FieldWorks would drop become *suggested*, by ADR 0108's rules.
