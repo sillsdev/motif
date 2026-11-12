@@ -19,6 +19,5 @@
     <ProjectReference Include="..\..\src\SIL.TextEditing.Avalonia\SIL.TextEditing.Avalonia.csproj" />
     <ProjectReference Include="..\SIL.TextEditing.Playground\SIL.TextEditing.Playground.csproj" />
     <Compile Include="..\Common\PlaygroundApp.cs" Link="PlaygroundApp.cs" />
-    <Compile Include="..\Common\TestChannel.cs" Link="TestChannel.cs" />
   </ItemGroup>
 </Project>
