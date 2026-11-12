@@ -109,6 +109,7 @@ public static class ProposalDryRunner
             AffixProcessSnapshots.AppendGraphEffects(processBefore, cache, effects);
             AffixProcessSemanticValidator.AppendUnparsedShapeWarnings(cache, proposal.Operations, effects);
             DerivationalFeedWarnings.Append(cache, proposal.Operations, effects);
+            SenselessVariantWarnings.Append(cache, proposal.Operations, effects);
             ProhibitionMsaCleanup.ValidateSlots(proposal, effects);
         }
 

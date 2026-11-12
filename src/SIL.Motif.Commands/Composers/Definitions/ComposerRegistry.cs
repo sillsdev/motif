@@ -22,6 +22,8 @@ internal static class ComposerDefinitions
         new LinkVariantDefinition(),
         new MakeVariantOfDefinition(),
         new MakeVariantsOfDefinition(),
+        new StripVariantSensesDefinition(),
+        new AuthorVariantEntryDefinition(),
         new AuthorAdhocProhibitionDefinition(),
         new EditAdhocProhibitionReferencesDefinition(),
         new DeleteAdhocProhibitionDefinition(),

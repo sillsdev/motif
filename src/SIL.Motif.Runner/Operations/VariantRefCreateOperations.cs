@@ -28,8 +28,8 @@ public static class VariantRefCreateOperationKinds
 }
 
 /// <summary>Builds the variant reference the way FieldWorks' Add Variant does for an existing entry: type, one component
-/// lexeme, and no primary lexemes (those are for complex forms); HideMinorEntry keeps its default of 0, so the minor
-/// entry shows.</summary>
+/// lexeme, and no primary lexemes (those are for complex forms). HideMinorEntry is 0, so the minor entry shows,
+/// unless the payload asks to hide it.</summary>
 internal sealed class VariantRefCreateHandler : IOperationHandler
 {
     internal static readonly VariantRefCreateHandler Instance = new();
@@ -42,9 +42,13 @@ internal sealed class VariantRefCreateHandler : IOperationHandler
         var entityId = operation.EntityId ?? throw new InvalidOperationException($"'{Kind}' requires entityId.");
         var after = OperationSlotRegistry.After(operation);
         ClosedPayloadParsing.RequireObject(after, Kind);
-        ClosedPayloadParsing.RejectUnknownProperties(after, ["component", "variantType"], Kind);
+        ClosedPayloadParsing.RejectUnknownProperties(after, ["component", "variantType", "hideMinorEntry"], Kind);
         var componentId = ClosedPayloadParsing.GetRequiredCanonicalId(after, "component", Kind);
         var typeId = ClosedPayloadParsing.GetRequiredCanonicalId(after, "variantType", Kind);
+        var hideMinorEntry = false;
+        if (after.TryGetProperty("hideMinorEntry", out var hide))
+            hideMinorEntry = hide.ValueKind is JsonValueKind.True or JsonValueKind.False ? hide.GetBoolean()
+                : throw new ContractParseException($"'{Kind}' operation 'after.hideMinorEntry' must be true or false.");
         var (id, entry) = TargetResolution.Resolve<ILexEntry>(cache, operation, Kind);
         CreateIdentity.RequireFresh(cache, entityId, Kind, "LexEntryRef");
         var (component, type) = VariantLinkSafety.CheckLink(cache, entry, componentId, typeId);
@@ -54,6 +58,7 @@ internal sealed class VariantRefCreateHandler : IOperationHandler
         var reference = cache.ServiceLocator.GetInstance<ILexEntryRefFactory>().Create(entityId.ToGuid());
         entry.EntryRefsOS.Add(reference);
         reference.RefType = LexEntryRefTags.krtVariant;
+        reference.HideMinorEntry = hideMinorEntry ? 1 : 0;
         reference.VariantEntryTypesRS.Add(type);
         reference.ComponentLexemesRS.Add(component);
         return new ExpectedEffect(id, SnapshotFields.LexEntryEntryRefs, before, Read(entry, entityId));
