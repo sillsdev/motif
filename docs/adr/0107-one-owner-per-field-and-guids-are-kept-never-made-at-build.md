@@ -97,3 +97,9 @@ MSAs, slots and templates were already identical. Other fields are lost with no 
 owns the rest, as an extension object keyed by the FW Lite object's GUID. The generator derives that list mechanically:
 MasterLCModel's fields for a class, minus those MiniLcm carries. Every LCM field then has exactly one owner and no field
 is dropped silently. A field neither side owns is a build error, not a loss.
+
+**Confirmed on the real pipeline (2026-11-12, spike-export.md "Rerun with fixes"):** with both fields exported, Cebuano
+parses 2,000 of 2,000 words identically and Indonesian 70 of 70, with 0 build errors. Two exports of the same project
+give identical rows (Cebuano 121,044, Indonesian 945). Two Builds give identical GUIDs except objects the new-project
+template mints (semantic-domain questions, some lists, LangProject, ReversalIndex); the Build must take those from the
+log too. LexEtymology (418) is the only uncovered GUID gap.

@@ -32,3 +32,21 @@ Claim: the export direction works. Both projects round-trip with every LCM GUID 
 - Grammar apply is slow (about 7 minutes for 120k rows) because it goes object by object through LCM with reflection. Faster paths exist (bulk SetObjProp batching) but were not tried.
 - Remaining 64 differing Cebuano words need a per-word diff of the HC grammar (rebuilt vs original) to be attributed to a class. I would start with the 30 unclassified ones and the 47 extra-parse words.
 - Out files include large generated outputs in out/; they are committed except fwdata and sqlite.
+
+## Rerun with fixes
+Earlier open item first: the Cebuano determinism run of the pre-fix export finished. Two exports give identical rows (120,886, True); two builds give identical GUID sets except template-minted objects (CmDomainQ 7938, 3 of 34 CmPossibilityList, LangProject, ReversalIndex; 7943 per side), same as Indonesian.
+
+Fixes applied (commit below):
+- (A) `LexEntry.DoNotUseForParsing`: one extension row per flagged entry (LcmGeneric.cs); LcmApply already applies Boolean props.
+- (B) POS hierarchy: the POS extension row carries `__ParentPos` (owner POS guid; absent = top level). LcmApply phase 3b re-owns with `parent.SubPossibilitiesOS.Add(child)` (or moves to the list root), then deletes template POS not in the log (Pro-form deleted in Cebuano; Adverb, Verb, Pronoun, Pro-form, Noun in Indonesian, all template copies with other GUIDs). Rows rose 120,886 to 121,044 (+158 flags).
+- Speed fix ported from sb-spike-trial 7f44158: POS stripped from the snapshot senses before the bridge call (`LcmApply.SensePos`), then attached to the log's MSA in RepointSense.
+
+Results (same words, 2,000 listed, 1,999 parsed, 0 timeouts):
+| | identical parse sets | build errors | GUID gaps | determinism |
+|---|---|---|---|---|
+| Cebuano | 2000/2000 (100.0%), 0 differ (was 1936, 96.8%) | 0 | only LexEtymology 418 (uncovered, not carried) | export rows equal (121,044); GUID sets equal except the same template-minted 7943 |
+| Indonesian | 70/70 (100.0%) | 0 | none | export rows equal (945); same template-minted-only differences |
+
+Timing, Cebuano (machine shared with other jobs, so noisy): lexical bridge part 33 s (first build) and 13 s (second); grammar part 8m33 on the first build (phase2 attach 3m38, phase3 fields 4m30), 5m45 on the second. The strip-POS fix did not give a clear speedup here: phase3 went from 5m43 to 4m30 versus the earlier run, but the load differs, so I would not claim the 142 s to 16 s effect for this pipeline. A run with fixes A and B but without the speed fix was started and stopped by me (11:01 to 11:14) once the speed fix arrived; it had not finished, so nothing is reported from it.
+
+Nothing else was changed. Not fixed (out of scope): subsense flattening, LexEtymology, GrammarNote/Exemplar.
