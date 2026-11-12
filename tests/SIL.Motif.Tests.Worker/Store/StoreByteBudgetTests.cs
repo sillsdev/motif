@@ -178,21 +178,6 @@ public sealed class StoreByteBudgetTests : IDisposable
     }
 
     [Fact]
-    public void BeforeRunsRetainedAtTheCurrentBaselineSurviveTheBudgetAndOlderOnesDoNot()
-    {
-        Record("before-current", "Correctness", 0);
-        Record("before-old", "Correctness", 1);
-        Execute("INSERT INTO Baselines VALUES ('budget', 'identity', 'sha256:snapshot-now', '8', 'now', " +
-            "'sha256:bundle-now', NULL, NULL, 'root', 'root/budget.fwdata', 'now', 'now');");
-        Retain("current", "before-current", "sha256:snapshot-now", "sha256:bundle-now");
-        Retain("old", "before-old", "sha256:snapshot-old", "sha256:bundle-old");
-
-        Sweep(100, 1);
-
-        Assert.Equal(["before-current"], Ids("SELECT AssessmentId FROM Assessments;"));
-    }
-
-    [Fact]
     public void KeptAssessmentsAreCountedByTheFirstReasonThatKeepsThem()
     {
         var open = CanonicalId.Mint("proposal/");
@@ -280,16 +265,6 @@ public sealed class StoreByteBudgetTests : IDisposable
         new JobRepository(_database).Create(jobId, "project", "trial", input, "2026-01-01T00:00:00Z");
         var result = after is null ? "NULL" : $"'{{\"assessmentIds\":[\"{after}\"]}}'";
         Execute($"UPDATE Jobs SET Status = '{status}', ResultJson = {result} WHERE JobId = '{jobId}';");
-    }
-
-    private void Retain(string invocation, string member, string snapshot, string bundle)
-    {
-        Execute($"INSERT INTO AssessmentInvocations VALUES ('{invocation}', '{{}}');");
-        Execute("INSERT INTO RetainedInvocations VALUES " +
-            $"('{invocation}', 'budget', '{{\"SemanticSnapshotDigest\":\"{snapshot}\",\"BundleDigest\":\"{bundle}\"}}', " +
-            $"'root', 'root/budget.fwdata', 'now', 'now', 'now', '{{}}', 'sha256:selection', '[]', 'pangloss', '{{}}', " +
-            $"'sha256:scope', '{invocation}');");
-        Execute($"INSERT INTO RetainedInvocationMembers VALUES ('{invocation}', 'Correctness', '{member}');");
     }
 
     private long BytesInUse()

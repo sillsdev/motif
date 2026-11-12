@@ -252,15 +252,6 @@ internal static class AssessmentRetention
                 all)),
             ("proposalRecord", record),
             ("beforeBinding", ReadIds(connection, transaction, "SELECT AssessmentId FROM BeforeAssessmentBinding;")),
-            // The Before runs measured at the current Baseline are what the next Trial reuses instead of reparsing.
-            ("currentBaselineBefore", ReadIds(connection, transaction, """
-                SELECT m.AssessmentId FROM RetainedInvocationMembers m
-                JOIN RetainedInvocations r ON r.InvocationId = m.InvocationId
-                JOIN Baselines b ON b.ProjectKey = r.ProjectKey
-                WHERE json_valid(r.BaselineToken)
-                    AND json_extract(r.BaselineToken, '$.BundleDigest') = b.BundleDigest
-                    AND json_extract(r.BaselineToken, '$.SemanticSnapshotDigest') = b.SemanticSnapshotDigest;
-                """)),
         ];
     }
 
