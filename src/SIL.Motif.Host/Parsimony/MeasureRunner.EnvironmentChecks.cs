@@ -33,9 +33,13 @@ public static partial class MeasureRunner
             var memberUses = members.ToDictionary(item => item.Guid, item => uses[item.Guid]
                 .OrderBy(use => use.AllomorphGuid, StringComparer.Ordinal).ThenBy(use => use.Role, StringComparer.Ordinal)
                 .ToArray(), StringComparer.Ordinal);
+            var textual = members.Select(item => NormalizedRepresentation(item.Representation)).Distinct(
+                StringComparer.Ordinal).Count() == 1;
             var limitations = new List<string>
             {
-                "These environments have the same left and right sides once spacing and class names are ignored.",
+                textual
+                    ? "These environments are textual duplicates: they read the same apart from spacing."
+                    : "These environments are equivalent through different classes that have the same members.",
             };
             limitations.AddRange(members.Select(item => DescribeEnvironmentUse(item, memberUses[item.Guid], context)));
             if (excluded > 0)
@@ -48,7 +52,7 @@ public static partial class MeasureRunner
                     ParsimonyViews.AllomorphContext, new { objectGuid = guid }))).ToArray();
             var detail = JsonSerializer.Serialize(new
             {
-                left = group.Key.LeftKey, right = group.Key.RightKey,
+                left = group.Key.LeftKey, right = group.Key.RightKey, copies = textual ? "textual" : "equivalent",
                 members = members.Select(item => new
                 {
                     item.Guid, item.Representation,
@@ -66,6 +70,9 @@ public static partial class MeasureRunner
         var result = findings.OrderBy(item => item.FindingId, StringComparer.Ordinal).ToArray();
         return Result(measure, ParsimonyMeasureStatus.Computed, input.Environments.Count, redundant, result, null);
     }
+
+    private static string NormalizedRepresentation(string? text) =>
+        string.Join(' ', (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     private static string DescribeEnvironmentUse(EnvironmentSideFact environment,
         IReadOnlyList<EnvironmentUseFact> uses, MeasureContext context)

@@ -146,11 +146,13 @@ internal sealed class FactsWriter(SqliteConnection connection, SqliteTransaction
     public void Entry(string guid) =>
         Sql("INSERT INTO lex_entry(guid, source_ordinal, lexeme_morph_type) VALUES ($g, 0, 'stem');", ("$g", guid));
 
+    private int _allomorphOrdinal;
+
     /// <summary>One non-abstract stem allomorph with one form that names the given environments in order.</summary>
     public void Allomorph(string guid, string entryGuid, string form, params (string Role, string Environment)[] uses)
     {
         Sql("INSERT INTO allomorph(guid, entry_guid, ordinal, morph_type, form_class, is_abstract) " +
-            "VALUES ($g, $e, 0, 'stem', 'stem', 0);", ("$g", guid), ("$e", entryGuid));
+            "VALUES ($g, $e, $n, 'stem', 'stem', 0);", ("$g", guid), ("$e", entryGuid), ("$n", _allomorphOrdinal++));
         Sql("INSERT INTO allomorph_form(allomorph_guid, ordinal, writing_system, form) VALUES ($g, 0, 'qaa', $f);",
             ("$g", guid), ("$f", form));
         for (var ordinal = 0; ordinal < uses.Length; ordinal++)

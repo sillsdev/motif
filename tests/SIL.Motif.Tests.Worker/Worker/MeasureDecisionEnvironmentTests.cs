@@ -34,6 +34,17 @@ public sealed class MeasureDecisionEnvironmentTests
     }
 
     [Fact]
+    public void CopiesThatDifferOnlyInSpacingAreTextualAndDifferentClassesAreEquivalent()
+    {
+        var textual = Duplicates([new("a", "", "/ n _", "valid", "k1", "k2"), new("b", "", "/  n  _", "valid", "k1", "k2")]);
+        var equivalent = Duplicates([new("a", "", "/ [V] _", "valid", "k1", "k2"),
+            new("b", "", "/ [F-V] _", "valid", "k1", "k2")]);
+
+        Assert.Contains("textual duplicates", Assert.Single(textual.Findings).Limitations[0]);
+        Assert.Contains("different classes", Assert.Single(equivalent.Findings).Limitations[0]);
+    }
+
+    [Fact]
     public void ThreeCopiesAreOneGroupWithTwoRedundantEnvironments()
     {
         var result = Duplicates([Environment("a", "k1", "k2"), Environment("b", "k1", "k2"),
