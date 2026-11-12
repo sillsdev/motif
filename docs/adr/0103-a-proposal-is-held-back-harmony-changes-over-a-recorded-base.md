@@ -35,3 +35,21 @@ kept aside, as in a pull request, until a person applies them. Applying them add
 
 - **Commit Drafts to a local branch log:** Harmony has no branches and syncs everything newer than the remote.
 - **Upstream a preview API** (Harmony's internal `SnapshotReplay`): cheaper than a file copy, but not needed to start.
+
+## Amendment, 2026-11-12: Trial timing (proposed; grill Q28 open)
+
+[spike-trial.md](../source-build/spike-trial.md) timed a Trial on a 20,000-entry log. The Harmony side is cheap:
+- copy: 0.3 s;
+- open: 0.03 s;
+- commit the Proposal: 0.05 s;
+- the stale check by per-id base vs head reads: about 0.1 s for 20 objects;
+- PanGloss on 500 words: about 3 s.
+
+**A full .fwdata Build is 95% of the time: about 100 s (78–174 s).** LibLCM creates every entry, at about 4.4 s per
+1,000. So a Trial must not build a .fwdata. Two routes:
+1. **A Trial builds the PanGloss snapshot straight from the log** (no LibLCM). A .fwdata is built only for FLEx classic,
+   for export, or for a Proposal snapshot.
+2. An incremental .fwdata Build: copy the last built base .fwdata and apply only the touched objects.
+
+Route 1 is proposed. The spike also found that FW Lite's `GetEntries()` returns 1,000 entries by default, so a Build
+must query all entries and treat any mismatch as a build error.
