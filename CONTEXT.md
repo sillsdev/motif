@@ -134,6 +134,17 @@ Proposal on request and deleted when the Proposal's content changes or it is dec
 applied. Not a **Baseline**.
 _Avoid_: preview project, backup, baseline
 
+**Source** (of a project):
+Where a project's lexicon and grammar really live: a FieldWorks project or an FW Lite project's history. A Proposal is
+applied to the source; everything else is built from it
+([ADR 0101](docs/adr/0101-a-project-source-is-fwdata-or-a-harmony-log-everything-else-is-built.md)).
+_Avoid_: master copy, database, backend
+
+**Build**:
+Making what a tool reads, such as the parser's grammar or a FieldWorks project, from a project's Source. A Build
+reports problems and never fixes them. It is internal: people see "parser updated" or a problem to fix, not a Build.
+_Avoid_: compile, realize, materialize, render, Lowering (which turns one operation into store changes)
+
 **Update baseline**:
 Bringing a Proposal up to the project as it stands now, so its changes are checked against the current state. The window
 says **Update to current project**; each change that cannot be carried over then "no longer fits" and offers Use mine,
@@ -302,6 +313,12 @@ disapproved, or an incorrect spelling. FieldWorks' parser re-judges candidates w
 one it no longer produces unless a text uses it.
 _Avoid_: not approved, present, unapproved analysis, no-opinion analysis
 
+**Passed over**:
+A Candidate the parser produces for a word form whose approved occurrences all chose a different analysis. It ranks below
+Unknown and above Disapproved, and is reviewed first, because it is the main sign that the grammar produces too many
+readings. It is computed, never set by a person, so it is not an Opinion.
+_Avoid_: rejected, outvoted, other-approved, wrong
+
 **Opinion**:
 A person's judgement on one analysis, in FieldWorks' words: **Approved**, **Disapproved** or **Unknown**.
 Shown with FieldWorks' colours (cyan, red, brown) and always with a letter and glyph too, never by colour
@@ -388,11 +405,18 @@ status ([ADR 0093](docs/adr/0093-proposals-release-computed-data-on-close-and-af
 _Avoid_: last viewed, last opened, access time
 
 **Baseline**:
-A saved, minimal, file-backed copy of the project state from which Motif can make many independent
-Dry Run scratches. It contains the LibLCM and writing-system data needed to reproduce engine behaviour,
-but no linked media bytes. A Baseline is replaced explicitly, not merely because time passed. It may be
-captured from a project FieldWorks holds open, in which case it is the state as of FieldWorks' last save.
+A saved, minimal, file-backed copy of a project's grammar and lexicon, from which Motif can make many independent
+Dry Run scratches. It holds what a Proposal changes and what the engine needs to reproduce its behaviour, but not the
+Evidence it is measured against, and no linked media bytes. A Baseline is replaced explicitly, not merely because time
+passed. It may be captured from a project FieldWorks holds open, in which case it is the state as of FieldWorks' last
+save ([ADR 0109](docs/adr/0109-evidence-is-separate-from-the-baseline-and-always-current.md)).
 _Avoid_: snapshot (a Proposal snapshot is a different thing), backup, session cache, live model
+
+**Evidence**:
+The texts and approved occurrences a Proposal is measured against. It is always current: it follows Paratext edits and
+new approvals, and carries a version. A Trial records the Evidence version it ran on; a result from older Evidence is
+shown as outdated and is rerun for the changed words only.
+_Avoid_: test data, corpus (a Corpus is unapproved material), baseline
 
 **Trial**:
 One attempt at a Proposal on a throwaway copy of the project, producing both a Dry Run and one or more

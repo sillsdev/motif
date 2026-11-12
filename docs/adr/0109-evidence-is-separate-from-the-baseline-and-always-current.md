@@ -1,0 +1,40 @@
+# 0109. Evidence is separate from the Baseline and always current; the last good build stays in use
+
+**In plain terms:** A Proposal changes the grammar and lexicon. It is judged against the scripture people are working
+on and the words they have approved, which keep changing while the Proposal waits. As with tests in software, results
+against old evidence are marked out of date and rerun for only the words that changed.
+
+**Status:** proposed, 2026-11-11. The owner settled it in a grill on 2026-11-11 (Q15, Q17–Q20, Q22). Fits phase-1 decisions
+#4 ("Keeps all finished chapters" is checked at Apply) and #22 (stale texts) in `_briefs/phase1-personas/decisions.md`.
+
+## Decision
+
+1. **The Baseline is grammar and lexicon.** Texts and approved occurrences are **Evidence**: always current and versioned.
+   Every Trial and Measure records the Baseline and the Evidence version it ran on.
+2. **Changes flow through the whole chain:**
+   - a Paratext edit refreshes the Text;
+   - the refresh re-anchors approvals (ADR 0108 §5);
+   - re-anchoring bumps the Evidence version;
+   - the bump marks the affected progress numbers and Proposal results as outdated;
+   - only the changed words are rerun.
+   Apply always re-measures against current Evidence.
+3. **Paratext's words refresh instantly and automatically.** They belong to the translator, not to a reviewer.
+   - With a .fwdata source, the refresh writes the `StText` through LibLCM, so FieldWorks' `AnalysisAdjuster` keeps
+     the analyses of untouched words. It runs whenever FieldWorks is closed and is shown as stale while FieldWorks is open.
+   - Words FieldWorks would drop become *suggested*, by ADR 0108's rules.
+   - ADR 0097's Text Proposals remain for what Motif or a linguist writes, such as notes.
+4. **Misspellings never teach the grammar on their own** (owner, grill Q22). A newly typed word that does not parse
+   is first a spelling flag. It becomes Evidence only when:
+   - a person approves an analysis of it; or
+   - it occurs at least three times in passages that are in context.
+   Until then, neither the AI nor MCP drafts a Proposal that adds a stem or rule just to parse it.
+   **A drafted Proposal shows its Evidence** where words motivated it: an Evidence section listing the verses
+   (or text references) where each word was seen, so a reviewer can tell new morphology from a typo.
+5. **The last good build stays in use.** A Build writes to a temporary file and replaces the previous output only on
+   success. Translators see "parser not updated since <date>"; the linguist sees the build error first in the inbox.
+   There are never partial builds: skipping a broken rule would be a silent repair (ADR 0105).
+
+## Consequences
+
+- An Evidence version and a per-word change list become part of the Motif store. Outdated results are recomputed, never migrated.
+- New entries do not parse until a build error is fixed. This is accepted and shown.

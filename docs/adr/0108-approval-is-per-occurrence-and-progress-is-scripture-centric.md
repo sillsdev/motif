@@ -1,0 +1,34 @@
+# 0108. Approval is per occurrence; progress is measured on scripture, and the parser is a by-product
+
+**In plain terms:** What a translator or linguist approves for one word in one verse is the ground truth. Progress is
+how much of the book is approved and explained. The parser speeds that work up; it is not the goal.
+
+**Status:** proposed, 2026-11-10. The owner settled it in a grill on 2026-11-10 (Q9, Q10, Q12, Q13, Q14). The analysis *shapes* wait on
+a meeting with the interlinearizer team ([interlinearizer-meeting.md](../source-build/interlinearizer-meeting.md)).
+
+## Decision
+
+1. **Per-occurrence approval is the source.** FieldWorks' per-analysis approval is derived from it when a .fwdata is
+   built, and an export from .fwdata turns each `AnalysesRS` slot whose analysis is human-approved into an approved
+   occurrence.
+2. **Disapproved means "this analysis is wrong"**, wherever it occurs. It is a person's explicit judgement on the
+   analysis, the same as FieldWorks' Disapproved. Rejecting one occurrence ("not this one here") is not a Disapproval.
+3. **Passed over**, a derived state between Unknown and Disapproved (owner, grill Q12): a Candidate the parser produces for a word whose
+   approved occurrences all chose a different analysis. It ranks below Unknown, is listed first for review, and is
+   the main signal that the grammar over-generates. It is computed, never stored, and builds to .fwdata as no opinion.
+4. **Progress is scripture-centric.** For the book being worked on, people see the share of its occurrences that are
+   approved, and how much of that the grammar explains. Every approved occurrence sits on one rung of a ladder:
+   - word gloss;
+   - morphemes;
+   - linked to the lexicon;
+   - linked to grammar (allomorph and MSA);
+   - explained (the parser reproduces it).
+   A word gloss is a weak test: the parser's output, glossed, must match it. Proposals are ranked by how many
+   occurrences they lift to explained. Translators never see the ladder.
+5. **Following scripture edits** (Q13, Q14):
+   - Re-anchoring runs when a book is opened and before every Build. A live Paratext event is added later through the plugin.
+   - An occurrence with the same verse and the same surface form keeps its approval.
+   - When the surface changed, the occurrence becomes *suggested*, from an analysis approved elsewhere or from a parser
+     guess, which is marked as such.
+   - An occurrence that cannot be placed becomes *stale*.
+   - Suggested and stale occurrences count as not approved. Nothing is ever approved automatically.
