@@ -601,9 +601,20 @@ public sealed partial class ProposalsPageModel : PageModel
     // True, and says so on the editor, when choosing proposalId would leave an unsaved Rationale edit.
     private bool KeepsUnsavedEdit(string? proposalId)
     {
-        if (RationaleEditor is not { HasUnsavedChanges: true } editing || editing.ProposalId == proposalId) return false;
+        if (UnsavedRationaleEditor is not { } editing || editing.ProposalId == proposalId) return false;
         editing.MarkSwitchRefused();
         return true;
+    }
+
+    // The editor holding an unsaved edit, also while a re-read has cleared RationaleEditor until the detail loads.
+    private RationaleEditorModel? UnsavedRationaleEditor
+    {
+        get
+        {
+            var kept = _selectedProposal is null ? _rereading : _lastRationaleEditor?.ProposalId == _selectedProposal.ProposalId;
+            var editor = RationaleEditor ?? (kept ? _lastRationaleEditor : null);
+            return editor is { HasUnsavedChanges: true } ? editor : null;
+        }
     }
 
     /// <summary>The selected Proposal's saved Difference, or the offer to make one.</summary>
@@ -928,7 +939,7 @@ public sealed partial class ProposalsPageModel : PageModel
         ProposalListFilter? nextFilter = SelectedGroupFilter == filter ? null : filter;
         if (nextFilter is { } requested && CountFor(requested) == 0) return;
         // A filter that would hide the Proposal whose Rationale edit is unsaved is not applied.
-        if (nextFilter is { } hiding && RationaleEditor is { HasUnsavedChanges: true } editing &&
+        if (nextFilter is { } hiding && UnsavedRationaleEditor is { } editing &&
             _standings.Proposals.FirstOrDefault(card => card.ProposalId == editing.ProposalId) is { } edited &&
             !IsInFilter(edited.Group, hiding) && KeepsUnsavedEdit(null)) return;
         SelectedGroupFilter = nextFilter;

@@ -3,6 +3,7 @@ using Avalonia.Controls.Templates;
 using Avalonia.Data.Converters;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views.Shell;
@@ -24,7 +25,14 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
         Page = page;
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        DenseTable.Attach(this.FindControl<ListBox>("ProposalsRowsItems")!);
+        var table = this.FindControl<ListBox>("ProposalsRowsItems")!;
+        DenseTable.Attach(table);
+        // The binding drops the model's refusal raised inside the list's own write, so the list is put back afterwards.
+        table.SelectionChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            if (Page.SelectedProposal is { } kept && table.SelectedItem is ProposalCardViewModel chosen &&
+                !ReferenceEquals(chosen, kept)) table.SelectedItem = kept;
+        });
         _sidePanel = BuildPane("ProposalGroupFilterTemplate");
         _inspectorContent = BuildPane("ProposalInspectorTemplate");
         _inspectorActions = BuildPane("ProposalInspectorActionsTemplate");
