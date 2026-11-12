@@ -76,7 +76,7 @@ Not owner decisions; names and choices the decision above does not fix. Each can
 - The matching is bounded so a long text does not stall the UI thread. A form that implements `ISourceFormFingerprint` (the Markdown
   form's fingerprint is the paragraph's decomposed text) has its paragraphs grouped once, each compared only with one of each kind under
   its fingerprint, and the subsequence found over the groups, while the changed stretch's old paragraphs times its new ones is at most
-  2100² (so 2000 old and 2001 new fit, and 4000 by 1000 does not). A form without one is compared pair by pair while that product is at
+  2100² (so 2000 old and 2001 new fit, and 3000 by 2000 does not). A form without one is compared pair by pair while that product is at
   most `DocumentEditor.PairwiseComparisonBudget`. The stretch runs from the first changed paragraph to the last, however few changed
   between. Beyond either limit the stretch's keys go by position, each new paragraph taking the key of the old one at its place.
 - If the host's `Committed` handler throws after the field's text has changed, the field returns to rich text with the edit and says

@@ -62,7 +62,7 @@ namespace SIL.TextEditing
         /// it replaces (ADR 0006), and its own style, properties and runs, so keys stay on their own text when paragraphs are added or removed. A moved paragraph
         /// is a removal and an addition, so it loses its key, as cut and paste does.
         /// <para><paramref name="fingerprint"/>, when given, must be the same for any two paragraphs <paramref name="same"/> accepts
-        /// (<see cref="ISourceFormFingerprint"/>); <paramref name="same"/> is then taken to be an equivalence, the paragraphs are grouped once, and a stretch of up to
+        /// (<see cref="ISourceFormFingerprint"/>); <paramref name="same"/> is then taken to be an equivalence, the paragraphs are grouped once, and a stretch
         /// whose old paragraphs times its new ones is at most 2100² is matched in a few comparisons a paragraph. Without one, the stretch is compared pair by pair up to
         /// <see cref="PairwiseComparisonBudget"/> comparisons. Beyond either limit the stretch's keys go by position: each new paragraph takes the key of the old one
         /// at its place.</para>
