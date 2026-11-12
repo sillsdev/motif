@@ -99,6 +99,7 @@ public sealed class DerivationalDirectionTests : IDisposable
     public void AnAffixWhoseFromCategoryHasNoStemWarnsInTheDryRun()
     {
         AddStem(_cache, "kan", _noun);
+        AddInflectionalPrefix(_cache, "mi", _noun);
         var warning = Assert.Single(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(_adjective, _noun)))));
         Assert.Contains("Adjective -> Noun", warning, StringComparison.Ordinal);
     }
@@ -107,6 +108,7 @@ public sealed class DerivationalDirectionTests : IDisposable
     public void AnAffixWhoseFromCategoryHasAStemDoesNotWarn()
     {
         AddStem(_cache, "kan", _noun);
+        AddInflectionalPrefix(_cache, "mi", _adjective);
         Assert.Empty(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(_noun, _adjective)))));
     }
 
@@ -121,6 +123,7 @@ public sealed class DerivationalDirectionTests : IDisposable
             subcategory.Name.set_String(_cache.DefaultAnalWs, "Common noun");
         });
         var common = Id(subcategory);
+        AddInflectionalPrefix(_cache, "mi", _adjective);
         AddStem(_cache, "kan", common);
         Assert.Empty(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(_noun, _adjective)))));
 
@@ -128,5 +131,57 @@ public sealed class DerivationalDirectionTests : IDisposable
         var verb = AddCategory(_cache, "Verb");
         ApplyOps(_cache, Prefix(_noun, verb));
         Assert.Empty(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(verb, _adjective)))));
+    }
+
+    private static bool IsToWarning(string warning) => warning.Contains("nothing in the project takes", StringComparison.Ordinal);
+
+    [Fact]
+    public void AnAffixWhoseToCategoryNothingConsumesWarnsInTheDryRun()
+    {
+        AddStem(_cache, "kan", _noun);
+        var warning = Assert.Single(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(_noun, _adjective)))));
+        Assert.Contains("Noun -> Adjective", warning, StringComparison.Ordinal);
+        Assert.True(IsToWarning(warning));
+    }
+
+    [Fact]
+    public void AnInflectionalAffixOnTheToCategoryConsumesIt()
+    {
+        AddStem(_cache, "kan", _noun);
+        AddInflectionalPrefix(_cache, "mi", _adjective);
+        Assert.DoesNotContain(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(_noun, _adjective)))), IsToWarning);
+    }
+
+    [Fact]
+    public void AnotherDerivationFromTheToCategoryOrItsSubcategoryConsumesIt()
+    {
+        AddStem(_cache, "kan", _noun);
+        var verb = AddCategory(_cache, "Verb");
+        AddInflectionalPrefix(_cache, "mi", verb);
+        ApplyOps(_cache, Prefix(_adjective, verb));
+        Assert.DoesNotContain(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(_noun, _adjective)))), IsToWarning);
+
+        // A derivation taking a subcategory of the to-category as input also consumes it.
+        IPartOfSpeech sub = null!;
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            sub = _cache.ServiceLocator.GetInstance<IPartOfSpeechFactory>().Create();
+            Get<IPartOfSpeech>(_cache, verb).SubPossibilitiesOS.Add(sub);
+            sub.Name.set_String(_cache.DefaultAnalWs, "Stative verb");
+        });
+        AddInflectionalPrefix(_cache, "ma", Id(sub));
+        Assert.DoesNotContain(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(_adjective, verb)))), IsToWarning);
+    }
+
+    [Fact]
+    public void ATemplateOnTheToCategoryConsumesIt()
+    {
+        AddStem(_cache, "kan", _noun);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var template = _cache.ServiceLocator.GetInstance<IMoInflAffixTemplateFactory>().Create();
+            Get<IPartOfSpeech>(_cache, _adjective).AffixTemplatesOS.Add(template);
+        });
+        Assert.DoesNotContain(Warnings(ScratchDryRun.Of(_cache, Proposal(Prefix(_noun, _adjective)))), IsToWarning);
     }
 }
