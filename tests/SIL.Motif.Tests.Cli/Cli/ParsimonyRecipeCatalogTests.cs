@@ -136,6 +136,7 @@ public sealed class ParsimonyRecipeCatalogTests
             ["P-statement-unused"] = [],
             ["P-env-duplicate"] = [],
             ["P-env-literal-host"] = [],
+            ["P-msa-no-category"] = [],
         };
 
         Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), catalog.Recipes.Select(recipe => recipe.MeasureId));

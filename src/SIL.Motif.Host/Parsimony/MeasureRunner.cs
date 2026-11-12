@@ -23,6 +23,8 @@ public static partial class MeasureRunner
             DecideRepeatedFormAllomorphs),
         [ParsimonyQueryIds.FeatureFewCarriers] = Query(session => session.ReadExceptionFeatureInput(),
             DecideFewCarrierFeatures),
+        [ParsimonyQueryIds.MsaNoCategory] = Query(session => session.ReadStemMsaCategories(),
+            DecideStemMsaWithoutCategory),
         [ParsimonyQueryIds.StatementUnused] = Query(session => session.ReadStatementUsageInput(),
             DecideUnusedStatements),
         [ParsimonyQueryIds.EnvironmentDuplicate] = Query(session => session.ReadEnvironmentDuplicateInput(),

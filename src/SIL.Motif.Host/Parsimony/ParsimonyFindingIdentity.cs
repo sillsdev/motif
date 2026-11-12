@@ -39,6 +39,9 @@ public static class ParsimonyFindingIdentity
     /// <summary>The attachment identity of one exception feature.</summary>
     public static string ExceptionFeatureIdentity(string featureGuid) => "exception-feature/" + featureGuid;
 
+    /// <summary>The attachment identity of one stem MSA under its entry.</summary>
+    public static string MsaIdentity(string entryGuid, string msaGuid) => $"entry/{entryGuid}/msa/{msaGuid}";
+
     /// <summary>The Finding ID of an item-attached Finding, one per item and digested site key.</summary>
     public static string SiteFindingId(string measureId, string itemGuid, string siteKey) =>
         $"{measureId}:{itemGuid}:{Digest(siteKey)}";
@@ -109,6 +112,9 @@ public static class ParsimonyFindingIdentity
             ParsimonyGroupKind.AllomorphDuplicateForms => key is not null &&
                 key.StartsWith("entry/", StringComparison.Ordinal) &&
                 identity.StartsWith(key + "/duplicate-forms/", StringComparison.Ordinal),
+            ParsimonyGroupKind.MsaWithoutCategory => key is not null &&
+                key.StartsWith("entry/", StringComparison.Ordinal) &&
+                identity.StartsWith(key + "/msa/", StringComparison.Ordinal),
             ParsimonyGroupKind.AlternationFamily or ParsimonyGroupKind.DuplicateEnvironments => identity == key,
             ParsimonyGroupKind.AdhocSlotOrder => key is not null && identity == AdhocSlotOrderIdentity(key),
             ParsimonyGroupKind.LiteralContext => key is not null &&
@@ -163,6 +169,7 @@ public static class ParsimonyFindingIdentity
         ParsimonyGroupKind.AdhocSlotOrder => AdhocClasses.Contains(className),
         ParsimonyGroupKind.UnusedStatement => StatementClasses.Contains(className),
         ParsimonyGroupKind.DuplicateEnvironments => className == "PhEnvironment",
+        ParsimonyGroupKind.MsaWithoutCategory => className == "MoStemMsa",
         _ => false,
     };
 

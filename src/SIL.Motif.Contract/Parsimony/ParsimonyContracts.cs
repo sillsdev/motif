@@ -122,6 +122,10 @@ public enum ParsimonyGroupKind
     /// <summary>An exception feature that few entries carry but an affix or rule requires.</summary>
     [JsonStringEnumMemberName("exception-feature")]
     ExceptionFeature,
+
+    /// <summary>A stem MSA that names no part of speech, under its entry.</summary>
+    [JsonStringEnumMemberName("msa-no-category")]
+    MsaWithoutCategory,
 }
 
 /// <summary>The completeness of recipe-level before and after verification.</summary>
