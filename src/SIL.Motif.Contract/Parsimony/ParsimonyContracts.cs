@@ -114,6 +114,10 @@ public enum ParsimonyGroupKind
     /// <summary>A set of environments whose left and right sides match token for token.</summary>
     [JsonStringEnumMemberName("duplicate-environments")]
     DuplicateEnvironments,
+
+    /// <summary>One environment side or rule context side made only of literal segments.</summary>
+    [JsonStringEnumMemberName("literal-context")]
+    LiteralContext,
 }
 
 /// <summary>The completeness of recipe-level before and after verification.</summary>

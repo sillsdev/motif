@@ -23,6 +23,8 @@ public static partial class MeasureRunner
             DecideUnusedStatements),
         [ParsimonyQueryIds.EnvironmentDuplicate] = Query(session => session.ReadEnvironmentDuplicateInput(),
             DecideDuplicateEnvironments),
+        [ParsimonyQueryIds.EnvironmentLiteralHost] = Query(session => session.ReadLiteralHostInput(),
+            DecideLiteralHost),
         [ParsimonyQueryIds.TemplatePrecedence] = Query(session => session.ReadTemplateSequenceFacts(),
             DecideTemplatePrecedence),
         [ParsimonyQueryIds.SlotBlocking] = Query(session => session.ReadTemplateSequenceFacts(),

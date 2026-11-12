@@ -133,6 +133,7 @@ public sealed class ParsimonyRecipeCatalogTests
             ["P-allo-duplicate-form"] = ["RetireAllomorph"],
             ["P-statement-unused"] = [],
             ["P-env-duplicate"] = [],
+            ["P-env-literal-host"] = [],
         };
 
         Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), catalog.Recipes.Select(recipe => recipe.MeasureId));

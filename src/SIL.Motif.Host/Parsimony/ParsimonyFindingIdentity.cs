@@ -101,6 +101,9 @@ public static class ParsimonyFindingIdentity
                 identity.StartsWith(key + "/duplicate-forms/", StringComparison.Ordinal),
             ParsimonyGroupKind.AlternationFamily or ParsimonyGroupKind.DuplicateEnvironments => identity == key,
             ParsimonyGroupKind.AdhocSlotOrder => key is not null && identity == AdhocSlotOrderIdentity(key),
+            ParsimonyGroupKind.LiteralContext => key is not null &&
+                key.StartsWith("literal-context/", StringComparison.Ordinal) &&
+                identity.StartsWith(key + "/", StringComparison.Ordinal),
             _ => false,
         };
     }

@@ -172,9 +172,11 @@ internal sealed class FactsWriter(SqliteConnection connection, SqliteTransaction
                     "VALUES ($g, $s, $k, 'complex');", ("$g", guid), ("$s", side), ("$k", key));
     }
 
-    /// <summary>One pattern root with nodes given as (kind, tokenText, parentIndex, isPhoneme) in tree order.</summary>
-    public long PatternRoot(string ownerKind, string ownerGuid, string role, int ordinal,
-        params (string Kind, string? Text, int Parent)[] nodes)
+    public void Phoneme(string guid, string name) =>
+        Sql("INSERT INTO phoneme(guid, name) VALUES ($g, $n);", ("$g", guid), ("$n", name));
+
+    /// <summary>One pattern root; each node names its parent by index, or -1 for a top-level node.</summary>
+    public long PatternRoot(string ownerKind, string ownerGuid, string role, int ordinal, params Node[] nodes)
     {
         var root = _nextRoot++;
         Sql("INSERT INTO pattern_root(root_id, owner_kind, owner_guid, role, ordinal, source_kind) " +
@@ -188,10 +190,23 @@ internal sealed class FactsWriter(SqliteConnection connection, SqliteTransaction
             ids[index] = _nextNode++;
             long? parent = nodes[index].Parent < 0 ? null : ids[nodes[index].Parent];
             var position = siblings[parent ?? -1] = siblings.GetValueOrDefault(parent ?? -1, -1) + 1;
-            Sql("INSERT INTO pattern_node(node_id, root_id, parent_node_id, ordinal, kind, token_text) " +
-                "VALUES ($n, $r, $p, $o, $k, $t);", ("$n", ids[index]), ("$r", root), ("$p", parent),
-                ("$o", position), ("$k", nodes[index].Kind), ("$t", nodes[index].Text));
+            Sql("INSERT INTO pattern_node(node_id, root_id, parent_node_id, ordinal, kind, phoneme_guid, token_text) " +
+                "VALUES ($n, $r, $p, $o, $k, $ph, $t);", ("$n", ids[index]), ("$r", root), ("$p", parent),
+                ("$o", position), ("$k", nodes[index].Kind), ("$ph", nodes[index].PhonemeGuid),
+                ("$t", nodes[index].Text));
         }
         return root;
     }
+
+    /// <summary>A rewrite rule with its left and right context roots linked from one right-hand side.</summary>
+    public void RewriteRule(string guid, string name, long? leftRoot, long? rightRoot)
+    {
+        Sql("INSERT INTO phonological_rule(guid, name, kind, direction, order_index) " +
+            "VALUES ($g, $n, 'rewrite', 'leftToRight', 0);", ("$g", guid), ("$n", name));
+        Sql("INSERT INTO rewrite_rhs(rule_guid, ordinal, left_context_root_id, right_context_root_id) " +
+            "VALUES ($g, 0, $l, $r);", ("$g", guid), ("$l", leftRoot), ("$r", rightRoot));
+    }
 }
+
+/// <summary>One pattern node to write: its kind, readable token, parent index, and phoneme.</summary>
+internal sealed record Node(string Kind, string? Text = null, int Parent = -1, string? PhonemeGuid = null);

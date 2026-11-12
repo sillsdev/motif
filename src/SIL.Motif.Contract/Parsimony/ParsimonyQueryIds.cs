@@ -32,6 +32,9 @@ public static class ParsimonyQueryIds
     /// <summary>The wire spelling <c>environment-excess/v1</c>.</summary>
     public const string EnvironmentExcess = "environment-excess/v1";
 
+    /// <summary>The wire spelling <c>environment-literal-host/v1</c>.</summary>
+    public const string EnvironmentLiteralHost = "environment-literal-host/v1";
+
     /// <summary>The wire spelling <c>natural-class-excess/v1</c>.</summary>
     public const string NaturalClassExcess = "natural-class-excess/v1";
 
