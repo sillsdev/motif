@@ -29,6 +29,10 @@ public static class ParsimonyFindingIdentity
     public static string DuplicateFormsIdentity(string entryGuid, string morphType, IEnumerable<string> memberIds) =>
         $"entry/{entryGuid}/duplicate-forms/{morphType}/" + Digest(string.Join("\n", memberIds));
 
+    /// <summary>The attachment identity of one entry's repeated-form finding, named by every member GUID.</summary>
+    public static string RepeatedFormsIdentity(string entryGuid, IEnumerable<string> memberIds) =>
+        $"entry/{entryGuid}/duplicate-forms/repeated/" + Digest(string.Join("\n", memberIds));
+
     /// <summary>The group key shared by every few-carrier exception-feature finding.</summary>
     public const string ExceptionFeatureGroupKey = "exception-features";
 

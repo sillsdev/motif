@@ -72,9 +72,9 @@ public sealed class ParsimonyAdmissionTests
     }
 
     [Fact]
-    public void GroupsExpandToTheSixGrammarAndNineTextMeasures()
+    public void GroupsExpandToTheSevenGrammarAndNineTextMeasures()
     {
-        Assert.Equal(6, ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar).Count);
+        Assert.Equal(7, ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar).Count);
         Assert.Equal(9, ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Text).Count);
         Assert.Equal(ParsimonyAdmission.SupportedMeasureIds(), ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.All));
         Assert.Equal(["grammar", "text", "all"], ParsimonyGroupRequests.Names);

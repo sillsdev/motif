@@ -19,6 +19,8 @@ public static partial class MeasureRunner
             DecideDuplicateAllomorphs),
         [ParsimonyQueryIds.AlloAlternationFamily] = Query(session => session.ReadAlternationInput(),
             DecideAlternationFamilies),
+        [ParsimonyQueryIds.AlloRepeatedForm] = Query(session => session.ReadAllomorphsForMeasure(),
+            DecideRepeatedFormAllomorphs),
         [ParsimonyQueryIds.FeatureFewCarriers] = Query(session => session.ReadExceptionFeatureInput(),
             DecideFewCarrierFeatures),
         [ParsimonyQueryIds.StatementUnused] = Query(session => session.ReadStatementUsageInput(),

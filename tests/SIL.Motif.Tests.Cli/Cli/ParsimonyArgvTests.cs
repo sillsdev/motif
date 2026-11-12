@@ -58,7 +58,7 @@ public sealed class ParsimonyArgvTests : IDisposable
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
         Assert.Equal(SIL.Motif.Host.Parsimony.ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar),
             set!.Reports.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
-        Assert.Equal(6, set.Reports.Count);
+        Assert.Equal(7, set.Reports.Count);
         Assert.Null(set.Note);
     }
 

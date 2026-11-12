@@ -35,6 +35,16 @@
         "findingsMin": 0,
         "findingsMax": 3
       },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
+      },
       "P-statement-unused": {
         "status": "Computed",
         "eligibleMin": 13,
@@ -110,6 +120,16 @@
         "eligibleMin": 514,
         "findingsMin": 1,
         "findingsMax": 7
+      },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
       },
       "P-statement-unused": {
         "status": "Computed",
@@ -187,6 +207,16 @@
         "findingsMin": 0,
         "findingsMax": 3
       },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
+      },
       "P-statement-unused": {
         "status": "Computed",
         "eligibleMin": 12,
@@ -260,6 +290,16 @@
         "eligibleMin": 166,
         "findingsMin": 1,
         "findingsMax": 5
+      },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
       },
       "P-statement-unused": {
         "status": "Computed",
@@ -336,6 +376,16 @@
         "eligibleMin": 783,
         "findingsMin": 1,
         "findingsMax": 5
+      },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
       },
       "P-statement-unused": {
         "status": "Computed",

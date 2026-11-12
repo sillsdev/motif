@@ -17,6 +17,9 @@ public static class ParsimonyQueryIds
     /// <summary>The wire spelling <c>allo-alternation-family/v1</c>.</summary>
     public const string AlloAlternationFamily = "allo-alternation-family/v1";
 
+    /// <summary>The wire spelling <c>allo-repeated-form/v1</c>.</summary>
+    public const string AlloRepeatedForm = "allo-repeated-form/v1";
+
     /// <summary>The wire spelling <c>allo-unconditioned/v1</c>.</summary>
     public const string AlloUnconditioned = "allo-unconditioned/v1";
 
