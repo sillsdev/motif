@@ -2,23 +2,18 @@ using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
-using SIL.Motif.Host.LcmUtils;
-using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
-using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
-using Xunit.Abstractions;
 using static SIL.Motif.Tests.Composers.AffixTestSupport;
 
 namespace SIL.Motif.Tests.Composers;
 
-/// <summary>Sense-less variants: the narrowed last-sense refusal, the strip and author composers, and a real parse.</summary>
+/// <summary>Sense-less variants: the narrowed last-sense refusal and the strip and author composers.</summary>
 [Collection(LcmCacheParallelCollections.Group3)]
 public sealed class SenselessVariantTests(PristineProjectFixture pristine) : IDisposable
 {
-    private static readonly string[] Letters = ["p", "a", "l", "i", "t", "k", "u", "n"];
     private readonly LcmCache _cache = pristine.NewScratch();
 
     public void Dispose()
@@ -79,6 +74,30 @@ public sealed class SenselessVariantTests(PristineProjectFixture pristine) : IDi
         Assert.Equal("plit", form.Form.get_String(_cache.DefaultVernWs).Text);
         Assert.Equal(environment.ToGuid(), Assert.Single(form.PhoneEnvRC).Guid);
         Assert.Single(Get<ILexEntry>(_cache, main.Entry).SensesOS);
+    }
+
+    [Fact]
+    public void StrippingAVariantWithTwoCopiedSensesThatShareOneAnalysisDeletesBothAndTheAnalysis()
+    {
+        var verb = AddCategory(_cache, "Verb");
+        var type = VariantType();
+        var main = AddStem(_cache, "palit", verb);
+        var copy = AddStem(_cache, "plit", verb);
+        var variant = Get<ILexEntry>(_cache, copy.Entry);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+        {
+            var second = _cache.ServiceLocator.GetInstance<ILexSenseFactory>().Create();
+            variant.SensesOS.Add(second);
+            second.Gloss.set_String(_cache.DefaultAnalWs, "second");
+            second.MorphoSyntaxAnalysisRA = variant.SensesOS[0].MorphoSyntaxAnalysisRA;
+        });
+        ApplyOps(_cache, MakeVariantOfComposer.Build(_cache, new(copy.Entry, main.Entry, type)));
+
+        ApplyOps(_cache, StripVariantSensesComposer.Build(_cache, new StripVariantSensesIntent([new(copy.Entry)])));
+
+        Assert.Empty(variant.SensesOS);
+        Assert.Empty(variant.MorphoSyntaxAnalysesOC);
+        Assert.Single(variant.EntryRefsOS);
     }
 
     [Fact]

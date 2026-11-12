@@ -8,12 +8,13 @@ namespace SIL.Motif.Runner.Operations;
 /// <summary>
 /// Decides when an entry may be left with no sense. LibLCM's CreateVariantEntryAndBackRef makes a variant entry with a
 /// lexeme form and a variant reference and no sense, so that shape is one FieldWorks produces (ADR 0112). The parser
-/// loads such an entry only through its variant reference, and only when the component carries a stem analysis.
+/// loads such an entry only through its variant reference and a component with a stem analysis, pinned by
+/// `RealParserSenselessVariantTests`.
 /// </summary>
 internal static class SenselessVariant
 {
     /// <summary>Why a sense-less entry would be dropped by the parser, or null when it stays a variant of a stem.</summary>
-    internal static string? WhyNotAllowed(ILexEntry entry, ISet<Guid>? ignoredComponents = null)
+    internal static string? WhyNotAllowed(ILexEntry entry)
     {
         var variants = entry.EntryRefsOS
             .Where(reference => reference.RefType == LexEntryRefTags.krtVariant && reference.VariantEntryTypesRS.Count > 0)
@@ -22,8 +23,7 @@ internal static class SenselessVariant
             return "the entry is not a variant (it has no variant reference with a variant type)";
         foreach (var reference in variants)
         {
-            var stem = reference.ComponentLexemesRS.Where(component => ignoredComponents?.Contains(component.Guid) != true)
-                .FirstOrDefault(HasStemAnalysis);
+            var stem = reference.ComponentLexemesRS.FirstOrDefault(HasStemAnalysis);
             if (stem is not null) return null;
         }
         return "no component of its variant reference carries a stem analysis, so the parser would load nothing for it";
