@@ -126,6 +126,10 @@ public enum ParsimonyGroupKind
     /// <summary>A stem MSA that names no part of speech, under its entry.</summary>
     [JsonStringEnumMemberName("msa-no-category")]
     MsaWithoutCategory,
+
+    /// <summary>A sense whose gloss only repeats its entry's form, under its entry.</summary>
+    [JsonStringEnumMemberName("gloss-echoes-form")]
+    GlossEchoesForm,
 }
 
 /// <summary>The completeness of recipe-level before and after verification.</summary>

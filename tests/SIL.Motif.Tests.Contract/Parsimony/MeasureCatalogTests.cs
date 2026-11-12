@@ -41,7 +41,7 @@ public sealed class MeasureCatalogTests
         [
             "P-adhoc-duplicate", "P-allo-alternation-family", "P-allo-duplicate-form", "P-allo-repeated-form",
             "P-env-duplicate", "P-env-literal-host", "P-feature-few-carriers",
-            "P-msa-no-category",
+            "P-gloss-echoes-form", "P-msa-no-category",
             "P-statement-unused", "R-allo-unconditioned",
         ];
         Assert.Equal(grammar, MeasureCatalog.All.Where(measure => measure.Group == ParsimonyMeasureGroup.Grammar)

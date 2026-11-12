@@ -137,6 +137,7 @@ public sealed class ParsimonyRecipeCatalogTests
             ["P-env-duplicate"] = [],
             ["P-env-literal-host"] = [],
             ["P-msa-no-category"] = [],
+            ["P-gloss-echoes-form"] = [],
         };
 
         Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), catalog.Recipes.Select(recipe => recipe.MeasureId));

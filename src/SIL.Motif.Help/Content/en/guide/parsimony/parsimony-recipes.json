@@ -255,6 +255,16 @@
       "sources": [
         "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
       ]
+    },
+    {
+      "measureId": "P-gloss-echoes-form",
+      "recipeVersion": 1,
+      "title": "Gloss that echoes the form",
+      "shortTitle": "glosses that echo the form",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
+      ]
     }
   ]
 }
