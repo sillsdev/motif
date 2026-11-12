@@ -611,7 +611,7 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         get
         {
-            var kept = _selectedProposal is null ? _rereading : _lastRationaleEditor?.ProposalId == _selectedProposal.ProposalId;
+            var kept = DetailRefusal is null && (_selectedProposal is null ? _rereading : _lastRationaleEditor?.ProposalId == _selectedProposal.ProposalId);
             var editor = RationaleEditor ?? (kept ? _lastRationaleEditor : null);
             return editor is { HasUnsavedChanges: true } ? editor : null;
         }
@@ -837,6 +837,7 @@ public sealed partial class ProposalsPageModel : PageModel
         _requestGeneration++;
         Requests.Show([], Context.Clock.GetUtcNow());
         _rereading = false;
+        _lastRationaleEditor = null;
         _includeSetAside = false;
         SelectedGroupFilter = null;
         SetSelectedProposal(null);
