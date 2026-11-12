@@ -205,6 +205,26 @@ Parsimony, besides Proposals and GDRs. Tagline: "Make It Ready for Everyone". Pe
 Grow and Polish.
 _Avoid_: Deploy, Release, Publish, Production, Send
 
+## Scripture in the Paratext flow
+
+**Source** (of scripture):
+A whole Paratext project, or a folder of corpus files, with one versification. Motif reads its text and never copies it
+into the FieldWorks project ([ADR 0110](docs/adr/0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md)).
+_Avoid_: import, corpus copy
+
+**Passage**:
+One chapter of a Source; for a corpus, one document.
+
+**Context** (in context):
+The chapters of a Source the work is about now, written as a range such as `GEN-ROM; 1CO 13-15`.
+_Avoid_: scope, selection
+
+**Later**:
+Every chapter of the Source that is not in Context.
+
+**Current**:
+The one chapter a person is working on. It is kept on their machine and is not shared.
+
 ## Evaluating a Proposal
 
 Two different evaluations, deliberately named apart. One asks *does the grammar parse better?*; the
