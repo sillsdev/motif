@@ -41,7 +41,12 @@ Draft ADR 0108 ("Approval is per occurrence...", proposed, PR #149) sets how sta
    change the same word's JSON between syncs, the person who syncs second wins and the other's approvals vanish from the
    live data. They survive only in a conflict note and in history. One item per chapter merges cleanly, and two people
    in different chapters never collide. One item per occurrence would merge perfectly but is too large for a Bible.
-   Proof is pending: a local two-clone Send/Receive test on a disposable copy.
+   Proved 2026-11-12 with the real FLExBridge and Chorus merge, two clones of a disposable copy and a local folder as
+   the server. Edits to different chapter items, different words, or new list items and child items all merge,
+   though a new item raises an "ambiguous insert" note. When two people edit the same item or the same word between
+   syncs, the second to sync wins. The other value survives only in the Chorus conflict note and the history. Not yet
+   tested: the reverse sync order, Name or Description conflicts in one writing system, and opening the merged
+   project in FLEx.
 6. **Word-level judgements are not anchored.** A misspelling uses WfiWordform.SpellingStatus. "This analysis is wrong"
    uses FieldWorks' human Disapproved on WfiAnalysis. Paratext's own spelling list wins when Paratext 10 exposes it.
    There is no synthetic text of misspellings.
