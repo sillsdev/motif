@@ -246,3 +246,11 @@ and `compare` says so. When both recorded the parser that ran them (executable v
 [ADR 0039](0039-one-worker-baseline-and-live-host-authority.md)'s amendment of the same date) and the two content hashes differ,
 the response, the stored Difference's scope and its report carry a warning naming both with their versions when known, because a change in
 the parser looks exactly like a change in the grammar. An Assessment that recorded no parser is not a mismatch.
+
+### 2026-11-12 — a word invalid in the same way before and after is unaffected
+
+Readiness treats a word whose before and after evidence are both InvalidShape, for the same recorded reason, as
+unaffected by the Proposal, so it does not make Correctness incomplete and does not block Apply, including
+`apply --autonomous`. It stays listed in the Review. A word that is InvalidShape on one side only, or for different
+reasons on the two sides, still blocks as before. The rule holds for every Proposal, not only Notes-only ones
+(sillsdev/motif#128).
