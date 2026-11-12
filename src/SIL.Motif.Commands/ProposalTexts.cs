@@ -127,7 +127,7 @@ public static class ProposalTexts
                     FailureReason.Refused, $"Proposal '{id.Value}' is {record.Status}, so its rationale can no longer change.",
                     id.Value));
 
-            if (expectedRationale is not null && !string.Equals(record.Rationale, expectedRationale, StringComparison.Ordinal))
+            if (expectedRationale is not null && !string.Equals(record.Rationale ?? string.Empty, expectedRationale, StringComparison.Ordinal))
                 return CommandOutcome<ProposalTextChangedResponse>.Refused(ChangedWhileEditing(id));
             var checkedText = check(database, project, text);
             if (IsReady(record) && checkedText.ProjectUnavailable)
@@ -152,6 +152,7 @@ public static class ProposalTexts
                 id.Value, "rationale", written.RationaleUpdatedUtc, CommentsChanged(database, written))
             {
                 Findings = checkedText.Findings,
+                Text = written.Rationale,
             });
         });
     }

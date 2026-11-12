@@ -914,18 +914,17 @@ public sealed partial class ProposalsPageModel : PageModel
     private void SelectProposal(ProposalCardViewModel? card)
     {
         if (card is null || !Groups.Any(group => group.Cards.Contains(card))) return;
-        // An unsaved Rationale edit is not thrown away by choosing another Proposal: it is saved or cancelled first.
-        if (RationaleEditor is { HasUnsavedChanges: true } editing && editing.ProposalId != card.ProposalId)
-        {
-            editing.MarkSwitchRefused();
-            return;
-        }
         SelectByUser(card);
     }
 
-    // Only a person's own choice of a row marks it read; a re-read that reselects a row does not.
-    private void SelectByUser(ProposalCardViewModel card)
+    // A person's choice marks a row read and is refused (false) while another Proposal's Rationale edit is unsaved.
+    private bool SelectByUser(ProposalCardViewModel card)
     {
+        if (RationaleEditor is { HasUnsavedChanges: true } editing && editing.ProposalId != card.ProposalId)
+        {
+            editing.MarkSwitchRefused();
+            return false;
+        }
         _pendingUserSelectionId = card.ProposalId;
         SetSelectedProposal(card);
         _pendingUserSelectionId = null;
@@ -934,6 +933,7 @@ public sealed partial class ProposalsPageModel : PageModel
             _selectionByUser = true;
             MarkSelectedRead();
         }
+        return true;
     }
 
     private void UpdateRows(string? selectedId)
@@ -1091,8 +1091,7 @@ public sealed partial class ProposalsPageModel : PageModel
 
     private void AskToDelete(ProposalCardViewModel? card)
     {
-        if (card is null || !card.CanDelete) return;
-        SelectByUser(card);
+        if (card is null || !card.CanDelete || !SelectByUser(card)) return;
         SetDeleteQuestion(card.ProposalId);
     }
 

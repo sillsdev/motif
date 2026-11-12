@@ -730,6 +730,37 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task ARowsDeleteMenuDoesNotLeaveAnUnsavedRationaleEdit()
+    {
+        var (fake, _, page) = await OpenAsync(new ProposalStandings(
+            [Card("p/one", "One", ProposalGroup.WaitingForYou),
+                Card("p/declined", "Declined", ProposalGroup.SetAside) with { Status = "rejected" }], 1));
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label",
+                new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false), null, [])));
+        var cards = page.Groups.SelectMany(group => group.Cards).ToArray();
+        var one = cards.Single(card => card.ProposalId == "p/one");
+        var declined = cards.Single(card => card.ProposalId == "p/declined");
+        page.SelectProposalCommand.Execute(declined);
+        page.SelectProposalCommand.Execute(one);
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[^1].Text += " Typed.";
+
+        page.AskToDeleteCommand.Execute(declined);
+
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.Same(editor, page.RationaleEditor);
+        Assert.True(editor.IsSwitchRefused);
+        Assert.False(page.IsConfirmingDelete);
+        editor.CancelCommand.Execute(null);
+        page.AskToDeleteCommand.Execute(declined);
+        Assert.Equal("p/declined", page.SelectedProposal?.ProposalId);
+        Assert.True(page.IsConfirmingDelete);
+    }
+
+    [Fact]
     public async Task DeleteRemovesTheProposalAndReadsTheListAgain()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings(

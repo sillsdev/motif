@@ -121,6 +121,26 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
     }
 
     [Fact]
+    public void AProposalWithNoRationaleGetsItsFirstOneFromAnEmptyBaseAndAnyOtherBaseIsStale()
+    {
+        var path = ProjectWithBaseline();
+        var (_, id) = Draft(path, "first-rationale");
+        Assert.Null(Show(path, id).Rationale);
+
+        var stale = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Why.", ExpectedRationale: "Other."));
+        var first = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Why it is right.\n\n",
+            ExpectedRationale: string.Empty));
+
+        Assert.Equal(RefusalCodes.ProposalRationaleStale, stale.Refusal?.Code);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        Assert.Equal("Why it is right.", first.Value!.Text);
+        Assert.Equal("Why it is right.", Show(path, id).Rationale!.Markdown);
+        var second = ProposalTexts.SetRationale(new SetRationaleRequest(path, Version, id, "Why it is still right.",
+            ExpectedRationale: first.Value.Text));
+        Assert.True(second.Succeeded, second.Refusal?.Message);
+    }
+
+    [Fact]
     public void ACodeSpanInAReadyRationaleOrACommentIsPlainTextAndNoFinding()
     {
         const string withCode = "Run `motif proposals` and read [form-1]{.v} beside it.";

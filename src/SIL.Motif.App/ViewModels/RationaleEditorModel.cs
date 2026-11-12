@@ -123,7 +123,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanStartEdit))]
     private void Edit()
     {
-        Document = Read(_markdown, out var plain);
+        Document = Read(_markdown, out var plain, editable: true);
         IsPlainText = plain;
         Findings = [];
         Refusal = null;
@@ -161,7 +161,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     private void Restore(RationaleRevisionChoice? revision)
     {
         if (revision is null) return;
-        Document = Read(revision.Markdown, out var plain);
+        Document = Read(revision.Markdown, out var plain, editable: true);
         IsPlainText = plain;
         Findings = [];
         Refusal = null;
@@ -215,8 +215,10 @@ public sealed partial class RationaleEditorModel : ObservableObject
                 Findings = FindingsOf(saved.Refusal!);
                 return;
             }
-            _markdown = text;
+            // The stored, maybe tidied, text is the next base; a save onto the base means nothing changed elsewhere.
+            _markdown = saved.Value!.Text ?? text;
             OnPropertyChanged(nameof(Markdown));
+            IsChangedElsewhere = false;
             Refusal = null;
             Findings = saved.Value!.Findings.Select(Describe).ToArray();
             Revisions = [];
@@ -269,7 +271,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     private MarkdownOptions Options() =>
         MotifMarkdownOptions.Create(new FixedWritingSystems(UnmarkedAnalysis, UnmarkedVernacular), paths: _paths);
 
-    private TextDocument Read(string markdown, out bool plainText)
+    private TextDocument Read(string markdown, out bool plainText, bool editable = false)
     {
         var withoutPaths = Options();
         withoutPaths.Paths = null;
@@ -278,7 +280,18 @@ public sealed partial class RationaleEditorModel : ObservableObject
         var parsed = MarkdownConverter.Parse(markdown, Options());
         // Edited as written when the checker has findings or a block reads otherwise alone: a save could not keep it.
         plainText = parsed.HasErrors || !ProposalTextChecker.Check(markdown, null, null).IsClean || !Segment(markdown);
-        if (!plainText) return parsed.Document;
+        if (!plainText)
+        {
+            // An empty Rationale being edited has one empty paragraph, so what is typed first is unmarked analysis text.
+            if (editable && parsed.Document.Paragraphs.Count == 0)
+                parsed.Document.Paragraphs.Add(new Paragraph
+                {
+                    Style = "Normal",
+                    DefaultWs = parsed.DefaultAnalysis,
+                    Runs = [new Run { Text = string.Empty, Ws = parsed.DefaultAnalysis }],
+                });
+            return parsed.Document;
+        }
         var document = new TextDocument();
         foreach (var line in markdown.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
             document.Paragraphs.Add(new Paragraph

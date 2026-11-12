@@ -268,6 +268,53 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
         Assert.Equal("Theirs.", editor.Text());
     }
 
+    [Fact]
+    public async Task AProposalWithNoRationaleGetsItsFirstOne()
+    {
+        var fake = new FakeCommandClient();
+        var context = WorkspaceContextTests.NewContext(fake);
+        await context.OpenProjectAsync(ProjectPath);
+        var editor = new RationaleEditorModel(context,
+            new ProposalDetailProjection(Id, "proposed", "Label", null, null, []) { DraftName = "draft-1" });
+        fake.StoredRationale = null;
+
+        editor.EditCommand.Execute(null);
+        Typed(editor, "Why it is right.");
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(string.Empty, Assert.Single(fake.SetRationaleRequests).ExpectedRationale);
+        Assert.False(editor.IsEditing);
+        Assert.False(editor.IsChangedElsewhere);
+        Assert.Equal("Why it is right.", fake.StoredRationale);
+    }
+
+    [Fact]
+    public async Task ASecondEditAfterASaveTheStoreTidiedStartsFromTheStoredText()
+    {
+        var (fake, editor) = await OpenAsync("Some <b>raw</b> HTML.");
+        Assert.True(editor.IsPlainText);
+
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs.Add(new Paragraph
+        {
+            Style = "Normal",
+            DefaultWs = editor.Document.Paragraphs[0].DefaultWs,
+            Runs = [new Run { Text = string.Empty, Ws = editor.Document.Paragraphs[0].Runs[0].Ws }],
+        });
+        await editor.SaveCommand.ExecuteAsync(null);
+        Assert.Equal("Some <b>raw</b> HTML.\n", fake.SetRationaleRequests[0].Text);
+        Assert.Equal("Some <b>raw</b> HTML.", editor.Markdown);
+
+        editor.EditCommand.Execute(null);
+        Typed(editor, " Again.");
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Some <b>raw</b> HTML.", fake.SetRationaleRequests[1].ExpectedRationale);
+        Assert.False(editor.IsEditing);
+        Assert.False(editor.IsChangedElsewhere);
+        Assert.Equal("Some <b>raw</b> HTML. Again.", fake.StoredRationale);
+    }
+
     private static void Typed(RationaleEditorModel editor, string text)
     {
         var runs = editor.Document.Paragraphs[^1].Runs;
@@ -277,7 +324,7 @@ public sealed class RationaleEditorModelTests(AvaloniaHeadlessFixture avalonia)
     private static async Task<(FakeCommandClient Fake, RationaleEditorModel Editor)> OpenAsync(string markdown,
         string status = "proposed", string? draftName = null, IUriLauncher? launcher = null)
     {
-        var fake = new FakeCommandClient();
+        var fake = new FakeCommandClient { StoredRationale = markdown };
         var context = WorkspaceContextTests.NewContext(fake, uriLauncher: launcher);
         await context.OpenProjectAsync(ProjectPath);
         var detail = new ProposalDetailProjection(Id, status, "Label",

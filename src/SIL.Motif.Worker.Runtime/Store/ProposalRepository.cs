@@ -38,7 +38,7 @@ public enum DraftFinalizationResult
 
 /// <summary>
 /// The status and Draft name a Proposal had when its new Rationale was checked, which the write needs unchanged, and,
-/// when <paramref name="Rationale"/> is given, the Rationale it replaces.
+/// when <paramref name="Rationale"/> is given, the Rationale it replaces, where an empty one stands for none.
 /// </summary>
 public sealed record RationaleWriteExpectation(string Status, string? DraftName, string? Rationale = null);
 
@@ -697,7 +697,7 @@ public sealed class ProposalRepository : IProposalRepository
                     DraftName = NULL, DraftJson = NULL, ArchivedUtc = NULL,
                     AnchorJson = CASE WHEN json_extract(AnchorJson, '$.IntentDigest') = $digest
                         OR json_extract(AnchorJson, '$.intentDigest') = $digest THEN AnchorJson ELSE NULL END
-                WHERE DraftName = $name AND ($expectedRationale IS NULL OR Rationale IS $expectedRationale);
+                WHERE DraftName = $name AND ($expectedRationale IS NULL OR COALESCE(Rationale, '') = $expectedRationale);
                 """;
             commit.Parameters.AddWithValue("$expectedRationale", (object?)expectedRationale ?? DBNull.Value);
             commit.Parameters.AddWithValue("$digest", intentDigest);
@@ -888,7 +888,7 @@ public sealed class ProposalRepository : IProposalRepository
             UPDATE Proposals SET Rationale = $text, RationaleIntentDigest = CurrentIntentDigest,
                 RationaleUpdatedUtc = $now WHERE ProposalId = $id
                 AND ($expected = 0 OR (Status IS $status AND DraftName IS $draftName))
-                AND ($replaces = 0 OR Rationale IS $replaced);
+                AND ($replaces = 0 OR COALESCE(Rationale, '') = $replaced);
             """;
         update.Parameters.AddWithValue("$replaces", expected?.Rationale is null ? 0 : 1);
         update.Parameters.AddWithValue("$replaced", (object?)expected?.Rationale ?? DBNull.Value);

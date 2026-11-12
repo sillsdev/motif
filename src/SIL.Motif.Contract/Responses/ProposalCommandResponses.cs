@@ -98,6 +98,12 @@ public sealed record ProposalTextChangedResponse(string ProposalId, string Field
     /// Rationale saves with findings, but the Draft cannot be finalized until they are fixed.
     /// </summary>
     public IReadOnlyList<TextFinding> Findings { get; init; } = [];
+
+    /// <summary>
+    /// The Rationale as stored: the text written, tidied when it is clean (ADR 0099). The base for its next edit;
+    /// null for a note.
+    /// </summary>
+    public string? Text { get; init; }
 }
 
 /// <summary>A Comment was added, edited or deleted on a Proposal.</summary>

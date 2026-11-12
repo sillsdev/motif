@@ -59,6 +59,42 @@ public sealed class ProposalWorkflowModelTests
     }
 
     [Fact]
+    public async Task AReReadDuringThePersonsOwnSaveLeavesNoChangedElsewhereNotice()
+    {
+        var fake = NewFake();
+        fake.ProposalDetail = new ProposalDetailProjection(Id, "proposed", "Sound change",
+            new RationaleView("Why this helps", null, "2026-10-01", false, null, false), "new", []);
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(Path);
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        var card = page.SelectedProposal;
+        var marked = false;
+        fake.SetRationaleHandler = request =>
+        {
+            // The list is read again while the save is in flight, and already shows the saved text.
+            fake.ProposalDetail = fake.ProposalDetail! with
+            {
+                Rationale = new RationaleView(request.Text, null, "2026-10-02", false, null, false),
+            };
+            page.SelectedProposal = null;
+            page.SelectedProposal = card;
+            marked = editor.IsChangedElsewhere;
+            return null;
+        };
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[^1].Text += " Typed.";
+
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        Assert.True(marked);
+        Assert.False(editor.IsEditing);
+        Assert.False(editor.IsChangedElsewhere);
+        Assert.Equal("Why this helps Typed.", editor.Markdown);
+    }
+
+    [Fact]
     public async Task ARationaleBeingEditedSurvivesARereadOfTheSameProposal()
     {
         var fake = NewFake();
