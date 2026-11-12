@@ -185,15 +185,26 @@ public sealed class UserDataSweep
         var remaining = entries.Sum(entry => entry.Bytes);
         var ordered = removable.OrderBy(entry => entry.LastWriteUtc).ToList();
         var removedSet = new HashSet<Entry>();
-        // Only runs age out by themselves; a Baseline or source is removed under the budget alone.
-        foreach (var entry in ordered.Where(entry => entry.Family == "assessment-runs" &&
-                     now - entry.LastWriteUtc >= _options.MinimumAge))
-            Remove(entry);
-        foreach (var entry in ordered.Where(entry => !removedSet.Contains(entry) &&
-                     now - entry.LastWriteUtc >= _options.BudgetMinimumAge))
+        // One exclusive source lease covers every source removal, so the stores are reread once, not per source.
+        WorkerMutexOwner? sourceLease = null;
+        string? sourceRefusal = null;
+        HashSet<string>? sourceTokens = null;
+        try
         {
-            if (remaining <= _options.BudgetBytes) break;
-            Remove(entry);
+            // Only runs age out by themselves; a Baseline or source is removed under the budget alone.
+            foreach (var entry in ordered.Where(entry => entry.Family == "assessment-runs" &&
+                         now - entry.LastWriteUtc >= _options.MinimumAge))
+                Remove(entry);
+            foreach (var entry in ordered.Where(entry => !removedSet.Contains(entry) &&
+                         now - entry.LastWriteUtc >= _options.BudgetMinimumAge))
+            {
+                if (remaining <= _options.BudgetBytes) break;
+                Remove(entry);
+            }
+        }
+        finally
+        {
+            sourceLease?.Dispose();
         }
 
         var kept = new SortedDictionary<string, int>(StringComparer.Ordinal);
@@ -218,34 +229,16 @@ public sealed class UserDataSweep
                     keptBy[entry] = "inUse";
                     return;
                 }
-                using var sourceLease = entry.Family == "assessment-sources"
-                    ? StatsCacheLock.CreateSharedSourceLock(Path.GetDirectoryName(entry.Path)!, exclusive: true) : null;
-                if (sourceLease is not null)
+                if (entry.Family == "assessment-sources")
                 {
-                    keptBy[entry] = "inUse";
-                    if (!sourceLease.TryAcquire()) return;
-                    keptBy[entry] = "unaccounted";
-                    var currentTokens = new HashSet<string>(StringComparer.Ordinal);
-                    var currentStores = new HashSet<string>(liveStores.Keys, PathComparer);
-                    foreach (var project in _projects.List())
+                    if (sourceTokens is null && sourceRefusal is null) RecheckSources(entry.Path);
+                    if (sourceTokens is null)
                     {
-                        var store = Path.ChangeExtension(project.FullFwDataPath, ".motif.db");
-                        if (File.Exists(store)) currentStores.Add(Path.GetFullPath(store));
-                        else if (!Directory.Exists(Path.GetDirectoryName(project.FullFwDataPath))) return;
+                        keptBy[entry] = sourceRefusal!;
+                        return;
                     }
-                    var runRoot = Path.Combine(_root, "assessment-runs");
-                    if (Directory.Exists(runRoot))
-                        foreach (var owner in Directory.EnumerateFiles(runRoot, "*.owner"))
-                        {
-                            if ((File.GetAttributes(owner) & FileAttributes.ReparsePoint) != 0) return;
-                            var store = File.ReadAllText(owner).Trim();
-                            if (!TryFullPath(store, out var fullStore) || !File.Exists(fullStore)) return;
-                            currentStores.Add(fullStore);
-                        }
-                    foreach (var store in currentStores)
-                        if (!ReadTokens(store, currentTokens)) return;
                     keptBy[entry] = "referenced";
-                    if (currentTokens.Contains(entry.Key)) return;
+                    if (sourceTokens.Contains(entry.Key)) return;
                 }
                 Delete(entry.Path);
                 foreach (var sidecar in new[] { entry.Path + ".owner", entry.Path + ".prune" })
@@ -260,6 +253,39 @@ public sealed class UserDataSweep
                 keptBy[entry] = "failed";
                 failures.Add(entry.Path + ": " + exception.Message);
             }
+        }
+
+        // Rereads every store under the exclusive lease, so no parse names a source between check and removal.
+        void RecheckSources(string sourcePath)
+        {
+            sourceLease?.Dispose();
+            sourceLease = StatsCacheLock.CreateSharedSourceLock(Path.GetDirectoryName(sourcePath)!, exclusive: true);
+            if (!sourceLease.TryAcquire())
+            {
+                sourceRefusal = "inUse";
+                return;
+            }
+            sourceRefusal = "unaccounted";
+            var currentTokens = new HashSet<string>(StringComparer.Ordinal);
+            var currentStores = new HashSet<string>(liveStores.Keys, PathComparer);
+            foreach (var project in _projects.List())
+            {
+                var store = Path.ChangeExtension(project.FullFwDataPath, ".motif.db");
+                if (File.Exists(store)) currentStores.Add(Path.GetFullPath(store));
+                else if (!Directory.Exists(Path.GetDirectoryName(project.FullFwDataPath))) return;
+            }
+            var runRoot = Path.Combine(_root, "assessment-runs");
+            if (Directory.Exists(runRoot))
+                foreach (var owner in Directory.EnumerateFiles(runRoot, "*.owner"))
+                {
+                    if ((File.GetAttributes(owner) & FileAttributes.ReparsePoint) != 0) return;
+                    var store = File.ReadAllText(owner).Trim();
+                    if (!TryFullPath(store, out var fullStore) || !File.Exists(fullStore)) return;
+                    currentStores.Add(fullStore);
+                }
+            foreach (var store in currentStores)
+                if (!ReadTokens(store, currentTokens)) return;
+            sourceTokens = currentTokens;
         }
     }
 
