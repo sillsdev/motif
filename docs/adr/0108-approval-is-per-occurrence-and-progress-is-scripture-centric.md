@@ -10,7 +10,9 @@ a meeting with the interlinearizer team ([interlinearizer-meeting.md](../source-
 
 1. **Per-occurrence approval is the source.** FieldWorks' per-analysis approval is derived from it when a .fwdata is
    built, and an export from .fwdata turns each `AnalysesRS` slot whose analysis is human-approved into an approved
-   occurrence.
+   occurrence. That holds for a legacy FieldWorks USFM import. For the Paratext 10 flow,
+   [ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md) stores the approvals directly on
+   WfiWordform and nothing is derived.
 2. **Disapproved means "this analysis is wrong"**, wherever it occurs. It is a person's explicit judgement on the
    analysis, the same as FieldWorks' Disapproved. Rejecting one occurrence ("not this one here") is not a Disapproval.
 3. **Passed over**, a derived state between Unknown and Disapproved (owner, grill Q12): a Candidate the parser produces for a word whose

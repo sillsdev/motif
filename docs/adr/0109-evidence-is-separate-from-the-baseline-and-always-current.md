@@ -12,7 +12,8 @@ against old evidence are marked out of date and rerun for only the words that ch
 1. **The Baseline is grammar and lexicon.** Texts and approved occurrences are **Evidence**: always current and versioned.
    Every Trial and Measure records the Baseline and the Evidence version it ran on.
 2. **Changes flow through the whole chain:**
-   - a Paratext edit refreshes the Text;
+   - a Paratext edit changes the chapter hash, which re-reads the chapter from Paratext (ADR 0110 decision 8; for the
+     legacy USFM import, the refresh writes the Text);
    - the refresh re-anchors approvals (ADR 0108 §5);
    - re-anchoring bumps the Evidence version;
    - the bump marks the affected progress numbers and Proposal results as outdated;

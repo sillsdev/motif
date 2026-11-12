@@ -413,10 +413,11 @@ save ([ADR 0109](docs/adr/0109-evidence-is-separate-from-the-baseline-and-always
 _Avoid_: snapshot (a Proposal snapshot is a different thing), backup, session cache, live model
 
 **Evidence**:
-The texts and approved occurrences a Proposal is measured against. It is always current: it follows Paratext edits and
+The scripture chapters (read from Paratext) and the approved occurrences a Proposal is measured against. It is always current: it follows Paratext edits and
 new approvals, and carries a version. A Trial records the Evidence version it ran on; a result from older Evidence is
 shown as outdated and is rerun for the changed words only.
-_Avoid_: test data, corpus (a Corpus is unapproved material), baseline
+_Avoid_: test data, corpus (a Corpus is unapproved material), baseline, evidence set (a different thing: one named body
+of measured results)
 
 **Trial**:
 One attempt at a Proposal on a throwaway copy of the project, producing both a Dry Run and one or more
@@ -444,7 +445,7 @@ One named body of measured evidence a page or command reads: the Baseline it was
 root ParseTime Assessment, the later re-runs that replace some of its words, its Correctness and per-rule
 timing measurements, its grammar check, and where it came from, the project or a Trial. The project's
 current evidence set and a Trial's have the same shape, so a page cannot tell them apart.
-_Avoid_: context, source, data context, snapshot
+_Avoid_: context, source, data context, snapshot, Evidence (that is the input, not the measured result)
 
 **Proposal mode**:
 The window's state while a Proposal is open: a context bar names it and says when its Trial was run. The
