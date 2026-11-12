@@ -78,3 +78,22 @@ PanGloss parses the built .fwdata (an environment change in the log changes the 
 **What ADR 0107 missed:**
 - The blank template mints its own GUIDs. A Build must start from an empty project or overwrite the template's objects with the log's.
 - Classes FW Lite drops, such as etymologies, need a Motif type.
+
+## Amendment, 2026-11-12: the 64 Cebuano differences are two dropped fields (proposed)
+
+[spike-export-diffs.md](../source-build/spike-export-diffs.md) traced every differing word to one of two fields FW Lite
+does not carry on its own objects:
+- `LexEntry.DoNotUseForParsing`: 158 entries, 34 words gain parses;
+- the part-of-speech hierarchy: "Proper Noun" under "Noun"; 30 words lose parses.
+
+With both set by hand on copies, **2,000 of 2,000 words parse identically**. Phonology, rules, features, allomorphs,
+MSAs, slots and templates were already identical. Other fields are lost with no parse effect on this sample:
+- subsenses, flattened: 2,834;
+- etymologies;
+- grammar notes, exemplars and import residue;
+- POS abbreviations and descriptions.
+
+**Decision (proposed): one owner per field, not per object.** Where FW Lite owns an object but not all its fields, Motif
+owns the rest, as an extension object keyed by the FW Lite object's GUID. The generator derives that list mechanically:
+MasterLCModel's fields for a class, minus those MiniLcm carries. Every LCM field then has exactly one owner and no field
+is dropped silently. A field neither side owns is a build error, not a loss.
