@@ -91,6 +91,14 @@ public sealed class GlossEchoesFormTests(PristineProjectFixture pristine, ITestO
         output.WriteLine($"P-gloss-echoes-form over {result.Run.EligibleItems} glossed senses: " +
             $"{timer.ElapsedMilliseconds} ms, {result.Run.FindingItems} findings");
         Assert.Equal(17, result.Run.FindingItems);
+        var readTimer = Stopwatch.StartNew();
+        var input = session.ReadGlossEchoCandidates();
+        readTimer.Stop();
+        var context = session.ReadMeasureContext(session.BundleId);
+        var decideTimer = Stopwatch.StartNew();
+        MeasureRunner.DecideGlossEchoesForm(MeasureCatalog.Find("P-gloss-echoes-form")!, input, context);
+        decideTimer.Stop();
+        output.WriteLine($"P-gloss-echoes-form split: read {readTimer.ElapsedMilliseconds} ms, decide and build findings {decideTimer.ElapsedMilliseconds} ms");
         Assert.True(timer.ElapsedMilliseconds < 1000, $"took {timer.ElapsedMilliseconds} ms");
     }
 }

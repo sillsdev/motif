@@ -11,24 +11,35 @@ internal sealed record StemMsaInput(long StemMsaCount, IReadOnlyList<Uncategoris
 /// <param name="EntryHasGlosses">Whether any sense of the entry has a non-blank gloss.</param>
 internal sealed record UncategorisedStemMsa(string MsaGuid, string EntryGuid, bool EntryHasGlosses);
 
-/// <summary>Every lexical entry with the forms, senses and MSA signatures the lexicon checks compare.</summary>
+/// <summary>The glosses that may echo their entry's form, with the count of every glossed sense.</summary>
+/// <param name="GlossedSenses">How many senses have a non-blank gloss.</param>
+/// <param name="Candidates">Gloss and allomorph form pairs whose text the query could not rule out as an echo.</param>
+internal sealed record GlossEchoInput(long GlossedSenses, IReadOnlyList<GlossEchoCandidate> Candidates);
+
+/// <summary>One gloss of a sense next to one allomorph form of its entry.</summary>
+/// <param name="EntryGuid">The entry.</param>
+/// <param name="SenseGuid">The sense.</param>
+/// <param name="LexemeAllomorphGuid">The entry's lexeme form, or null when it has no allomorph.</param>
+/// <param name="Gloss">The raw gloss text.</param>
+/// <param name="Form">The raw form text.</param>
+internal sealed record GlossEchoCandidate(string EntryGuid, string SenseGuid, string? LexemeAllomorphGuid,
+    string Gloss, string Form);
+
+/// <summary>Every lexical entry with the forms, glosses and MSA signatures the duplicate check compares.</summary>
 /// <param name="Entries">All entries, in no particular order.</param>
 internal sealed record LexiconInput(IReadOnlyList<LexiconEntryFact> Entries);
 
-/// <summary>One lexical entry as the lexicon checks read it.</summary>
+/// <summary>One lexical entry as the duplicate check reads it.</summary>
 /// <param name="EntryGuid">The entry.</param>
 /// <param name="MorphType">The entry's lexeme morph type.</param>
 /// <param name="LexemeAllomorphGuid">The lexeme form: the entry's last allomorph by ordinal, or null when it has none.</param>
 /// <param name="LexemeForms">The forms of the lexeme form, one per writing system, raw.</param>
-/// <param name="AllForms">The raw form text of every allomorph of the entry.</param>
-/// <param name="Senses">The entry's senses with their glosses.</param>
-/// <param name="MsaSignatures">One signature per MSA: kind, categories with their roles, and slots. Empty when the MSAs were not read.</param>
+/// <param name="HasSense">Whether the entry owns any sense, glossed or not.</param>
+/// <param name="Glosses">Every gloss of every sense, raw.</param>
+/// <param name="MsaSignatures">One signature per MSA: kind, categories with their roles, and slots.</param>
 internal sealed record LexiconEntryFact(string EntryGuid, string MorphType, string? LexemeAllomorphGuid,
-    IReadOnlyList<LexiconTextFact> LexemeForms, IReadOnlyList<string> AllForms,
-    IReadOnlyList<LexiconSenseFact> Senses, IReadOnlyList<string> MsaSignatures);
+    IReadOnlyList<LexiconTextFact> LexemeForms, bool HasSense, IReadOnlyList<LexiconTextFact> Glosses,
+    IReadOnlyList<string> MsaSignatures);
 
 /// <summary>A piece of text in one writing system.</summary>
 internal sealed record LexiconTextFact(string WritingSystem, string Text);
-
-/// <summary>One sense and its glosses.</summary>
-internal sealed record LexiconSenseFact(string SenseGuid, IReadOnlyList<LexiconTextFact> Glosses);

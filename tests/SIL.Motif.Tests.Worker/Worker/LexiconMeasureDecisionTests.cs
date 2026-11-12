@@ -56,10 +56,8 @@ public sealed class LexiconMeasureDecisionTests
 
     // ---- P-gloss-echoes-form
 
-    private static LexiconEntryFact Entry(string guid, string[] forms, params (string Sense, string[] Glosses)[] senses) =>
-        new(guid, "suffix", guid + "-lexeme", [], forms,
-            senses.Select(item => new LexiconSenseFact(item.Sense,
-                item.Glosses.Select(gloss => new LexiconTextFact("en", gloss)).ToArray())).ToArray(), []);
+    private static GlossEchoCandidate Pair(string entry, string sense, string gloss, string form) =>
+        new(entry, sense, entry + "-lexeme", gloss, form);
 
     [Theory]
     [InlineData("XYZ", "xyz", true)]
@@ -75,8 +73,8 @@ public sealed class LexiconMeasureDecisionTests
     [Fact]
     public void HyphensAndEqualsSignsAroundAGlossOrFormAreIgnored()
     {
-        var input = new LexiconInput([Entry("e1", ["-xyz-", "=abc"], ("s1", ["xyz-"]), ("s2", ["=ABC.V"]),
-            ("s3", ["meaning"]))]);
+        var input = new GlossEchoInput(3, [Pair("e1", "s1", "xyz-", "-xyz-"), Pair("e1", "s2", "=ABC.V", "=abc"),
+            Pair("e1", "s3", "meaning", "-xyz-")]);
 
         var result = MeasureRunner.DecideGlossEchoesForm(Measure("P-gloss-echoes-form"), input, Context());
 
@@ -85,34 +83,35 @@ public sealed class LexiconMeasureDecisionTests
     }
 
     [Fact]
-    public void ASenseWithNoGlossIsNotCountedAndAnEntryWithNoFormIsNeverFlagged()
+    public void ABlankFormOrAGlossThatOnlyStartsLikeTheFormIsNotFlagged()
     {
-        var input = new LexiconInput([Entry("e1", ["xyz"], ("s1", [" "]), ("s2", [])),
-            Entry("e2", [], ("s3", ["XYZ"]))]);
+        var input = new GlossEchoInput(2, [Pair("e1", "s1", "XYZW", "xyz"), Pair("e2", "s3", "XYZ", " = ")]);
 
         var result = MeasureRunner.DecideGlossEchoesForm(Measure("P-gloss-echoes-form"), input, Context());
 
-        Assert.Equal(1, result.Run.EligibleItems);
+        Assert.Equal(2, result.Run.EligibleItems);
         Assert.Empty(result.Findings);
     }
 
     [Fact]
-    public void ASenseWithSeveralEchoingGlossesGivesOneFinding()
+    public void ASenseWithSeveralEchoingPairsGivesOneFindingWhateverTheRowOrder()
     {
-        var input = new LexiconInput([Entry("e1", ["xyz"], ("s1", ["XYZ", "xyz.V"]))]);
+        var rows = new[] { Pair("e1", "s1", "xyz.V", "xyz"), Pair("e1", "s1", "XYZ", "xyz"), Pair("e1", "s1", "XYZ", "XYZ") };
 
-        var result = MeasureRunner.DecideGlossEchoesForm(Measure("P-gloss-echoes-form"), input, Context());
+        var forward = MeasureRunner.DecideGlossEchoesForm(Measure("P-gloss-echoes-form"), new GlossEchoInput(1, rows), Context());
+        var backward = MeasureRunner.DecideGlossEchoesForm(Measure("P-gloss-echoes-form"),
+            new GlossEchoInput(1, rows.Reverse().ToArray()), Context());
 
-        Assert.Single(result.Findings);
+        Assert.Single(forward.Findings);
+        Assert.Equal(forward.Findings[0].EvidenceDigest, backward.Findings[0].EvidenceDigest);
     }
 
     // ---- P-entry-duplicate
 
     private static LexiconEntryFact Lexeme(string guid, string morphType, string[] forms, string[] glosses,
         string[]? msas = null) =>
-        new(guid, morphType, guid + "-lexeme", forms.Select(form => new LexiconTextFact("qaa", form)).ToArray(), forms,
-            glosses.Length == 0 ? [] : [new LexiconSenseFact(guid + "-sense",
-                glosses.Select(gloss => new LexiconTextFact("en", gloss)).ToArray())], msas ?? []);
+        new(guid, morphType, guid + "-lexeme", forms.Select(form => new LexiconTextFact("qaa", form)).ToArray(),
+            glosses.Length > 0, glosses.Select(gloss => new LexiconTextFact("en", gloss)).ToArray(), msas ?? []);
 
     private static string[][] DuplicateGroups(string kind, params LexiconEntryFact[] entries) =>
         MeasureRunner.DecideDuplicateEntries(Measure("P-entry-duplicate"), new LexiconInput(entries), Context())
@@ -185,8 +184,38 @@ public sealed class LexiconMeasureDecisionTests
             Lexeme("d", "suffix", ["pa"], ["KA.V"]),
             Lexeme("e", "suffix", ["xe"], ["XE.V"]), Lexeme("g", "suffix", ["xe"], ["other"]));
 
-        var groups = clones.Select(group => string.Join("", group.Order())).Order().ToArray();
-        Assert.Equal(["ab", "eg"], groups);
+        Assert.Equal([["b", "a"], ["e"]], clones);
+    }
+
+    [Fact]
+    public void ACapitalisedFormCloneNeverPullsUnrelatedSameClassHomographsIntoItsGroup()
+    {
+        var clones = DuplicateGroups("clone",
+            Lexeme("x", "stem", ["ka"], ["KA.V"]), Lexeme("y", "stem", ["ka"], ["tree"]), Lexeme("z", "stem", ["ka"], ["river"]));
+
+        Assert.Equal([["x"]], clones);
+    }
+
+    [Fact]
+    public void EachCloneIsItsOwnGroupAndTwoClonesOfOneOriginDoNotMerge()
+    {
+        var result = MeasureRunner.DecideDuplicateEntries(Measure("P-entry-duplicate"),
+            new LexiconInput([Lexeme("a", "suffix", ["ka"], ["go"]), Lexeme("b", "suffix", ["ka"], ["go.V"]),
+                Lexeme("c", "suffix", ["ka"], ["go.X"])]), Context());
+
+        Assert.Equal(2, result.Findings.Count);
+        Assert.Equal(2, result.Run.FindingItems);
+        Assert.All(result.Findings, finding => Assert.Equal(new ParsimonyMeasureNumber(1, 3, "lexical entries"), finding.Number));
+    }
+
+    [Fact]
+    public void ACloneOfACloneListsEveryHomographItsGlossesExtend()
+    {
+        var clones = DuplicateGroups("clone",
+            Lexeme("a", "suffix", ["ka"], ["go"]), Lexeme("b", "suffix", ["ka"], ["go.V"]),
+            Lexeme("c", "suffix", ["ka"], ["go.V.PL"]));
+
+        Assert.Equal([["b", "a"], ["c", "a", "b"]], clones);
     }
 
     [Fact]
@@ -195,17 +224,6 @@ public sealed class LexiconMeasureDecisionTests
         Assert.Empty(DuplicateGroups("clone",
             Lexeme("a", "suffix", ["ka"], ["go"]), Lexeme("b", "suffix", ["ka"], ["go"]),
             Lexeme("c", "suffix", ["ka"], ["go."]), Lexeme("d", "suffix", ["ka"], [".go"])));
-    }
-
-    [Fact]
-    public void ACloneChainFormsOneGroupAndCostsOneEntryPerExtraMember()
-    {
-        var result = MeasureRunner.DecideDuplicateEntries(Measure("P-entry-duplicate"),
-            new LexiconInput([Lexeme("a", "suffix", ["ka"], ["go"]), Lexeme("b", "suffix", ["ka"], ["go.V"]),
-                Lexeme("c", "suffix", ["ka"], ["go.V.PL"])]), Context());
-
-        Assert.Single(result.Findings);
-        Assert.Equal(2, result.Run.FindingItems);
     }
 
     [Fact]

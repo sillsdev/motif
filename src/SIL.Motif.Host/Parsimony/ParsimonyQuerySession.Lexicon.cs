@@ -40,135 +40,122 @@ public sealed partial class ParsimonyQuerySession
             .Select(item => new UncategorisedStemMsa(item.Msa, item.Entry, glossed.Contains(item.Entry))).ToArray()));
     }
 
+    private const string Marks = "' -=' || char(9) || char(10) || char(13)";
+
     /// <summary>
-    /// Reads every lexical entry with its lexeme form, allomorph forms and senses. The lexeme form is the entry's
+    /// Reads the gloss and form pairs a gloss could echo, by letting SQLite drop every pair whose gloss does not start
+    /// with the form. SQLite lower() is ASCII only, so a pair with any other character is kept for the exact check.
+    /// </summary>
+    internal GlossEchoInput ReadGlossEchoCandidates()
+    {
+        RequireSections("entries", "allomorphs");
+        long glossed;
+        using (var command = NewCommand())
+        {
+            command.CommandText = $"""
+                SELECT COUNT(DISTINCT sense_guid) FROM facts.sense_text
+                WHERE kind='gloss' AND trim(text, {Marks})<>'';
+                """;
+            glossed = (long)command.ExecuteScalar()!;
+        }
+        var candidates = new List<GlossEchoCandidate>();
+        using (var command = NewCommand())
+        {
+            command.CommandText = $"""
+                SELECT DISTINCT t.sense_guid, s.entry_guid,
+                    (SELECT x.guid FROM facts.allomorph AS x WHERE x.entry_guid=s.entry_guid ORDER BY x.ordinal DESC LIMIT 1),
+                    t.text, f.form
+                FROM facts.sense_text AS t
+                JOIN facts.sense AS s ON s.sense_guid=t.sense_guid
+                JOIN facts.allomorph AS a ON a.entry_guid=s.entry_guid
+                JOIN facts.allomorph_form AS f ON f.allomorph_guid=a.guid
+                WHERE t.kind='gloss' AND (
+                    (trim(f.form, {Marks})<>'' AND instr(lower(trim(t.text, {Marks})), lower(trim(f.form, {Marks})))=1)
+                    OR f.form GLOB '*[^ -~]*' OR t.text GLOB '*[^ -~]*');
+                """;
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+                candidates.Add(new GlossEchoCandidate(reader.GetString(1), reader.GetString(0),
+                    reader.IsDBNull(2) ? null : reader.GetString(2), reader.GetString(3), reader.GetString(4)));
+        }
+        return new GlossEchoInput(glossed, candidates);
+    }
+
+    /// <summary>
+    /// Reads every lexical entry with its lexeme form, glosses and MSA signatures. The lexeme form is the entry's
     /// last allomorph by ordinal, because the snapshot orders alternate forms first (pg-snapshot lexicon.rs).
     /// </summary>
-    /// <param name="withMsas">Whether to read each entry's MSA signatures as well.</param>
-    internal LexiconInput ReadLexicon(bool withMsas)
+    internal LexiconInput ReadLexicon()
     {
-        RequireSections(withMsas ? new[] { "entries", "allomorphs", "msas" } : new[] { "entries", "allomorphs" });
+        RequireSections("entries", "allomorphs", "msas");
         var entries = new Dictionary<string, LexiconEntryBuilder>(StringComparer.Ordinal);
         using (var command = NewCommand())
         {
             command.CommandText = "SELECT guid, lexeme_morph_type FROM facts.lex_entry;";
             using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                var guid = reader.GetString(0);
-                entries[guid] = new LexiconEntryBuilder(guid, reader.GetString(1));
-            }
-        }
-        var allomorphs = new Dictionary<string, (LexiconEntryBuilder Entry, int Ordinal)>(StringComparer.Ordinal);
-        using (var command = NewCommand())
-        {
-            command.CommandText = "SELECT guid, entry_guid, ordinal FROM facts.allomorph;";
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-                if (entries.TryGetValue(reader.GetString(1), out var entry))
-                {
-                    var guid = reader.GetString(0);
-                    allomorphs[guid] = (entry, reader.GetInt32(2));
-                    entry.AddAllomorph(guid, reader.GetInt32(2));
-                }
+            while (reader.Read()) entries[reader.GetString(0)] = new LexiconEntryBuilder(reader.GetString(1));
         }
         using (var command = NewCommand())
         {
-            command.CommandText = "SELECT allomorph_guid, ordinal, writing_system, form FROM facts.allomorph_form;";
+            command.CommandText = """
+                SELECT a.entry_guid, a.guid, f.writing_system, f.form
+                FROM facts.allomorph AS a
+                LEFT JOIN facts.allomorph_form AS f ON f.allomorph_guid=a.guid
+                WHERE a.ordinal=(SELECT MAX(x.ordinal) FROM facts.allomorph AS x WHERE x.entry_guid=a.entry_guid)
+                ORDER BY a.entry_guid, f.ordinal;
+                """;
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                var guid = reader.GetString(0);
-                if (allomorphs.TryGetValue(guid, out var owner))
-                    owner.Entry.AddForm(guid, reader.GetInt32(1), reader.GetString(2), reader.GetString(3));
+                if (!entries.TryGetValue(reader.GetString(0), out var entry)) continue;
+                entry.Lexeme = reader.GetString(1);
+                if (!reader.IsDBNull(2)) entry.Forms.Add(new LexiconTextFact(reader.GetString(2), reader.GetString(3)));
             }
         }
-        var senses = new Dictionary<string, LexiconSenseBuilder>(StringComparer.Ordinal);
         using (var command = NewCommand())
         {
-            command.CommandText = "SELECT sense_guid, entry_guid FROM facts.sense;";
+            command.CommandText = """
+                SELECT s.entry_guid, t.writing_system, t.text FROM facts.sense AS s
+                LEFT JOIN facts.sense_text AS t ON t.sense_guid=s.sense_guid AND t.kind='gloss';
+                """;
             using var reader = command.ExecuteReader();
             while (reader.Read())
-                if (entries.TryGetValue(reader.GetString(1), out var entry))
-                {
-                    var guid = reader.GetString(0);
-                    entry.Senses.Add(senses[guid] = new LexiconSenseBuilder(guid));
-                }
+            {
+                if (!entries.TryGetValue(reader.GetString(0), out var entry)) continue;
+                entry.HasSense = true;
+                if (!reader.IsDBNull(1)) entry.Glosses.Add(new LexiconTextFact(reader.GetString(1), reader.GetString(2)));
+            }
         }
         using (var command = NewCommand())
         {
-            command.CommandText = "SELECT sense_guid, ordinal, writing_system, text FROM facts.sense_text WHERE kind='gloss';";
+            command.CommandText = """
+                SELECT m.entry_guid, m.kind,
+                    (SELECT group_concat(v, '|') FROM (SELECT c.role || ':' || c.category_guid AS v
+                        FROM facts.msa_category AS c WHERE c.msa_guid=m.msa_guid ORDER BY c.role, c.category_guid)),
+                    (SELECT group_concat(v, '|') FROM (SELECT l.role || ':' || l.slot_guid AS v
+                        FROM facts.msa_slot AS l WHERE l.msa_guid=m.msa_guid ORDER BY l.role, l.slot_guid))
+                FROM facts.msa AS m;
+                """;
             using var reader = command.ExecuteReader();
             while (reader.Read())
-                if (senses.TryGetValue(reader.GetString(0), out var sense))
-                    sense.Glosses.Add((reader.GetInt32(1), new LexiconTextFact(reader.GetString(2), reader.GetString(3))));
+                if (entries.TryGetValue(reader.GetString(0), out var entry))
+                    entry.Msas.Add($"{reader.GetString(1)}|c={(reader.IsDBNull(2) ? "" : reader.GetString(2))}|s={(reader.IsDBNull(3) ? "" : reader.GetString(3))}");
         }
-        if (withMsas) ReadMsaSignatures(entries);
-        return new LexiconInput(Array.AsReadOnly(entries.Values.Select(entry => entry.Build()).ToArray()));
+        var built = new LexiconEntryFact[entries.Count];
+        var index = 0;
+        foreach (var (guid, entry) in entries) built[index++] = entry.Build(guid);
+        return new LexiconInput(built);
     }
 
-    private void ReadMsaSignatures(Dictionary<string, LexiconEntryBuilder> entries)
+    private sealed class LexiconEntryBuilder(string morphType)
     {
-        var parts = new Dictionary<string, (LexiconEntryBuilder Entry, string Kind, List<string> Details)>(StringComparer.Ordinal);
-        using (var command = NewCommand())
-        {
-            command.CommandText = "SELECT msa_guid, entry_guid, kind FROM facts.msa;";
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-                if (entries.TryGetValue(reader.GetString(1), out var entry))
-                    parts[reader.GetString(0)] = (entry, reader.GetString(2), []);
-        }
-        foreach (var (sql, tag) in new[]
-                 {
-                     ("SELECT msa_guid, role, category_guid FROM facts.msa_category;", "category"),
-                     ("SELECT msa_guid, role, slot_guid FROM facts.msa_slot;", "slot"),
-                 })
-        {
-            using var command = NewCommand();
-            command.CommandText = sql;
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-                if (parts.TryGetValue(reader.GetString(0), out var part))
-                    part.Details.Add($"{tag}:{reader.GetString(1)}:{reader.GetString(2)}");
-        }
-        foreach (var (entry, kind, details) in parts.Values)
-        {
-            details.Sort(StringComparer.Ordinal);
-            entry.MsaSignatures.Add(kind + "|" + string.Join("|", details));
-        }
-    }
+        public string? Lexeme { get; set; }
+        public bool HasSense { get; set; }
+        public List<LexiconTextFact> Forms { get; } = [];
+        public List<LexiconTextFact> Glosses { get; } = [];
+        public List<string> Msas { get; } = [];
 
-    private sealed class LexiconEntryBuilder(string guid, string morphType)
-    {
-        private readonly List<(string Guid, int Ordinal)> _allomorphs = [];
-        private readonly List<(string Guid, int Ordinal, string WritingSystem, string Form)> _forms = [];
-
-        public List<LexiconSenseBuilder> Senses { get; } = [];
-        public List<string> MsaSignatures { get; } = [];
-
-        public void AddAllomorph(string allomorph, int ordinal) => _allomorphs.Add((allomorph, ordinal));
-
-        public void AddForm(string allomorph, int ordinal, string writingSystem, string form) =>
-            _forms.Add((allomorph, ordinal, writingSystem, form));
-
-        public LexiconEntryFact Build()
-        {
-            var lexeme = _allomorphs.Count == 0 ? null : _allomorphs.MaxBy(item => item.Ordinal).Guid;
-            var lexemeForms = _forms.Where(item => item.Guid == lexeme).OrderBy(item => item.Ordinal)
-                .Select(item => new LexiconTextFact(item.WritingSystem, item.Form)).ToArray();
-            var senses = Senses.OrderBy(item => item.Guid, StringComparer.Ordinal).Select(item => item.Build()).ToArray();
-            return new LexiconEntryFact(guid, morphType, lexeme, lexemeForms,
-                _forms.Select(item => item.Form).ToArray(), senses,
-                MsaSignatures.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray());
-        }
-    }
-
-    private sealed class LexiconSenseBuilder(string guid)
-    {
-        public string Guid => guid;
-        public List<(int Ordinal, LexiconTextFact Gloss)> Glosses { get; } = [];
-
-        public LexiconSenseFact Build() =>
-            new(guid, Glosses.OrderBy(item => item.Ordinal).Select(item => item.Gloss).ToArray());
+        public LexiconEntryFact Build(string guid) =>
+            new(guid, morphType, Lexeme, Forms, HasSense, Glosses, Msas);
     }
 }
