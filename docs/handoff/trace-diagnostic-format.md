@@ -8,7 +8,7 @@ pangloss parse grammar.json word --trace=word.trace.json --trace-format=json --t
 
 Use the trace file when running through a build or process wrapper: the wrapper's console messages are not JSON. Ordinary parsing and ordinary trace output remain separate interfaces.
 
-The producer contract is documented in [PanGloss trace details v5](https://github.com/sillsdev/PanGloss/blob/v0.19.0/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas survive internal loading; public exports use a bounded projection.
+The producer contract is documented in [PanGloss trace details v5](https://github.com/sillsdev/PanGloss/blob/v0.19.1/docs/formats/trace-details-v2.md). The schema version, rather than the installed app version, selects the reader. Unknown major schemas are refused. Unknown fields within supported schemas survive internal loading; public exports use a bounded projection.
 
 ## How to interpret a diagnostic
 
