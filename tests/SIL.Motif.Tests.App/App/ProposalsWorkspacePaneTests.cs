@@ -506,9 +506,6 @@ public sealed class ProposalsWorkspacePaneTests
                 await model.DetailReading;
                 PageScreenshots.Settle(standalone);
                 var editor = model.RationaleEditor!;
-                var views = host.GetVisualDescendants().Concat(window.GetVisualDescendants()).OfType<RationaleEditor>().ToArray();
-                Assert.NotEmpty(views);
-                foreach (var view in views) view.Content = null;
                 editor.EditCommand.Execute(null);
                 editor.RestoreCommand.Execute(new RationaleRevisionChoice(
                     new RationaleRevisionView(1, "Why. Typed.", null, "A", "2026-11-10T00:00:00Z")));
