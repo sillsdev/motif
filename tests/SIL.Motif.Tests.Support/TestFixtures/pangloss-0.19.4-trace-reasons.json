@@ -1,8 +1,8 @@
 {
-  "version": "0.19.1",
+  "version": "0.19.4",
   "source": "rust/crates/pg-rules/src/trace.rs",
-  "commit": "8ce32a99b66e9b11f0ecaee79e3ed7b7091656d5",
-  "provenance": "annotated v0.19.1 source tag (trace.rs unchanged since v0.14.0)",
+  "commit": "7810c0df04f63cfc3ee54c73bbeccd848c0587f8",
+  "provenance": "annotated v0.19.4 source tag (trace.rs adds LexicalLookupFeatures after v0.19.1, machine#627)",
   "codes": [
     "ObligatorySyntacticFeatures",
     "AllomorphCoOccurrenceRules",
@@ -27,6 +27,7 @@
     "NonPartialRuleProhibitedAfterFinalTemplate",
     "NonPartialRuleRequiredAfterNonFinalTemplate",
     "MaxApplicationCount",
-    "AllomorphNotApplicable"
+    "AllomorphNotApplicable",
+    "LexicalLookupFeatures"
   ]
 }
