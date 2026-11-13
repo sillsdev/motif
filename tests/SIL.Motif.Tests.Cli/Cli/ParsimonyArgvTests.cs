@@ -44,7 +44,7 @@ public sealed class ParsimonyArgvTests : IDisposable
     }
 
     [Fact]
-    public async Task TheGrammarGroupCapturesItsOwnBaselineAndReportsItsFiveMeasures()
+    public async Task TheGrammarGroupCapturesItsOwnBaselineAndReportsItsMeasures()
     {
         new FileAdvancedAiModePreferenceStore(_preferencePath).SetEnabled(true);
         var project = _pristine.CopyProjectFile();
@@ -56,9 +56,9 @@ public sealed class ParsimonyArgvTests : IDisposable
         Assert.True(result.ExitCode == 0, result.Error + result.Output);
         var set = JsonSerializer.Deserialize<ParsimonyReportSetResponse>(result.Output,
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        Assert.Equal(SIL.Motif.Host.Parsimony.ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar),
-            set!.Reports.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
-        Assert.Equal(5, set.Reports.Count);
+        var grammarIds = SIL.Motif.Host.Parsimony.ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar);
+        Assert.Equal(grammarIds, set!.Reports.Select(report => Assert.Single(report.MeasureRuns).MeasureId));
+        Assert.Equal(grammarIds.Count, set.Reports.Count);
         Assert.Null(set.Note);
     }
 

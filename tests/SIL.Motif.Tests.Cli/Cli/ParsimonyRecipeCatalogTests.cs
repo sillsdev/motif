@@ -131,7 +131,14 @@ public sealed class ParsimonyRecipeCatalogTests
                     "EditInflectionalAffix"],
             ["B-affix-null-vs-optional"] = ["RetireRedundantZeroAffix"],
             ["P-allo-duplicate-form"] = ["RetireAllomorph"],
+            ["P-allo-repeated-form"] = [],
+            ["P-feature-few-carriers"] = [],
             ["P-statement-unused"] = [],
+            ["P-env-duplicate"] = [],
+            ["P-env-literal-host"] = [],
+            ["P-msa-no-category"] = [],
+            ["P-gloss-echoes-form"] = [],
+            ["P-entry-duplicate"] = [],
         };
 
         Assert.Equal(expected.Keys.Order(StringComparer.Ordinal), catalog.Recipes.Select(recipe => recipe.MeasureId));

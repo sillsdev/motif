@@ -44,4 +44,17 @@ public sealed class ComposedOperationsRenderingTests
         Assert.Equal("new-category", created.GetProperty("id").GetString());
         Assert.Equal("lists/cmPossibilityList/createPossibilities", created.GetProperty("kind").GetString());
     }
+
+    [Fact]
+    public void TextOutputNamesTheDerivationDirectionWithoutTheSlotHeading()
+    {
+        var response = new ComposedOperationsResponse("d", "AuthorLexicalEntry", [new OperationSummary("op", "k")], 1,
+            [new ComposedRelatedObject("derivation", "adj-id", "Adjective -> Noun")]);
+
+        var output = ProposalCommandRenderer.Render(CommandOutcome<ComposedOperationsResponse>.Success(response),
+            asJson: false).Output;
+
+        Assert.Contains("Derivation: Adjective -> Noun", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("changed slot", output, StringComparison.Ordinal);
+    }
 }

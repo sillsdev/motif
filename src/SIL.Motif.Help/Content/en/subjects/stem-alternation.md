@@ -14,8 +14,32 @@ Some stems have a special shape used only in certain grammatical contexts, such 
 2. `compose-author-stem-name` creates the stem name and says where it is allowed.
 3. `compose-edit-stem-allomorph-stem-name` sets or clears the name on a variant.
 
+## Recipe: a full form only before certain suffixes
+
+A stem name binds a stem allomorph to word features. It does not bind a morphosyntactic analysis (MSA). Suppose a stem has a full form `kat` before -un/-on/-an (`katun`) but a short form `kt` elsewhere (`kta`, `kti`, `ktay`). Do not keep an exception feature such as SYNC with a syncope rule, and do not add a second untagged MSA: that MSA still pairs with the default allomorph and every suffix, so the word still over-generates (`kata`, `kati`, `katay`). Instead:
+
+1. Drop the exception feature and the second MSA for these stems.
+2. Declare the feature (`compose-author-inflection-feature`) and give -un, -on and -an that feature as their inflection features (`compose-author-feature-structure`, then `compose-author-feature-value`).
+3. Create a stem name whose region is that feature (`compose-author-stem-name`).
+4. Give the full-form allomorph that stem name (`compose-edit-stem-allomorph-stem-name`).
+5. Leave the short form with no stem name; that is FieldWorks' default allomorph.
+
+Result on PanGloss 0.17.0 synthetic projects: `katun` parses only as the full form `kat` (stem name UN) plus -un; `kta`, `kti` and `ktay` use the short form `kt`. Only -un was tested; -on and -an follow the same steps.
+
+## Recipe: a second shape that belongs to one sense
+
+A stem name cannot tie a shape to one analysis, and FieldWorks has no allomorph field that does. What FieldWorks does have is a sense-less variant of a sense: an entry with a lexeme form, an environment and a variant reference to the main sense, and no sense or analysis of its own. The parser loads it with only that sense's gloss and analysis, so the other senses of the main entry do not get the shape. Use it when the shape belongs to one analysis of an entry that has several, or when a copied gloss and analysis on the variant should go.
+
+1. For a new shape, `compose-author-variant-entry` creates the variant in one step with its form, morph type, environment and variant type.
+2. For variants that already copy the main sense, `compose-strip-variant-senses` repoints each at the main sense and deletes the copied sense and analysis. Its Dry Run lists the exception features each variant gains or loses, because it now takes the main sense's.
+3. Review the Dry Run warnings: a sense-less variant whose component has no stem analysis would load nothing.
+
+A variant is a separate entry, so it varies freely with the main form and blocks nothing. Allomorphs of one entry are ordered and the earlier one wins where both fit.
+
 ## Pitfalls
 
 - Do not treat a stem alternation as sound conditioning when the shape depends on grammatical features rather than on neighbouring sounds. If the shape depends on neighbouring sounds, it's conditioned allomorphy, not a stem name; a stem name is for shapes chosen by grammatical features.
 - A stem name that names no feature condition filters nothing.
 - Test the special form in the contexts that call for it and the ordinary form everywhere else.
+- Two allomorphs with the same stem-name region both stay allowed. Give a second short form the same region only when both forms should appear before those suffixes; otherwise leave it unnamed.
+- Every suffix that should trigger the full form must carry the feature, and a rule driven by an exception feature cannot be reused on the same entry.

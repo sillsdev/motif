@@ -147,6 +147,55 @@ public sealed class StoreByteBudgetTests : IDisposable
         Assert.Equal(["needed"], Ids("SELECT AssessmentId FROM Assessments;"));
     }
 
+    [Theory]
+    [InlineData("completed", false)]
+    [InlineData("running", true)]
+    public void ATrialOfADecidedProposalHoldsItsEvidenceOnlyWhileTheTrialIsActive(string status, bool held)
+    {
+        var decided = CanonicalId.Mint("proposal/");
+        Execute($"INSERT INTO Proposals (ProposalId, Status) VALUES ('{decided.Value}', 'applied');");
+        Record("before", "Correctness", 0);
+        Record("after", "Correctness", 1, decided);
+        Trial("trial", decided, status, "before", "after");
+
+        Sweep(100, 1);
+
+        Assert.Equal(held ? ["after", "before"] : [], Ids("SELECT AssessmentId FROM Assessments ORDER BY AssessmentId;"));
+    }
+
+    [Fact]
+    public void ACompletedTrialOfAnUndecidedProposalKeepsItsBeforeEvidence()
+    {
+        var open = CanonicalId.Mint("proposal/");
+        Execute($"INSERT INTO Proposals (ProposalId, Status) VALUES ('{open.Value}', 'proposed');");
+        Record("before", "Correctness", 0);
+        Record("loose", "Correctness", 1);
+        Trial("trial", open, "completed", "before", null);
+
+        Sweep(100, 1);
+
+        Assert.Equal(["before"], Ids("SELECT AssessmentId FROM Assessments;"));
+    }
+
+    [Fact]
+    public void KeptAssessmentsAreCountedByTheFirstReasonThatKeepsThem()
+    {
+        var open = CanonicalId.Mint("proposal/");
+        Execute($"INSERT INTO Proposals (ProposalId, Status) VALUES ('{open.Value}', 'proposed');");
+        Record("of-open", "Correctness", 0, open);
+        Record("pinned", "Correctness", 1);
+        Record("current", "Correctness", 2);
+        Record("loose", "Correctness", 3);
+        Execute("INSERT INTO AssessmentPins VALUES ('pinned', 'person', '2026-01-01T00:00:00Z');");
+
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var kept = AssessmentRetention.ExplainKept(connection, transaction, ["current"]);
+
+        Assert.Equal("current=1 openProposal=1 pinned=1 withinLimits=1",
+            string.Join(" ", kept.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => $"{pair.Key}={pair.Value}")));
+    }
+
     [Fact]
     public void ThePayloadsOfARemovedAssessmentLeaveWithIt()
     {
@@ -207,6 +256,15 @@ public sealed class StoreByteBudgetTests : IDisposable
             GrammarSourceSha256: "sha256:grammar", ModelFingerprint: "fingerprint", Pipeline: "pipeline",
             DiagnosticCount: 0, Material: new AssessmentRecordMaterial.Words(words, null, null, []),
             SavedUtc: DateTimeOffset.UtcNow.AddMinutes(run - 30).ToString("O")));
+    }
+
+    private void Trial(string jobId, CanonicalId proposal, string status, string before, string? after)
+    {
+        var proposalJson = System.Text.Json.JsonSerializer.Serialize(new { proposalId = proposal.Value });
+        var input = System.Text.Json.JsonSerializer.Serialize(new { proposalJson, baselineAssessmentIds = new[] { before } });
+        new JobRepository(_database).Create(jobId, "project", "trial", input, "2026-01-01T00:00:00Z");
+        var result = after is null ? "NULL" : $"'{{\"assessmentIds\":[\"{after}\"]}}'";
+        Execute($"UPDATE Jobs SET Status = '{status}', ResultJson = {result} WHERE JobId = '{jobId}';");
     }
 
     private long BytesInUse()

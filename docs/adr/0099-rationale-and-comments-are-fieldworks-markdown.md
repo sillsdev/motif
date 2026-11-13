@@ -32,6 +32,8 @@ unchecked format let an agent's Rationale contain links and spans no reader coul
 6. **Ready:** a Rationale revision with findings is **refused**; the last clean Rationale stays.
 7. **Comments never block** Finalize or Apply; their findings are shown, and they save.
 8. Rationales of Proposals already Ready are left as written; rule 6 applies to new revisions only.
+9. **A code span** (backticks) in a Rationale or Comment is plain analysis text, never a finding. Backticks do not mark
+   vernacular: agents are taught to write a language form as `[form]{.v}` (or with `ws=`) so it links to its writing system.
 
 ## Considered options
 
@@ -41,4 +43,5 @@ unchecked format let an agent's Rationale contain links and spans no reader coul
 - Refuse every save with findings. Rejected: it would break agents' drafting loops over a typo.
 
 Owner decision, 2026-11-10. Amended 2026-11-11: rule 4's tidy-ups narrowed after the PR #141 review found that
-rewriting to the canonical spelling could change meaning.
+rewriting to the canonical spelling could change meaning. Rule 9 added 2026-11-11 (owner): agents already use backticks
+for commands and identifiers, so treating them as vernacular would mislabel them.

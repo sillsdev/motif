@@ -44,6 +44,8 @@ namespace SIL.TextEditing.Avalonia
 
         ISourceForm? _sourceForm;
         SourceSession? _source;
+        // Set on a source view: the field it shows the source of.
+        RichTextField? _sourceOwner;
 
         sealed class SourceSession
         {
@@ -117,7 +119,9 @@ namespace SIL.TextEditing.Avalonia
         /// <summary>Returns the field to rich mode with what the source says. The source is read with the form's reader and checker; when it has an error the
         /// field stays in source mode, the findings stay marked, and the answer is false. Otherwise the field's paragraphs become what was read, as one undo step
         /// for the host ("Edit as Markdown"), the paragraphs the source left as they were untouched; a source that says what the field already holds commits
-        /// nothing. Warnings never block. True when the field is in rich mode afterwards (also when it was not in source mode).</summary>
+        /// nothing. Warnings never block. True when the field is in rich mode afterwards (also when it was not in source mode). When a
+        /// <see cref="DocumentEditor.Committed"/> handler throws after the text has changed, the field is in rich mode with the edit and the announcement says
+        /// the commit failed; an exception before the change keeps the source, as an error does.</summary>
         public bool LeaveSourceMode()
         {
             var session = _source;
@@ -150,15 +154,32 @@ namespace SIL.TextEditing.Avalonia
                 return RefuseReturn(session, "The field cannot be edited now. Copy your " + form.Name + ", or throw away your " + form.Name + " changes.");
             Editor.HeldForSource = false;
             Editor.CloseUndoGroup();
-            try { Editor.ReplaceParagraphs(reading.Paragraphs, form.AreEquivalent, "Edit as " + form.Name); }
+            var before = Editor.Document.Paragraphs.ToArray();
+            Func<Paragraph, string>? fingerprint = form is ISourceFormFingerprint printed ? printed.Fingerprint : null;
+            try { Editor.ReplaceParagraphs(reading.Paragraphs, form.AreEquivalent, fingerprint, "Edit as " + form.Name); }
             catch (Exception ex)
             {
-                Editor.HeldForSource = true;
-                return RefuseReturn(session, "The " + form.Name + " could not be put back (" + ex.Message + "). Your " + form.Name + " is kept.");
+                if (!Changed(before))
+                {
+                    Editor.HeldForSource = true;
+                    return RefuseReturn(session, "The " + form.Name + " could not be put back (" + ex.Message + "). Your " + form.Name + " is kept.");
+                }
+                // The rich text already holds the edit and the host's handler failed on it: back to rich text, saying the commit failed.
+                CloseSource(session, focus: true);
+                RaiseSourceModeChanged(false, false, "Back to rich text, but the change could not be committed (" + ex.Message + ")");
+                return true;
             }
             CloseSource(session, focus: true);
             RaiseSourceModeChanged(false, false, "Back to rich text");
             return true;
+        }
+
+        bool Changed(Paragraph[] before)
+        {
+            var now = Editor.Document.Paragraphs;
+            if (now.Count != before.Length) return true;
+            for (int i = 0; i < before.Length; i++) if (!ReferenceEquals(now[i], before[i])) return true;
+            return false;
         }
 
         bool RefuseReturn(SourceSession session, string message)
@@ -227,6 +248,7 @@ namespace SIL.TextEditing.Avalonia
                 PreferredWidth = PreferredWidth,
                 TokenStyles = new TokenStyleMap().Set(SourceTokenKinds.Muted, new TokenStyle(null, null, 0.55)),
             };
+            view._sourceOwner = this;
             if (_foreground != null) view.Foreground = _foreground;
             if (_background != null) view.Background = _background;
             view.LanguageIdlePost = LanguageIdlePost;
@@ -236,7 +258,7 @@ namespace SIL.TextEditing.Avalonia
             view.RedoRequested += () => _source?.Undo.Redo();
             view.LeaveRequested += (o, e) => LeaveRequested?.Invoke(this, e);
             // The view's context menu is the host's: forwarded from this field, about the view (its findings, its selection), so the host's Cut, Copy,
-            // Paste and a finding's fix go to the view.
+            // Paste and a finding's fix go to the view. A host that only sets ContextMenu on this field gets that menu instead.
             view.ContextMenuRequested += (o, e) =>
             {
                 var at = view.TranslatePoint(e.Position, this) ?? e.Position;

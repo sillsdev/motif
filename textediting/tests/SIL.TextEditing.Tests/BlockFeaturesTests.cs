@@ -95,6 +95,19 @@ namespace SIL.TextEditing.Tests
             Assert.Equal(BlockFeatures.None, Recognizer.Recognize(p));
         }
 
+        [Fact]
+        public void A_source_return_that_flattens_a_table_says_so_even_when_the_host_s_commit_handler_throws()
+        {
+            var e = Editor(BlockFeatures.Lists | BlockFeatures.Headings, "one");
+            BlockFlattening? seen = null;
+            e.BlocksFlattened += f => seen = f;
+            e.Committed += d => throw new System.InvalidOperationException("the host broke");
+            Assert.Throws<System.InvalidOperationException>(() =>
+                e.ReplaceParagraphs(new List<Paragraph> { Para("en", "en", "one"), TableRow("a", "b") }, (a, b) => a.Text == b.Text, "Edit as Markdown"));
+            Assert.Equal(new[] { "one", "a | b" }, Texts(e));
+            Assert.Equal(1, seen?.TableRows);
+        }
+
         // ---- paste
 
         [Fact]

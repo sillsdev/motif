@@ -778,7 +778,8 @@
       "draft": "Draft name.",
       "entry": "Id of the entry that becomes the variant.",
       "component": "Id of the main entry or sense it is a variant of.",
-      "variantType": "Id of a type in the project's variant types list, such as Spelling Variant."
+      "variantType": "Id of a type in the project's variant types list, such as Spelling Variant.",
+      "hideMinorEntry": "True hides the variant's minor entry; default false."
     },
     "goals": [
       "Mark an entry as a spelling variant of another entry",
@@ -799,6 +800,38 @@
     "goals": [
       "Convert cross-reference stub entries to variants in bulk",
       "Make a list of existing entries variants of their main entries"
+    ]
+  },
+  "compose-strip-variant-senses": {
+    "title": "Strip copied variant senses",
+    "description": "Turns variants that copy their main sense into sense-less variants of that sense: repoints the variant at the main sense, deletes the copied senses and analyses, keeps the form and environment, and reports the exception-feature change per entry; Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "entries": "The variants to strip: each has an entry and, where the main entry has several senses, a component naming the main sense."
+    },
+    "goals": [
+      "Replace a copied gloss and analysis on a stem variant with the main sense",
+      "Clean up two-stem entries that copy their main entry"
+    ]
+  },
+  "compose-author-variant-entry": {
+    "title": "Author a variant entry",
+    "description": "Creates a sense-less variant of one sense in one step, with its form, morph type, environments and variant type, so the parser reads it as that sense's stem; the Dry Run warns when the component has no stem analysis. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "component": "Id of the main sense (or entry) the variant is a variant of.",
+      "variantType": "Id of a type in the project's variant types list.",
+      "form": "The variant's lexeme form.",
+      "formWs": "Vernacular writing system tag of the form.",
+      "morphType": "Id of the morph type of the form, such as stem.",
+      "environments": "Ids of phonological environments the form occurs in; optional.",
+      "hideMinorEntry": "True hides the variant's minor entry; default false."
+    },
+    "goals": [
+      "Add a second shape of a stem as a variant of its sense",
+      "Create a sense-less variant of a sense"
     ]
   },
   "compose-delete-empty-sense": {
@@ -946,6 +979,63 @@
       "suffix-prefix-slots"
     ],
     "redirect": "Move the slot's affixes and drop it from its templates first. To rename it or make it optional, edit it instead (guide suffix-prefix-slots)."
+  },
+  "compose-delete-exception-feature": {
+    "title": "Delete an exception feature",
+    "description": "Deletes an item of the Exception Features list that nothing refers to any more. It refuses while anything still uses it and names each user. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "feature": "Id of the exception feature to delete.",
+      "expectedName": "The feature's current name, in any writing system."
+    },
+    "goals": [
+      "Free room under the 64-feature cap",
+      "Drop a tag that nothing refers to any more",
+      "Delete a duplicate after merging its uses"
+    ]
+  },
+  "compose-delete-environment": {
+    "title": "Delete a phonological environment",
+    "description": "Deletes a phonological environment that no allomorph, rule or other object uses. It refuses an environment still in use and names each user. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "environment": "Id of the environment to delete.",
+      "expectedText": "The environment's current string, such as / _ [C], or its name."
+    },
+    "goals": [
+      "Delete an environment nothing uses",
+      "Clean up environments left behind by a rule or allomorph change"
+    ]
+  },
+  "compose-delete-natural-class": {
+    "title": "Delete a natural class",
+    "description": "Deletes a natural class that nothing uses: no rule or other class refers to it, and no environment string writes its name or abbreviation in square brackets. It refuses otherwise and names each user. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "naturalClass": "Id of the natural class to delete.",
+      "expectedName": "The class's current name, in any writing system."
+    },
+    "goals": [
+      "Delete a natural class nothing uses",
+      "Clean up classes left behind after a merge"
+    ]
+  },
+  "compose-delete-text-segment-note": {
+    "title": "Delete a text segment Note",
+    "description": "Deletes one Note of a Text Segment, the objects compose-edit-text-notes sets. Motif stages a Draft for a person to review and Apply.",
+    "source": "Hand-written from the closed intent and composer contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "note": "Id of the Note to delete.",
+      "expectedText": "The Note's current text, in any writing system."
+    },
+    "goals": [
+      "Remove a stale placeholder Note",
+      "Clear a Note that no longer applies"
+    ]
   },
   "compose-retire-boundary-marker": {
     "title": "Retire a boundary marker",

@@ -14,8 +14,14 @@ namespace SIL.Motif.Worker.Store;
 /// <param name="BytesKept">The bytes the three families hold afterwards.</param>
 /// <param name="UnreadableStores">Live stores whose references could not be read, which blocks the removal of unowned entries.</param>
 /// <param name="Failures">Entries that could not be removed, with the reason.</param>
+/// <param name="Kept">
+/// The entries kept, counted by reason: <c>referenced</c> by a live store, <c>unaccounted</c> while a store or Known
+/// project could not be read, <c>recent</c> (younger than the minimum age), <c>withinBudget</c>, <c>inUse</c> while
+/// a parse reads the shared sources, or <c>failed</c>.
+/// </param>
 public sealed record UserDataSweepResult(int RunsRemoved, int SourcesRemoved, int BaselinesRemoved,
-    int ProjectsForgotten, long BytesRemoved, long BytesKept, int UnreadableStores, IReadOnlyList<string> Failures);
+    int ProjectsForgotten, long BytesRemoved, long BytesKept, int UnreadableStores, IReadOnlyList<string> Failures,
+    IReadOnlyDictionary<string, int>? Kept = null);
 
 /// <summary>Tunes <see cref="UserDataSweep"/>; the defaults are what the worker uses.</summary>
 public sealed record UserDataSweepOptions
@@ -70,11 +76,16 @@ public sealed class UserDataSweep
     private readonly KnownProjectRegistry _projects;
     private readonly TimeProvider _clock;
     private readonly UserDataSweepOptions _options;
+    private readonly IReadOnlyCollection<string> _alsoLive;
 
-    /// <summary>Creates a sweep of <paramref name="root"/>, the folder that holds the machine store.</summary>
+    /// <summary>
+    /// Creates a sweep of <paramref name="root"/>, the folder that holds the machine store. <paramref name="alsoLive"/>
+    /// names stores that count as live even when no Known project lists them, such as the store a prune holds open.
+    /// </summary>
     public UserDataSweep(string root, KnownProjectRegistry projects, TimeProvider? clock = null,
-        UserDataSweepOptions? options = null)
+        UserDataSweepOptions? options = null, IReadOnlyCollection<string>? alsoLive = null)
     {
+        _alsoLive = alsoLive ?? [];
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
         _root = Path.GetFullPath(root);
         _projects = projects ?? throw new ArgumentNullException(nameof(projects));
@@ -136,6 +147,8 @@ public sealed class UserDataSweep
         foreach (var entry in entries)
             if (entry.OwnerStore is { } owner && TryFullPath(owner, out var ownerPath) && File.Exists(ownerPath))
                 liveStores.TryAdd(ownerPath, false);
+        foreach (var store in _alsoLive)
+            if (TryFullPath(store, out var full) && File.Exists(full)) liveStores.TryAdd(full, false);
         var tokens = new HashSet<string>(StringComparer.Ordinal);
         var unreadable = unaccounted;
         foreach (var store in liveStores.Keys.ToArray())
@@ -147,9 +160,12 @@ public sealed class UserDataSweep
         }
 
         var removable = new List<Entry>();
+        var keptBy = new Dictionary<Entry, string>();
         foreach (var entry in entries)
         {
-            if (tokens.Contains(entry.Key) || entry.MarkerUnreadable) continue;
+            if (tokens.Contains(entry.Key)) { keptBy[entry] = "referenced"; continue; }
+            keptBy[entry] = "unaccounted";
+            if (entry.MarkerUnreadable) continue;
             if (entry.OwnerStore is { } owner)
             {
                 if (!TryFullPath(owner, out var ownerPath)) continue;
@@ -160,6 +176,7 @@ public sealed class UserDataSweep
                 else if (unreadable > 0 || now - entry.LastWriteUtc < _options.ProjectGrace) continue;
             }
             else if (unreadable > 0) continue;
+            keptBy[entry] = "withinBudget";
             removable.Add(entry);
         }
 
@@ -168,51 +185,60 @@ public sealed class UserDataSweep
         var remaining = entries.Sum(entry => entry.Bytes);
         var ordered = removable.OrderBy(entry => entry.LastWriteUtc).ToList();
         var removedSet = new HashSet<Entry>();
-        // Only runs age out by themselves; a Baseline or source is removed under the budget alone.
-        foreach (var entry in ordered.Where(entry => entry.Family == "assessment-runs" &&
-                     now - entry.LastWriteUtc >= _options.MinimumAge))
-            Remove(entry);
-        foreach (var entry in ordered.Where(entry => !removedSet.Contains(entry) &&
-                     now - entry.LastWriteUtc >= _options.BudgetMinimumAge))
+        // One exclusive source lease covers every source removal, so the stores are reread once, not per source.
+        WorkerMutexOwner? sourceLease = null;
+        string? sourceRefusal = null;
+        HashSet<string>? sourceTokens = null;
+        try
         {
-            if (remaining <= _options.BudgetBytes) break;
-            Remove(entry);
+            // Only runs age out by themselves; a Baseline or source is removed under the budget alone.
+            foreach (var entry in ordered.Where(entry => entry.Family == "assessment-runs" &&
+                         now - entry.LastWriteUtc >= _options.MinimumAge))
+                Remove(entry);
+            foreach (var entry in ordered.Where(entry => !removedSet.Contains(entry) &&
+                         now - entry.LastWriteUtc >= _options.BudgetMinimumAge))
+            {
+                if (remaining <= _options.BudgetBytes) break;
+                Remove(entry);
+            }
+        }
+        finally
+        {
+            sourceLease?.Dispose();
         }
 
+        var kept = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var entry in entries.Where(entry => !removedSet.Contains(entry)))
+        {
+            var reason = keptBy[entry];
+            if (reason == "withinBudget" && now - entry.LastWriteUtc < _options.BudgetMinimumAge) reason = "recent";
+            kept[reason] = kept.GetValueOrDefault(reason) + 1;
+        }
         return new UserDataSweepResult(counts.GetValueOrDefault("assessment-runs"),
             counts.GetValueOrDefault("assessment-sources"), counts.GetValueOrDefault("baselines"), forgotten,
-            removedBytes, remaining, unreadable, failures);
+            removedBytes, remaining, unreadable, failures, kept);
 
         void Remove(Entry entry)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                using var sourceLease = entry.Family == "assessment-sources"
-                    ? StatsCacheLock.CreateSharedSourceLock(Path.GetDirectoryName(entry.Path)!, exclusive: true) : null;
-                if (sourceLease is not null)
+                using var runLease = entry.Family == "assessment-runs" ? StatsCacheLock.Create(entry.Path) : null;
+                if (runLease is not null && !runLease.TryAcquire())
                 {
-                    if (!sourceLease.TryAcquire()) return;
-                    var currentTokens = new HashSet<string>(StringComparer.Ordinal);
-                    var currentStores = new HashSet<string>(liveStores.Keys, PathComparer);
-                    foreach (var project in _projects.List())
+                    keptBy[entry] = "inUse";
+                    return;
+                }
+                if (entry.Family == "assessment-sources")
+                {
+                    if (sourceTokens is null && sourceRefusal is null) RecheckSources(entry.Path);
+                    if (sourceTokens is null)
                     {
-                        var store = Path.ChangeExtension(project.FullFwDataPath, ".motif.db");
-                        if (File.Exists(store)) currentStores.Add(Path.GetFullPath(store));
-                        else if (!Directory.Exists(Path.GetDirectoryName(project.FullFwDataPath))) return;
+                        keptBy[entry] = sourceRefusal!;
+                        return;
                     }
-                    var runRoot = Path.Combine(_root, "assessment-runs");
-                    if (Directory.Exists(runRoot))
-                        foreach (var owner in Directory.EnumerateFiles(runRoot, "*.owner"))
-                        {
-                            if ((File.GetAttributes(owner) & FileAttributes.ReparsePoint) != 0) return;
-                            var store = File.ReadAllText(owner).Trim();
-                            if (!TryFullPath(store, out var fullStore) || !File.Exists(fullStore)) return;
-                            currentStores.Add(fullStore);
-                        }
-                    foreach (var store in currentStores)
-                        if (!ReadTokens(store, currentTokens)) return;
-                    if (currentTokens.Contains(entry.Key)) return;
+                    keptBy[entry] = "referenced";
+                    if (sourceTokens.Contains(entry.Key)) return;
                 }
                 Delete(entry.Path);
                 foreach (var sidecar in new[] { entry.Path + ".owner", entry.Path + ".prune" })
@@ -224,8 +250,42 @@ public sealed class UserDataSweep
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
+                keptBy[entry] = "failed";
                 failures.Add(entry.Path + ": " + exception.Message);
             }
+        }
+
+        // Rereads every store under the exclusive lease, so no parse names a source between check and removal.
+        void RecheckSources(string sourcePath)
+        {
+            sourceLease?.Dispose();
+            sourceLease = StatsCacheLock.CreateSharedSourceLock(Path.GetDirectoryName(sourcePath)!, exclusive: true);
+            if (!sourceLease.TryAcquire())
+            {
+                sourceRefusal = "inUse";
+                return;
+            }
+            sourceRefusal = "unaccounted";
+            var currentTokens = new HashSet<string>(StringComparer.Ordinal);
+            var currentStores = new HashSet<string>(liveStores.Keys, PathComparer);
+            foreach (var project in _projects.List())
+            {
+                var store = Path.ChangeExtension(project.FullFwDataPath, ".motif.db");
+                if (File.Exists(store)) currentStores.Add(Path.GetFullPath(store));
+                else if (!Directory.Exists(Path.GetDirectoryName(project.FullFwDataPath))) return;
+            }
+            var runRoot = Path.Combine(_root, "assessment-runs");
+            if (Directory.Exists(runRoot))
+                foreach (var owner in Directory.EnumerateFiles(runRoot, "*.owner"))
+                {
+                    if ((File.GetAttributes(owner) & FileAttributes.ReparsePoint) != 0) return;
+                    var store = File.ReadAllText(owner).Trim();
+                    if (!TryFullPath(store, out var fullStore) || !File.Exists(fullStore)) return;
+                    currentStores.Add(fullStore);
+                }
+            foreach (var store in currentStores)
+                if (!ReadTokens(store, currentTokens)) return;
+            sourceTokens = currentTokens;
         }
     }
 

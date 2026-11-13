@@ -15,6 +15,8 @@ In a `compose-batch` file give the circumfix entry an `as` label. Its two parts 
 
 The command stages the entry, its lexeme form, the two parts, their conditions, the analysis and the sense in one Proposal. Dry Run and Trial it on words with and without the circumfix, then Finalize it for a person to review and Apply. `compose-edit-morph-type` and `compose-edit-affix-inflection-classes` still refuse a circumfix, because a single form cannot be edited into or out of one.
 
+A derivational affix's composed summary lists a `Derivation: From -> To` line naming both categories, so a swapped pair shows at once, and its Dry Run warns when the project has no stem, subcategory stem or derivation that makes the From category, or when nothing takes the To category (or a subcategory) as input, which usually means the categories are the wrong way round.
+
 ## When not to use this
 
 - Two markers that can each occur without the other are two entries in two slots; use `compose-author-lexical-entry` and a template (the [suffix and prefix slots guide](guide:encoding/suffix-prefix-slots)).

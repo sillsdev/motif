@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Services;
 
@@ -80,6 +81,9 @@ public sealed record UserPreferences(
     public IReadOnlyDictionary<string, bool> ExpandedSections { get; init; } =
         ImmutableSortedDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal);
 
+    /// <summary>The stage the person works in (format 4); Polish until the owner decides the default.</summary>
+    public MotifStage Stage { get; init; } = MotifStage.Polish;
+
     /// <summary>Per-project view state: project key, then view name (format 2). Lives only in user preferences.</summary>
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, ViewState>> ProjectViews { get; init; } =
         ImmutableSortedDictionary<string, IReadOnlyDictionary<string, ViewState>>.Empty
@@ -89,7 +93,7 @@ public sealed record UserPreferences(
     public bool Equals(UserPreferences? other) =>
         other is not null && FormatVersion == other.FormatVersion && ZoomPercent == other.ZoomPercent &&
         Theme == other.Theme && LastSettingsGroup == other.LastSettingsGroup && Equals(Window, other.Window) &&
-        Trace == other.Trace && HasSeenTechDemoNotice == other.HasSeenTechDemoNotice &&
+        Trace == other.Trace && HasSeenTechDemoNotice == other.HasSeenTechDemoNotice && Stage == other.Stage &&
         ExpandedSections.Count == other.ExpandedSections.Count &&
         ExpandedSections.All(pair => other.ExpandedSections.TryGetValue(pair.Key, out var v) && v == pair.Value) &&
         ProjectViews.Count == other.ProjectViews.Count &&
@@ -100,7 +104,7 @@ public sealed record UserPreferences(
     /// <inheritdoc />
     public override int GetHashCode() =>
         HashCode.Combine(FormatVersion, ZoomPercent, Theme, LastSettingsGroup, Window, Trace, HasSeenTechDemoNotice,
-            ExpandedSections.Count + ProjectViews.Count);
+            ExpandedSections.Count + ProjectViews.Count + (int)Stage);
 }
 
 /// <summary>A stable code and user-facing explanation for a preference-file problem.</summary>
@@ -138,10 +142,10 @@ public interface IUserPreferencesStore
 public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposable
 {
     /// <summary>
-    /// The format written on every save. Format 1 and 2 files are read and upgraded in memory; format 3 added the
-    /// optional selected row to each saved view.
+    /// The format written on every save. Format 1 to 3 files are read and upgraded in memory; format 3 added the
+    /// optional selected row to each saved view; format 4 added the stage.
     /// </summary>
-    public const int LatestFormatVersion = 3;
+    public const int LatestFormatVersion = 4;
 
     private const int CurrentFormatVersion = LatestFormatVersion;
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMilliseconds(750);
@@ -155,12 +159,13 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         nameof(UserPreferences.Trace),
         nameof(UserPreferences.HasSeenTechDemoNotice),
     ];
-    private static readonly string[] RequiredProperties =
+    private static readonly string[] FormatThreeProperties =
     [
         .. FormatOneProperties,
         nameof(UserPreferences.ExpandedSections),
         nameof(UserPreferences.ProjectViews),
     ];
+    private static readonly string[] RequiredProperties = [.. FormatThreeProperties, nameof(UserPreferences.Stage)];
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
     private readonly string _path;
     private readonly object _gate = new();
@@ -546,7 +551,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         if (!document.RootElement.TryGetProperty(nameof(UserPreferences.FormatVersion), out var versionElement) ||
             !versionElement.TryGetInt32(out version)) return false;
         // An unknown (for example newer) version has no known shape: it is refused, never rewritten.
-        var required = version switch { 1 => FormatOneProperties, 2 or LatestFormatVersion => RequiredProperties, _ => null };
+        var required = version switch { 1 => FormatOneProperties, 2 or 3 => FormatThreeProperties, LatestFormatVersion => RequiredProperties, _ => null };
         if (required is null) return false;
         var names = document.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
         return names.Length == required.Length && required.All(name => names.Contains(name, StringComparer.Ordinal));
@@ -555,7 +560,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
     internal static UserPreferences Validate(UserPreferences value)
     {
         if (value.FormatVersion != CurrentFormatVersion || !ZoomPolicy.Supports(value.ZoomPercent) ||
-            !Enum.IsDefined(value.Theme) || !Enum.IsDefined(value.LastSettingsGroup) || !Enum.IsDefined(value.Trace))
+            !Enum.IsDefined(value.Theme) || !Enum.IsDefined(value.LastSettingsGroup) || !Enum.IsDefined(value.Trace) || !Enum.IsDefined(value.Stage))
             throw new InvalidDataException("The preferences file contains an unsupported value.");
         if (value.Window is { } window &&
             (!double.IsFinite(window.Width) || window.Width <= 0 ||

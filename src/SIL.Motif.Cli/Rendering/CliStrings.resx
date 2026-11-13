@@ -7,4 +7,10 @@
   <data name="StorePruneFormat" xml:space="preserve"><value>Removed {0} Assessments and {3} invocation directories; kept {4} unowned directories ({5} bytes) in {6}; store: {1} to {2} bytes.</value><comment>Counts of removed Assessments and invocation directories, kept unowned directories and their bytes and parent path; store size before and after.</comment></data>
   <data name="StorePruneSizeIncomplete" xml:space="preserve"><value> The unowned directory size is incomplete.</value><comment>Added when the size of retained unowned directories could not be fully measured.</comment></data>
   <data name="StorePruneIncomplete" xml:space="preserve"><value> Reclamation is incomplete while readers are active.</value><comment>Added when active readers prevent complete store reclamation.</comment></data>
+  <data name="StorePruneBudgetFormat" xml:space="preserve"><value> Store budget {0} bytes, {1} bytes in use{2}.</value><comment>Store byte budget and bytes in use; the third value is the over-budget note or empty.</comment></data>
+  <data name="StorePruneOverBudget" xml:space="preserve"><value>, over budget</value><comment>Added when the store still holds more than its budget.</comment></data>
+  <data name="StorePruneKeptAssessments" xml:space="preserve"><value> Kept Assessments by reason: {0}.</value><comment>Counts of kept Assessments by reason code, such as openProposal=3, report=2.</comment></data>
+  <data name="StorePruneKeptRuns" xml:space="preserve"><value> Kept run directories by reason: {0}.</value><comment>Counts of kept invocation directories by reason code.</comment></data>
+  <data name="StorePruneKeptUserData" xml:space="preserve"><value> Kept per-user data entries by reason: {0}.</value><comment>Counts of kept runs, sources and Baselines in the per-user data folder by reason code.</comment></data>
+  <data name="StorePruneUserDataFormat" xml:space="preserve"><value> Per-user data: removed {0} sources and {1} Baselines ({2} bytes); {3} bytes kept.</value><comment>Removed source copies and Baselines, bytes freed and bytes kept in the per-user data folder.</comment></data>
 </root>

@@ -5138,6 +5138,10 @@
                       "variantType": {
                         "type": "string",
                         "description": "Id of a type in the project\u0027s variant types list, such as Spelling Variant."
+                      },
+                      "hideMinorEntry": {
+                        "type": "boolean",
+                        "description": "True hides the variant\u0027s minor entry; default false."
                       }
                     },
                     "additionalProperties": false,
@@ -5218,6 +5222,148 @@
                     "required": [
                       "variantType",
                       "links"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-strip-variant-senses"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-strip-variant-senses.",
+                    "properties": {
+                      "entries": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "entry": {
+                              "type": "string"
+                            },
+                            "component": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "entry"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "The variants to strip: each has an entry and, where the main entry has several senses, a component naming the main sense."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "entries"
+                    ]
+                  },
+                  "citation": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Where this change came from."
+                      },
+                      "locator": {
+                        "type": "string",
+                        "description": "Optional page, section or other source location."
+                      }
+                    },
+                    "required": [
+                      "source"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "verb",
+                  "intent"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "description": "Composing verb for this intent.",
+                    "enum": [
+                      "compose-author-variant-entry"
+                    ]
+                  },
+                  "intent": {
+                    "type": "object",
+                    "description": "Structured intent for compose-author-variant-entry.",
+                    "properties": {
+                      "component": {
+                        "type": "string",
+                        "description": "Id of the main sense (or entry) the variant is a variant of."
+                      },
+                      "variantType": {
+                        "type": "string",
+                        "description": "Id of a type in the project\u0027s variant types list."
+                      },
+                      "form": {
+                        "type": "string",
+                        "description": "The variant\u0027s lexeme form."
+                      },
+                      "formWs": {
+                        "type": "string",
+                        "description": "Vernacular writing system tag of the form."
+                      },
+                      "morphType": {
+                        "type": "string",
+                        "description": "Id of the morph type of the form, such as stem."
+                      },
+                      "environments": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Ids of phonological environments the form occurs in; optional."
+                      },
+                      "hideMinorEntry": {
+                        "type": "boolean",
+                        "description": "True hides the variant\u0027s minor entry; default false."
+                      }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                      "component",
+                      "variantType",
+                      "form",
+                      "formWs",
+                      "morphType"
                     ]
                   },
                   "citation": {

@@ -87,7 +87,8 @@ public static partial class ProposalCommands
         new("compose-author-part-of-speech", "AuthorPartOfSpeech", ["lexical-entries-and-glosses", "inflection-classes", "affix-slots-and-templates"], (cache, input, _) =>
             AuthorPartOfSpeechComposer.Build(cache, AuthorPartOfSpeechIntentParser.Parse(input))),
         new("compose-author-lexical-entry", "AuthorLexicalEntry", ["lexical-entries-and-glosses", "senses-and-definitions"], (cache, input, _) =>
-            AuthorLexicalEntryComposer.Build(cache, AuthorLexicalEntryIntentParser.Parse(input))),
+                AuthorLexicalEntryComposer.Build(cache, AuthorLexicalEntryIntentParser.Parse(input)),
+            RelatedObjects: (cache, input) => DerivationDirection.Read(cache, AuthorLexicalEntryIntentParser.Parse(input).Msa)),
         new("compose-author-inflection-feature", "AuthorInflectionFeature", ["inflection-features"], (cache, input, _) =>
             AuthorInflectionFeatureComposer.Build(cache, AuthorInflectionFeatureIntentParser.Parse(input))),
         new("compose-author-inflection-class", "AuthorInflectionClass", ["inflection-classes", "noun-class-and-gender"], (cache, input, _) =>

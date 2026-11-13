@@ -134,6 +134,17 @@ Proposal on request and deleted when the Proposal's content changes or it is dec
 applied. Not a **Baseline**.
 _Avoid_: preview project, backup, baseline
 
+**Home** (of a project):
+Where a project's lexicon and grammar really live: a FieldWorks project (.fwdata) or an FW Lite project's history (a
+Harmony log). A Proposal is applied to the Home; everything else is built from it
+([ADR 0101](docs/adr/0101-a-project-home-is-fwdata-or-a-harmony-log-everything-else-is-built.md)).
+_Avoid_: source (that is the Paratext project), master copy, database, backend
+
+**Build**:
+Making what a tool reads, such as the parser's grammar or a FieldWorks project, from a project's Home. A Build
+reports problems and never fixes them. It is internal: people see "parser updated" or a problem to fix, not a Build.
+_Avoid_: compile, realize, materialize, render, Lowering (which turns one operation into store changes)
+
 **Update baseline**:
 Bringing a Proposal up to the project as it stands now, so its changes are checked against the current state. The window
 says **Update to current project**; each change that cannot be carried over then "no longer fits" and offers Use mine,
@@ -190,6 +201,40 @@ invalid model; Grammar Health and Parsimony advise and never forbid
 ([ADR 0079](docs/adr/0079-linguistic-decisions-follow-black-and-judgement-calls-are-the-linguists.md)). Changes
 to ADRs, `AGENTS.md`, `CLAUDE.md` and this file go straight to `main`, which is how decisions are made visible.
 _Avoid_: override, exception, waiver
+
+## Stages of use
+
+**Grow**:
+The first stage of using Motif: simple local analysis to get the text at hand working, one chapter at a time, with
+Errors only, a speed light, Proposals and GDRs. Tagline: "Find the Pattern in the Words"
+([ADR 0100](docs/adr/0100-motif-has-two-stages-grow-and-polish.md)).
+_Avoid_: Build, Explore, Workshop
+
+**Polish**:
+The second stage: making the grammar ready for everyone, with deployment, FST, Warnings, speed targets, coverage and
+Parsimony, besides Proposals and GDRs. Tagline: "Make It Ready for Everyone". People move back and forth between
+Grow and Polish.
+_Avoid_: Deploy, Release, Publish, Production, Send
+
+## Scripture in the Paratext flow
+
+**Source** (of scripture):
+A whole Paratext project, or a folder of corpus files, with one versification. Motif reads its text and never copies it
+into the FieldWorks project ([ADR 0110](docs/adr/0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md)).
+_Avoid_: import, corpus copy, home
+
+**Passage**:
+One chapter of a Source; for a corpus, one document.
+
+**Context** (in context):
+The chapters of a Source the work is about now, written as a range such as `GEN-ROM; 1CO 13-15`.
+_Avoid_: scope, selection
+
+**Later**:
+Every chapter of the Source that is not in Context.
+
+**Current**:
+The one chapter a person is working on. It is kept on their machine and is not shared.
 
 ## Evaluating a Proposal
 
@@ -267,6 +312,12 @@ can hold for a word that Motif compares an Assessment against: not present, cand
 disapproved, or an incorrect spelling. FieldWorks' parser re-judges candidates whenever it runs, and deletes
 one it no longer produces unless a text uses it.
 _Avoid_: not approved, present, unapproved analysis, no-opinion analysis
+
+**Passed over**:
+A Candidate the parser produces for a word form whose approved occurrences all chose a different analysis. It ranks below
+Unknown and above Disapproved, and is reviewed first, because it is the main sign that the grammar produces too many
+readings. It is computed, never set by a person, so it is not an Opinion.
+_Avoid_: rejected, outvoted, other-approved, wrong
 
 **Opinion**:
 A person's judgement on one analysis, in FieldWorks' words: **Approved**, **Disapproved** or **Unknown**.
@@ -354,11 +405,19 @@ status ([ADR 0093](docs/adr/0093-proposals-release-computed-data-on-close-and-af
 _Avoid_: last viewed, last opened, access time
 
 **Baseline**:
-A saved, minimal, file-backed copy of the project state from which Motif can make many independent
-Dry Run scratches. It contains the LibLCM and writing-system data needed to reproduce engine behaviour,
-but no linked media bytes. A Baseline is replaced explicitly, not merely because time passed. It may be
-captured from a project FieldWorks holds open, in which case it is the state as of FieldWorks' last save.
+A saved, minimal, file-backed copy of a project's grammar and lexicon, from which Motif can make many independent
+Dry Run scratches. It holds what a Proposal changes and what the engine needs to reproduce its behaviour, but not the
+Evidence it is measured against, and no linked media bytes. A Baseline is replaced explicitly, not merely because time
+passed. It may be captured from a project FieldWorks holds open, in which case it is the state as of FieldWorks' last
+save ([ADR 0109](docs/adr/0109-evidence-is-separate-from-the-baseline-and-always-current.md)).
 _Avoid_: snapshot (a Proposal snapshot is a different thing), backup, session cache, live model
+
+**Evidence**:
+The scripture chapters (read from Paratext) and the approved occurrences a Proposal is measured against. It is always current: it follows Paratext edits and
+new approvals, and carries a version. A Trial records the Evidence version it ran on; a result from older Evidence is
+shown as outdated and is rerun for the changed words only.
+_Avoid_: test data, corpus (a Corpus is unapproved material), baseline, evidence set (a different thing: one named body
+of measured results)
 
 **Trial**:
 One attempt at a Proposal on a throwaway copy of the project, producing both a Dry Run and one or more
@@ -386,7 +445,7 @@ One named body of measured evidence a page or command reads: the Baseline it was
 root ParseTime Assessment, the later re-runs that replace some of its words, its Correctness and per-rule
 timing measurements, its grammar check, and where it came from, the project or a Trial. The project's
 current evidence set and a Trial's have the same shape, so a page cannot tell them apart.
-_Avoid_: context, source, data context, snapshot
+_Avoid_: context, source, data context, snapshot, Evidence (that is the input, not the measured result)
 
 **Proposal mode**:
 The window's state while a Proposal is open: a context bar names it and says when its Trial was run. The

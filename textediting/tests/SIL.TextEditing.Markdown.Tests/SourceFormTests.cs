@@ -114,5 +114,49 @@ namespace SIL.TextEditing.Markdown.Tests
             Assert.Equal(new LanguagePosition(2, "see ".Length + link.Length), token.Range.End);
             Assert.Empty(Form().Read("[web](https://x.org)", false).Tokens);
         }
+
+        static Paragraph Runs(params Run[] runs)
+        {
+            var p = new Paragraph { DefaultWs = "en" };
+            foreach (var r in runs) p.Runs.Add(r);
+            return p;
+        }
+
+        static Run En(string text) => new Run { Ws = "en", Text = text };
+
+        public static TheoryData<string, Paragraph, Paragraph> EquivalentPairs()
+        {
+            var link = new Run { Ws = "en", Text = "entry", ObjData = "\u0004" + EntryGuid };
+            var linkAgain = link.Clone();
+            return new TheoryData<string, Paragraph, Paragraph>
+            {
+                { "composed and decomposed", Runs(En("café")), Runs(En("café")) },
+                { "split and merged", Runs(En("one "), En("two")), Runs(En("one two")) },
+                { "an empty run", Runs(En("one"), En(""), En(" two")), Runs(En("one two")) },
+                { "a mark split from its letter", Runs(En("cafe"), En("́")), Runs(En("café")) },
+                { "a link", Runs(En("see "), link), Runs(En("see "), linkAgain) },
+                { "empty paragraphs", Runs(), Runs() },
+            };
+        }
+
+        [Theory]
+        [MemberData(nameof(EquivalentPairs))]
+        public void Equivalent_paragraphs_have_the_same_fingerprint(string name, Paragraph a, Paragraph b)
+        {
+            var form = Form();
+            Assert.True(form.AreEquivalent(a, b), name);
+            Assert.Equal(form.Fingerprint(a), form.Fingerprint(b));
+        }
+
+        [Fact]
+        public void Paragraphs_with_different_text_have_different_fingerprints_and_the_same_text_differently_formatted_is_not_equivalent()
+        {
+            var form = Form();
+            Assert.NotEqual(form.Fingerprint(Runs(En("one"))), form.Fingerprint(Runs(En("two"))));
+            var bold = En("one");
+            bold.Props.SetInt(TextPropertyNumbers.Bold, TextPropertyNumbers.ToggleOn);
+            Assert.False(form.AreEquivalent(Runs(En("one")), Runs(bold)));
+            Assert.IsAssignableFrom<ISourceFormFingerprint>(form);
+        }
     }
 }

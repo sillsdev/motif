@@ -20,6 +20,12 @@ public sealed record PageEntry(
     /// <summary>Whether this page appears in the primary navigation rail.</summary>
     public bool ShowInRail { get; init; } = true;
 
+    /// <summary>The stages this page shows in; a page outside the window's stage is neither listed nor openable.</summary>
+    public IReadOnlyCollection<MotifStage> Stages { get; init; } = [MotifStage.Grow, MotifStage.Polish];
+
+    /// <summary>Whether this page shows in <paramref name="stage"/>.</summary>
+    public bool ShowsIn(MotifStage stage) => Stages.Contains(stage);
+
     /// <summary>An entry whose view is built from a model of the one type its model factory builds.</summary>
     public static PageEntry Of<TModel>(
         WorkspacePage page, string title, string icon, Func<WorkspaceContext, TModel> model, Func<TModel, Control> view)

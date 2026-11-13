@@ -25,7 +25,7 @@ public sealed class MakeVariantOfComposerTests : IDisposable
         var (variant, main, type) = Seed();
         var proposal = Proposal(MakeVariantOfComposer.Build(_cache, new(Id(variant), Id(main), Id(type))));
         var dry = ScratchDryRun.Of(_cache, proposal);
-        var effect = Assert.Single(dry.ExpectedEffects);
+        var effect = Assert.Single(dry.ExpectedEffects, each => each.Field == SIL.Motif.Model.Snapshot.SnapshotFields.LexEntryEntryRefs);
         Assert.Equal(SIL.Motif.Model.Snapshot.SnapshotFields.LexEntryEntryRefs, effect.Field);
         Assert.Equal(Id(variant), effect.CanonicalId);
         Assert.Empty(effect.Before);

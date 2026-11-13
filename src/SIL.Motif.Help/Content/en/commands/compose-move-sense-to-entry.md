@@ -13,7 +13,7 @@ The sense keeps its identity. It becomes the only sense of the new entry, and it
 
 The command refuses, and changes nothing, when:
 
-- the sense is the only sense of its entry; FieldWorks offers the move only when an entry has two or more senses, because an entry must keep a sense;
+- the sense is the only sense of its entry, unless the entry stays a variant of an entry or sense that has a stem analysis (see `compose-delete-sense`);
 - the sense is a sub-sense; only a top-level sense moves;
 - a sub-sense has an analysis different from the sense's own;
 - a parser analysis (morph bundle) still refers to the sense, because its morph and analysis would no longer match; retarget it first;

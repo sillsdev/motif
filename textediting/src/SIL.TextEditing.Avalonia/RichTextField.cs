@@ -506,6 +506,13 @@ namespace SIL.TextEditing.Avalonia
 
         public override void Render(DrawingContext context)
         {
+            _drawing = true;
+            try { Draw(context); }
+            finally { _drawing = false; }
+        }
+
+        void Draw(DrawingContext context)
+        {
             context.DrawRectangle(Background, null, new Rect(Bounds.Size));
             if (_layouts.Count == 0 || _source != null) return;
             Editor.Ordered(out var a, out var b);

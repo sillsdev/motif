@@ -17,6 +17,8 @@ The limits are 1–16 input parts, 1–64 logical output items, 1–64 phonemes 
 
 Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the source on every operation this command produces. The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal on affected words, then Finalize it for a person to review and Apply.
 
+A derivational affix's composed summary lists a `Derivation: From -> To` line naming both categories, so a swapped pair shows at once, and its Dry Run warns when the project has no stem, subcategory stem or derivation that makes the From category, or when nothing takes the To category (or a subcategory) as input, which usually means the categories are the wrong way round.
+
 ## When not to use this
 
 - For nasal assimilation or substitution, use a phonological rule with `compose-author-phonological-rule`; an unconstrained affix process may require substantial parser work, while Verb-restricted processes merged on one entry stopped no words with compounding off.

@@ -129,6 +129,11 @@ public static class ChangeAffixKindComposer
     public static IReadOnlyList<ComposedRelatedObject> ReadWarnings(LcmCache cache, ChangeAffixKindIntent intent) =>
         Inspect(cache, intent)?.Warnings ?? [];
 
+    /// <summary>Names the From and To categories a change to derivational leaves, so a swapped pair shows.</summary>
+    public static IReadOnlyList<ComposedRelatedObject> ReadDirection(LcmCache cache, ChangeAffixKindIntent intent) =>
+        intent.Kind == LexicalEntryMsaKind.Derivational && Inspect(cache, intent) is { Category: { } from, ToCategory: { } to }
+            ? DerivationDirection.Read(cache, new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, from, to)) : [];
+
     private sealed record Plan(IMoMorphSynAnalysis Old, ILexEntry Entry, ILexSense[] Senses,
         IMoMorphAdhocProhib[] Prohibitions, IWfiMorphBundle[] Bundles, CanonicalId? Category,
         CanonicalId? ToCategory, CanonicalId[] Slots, CanonicalId[] CarriedExceptionFeatures,

@@ -29,6 +29,29 @@ public static class ParsimonyFindingIdentity
     public static string DuplicateFormsIdentity(string entryGuid, string morphType, IEnumerable<string> memberIds) =>
         $"entry/{entryGuid}/duplicate-forms/{morphType}/" + Digest(string.Join("\n", memberIds));
 
+    /// <summary>The attachment identity of one entry's repeated-form finding, named by every member GUID.</summary>
+    public static string RepeatedFormsIdentity(string entryGuid, IEnumerable<string> memberIds) =>
+        $"entry/{entryGuid}/duplicate-forms/repeated/" + Digest(string.Join("\n", memberIds));
+
+    /// <summary>The group key shared by every few-carrier exception-feature finding.</summary>
+    public const string ExceptionFeatureGroupKey = "exception-features";
+
+    /// <summary>The attachment identity of one exception feature.</summary>
+    public static string ExceptionFeatureIdentity(string featureGuid) => "exception-feature/" + featureGuid;
+
+    /// <summary>The attachment identity of one stem MSA under its entry.</summary>
+    public static string MsaIdentity(string entryGuid, string msaGuid) => $"entry/{entryGuid}/msa/{msaGuid}";
+
+    /// <summary>The attachment identity of one sense under its entry.</summary>
+    public static string SenseIdentity(string entryGuid, string senseGuid) => $"entry/{entryGuid}/sense/{senseGuid}";
+
+    /// <summary>The group key shared by every duplicate-entry group of one kind, "duplicate" or "clone".</summary>
+    public static string DuplicateEntriesGroupKey(string kind) => "entries/" + kind;
+
+    /// <summary>The attachment identity of one duplicate-entry group: its kind, first member and member digest.</summary>
+    public static string DuplicateEntriesIdentity(string kind, IReadOnlyList<string> memberIds) =>
+        $"entries/{kind}/{memberIds[0]}/" + Digest(string.Join("\n", memberIds));
+
     /// <summary>The Finding ID of an item-attached Finding, one per item and digested site key.</summary>
     public static string SiteFindingId(string measureId, string itemGuid, string siteKey) =>
         $"{measureId}:{itemGuid}:{Digest(siteKey)}";
@@ -67,6 +90,10 @@ public static class ParsimonyFindingIdentity
     /// <summary>The group key shared by every unused statement of one kind.</summary>
     public static string StatementGroupKey(string statementKind) => $"statement/{statementKind}";
 
+    /// <summary>The identity and group key of a set of duplicate environments, named by its member GUIDs.</summary>
+    public static string DuplicateEnvironmentsIdentity(IEnumerable<string> memberIds) =>
+        "duplicate-environments/" + Digest(string.Join("\n", memberIds));
+
     /// <summary>The identity of an alternation family, derived from its exact family key.</summary>
     public static string AlternationFamilyIdentity(string familyKey) => "alternation-family/" + Digest(familyKey);
 
@@ -95,8 +122,22 @@ public static class ParsimonyFindingIdentity
             ParsimonyGroupKind.AllomorphDuplicateForms => key is not null &&
                 key.StartsWith("entry/", StringComparison.Ordinal) &&
                 identity.StartsWith(key + "/duplicate-forms/", StringComparison.Ordinal),
-            ParsimonyGroupKind.AlternationFamily => identity == key,
+            ParsimonyGroupKind.MsaWithoutCategory => key is not null &&
+                key.StartsWith("entry/", StringComparison.Ordinal) &&
+                identity.StartsWith(key + "/msa/", StringComparison.Ordinal),
+            ParsimonyGroupKind.GlossEchoesForm => key is not null &&
+                key.StartsWith("entry/", StringComparison.Ordinal) &&
+                identity.StartsWith(key + "/sense/", StringComparison.Ordinal),
+            ParsimonyGroupKind.DuplicateEntries => key is not null &&
+                key.StartsWith("entries/", StringComparison.Ordinal) &&
+                identity.StartsWith(key + "/", StringComparison.Ordinal),
+            ParsimonyGroupKind.AlternationFamily or ParsimonyGroupKind.DuplicateEnvironments => identity == key,
             ParsimonyGroupKind.AdhocSlotOrder => key is not null && identity == AdhocSlotOrderIdentity(key),
+            ParsimonyGroupKind.LiteralContext => key is not null &&
+                key.StartsWith("literal-context/", StringComparison.Ordinal) &&
+                identity.StartsWith(key + "/", StringComparison.Ordinal),
+            ParsimonyGroupKind.ExceptionFeature => key == ExceptionFeatureGroupKey &&
+                identity.StartsWith("exception-feature/", StringComparison.Ordinal),
             _ => false,
         };
     }
@@ -143,6 +184,10 @@ public static class ParsimonyFindingIdentity
             AllomorphClasses.Contains(className),
         ParsimonyGroupKind.AdhocSlotOrder => AdhocClasses.Contains(className),
         ParsimonyGroupKind.UnusedStatement => StatementClasses.Contains(className),
+        ParsimonyGroupKind.DuplicateEnvironments => className == "PhEnvironment",
+        ParsimonyGroupKind.MsaWithoutCategory => className == "MoStemMsa",
+        ParsimonyGroupKind.GlossEchoesForm => className == "LexSense",
+        ParsimonyGroupKind.DuplicateEntries => className == "LexEntry",
         _ => false,
     };
 

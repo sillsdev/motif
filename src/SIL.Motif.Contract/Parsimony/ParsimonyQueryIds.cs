@@ -17,6 +17,9 @@ public static class ParsimonyQueryIds
     /// <summary>The wire spelling <c>allo-alternation-family/v1</c>.</summary>
     public const string AlloAlternationFamily = "allo-alternation-family/v1";
 
+    /// <summary>The wire spelling <c>allo-repeated-form/v1</c>.</summary>
+    public const string AlloRepeatedForm = "allo-repeated-form/v1";
+
     /// <summary>The wire spelling <c>allo-unconditioned/v1</c>.</summary>
     public const string AlloUnconditioned = "allo-unconditioned/v1";
 
@@ -26,11 +29,29 @@ public static class ParsimonyQueryIds
     /// <summary>The wire spelling <c>disapproved-produced/v1</c>.</summary>
     public const string DisapprovedProduced = "disapproved-produced/v1";
 
+    /// <summary>The wire spelling <c>environment-duplicate/v1</c>.</summary>
+    public const string EnvironmentDuplicate = "environment-duplicate/v1";
+
     /// <summary>The wire spelling <c>environment-excess/v1</c>.</summary>
     public const string EnvironmentExcess = "environment-excess/v1";
 
+    /// <summary>The wire spelling <c>environment-literal-host/v1</c>.</summary>
+    public const string EnvironmentLiteralHost = "environment-literal-host/v1";
+
+    /// <summary>The wire spelling <c>entry-duplicate/v1</c>.</summary>
+    public const string EntryDuplicate = "entry-duplicate/v1";
+
+    /// <summary>The wire spelling <c>gloss-echoes-form/v1</c>.</summary>
+    public const string GlossEchoesForm = "gloss-echoes-form/v1";
+
+    /// <summary>The wire spelling <c>msa-no-category/v1</c>.</summary>
+    public const string MsaNoCategory = "msa-no-category/v1";
+
     /// <summary>The wire spelling <c>natural-class-excess/v1</c>.</summary>
     public const string NaturalClassExcess = "natural-class-excess/v1";
+
+    /// <summary>The wire spelling <c>feature-few-carriers/v1</c>.</summary>
+    public const string FeatureFewCarriers = "feature-few-carriers/v1";
 
     /// <summary>The wire spelling <c>negative-accepted/v1</c>.</summary>
     public const string NegativeAccepted = "negative-accepted/v1";

@@ -14,7 +14,8 @@ internal sealed class MakeVariantOfDefinition : ComposerDefinition<MakeVariantOf
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Id("entry", IdRole.Target, required: true),
         Field.Id("component", IdRole.Reference, required: true),
-        Field.Id("variantType", IdRole.Reference, required: true));
+        Field.Id("variantType", IdRole.Reference, required: true),
+        Field.Flag("hideMinorEntry"));
     public override ComposerExposure Exposure { get; } =
         new(CommandSurface.AdvancedAi, AgentClass.Draft, ToolName: "motif_make_variant_of");
     public override MakeVariantOfIntent Parse(JsonElement authored) => MakeVariantOfIntentParser.Parse(authored);

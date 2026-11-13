@@ -40,7 +40,7 @@ public sealed class ToolSurfaceTests
     [InlineData("motif_edit_adhoc_prohibition_references", new[] { "draft", "target", "expected", "references", "project" })]
     [InlineData("motif_delete_adhoc_prohibition", new[] { "draft", "target", "expected", "project" })]
     [InlineData("motif_delete_affix_process", new[] { "draft", "entry", "form", "replacement", "project" })]
-    [InlineData("motif_make_variant_of", new[] { "draft", "entry", "component", "variantType", "project" })]
+    [InlineData("motif_make_variant_of", new[] { "draft", "entry", "component", "variantType", "hideMinorEntry", "project" })]
     [InlineData("motif_make_variants_of", new[] { "draft", "variantType", "links", "onlyStubs", "project" })]
     [InlineData("motif_merge_lexical_entries", new[] { "draft", "entry", "into", "project" })]
     [InlineData("motif_delete_empty_sense", new[] { "draft", "target", "entry", "project" })]
@@ -144,8 +144,12 @@ public sealed class ToolSurfaceTests
             "activity",
             "compose-add-example",
             "compose-add-exception-features",
+            "compose-delete-environment",
+            "compose-delete-exception-feature",
             "compose-delete-lexical-entry",
+            "compose-delete-natural-class",
             "compose-delete-sense",
+            "compose-delete-text-segment-note",
             "compose-edit-affix-inflection-classes",
             "compose-edit-part-of-speech-inflection-class-default",
             "compose-edit-stem-allomorph-stem-name",
@@ -181,8 +185,10 @@ public sealed class ToolSurfaceTests
                 "compose-move-example" or "compose-add-example" or
                 "compose-set-stem-part-of-speech" or "compose-record-source-validated-decision" or
                 "compose-retire-boundary-marker" or "compose-retire-affix-slot" or "compose-add-exception-features" or
-                "compose-merge-boundary-markers" or "compose-edit-text-notes").ToArray();
-        Assert.Equal(17, numeralEditors.Length);
+                "compose-merge-boundary-markers" or "compose-edit-text-notes" or
+                "compose-delete-environment" or "compose-delete-exception-feature" or
+                "compose-delete-natural-class" or "compose-delete-text-segment-note").ToArray();
+        Assert.Equal(21, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);
@@ -339,12 +345,14 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(70, verbs.Length);
+        Assert.Equal(72, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
             "compose-delete-empty-sense",
             "compose-link-variant",
+            "compose-strip-variant-senses",
+            "compose-author-variant-entry",
             "compose-make-variant-of",
             "compose-make-variants-of",
             "compose-merge-lexical-entries",

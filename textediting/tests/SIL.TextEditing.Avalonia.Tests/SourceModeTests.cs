@@ -430,6 +430,64 @@ namespace SIL.TextEditing.Avalonia.Tests
         });
 
         [Fact]
+        public void A_host_that_only_sets_a_ContextMenu_on_the_field_gets_it_in_source_mode_too() => Headless.Run(() =>
+        {
+            // Headless has no popup to open, so the test checks what opens a field's ContextMenu: the request reaching the field unhandled.
+            var r = new Rig("one");
+            var reached = new List<bool>();
+            r.Field.AddHandler(Control.ContextRequestedEvent, (o, e) => reached.Add(e.Handled), global::Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
+            r.Field.EnterSourceMode();
+            Headless.Pump();
+            r.View.Editor.SetCaret(new TextPosition(0, 2));
+            r.View.Press(Key.F10, KeyModifiers.Shift);
+            Headless.Pump();
+            Assert.Equal(new[] { false }, reached);
+            r.Window.Close();
+        });
+
+        [Fact]
+        public void A_host_that_listens_and_sets_a_ContextMenu_gets_the_event_in_source_mode_and_the_menu_stays_shut() => Headless.Run(() =>
+        {
+            var r = new Rig("one");
+            var reached = new List<bool>();
+            r.Field.AddHandler(Control.ContextRequestedEvent, (o, e) => reached.Add(e.Handled), global::Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
+            ContextMenuRequestedEventArgs? seen = null;
+            r.Field.ContextMenuRequested += (o, e) => seen = e;
+            r.Field.EnterSourceMode();
+            Headless.Pump();
+            r.View.Press(Key.F10, KeyModifiers.Shift);
+            Headless.Pump();
+            Assert.Same(r.View, seen?.Field);
+            Assert.Equal(new[] { true }, reached);   // handled, so a ContextMenu on the field stays shut
+            r.Window.Close();
+        });
+
+        [Fact]
+        public void A_host_commit_that_fails_after_the_text_changed_says_the_commit_failed_and_one_undo_restores() => Headless.Run(() =>
+        {
+            var r = new Rig("one", "two");
+            bool fail = true;
+            r.Field.Editor.Committed += d => { if (fail) { fail = false; throw new InvalidOperationException("the host broke"); } };
+            r.Field.EnterSourceMode();
+            r.TypeAtEndOf(1, " more");
+            Assert.True(r.Field.LeaveSourceMode());
+            Assert.False(r.Field.IsSourceMode);
+            Assert.Equal(new[] { "one", "two more" }, r.Texts);
+            var said = r.Changes.Last();
+            Assert.False(said.IsSourceMode);
+            Assert.False(said.Refused);
+            Assert.Contains("the host broke", said.Announcement);
+            Assert.DoesNotContain("kept", said.Announcement);
+            Assert.Equal(1, r.Undo.DoneSteps);
+            r.Undo.Undo();
+            Assert.Equal(new[] { "one", "two" }, r.Texts);
+            r.Field.Editor.SetCaret(new TextPosition(0, 3));
+            r.Field.Editor.TypeText("!");
+            Assert.Equal(1, r.Undo.DoneSteps);   // the next edit is a step of its own, not part of the failed one
+            r.Window.Close();
+        });
+
+        [Fact]
         public void A_host_that_makes_the_field_read_only_in_source_mode_stops_the_source_being_edited_too() => Headless.Run(() =>
         {
             var r = new Rig("one");
@@ -447,6 +505,36 @@ namespace SIL.TextEditing.Avalonia.Tests
             Assert.True(r.Field.LeaveSourceMode());
             Assert.Equal(new[] { "one two" }, r.Texts);
             r.Window.Close();
+        });
+
+        [Fact]
+        public void A_spelling_choice_or_a_language_fix_made_on_the_field_in_source_mode_is_refused() => Headless.Run(() =>
+        {
+            var (window, field) = Fixtures.InWindow(Doc(Para("en", "en", "two bad wrold")));
+            var spelling = new SIL.TextEditing.Tests.FakeSpellHost("two", "bad");
+            spelling.Checkers["en"].Suggestions = new List<string> { "world" };
+            field.SpellIdlePost = a => { };
+            field.SpellChecking = spelling;
+            var posts = new List<Action>();
+            field.LanguageIdlePost = posts.Add;
+            field.LanguageService = new SIL.TextEditing.Tests.FakeLanguageService { Analysis = SIL.TextEditing.Tests.FakeLanguageService.Words("word", fixTo: "good") };
+            for (int guard = 0; guard < 50 && posts.Count > 0; guard++) { var next = posts[0]; posts.RemoveAt(0); next(); }
+            Headless.Pump();
+            var seen = new List<ContextMenuRequestedEventArgs>();
+            field.ContextMenuRequested += (o, e) => seen.Add(e);
+            field.Editor.SetCaret(new TextPosition(0, 10));
+            field.Focus();
+            field.Press(Key.Apps);
+            var word = Assert.Single(seen).Info.Spelling!;
+            var fix = Assert.Single(field.LanguageDiagnostics);
+            field.SourceForm = new LineForm();
+            Assert.True(field.EnterSourceMode());
+
+            Assert.False(field.ApplySpellingSuggestion(word, "world"));
+            Assert.False(field.ApplySpellingSuggestion(word, new[] { new Run { Ws = "en", Text = "world" } }));
+            Assert.False(field.ApplyDiagnosticFix(fix));
+            Assert.Equal("two bad wrold", field.Editor.Document.Paragraphs[0].Text);
+            window.Close();
         });
 
         [Fact]

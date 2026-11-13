@@ -1,3 +1,5 @@
+using SIL.LCModel;
+using SIL.Motif.Contract.Responses;
 using System.Text.Json;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Model;
@@ -44,4 +46,8 @@ internal sealed class AuthorCircumfixDefinition : ComposerDefinition<AuthorCircu
     /// <inheritdoc />
     public override IReadOnlyList<OperationEnvelope> Lower(ComposeContext context, AuthorCircumfixIntent intent) =>
         AuthorCircumfixComposer.Build(context.Cache, intent, context.MintId);
+
+    /// <inheritdoc />
+    public override IReadOnlyList<ComposedRelatedObject>? RelatedObjects(LcmCache cache, AuthorCircumfixIntent intent) =>
+        DerivationDirection.Read(cache, intent.Msa);
 }

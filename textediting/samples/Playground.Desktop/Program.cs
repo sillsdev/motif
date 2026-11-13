@@ -8,7 +8,7 @@ using SIL.TextEditing.Playground;
 namespace SIL.TextEditing.Samples.PlaygroundDesktop
 {
     /// <summary>Options: <c>--scenario "name"</c> opens that scenario; <c>--dev</c> opens in developer mode; <c>--minimized</c> starts minimized without
-    /// taking focus (for smoke runs); <c>--test-channel "pipe name"</c> opens the test-only snapshot pipe (see <see cref="TestChannel"/>).</summary>
+    /// taking focus (for smoke runs).</summary>
     sealed class DesktopApp : PlaygroundApp
     {
         public override void OnFrameworkInitializationCompleted()
@@ -31,8 +31,6 @@ namespace SIL.TextEditing.Samples.PlaygroundDesktop
                     window.WindowState = WindowState.Minimized;
                 }
                 desktop.MainWindow = window;
-                var channel = TestChannel.NameFrom(args);
-                if (channel != null) TestChannel.Start(channel, view, () => new[] { "focus " + (view.Field.IsFocused ? "field" : "other") });
             }
             base.OnFrameworkInitializationCompleted();
         }

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
+using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Handoff;
 using SIL.Motif.Commands.Preferences;
@@ -903,7 +904,34 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public bool AdvancedAiModeEnabled { get; init; }
 
     /// <summary>Whether <paramref name="page"/> is shown and can be opened in this window.</summary>
-    public bool CanOpenPage(WorkspacePage page) => !WorkspacePages.RequiresAdvancedAi(page) || AdvancedAiModeEnabled;
+    public bool CanOpenPage(WorkspacePage page) =>
+        PageEntries.FirstOrDefault(entry => entry.Page == page) is not { } entry || entry.ShowsIn(Stage);
+
+    /// <summary>The registered pages whose stages decide <see cref="CanOpenPage"/>; tests may supply their own.</summary>
+    public IReadOnlyList<PageEntry> PageEntries { get; init; } = PageRegistry.Entries;
+
+    /// <summary>The stage this window shows (ADR 0100); changing it can close the page on screen.</summary>
+    [ObservableProperty]
+    private MotifStage _stage = MotifStage.Polish;
+
+    partial void OnStageChanged(MotifStage value)
+    {
+        if (!CanOpenPage(CurrentPage)) CurrentPage = WorkspacePage.Overview;
+    }
+
+    /// <summary>
+    /// Takes the stage from <paramref name="preferences"/> and saves each later change there, so the person's
+    /// choice survives a restart.
+    /// </summary>
+    public void UseStagePreferences(IUserPreferencesStore preferences)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        Stage = preferences.Current.Stage;
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(Stage)) preferences.Update(current => current with { Stage = Stage });
+        };
+    }
 
     /// <summary>Opens <paramref name="page"/> as it stands; a page this window does not offer stays closed.</summary>
     public void OpenPage(WorkspacePage page)

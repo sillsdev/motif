@@ -27,7 +27,10 @@ namespace SIL.TextEditing
         /// <summary>The writing system new text gets: the run at the caret, unless the host or user chose one.</summary>
         public string ActiveWs { get; private set; }
 
-        /// <summary>Raised after each edit with the reversible change.</summary>
+        /// <summary>Raised after each edit with the reversible change. The document has already changed: a handler that throws does not undo it, the
+        /// editor still raises its own notifications (<see cref="TextEdited"/>, <see cref="DocumentChanged"/>, <see cref="CaretMoved"/>) and then passes the
+        /// exception to whoever made the edit. Handlers subscribed after the one that threw are not called for that edit, so a handler that must see
+        /// every edit (an undo stack) subscribes first.</summary>
         public event Action<EditDelta>? Committed;
         /// <summary>Raised when the active writing system changes: old, new (ADR 0008). That happens when the caret moves into
         /// text of another writing system, when a selection's first writing system changes (FieldWorks sets the keyboard for
@@ -184,11 +187,15 @@ namespace SIL.TextEditing
             d.CaretAfter = caret;
             _wsOverride = false;
             RefreshWs();
-            Committed?.Invoke(d);
+            // The document has changed whatever the host's handler does, so the field still hears of it before the host's exception goes on.
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo? hostFailure = null;
+            try { Committed?.Invoke(d); }
+            catch (Exception ex) { hostFailure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex); }
             if (edit != null) TextEdited?.Invoke(edit.Value);
             DocumentChanged?.Invoke(d.Start, d.Before.Count, d.After.Count);
             CaretMoved?.Invoke();
             EndSingleEditGroup();
+            hostFailure?.Throw();
         }
 
         // ---- editing ----
