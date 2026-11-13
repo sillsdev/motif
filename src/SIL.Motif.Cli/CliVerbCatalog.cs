@@ -33,6 +33,14 @@ public static class CliVerbCatalog
             new[] { "gdr list --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "gdr", "gdr show",
             new[] { "gdr show --project <fwdata> <GDR-n> [--json]" }),
+        new CliVerbDescriptor("Project", "source", "source list",
+            new[] { "source list --project <fwdata> [--all] [--json]" }),
+        new CliVerbDescriptor("Project", "source", "source show",
+            new[] { "source show --project <fwdata> <id> [--json]" }),
+        new CliVerbDescriptor("Project", "source", "source where",
+            new[] { "source where --project <fwdata> <ref> [--source <id>] [--json]" }),
+        new CliVerbDescriptor("Project", "current", "current get",
+            new[] { "current get --project <fwdata> [--source <id>] [--json]" }),
         new CliVerbDescriptor("Project", "project create", "project create",
             new[]
             {

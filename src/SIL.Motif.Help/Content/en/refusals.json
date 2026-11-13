@@ -258,5 +258,21 @@
   "difference.unreadable": {
     "why": "Every saved comparison of the Proposal is damaged, so none can be shown. The refusal names each by Text, reference and time; run difference produce for one of them to make it again.",
     "source": "Hand-written for Proposal Difference retention."
+  },
+  "source.list-ambiguous": {
+    "why": "More than one possibility list in the project is named \"Motif Sources\", so Motif cannot choose one. Rename or remove all but one in FieldWorks.",
+    "source": "Hand-written from SourceQuery."
+  },
+  "source.not-found": {
+    "why": "The project's Source list has no Source with that id. List the Sources to see the ids.",
+    "source": "Hand-written from SourceQuery."
+  },
+  "source.id-invalid": {
+    "why": "A Source id is needed, for example WEB.",
+    "source": "Hand-written from SourceQuery."
+  },
+  "source.ref-invalid": {
+    "why": "A chapter is a book and a chapter number, for example MAT 5.",
+    "source": "Hand-written from SourceQuery."
   }
 }

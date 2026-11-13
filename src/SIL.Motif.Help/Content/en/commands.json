@@ -2269,5 +2269,25 @@
       "Edit a General Note or Grammar Note",
       "Record examples for particular allomorphs in their entry Note"
     ]
+  },
+  "source list": {
+    "title": "List Sources",
+    "description": "Lists the Sources the project's Motif Sources list holds, with their Context and any reason one cannot be used. Removed Sources are hidden unless asked for.",
+    "source": "Hand-written from the SourceQuery behavior."
+  },
+  "source show": {
+    "title": "Show one Source",
+    "description": "Reads one Source: its Context as book and chapter ranges, how many chapters that is, its folder on this machine and its status.",
+    "source": "Hand-written from the SourceQuery behavior."
+  },
+  "source where": {
+    "title": "Place a chapter in the Sources",
+    "description": "Says whether a chapter is in each Source's Context, is the Current chapter, or comes later.",
+    "source": "Hand-written from the SourceQuery behavior."
+  },
+  "current get": {
+    "title": "Read the Current chapters",
+    "description": "Reads the Current chapter of each Source from this machine's local file. An empty answer is normal.",
+    "source": "Hand-written from the SourceQuery behavior."
   }
 }

@@ -253,6 +253,12 @@ public static class CommandCatalog
         new CommandDescriptor("gdr list", typeof(GdrListRequest), typeof(GdrListResponse), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("gdr show", typeof(GdrShowRequest), typeof(GdrShowResponse), CommandSurface.Developer, AgentClass.Read),
 
+        // SourceQuery: Motif Sources from the current Baseline and the local file, behind the developer gate
+        new CommandDescriptor("source list", typeof(SourceListRequest), typeof(SourceListResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("source show", typeof(SourceShowRequest), typeof(SourceShowResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("source where", typeof(SourceWhereRequest), typeof(SourceWhereResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("current get", typeof(CurrentGetRequest), typeof(CurrentGetResponse), CommandSurface.Developer, AgentClass.Read),
+
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("difference produce", typeof(ProposalDifferenceProduceRequest), typeof(ProposalDifferenceResponse), CommandSurface.AdvancedAi, AgentClass.Evaluate),

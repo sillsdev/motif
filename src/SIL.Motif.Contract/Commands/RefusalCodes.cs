@@ -143,6 +143,15 @@ public static class RefusalCodes
     /// <summary>No Grammar Design Record has that id or number.</summary>
     public const string GdrNotFound = "gdr.not-found";
 
+    /// <summary>More than one possibility list is named "Motif Sources", so no Source list can be chosen.</summary>
+    public const string SourceListAmbiguous = "source.list-ambiguous";
+    /// <summary>The project's Source list has no Source with that id.</summary>
+    public const string SourceNotFound = "source.not-found";
+    /// <summary>A Source read named no id.</summary>
+    public const string SourceIdInvalid = "source.id-invalid";
+    /// <summary>A chapter reference is not a book and a chapter number, such as MAT 5.</summary>
+    public const string SourceRefInvalid = "source.ref-invalid";
+
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
     public const string GrammarCheckFailed = "grammarcheck.failed";
     public const string GrammarCheckMalformedFindings = "grammarcheck.malformed-findings";

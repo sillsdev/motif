@@ -1763,6 +1763,32 @@ try
                 : RenderCommand(GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1])));
             break;
 
+        case "source":
+            if (!flags.TryGetValue("project", out var sourceProject) || positionals.Count < 1)
+                return Usage(UsageLineFor("source list") + " OR " + UsageLineFor("source show") + " OR " + UsageLineFor("source where"), asJson);
+            switch (positionals[0])
+            {
+                case "list" when positionals.Count == 1:
+                    result = RenderCommand(SourceQuery.List(new SourceListRequest(sourceProject, flags.ContainsKey("all"))));
+                    break;
+                case "show" when positionals.Count == 2:
+                    result = RenderCommand(SourceQuery.Show(new SourceShowRequest(sourceProject, positionals[1])));
+                    break;
+                case "where" when positionals.Count == 2:
+                    result = RenderCommand(SourceQuery.Where(new SourceWhereRequest(
+                        sourceProject, positionals[1], flags.GetValueOrDefault("source"))));
+                    break;
+                default:
+                    return Usage(UsageLineFor("source list") + " OR " + UsageLineFor("source show") + " OR " + UsageLineFor("source where"), asJson);
+            }
+            break;
+
+        case "current":
+            if (!flags.TryGetValue("project", out var currentProject) || positionals.Count != 1 || positionals[0] != "get")
+                return Usage(UsageLineFor("current get"), asJson);
+            result = RenderCommand(SourceQuery.CurrentGet(new CurrentGetRequest(currentProject, flags.GetValueOrDefault("source"))));
+            break;
+
         case "word-context":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var contextProject) ||
                 !flags.TryGetValue("word", out var contextWord) || string.IsNullOrWhiteSpace(contextWord))
