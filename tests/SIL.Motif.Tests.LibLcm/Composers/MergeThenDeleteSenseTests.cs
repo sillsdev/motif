@@ -103,6 +103,23 @@ public sealed class MergeThenDeleteSenseTests : IDisposable
         // A chain is refused by the slot rule: one Proposal per hop.
         var refusal = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, Proposal(operations)));
         Assert.Contains("same target, field, and member slot", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("one Proposal per merge", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ANoteAddedToTheMovedSenseAfterTheDryRunIsDriftNotSilentlyDeleted()
+    {
+        var (survivor, merged) = (AddStem(_cache, "zag", _category), AddStem(_cache, "zag-", _category));
+        var movedSense = Get<ILexEntry>(_cache, merged.Entry).SensesOS.Single().Guid;
+        var proposal = Proposal(ComposeMergeThenDelete(survivor.Entry, merged.Entry, movedSense));
+        var dryRun = ScratchDryRun.Of(_cache, proposal);
+        NonUndoableUnitOfWorkHelper.Do(_cache.ActionHandlerAccessor, () =>
+            _cache.ServiceLocator.GetInstance<ILexSenseRepository>().GetObject(movedSense)
+                .GeneralNote.set_String(_cache.DefaultAnalWs, "valuable note added after the Dry Run"));
+        var refusal = Assert.Throws<PreconditionRefusal>(() =>
+            ProposalApplier.Apply(_cache, proposal, dryRun.Anchor, "merge-then-delete-tests"));
+        Assert.Equal(PreconditionKind.FootprintDrift, refusal.Kind);
+        Assert.True(Exists(_cache, merged.Entry));
     }
 
     /// <summary>Composes the delete on a file copy the merge was applied to, as compose-batch does.</summary>

@@ -6,12 +6,12 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Runner.Execution;
 
 /// <summary>Two operations of one Proposal address the same target, field and member slot.</summary>
-public sealed class ConflictRefusal(CanonicalId existingOperationId, CanonicalId duplicateOperationId)
+public sealed class ConflictRefusal(CanonicalId existingOperationId, CanonicalId duplicateOperationId, string hint = "")
     : ProposalRefusalException(
         RefusalCodes.DraftInvalid,
         FailureReason.Refused,
         $"Operations {existingOperationId.Value} and {duplicateOperationId.Value} address the same slot. " +
-        "Remove one with remove-operations, or use the composer that replaces an earlier edit.",
+        "Remove one with remove-operations, or use the composer that replaces an earlier edit." + hint,
         new Dictionary<string, string>
         {
             ["existingOperationId"] = existingOperationId.Value,
