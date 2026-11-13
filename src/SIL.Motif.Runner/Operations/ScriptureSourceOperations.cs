@@ -209,16 +209,12 @@ internal static class ScriptureSourceSupport
     {
         var ws = cache.DefaultAnalWs;
         item.Name.set_String(ws, TsStringUtils.MakeString(value, ws));
-        foreach (var other in item.Name.AvailableWritingSystemIds.Where(other => other != ws).ToArray())
-            item.Name.set_String(other, TsStringUtils.MakeString("", other));
     }
 
     internal static void WriteContext(LcmCache cache, ICmPossibility item, string value)
     {
         var ws = cache.DefaultAnalWs;
         item.Description.set_String(ws, TsStringUtils.MakeString(value, ws));
-        foreach (var other in item.Description.AvailableWritingSystemIds.Where(other => other != ws).ToArray())
-            item.Description.set_String(other, TsStringUtils.MakeString("", other));
     }
 
     internal static void RequireStatus(string value, string kind)
