@@ -40,6 +40,16 @@
         "findingsMin": 0,
         "findingsMax": 25
       },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
       "P-feature-few-carriers": {
         "status": "Computed",
         "findingsMin": 0,
@@ -125,6 +135,16 @@
         "status": "Computed",
         "findingsMin": 0,
         "findingsMax": 25
+      },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
       },
       "P-feature-few-carriers": {
         "status": "Computed",
@@ -212,6 +232,16 @@
         "findingsMin": 0,
         "findingsMax": 25
       },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
       "P-feature-few-carriers": {
         "status": "Computed",
         "findingsMin": 0,
@@ -295,6 +325,16 @@
         "status": "Computed",
         "findingsMin": 0,
         "findingsMax": 25
+      },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
       },
       "P-feature-few-carriers": {
         "status": "Computed",
@@ -381,6 +421,16 @@
         "status": "Computed",
         "findingsMin": 0,
         "findingsMax": 25
+      },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 6
       },
       "P-feature-few-carriers": {
         "status": "Computed",
