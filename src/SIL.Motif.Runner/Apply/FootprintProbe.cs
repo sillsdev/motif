@@ -1,10 +1,10 @@
 using System.Collections.Generic;
+using System.Linq;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Model.Effects;
 using SIL.Motif.Runner.Execution;
 using SIL.Motif.Runner.Operations;
-using System.Linq;
 using SIL.LCModel;
 
 namespace SIL.Motif.Runner.Apply;
@@ -22,12 +22,11 @@ namespace SIL.Motif.Runner.Apply;
 /// calls each handler's non-mutating <c>ReadCurrentFootprint</c> rather than its
 /// resolve/snapshot/lower/snapshot sequence.
 /// <para>
-/// <b>An object an earlier operation of the same Proposal moves has no stable prior owner to read.</b> A later
-/// operation composed against the state the merge leaves (delete the sense the merge moved onto the survivor) names
-/// an owner the unmerged project does not give that sense, so reading it here would refuse a Proposal that applies
-/// cleanly in order. Such an operation is left out of the footprint, as one targeting a minted object is: the merge's
-/// own footprint already reads everything the merged entry owns, so the moved object's prior state is still bound, and
-/// the operation is checked against the real state when it runs. Both sides of the drift check use this one rule.
+/// <b>A sense-removal on an object an earlier merge moves cannot be read before the merge.</b> It is composed
+/// against the state the merge leaves, so it names the survivor as the sense's owner, which the unmerged project does not
+/// give it. Only that kind is left out of the footprint; the merge's own footprint binds what the merged entry owns, and
+/// the removal is checked against the real state when it runs. Every other kind on a moved object is still read, so a
+/// concurrent edit to it is still drift. Both sides of the drift check use this one rule.
 /// </para>
 /// </remarks>
 public static class FootprintProbe
@@ -77,7 +76,7 @@ public static class FootprintProbe
         foreach (var operation in OperationExecutionOrder.Sort(proposal.Operations))
         {
             if (operation.Target is not { } target) continue;
-            if (moved.Contains(target)) skipped.Add(operation.OperationId);
+            if (operation.Kind == LexSenseRemoveOperationKinds.Remove && moved.Contains(target)) skipped.Add(operation.OperationId);
             if (operation.Kind == LexEntryMergeOperationKinds.Merge &&
                 cache.ServiceLocator.ObjectRepository.TryGetObject(target.ToGuid(), out var merged))
             {

@@ -72,6 +72,39 @@ public sealed class MergeThenDeleteSenseTests : IDisposable
         Assert.True(Exists(_cache, merged.Entry));
     }
 
+    [Fact]
+    public void AChainOfMergesInOneProposalIsRefusedAsAnOccupiedSlot()
+    {
+        var first = AddStem(_cache, "tin-", _category);
+        var middle = AddStem(_cache, "tin", _category);
+        var last = AddStem(_cache, "tind", _category);
+        var movedSense = Get<ILexEntry>(_cache, first.Entry).SensesOS.Single().Guid;
+        var firstMerge = MergeLexicalEntriesComposer.Build(_cache, new MergeLexicalEntriesIntent(first.Entry, middle.Entry));
+        var secondMerge = MergeLexicalEntriesComposer.Build(_cache, new MergeLexicalEntriesIntent(middle.Entry, last.Entry));
+        new FwDataProjectLoader().Save(_cache);
+        var root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.Scratch", Guid.NewGuid().ToString("N"));
+        using var copy = new ScratchCacheFactory().CreateFromFileCopy(_cache.ProjectId.Path, root);
+        IReadOnlyList<OperationEnvelope> operations;
+        try
+        {
+            NonUndoableUnitOfWorkHelper.Do(copy.ActionHandlerAccessor, () =>
+            {
+                foreach (var operation in firstMerge.Concat(secondMerge))
+                    OperationHandlerRegistry.Resolve(operation.Kind, "test").ApplyAndCaptureEffect(copy, operation, []);
+            });
+            operations = [.. firstMerge, .. secondMerge,
+                .. DeleteSenseComposer.Build(copy, new DeleteSenseIntent(CanonicalId.FromGuid(movedSense), last.Entry))];
+        }
+        finally
+        {
+            copy.Dispose();
+            try { Directory.Delete(root, recursive: true); } catch { /* best effort */ }
+        }
+        // A chain is refused by the slot rule: one Proposal per hop.
+        var refusal = Assert.ThrowsAny<Exception>(() => ScratchDryRun.Of(_cache, Proposal(operations)));
+        Assert.Contains("same target, field, and member slot", refusal.Message, StringComparison.Ordinal);
+    }
+
     /// <summary>Composes the delete on a file copy the merge was applied to, as compose-batch does.</summary>
     private IReadOnlyList<OperationEnvelope> ComposeMergeThenDelete(CanonicalId survivor, CanonicalId merged, Guid movedSense)
     {
