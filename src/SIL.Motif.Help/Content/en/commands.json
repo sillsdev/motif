@@ -2290,6 +2290,109 @@
     "description": "Reads the Current chapter of each Source from this machine's local file. An empty answer is normal.",
     "source": "Hand-written from the SourceQuery behavior."
   },
+  "compose-add-source": {
+    "title": "Add a Source",
+    "description": "Stages a new Source in the project's Motif Sources list, which the first one creates. Nothing is written until a person applies the pending changes.",
+    "source": "Hand-written from SourceComposers.",
+    "fields": {
+      "draft": "Draft name.",
+      "id": "The Source id, such as WEB. Never one used before, in any letter case, and no spaces.",
+      "name": "The display name.",
+      "versification": "The versification the Context is written in, such as English or Septuagint.",
+      "context": "The books and chapters the Source covers, such as MAT-JHN; PSA 1-50.",
+      "kind": "Paratext, the only kind built so far."
+    },
+    "goals": [
+      "Add a Bible translation as a Source",
+      "Record which books a reference translation covers"
+    ]
+  },
+  "compose-set-source-name": {
+    "title": "Rename a Source",
+    "description": "Stages a new display name for a Source in the project or staged in the Draft.",
+    "source": "Hand-written from SourceComposers.",
+    "fields": {
+      "draft": "Draft name.",
+      "source": "The Source id, matched ignoring case.",
+      "name": "The new display name."
+    },
+    "goals": [
+      "Change the display name of a Source",
+      "Correct a misspelled Source name"
+    ]
+  },
+  "compose-set-source-context": {
+    "title": "Change a Source's Context",
+    "description": "Stages the books and chapters a Source covers, read in the Source's versification.",
+    "source": "Hand-written from SourceComposers.",
+    "fields": {
+      "draft": "Draft name.",
+      "source": "The Source id, matched ignoring case.",
+      "context": "The new books and chapters, such as GEN-DEU; PSA 1-72."
+    },
+    "goals": [
+      "Change which books a Source covers",
+      "Widen or narrow the chapters of a Source"
+    ]
+  },
+  "compose-set-source-versification": {
+    "title": "Change a Source's versification",
+    "description": "Stages a new versification for a Source; its Context must still read in it.",
+    "source": "Hand-written from SourceComposers.",
+    "fields": {
+      "draft": "Draft name.",
+      "source": "The Source id, matched ignoring case.",
+      "versification": "The new versification name."
+    },
+    "goals": [
+      "Switch a Source to the versification its text uses",
+      "Fix a Source recorded with the wrong verse numbering"
+    ]
+  },
+  "compose-set-source-status": {
+    "title": "Remove or restore a Source",
+    "description": "Stages a Source as Removed or Active again. A removed Source stays in the list, so its id is never reused.",
+    "source": "Hand-written from SourceComposers.",
+    "fields": {
+      "draft": "Draft name.",
+      "source": "The Source id, matched ignoring case.",
+      "status": "Active or Removed."
+    },
+    "goals": [
+      "Stop using a Source without losing its id",
+      "Bring back a Source that was removed"
+    ]
+  },
+  "source add": {
+    "title": "Add a Source",
+    "description": "Stages a new Source in the pending changes, and with --folder records its Paratext folder on this machine at once. With --apply the pending changes are applied straight away.",
+    "source": "Hand-written from the ProposalCommands.Sources behavior."
+  },
+  "source set-name": {
+    "title": "Rename a Source",
+    "description": "Stages a new display name for a Source in the pending changes.",
+    "source": "Hand-written from the ProposalCommands.Sources behavior."
+  },
+  "source set-context": {
+    "title": "Change a Source's Context",
+    "description": "Stages the books and chapters a Source covers in the pending changes.",
+    "source": "Hand-written from the ProposalCommands.Sources behavior."
+  },
+  "source set-versification": {
+    "title": "Change a Source's versification",
+    "description": "Stages a new versification for a Source in the pending changes.",
+    "source": "Hand-written from the ProposalCommands.Sources behavior."
+  },
+  "source remove": {
+    "title": "Remove a Source",
+    "description": "Stages a Source as Removed in the pending changes; the item and its id stay in the list.",
+    "source": "Hand-written from the ProposalCommands.Sources behavior."
+  },
+  "source restore": {
+    "title": "Restore a Source",
+    "description": "Stages a Removed Source as Active in the pending changes.",
+    "source": "Hand-written from the ProposalCommands.Sources behavior."
+  },
   "source set-folder": {
     "title": "Record a Source's folder",
     "description": "Records the Paratext folder of a Source on this machine. Local and instant: no Draft, nothing synced.",

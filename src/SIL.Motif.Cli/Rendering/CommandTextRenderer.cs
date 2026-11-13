@@ -121,6 +121,7 @@ public static class CommandTextRenderer
             SourceWhereResponse r => SourceTextRenderer.RenderWhere(r),
             CurrentGetResponse r => SourceTextRenderer.RenderCurrent(r),
             SourceLocalResponse r => SourceTextRenderer.RenderLocal(r),
+            SourceStageResponse r => SourceTextRenderer.RenderStaged(r),
             WordContextResponse r => RenderWordContext(r),
             ProposalStandings r => RenderProposalStandings(r),
             ProposalTextChangedResponse r => ProposalCommandRenderer.RenderTextChanged(r),

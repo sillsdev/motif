@@ -49,6 +49,12 @@ internal static class SourceTextRenderer
         $"{response.Source}  folder: {Or(response.Folder, "none")}" +
         (response.Chapter is null ? "" : $"  current: {response.Chapter}") + Environment.NewLine;
 
+    internal static string RenderStaged(SourceStageResponse response) =>
+        $"Staged {response.Operations.Count} change(s) for Source {response.Source} in the pending changes." +
+        (response.Folder is null ? "" : $" Folder recorded: {response.Folder}.") + Environment.NewLine +
+        string.Concat(response.Operations.Select(operation => $"  {operation.OperationId}  {operation.Kind}{Environment.NewLine}")) +
+        "Apply them with: motif apply --all-pending, or add --apply to the command." + Environment.NewLine;
+
     private static string Row(SourceSummary source) =>
         $"{source.Id}  {source.Name}  [{source.Status}]  {Or(source.Context, "no Context")}" +
         (source.Error is null ? "" : $"  ERROR: {source.Error}");

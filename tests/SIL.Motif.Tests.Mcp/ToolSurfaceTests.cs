@@ -144,6 +144,7 @@ public sealed class ToolSurfaceTests
             "activity",
             "compose-add-example",
             "compose-add-exception-features",
+            "compose-add-source",
             "compose-delete-environment",
             "compose-delete-exception-feature",
             "compose-delete-lexical-entry",
@@ -162,6 +163,10 @@ public sealed class ToolSurfaceTests
             "compose-remove-alternate-form",
             "compose-retire-affix-slot",
             "compose-retire-boundary-marker",
+            "compose-set-source-context",
+            "compose-set-source-name",
+            "compose-set-source-status",
+            "compose-set-source-versification",
             "compose-set-stem-part-of-speech",
             "project tag",
             "store artifacts",
@@ -199,7 +204,8 @@ public sealed class ToolSurfaceTests
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "project tag" &&
-            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store upgrade"), command =>
+            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store upgrade" &&
+            command.Name != "compose-add-source" && !command.Name.StartsWith("compose-set-source-", StringComparison.Ordinal)), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);
     }

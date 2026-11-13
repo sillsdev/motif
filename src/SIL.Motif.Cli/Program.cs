@@ -176,6 +176,20 @@ try
         return CommandTextRenderer.Render(outcome, asJson, successAsJson);
     }
 
+    // --apply stages the change, then applies every pending change like apply --all-pending.
+    CommandResult StageSource(string projectPath, Func<CommandOutcome<SourceStageResponse>> stage)
+    {
+        if (!flags.ContainsKey("apply")) return RenderCommand(stage());
+        var attribution = ApplyAttributionFromFlags(flags, environment);
+        if (ApplyAttributionCheck.Refusal(attribution) is { } refusal)
+            return RenderProposal(CommandOutcome<ApplyPendingResult>.Refused(refusal));
+        var staged = stage();
+        if (!staged.Succeeded) return RenderCommand(staged);
+        var request = new ApplyPendingRequest(projectPath, DraftId: null, Revision: null, Attribution: attribution);
+        return RunWithConsoleCancellation(cancellationToken => RenderProposal(
+            PendingChangesWorkflow.Apply(request, cancellationToken)));
+    }
+
     var hasCitationFlag = flags.ContainsKey("cite-source") || flags.ContainsKey("cite-locator");
     SIL.Motif.Contract.Model.OperationCitation? commandCitation = null;
     if (hasCitationFlag)
@@ -1784,8 +1798,37 @@ try
                 case "clear-folder" when positionals.Count == 2:
                     result = RenderCommand(SourceLocalCommand.ClearFolder(new SourceClearFolderRequest(sourceProject, positionals[1])));
                     break;
+                case "add" when positionals.Count == 2 && flags.ContainsKey("name") && flags.ContainsKey("versification") && flags.ContainsKey("context"):
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceAdd(new SourceAddRequest(
+                        sourceProject, positionals[1], flags["name"], flags["versification"], flags["context"],
+                        flags.GetValueOrDefault("kind", "Paratext"), flags.GetValueOrDefault("folder"))));
+                    break;
+                case "set-name" when positionals.Count == 3:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceSetName(
+                        new SourceSetNameRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
+                case "set-context" when positionals.Count == 3:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceSetContext(
+                        new SourceSetContextRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
+                case "set-versification" when positionals.Count == 3:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceSetVersification(
+                        new SourceSetVersificationRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
+                case "remove" when positionals.Count == 2:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceRemove(
+                        new SourceRemoveRequest(sourceProject, positionals[1])));
+                    break;
+                case "restore" when positionals.Count == 2:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceRestore(
+                        new SourceRestoreRequest(sourceProject, positionals[1])));
+                    break;
                 default:
-                    return Usage(string.Join(" OR ", new[] { "source list", "source show", "source where", "source set-folder", "source clear-folder" }.Select(UsageLineFor)), asJson);
+                    return Usage(string.Join(" OR ", new[]
+                    {
+                        "source list", "source show", "source where", "source set-folder", "source clear-folder", "source add",
+                        "source set-name", "source set-context", "source set-versification", "source remove", "source restore",
+                    }.Select(UsageLineFor)), asJson);
             }
             break;
 
@@ -3072,7 +3115,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "word-results" or "refresh-report" or "trace")
+            if (name is "word-results" or "refresh-report" or "trace" or "apply")
             {
                 flags[name] = "true";
                 continue;

@@ -107,6 +107,11 @@ public sealed class HelpCatalogTests
         ["compose-merge-lexical-entries"] = "merges two entries into one, a lexical clean-up rather than a grammar rule",
         ["compose-record-parsimony-disposition"] = "records a review decision about a Parsimony finding",
         ["compose-record-source-validated-decision"] = "records a decision a program made from cited sources, not a grammar rule",
+        ["compose-add-source"] = "edits the project's Motif Sources list, not a grammar rule",
+        ["compose-set-source-name"] = "edits the project's Motif Sources list, not a grammar rule",
+        ["compose-set-source-context"] = "edits the project's Motif Sources list, not a grammar rule",
+        ["compose-set-source-versification"] = "edits the project's Motif Sources list, not a grammar rule",
+        ["compose-set-source-status"] = "edits the project's Motif Sources list, not a grammar rule",
     };
 
     [Fact]

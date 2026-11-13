@@ -77,7 +77,8 @@ internal static class ApplyAuthorization
         var exemptionReason = boundDryRun is null
             ? null
             : JudgmentOnlyProposalReadiness.ExemptionFor(content, boundDryRun.ExpectedEffects) ??
-                ProseOnlyProposalReadiness.ExemptionFor(content, boundDryRun.ExpectedEffects);
+                ProseOnlyProposalReadiness.ExemptionFor(content, boundDryRun.ExpectedEffects) ??
+                SourceOnlyProposalReadiness.ExemptionFor(content, boundDryRun.ExpectedEffects);
         var changedWords = ProposalCommands.ChangedWords(content);
 
         // The current Assessment and whether it sits on the current Baseline do not depend on the candidate.

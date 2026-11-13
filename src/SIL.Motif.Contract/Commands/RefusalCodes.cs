@@ -155,6 +155,16 @@ public static class RefusalCodes
     public const string SourceFolderMissing = "source.folder-missing";
     /// <summary>The Source's opened Paratext text has no such chapter, so it cannot be made Current.</summary>
     public const string SourceChapterNotInSource = "source.chapter-not-in-source";
+    /// <summary>The id of a new Source is already used by a Source in the list or staged in the pending changes.</summary>
+    public const string SourceIdInUse = "source.id-in-use";
+    /// <summary>The id of a new Source belongs to a removed Source; restore that Source instead.</summary>
+    public const string SourceIdRemoved = "source.id-removed";
+    /// <summary>The Context text does not parse in the Source's versification.</summary>
+    public const string SourceContextInvalid = "source.context-invalid";
+    /// <summary>The versification is not one of the built-in names.</summary>
+    public const string SourceVersificationUnknown = "source.versification-unknown";
+    /// <summary>The Source kind is modelled but not built.</summary>
+    public const string SourceKindUnsupported = "source.kind-unsupported";
 
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
     public const string GrammarCheckFailed = "grammarcheck.failed";

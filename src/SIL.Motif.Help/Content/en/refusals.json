@@ -268,7 +268,7 @@
     "source": "Hand-written from SourceQuery."
   },
   "source.id-invalid": {
-    "why": "A Source id is needed, for example WEB.",
+    "why": "A Source id is needed and has no spaces, for example WEB. A new id may not differ from an existing id only by case.",
     "source": "Hand-written from SourceQuery."
   },
   "source.ref-invalid": {
@@ -282,5 +282,25 @@
   "source.chapter-not-in-source": {
     "why": "The Source's Paratext text on this machine has no such chapter, so it cannot be the Current chapter. Place the chapter first with source where.",
     "source": "Hand-written from SourceLocalCommand."
+  },
+  "source.id-in-use": {
+    "why": "A Source with that id is already in the list or staged in the pending changes. Choose another id, or change that Source.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.id-removed": {
+    "why": "A removed Source has that id, and an id is never reused. Restore that Source instead.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.context-invalid": {
+    "why": "The Context is not a valid range list in the Source's versification, for example GEN-ROM; 1CO 13-15. The refusal says what is wrong. To change the versification and the Context together, set the Context first.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.versification-unknown": {
+    "why": "The versification is not one of the built-in names. The refusal lists the names that are allowed.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.kind-unsupported": {
+    "why": "Only a Paratext Source can be added so far. A corpus Source is planned but not built.",
+    "source": "Hand-written from SourceComposers."
   }
 }

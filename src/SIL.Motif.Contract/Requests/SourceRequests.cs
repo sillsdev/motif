@@ -48,3 +48,43 @@ public sealed record CurrentSetRequest(string ProjectPath, string Source, string
 /// <param name="ProjectPath">The recorded project path.</param>
 /// <param name="Source">The Source id; it must be in the project's Source list.</param>
 public sealed record CurrentClearRequest(string ProjectPath, string Source);
+
+/// <summary>Stages a new Source in the pending changes; the project is not written until the changes are applied.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Id">The new Source id, such as <c>WEB</c>; never one used before, in any letter case.</param>
+/// <param name="Name">The display name.</param>
+/// <param name="Versification">The versification the Context is written in, such as <c>English</c>.</param>
+/// <param name="Context">The books and chapters the Source covers, such as <c>MAT-JHN; PSA 1-50</c>.</param>
+/// <param name="Kind">The kind of Source: <c>Paratext</c> (the only one built).</param>
+/// <param name="Folder">The Paratext folder on this machine; recorded in the local file at once when the add is staged.</param>
+public sealed record SourceAddRequest(
+    string ProjectPath, string Id, string Name, string Versification, string Context,
+    string Kind = "Paratext", string? Folder = null);
+
+/// <summary>Stages a new display name for a Source.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id, in the project or staged.</param>
+/// <param name="Name">The new display name.</param>
+public sealed record SourceSetNameRequest(string ProjectPath, string Source, string Name);
+
+/// <summary>Stages a new Context for a Source.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id, in the project or staged.</param>
+/// <param name="Context">The new books and chapters, in the Source's versification.</param>
+public sealed record SourceSetContextRequest(string ProjectPath, string Source, string Context);
+
+/// <summary>Stages a new versification for a Source; its Context must still read in it.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id, in the project or staged.</param>
+/// <param name="Versification">The new versification name.</param>
+public sealed record SourceSetVersificationRequest(string ProjectPath, string Source, string Versification);
+
+/// <summary>Stages the removal of a Source: its status becomes Removed, the item and its id stay.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id, in the project or staged.</param>
+public sealed record SourceRemoveRequest(string ProjectPath, string Source);
+
+/// <summary>Stages the restoring of a Removed Source: its status becomes Active.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id, in the project or staged.</param>
+public sealed record SourceRestoreRequest(string ProjectPath, string Source);
