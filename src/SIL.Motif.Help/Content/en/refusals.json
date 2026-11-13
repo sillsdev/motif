@@ -302,5 +302,9 @@
   "source.kind-unsupported": {
     "why": "Only a Paratext Source can be added so far. A corpus Source is planned but not built.",
     "source": "Hand-written from SourceComposers."
+  },
+  "source.ai-needs-proposal": {
+    "why": "An AI may not edit Sources in the pending changes, which hold a person's own Save. Start a Proposal with motif_start_proposal, compose the Source edits in that Draft, and Finalize it for a person to review and Apply.",
+    "source": "Hand-written from the request for Motif Sources."
   }
 }

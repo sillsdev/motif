@@ -144,7 +144,6 @@ public sealed class ToolSurfaceTests
             "activity",
             "compose-add-example",
             "compose-add-exception-features",
-            "compose-add-source",
             "compose-delete-environment",
             "compose-delete-exception-feature",
             "compose-delete-lexical-entry",
@@ -163,10 +162,6 @@ public sealed class ToolSurfaceTests
             "compose-remove-alternate-form",
             "compose-retire-affix-slot",
             "compose-retire-boundary-marker",
-            "compose-set-source-context",
-            "compose-set-source-name",
-            "compose-set-source-status",
-            "compose-set-source-versification",
             "compose-set-stem-part-of-speech",
             "project tag",
             "store artifacts",
@@ -204,8 +199,7 @@ public sealed class ToolSurfaceTests
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "project tag" &&
-            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store upgrade" &&
-            command.Name != "compose-add-source" && !command.Name.StartsWith("compose-set-source-", StringComparison.Ordinal)), command =>
+            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store upgrade"), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);
     }
@@ -351,7 +345,7 @@ public sealed class ToolSurfaceTests
         Assert.DoesNotContain("intentsJson", batch.Tool.ArgumentNames);
         var branches = intents["items"]!["oneOf"]!.AsArray();
         var verbs = branches.Select(branch => branch!["properties"]!["verb"]!["enum"]![0]!.GetValue<string>()).ToArray();
-        Assert.Equal(72, verbs.Length);
+        Assert.Equal(77, verbs.Length);
         Assert.Equal(new[]
         {
             "compose-author-lexeme-form",
@@ -374,6 +368,11 @@ public sealed class ToolSurfaceTests
             "compose-author-allomorph-required-features",
             "compose-author-phonological-feature",
             "compose-add-phonological-feature-value",
+            "compose-add-source",
+            "compose-set-source-context",
+            "compose-set-source-name",
+            "compose-set-source-status",
+            "compose-set-source-versification",
             "compose-edit-phoneme-features",
             "compose-edit-natural-class-features",
             "compose-remove-feature-value",

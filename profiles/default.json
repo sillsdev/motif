@@ -8,6 +8,8 @@
     { "tool": "motif_grammar", "detail": "detailed" },
     { "tool": "motif_lexicon" },
     { "tool": "motif_word" },
+    { "tool": "motif_sources" },
+    { "tool": "motif_current" },
     { "tool": "motif_start_proposal" },
     { "tool": "motif_guide" },
     { "tool": "motif_add_lexeme_form" },

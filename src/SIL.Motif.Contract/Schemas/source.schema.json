@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source.schema.json",
+  "description": "The results of motif_sources and motif_current, which are also the --json output of source list|show|where and current get. A null member is omitted.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/SourceListResponse"
+    },
+    {
+      "$ref": "#/$defs/CurrentGetResponse"
+    }
+  ],
+  "$defs": {
+    "Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "BaselineToken": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectIdentity",
+        "semanticSnapshotDigest",
+        "projectionVersion",
+        "capturedUtc",
+        "bundleDigest"
+      ],
+      "properties": {
+        "projectIdentity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semanticSnapshotDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "projectionVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capturedUtc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "bundleDigest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "capturedHostSessionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capturedEditGeneration": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "SourceContextRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "book",
+        "chapters"
+      ],
+      "properties": {
+        "book": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{3}$"
+        },
+        "chapters": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "SourceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "kind",
+        "status",
+        "versification",
+        "context",
+        "contextRanges"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "Paratext",
+            "Corpus"
+          ]
+        },
+        "status": {
+          "enum": [
+            "Active",
+            "Removed"
+          ]
+        },
+        "versification": {
+          "type": "string"
+        },
+        "context": {
+          "type": "string"
+        },
+        "contextRanges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceContextRange"
+          }
+        },
+        "folder": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "place": {
+          "enum": [
+            "InContext",
+            "Current",
+            "Later"
+          ]
+        }
+      }
+    },
+    "SourceListResponse": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "sources",
+        "schemaVersion",
+        "isStale"
+      ],
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceSummary"
+          }
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "baseline": {
+          "$ref": "#/$defs/BaselineToken"
+        },
+        "isStale": {
+          "type": "boolean"
+        }
+      }
+    },
+    "CurrentChapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "chapter"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chapter": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{3} [0-9]+$"
+        },
+        "place": {
+          "enum": [
+            "InContext",
+            "Current"
+          ]
+        }
+      }
+    },
+    "CurrentGetResponse": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "current",
+        "schemaVersion",
+        "isStale"
+      ],
+      "properties": {
+        "current": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrentChapter"
+          }
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "baseline": {
+          "$ref": "#/$defs/BaselineToken"
+        },
+        "isStale": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

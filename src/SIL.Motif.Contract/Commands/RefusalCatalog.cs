@@ -335,6 +335,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.SourceContextInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.SourceVersificationUnknown, FailureReason.InvalidArgument),
         Spec(RefusalCodes.SourceKindUnsupported, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.SourceAiNeedsProposal, FailureReason.Refused),
         Spec(RefusalCodes.GrammarCheckCancelled, FailureReason.Cancelled),
         Spec(RefusalCodes.GrammarCheckFailed, FailureReason.Refused),
         Spec(RefusalCodes.GrammarCheckMalformedFindings, FailureReason.Refused),

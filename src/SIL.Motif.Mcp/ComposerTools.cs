@@ -79,7 +79,9 @@ internal static class ComposerTools
         var names = composer.FieldNames;
         return new AgentTool(composer.ToolName, description, composer.Agent, inputSchema, false, false,
             false, true,
-            (context, args, cancellation) => Task.FromResult(ToolOutcome.From(
+            (context, args, cancellation) => Task.FromResult(SourceAiGuard.Check(args.Required(DraftArgument), verb) is { } needsProposal
+                ? ToolOutcome.Refused(needsProposal)
+                : ToolOutcome.From(
                 ProposalCommands.ComposeIntent(new ComposeIntentRequest(context.ProjectPath, context.ProductVersion,
                     args.Required(DraftArgument), verb, args.IntentJson([.. names]))),
                 result => "Use createdObjects[].id values in later composer calls; Dry Run and Trial the Draft, then Finalize.")))

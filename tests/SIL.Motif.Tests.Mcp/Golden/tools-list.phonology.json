@@ -225,6 +225,62 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_sources",
+    "description": "List Sources. Lists the Sources the project\u0027s Motif Sources list holds, with their Context and any reason one cannot be used. Removed Sources are hidden unless asked for.\nCommand: source list. Agent class: Read.\nall: Whether to list Removed Sources too; they are hidden otherwise.\nShow one Source. Reads one Source: its Context as book and chapter ranges, how many chapters that is, its folder on this machine and its status.\nCommand: source show. Agent class: Read.\nid: The Source id, such as WEB; matched ignoring case.\nPlace a chapter in the Sources. Says whether a chapter is in each Source\u0027s Context, is the Current chapter, or comes later.\nCommand: source where. Agent class: Read.\nref: The chapter, such as MAT 5.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "One Source id, such as WEB. Omit to list every Source."
+        },
+        "ref": {
+          "type": "string",
+          "description": "A chapter such as MAT 5. Adds a place to each Source: InContext, Current or Later."
+        },
+        "all": {
+          "type": "boolean",
+          "description": "Also list Removed Sources."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
+    "name": "motif_current",
+    "description": "Read the Current chapters. Reads the Current chapter of each Source from this machine\u0027s local file. An empty answer is normal.\nCommand: current get. Agent class: Read.\nsource: One Source id; null reads every Source that has a Current chapter.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "One Source id. Omit for the Current chapter of every Source."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "project"
+      ]
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_start_proposal",
     "description": "Start a Proposal. Research first: motif_guide topic workflow; check best practice. Start one small Proposal per grammar question, then try it before anything else (guide workflow). Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.\nRequestId: The id of the open Request this Proposal answers, from list requests; leave out when it answers none. A Request is answered when the Proposal is finalized.",
     "inputSchema": {

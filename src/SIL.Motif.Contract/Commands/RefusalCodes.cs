@@ -165,6 +165,8 @@ public static class RefusalCodes
     public const string SourceVersificationUnknown = "source.versification-unknown";
     /// <summary>The Source kind is modelled but not built.</summary>
     public const string SourceKindUnsupported = "source.kind-unsupported";
+    /// <summary>An AI named the reserved pending-changes Draft for a Source edit; it must use a named Proposal.</summary>
+    public const string SourceAiNeedsProposal = "source.ai-needs-proposal";
 
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
     public const string GrammarCheckFailed = "grammarcheck.failed";

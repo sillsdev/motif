@@ -16,7 +16,7 @@ internal static class SourceIntents
     public static readonly IReadOnlyList<string> Subjects = ["scripture-sources"];
 
     public static ComposerExposure ExposureFor(string toolName) =>
-        new(CommandSurface.Developer, AgentClass.Draft, ToolName: toolName, AgentTool: false);
+        new(CommandSurface.AdvancedAi, AgentClass.Draft, ToolName: toolName);
 
     public static string Text(JsonElement authored, string name) =>
         authored.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
