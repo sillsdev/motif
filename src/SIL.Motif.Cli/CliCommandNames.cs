@@ -53,6 +53,8 @@ internal static class CliCommandNames
             return verb + " " + positionals[0];
         if (verb == "project" && positionals.SequenceEqual(new[] { "tag" }) && flags.ContainsKey("set"))
             return "project tag --set";
+        if (verb == "current" && positionals.SequenceEqual(new[] { "set" }) && flags.ContainsKey("clear"))
+            return "current set --clear";
         if (verb is "config" or "baseline" or "gdr" or "source" or "current" or "grammar" or "jobs" or "project" or "selection" or "texts" or "setup" or "store" or "word" or "difference" or "evidence")
         {
             var candidate = positionals.Count > 0 ? verb + " " + positionals[0] : verb;

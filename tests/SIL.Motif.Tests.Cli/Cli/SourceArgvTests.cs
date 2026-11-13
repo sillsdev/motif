@@ -8,6 +8,7 @@ using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Scripture;
 using SIL.Motif.Tests.Scripture;
+using SIL.Motif.Tests.Scripture.Fixtures;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
 using Xunit;
@@ -95,6 +96,54 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
         var unknown = await CliProcess.RunAsync(_root, null, true, "source", "show", "--project", path, "NOPE");
         Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
         var badRef = await CliProcess.RunAsync(_root, null, true, "source", "where", "--project", path, "MAT");
+        Assert.True(badRef.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), badRef.Error);
+    }
+
+    [Fact]
+    public async Task SetFolderAndCurrentSetThenClearRoundTripThroughTheLocalFileInJsonAndText()
+    {
+        var path = ProjectWithBaseline();
+        using var tiny = TinyProject.Create();
+        var key = ProjectStoreCommand.Run<string>(path, MotifProductVersion.CurrentText,
+            (_, project) => CommandOutcome<string>.Success(ProjectWorkspaceKey.Compute(project))).Value!;
+        var store = new ScriptureLocalStore(ProcessScriptureLocalPathInitializer.Path);
+
+        var folder = await CliProcess.RunAsync(_root, null, true, "source", "set-folder", "--project", path, "web", tiny.Folder, "--json");
+        Assert.True(folder.ExitCode == 0, folder.Error);
+        Assert.Equal(("WEB", Path.GetFullPath(tiny.Folder)), (ProjectionJson.Deserialize<SourceLocalResponse>(folder.Output)!.Source,
+            ProjectionJson.Deserialize<SourceLocalResponse>(folder.Output)!.Folder));
+        Assert.Equal(Path.GetFullPath(tiny.Folder), store.Read(key).SourcePaths["WEB"]);
+
+        var set = await CliProcess.RunAsync(_root, null, true, "current", "set", "--project", path, "WEB", "GEN 2");
+        Assert.True(set.ExitCode == 0, set.Error);
+        Assert.Contains("current: GEN 2", set.Output);
+        Assert.Equal(new ChapterRef("GEN", 2), store.Read(key).Current["WEB"]);
+
+        var tooFar = await CliProcess.RunAsync(_root, null, true, "current", "set", "--project", path, "WEB", "MAT 99");
+        Assert.True(tooFar.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), tooFar.Error);
+
+        var clearCurrent = await CliProcess.RunAsync(_root, null, true, "current", "set", "--project", path, "WEB", "--clear");
+        Assert.True(clearCurrent.ExitCode == 0, clearCurrent.Error);
+        Assert.Empty(store.Read(key).Current);
+        var clearFolder = await CliProcess.RunAsync(_root, null, true, "source", "clear-folder", "--project", path, "WEB");
+        Assert.True(clearFolder.ExitCode == 0, clearFolder.Error);
+        Assert.Empty(store.Read(key).SourcePaths);
+    }
+
+    [Fact]
+    public async Task LocalSettersRefuseAnUnknownSourceAMissingFolderAndIncompleteArguments()
+    {
+        var path = ProjectWithBaseline();
+
+        var unknown = await CliProcess.RunAsync(_root, null, true, "source", "set-folder", "--project", path, "NOPE", _root);
+        Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
+        var absent = await CliProcess.RunAsync(_root, null, true, "source", "set-folder", "--project", path, "WEB", Path.Combine(_root, "absent"));
+        Assert.True(absent.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), absent.Error);
+        var noPath = await CliProcess.RunAsync(_root, null, true, "source", "set-folder", "--project", path, "WEB");
+        Assert.True(noPath.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), noPath.Error);
+        var noRef = await CliProcess.RunAsync(_root, null, true, "current", "set", "--project", path, "WEB");
+        Assert.True(noRef.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), noRef.Error);
+        var badRef = await CliProcess.RunAsync(_root, null, true, "current", "set", "--project", path, "WEB", "MAT");
         Assert.True(badRef.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), badRef.Error);
     }
 

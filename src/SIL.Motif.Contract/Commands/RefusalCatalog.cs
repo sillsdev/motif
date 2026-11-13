@@ -328,6 +328,8 @@ public static class RefusalCatalog
         Spec(RefusalCodes.SourceListAmbiguous, FailureReason.Refused),
         Spec(RefusalCodes.SourceNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.SourceRefInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.SourceFolderMissing, FailureReason.NotFound),
+        Spec(RefusalCodes.SourceChapterNotInSource, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GrammarCheckCancelled, FailureReason.Cancelled),
         Spec(RefusalCodes.GrammarCheckFailed, FailureReason.Refused),
         Spec(RefusalCodes.GrammarCheckMalformedFindings, FailureReason.Refused),

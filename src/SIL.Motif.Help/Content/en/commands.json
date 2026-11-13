@@ -2289,5 +2289,25 @@
     "title": "Read the Current chapters",
     "description": "Reads the Current chapter of each Source from this machine's local file. An empty answer is normal.",
     "source": "Hand-written from the SourceQuery behavior."
+  },
+  "source set-folder": {
+    "title": "Record a Source's folder",
+    "description": "Records the Paratext folder of a Source on this machine. Local and instant: no Draft, nothing synced.",
+    "source": "Hand-written from the SourceLocalCommand behavior."
+  },
+  "source clear-folder": {
+    "title": "Forget a Source's folder",
+    "description": "Forgets the folder recorded for a Source on this machine.",
+    "source": "Hand-written from the SourceLocalCommand behavior."
+  },
+  "current set": {
+    "title": "Set the Current chapter",
+    "description": "Makes a chapter the Current chapter of a Source on this machine, checked against the Source's folder when one is recorded.",
+    "source": "Hand-written from the SourceLocalCommand behavior."
+  },
+  "current set --clear": {
+    "title": "Clear the Current chapter",
+    "description": "Forgets the Current chapter of a Source on this machine.",
+    "source": "Hand-written from the SourceLocalCommand behavior."
   }
 }

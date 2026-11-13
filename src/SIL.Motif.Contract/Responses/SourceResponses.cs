@@ -76,3 +76,12 @@ public sealed record CurrentGetResponse(IReadOnlyList<CurrentChapter> Current)
     public BaselineToken? Baseline { get; init; }
     public bool IsStale { get; init; }
 }
+
+/// <summary>What a local Source setting now holds. Nothing here reaches the project or a Draft.</summary>
+/// <param name="Source">The Source id as the list spells it.</param>
+/// <param name="Folder">The folder now recorded, or null when none.</param>
+/// <param name="Chapter">The Current chapter now recorded (<c>MAT 5</c>), or null when none; unused by the folder commands.</param>
+public sealed record SourceLocalResponse(string Source, string? Folder, string? Chapter)
+{
+    public int SchemaVersion { get; init; } = SourceWire.SchemaVersion;
+}

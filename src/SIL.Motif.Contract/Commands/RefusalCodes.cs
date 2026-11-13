@@ -151,6 +151,10 @@ public static class RefusalCodes
     public const string SourceIdInvalid = "source.id-invalid";
     /// <summary>A chapter reference is not a book and a chapter number, such as MAT 5.</summary>
     public const string SourceRefInvalid = "source.ref-invalid";
+    /// <summary>The folder named for a Source does not exist on this machine.</summary>
+    public const string SourceFolderMissing = "source.folder-missing";
+    /// <summary>The Source's opened Paratext text has no such chapter, so it cannot be made Current.</summary>
+    public const string SourceChapterNotInSource = "source.chapter-not-in-source";
 
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
     public const string GrammarCheckFailed = "grammarcheck.failed";

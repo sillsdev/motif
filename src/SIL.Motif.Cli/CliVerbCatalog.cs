@@ -41,6 +41,14 @@ public static class CliVerbCatalog
             new[] { "source where --project <fwdata> <ref> [--source <id>] [--json]" }),
         new CliVerbDescriptor("Project", "current", "current get",
             new[] { "current get --project <fwdata> [--source <id>] [--json]" }),
+        new CliVerbDescriptor("Project", "source", "source set-folder",
+            new[] { "source set-folder --project <fwdata> <id> <path> [--json]" }),
+        new CliVerbDescriptor("Project", "source", "source clear-folder",
+            new[] { "source clear-folder --project <fwdata> <id> [--json]" }),
+        new CliVerbDescriptor("Project", "current", "current set",
+            new[] { "current set --project <fwdata> <id> <ref> [--json]" }),
+        new CliVerbDescriptor("Project", "current", "current set --clear",
+            new[] { "current set --project <fwdata> <id> --clear [--json]" }),
         new CliVerbDescriptor("Project", "project create", "project create",
             new[]
             {

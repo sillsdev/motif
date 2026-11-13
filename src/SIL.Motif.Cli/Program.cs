@@ -1778,15 +1778,34 @@ try
                     result = RenderCommand(SourceQuery.Where(new SourceWhereRequest(
                         sourceProject, positionals[1], flags.GetValueOrDefault("source"))));
                     break;
+                case "set-folder" when positionals.Count == 3:
+                    result = RenderCommand(SourceLocalCommand.SetFolder(new SourceSetFolderRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
+                case "clear-folder" when positionals.Count == 2:
+                    result = RenderCommand(SourceLocalCommand.ClearFolder(new SourceClearFolderRequest(sourceProject, positionals[1])));
+                    break;
                 default:
-                    return Usage(UsageLineFor("source list") + " OR " + UsageLineFor("source show") + " OR " + UsageLineFor("source where"), asJson);
+                    return Usage(string.Join(" OR ", new[] { "source list", "source show", "source where", "source set-folder", "source clear-folder" }.Select(UsageLineFor)), asJson);
             }
             break;
 
         case "current":
-            if (!flags.TryGetValue("project", out var currentProject) || positionals.Count != 1 || positionals[0] != "get")
-                return Usage(UsageLineFor("current get"), asJson);
-            result = RenderCommand(SourceQuery.CurrentGet(new CurrentGetRequest(currentProject, flags.GetValueOrDefault("source"))));
+            if (!flags.TryGetValue("project", out var currentProject) || positionals.Count < 1)
+                return Usage(UsageLineFor("current get") + " OR " + UsageLineFor("current set") + " OR " + UsageLineFor("current set --clear"), asJson);
+            switch (positionals[0])
+            {
+                case "get" when positionals.Count == 1:
+                    result = RenderCommand(SourceQuery.CurrentGet(new CurrentGetRequest(currentProject, flags.GetValueOrDefault("source"))));
+                    break;
+                case "set" when positionals.Count == 3 && !flags.ContainsKey("clear"):
+                    result = RenderCommand(SourceLocalCommand.SetCurrent(new CurrentSetRequest(currentProject, positionals[1], positionals[2])));
+                    break;
+                case "set" when positionals.Count == 2 && flags.ContainsKey("clear"):
+                    result = RenderCommand(SourceLocalCommand.ClearCurrent(new CurrentClearRequest(currentProject, positionals[1])));
+                    break;
+                default:
+                    return Usage(UsageLineFor("current get") + " OR " + UsageLineFor("current set") + " OR " + UsageLineFor("current set --clear"), asJson);
+            }
             break;
 
         case "word-context":

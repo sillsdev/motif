@@ -200,6 +200,85 @@ public sealed class SourceQueryTests(PristineProjectFixture pristine) : IDisposa
         Assert.Equal(RefusalCodes.GdrBaselineChanged, other.Refusal!.Code);
     }
 
+    [Fact]
+    public void SetFolderAndClearFolderChangeOnlyTheLocalFileAndNeedAListedSource()
+    {
+        var path = ProjectWithSources(captureBaseline: true);
+        using var tiny = TinyProject.Create();
+
+        var set = SourceLocalCommand.SetFolder(new SourceSetFolderRequest(path, "web", tiny.Folder));
+
+        Assert.True(set.Succeeded, set.Refusal?.Message);
+        Assert.Equal(("WEB", Path.GetFullPath(tiny.Folder)), (set.Value!.Source, set.Value.Folder));
+        Assert.Equal(Path.GetFullPath(tiny.Folder), ScriptureLocalStore.ForInstallation().Read(KeyOf(path)).SourcePaths["WEB"]);
+        Assert.Equal(Path.GetFullPath(tiny.Folder), SourceQuery.Show(new SourceShowRequest(path, "WEB")).Value!.Source.Folder);
+
+        Assert.True(SourceLocalCommand.ClearFolder(new SourceClearFolderRequest(path, "WEB")).Succeeded);
+        Assert.Empty(ScriptureLocalStore.ForInstallation().Read(KeyOf(path)).SourcePaths);
+        Assert.True(SourceLocalCommand.ClearFolder(new SourceClearFolderRequest(path, "WEB")).Succeeded);
+
+        Assert.Equal(RefusalCodes.SourceNotFound, SourceLocalCommand.SetFolder(new SourceSetFolderRequest(path, "NOPE", tiny.Folder)).Refusal!.Code);
+        Assert.Equal(RefusalCodes.SourceNotFound, SourceLocalCommand.ClearFolder(new SourceClearFolderRequest(path, "NOPE")).Refusal!.Code);
+        Assert.Equal(RefusalCodes.SourceIdInvalid, SourceLocalCommand.SetFolder(new SourceSetFolderRequest(path, " ", tiny.Folder)).Refusal!.Code);
+        Assert.Empty(ScriptureLocalStore.ForInstallation().Read(KeyOf(path)).SourcePaths);
+    }
+
+    [Fact]
+    public void SetFolderRefusesAFolderThatDoesNotExist()
+    {
+        var path = ProjectWithSources(captureBaseline: true);
+
+        var refused = SourceLocalCommand.SetFolder(new SourceSetFolderRequest(path, "WEB", Path.Combine(_root, "absent")));
+
+        Assert.Equal(RefusalCodes.SourceFolderMissing, refused.Refusal!.Code);
+        Assert.Contains("absent", refused.Refusal.Facts["path"]);
+        Assert.Empty(ScriptureLocalStore.ForInstallation().Read(KeyOf(path)).SourcePaths);
+    }
+
+    [Fact]
+    public void SetCurrentChecksTheChapterAgainstTheFolderWhenOneIsRecordedAndClearForgetsIt()
+    {
+        var path = ProjectWithSources(captureBaseline: true);
+        using var tiny = TinyProject.Create();
+        var local = ScriptureLocalStore.ForInstallation();
+
+        // No folder: taken as given, book normalized.
+        var free = SourceLocalCommand.SetCurrent(new CurrentSetRequest(path, "CEB", "mal 2"));
+        Assert.True(free.Succeeded, free.Refusal?.Message);
+        Assert.Equal("MAL 2", free.Value!.Chapter);
+        Assert.Equal(new ChapterRef("MAL", 2), local.Read(KeyOf(path)).Current["CEB"]);
+
+        Assert.True(SourceLocalCommand.SetFolder(new SourceSetFolderRequest(path, "CEB", tiny.Folder)).Succeeded);
+        var inside = SourceLocalCommand.SetCurrent(new CurrentSetRequest(path, "CEB", "GEN 2"));
+        Assert.True(inside.Succeeded, inside.Refusal?.Message);
+        Assert.Equal(new ChapterRef("GEN", 2), local.Read(KeyOf(path)).Current["CEB"]);
+
+        var outside = SourceLocalCommand.SetCurrent(new CurrentSetRequest(path, "CEB", "MAT 99"));
+        Assert.Equal(RefusalCodes.SourceChapterNotInSource, outside.Refusal!.Code);
+        Assert.Equal(new ChapterRef("GEN", 2), local.Read(KeyOf(path)).Current["CEB"]);
+
+        var cleared = SourceLocalCommand.ClearCurrent(new CurrentClearRequest(path, "ceb"));
+        Assert.True(cleared.Succeeded, cleared.Refusal?.Message);
+        Assert.Empty(local.Read(KeyOf(path)).Current);
+        Assert.True(SourceLocalCommand.ClearCurrent(new CurrentClearRequest(path, "CEB")).Succeeded);
+    }
+
+    [Fact]
+    public void SetCurrentRefusesABadChapterAnUnknownSourceAndAFolderThatWentAway()
+    {
+        var path = ProjectWithSources(captureBaseline: true);
+        Assert.Equal(RefusalCodes.SourceRefInvalid, SourceLocalCommand.SetCurrent(new CurrentSetRequest(path, "WEB", "MAT")).Refusal!.Code);
+        Assert.Equal(RefusalCodes.SourceNotFound, SourceLocalCommand.SetCurrent(new CurrentSetRequest(path, "NOPE", "MAT 1")).Refusal!.Code);
+        Assert.Equal(RefusalCodes.SourceNotFound, SourceLocalCommand.ClearCurrent(new CurrentClearRequest(path, "NOPE")).Refusal!.Code);
+
+        var gone = Path.Combine(_root, "gone");
+        Directory.CreateDirectory(gone);
+        Assert.True(SourceLocalCommand.SetFolder(new SourceSetFolderRequest(path, "WEB", gone)).Succeeded);
+        Directory.Delete(gone);
+        Assert.Equal(RefusalCodes.SourceFolderMissing, SourceLocalCommand.SetCurrent(new CurrentSetRequest(path, "WEB", "MAT 1")).Refusal!.Code);
+        Assert.Empty(ScriptureLocalStore.ForInstallation().Read(KeyOf(path)).Current);
+    }
+
     // The id the local file is keyed by, taken the way the query takes it.
     private static string KeyOf(string fwdataPath) => ProjectStoreCommand.Run<string>(
         fwdataPath, MotifProductVersion.CurrentText,

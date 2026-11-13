@@ -258,6 +258,10 @@ public static class CommandCatalog
         new CommandDescriptor("source show", typeof(SourceShowRequest), typeof(SourceShowResponse), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("source where", typeof(SourceWhereRequest), typeof(SourceWhereResponse), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("current get", typeof(CurrentGetRequest), typeof(CurrentGetResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("source set-folder", typeof(SourceSetFolderRequest), typeof(SourceLocalResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("source clear-folder", typeof(SourceClearFolderRequest), typeof(SourceLocalResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("current set", typeof(CurrentSetRequest), typeof(SourceLocalResponse), CommandSurface.Developer, AgentClass.HumanOnly),
+        new CommandDescriptor("current set --clear", typeof(CurrentClearRequest), typeof(SourceLocalResponse), CommandSurface.Developer, AgentClass.HumanOnly),
 
         // Overview and Timing
         new CommandDescriptor("overview", typeof(OverviewRequest), typeof(OverviewResponse), CommandSurface.Released, AgentClass.Read),

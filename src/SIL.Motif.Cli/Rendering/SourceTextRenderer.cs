@@ -45,6 +45,10 @@ internal static class SourceTextRenderer
         return text.ToString();
     }
 
+    internal static string RenderLocal(SourceLocalResponse response) =>
+        $"{response.Source}  folder: {Or(response.Folder, "none")}" +
+        (response.Chapter is null ? "" : $"  current: {response.Chapter}") + Environment.NewLine;
+
     private static string Row(SourceSummary source) =>
         $"{source.Id}  {source.Name}  [{source.Status}]  {Or(source.Context, "no Context")}" +
         (source.Error is null ? "" : $"  ERROR: {source.Error}");

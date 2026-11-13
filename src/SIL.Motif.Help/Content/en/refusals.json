@@ -274,5 +274,13 @@
   "source.ref-invalid": {
     "why": "A chapter is a book and a chapter number, for example MAT 5.",
     "source": "Hand-written from SourceQuery."
+  },
+  "source.folder-missing": {
+    "why": "The folder named for the Source does not exist on this machine, or the recorded folder has gone. Give an existing Paratext project folder.",
+    "source": "Hand-written from SourceLocalCommand."
+  },
+  "source.chapter-not-in-source": {
+    "why": "The Source's Paratext text on this machine has no such chapter, so it cannot be the Current chapter. Place the chapter first with source where.",
+    "source": "Hand-written from SourceLocalCommand."
   }
 }

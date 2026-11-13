@@ -26,3 +26,25 @@ public sealed record SourceWhereRequest(string ProjectPath, string Ref, string? 
 /// <param name="Source">One Source id; null reads every Source that has a Current chapter.</param>
 /// <param name="ExpectedBaseline">The required Baseline identity; null accepts the current Baseline.</param>
 public sealed record CurrentGetRequest(string ProjectPath, string? Source = null, BaselineToken? ExpectedBaseline = null);
+
+/// <summary>Records the folder of a Source on this machine. Local and instant: no Draft.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id; it must be in the project's Source list.</param>
+/// <param name="Path">The existing Paratext project folder.</param>
+public sealed record SourceSetFolderRequest(string ProjectPath, string Source, string Path);
+
+/// <summary>Forgets the folder of a Source on this machine.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id; it must be in the project's Source list.</param>
+public sealed record SourceClearFolderRequest(string ProjectPath, string Source);
+
+/// <summary>Makes a chapter the Current chapter of a Source on this machine.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id; it must be in the project's Source list.</param>
+/// <param name="Ref">The chapter, such as <c>MAT 5</c>.</param>
+public sealed record CurrentSetRequest(string ProjectPath, string Source, string Ref);
+
+/// <summary>Forgets the Current chapter of a Source on this machine.</summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="Source">The Source id; it must be in the project's Source list.</param>
+public sealed record CurrentClearRequest(string ProjectPath, string Source);

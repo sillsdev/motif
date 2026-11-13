@@ -91,7 +91,7 @@ public static class SourceQuery
         });
     }
 
-    private static CommandOutcome<T> Read<T>(string projectPath, SIL.Motif.Contract.Baselines.BaselineToken? expected,
+    internal static CommandOutcome<T> Read<T>(string projectPath, SIL.Motif.Contract.Baselines.BaselineToken? expected,
         Func<SourceReadContext, SIL.Motif.Contract.Baselines.BaselineToken, bool, CommandOutcome<T>> body) where T : class =>
         ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
         {
@@ -121,7 +121,7 @@ public static class SourceQuery
             return body(context, baseline.Token, stale);
         });
 
-    private static bool TryParseChapter(string? text, out ChapterRef chapter)
+    internal static bool TryParseChapter(string? text, out ChapterRef chapter)
     {
         chapter = default;
         var parts = (text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -132,14 +132,15 @@ public static class SourceQuery
         return true;
     }
 
-    private static CommandOutcome<T> EmptyId<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
+    internal static CommandOutcome<T> EmptyId<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
         RefusalCodes.SourceIdInvalid, FailureReason.InvalidArgument, "Name a Source, for example WEB."));
 
-    private static CommandOutcome<T> NotFound<T>(string id) where T : class => CommandOutcome<T>.Refused(new Refusal(
+    internal static CommandOutcome<T> NotFound<T>(string id) where T : class => CommandOutcome<T>.Refused(new Refusal(
         RefusalCodes.SourceNotFound, FailureReason.NotFound, $"No Source is named '{id.Trim()}'."));
 
-    private sealed class SourceReadContext(IReadOnlyList<SourceListEntry> entries, ScriptureLocalStore store, string projectId)
+    internal sealed class SourceReadContext(IReadOnlyList<SourceListEntry> entries, ScriptureLocalStore store, string projectId)
     {
+        public string ProjectId { get; } = projectId;
         public IReadOnlyList<SourceListEntry> Entries { get; } = entries;
         public ScriptureLocalState Local { get; } = store.Read(projectId);
 
