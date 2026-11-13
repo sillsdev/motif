@@ -45,6 +45,17 @@ public static partial class ProposalCommands
                                     Fact(("proposalId", request.ProposalId))));
                             }
                         }
+                        // The Source fields are checked the same way, before Apply adds or writes them.
+                        if (proposal.Operations.Any(operation => operation.Kind.StartsWith("scripture/source/", StringComparison.Ordinal)))
+                        {
+                            try { ScriptureSourceOperationKinds.RequireCompatibleFields(cache); }
+                            catch (InvalidOperationException ex)
+                            {
+                                return CommandOutcome<PreflightResponse>.Refused(new Refusal(
+                                    "apply.drift", FailureReason.StoreInconsistent, ex.Message,
+                                    Fact(("proposalId", request.ProposalId))));
+                            }
+                        }
                         return CommandOutcome<PreflightResponse>.Success(new PreflightResponse(id,
                             ChangeFitPreflight.Check(cache, proposal, currentBaseline?.Token)));
                     });
