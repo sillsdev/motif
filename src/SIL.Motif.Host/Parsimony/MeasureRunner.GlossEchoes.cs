@@ -57,7 +57,9 @@ public static partial class MeasureRunner
             ParsimonyVerification.NotRun);
     }
 
-    /// <summary>Whether a trimmed gloss is the trimmed form, or the form followed by a dot and a non-empty suffix.</summary>
+    /// <summary>
+    /// Whether a trimmed gloss is the trimmed form, or the form followed by a dot and a non-empty suffix.
+    /// </summary>
     internal static bool GlossEchoes(string gloss, string form) =>
         gloss.Equals(form, StringComparison.OrdinalIgnoreCase) ||
         (gloss.Length > form.Length + 1 && gloss[form.Length] == '.' &&

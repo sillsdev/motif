@@ -82,7 +82,7 @@ public static partial class MeasureRunner
             measure.RecipeLink, limits, ParsimonyVerification.NotRun);
     }
 
-    // A pure variant entry has no sense and no MSA; a blank entry needs a gloss or MSA, or all blanks would match.
+    // A pure variant has no sense or MSA; a blank entry needs a gloss or MSA, or all blanks would match.
     private static bool IsDuplicateCandidate(EntryView item) =>
         (item.Entry.HasSense || item.Entry.MsaSignatures.Count > 0) &&
         (item.FormKey.Length > 0 || item.GlossKey.Length > 0 || item.MsaKey.Length > 0);

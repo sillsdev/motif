@@ -13,7 +13,9 @@ internal sealed record UncategorisedStemMsa(string MsaGuid, string EntryGuid, bo
 
 /// <summary>The glosses that may echo their entry's form, with the count of every glossed sense.</summary>
 /// <param name="GlossedSenses">How many senses have a non-blank gloss.</param>
-/// <param name="Candidates">Gloss and allomorph form pairs whose text the query could not rule out as an echo.</param>
+/// <param name="Candidates">
+/// Gloss and allomorph form pairs whose text the query could not rule out as an echo.
+/// </param>
 internal sealed record GlossEchoInput(long GlossedSenses, IReadOnlyList<GlossEchoCandidate> Candidates);
 
 /// <summary>One gloss of a sense next to one allomorph form of its entry.</summary>
@@ -25,14 +27,18 @@ internal sealed record GlossEchoInput(long GlossedSenses, IReadOnlyList<GlossEch
 internal sealed record GlossEchoCandidate(string EntryGuid, string SenseGuid, string? LexemeAllomorphGuid,
     string Gloss, string Form);
 
-/// <summary>Every lexical entry with the forms, glosses and MSA signatures the duplicate check compares.</summary>
+/// <summary>
+/// Every lexical entry with the forms, glosses and MSA signatures the duplicate check compares.
+/// </summary>
 /// <param name="Entries">All entries, in no particular order.</param>
 internal sealed record LexiconInput(IReadOnlyList<LexiconEntryFact> Entries);
 
 /// <summary>One lexical entry as the duplicate check reads it.</summary>
 /// <param name="EntryGuid">The entry.</param>
 /// <param name="MorphType">The entry's lexeme morph type.</param>
-/// <param name="LexemeAllomorphGuid">The lexeme form: the entry's last allomorph by ordinal, or null when it has none.</param>
+/// <param name="LexemeAllomorphGuid">
+/// The lexeme form: the entry's last allomorph by ordinal, or null when it has none.
+/// </param>
 /// <param name="LexemeForms">The forms of the lexeme form, one per writing system, raw.</param>
 /// <param name="HasSense">Whether the entry owns any sense, glossed or not.</param>
 /// <param name="Glosses">Every gloss of every sense, raw.</param>

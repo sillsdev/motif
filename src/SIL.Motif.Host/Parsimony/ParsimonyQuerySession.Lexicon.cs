@@ -2,7 +2,9 @@ namespace SIL.Motif.Host.Parsimony;
 
 public sealed partial class ParsimonyQuerySession
 {
-    /// <summary>Reads every stem MSA that has no part-of-speech row, and whether its entry's senses have glosses.</summary>
+    /// <summary>
+    /// Reads every stem MSA that has no part-of-speech row, and whether its entry's senses have glosses.
+    /// </summary>
     internal StemMsaInput ReadStemMsaCategories()
     {
         RequireSections("entries", "msas");
@@ -43,8 +45,9 @@ public sealed partial class ParsimonyQuerySession
     private const string Marks = "' -=' || char(9) || char(10) || char(13)";
 
     /// <summary>
-    /// Reads the gloss and form pairs a gloss could echo, by letting SQLite drop every pair whose gloss does not start
-    /// with the form. SQLite lower() is ASCII only, so a pair with any other character is kept for the exact check.
+    /// Reads the gloss and form pairs a gloss could echo, by letting SQLite drop every pair whose gloss does
+    /// not start with the form. SQLite lower() is ASCII only, so a pair with any other character is kept for
+    /// the exact check.
     /// </summary>
     internal GlossEchoInput ReadGlossEchoCandidates()
     {
@@ -82,8 +85,9 @@ public sealed partial class ParsimonyQuerySession
     }
 
     /// <summary>
-    /// Reads every lexical entry with its lexeme form, glosses and MSA signatures. The lexeme form is the entry's
-    /// last allomorph by ordinal, because the snapshot orders alternate forms first (pg-snapshot lexicon.rs).
+    /// Reads every lexical entry with its lexeme form, glosses and MSA signatures. The lexeme form is the
+    /// entry's last allomorph by ordinal, because the snapshot orders alternate forms first
+    /// (pg-snapshot lexicon.rs).
     /// </summary>
     internal LexiconInput ReadLexicon()
     {
