@@ -32,7 +32,8 @@ internal static class ParsimonyTools
             AgentClass.Evaluate,
             Schema.Object(
                 ("measure_id", Schema.String("Exact registered measure id, or 'all' to run every supported measure " +
-                    "in one job and read one Report per measure.", MeasureCatalog.All
+                    "in one job and read one Report per measure. A Grammar-group measure, or 'all', captures a " +
+                    "Baseline first when none is current.", MeasureCatalog.All
                     .Where(measure => MeasureRunner.Supports(measure.Id)).Select(measure => measure.Id)
                     .Append(ParsimonyAdmission.AllMeasures).ToArray()), false),
                 ("group", Schema.String("Run a whole group, or the one measure_id inside it: the Grammar group " +

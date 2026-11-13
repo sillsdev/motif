@@ -24,9 +24,17 @@ almost never see this happen.
    Paratext plugins), a .fwdata project from a Harmony log (FLEx classic, export, a Proposal snapshot), and later an
    FST. A Build either succeeds or reports build errors; it never repairs the Home (ADR 0105). The word is internal:
    people see "parser updated" or a problem to fix, not a Build.
-5. **Instant vs reviewed, by convention.** Lexical edits (in FW Lite or FieldWorks), approving parses, and editing GDR
-   text are instant, like editing documentation straight on main. Every grammar change goes through a Proposal, with
-   Trial, Measure and review, like code needing full CI. FW Lite does not edit grammar, so the convention costs nothing today.
+5. **Person's edits vs reviewed, by convention.** Lexical edits (in FW Lite or FieldWorks) are made straight on the
+   Home, like editing documentation on main. A person's own Motif edits (GDR text, word approvals, Source and Context
+   in the plugin or in Motif) offer two buttons. **Save** adds the edit to the person's pending changes (a Draft
+   Proposal in the Motif store). **Save and Apply** applies it now. While FieldWorks holds the .fwdata, Apply cannot
+   run, so the edit stays in the pending changes and applies before any Proposal when FieldWorks lets go. It does not
+   change the Baseline. Grammar edits by a person still go through a Proposal that only the grammar owner applies
+   (decision 25); Save and Apply by the person themselves covers GDR text, word approvals and Source and Context.
+   Every AI or MCP edit is a formal Proposal, with Trial, Measure and review, like code needing full CI. FW Lite does
+   not edit grammar, so the convention costs nothing today.
+   *Amended 2026-11-12 (Phase 1 decisions 49 and 53):* this replaces the earlier wording that approving parses and
+   editing GDR text were "instant". The motif-text owner asked for GDR edits to be staged like an approval.
 6. **LibLCM stays as the compiler** for a log Home: a Build may load the log into a memory-only LCM cache
    (`kMemoryOnly`) so LCM's rules and Motif's existing Lowering and checks keep working.
    *Amended 2026-11-12 (Q28, ADR 0103):* a Trial or Measure builds the PanGloss snapshot straight from the log, with no

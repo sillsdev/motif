@@ -42,8 +42,8 @@ public static class MoveSenseToEntryIntentParser
 /// <summary>
 /// Lowers a sense move into the creates of a new entry (its lexeme form and analysis) and one
 /// <see cref="LexSenseMoveOperationKinds.MoveToEntry"/>. The sense keeps its identity, glosses, definitions, examples
-/// and sub-senses. As in FieldWorks, an entry's only sense cannot be moved, and the old entry's analysis is removed
-/// when no sense uses it any more.
+/// and sub-senses. An entry's only sense moves only when the entry stays a variant of a stem, and the old entry's
+/// analysis is removed when no sense uses it any more.
 /// </summary>
 public static class MoveSenseToEntryComposer
 {
@@ -63,10 +63,10 @@ public static class MoveSenseToEntryComposer
             ?? throw new InvalidOperationException($"'{ConstructName}': the sense id must name a sense.");
         if (sense.Owner is not ILexEntry from)
             throw new InvalidOperationException($"'{ConstructName}': only a top-level sense of an entry can be moved.");
-        if (from.SensesOS.Count < 2)
+        if (from.SensesOS.Count < 2 && SenselessVariant.WhyNotAllowed(from) is { } why)
             throw new InvalidOperationException(
-                $"'{ConstructName}': the entry has only this sense; FieldWorks does not offer the move then either, " +
-                "because an entry must keep a sense. Edit the entry's lexeme form instead.");
+                $"'{ConstructName}': the entry has only this sense and {why}. An entry may lose its last sense only " +
+                "when it stays a variant of a stem. Edit the entry's lexeme form instead.");
         var moved = sense.AllSenses.ToArray();
         var oldMsa = LexSenseMoveHandler.RequireMovable(sense, moved, from);
         var msa = intent.Msa ?? CopyOf(cache, oldMsa);

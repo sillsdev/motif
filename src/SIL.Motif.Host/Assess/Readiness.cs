@@ -87,6 +87,15 @@ public static class Readiness
             lacking = lacking.Where(word => !(word.Morphology is { InvalidShape: true } &&
                 derived.Contains(Nfd(word.Word)))).ToArray();
         }
+        // A word invalid in the same way before and after cannot have been affected by the Proposal.
+        if (current is not null && lacking.Any(word => word.Morphology is { InvalidShape: true }))
+        {
+            var before = current.Words.Where(word => word.Morphology is { InvalidShape: true })
+                .GroupBy(word => Nfd(word.Word), StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First().Morphology!, StringComparer.Ordinal);
+            lacking = lacking.Where(word => !(word.Morphology is { InvalidShape: true } &&
+                before.TryGetValue(Nfd(word.Word), out var earlier) && SameInvalidReason(earlier, word.Morphology))).ToArray();
+        }
         var unavailable = lacking.Length > 0;
         foreach (var cause in lacking.GroupBy(LackCause))
         {
@@ -135,6 +144,11 @@ public static class Readiness
         return new Decision(reasons, isRegression, HasDroppedGrammar: hasDroppedGrammar,
             DroppedGrammarReason: droppedReason, Dropped: hasDroppedGrammar ? droppedGrammar : null);
     }
+
+    private static bool SameInvalidReason(ParseWordEvidence before, ParseWordEvidence after) =>
+        before.InvalidShape && after.InvalidShape &&
+        string.Equals(before.Refusal?.Code, after.Refusal?.Code, StringComparison.Ordinal) &&
+        string.Equals(before.Refusal?.Reason, after.Refusal?.Reason, StringComparison.Ordinal);
 
     internal static string Nfd(string word) => word.Normalize(System.Text.NormalizationForm.FormD);
 

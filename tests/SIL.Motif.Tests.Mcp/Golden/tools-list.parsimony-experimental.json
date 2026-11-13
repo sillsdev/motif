@@ -1531,7 +1531,7 @@
       "properties": {
         "measure_id": {
           "type": "string",
-          "description": "Exact registered measure id, or \u0027all\u0027 to run every supported measure in one job and read one Report per measure.",
+          "description": "Exact registered measure id, or \u0027all\u0027 to run every supported measure in one job and read one Report per measure. A Grammar-group measure, or \u0027all\u0027, captures a Baseline first when none is current.",
           "enum": [
             "B-adhoc-is-slot-order",
             "B-affix-null-vs-optional",
@@ -1539,6 +1539,13 @@
             "P-adhoc-duplicate",
             "P-allo-alternation-family",
             "P-allo-duplicate-form",
+            "P-allo-repeated-form",
+            "P-entry-duplicate",
+            "P-env-duplicate",
+            "P-env-literal-host",
+            "P-feature-few-carriers",
+            "P-gloss-echoes-form",
+            "P-msa-no-category",
             "P-statement-unused",
             "R-allo-unconditioned",
             "R-env-broad",

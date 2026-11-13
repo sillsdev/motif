@@ -9,8 +9,10 @@ using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker;
 using SIL.Motif.Worker.Parsimony;
+using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -147,7 +149,7 @@ public sealed class ParsimonyCommandsTests : IDisposable
     [Fact]
     public void EnqueueAcceptsAllMeasuresForABaselineReportAndRefusesItForACandidate()
     {
-        var fwDataPath = CreateProject("enqueue-all");
+        var fwDataPath = CreateProjectWithBaseline("enqueue-all");
 
         var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(fwDataPath, "1.0",
             ParsimonyAdmission.AllMeasures));
@@ -162,7 +164,7 @@ public sealed class ParsimonyCommandsTests : IDisposable
     [Fact]
     public async Task CancellingAReportWaitCancelsTheJobInsteadOfWaitingOutTheTimeout()
     {
-        var fwDataPath = CreateProject("cancel-wait");
+        var fwDataPath = CreateProjectWithBaseline("cancel-wait");
         var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(fwDataPath, "1.0",
             "P-adhoc-duplicate"));
         Assert.True(queued.Succeeded, queued.Refusal?.Message);
@@ -183,7 +185,7 @@ public sealed class ParsimonyCommandsTests : IDisposable
     [Fact]
     public async Task CancellingAnAllMeasuresWaitCancelsTheJob()
     {
-        var fwDataPath = CreateProject("cancel-all-wait");
+        var fwDataPath = CreateProjectWithBaseline("cancel-all-wait");
         var queued = ParsimonyCommands.Enqueue(new EnqueueParsimonyReportRequest(fwDataPath, "1.0",
             ParsimonyAdmission.AllMeasures));
         using var cancellation = new CancellationTokenSource();
@@ -240,6 +242,23 @@ public sealed class ParsimonyCommandsTests : IDisposable
         var project = new SIL.Motif.Contract.Projects.ProjectLocator(fwDataPath, "project");
         using (MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
                    MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        return fwDataPath;
+    }
+
+    /// <summary>A project with a current Baseline, so a Grammar-group enqueue captures nothing.</summary>
+    private string CreateProjectWithBaseline(string name)
+    {
+        var fwDataPath = CreateProject(name);
+        var project = new SIL.Motif.Contract.Projects.ProjectLocator(fwDataPath, "project");
+        var token = new BaselineToken("project-identity", "sha256:" + new string('1', 64), "projection-v1",
+            "2026-10-05T00:00:00Z", "sha256:" + new string('2', 64));
+        var baselineRoot = Path.Combine(_root, name, "baseline");
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        new BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+            new BaselinePublication(baselineRoot, Path.Combine(baselineRoot, "project.fwdata"), token),
+            DateTimeOffset.Parse("2026-10-05T00:30:00Z"), DateTimeOffset.Parse("2026-10-05T00:00:00Z"),
+            TestTextWords.Empty, new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
         return fwDataPath;
     }
 

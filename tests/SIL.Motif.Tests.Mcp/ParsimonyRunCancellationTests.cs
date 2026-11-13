@@ -1,10 +1,15 @@
 using System.Text.Json.Nodes;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Texts;
+using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Worker.Baselines;
+using SIL.Motif.Worker.Projects;
 using SIL.Motif.Mcp;
 using SIL.Motif.Worker.Store;
 using Xunit;
@@ -60,8 +65,16 @@ public sealed class ParsimonyRunCancellationTests : IDisposable
         var fwDataPath = Path.Combine(_root, "project.fwdata");
         File.WriteAllText(fwDataPath, "project marker");
         var project = new ProjectLocator(fwDataPath, "project");
-        using (MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
-                   MotifSchema.CurrentSchema, new Version(1, 0))) { }
+        var token = new BaselineToken("project-identity", "sha256:" + new string('1', 64), "projection-v1",
+            "2026-10-05T00:00:00Z", "sha256:" + new string('2', 64));
+        var baselineRoot = Path.Combine(_root, "baseline");
+        using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+            MotifSchema.CurrentSchema, new Version(1, 0));
+        // A current Baseline keeps the Grammar-group enqueue from trying to capture the marker file.
+        new BaselineRepository(database).Record(ProjectWorkspaceKey.Compute(project),
+            new BaselinePublication(baselineRoot, Path.Combine(baselineRoot, "project.fwdata"), token),
+            DateTimeOffset.Parse("2026-10-05T00:30:00Z"), DateTimeOffset.Parse("2026-10-05T00:00:00Z"),
+            TestTextWords.Empty, new ProjectSummarySnapshot(0, 0, 0, 0, 0, [], []));
         return fwDataPath;
     }
 

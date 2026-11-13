@@ -48,7 +48,10 @@ public static class ParsimonyCommands
     public static CommandOutcome<RetirementReviewQueryResponse> ReadRetirementReview(
         ReadRetirementReviewRequest request) => RetirementProposalReviewQuery.Read(request);
 
-    /// <summary>Queues the requested fixed measure without capturing or refreshing a Baseline.</summary>
+    /// <summary>
+    /// Queues the requested fixed measure. A Grammar-group measure, or <c>all</c>, captures a Baseline first when
+    /// none is current; an existing Baseline is never refreshed.
+    /// </summary>
     /// <param name="request">The measure to queue.</param>
     /// <param name="parserPath">The parser the woken runner will use, recorded on the job; null records none.</param>
     public static CommandOutcome<JobEnqueuedResponse> Enqueue(EnqueueParsimonyReportRequest request,
@@ -64,6 +67,11 @@ public static class ParsimonyCommands
             request.AssessmentIds, supportsMeasure);
         if (admission is not null) return CommandOutcome<JobEnqueuedResponse>.Refused(admission);
         var assessmentIds = request.AssessmentIds ?? [];
+        var needsGrammarBaseline = assessmentIds.Count == 0 &&
+            (request.MeasureId == ParsimonyAdmission.AllMeasures ||
+             MeasureCatalog.Find(request.MeasureId)?.Group == ParsimonyMeasureGroup.Grammar);
+        if (needsGrammarBaseline && EnsureBaseline(request.FwDataPath, request.ProductVersion) is { } baselineRefusal)
+            return CommandOutcome<JobEnqueuedResponse>.Refused(baselineRefusal);
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
@@ -104,6 +112,19 @@ public static class ParsimonyCommands
             return CommandOutcome<JobEnqueuedResponse>.Success(
                 new JobEnqueuedResponse(job.JobId, job.Kind, workspaceKey));
         });
+    }
+
+    /// <summary>Captures a Baseline when none is current; returns the refusal, or null on success.</summary>
+    private static Refusal? EnsureBaseline(string fwDataPath, string productVersion)
+    {
+        var hasBaseline = ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
+            CommandOutcome<GroupStartState>.Success(new GroupStartState(
+                new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project)) is not null,
+                false)));
+        if (!hasBaseline.Succeeded) return hasBaseline.Refusal;
+        if (hasBaseline.Value!.HasBaseline) return null;
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath));
+        return captured.Succeeded ? null : captured.Refusal;
     }
 
     private sealed record GroupStartState(bool HasBaseline, bool HasSelection);

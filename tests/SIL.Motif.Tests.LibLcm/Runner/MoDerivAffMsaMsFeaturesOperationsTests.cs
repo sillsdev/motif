@@ -72,7 +72,7 @@ public sealed class MoDerivAffMsaMsFeaturesOperationsTests : IDisposable
 
         var dryRun = ScratchDryRun.Of(_cache, proposal);
 
-        var effect = Assert.Single(dryRun.ExpectedEffects);
+        var effect = Assert.Single(dryRun.ExpectedEffects, item => item.Field != "dryRunWarning");
         Assert.Equal(FieldOf(kind), effect.Field);
         Assert.Empty(effect.Before);
         Assert.Equal(create.EntityId!.Value.Value, Assert.Single(effect.After).Value);

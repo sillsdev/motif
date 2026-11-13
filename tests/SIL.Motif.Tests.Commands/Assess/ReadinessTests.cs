@@ -75,6 +75,50 @@ public sealed class ReadinessTests
         Assert.Contains(Readiness.Assess(alone, null, null, "same", false, null, lowercase), reason => reason.Contains("\"cristo\""));
     }
 
+    private static CorrectnessAssessment InvalidShapeWord(CorrectnessAssessment assessment, string? reason, bool invalid = true)
+    {
+        var word = assessment.Words[0];
+        var morphology = word.Morphology! with
+        {
+            InvalidShape = invalid, Analyses = [],
+            Refusal = reason is null ? null : new SIL.Motif.Contract.Responses.ParserRefusal("invalidShape", reason),
+        };
+        return assessment with { Words = [word with { Morphology = morphology }] };
+    }
+
+    [Fact]
+    public void AWordInvalidShapeForTheSameReasonBeforeAndAfterDoesNotBlock()
+    {
+        var candidate = InvalidShapeWord(Build("candidate", ("don\u2019t", true)), "bad phoneme");
+        var current = InvalidShapeWord(Build("current", ("don\u2019t", true)), "bad phoneme");
+        Assert.Empty(Readiness.Assess(candidate, current, "same", "same", false));
+    }
+
+    [Fact]
+    public void AWordInvalidShapeWithNoRecordedReasonOnEitherSideDoesNotBlock()
+    {
+        var candidate = InvalidShapeWord(Build("candidate", ("v2", true)), null);
+        var current = InvalidShapeWord(Build("current", ("v2", true)), null);
+        Assert.Empty(Readiness.Assess(candidate, current, "same", "same", false));
+    }
+
+    [Fact]
+    public void AWordInvalidShapeOnOneSideOnlyStillBlocks()
+    {
+        var candidate = InvalidShapeWord(Build("candidate", ("v2", true)), null);
+        var current = InvalidShapeWord(Build("current", ("v2", true)), null, invalid: false);
+        Assert.Contains(Readiness.Assess(candidate, current, "same", "same", false), reason => reason.Contains("\"v2\""));
+        Assert.Contains(Readiness.Assess(candidate, null, "same", "same", false), reason => reason.Contains("\"v2\""));
+    }
+
+    [Fact]
+    public void AWordInvalidShapeForDifferentReasonsStillBlocks()
+    {
+        var candidate = InvalidShapeWord(Build("candidate", ("v2", true)), "reason one");
+        var current = InvalidShapeWord(Build("current", ("v2", true)), "reason two");
+        Assert.Contains(Readiness.Assess(candidate, current, "same", "same", false), reason => reason.Contains("\"v2\""));
+    }
+
     [Fact]
     public void AWordWithAnInvalidShapeIsToldToUseOneWordPerLine()
     {

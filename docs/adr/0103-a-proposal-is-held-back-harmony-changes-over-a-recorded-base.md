@@ -10,11 +10,18 @@ kept aside, as in a pull request, until a person applies them. Applying them add
 1. **Lowering targets Harmony changes.** A Motif operation lowers to Harmony changes: create, JSON patch, delete
    and list set (ADR 0104). Entity GUIDs are assigned at Finalize and stored in the changes, so every replay
    creates the same objects (verified: `Change<T>` takes a caller-assigned `entityId`).
-2. **Held back, but synced as a document** (owner, grill Q21, 2026-11-11). A Proposal is itself a Harmony object, a
-   document like a GDR. Its held-back changes, base, Rationale and Comments are data inside it. It syncs to the team,
+2. **Held back, but synced as a document** (owner, grill Q21, 2026-11-11). A Proposal is itself a Harmony object that
+   travels like a GDR. In a Harmony log, GDRs and Proposals are stored as the same kinds of records FieldWorks uses (one record type per kind of object, ADR 0102), never as stored Markdown. Its held-back changes, base, Rationale and Comments are data inside it. It syncs to the team,
    and anyone can read it, comment on it and Trial it. Its changes are never committed to the grammar before Apply,
    because Harmony cannot sync only some commits; Apply, by the one grammar owner (phase-1 decision #23), commits
    them as ordinary changes.
+   *Amended 2026-11-12 (Phase 1 decision 57, settling Q38 and Q48):* on a .fwdata Home, a Proposal is one item in a
+   "Motif Proposals" custom list, beside GDRs and Sources. The item holds its name, Proposal status (the glossary's
+   Draft, Ready, Deferred, Applied, Declined, Superseded, Withdrawn; Request Apply is Ready), recorded base and Motif version. It has one child item per Motif operation, never the lowered
+   changes, and one child item per comment. The list item is never removed. When a person deletes a closed Proposal in Motif, it is dropped from the local Motif store and its local Trials are cleared, while the list item stays with its closed status. Deleting a list item would fight Send/Receive, where a delete loses to an edit. Trial and Measure results stay local and are
+   recomputed. The list names the grammar owner. Motif offers Apply only to that person, and the stale check (decision
+   5) catches a second Apply. On a log Home, the same items are separate records, one type per kind. The reason: Send/Receive merges per
+   item by GUID, so separate items never conflict.
 3. **Recorded base.** Each revision records the head commit it was written against, as its base.
 4. **Dry Run and Trial** copy the Home (`BackupDatabase`, the route FW Lite's sync dry run uses), commit the
    Proposal to the copy, Build and measure. The copy is thrown away.

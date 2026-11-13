@@ -283,7 +283,7 @@ public static class CliVerbCatalog
             }),
         new CliVerbDescriptor("Reports", "report", "report --list-kinds", NoUsage),
         new CliVerbDescriptor("Reports", "parsimony", "parsimony",
-            new[] { "parsimony --project <fwdata> [--measure <measure-id>] " +
+            new[] { "parsimony --project <fwdata> [--measure <measure-id>|all] [--group grammar|text|all] " +
                 "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] [--json]" }),
         new CliVerbDescriptor("Reports", "parsimony", "parsimony --wait",
             new[] { "parsimony --project <fwdata> [--measure <measure-id>] --wait " +

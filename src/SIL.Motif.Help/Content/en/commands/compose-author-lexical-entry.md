@@ -17,7 +17,7 @@ Add `--cite-source <text>` and optionally `--cite-locator <text>` to record the 
 
 Every id can belong to something an earlier command added to the same Draft, such as a new part of speech. The command returns the new entry's operations and created entity ids for later calls. Dry Run and Trial the Draft on affected words, revise it, then Finalize it for a person to review and Apply.
 
-A derivational affix's composed summary lists a `Derivation: From -> To` line naming both categories, so a swapped pair shows at once, and its Dry Run warns when the project has no stem, subcategory stem or derivation that makes the From category, which usually means the categories are the wrong way round.
+A derivational affix's composed summary lists a `Derivation: From -> To` line naming both categories, so a swapped pair shows at once, and its Dry Run warns when the project has no stem, subcategory stem or derivation that makes the From category, or when nothing takes the To category (or a subcategory) as input, which usually means the categories are the wrong way round.
 
 ## When not to use this
 

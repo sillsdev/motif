@@ -35,6 +35,44 @@
         "findingsMin": 0,
         "findingsMax": 3
       },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
+      },
+      "P-entry-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 117,
+        "findingsMin": 0,
+        "findingsMax": 5
+      },
+      "P-gloss-echoes-form": {
+        "status": "Computed",
+        "eligibleMin": 124,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-msa-no-category": {
+        "status": "Computed",
+        "eligibleMin": 69,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
       "P-statement-unused": {
         "status": "Computed",
         "eligibleMin": 13,
@@ -110,6 +148,44 @@
         "eligibleMin": 514,
         "findingsMin": 1,
         "findingsMax": 7
+      },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
+      },
+      "P-entry-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 919,
+        "findingsMin": 0,
+        "findingsMax": 8
+      },
+      "P-gloss-echoes-form": {
+        "status": "Computed",
+        "eligibleMin": 914,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-msa-no-category": {
+        "status": "Computed",
+        "eligibleMin": 723,
+        "findingsMin": 0,
+        "findingsMax": 5
       },
       "P-statement-unused": {
         "status": "Computed",
@@ -187,6 +263,44 @@
         "findingsMin": 0,
         "findingsMax": 3
       },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
+      },
+      "P-entry-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 68,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-gloss-echoes-form": {
+        "status": "Computed",
+        "eligibleMin": 71,
+        "findingsMin": 0,
+        "findingsMax": 6
+      },
+      "P-msa-no-category": {
+        "status": "Computed",
+        "eligibleMin": 59,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
       "P-statement-unused": {
         "status": "Computed",
         "eligibleMin": 12,
@@ -260,6 +374,44 @@
         "eligibleMin": 166,
         "findingsMin": 1,
         "findingsMax": 5
+      },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
+      },
+      "P-entry-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 279,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-gloss-echoes-form": {
+        "status": "Computed",
+        "eligibleMin": 351,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-msa-no-category": {
+        "status": "Computed",
+        "eligibleMin": 146,
+        "findingsMin": 0,
+        "findingsMax": 3
       },
       "P-statement-unused": {
         "status": "Computed",
@@ -336,6 +488,44 @@
         "eligibleMin": 783,
         "findingsMin": 1,
         "findingsMax": 5
+      },
+      "P-allo-repeated-form": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 25
+      },
+      "P-env-duplicate": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-env-literal-host": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 6
+      },
+      "P-feature-few-carriers": {
+        "status": "Computed",
+        "findingsMin": 0,
+        "findingsMax": 30
+      },
+      "P-entry-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 1290,
+        "findingsMin": 0,
+        "findingsMax": 3
+      },
+      "P-gloss-echoes-form": {
+        "status": "Computed",
+        "eligibleMin": 1487,
+        "findingsMin": 0,
+        "findingsMax": 6
+      },
+      "P-msa-no-category": {
+        "status": "Computed",
+        "eligibleMin": 1254,
+        "findingsMin": 0,
+        "findingsMax": 39
       },
       "P-statement-unused": {
         "status": "Computed",

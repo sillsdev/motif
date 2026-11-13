@@ -29,7 +29,7 @@ public static class DeleteSenseIntentParser
 /// <summary>
 /// Lowers a sense deletion to one remove operation. LibLCM deletes a sense's owned
 /// sub-senses and examples and silently drops references to it, so the composer declines a sense that anything refers
-/// to, and an entry's only sense. The sense's analysis is removed too, but only when no remaining sense and no other
+/// to, and an entry's only sense unless the entry stays a variant of a stem (ADR 0112). The sense's analysis is removed too, but only when no remaining sense and no other
 /// object uses it.
 /// </summary>
 public static class DeleteSenseComposer

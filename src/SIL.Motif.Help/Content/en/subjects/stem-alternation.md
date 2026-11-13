@@ -26,6 +26,16 @@ A stem name binds a stem allomorph to word features. It does not bind a morphosy
 
 Result on PanGloss 0.17.0 synthetic projects: `katun` parses only as the full form `kat` (stem name UN) plus -un; `kta`, `kti` and `ktay` use the short form `kt`. Only -un was tested; -on and -an follow the same steps.
 
+## Recipe: a second shape that belongs to one sense
+
+A stem name cannot tie a shape to one analysis, and FieldWorks has no allomorph field that does. What FieldWorks does have is a sense-less variant of a sense: an entry with a lexeme form, an environment and a variant reference to the main sense, and no sense or analysis of its own. The parser loads it with only that sense's gloss and analysis, so the other senses of the main entry do not get the shape. Use it when the shape belongs to one analysis of an entry that has several, or when a copied gloss and analysis on the variant should go.
+
+1. For a new shape, `compose-author-variant-entry` creates the variant in one step with its form, morph type, environment and variant type.
+2. For variants that already copy the main sense, `compose-strip-variant-senses` repoints each at the main sense and deletes the copied sense and analysis. Its Dry Run lists the exception features each variant gains or loses, because it now takes the main sense's.
+3. Review the Dry Run warnings: a sense-less variant whose component has no stem analysis would load nothing.
+
+A variant is a separate entry, so it varies freely with the main form and blocks nothing. Allomorphs of one entry are ordered and the earlier one wins where both fit.
+
 ## Pitfalls
 
 - Do not treat a stem alternation as sound conditioning when the shape depends on grammatical features rather than on neighbouring sounds. If the shape depends on neighbouring sounds, it's conditioned allomorphy, not a stem name; a stem name is for shapes chosen by grammatical features.

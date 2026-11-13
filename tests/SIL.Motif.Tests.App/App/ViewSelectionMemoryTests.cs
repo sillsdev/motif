@@ -172,7 +172,7 @@ public sealed class ViewSelectionMemoryTests
         "\"ProjectViews\":{\"id:a\":{\"AssessWords\":{\"SortColumn\":null,\"SortDescending\":false,\"Filter\":\"Missed\"}}}}";
 
     [Fact]
-    public void AFormatTwoFileWithNoSelectionStillLoadsAndIsWrittenAsFormatThree()
+    public void AFormatTwoFileWithNoSelectionStillLoadsAndIsWrittenAsTheLatestFormat()
     {
         var folder = Directory.CreateTempSubdirectory("motif-selection-").FullName;
         try
@@ -188,7 +188,40 @@ public sealed class ViewSelectionMemoryTests
             store.SetViewState("id:a", "AssessWords", new ViewState(null, false, "Missed", "mtoto"));
             var reread = new FileUserPreferencesStore(path);
             Assert.Equal(PreferenceState.Ready, reread.State);
-            Assert.Equal(3, reread.Current.FormatVersion);
+            Assert.Equal(FileUserPreferencesStore.LatestFormatVersion, reread.Current.FormatVersion);
+            Assert.Equal(new ViewState(null, false, "Missed", "mtoto"), reread.GetViewState("id:a", "AssessWords"));
+        }
+        finally { Directory.Delete(folder, recursive: true); }
+    }
+
+    private const string FormatThreeFile =
+        "{\"FormatVersion\":3,\"ZoomPercent\":125,\"Theme\":\"Dark\",\"LastSettingsGroup\":\"Display\",\"Window\":null," +
+        "\"Trace\":\"Plain\",\"HasSeenTechDemoNotice\":true,\"ExpandedSections\":{}," +
+        "\"ProjectViews\":{\"id:a\":{\"AssessWords\":{\"SortColumn\":null,\"SortDescending\":false,\"Filter\":\"Missed\",\"SelectedKey\":\"mtoto\"}}}}";
+
+    [Fact]
+    public void AFormatThreeFileReadsAsPolishAndIsRewrittenAsFormatFour()
+    {
+        var folder = Directory.CreateTempSubdirectory("motif-stage-").FullName;
+        try
+        {
+            var path = Path.Combine(folder, "user-preferences.json");
+            File.WriteAllText(path, FormatThreeFile);
+            var store = new FileUserPreferencesStore(path);
+
+            Assert.Equal(PreferenceState.Ready, store.State);
+            Assert.Equal(MotifStage.Polish, store.Current.Stage);
+            Assert.Equal(125, store.Current.ZoomPercent);
+            Assert.Equal(FormatThreeFile, File.ReadAllText(path));
+
+            store.Update(p => p with { Stage = MotifStage.Grow });
+
+            using (var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path)))
+                Assert.Equal(4, document.RootElement.GetProperty("FormatVersion").GetInt32());
+            var reread = new FileUserPreferencesStore(path);
+            Assert.Equal(PreferenceState.Ready, reread.State);
+            Assert.Equal(MotifStage.Grow, reread.Current.Stage);
+            Assert.Equal(125, reread.Current.ZoomPercent);
             Assert.Equal(new ViewState(null, false, "Missed", "mtoto"), reread.GetViewState("id:a", "AssessWords"));
         }
         finally { Directory.Delete(folder, recursive: true); }

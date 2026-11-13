@@ -195,6 +195,26 @@
       ]
     },
     {
+      "measureId": "P-allo-repeated-form",
+      "recipeVersion": 1,
+      "title": "Subsumed allomorph forms",
+      "shortTitle": "subsumed allomorph forms",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §§3.1.3–3.1.4"
+      ]
+    },
+    {
+      "measureId": "P-feature-few-carriers",
+      "recipeVersion": 1,
+      "title": "Features with few carriers",
+      "shortTitle": "features with few carriers",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1.6"
+      ]
+    },
+    {
       "measureId": "P-statement-unused",
       "recipeVersion": 1,
       "title": "Unused grammar statements",
@@ -202,6 +222,58 @@
       "updateIntents": [],
       "sources": [
         "Engineering check"
+      ]
+    },
+    {
+      "measureId": "P-env-duplicate",
+      "recipeVersion": 1,
+      "title": "Duplicate environments",
+      "shortTitle": "duplicate environments",
+      "updateIntents": [],
+      "sources": [
+        "Engineering check"
+      ]
+    },
+    {
+      "measureId": "P-env-literal-host",
+      "recipeVersion": 1,
+      "title": "Literal host contexts",
+      "shortTitle": "literal host contexts",
+      "updateIntents": [],
+      "sources": [
+        "Engineering check",
+        "Black §3.1.3",
+        "Black §6.1.2.2"
+      ]
+    },
+    {
+      "measureId": "P-msa-no-category",
+      "recipeVersion": 1,
+      "title": "Stem with no part of speech",
+      "shortTitle": "stems with no part of speech",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
+      ]
+    },
+    {
+      "measureId": "P-entry-duplicate",
+      "recipeVersion": 1,
+      "title": "Duplicate or clone entries",
+      "shortTitle": "duplicate or clone entries",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
+      ]
+    },
+    {
+      "measureId": "P-gloss-echoes-form",
+      "recipeVersion": 1,
+      "title": "Gloss that echoes the form",
+      "shortTitle": "glosses that echo the form",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
       ]
     }
   ]

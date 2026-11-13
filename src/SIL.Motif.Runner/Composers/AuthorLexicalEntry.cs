@@ -162,21 +162,22 @@ public static class AuthorLexicalEntryComposer
     /// <summary>
     /// Builds an entry whose lexeme form is created from <paramref name="formPayload"/> when it is given. With
     /// <paramref name="withSense"/> false the entry gets no sense, gloss or definition, because a sense that already
-    /// exists is moved into it afterwards.
+    /// exists is moved into it afterwards. With <paramref name="withMsa"/> false it also gets no grammatical info, as a
+    /// variant entry made by LibLCM's CreateVariantEntryAndBackRef has none.
     /// </summary>
     internal static IReadOnlyList<OperationEnvelope> BuildEntry(
         LcmCache cache, AuthorLexicalEntryIntent intent, Func<CanonicalId>? mintId, object? formPayload,
-        bool withSense = true)
+        bool withSense = true, bool withMsa = true)
     {
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(intent);
-        ArgumentNullException.ThrowIfNull(intent.Msa);
+        if (withMsa) ArgumentNullException.ThrowIfNull(intent.Msa);
         intent = intent with
         {
             MorphType = LexicalFormAuthoring.Normalize(intent.MorphType),
             InflectionClasses = LexicalFormAuthoring.Normalize(intent.InflectionClasses),
             Environments = LexicalFormAuthoring.Normalize(intent.Environments),
-            Msa = intent.Msa with
+            Msa = !withMsa ? intent.Msa : intent.Msa with
             {
                 Category = LexicalFormAuthoring.Normalize(intent.Msa.Category),
                 ToCategory = intent.Msa.ToCategory is { } to ? LexicalFormAuthoring.Normalize(to) : null,
@@ -184,7 +185,7 @@ public static class AuthorLexicalEntryComposer
                 Slots = LexicalFormAuthoring.Normalize(intent.Msa.Slots),
             },
         };
-        RequireMsaShape(intent.Msa, ConstructName);
+        if (withMsa) RequireMsaShape(intent.Msa, ConstructName);
         var form = formPayload is null ? LexicalFormAuthoring.RequireText(intent.Form, "form", ConstructName) : "";
         var gloss = withSense ? LexicalFormAuthoring.RequireText(intent.Gloss, "gloss", ConstructName) : "";
         var definition = intent.Definition is null || !withSense
@@ -197,7 +198,7 @@ public static class AuthorLexicalEntryComposer
         var morphType = LexicalFormAuthoring.Resolve<IMoMorphType>(cache, intent.MorphType, ConstructName);
         var formClass = MoFormConcreteClassSelection.ClassFor(morphType, ConstructName);
         var msa = intent.Msa;
-        if ((formClass == MoFormConcreteClass.StemAllomorph) != (msa.Kind == LexicalEntryMsaKind.Stem))
+        if (withMsa && (formClass == MoFormConcreteClass.StemAllomorph) != (msa.Kind == LexicalEntryMsaKind.Stem))
             throw new InvalidOperationException(
                 $"'{ConstructName}': morph type '{morphType.Name.BestAnalysisAlternative.Text}' needs " +
                 (formClass == MoFormConcreteClass.StemAllomorph ? "a stem msa." : "an affix msa, not a stem msa."));
@@ -205,7 +206,7 @@ public static class AuthorLexicalEntryComposer
             throw new InvalidOperationException($"'{ConstructName}': only an affix form takes 'inflectionClasses'.");
         if (intent.InflectionClasses is not null && msa.Kind == LexicalEntryMsaKind.Derivational)
             throw new InvalidOperationException(LexicalFormAuthoring.DerivationalClassesRefusal(ConstructName));
-        var category = RequireMsaReferences(cache, msa, ConstructName);
+        var category = withMsa ? RequireMsaReferences(cache, msa, ConstructName) : null!;
         var slots = msa.Slots ?? [];
         IReadOnlyList<CanonicalId> environments = intent.Environments is null ? []
             : LexicalFormAuthoring.RequireEnvironments(cache, intent.Environments, ConstructName);
@@ -227,11 +228,15 @@ public static class AuthorLexicalEntryComposer
             Add(kind, formId, new { member = member.Value }, dependsOn: [new OperationDependency(createForm)]);
 
         var msaId = Mint();
-        var createMsa = Add(LexEntryMorphoSyntaxAnalysesOperationKinds.Create, entryId,
-            new { @class = MsaClass(msa.Kind) }, entityId: msaId, dependsOn: afterEntry);
-        var afterMsa = new[] { new OperationDependency(createMsa) };
-        foreach (var (kind, after) in MsaFieldWrites(msa, slots))
-            Add(kind, msaId, after, dependsOn: afterMsa);
+        var createMsa = default(CanonicalId);
+        if (withMsa)
+        {
+            createMsa = Add(LexEntryMorphoSyntaxAnalysesOperationKinds.Create, entryId,
+                new { @class = MsaClass(msa.Kind) }, entityId: msaId, dependsOn: afterEntry);
+            var afterMsa = new[] { new OperationDependency(createMsa) };
+            foreach (var (kind, after) in MsaFieldWrites(msa, slots))
+                Add(kind, msaId, after, dependsOn: afterMsa);
+        }
 
         if (!withSense) return operations;
         var senseId = Mint();

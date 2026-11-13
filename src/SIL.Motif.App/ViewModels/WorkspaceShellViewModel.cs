@@ -67,7 +67,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         IAssistantConnectionService? assistantConnections = null, IUriLauncher? uriLauncher = null, bool advancedAiModeEnabled = false,
         IDefaultProposalChecksStore? defaultProposalChecks = null,
         ITryWordSessions? tryWordSessions = null, IPictureIntake? pictureIntake = null,
-        ICredentialStore? credentials = null, ITunnelClient? tunnelClient = null)
+        ICredentialStore? credentials = null, ITunnelClient? tunnelClient = null, IReadOnlyList<PageEntry>? pageEntries = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(baseline);
@@ -97,6 +97,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             pictureIntake, credentials, tunnelClient)
         {
             AdvancedAiModeEnabled = advancedAiModeEnabled,
+            PageEntries = pageEntries ?? PageRegistry.Entries,
             KnownProjects = project.KnownProjects,
             BrowseForProjectCommand = project.BrowseCommand,
             OpenProjectCommand = new AsyncRelayCommand<string>(path =>
@@ -106,13 +107,14 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         PublishBaseline();
         ParseAllWordsCommand = new AsyncRelayCommand(ParseAllWordsAsync, CanParseAllWords);
         Context.ParseAllWordsCommand = ParseAllWordsCommand;
-        Pages = PageRegistry.Entries
+        _pageEntries = Context.PageEntries;
+        Pages = _pageEntries
             .Select(entry => new PageViewModel(entry.Page, entry.Title, entry.Icon, entry.CreateModel(Context))
             {
                 IsAvailable = Context.CanOpenPage(entry.Page),
             })
             .ToArray();
-        VisiblePages = Pages.Where(page => page.IsAvailable && PageRegistry.For(page.Page).ShowInRail).ToArray();
+        _visiblePages = ComputeVisiblePages();
         Inspector = new InspectorViewModel(Context, page => PageOf(page).Title);
         ProposalBar = new ProposalBarViewModel(Context);
         var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
@@ -226,7 +228,23 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public IReadOnlyList<PageViewModel> Pages { get; }
 
     /// <summary>The available registered pages whose entries belong in the primary rail.</summary>
-    public IReadOnlyList<PageViewModel> VisiblePages { get; }
+    public IReadOnlyList<PageViewModel> VisiblePages => _visiblePages;
+
+    private readonly IReadOnlyList<PageEntry> _pageEntries;
+    private IReadOnlyList<PageViewModel> _visiblePages;
+
+    private IReadOnlyList<PageViewModel> ComputeVisiblePages() => Pages
+        .Where(page => page.IsAvailable && _pageEntries.Single(entry => entry.Page == page.Page).ShowInRail)
+        .ToArray();
+
+    // The stage decides which pages exist; the context has already moved off a page the new stage hides.
+    private void RefreshVisiblePages()
+    {
+        foreach (var page in Pages) page.IsAvailable = Context.CanOpenPage(page.Page);
+        _visiblePages = ComputeVisiblePages();
+        OnPropertyChanged(nameof(VisiblePages));
+        OnPropertyChanged(nameof(SelectedPage));
+    }
 
     /// <summary>The model of type <typeparamref name="TModel"/> the page registry built for this window.</summary>
     public TModel PageModel<TModel>() where TModel : PageModel =>
@@ -893,6 +911,9 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         switch (e.PropertyName)
         {
+            case nameof(WorkspaceContext.Stage):
+                RefreshVisiblePages();
+                break;
             case nameof(WorkspaceContext.CurrentPage):
                 OnPropertyChanged(nameof(CurrentPage));
                 OnPropertyChanged(nameof(FilterHidesText));

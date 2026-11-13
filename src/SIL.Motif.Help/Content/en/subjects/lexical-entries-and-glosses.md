@@ -21,7 +21,7 @@ A lexical entry is a stem or affix with its forms, senses, glosses and grammatic
 9. `compose-make-variant-of` makes an existing entry a variant of another entry or sense by creating its variant reference and type. `compose-link-variant` links a variant reference to its main entry or sense and sets its type. `compose-make-variants-of` does the first for a whole list of entries, for example cross-reference stubs.
 10. `compose-delete-empty-sense` deletes an empty sense and the analysis only it uses; an analysis with only a part of speech requires a linked variant.
 11. `compose-move-sense-to-entry` moves a sense into a new entry of its own, for a derived word imported as a sense of its root.
-12. `compose-delete-sense` deletes a sense or sub-sense that carries content, refusing an entry's only sense and any sense something refers to.
+12. `compose-delete-sense` deletes a sense or sub-sense that carries content, refusing an entry's only sense (unless the entry stays a variant of a stem) and any sense something refers to.
 13. `compose-remove-alternate-form` removes an alternate form that nothing refers to.
 14. `compose-delete-lexical-entry` deletes a whole entry that nothing outside it refers to.
 14. `compose-merge-lexical-entries` merges one entry into another, as Merge Entry does in FieldWorks, so the two become one entry.
@@ -38,7 +38,7 @@ A homograph is a separate entry with the same lexeme form, not a second analysis
 ## Pitfalls
 
 - Do not add a second entry for each inflected shape of the same stem.
-- An inflectional affix needs an inflectional analysis; a derivational one needs both its source and its destination category. The composer summary shows `Derivation: From -> To`, and Dry Run warns when no stem or derivation can supply the From category, the usual sign that the two are swapped.
+- An inflectional affix needs an inflectional analysis; a derivational one needs both its source and its destination category. The composer summary shows `Derivation: From -> To`, and Dry Run warns when no stem or derivation can supply the From category, or when nothing consumes the To category, the usual sign that the two are swapped.
 - Check the new entry with words that use it and words that should not gain an analysis.
 
 Use `compose-edit-gloss` for a guarded short translation equivalent and `compose-edit-definition` for the full meaning. `compose-edit-lexical-note` edits the entry Note or any named sense note, including General Note and Grammar Note. Each checks the current text per writing system and permits a guarded clear. Record examples for particular allomorphs in the entry Note: FieldWorks has no built-in allomorph Note field.

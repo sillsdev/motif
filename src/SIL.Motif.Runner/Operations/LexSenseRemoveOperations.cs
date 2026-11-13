@@ -97,22 +97,28 @@ internal static class SenseRemoval
     private const string Kind = LexSenseRemoveOperationKinds.Remove;
 
     /// <summary>Throws when the sense must not be deleted; otherwise says what the deletion removes.</summary>
-    internal static SenseRemovalPlan Inspect(ILexSense sense)
+    /// <param name="sense">The sense to delete.</param>
+    /// <param name="alreadyRemoved">Senses an earlier operation of the same Proposal removes, treated as gone.</param>
+    /// <param name="trustLastSense">The caller has already checked that the entry may lose its last sense.</param>
+    internal static SenseRemovalPlan Inspect(ILexSense sense, ISet<Guid>? alreadyRemoved = null, bool trustLastSense = false)
     {
+        alreadyRemoved ??= new HashSet<Guid>();
         var entry = EntryOf(sense) ?? throw new InvalidOperationException($"'{Kind}' needs a sense that belongs to an entry.");
         var owner = sense.Owner;
-        if (owner is ILexEntry && entry.SensesOS.Count < 2)
-            throw new InvalidOperationException(
-                $"'{Kind}' refuses the only sense of an entry, as FieldWorks does: an entry must keep a sense. " +
-                "Delete the entry, or edit the sense instead.");
         var subtree = sense.AllSenses.ToArray();
         var inside = Subtree(subtree);
+        inside.UnionWith(alreadyRemoved);
+        if (owner is ILexEntry && !trustLastSense && entry.SensesOS.Count(each => !alreadyRemoved.Contains(each.Guid)) < 2 &&
+            SenselessVariant.WhyNotAllowed(entry) is { } why)
+            throw new InvalidOperationException(
+                $"'{Kind}' refuses the only sense of an entry: {why}. An entry may lose its last sense only when it " +
+                "stays a variant of a stem. Delete the entry, or edit the sense instead.");
         foreach (var item in subtree.Cast<ICmObject>().Concat(subtree.SelectMany(each => each.ExamplesOS)))
         foreach (var referrer in item.ReferringObjects.Where(other => !inside.Contains(other.Guid) && !IsInside(other, inside)))
             throw new InvalidOperationException(
                 $"'{Kind}' refuses {Describe(item)} because {Describe(referrer)} still refers to it; " +
                 "remove or retarget that reference first.");
-        var remaining = entry.AllSenses.Where(other => subtree.All(item => item.Guid != other.Guid)).ToArray();
+        var remaining = entry.AllSenses.Where(other => !inside.Contains(other.Guid)).ToArray();
         var unused = subtree.Select(item => item.MorphoSyntaxAnalysisRA).OfType<IMoMorphSynAnalysis>()
             .DistinctBy(msa => msa.Guid)
             .Where(msa => msa.Owner?.Guid == entry.Guid && remaining.All(other => other.MorphoSyntaxAnalysisRA?.Guid != msa.Guid))

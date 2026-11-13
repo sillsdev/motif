@@ -13,7 +13,7 @@ What goes: the sense, every sub-sense and example under it, and the entry's gram
 
 The command refuses, and changes nothing, when:
 
-- the sense is the only sense of its entry, as FieldWorks does, because an entry must keep a sense;
+- the sense is the only sense of its entry, unless the entry stays a variant (a variant reference with a variant type) of an entry or sense that has a stem analysis; a sense-less variant is a shape LibLCM makes, and the parser reads it as that stem, but an entry that is not a variant, or varies a non-stem, would load nothing;
 - anything refers to the sense or to one of its sub-senses or examples: a lexical relation or cross-reference, a component or primary lexeme of a variant or complex-form reference, a reversal entry that lists the sense, or a morph bundle of a parser analysis; the message names the referrer, and the reference must be removed or retargeted first;
 - `owner` is not the sense's owner.
 

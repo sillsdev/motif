@@ -185,9 +185,10 @@ internal sealed class LexSenseMoveHandler : ICompoundOperationHandler
             throw new InvalidOperationException($"'{Kind}' moves only a top-level sense of an entry.");
         if (from.Guid != payload.FromEntry.ToGuid())
             throw new InvalidOperationException($"'{Kind}' names an entry the sense no longer belongs to; recompute the Draft.");
-        if (from.SensesOS.Count < 2)
+        if (from.SensesOS.Count < 2 && SenselessVariant.WhyNotAllowed(from) is { } why)
             throw new InvalidOperationException(
-                $"'{Kind}' refuses the only sense of an entry, as FieldWorks does: an entry must keep a sense.");
+                $"'{Kind}' refuses the only sense of an entry: {why}. An entry may lose its last sense only when it " +
+                "stays a variant of a stem.");
         return (id, sense, from, payload);
     }
 

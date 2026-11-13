@@ -11,8 +11,10 @@ namespace SIL.Motif.Runner.Operations;
 
 /// <summary>
 /// Adds a Dry Run warning for a touched derivational affix that nothing in the project can feed: no stem of its
-/// from-category (or a subcategory of it), and no other derivational affix that makes that category. This is a count over
-/// the project's analyses, not a parse, so it is cheap; it is the usual symptom of from and to categories swapped.
+/// from-category (or a subcategory of it), and no other derivational affix that makes that category. It also warns when
+/// the to-category it makes is consumed by nothing: no other affix takes it (or a related category) as input, and no
+/// template or inflectional analysis is on it. This is a count over the project's analyses, not a parse, so it is cheap;
+/// either is the usual symptom of from and to categories swapped.
 /// </summary>
 internal static class DerivationalFeedWarnings
 {
@@ -23,6 +25,8 @@ internal static class DerivationalFeedWarnings
         var stems = cache.ServiceLocator.GetInstance<IMoStemMsaRepository>().AllInstances()
             .Select(stem => stem.PartOfSpeechRA).OfType<IPartOfSpeech>().ToArray();
         var derivations = cache.ServiceLocator.GetInstance<IMoDerivAffMsaRepository>().AllInstances().ToArray();
+        foreach (var msa in touched.Values)
+            AppendToCategoryWarning(cache, msa, derivations, effects);
         foreach (var msa in touched.Values)
         {
             if (msa.FromPartOfSpeechRA is not { } from) continue;
@@ -38,6 +42,28 @@ internal static class DerivationalFeedWarnings
                 new Dictionary<string, string> { ["warning"] = warning },
                 System.Text.Json.JsonSerializer.SerializeToElement(new { warning })));
         }
+    }
+
+    private static void AppendToCategoryWarning(LcmCache cache, IMoDerivAffMsa msa,
+        IReadOnlyList<IMoDerivAffMsa> derivations, List<ExpectedEffect> effects)
+    {
+        if (msa.ToPartOfSpeechRA is not { } to) return;
+        bool Related(IPartOfSpeech? category) => category is not null &&
+            (LexicalFormAuthoring.InCategoryOrAncestor(to, category) || LexicalFormAuthoring.InCategoryOrAncestor(category, to));
+        if (derivations.Any(other => other.Guid != msa.Guid && Related(other.FromPartOfSpeechRA))) return;
+        var locator = cache.ServiceLocator;
+        if (locator.GetInstance<IMoInflAffMsaRepository>().AllInstances().Any(other => Related(other.PartOfSpeechRA))) return;
+        if (locator.GetInstance<IMoUnclassifiedAffixMsaRepository>().AllInstances().Any(other => Related(other.PartOfSpeechRA))) return;
+        if (locator.GetInstance<IPartOfSpeechRepository>().AllInstances()
+                .Any(category => category.AffixTemplatesOS.Count > 0 && Related(category))) return;
+        var fromName = msa.FromPartOfSpeechRA is { } from ? Name(from) : DerivationDirection.NoCategory;
+        var toName = Name(to);
+        var warning = $"This derivational affix ({fromName} -> {toName}) makes {toName}, but nothing in the project takes " +
+            $"{toName} (or a subcategory) as input: no affix attaches to it and no template or inflectional affix is on it, " +
+            "so its words can take nothing further. If the categories are the wrong way round, swap them.";
+        effects.Add(new(CanonicalId.FromGuid(msa.Guid), "dryRunWarning", new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["warning"] = warning },
+            System.Text.Json.JsonSerializer.SerializeToElement(new { warning })));
     }
 
     private static string Name(IPartOfSpeech category) =>

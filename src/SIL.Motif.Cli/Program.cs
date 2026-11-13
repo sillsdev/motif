@@ -1481,7 +1481,7 @@ try
                 break;
             }
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var parsimonyProject))
-                return Usage("Usage: motif parsimony --project <fwdata> [--measure <measure-id>] " +
+                return Usage("Usage: motif parsimony --project <fwdata> [--measure <measure-id>|all] [--group grammar|text|all] " +
                     "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] [--wait] " +
                     "[--wait-timeout-ms <ms>] [--json]", asJson);
             var evidenceScope = flags.GetValueOrDefault("evidence-scope") switch
