@@ -1,6 +1,6 @@
 # Gloss that echoes the form
 
-This check finds senses whose gloss only repeats the entry's form: the form in capitals (`XYZ` on `xyz-`), or the form followed by a dotted suffix (`XYZ.V`). Hyphens, `=` and case are ignored, and any allomorph form of the entry counts. A gloss that adds only a dotted suffix is the mark of a clone entry made to carry a feature.
+This check finds senses whose gloss is only the entry's form written in capitals: `XYZ` on `xyz-`, or the capitals followed by a dotted suffix (`XYZ.V`). Hyphens and `=` are ignored, and any allomorph form of the entry counts. A gloss that adds only a dotted suffix is the mark of a clone entry made to carry a feature. A gloss written in the same case as the form, such as a proper name or a loanword (`radar` on `radar`), is not reported, because it can be a real gloss.
 
 ## Analyse
 

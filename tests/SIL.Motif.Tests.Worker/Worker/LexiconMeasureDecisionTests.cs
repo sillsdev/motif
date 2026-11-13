@@ -61,19 +61,26 @@ public sealed class LexiconMeasureDecisionTests
 
     [Theory]
     [InlineData("XYZ", "xyz", true)]
-    [InlineData("xyz.V", "XYZ", true)]
+    [InlineData("xyz.V", "XYZ", false)]
+    [InlineData("XYZ.V", "xyz", true)]
     [InlineData("XYZ.PANGA", "xyz", true)]
+    [InlineData("Xyz.V", "xyz", false)]
+    [InlineData("xyz", "xyz", false)]
+    [InlineData("Name", "Name", false)]
+    [InlineData("Xyz", "xyz", false)]
+    [InlineData("XYZ", "XYZ", false)]
     [InlineData("XYZ.", "xyz", false)]
     [InlineData("XYZW", "xyz", false)]
     [InlineData("A.XYZ", "xyz", false)]
     [InlineData("\u00D1U", "\u00F1u", true)]
+    [InlineData("\u00F1u", "\u00F1u", false)]
     public void AGlossEchoesAFormOnlyWhenItIsTheFormOrTheFormAndADottedSuffix(string gloss, string form, bool expected) =>
         Assert.Equal(expected, MeasureRunner.GlossEchoes(gloss, form));
 
     [Fact]
     public void HyphensAndEqualsSignsAroundAGlossOrFormAreIgnored()
     {
-        var input = new GlossEchoInput(3, [Pair("e1", "s1", "xyz-", "-xyz-"), Pair("e1", "s2", "=ABC.V", "=abc"),
+        var input = new GlossEchoInput(3, [Pair("e1", "s1", "XYZ-", "-xyz-"), Pair("e1", "s2", "=ABC.V", "=abc"),
             Pair("e1", "s3", "meaning", "-xyz-")]);
 
         var result = MeasureRunner.DecideGlossEchoesForm(Measure("P-gloss-echoes-form"), input, Context());
@@ -96,7 +103,7 @@ public sealed class LexiconMeasureDecisionTests
     [Fact]
     public void ASenseWithSeveralEchoingPairsGivesOneFindingWhateverTheRowOrder()
     {
-        var rows = new[] { Pair("e1", "s1", "xyz.V", "xyz"), Pair("e1", "s1", "XYZ", "xyz"), Pair("e1", "s1", "XYZ", "XYZ") };
+        var rows = new[] { Pair("e1", "s1", "XYZ.V", "xyz"), Pair("e1", "s1", "XYZ", "xyz"), Pair("e1", "s1", "xyz", "xyz") };
 
         var forward = MeasureRunner.DecideGlossEchoesForm(Measure("P-gloss-echoes-form"), new GlossEchoInput(1, rows), Context());
         var backward = MeasureRunner.DecideGlossEchoesForm(Measure("P-gloss-echoes-form"),

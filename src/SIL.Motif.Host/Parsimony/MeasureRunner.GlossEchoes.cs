@@ -35,9 +35,9 @@ public static partial class MeasureRunner
     {
         var identity = ParsimonyFindingIdentity.SenseIdentity(candidate.EntryGuid, candidate.SenseGuid);
         var name = context.Describe(candidate.EntryGuid) is { } words ? $"\"{words}\"" : candidate.EntryGuid;
-        var shape = gloss.Equals(form, StringComparison.OrdinalIgnoreCase)
-            ? "the form itself"
-            : "the form plus a dotted suffix, which is the mark of a clone entry";
+        var shape = gloss.Length == form.Length
+            ? "the form in capitals"
+            : "the form in capitals plus a dotted suffix, which is the mark of a clone entry";
         var references = candidate.LexemeAllomorphGuid is null ? []
             : new[] { EvidenceReference(context.BundleId, ParsimonyViews.AllomorphContext,
                 new { objectGuid = candidate.LexemeAllomorphGuid }) };
@@ -52,16 +52,20 @@ public static partial class MeasureRunner
                 candidate.EntryGuid, candidate.SenseGuid, gloss, form,
             })),
             references, measure.RecipeLink,
-            [$"The gloss \"{gloss}\" of entry {name} is {shape}, \"{form}\", ignoring hyphens and case.",
+            [$"The gloss \"{gloss}\" of entry {name} is {shape}, \"{form}\", ignoring hyphens.",
              "Only the grammar facts were read; Text content was not used."],
             ParsimonyVerification.NotRun);
     }
 
     /// <summary>
-    /// Whether a trimmed gloss is the trimmed form, or the form followed by a dot and a non-empty suffix.
+    /// Whether a trimmed gloss is the trimmed form written in capitals, alone or followed by a dot and a non-empty
+    /// suffix. A same-case echo is a proper name or a loanword and is not a stub gloss.
     /// </summary>
-    internal static bool GlossEchoes(string gloss, string form) =>
-        gloss.Equals(form, StringComparison.OrdinalIgnoreCase) ||
-        (gloss.Length > form.Length + 1 && gloss[form.Length] == '.' &&
-         gloss.StartsWith(form, StringComparison.OrdinalIgnoreCase));
+    internal static bool GlossEchoes(string gloss, string form)
+    {
+        var echoed = gloss.Length == form.Length ? gloss
+            : gloss.Length > form.Length + 1 && gloss[form.Length] == '.' ? gloss[..form.Length] : null;
+        return echoed is not null && echoed.Equals(form, StringComparison.OrdinalIgnoreCase) &&
+               !echoed.Equals(form, StringComparison.Ordinal) && echoed.Equals(echoed.ToUpperInvariant(), StringComparison.Ordinal);
+    }
 }
