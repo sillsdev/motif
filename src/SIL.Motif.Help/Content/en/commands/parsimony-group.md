@@ -4,7 +4,7 @@
 
 ## Groups
 
-- `grammar` has nine measures that need only the grammar: duplicate ad hoc prohibitions, duplicate allomorph forms, subsumed allomorph forms, duplicate environments, environments made only of literal segments, exception features with few carriers, unused statements, unconditioned allomorphs and allomorph alternation families.
+- `grammar` has twelve measures that need only the grammar: duplicate ad hoc prohibitions, duplicate allomorph forms, subsumed allomorph forms, duplicate lexical entries, duplicate environments, environments made only of literal segments, exception features with few carriers, glosses that only repeat the entry form, stems with no part of speech, unused statements, unconditioned allomorphs and allomorph alternation families.
 - `text` has the measures that read Approved analyses of the chosen Texts, plus the two parser-tier measures, which also need a ParseTime Assessment.
 - `all` runs both. With no saved Parsimony Selection it runs the Grammar group and says once how to set the other up.
 
