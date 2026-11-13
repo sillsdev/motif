@@ -3,10 +3,8 @@
 Only what a person has to do is left here: a real installed Keyman keyboard, real input method candidate windows
 (Japanese, Chinese), what a screen reader says, mouse feel, how things look, and other applications' clipboards. Every
 row says in the **Why a person** column why a test cannot do it. The rest is automated: the headless suites
-(`SIL.TextEditing.Avalonia.Tests` and `SIL.TextEditing.Playground.Tests`, which include the scripted input method) and
-the real-window input driver (`SIL.TextEditing.InputDriver.Tests`, which types into the three real hosts and checks Tab
-and the popup in the WinForms host). Motif ADR 0111 makes all automated testing headless, so the input driver is being
-converted or replaced by rows here. Row numbers are unchanged, so a number quoted in an older note still points at the
+(`SIL.TextEditing.Avalonia.Tests` and `SIL.TextEditing.Playground.Tests`, which include the scripted input method). Every automated test runs headless,
+so what needs a real window, the real input path or the real clipboard is a row here. Row numbers are unchanged, so a number quoted in an older note still points at the
 same step. You use the **playground**, the shared sample UI that all three hosts show. It is meant for a tester who has
 not seen the code.
 
@@ -79,6 +77,7 @@ Add the input methods under Settings, Time and language, Language: Japanese (Mic
 | 3.4 | Chinese Pinyin: type `zhongwen`. | Same as 3.2. | needs a real Chinese IME and its candidate window | | | | |
 | 3.5 | Compose while the caret is inside Arabic text, then in the RTL paragraph. | The composition appears at the caret, the candidate window is not left behind, the committed text lands at the caret. | where a real candidate window sits beside right-to-left text is seen on screen (the model side is `ScriptedInputMethodTests`) | | | | |
 | 3.7 | Move the window while a composition is open. | The candidate window follows the caret. | a real candidate window following a moved window | | | | |
+| 3.8 | In each host, with the field focused, type through the real input path (a test script, or a keyboard): a short Unicode string; Arabic; a supplementary-plane character (such as U+1F600); Latin, Arabic and the supplementary character together; a Keyman-style sequence of Backspace then a Unicode character; the same replacing a longer run and a surrogate pair. | Each arrives in the Model tab in logical order, a surrogate pair as one character, a Keyman-style sequence replacing the letter or run it names. | the real operating-system input path into a real window (the headless suites feed the field's input directly) | | | | |
 
 ## 4. Keyman (all hosts; needs Keyman Desktop and a keyboard that reorders or deletes, such as Khmer or Tamil 99)
 
@@ -120,6 +119,7 @@ are not tab stops (click them).
 | 6.6 | In the Many fields scenario click different fields, then Tab. | The Model tab and `ws:` follow the clicked field; Tab leaves the control rather than walking through every field (note what it does). | exploratory: a person decides whether Tab behaves sensibly | n/a | n/a | | |
 | 6.7 | Alt+Tab to another program and back. | The caret returns to the field where it was; typing works at once. | a real switch to another program and back | | | | |
 | 6.8 | D10 and D48: press Tab in the field. | Focus leaves the field (the toolbar is not a tab stop), or stays; note which. | exploratory: record which of the two happens | | | n/a | |
+| 6.9 | W48: press Tab and Shift+Tab through the two text boxes and the field and type at each stop; press the editing keys in the field; open the completion popup, press Tab, then Escape; click a text box while the popup is open. | Typing follows the focus; the editing keys stay in the field; the popup takes Tab and Escape and focus returns to the field; clicking a text box closes the popup and typing lands there. | real WinForms focus and keyboard routing in a real form (row 6.4 adds the beep) | n/a | n/a | | |
 
 ## 7. Screen reader (all hosts)
 
@@ -141,6 +141,7 @@ only by the playground and the tests) and plain text. A FieldWorks host also cop
 | 8.3 | Type text in Notepad and in Word (with some Arabic), copy it, Paste in the field. | The text appears at the caret in the active writing system; the Model tab shows it as one run; a selection is replaced. | another application (Notepad, Word) writes the clipboard | | | | |
 | 8.6 | Copy in one host window, paste in another (run `run desktop10 -InteractiveDesktop` and `run desktop48 -InteractiveDesktop`). | The runs and properties arrive. | two host processes and the real clipboard (the clipboard tests use one process) | | | | |
 | 8.8 | From a FieldWorks build, if you have one: copy styled text out of a FieldWorks field, paste here, and the reverse. | Record what arrives; FieldWorks does not read our format yet. | needs a FieldWorks build | | | | |
+| 8.9 | Copy bytes that are not text (the Runs form without plain text), then Arabic text, then text and bytes in one copy, and paste each back into the field. | The bytes come back identical; the Arabic text comes back as the same text and as plain text; text and bytes are each read back as what they are. | the real Windows clipboard, which a test would overwrite (on net48 and net10.0) | | | | |
 
 ## 9. Look and feel (all hosts)
 
