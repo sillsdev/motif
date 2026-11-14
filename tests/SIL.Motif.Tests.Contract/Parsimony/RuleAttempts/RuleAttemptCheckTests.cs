@@ -66,11 +66,9 @@ public sealed class RuleAttemptCheckTests
     }
 
     [Fact]
-    public void WithNoLedgerEveryLargeGroupHoldsAndRecordingIsRefused()
+    public void WithNoRecordedAttemptEveryLargeGroupHolds()
     {
-        Assert.True(Assert.Single(RuleAttemptCheck.Evaluate(FinalVowelLoss(6), NoRuleAttemptLedger.Instance)).Hold);
-        Assert.Throws<NotSupportedException>(() =>
-            NoRuleAttemptLedger.Instance.Record(new RuleAttempt("k", "r", "t", "w")));
+        Assert.True(Assert.Single(RuleAttemptCheck.Evaluate(FinalVowelLoss(6), NoAttempts.Instance)).Hold);
     }
 
     [Fact]

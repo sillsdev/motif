@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Config;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
 
@@ -41,7 +42,7 @@ public static class RuleAttemptCommands
                 var shapes = VariantIntentShapes.FromIntents(intents.EnumerateArray().ToArray(),
                     id => VariantFormCapture.FormOf(repository, id));
                 return CommandOutcome<RuleAttemptSummary>.Success(
-                    RuleAttemptSummary.Create(shapes, NoRuleAttemptLedger.Instance, configuration.ParsimonyBlockOn));
+                    RuleAttemptSummary.Create(shapes, new HypothesisRuleAttemptLedger(new HypothesisRepository(database)), configuration.ParsimonyBlockOn));
             }
             catch (Exception exception) when (exception is JsonException or ProjectConfigurationException)
             {

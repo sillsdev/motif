@@ -127,6 +127,9 @@ internal sealed record RenderedMeasure(string ReportId, ParsimonyReportResponse 
 /// </summary>
 internal sealed class EvidenceBundlePipeline
 {
+    /// <summary>The project's orthographic fold rules for the near-duplicate lexeme measure.</summary>
+    public IReadOnlyList<SIL.Motif.Contract.Parsimony.FoldRule> LexemeFold { get; init; } = [];
+
     /// <summary>Marks the key of a bundle built by a Baseline job.</summary>
     public const string BaselineJobOrigin = "baseline-job";
 
@@ -355,6 +358,7 @@ internal sealed class EvidenceBundlePipeline
         var produced = new List<(string MeasureId, RenderedReport Rendered)>();
         using (var session = _checks.OpenSession(factsPath, evidencePath, inputs))
         {
+            session.LexemeFold = LexemeFold;
             var producer = new ParsimonyReportProducer();
             for (var index = 0; index < measureIds.Count; index++)
             {

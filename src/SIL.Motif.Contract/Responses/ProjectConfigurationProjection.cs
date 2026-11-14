@@ -11,6 +11,12 @@ public sealed record ProjectConfigurationProjection(
 {
     /// <summary>Recent standalone Assessments kept per kind alongside cited evidence.</summary>
     public int StandaloneAssessmentCount { get; init; } = 20;
+
+    /// <summary>Parsimony measure ids the project blocks on (<c>[parsimony] block-on</c>); empty means advisory.</summary>
+    public IReadOnlyList<string> ParsimonyBlockOn { get; init; } = [];
+
+    /// <summary>Orthographic fold rules for near-duplicate lexemes (<c>[parsimony] fold</c>), each <c>from&gt;to</c>.</summary>
+    public IReadOnlyList<string> ParsimonyFold { get; init; } = [];
 }
 
 /// <summary>One declared Assessment scope, as reported by <c>config show</c>.</summary>

@@ -147,7 +147,7 @@ public enum ParsimonyGroupKind
     [JsonStringEnumMemberName("variant-same-shape")]
     VariantSameShape,
 
-    /// <summary>Lexical entries whose forms differ only in case, Unicode form or iy/y.</summary>
+    /// <summary>Lexical entries whose forms differ only in case, Unicode form or a project fold rule.</summary>
     [JsonStringEnumMemberName("near-duplicate-lexemes")]
     NearDuplicateLexemes,
 }

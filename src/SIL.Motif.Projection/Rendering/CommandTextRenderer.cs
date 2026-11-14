@@ -435,6 +435,8 @@ public static class CommandTextRenderer
         sb.AppendLine($"Regression gate: {(projection.GateOnRegression ? "on" : "off")}");
         sb.AppendLine($"Purge on apply:  {(projection.PurgeOnApply ? "on" : "off")}");
         sb.AppendLine($"Standalone Assessments per kind: {projection.StandaloneAssessmentCount}");
+        sb.AppendLine($"Parsimony block-on: {(projection.ParsimonyBlockOn.Count == 0 ? "(advisory)" : string.Join(", ", projection.ParsimonyBlockOn))}");
+        sb.AppendLine($"Parsimony fold: {(projection.ParsimonyFold.Count == 0 ? "(none)" : string.Join(", ", projection.ParsimonyFold))}");
         sb.AppendLine($"Scopes ({projection.Scopes.Count}):");
         foreach (var scope in projection.Scopes)
         {

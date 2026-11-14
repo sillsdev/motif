@@ -155,7 +155,7 @@ public static class MeasureCatalog
             ParsimonyGroupKind.TagPolarity, ParsimonyQueryIds.TagPolarityMajority, Threshold(),
             [ParsimonyViews.AffixContext], ["black-2018"], "tag requirements",
             ParsimonyCapabilities.Categories, ParsimonyCapabilities.Entries, ParsimonyCapabilities.Features,
-            ParsimonyCapabilities.Msas, ParsimonyCapabilities.Phonology),
+            ParsimonyCapabilities.Msas, ParsimonyCapabilities.Phonology) with { Partial = TagPolarityPartial },
         DefineGroup("P-tag-implied-by-context", ParsimonyAxis.Parsimony, ParsimonyTier.Static,
             ParsimonyGroupKind.TagImpliedByContext, ["black-2018"], ParsimonyCapabilities.TagRuleContextMatch),
         DefineGroupRegistered("P-variant-same-shape", ParsimonyAxis.Parsimony, ParsimonyTier.Static,
@@ -171,6 +171,11 @@ public static class MeasureCatalog
 
     private static readonly IReadOnlyDictionary<string, MeasureDefinition> ById =
         Definitions.ToDictionary(definition => definition.Id, StringComparer.Ordinal);
+
+    /// <summary>What <c>P-tag-polarity-majority</c> cannot see until PanGloss supplies <c>carriers_matching_context</c>.</summary>
+    public const string TagPolarityPartial =
+        "partial: hosts are the stems in the rule's category scope and ignore its phonological context, so a rule " +
+        "conditioned by form (such as d>r after a vowel, or a word-initial cluster) is not detected; no finding is not a clean result.";
 
     static MeasureCatalog() => Validate(Definitions);
 
@@ -353,6 +358,7 @@ public enum ParsimonyMeasureGroup
 /// <param name="EvidenceViews">The named evidence views used by the fixed query.</param>
 /// <param name="CitationKeys">The closed keys that resolve to the recipe's Grounding citations.</param>
 /// <param name="Unit">The counted item kind in full-eligibility output.</param>
+/// <param name="Partial">When set, the measure computes but sees only part of the cases it is named for; the text says what it cannot see. No finding does not mean clean.</param>
 public sealed record MeasureDefinition(
     string Id,
     ParsimonyAxis Axis,
@@ -366,7 +372,8 @@ public sealed record MeasureDefinition(
     ParsimonyMeasureThreshold? Threshold,
     IReadOnlyList<string> EvidenceViews,
     IReadOnlyList<string> CitationKeys,
-    string Unit)
+    string Unit,
+    string? Partial = null)
 {
     /// <summary>The group the measure runs in: Grammar when it reads no words, otherwise Text.</summary>
     public ParsimonyMeasureGroup Group => Tier == ParsimonyTier.Static

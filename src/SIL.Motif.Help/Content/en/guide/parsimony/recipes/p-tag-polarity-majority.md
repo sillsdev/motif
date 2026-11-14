@@ -2,6 +2,8 @@
 
 This check finds a tag that at least half of a rule's candidate hosts carry. The tag is then the default, and the rule is better stated as applying everywhere with the minority tagged instead. It is computed from per-rule host counts that PanGloss already holds, in one pass over the tag and rule facts.
 
+This check is partial. It counts candidate hosts by the rule's category scope and does not see its phonological context, so a rule chosen by the form of the stem is not detected. No finding does not mean the tags are fine.
+
 ## Analyse
 
 Read how many stems satisfy the rule context and how many of them carry the tag. A majority means the polarity is inverted: the exception is the stems that lack the tag.

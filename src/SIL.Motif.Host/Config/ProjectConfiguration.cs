@@ -100,7 +100,8 @@ public sealed record ProjectConfiguration
         int standaloneAssessmentCount = DefaultStandaloneAssessmentCount,
         IReadOnlyList<ReviewWordSetConfiguration>? reviewWordSets = null,
         GainGatePolicy? gainGate = null,
-        IReadOnlyList<string>? parsimonyBlockOn = null)
+        IReadOnlyList<string>? parsimonyBlockOn = null,
+        IReadOnlyList<string>? parsimonyFold = null)
     {
         ArgumentNullException.ThrowIfNull(scopes);
         if (scopes.Count == 0)
@@ -114,6 +115,7 @@ public sealed record ProjectConfiguration
         ReviewWordSets = reviewWordSets ?? Array.Empty<ReviewWordSetConfiguration>();
         GainGate = gainGate ?? GainGatePolicy.Default;
         ParsimonyBlockOn = parsimonyBlockOn ?? Array.Empty<string>();
+        ParsimonyFold = parsimonyFold ?? Array.Empty<string>();
     }
 
     /// <summary>Every declared Assessment scope, at least one.</summary>
@@ -136,6 +138,9 @@ public sealed record ProjectConfiguration
 
     /// <summary>Parsimony measure ids the project opted in to blocking on (ADR 0116); empty means advisory everywhere.</summary>
     public IReadOnlyList<string> ParsimonyBlockOn { get; }
+
+    /// <summary>Orthographic fold rules for near-duplicate lexemes, each <c>from&gt;to</c> (ADR 0116); none by default, Cebuano sets <c>iy&gt;y</c>.</summary>
+    public IReadOnlyList<string> ParsimonyFold { get; }
 
     /// <summary>The documented configuration for a project with no <c>.motif.toml</c>.</summary>
     public static ProjectConfiguration Defaults() => new(

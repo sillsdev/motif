@@ -1,10 +1,13 @@
+using SIL.Motif.Contract.Parsimony;
+
 namespace SIL.Motif.Host.Parsimony;
 
 /// <summary>One entry's lexeme form for near-duplicate bucketing.</summary>
 internal sealed record LexemeFormFact(string EntryGuid, string AllomorphGuid, string Form);
 
 /// <summary>Every entry that has a lexeme form, and how many entries the project has.</summary>
-internal sealed record LexemeFormInput(long EntryCount, IReadOnlyList<LexemeFormFact> Forms);
+internal sealed record LexemeFormInput(long EntryCount, IReadOnlyList<LexemeFormFact> Forms,
+    IReadOnlyList<FoldRule> Fold);
 
 /// <summary>One variant link, with the two forms and the variant's phone environments read through indexes.</summary>
 internal sealed record VariantShapeFact(string VariantEntryGuid, string VariantAllomorphGuid, string TypeGuid,

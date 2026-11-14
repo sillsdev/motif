@@ -11,6 +11,9 @@ public sealed partial class ParsimonyQuerySession
             WHERE a.ordinal=(SELECT MAX(x.ordinal) FROM facts.allomorph AS x WHERE x.entry_guid=a.entry_guid))
         """;
 
+    /// <summary>The project's orthographic fold rules for near-duplicate lexemes (<c>[parsimony] fold</c>); none unless set.</summary>
+    public IReadOnlyList<SIL.Motif.Contract.Parsimony.FoldRule> LexemeFold { get; set; } = [];
+
     /// <summary>Reads each entry's lexeme form: O(entries) index probes, no pairing and no parse.</summary>
     internal LexemeFormInput ReadLexemeForms()
     {
@@ -28,7 +31,7 @@ public sealed partial class ParsimonyQuerySession
             using var reader = command.ExecuteReader();
             while (reader.Read()) forms.Add(new LexemeFormFact(reader.GetString(0), reader.GetString(1), reader.GetString(2)));
         }
-        return new LexemeFormInput(count, forms);
+        return new LexemeFormInput(count, forms, LexemeFold);
     }
 
     /// <summary>Reads each variant link with the main and variant lexeme forms: O(variant links) index probes.</summary>

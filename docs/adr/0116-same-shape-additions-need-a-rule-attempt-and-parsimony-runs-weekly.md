@@ -14,7 +14,7 @@ Nothing required a rule attempt before a list, so same-shape objects piled up. P
 
 The shape of an added variant is its variant type, environments, features and string correspondence. The correspondence is the minimal difference between main form and variant form with every vowel written `V`, an anchor (initial, medial, final) and a trailing-hyphen flag, so `angka` to `angk-` and `ayri` to `ayr-` share a shape. A package that adds five or more objects of one shape must carry a rule attempt for that shape: the rule, its prediction-test result and why it failed, all non-blank. A reviewer HOLDs a package whose large group has none. Shapes for features and tags beyond string correspondence are not defined here.
 
-The attempt is recorded through `IRuleAttemptLedger` (`Record`, `Find` by shape key). The hypothesis ledger (#174) will back it. Until then `NoRuleAttemptLedger` finds nothing, so every large group is reported. This ADR builds no store.
+The attempt is read through `IRuleAttemptLedger`, which has one read-only method, `Find` by shape key, because only the CLI writes the ledger (ADR 0117). `HypothesisRuleAttemptLedger` backs it with the hypothesis ledger: a hypothesis answers a group when its status is `passed` or `failed` (each needs a recorded test) and its `change` is the group's full shape key, or its string correspondence (such as `V>@final`) with an environment that is blank or the group's environment ids. A passed or a failed attempt clears the hold for that shape; a proposed or superseded hypothesis does not. The lookup is one seek on the ledger's shape index per group, O(log n + k). This ADR builds no store.
 
 Where it runs:
 
@@ -33,7 +33,7 @@ The opt-in lives in `<project>.motif.toml`, like ADR 0114's `[gain-gate]`, and i
 block-on = ["P-variant-same-shape"]
 ```
 
-A missing table means advisory. An id that cannot block is a configuration error naming its line. The Trial report sets `ruleAttempts.hold` only for an opted-in project with a group that has no complete attempt; the other two block-capable measures are wired to `Decide` by their callers when autonomous Apply gates on a measured wrong reading, which this ADR does not add.
+`fold = ["iy>y"]` in the same table sets the near-duplicate fold rules. `config show` prints both. A missing table means advisory and no fold. An id that cannot block is a configuration error naming its line. The Trial report sets `ruleAttempts.hold` only for an opted-in project with a group that has no complete attempt; the other two block-capable measures are wired to `Decide` by their callers when autonomous Apply gates on a measured wrong reading, which this ADR does not add.
 
 ### 3. Redundancy measures
 
@@ -43,7 +43,11 @@ Three run from the grammar-facts file the sweep already writes, with one query e
 |---|---|---|
 | `P-lexeme-near-duplicate` (forms equal after NFC, case folding and iy to y; exact repeats stay with `P-entry-duplicate`) | lexeme form per entry | O(entries), one hash bucket per folded form |
 | `P-variant-same-shape` (five or more existing variants of one shape) | variant links, both forms, phone environments | O(variant links), one hash bucket per shape |
-| `P-tag-polarity-majority` (a tag that at least half of five or more stems in a rule's or affix's category scope carry) | stems per category, tag carriers per category, rule and affix requirements | O(MSAs + rules), three grouped reads |
+| `P-tag-polarity-majority` (partial: a tag that at least half of five or more stems in a rule's or affix's category scope carry; hosts ignore the rule's phonological context) | stems per category, tag carriers per category, rule and affix requirements | O(MSAs + rules), three grouped reads |
+
+`P-tag-polarity-majority` is marked partial in the catalog (`MeasureDefinition.Partial`) and in every run's detail. It counts hosts by category scope only, so a rule selected by the form of the stem, such as d>r after a vowel or a word-initial cluster, is not detected: on CEB it cannot fire on either case, and no finding is not a clean result (`TagPolarityIsPartialAndDoesNotDetectARuleThatOnlyItsFormContextSelects`). Context-aware hosts need PanGloss's `carriers_matching_context` and a separate design.
+
+`P-lexeme-near-duplicate` folds case and Unicode form, plus the rules the project declares in `[parsimony] fold`, each `from>to`. There is no built-in rule; Cebuano's setting is `fold = ["iy>y"]`. A reused Report keeps the fold it was computed with until the Baseline is refreshed.
 
 `P-tag-implied-by-context` stays declared and `not-available`. It needs, per tag and rule, how many carriers match the rule context; that is a pattern match over every carrier and PanGloss already holds the compiled context (see the PanGloss ask). `P-allo-alternation-family` is left as it is.
 
@@ -75,4 +79,4 @@ Each is well under one second. On synthetic data at CEB size (8,000 entries, 1,2
 
 - A same-shape list needs a rule attempt on record, or the Trial review reports it; an opted-in project's autonomous loop holds.
 - Nothing blocks by default, so CEB is not held unexpectedly. CEB's own facts show 88 same-shape groups among existing variants, so opting in changes only future additions.
-- The hypothesis ledger replaces `NoRuleAttemptLedger` when #174 lands.
+- The hypothesis ledger backs the rule-attempt lookup (ADR 0117), so an opted-in hold can clear: record a hypothesis on the shape, test it, and decide it passed or failed.

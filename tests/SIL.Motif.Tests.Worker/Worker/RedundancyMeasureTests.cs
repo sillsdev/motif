@@ -21,8 +21,13 @@ public sealed class RedundancyMeasureTests(PristineProjectFixture pristine, ITes
 
     private static string G(char kind, int number) => $"{kind}0000000-0000-0000-0000-{number:D12}";
 
-    private Task<ParsimonyMeasureResult> Run(string measure, Action<SqliteConnection> seed) => _harness.RunAsync(
-        path => EditFacts(path, Sections, seed), (session, bundle) => MeasureRunner.Execute(measure, session, bundle));
+    private Task<ParsimonyMeasureResult> Run(string measure, Action<SqliteConnection> seed,
+        params FoldRule[] fold) => _harness.RunAsync(
+        path => EditFacts(path, Sections, seed), (session, bundle) =>
+        {
+            session.LexemeFold = fold;
+            return MeasureRunner.Execute(measure, session, bundle);
+        });
 
     private static void Lexeme(SqliteConnection c, int number, string form, string morphType = "stem") =>
         WithForm(c, G('e', number), number, form, morphType);
@@ -34,15 +39,24 @@ public sealed class RedundancyMeasureTests(PristineProjectFixture pristine, ITes
         Allomorph(c, G('a', number), entry, 0, morphType, form);
     }
 
-    [Fact]
-    public async Task NearDuplicateLexemesFlagFormsThatDifferOnlyInCaseOrIyAndNotExactRepeats()
+    private static void NearDuplicateSeed(SqliteConnection c)
     {
-        var result = await Run("P-lexeme-near-duplicate", c =>
-        {
-            Lexeme(c, 1, "Diyos"); Lexeme(c, 2, "dyos");
-            Lexeme(c, 3, "kata"); Lexeme(c, 4, "kata");
-            Lexeme(c, 5, "bag"); Lexeme(c, 6, "baga");
-        });
+        Lexeme(c, 1, "Diyos"); Lexeme(c, 2, "dyos");
+        Lexeme(c, 3, "kata"); Lexeme(c, 4, "kata");
+        Lexeme(c, 5, "bag"); Lexeme(c, 6, "baga");
+    }
+
+    [Fact]
+    public async Task NearDuplicateLexemesHaveNoBuiltInFold()
+    {
+        // No built-in iy>y: without the project's fold, Diyos and dyos are different forms.
+        Assert.Empty((await Run("P-lexeme-near-duplicate", NearDuplicateSeed)).Findings);
+    }
+
+    [Fact]
+    public async Task NearDuplicateLexemesFoldWhatTheProjectDeclaresAndNeverExactRepeats()
+    {
+        var result = await Run("P-lexeme-near-duplicate", NearDuplicateSeed, new FoldRule("iy", "y"));
 
         Assert.Equal(ParsimonyMeasureStatus.Computed, result.Run.Status);
         Assert.Equal(6, result.Run.EligibleItems);
@@ -137,6 +151,28 @@ public sealed class RedundancyMeasureTests(PristineProjectFixture pristine, ITes
         Assert.True(ParsimonyFindingIdentity.GroupIdentityIsConsistent(finding));
         Assert.EndsWith(G('d', 1), finding.AttachesTo.Identity);
         Assert.Contains("6 of 10 stems", finding.Limitations[0]);
+    }
+
+    [Fact]
+    public async Task TagPolarityIsPartialAndDoesNotDetectARuleThatOnlyItsFormContextSelects()
+    {
+        // The d>r shape: one tag on 40 of 2,000 stems, a rule with no category scope. The stems that matter are the
+        // d-final ones, which the measure cannot see, so the ratio over every stem is 2% and nothing is found.
+        var tag = G('f', 1);
+        var result = await Run("P-tag-polarity-majority", c =>
+        {
+            Feature(c, tag, "ka");
+            Insert(c, "INSERT INTO category(guid, sibling_ordinal, name, abbreviation) VALUES ($p0, 0, $p1, $p1);", G('c', 1), "N");
+            Stems(c, G('c', 1), 2000, 40, tag, 1000);
+            Rule(c, G('d', 1), "rule-d-to-r", tag);
+        });
+
+        Assert.Equal(ParsimonyMeasureStatus.Computed, result.Run.Status);
+        Assert.Empty(result.Findings);
+        Assert.StartsWith("partial:", result.Run.Detail);
+        Assert.Contains("phonological context", result.Run.Detail);
+        Assert.Equal(MeasureCatalog.TagPolarityPartial, MeasureCatalog.Find("P-tag-polarity-majority")!.Partial);
+        Assert.Contains(MeasureCatalog.All.Where(m => m.Partial is not null), m => m.Id == "P-tag-polarity-majority");
     }
 
     [Fact]

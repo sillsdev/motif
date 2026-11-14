@@ -17,6 +17,8 @@ The check is advice. It holds a package only when the project opts in, in `<proj
 block-on = ["P-variant-same-shape"]
 ```
 
+A hold clears when the hypothesis ledger holds a passed or failed hypothesis on the shape: record it with `hypothesis add --change "<shape key from the report>"` (or the correspondence, such as `V>@final`), test it, and decide it.
+
 The same finding appears in the Trial review summary. A hold there is a report line; Apply does not read it.
 
 ## Related commands

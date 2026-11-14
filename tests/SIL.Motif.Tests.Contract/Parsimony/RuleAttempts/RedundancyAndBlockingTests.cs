@@ -26,12 +26,12 @@ public sealed class RedundancyAndBlockingTests
     }
 
     [Fact]
-    public void NearDuplicatesFoldCaseAndIyY()
+    public void NearDuplicatesFoldCaseAndOnlyTheProjectsRules()
     {
-        var groups = RedundancyMeasures.NearDuplicateLexemes([
-            new("1", "kumpaniya"), new("2", "kumpanya"), new("3", "Nun"), new("4", "nun"), new("5", "same"),
-            new("6", "same")]);
-        Assert.Equal(2, groups.Count);
+        LexemeForm[] forms = [new("1", "kumpaniya"), new("2", "kumpanya"), new("3", "Nun"), new("4", "nun"), new("5", "same"),
+            new("6", "same")];
+        Assert.Single(RedundancyMeasures.NearDuplicateLexemes(forms));
+        Assert.Equal(2, RedundancyMeasures.NearDuplicateLexemes(forms, [new FoldRule("iy", "y")]).Count);
     }
 
     [Fact]

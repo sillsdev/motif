@@ -11,7 +11,6 @@ public sealed class RuleAttemptSummaryTests
 {
     private sealed class FullLedger : IRuleAttemptLedger
     {
-        public void Record(RuleAttempt attempt) { }
         public RuleAttempt? Find(string shapeKey) => new(shapeKey, "rule", "tested", "why");
     }
 
@@ -22,7 +21,7 @@ public sealed class RuleAttemptSummaryTests
     [Fact]
     public void FiveSameShapeVariantsAreReportedAdvisoryByDefault()
     {
-        var summary = RuleAttemptSummary.Create(Shapes(5), NoRuleAttemptLedger.Instance, []);
+        var summary = RuleAttemptSummary.Create(Shapes(5), NoAttempts.Instance, []);
         Assert.Equal(5, Assert.Single(summary.Groups).Count);
         Assert.False(summary.OptedIn);
         Assert.False(summary.Hold);
@@ -32,8 +31,8 @@ public sealed class RuleAttemptSummaryTests
     public void OptingInHoldsUntilAnAttemptIsRecorded()
     {
         string[] optIn = [BlockingPolicy.RuleAttemptMeasureId];
-        Assert.True(RuleAttemptSummary.Create(Shapes(5), NoRuleAttemptLedger.Instance, optIn).Hold);
-        Assert.False(RuleAttemptSummary.Create(Shapes(4), NoRuleAttemptLedger.Instance, optIn).Hold);
+        Assert.True(RuleAttemptSummary.Create(Shapes(5), NoAttempts.Instance, optIn).Hold);
+        Assert.False(RuleAttemptSummary.Create(Shapes(4), NoAttempts.Instance, optIn).Hold);
         var answered = RuleAttemptSummary.Create(Shapes(5), new FullLedger(), optIn);
         Assert.False(answered.Hold);
         Assert.True(Assert.Single(answered.Groups).AttemptRecorded);

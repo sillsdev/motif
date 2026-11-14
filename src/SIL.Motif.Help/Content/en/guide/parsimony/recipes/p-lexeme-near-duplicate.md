@@ -1,6 +1,6 @@
 # Entries differing in spelling
 
-This check finds entries whose forms differ only in case, Unicode form or iy against y. They are bucketed by a folded form, never compared pairwise.
+This check finds entries whose forms differ only in case, Unicode form or a fold rule the project declares (`[parsimony] fold`, for example `iy>y` for Cebuano). They are bucketed by a folded form, never compared pairwise.
 
 ## Analyse
 

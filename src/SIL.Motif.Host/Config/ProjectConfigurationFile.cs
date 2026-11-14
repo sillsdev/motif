@@ -40,7 +40,7 @@ public static class ProjectConfigurationFile
     private static readonly HashSet<string> RegressionKeys = new(StringComparer.Ordinal) { "gate" };
     private static readonly HashSet<string> ApplyKeys = new(StringComparer.Ordinal) { "purge-on-apply" };
     private static readonly HashSet<string> GainGateKeys = new(StringComparer.Ordinal) { "mode", "min-attested-per-object" };
-    private static readonly HashSet<string> ParsimonyKeys = new(StringComparer.Ordinal) { "block-on" };
+    private static readonly HashSet<string> ParsimonyKeys = new(StringComparer.Ordinal) { "block-on", "fold" };
     private static readonly HashSet<string> RetentionKeys = new(StringComparer.Ordinal) { "standalone-assessments-per-kind" };
 
     private static readonly HashSet<string> ScopeKeys = new(StringComparer.Ordinal)
@@ -61,6 +61,7 @@ public static class ProjectConfigurationFile
         GainGateMode? gateMode = null;
         double? gateMinimum = null;
         List<string>? blockOn = null;
+        List<string>? fold = null;
         var scopes = new List<AssessmentScopeConfiguration>();
         var reviewSets = new List<ReviewWordSetConfiguration>();
         var review = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -133,6 +134,13 @@ public static class ProjectConfigurationFile
                     break;
                 case ParsimonyTable:
                     if (!ParsimonyKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[parsimony]");
+                    if (key == "fold")
+                    {
+                        fold = ParseStringArray(path, lineNumber, key, rawValue);
+                        foreach (var rule in fold.Where(rule => !FoldRule.TryParse(rule, out _)))
+                            throw Malformed(path, lineNumber, $"'{rule}' is not a fold rule; write it as from>to, such as iy>y");
+                        break;
+                    }
                     blockOn = ParseStringArray(path, lineNumber, key, rawValue);
                     foreach (var id in blockOn.Where(id => !BlockingPolicy.BlockCapable.Contains(id)))
                         throw Malformed(path, lineNumber,
@@ -166,7 +174,7 @@ public static class ProjectConfigurationFile
             standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount, reviewSets,
             new GainGatePolicy(gateMode ?? GainGatePolicy.Default.Mode,
                 gateMinimum ?? GainGatePolicy.Default.MinAttestedPerObject),
-            blockOn);
+            blockOn, fold);
     }
 
     /// <summary>Renders a resolved configuration back to the same TOML shape <see cref="Parse"/> reads.</summary>
@@ -192,11 +200,14 @@ public static class ProjectConfigurationFile
                 configuration.GainGate.MinAttestedPerObject.ToString("R", CultureInfo.InvariantCulture));
         }
 
-        if (configuration.ParsimonyBlockOn.Count > 0)
+        if (configuration.ParsimonyBlockOn.Count > 0 || configuration.ParsimonyFold.Count > 0)
         {
             sb.AppendLine();
             sb.AppendLine($"[{ParsimonyTable}]");
-            sb.AppendLine($"block-on = [{string.Join(", ", configuration.ParsimonyBlockOn.Select(Quote))}]");
+            if (configuration.ParsimonyBlockOn.Count > 0)
+                sb.AppendLine($"block-on = [{string.Join(", ", configuration.ParsimonyBlockOn.Select(Quote))}]");
+            if (configuration.ParsimonyFold.Count > 0)
+                sb.AppendLine($"fold = [{string.Join(", ", configuration.ParsimonyFold.Select(Quote))}]");
         }
 
         foreach (var scope in configuration.Scopes)

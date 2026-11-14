@@ -15,7 +15,7 @@ public static partial class MeasureRunner
     {
         var allomorphOf = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var fact in input.Forms) allomorphOf[fact.EntryGuid] = fact.AllomorphGuid;
-        var groups = RedundancyMeasures.NearDuplicateLexemes(input.Forms.Select(f => new LexemeForm(f.EntryGuid, f.Form)));
+        var groups = RedundancyMeasures.NearDuplicateLexemes(input.Forms.Select(f => new LexemeForm(f.EntryGuid, f.Form)), input.Fold);
         var findings = new List<ParsimonyFinding>(groups.Count);
         var redundant = 0L;
         foreach (var group in groups)
@@ -30,11 +30,12 @@ public static partial class MeasureRunner
                     GroupKind: ParsimonyGroupKind.NearDuplicateLexemes),
                 ParsimonyFindingIdentity.NearDuplicateLexemesGroupKey,
                 new ParsimonyMeasureNumber(members.Length - 1, input.EntryCount, measure.Unit), measure.Threshold!,
-                MeasureEvidence.Compute(measure, context.Digest, JsonSerializer.Serialize(new { members = ids })),
+                MeasureEvidence.Compute(measure, context.Digest, JsonSerializer.Serialize(new { members = ids, fold = input.Fold.Select(r => r.ToString()) })),
                 members.Select(m => EvidenceReference(context.BundleId, ParsimonyViews.AllomorphContext,
                     new { objectGuid = allomorphOf[m.EntryId] })).ToArray(),
                 measure.RecipeLink,
-                [$"Entries whose lexeme forms differ only in case, Unicode form or iy/y: " +
+                [$"Entries whose lexeme forms differ only in case, Unicode form or the project's fold rules" +
+                 (input.Fold.Count == 0 ? "" : $" ({string.Join(", ", input.Fold)})") + ": " +
                  string.Join("; ", members.Select(m => $"\"{m.Form}\" ({m.EntryId})")) + ".",
                  "Exact repeats are reported by P-entry-duplicate, not here."],
                 ParsimonyVerification.NotRun));
@@ -107,10 +108,10 @@ public static partial class MeasureRunner
                  $"{row.Hosts} stems in its category scope carry. When most hosts carry a tag, tag the exceptions " +
                  "and flip the polarity.",
                  "Hosts are stem MSAs whose part of speech is in the rule's or affix's category scope; a requirer with " +
-                 "no category scope counts every stem."],
+                 "no category scope counts every stem. " + measure.Partial],
                 ParsimonyVerification.NotRun));
         }
         return Result(measure, ParsimonyMeasureStatus.Computed, required.Length, findings.Count,
-            findings.OrderBy(f => f.FindingId, StringComparer.Ordinal).ToArray(), null);
+            findings.OrderBy(f => f.FindingId, StringComparer.Ordinal).ToArray(), measure.Partial);
     }
 }

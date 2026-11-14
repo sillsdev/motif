@@ -60,7 +60,10 @@ public sealed class ParsimonyJobHandler
         _invoker = invoker ?? throw new ArgumentNullException(nameof(invoker));
         _publisher = new EvidenceArtifactPublisher(options.Root, _projectKey, publicationHooks);
         _artifacts = new EvidenceArtifactRepository(database);
-        _pipeline = new EvidenceBundlePipeline(_publisher, _artifacts, options, _projectKey, checks, digests);
+        _pipeline = new EvidenceBundlePipeline(_publisher, _artifacts, options, _projectKey, checks, digests)
+        {
+            LexemeFold = ProjectFoldRules.Read(project),
+        };
         _retention = new EvidenceRetentionCleaner(_artifacts, WorkspaceOwnership.Bootstrap(options.Root));
     }
 

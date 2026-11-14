@@ -21,6 +21,17 @@ public sealed class ParsimonyBlockOnConfigurationTests
         Assert.Equal(parsed.ParsimonyBlockOn, again.ParsimonyBlockOn);
     }
 
+    [Fact]
+    public void TheFoldRulesAreTheProjectsOwnAndRoundTrip()
+    {
+        Assert.Empty(ProjectConfiguration.Defaults().ParsimonyFold);
+        var parsed = ProjectConfigurationFile.Parse("[parsimony]\nfold = [\"iy>y\", \"ng>n\"]\n", "p.motif.toml");
+        Assert.Equal(["iy>y", "ng>n"], parsed.ParsimonyFold);
+        Assert.Equal(parsed.ParsimonyFold, ProjectConfigurationFile.Parse(ProjectConfigurationFile.Render(parsed), "p.motif.toml").ParsimonyFold);
+        Assert.Throws<ProjectConfigurationException>(() =>
+            ProjectConfigurationFile.Parse("[parsimony]\nfold = [\"iy\"]\n", "p.motif.toml"));
+    }
+
     [Theory]
     [InlineData("[parsimony]\nblock-on = [\"P-allo-duplicate-form\"]\n")]
     [InlineData("[parsimony]\nblock-on = P-variant-same-shape\n")]

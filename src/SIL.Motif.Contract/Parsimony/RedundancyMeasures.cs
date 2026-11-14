@@ -44,15 +44,23 @@ public static class RedundancyMeasures
         [.. facts.Where(f => f.Carriers > 0 && f.CarriersMatchingContext == f.Carriers)
             .OrderBy(f => f.TagId, StringComparer.Ordinal).ThenBy(f => f.RuleId, StringComparer.Ordinal)];
 
-    /// <summary>The key two lexeme forms share when they differ only in case, Unicode form or iy/y.</summary>
+    /// <summary>The key two lexeme forms share when they differ only in case, Unicode form or a project fold rule.</summary>
     /// <param name="form">The form.</param>
-    public static string FoldKey(string form) =>
-        form.Normalize(NormalizationForm.FormC).ToLower(CultureInfo.InvariantCulture).Replace("iy", "y", StringComparison.Ordinal);
+    /// <param name="rules">The project's orthographic fold rules (<c>[parsimony] fold</c>); none by default.</param>
+    public static string FoldKey(string form, IReadOnlyList<FoldRule>? rules = null)
+    {
+        var key = form.Normalize(NormalizationForm.FormC).ToLower(CultureInfo.InvariantCulture);
+        if (rules is null) return key;
+        foreach (var rule in rules) key = key.Replace(rule.From, rule.To, StringComparison.Ordinal);
+        return key;
+    }
 
     /// <summary>Groups of two or more entries whose forms fold to one key, found by hashing, never by pairing.</summary>
     /// <param name="lexemes">All lexeme forms.</param>
-    public static IReadOnlyList<IReadOnlyList<LexemeForm>> NearDuplicateLexemes(IEnumerable<LexemeForm> lexemes) =>
-        [.. lexemes.GroupBy(l => FoldKey(l.Form), StringComparer.Ordinal)
+    /// <param name="rules">The project's orthographic fold rules.</param>
+    public static IReadOnlyList<IReadOnlyList<LexemeForm>> NearDuplicateLexemes(IEnumerable<LexemeForm> lexemes,
+        IReadOnlyList<FoldRule>? rules = null) =>
+        [.. lexemes.GroupBy(l => FoldKey(l.Form, rules), StringComparer.Ordinal)
             .Where(g => g.Select(l => l.Form).Distinct(StringComparer.Ordinal).Count() > 1)
             .OrderBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => (IReadOnlyList<LexemeForm>)[.. g])];

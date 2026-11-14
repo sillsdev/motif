@@ -39,5 +39,9 @@ public static class ConfigCommands
             .Select(scope => new AssessmentScopeProjection(
                 scope.Name, scope.Query, scope.Assessor, scope.Collect,
                 (long)scope.PerWordLimit.TotalMilliseconds, scope.PerWordParserWorkLimit) { TimingDetailWords = scope.TimingDetailWords })
-            .ToArray()) { StandaloneAssessmentCount = configuration.StandaloneAssessmentCount };
+            .ToArray()) {
+            StandaloneAssessmentCount = configuration.StandaloneAssessmentCount,
+            ParsimonyBlockOn = configuration.ParsimonyBlockOn,
+            ParsimonyFold = configuration.ParsimonyFold,
+        };
 }

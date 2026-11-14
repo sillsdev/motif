@@ -35,7 +35,7 @@ public sealed class VariantOperationShapesTests
         var shapes = VariantOperationShapes.FromOperations(ops, id => mains.GetValueOrDefault(id));
         Assert.Equal(5, shapes.Count);
         Assert.All(shapes, s => Assert.Equal([env.CanonicalSuffix], s.EnvironmentIds));
-        var finding = Assert.Single(RuleAttemptCheck.Evaluate(shapes, NoRuleAttemptLedger.Instance));
+        var finding = Assert.Single(RuleAttemptCheck.Evaluate(shapes, NoAttempts.Instance));
         Assert.Equal(5, finding.Group.Count);
     }
 
