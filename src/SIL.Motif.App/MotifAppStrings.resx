@@ -6419,6 +6419,18 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>These numbers need a correctness check. Check the changes again.</value>
     <comment>Sentence the window shows when the command refuses with code C.ReviewWrongAssessmentKind. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalRuleAttemptsInvalid" xml:space="preserve">
+    <value>The plan file or the project's Parsimony settings could not be read, so the same-shape check did not run. Nothing was changed.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RuleAttemptsInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalRuleAttemptsNoBaseline" xml:space="preserve">
+    <value>This check needs a published Baseline to read the main entries' forms. Publish a Baseline, then check again.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RuleAttemptsNoBaseline. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
+  <data name="MotifApp.RefusalRuleAttemptsPlanInvalid" xml:space="preserve">
+    <value>The plan file must be a list of changes, so the same-shape check did not run. Nothing was changed.</value>
+    <comment>Sentence the window shows when the command refuses with code C.RuleAttemptsPlanInvalid. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
+  </data>
   <data name="MotifApp.RefusalSelectionDefaultMissing" xml:space="preserve">
     <value>Motif does not know which words to measure yet. Choose texts or words in the setup first.</value>
     <comment>Sentence the window shows when the command refuses with code C.SelectionDefaultMissing. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

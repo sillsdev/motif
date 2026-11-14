@@ -210,6 +210,10 @@ public sealed partial record WindowRefusal
         [C.ReviewNumbersUnavailable] = () => MotifAppStrings.RefusalReviewNumbersUnavailable,
         [C.ReviewWrongAssessmentKind] = () => MotifAppStrings.RefusalReviewWrongAssessmentKind,
 
+        [C.RuleAttemptsInvalid] = () => MotifAppStrings.RefusalRuleAttemptsInvalid,
+        [C.RuleAttemptsNoBaseline] = () => MotifAppStrings.RefusalRuleAttemptsNoBaseline,
+        [C.RuleAttemptsPlanInvalid] = () => MotifAppStrings.RefusalRuleAttemptsPlanInvalid,
+
         [C.SelectionDefaultMissing] = () => MotifAppStrings.RefusalSelectionDefaultMissing,
         [C.TextFieldStale] = () => MotifAppStrings.RefusalTextFieldStale,
         [C.SelectionEmpty] = () => MotifAppStrings.RefusalSelectionEmpty,

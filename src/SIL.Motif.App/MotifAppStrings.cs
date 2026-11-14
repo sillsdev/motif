@@ -3472,6 +3472,12 @@ public static class MotifAppStrings
 
     public static string RefusalReviewWrongAssessmentKind => Text("MotifApp.RefusalReviewWrongAssessmentKind");
 
+    public static string RefusalRuleAttemptsInvalid => Text("MotifApp.RefusalRuleAttemptsInvalid");
+
+    public static string RefusalRuleAttemptsNoBaseline => Text("MotifApp.RefusalRuleAttemptsNoBaseline");
+
+    public static string RefusalRuleAttemptsPlanInvalid => Text("MotifApp.RefusalRuleAttemptsPlanInvalid");
+
     public static string RefusalSelectionDefaultMissing => Text("MotifApp.RefusalSelectionDefaultMissing");
 
     public static string RefusalSelectionEmpty => Text("MotifApp.RefusalSelectionEmpty");
