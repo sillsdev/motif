@@ -526,6 +526,7 @@ _Avoid_: commit, save, publish, roll back
 
 **Apply Authorization**:
 The check every Apply passes on both the App and CLI paths: the Readiness evaluation (see **Readiness**).
+It refuses another Proposal while the pending-changes Draft holds unapplied changes.
 It is not a grant or a credential, and it is not anyone's approval — nothing in Motif authorises an Apply.
 _Avoid_: approval, token, permission
 

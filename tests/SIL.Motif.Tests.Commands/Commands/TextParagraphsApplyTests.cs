@@ -36,6 +36,30 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
     private const string Discussion = "CmPossibility.Discussion";
 
     [Fact]
+    public async Task AStagedGdrEditRefusesCoreWorkflowAndCliApply()
+    {
+        var path = ProjectWithGdrs();
+        var proposalId = ApplyReconciliationTests.CreateMeasuredProposal(path, "other-gdr-target",
+            CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value, SeededProject.FirstGloss + " GDR test");
+        var shown = Show(path, "GDR-1");
+        var runs = shown.Discussion[0].Runs.Select(Carried).ToArray();
+        runs[0] = runs[0] with { Text = "edited" };
+        StagedFirst(path, shown, runs);
+        var core = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposalId, Force: true));
+        var workflow = PendingChangesWorkflow.Apply(new ApplyProposalRequest(path, proposalId, null));
+        var cli = await CliProcess.RunAsync(CliProcess.Start(IsolatedRunner.Options(RootFor(path)),
+            "apply", "--proposal", proposalId, "--project", path, "--json"));
+        var refusal = Assert.IsType<Refusal>(core.Refusal);
+        Assert.Equal(RefusalCodes.ApplyPendingChanges, refusal.Code);
+        Assert.Equal(refusal.Code, workflow.Refusal?.Code);
+        Assert.Contains("GDR 'title-1'", refusal.Message);
+        Assert.True(cli.ExitCode != 0, cli.Error);
+        var failure = ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!;
+        Assert.Equal(refusal.Code, failure.Code);
+        Assert.Contains("GDR 'title-1'", failure.Message);
+    }
+
+    [Fact]
     public void AnEditedParagraphKeepsItsStyledRunLinkAndObjectAndAnUntouchedOneIsAsItWas()
     {
         var path = ProjectWithGdrs();

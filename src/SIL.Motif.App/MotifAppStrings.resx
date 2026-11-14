@@ -6050,6 +6050,10 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Something in the project changed since this was checked. Check it again before applying.</value>
     <comment>Sentence the window shows when the command refuses with code C.ApplyPreconditionFailed. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>
   </data>
+  <data name="MotifApp.RefusalApplyPendingChanges" xml:space="preserve">
+    <value>Apply or discard your pending changes first.</value>
+    <comment>Sentence the window shows for RefusalCodes.ApplyPendingChanges.</comment>
+  </data>
   <data name="MotifApp.RefusalApplyNotReady" xml:space="preserve">
     <value>The check did not give enough evidence to apply these changes. Check them again.</value>
     <comment>Sentence the window shows when the command refuses with code C.ApplyNotReady. Product names (PanGloss, FieldWorks, Motif, AI Handoff) stay as written; Baseline, Selection and Text are Motif terms.</comment>

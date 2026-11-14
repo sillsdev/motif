@@ -1,16 +1,18 @@
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.Commands;
 
 /// <summary>
-/// Admits one Apply at a time to a FieldWorks project, across processes, for the whole Apply: its reads, Finalize,
-/// Dry Run and unit of work.
+/// Excludes pending-Draft writes from an Apply, and admits one Apply at a time across processes.
 /// </summary>
 /// <remarks>
 /// Each of those steps opens the project on its own, so without this a second Apply could read the pending changes,
 /// slip between the first one's steps, and reach Finalize after the first had already finalized the same Draft. The
-/// lease is an exclusive open of a file beside the project, which the operating system releases when its process
-/// ends. The file is never deleted, so two callers never hold locks on two different files of one name.
+/// lease also keeps a pending change from being saved between authorization and the live mutation. It is an
+/// exclusive open of a file beside the project, released when its process ends. The file is never deleted, so
+/// two callers never hold locks on two different files of one name.
 /// </remarks>
 internal sealed class ProjectApplyLease : IDisposable
 {
@@ -27,7 +29,7 @@ internal sealed class ProjectApplyLease : IDisposable
         return Path.GetFullPath(fwDataPath) + FileSuffix;
     }
 
-    /// <summary>Takes the lease, or returns <see langword="null"/> while another Apply holds it.</summary>
+    /// <summary>Takes the lease, or returns <see langword="null"/> while another caller holds it.</summary>
     public static ProjectApplyLease? TryAcquire(string fwDataPath)
     {
         try
@@ -40,6 +42,10 @@ internal sealed class ProjectApplyLease : IDisposable
             return null;
         }
     }
+
+    internal static Refusal Busy(string projectPath) => new("apply.in-progress", FailureReason.Busy,
+        "Another Apply or pending change is in progress for this project. Try again when it finishes.",
+        new Dictionary<string, string>(StringComparer.Ordinal) { ["fwDataPath"] = projectPath });
 
     public void Dispose() => _stream.Dispose();
 }

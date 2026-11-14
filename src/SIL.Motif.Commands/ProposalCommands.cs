@@ -369,7 +369,7 @@ public static partial class ProposalCommands
                 EnsureContractVersion(draft, LexicalSenseOperationKinds.SetGloss);
                 RequireNoSlotConflict(draft, (previous ?? authored).OperationId);
 
-                if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
+                if (!TrySaveLoadedDraft(database, repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<SetGlossAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
                 return CommandOutcome<SetGlossAddedResponse>.Success(new SetGlossAddedResponse(
@@ -426,7 +426,7 @@ public static partial class ProposalCommands
                 EnsureContractVersion(draft, LexEntryLexemeFormOperationKinds.DeleteLexemeForm);
                 RequireNoSlotConflict(draft, operationId.Value);
 
-                if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
+                if (!TrySaveLoadedDraft(database, repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<DeleteLexemeFormAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
                 return CommandOutcome<DeleteLexemeFormAddedResponse>.Success(new DeleteLexemeFormAddedResponse(
@@ -562,7 +562,7 @@ public static partial class ProposalCommands
                 using var provenanceDocument = JsonDocument.Parse(provenanceJson);
                 draft.PromotionProvenance.Add(provenanceDocument.RootElement.Clone());
 
-                if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
+                if (!TrySaveLoadedDraft(database, repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<PromoteGlossAddedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
                 return CommandOutcome<PromoteGlossAddedResponse>.Success(new PromoteGlossAddedResponse(
@@ -629,7 +629,7 @@ public static partial class ProposalCommands
                     return CommandOutcome<DraftFieldChangedResponse>.Refused(DraftNotFound(draftName));
 
                 setter(draft);
-                if (!TrySaveLoadedDraft(repository, draftName, loadedJson, draft))
+                if (!TrySaveLoadedDraft(database, repository, draftName, loadedJson, draft))
                     return CommandOutcome<DraftFieldChangedResponse>.Refused(DraftRevisionConflict(draftName));
 
                 return CommandOutcome<DraftFieldChangedResponse>.Success(
@@ -874,7 +874,9 @@ public static partial class ProposalCommands
                         Fact(("proposalId", id), ("supersededBy", record.SupersededBy))));
 
                 var draft = DraftOf(id, manifest, envelope);
-
+                using var lease = record.IsPendingChanges ? ProjectApplyLease.TryAcquire(database.Project.FullFwDataPath) : null;
+                if (record.IsPendingChanges && lease is null)
+                    return CommandOutcome<ReopenedResponse>.Refused(ProjectApplyLease.Busy(request.FwDataPath));
                 repository.ReopenAsDraft(canonicalId, request.DraftName, SerializeDraft(draft));
 
                 return CommandOutcome<ReopenedResponse>.Success(new ReopenedResponse(
@@ -1219,7 +1221,7 @@ public static partial class ProposalCommands
                 var removal = RemoveFromDraft(draft, request.DraftName, request.OperationIds, request.Force,
                     out var requestedIds, out var consequences);
                 if (removal is not null) return CommandOutcome<OperationsRemovedResponse>.Refused(removal);
-                if (!TrySaveLoadedDraft(repository, request.DraftName, loadedJson, draft))
+                if (!TrySaveLoadedDraft(database, repository, request.DraftName, loadedJson, draft))
                     return CommandOutcome<OperationsRemovedResponse>.Refused(DraftRevisionConflict(request.DraftName));
 
                 return CommandOutcome<OperationsRemovedResponse>.Success(new OperationsRemovedResponse(
@@ -1638,7 +1640,16 @@ public static partial class ProposalCommands
     /// the rule is unconditional (ADR 0016): a caller must discard this <see cref="LcmCache"/> and
     /// reload the project rather than reuse it after a failed apply.
     /// </remarks>
-    public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request) =>
+    public static CommandOutcome<ApplyProjection> Apply(ApplyRequest request)
+    {
+        if (!File.Exists(request.FwDataPath)) return ApplyWithinLease(request);
+        using var lease = ProjectApplyLease.TryAcquire(request.FwDataPath);
+        return lease is null
+            ? CommandOutcome<ApplyProjection>.Refused(ProjectApplyLease.Busy(request.FwDataPath))
+            : ApplyWithinLease(request);
+    }
+
+    internal static CommandOutcome<ApplyProjection> ApplyWithinLease(ApplyRequest request) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
             BuildApplyProjection(database, project, request.ProposalId, request.Force, request.Attribution));
 
@@ -1925,6 +1936,9 @@ public static partial class ProposalCommands
                     Fact(("proposalId", id), ("status", record.Status), ("supersededBy", record.SupersededBy))));
             }
 
+            if (ApplyAuthorization.PendingChangesRefusal(database, record.ProposalId) is { } pendingRefusal)
+                return CommandOutcome<ApplyProjection>.Refused(pendingRefusal);
+
             var manifest = ProposalRecordMapping.ToManifest(record);
 
             // ADR 0004 decision 3: a bare apply with no bound DryRun is a hard error, checked before loading the project.
@@ -1942,6 +1956,8 @@ public static partial class ProposalCommands
 
             // Checked before loading the project, same as the anchor check above.
             var authorization = ApplyAuthorization.Evaluate(database, project, record, envelope, manifest);
+            if (authorization.PendingRefusal is { } authorizationRefusal)
+                return CommandOutcome<ApplyProjection>.Refused(authorizationRefusal);
             var candidate = authorization.Candidate;
             var readiness = authorization.Readiness;
             if (!authorization.Authorized(force))
@@ -2004,6 +2020,8 @@ public static partial class ProposalCommands
                 var note = attribution.WriteNote
                     ? new ApplyNote(manifest.Label ?? "Motif change", record.Rationale)
                     : null;
+                if (ApplyAuthorization.PendingChangesRefusal(database, canonicalId) is { } beforeMutationRefusal)
+                    return CommandOutcome<ApplyProjection>.Refused(beforeMutationRefusal);
                 var receipt = ProposalApplier.Apply(cache, envelope, manifest.Anchor, string.Empty, description,
                     attribution.Mode, note);
 
@@ -2391,11 +2409,14 @@ public static partial class ProposalCommands
     internal static readonly AsyncLocal<Action<string>?> BeforeDraftSave = new();
 
     // Every Draft edit is a compare-and-swap against what it read, so a racing edit is refused, never lost.
-    private static bool TrySaveLoadedDraft(ProposalRepository repository, string draftName, string loadedJson,
-        DraftDocument draft)
+    private static bool TrySaveLoadedDraft(MotifDatabase database, ProposalRepository repository, string draftName,
+        string loadedJson, DraftDocument draft)
     {
         BeforeDraftSave.Value?.Invoke(draftName);
-        return repository.TrySaveDraft(draftName, loadedJson, SerializeDraft(draft));
+        if (!repository.GetDraft(draftName).IsPendingChanges)
+            return repository.TrySaveDraft(draftName, loadedJson, SerializeDraft(draft));
+        using var lease = ProjectApplyLease.TryAcquire(database.Project.FullFwDataPath);
+        return lease is not null && repository.TrySaveDraft(draftName, loadedJson, SerializeDraft(draft));
     }
 
     internal static DraftDocument DeserializeDraft(string json) =>

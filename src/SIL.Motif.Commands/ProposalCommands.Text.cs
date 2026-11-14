@@ -1,3 +1,6 @@
+using SIL.LCModel;
+using System.Text.Json;
+using SIL.Motif.Runner.Resolution;
 using SIL.Motif.Host;
 using SIL.Motif.Projection;
 using SIL.Motif.Worker.Store;
@@ -27,13 +30,24 @@ public static partial class ProposalCommands
             var draftName = PendingChanges.DraftName;
             try
             {
-                draftName = PendingChanges.EnsurePendingDraft(new ProposalRepository(database));
+                draftName = PendingChanges.EnsurePendingDraft(database, new ProposalRepository(database));
                 var intent = new SetTextParagraphsIntent(CanonicalId.Parse(request.Target), request.Paragraphs);
                 var authored = SetTextParagraphsComposer.Authored(intent);
                 return Single(ComposeStepsIntoDraft(database, project, draftName,
                 [
                     new ComposeStep(null, SetTextParagraphsComposer.Name,
-                        (cache, _) => (authored, SetTextParagraphsComposer.Build(cache, intent)),
+                        (cache, _) =>
+                        {
+                            var owner = CanonicalIdResolver.Resolve(cache, intent.Target);
+                            var name = owner is ICmPossibility possibility
+                                ? possibility.Name.BestAnalysisAlternative?.Text : null;
+                            var inputProperties = authored.EnumerateObject()
+                                .ToDictionary(property => property.Name, property => property.Value.Clone());
+                            inputProperties["pendingName"] = JsonSerializer.SerializeToElement(
+                                name is { Length: > 0 } ? $"GDR '{name}'" : $"text '{intent.Target.Value}'");
+                            var input = JsonSerializer.SerializeToElement(inputProperties);
+                            return (input, SetTextParagraphsComposer.Build(cache, intent));
+                        },
                         ReplacePrevious: SameField, Authored: authored),
                 ]));
             }

@@ -26,7 +26,7 @@ public static partial class ProposalCommands
             var draftName = PendingChanges.DraftName;
             try
             {
-                draftName = PendingChanges.EnsurePendingDraft(new ProposalRepository(database));
+                draftName = PendingChanges.EnsurePendingDraft(database, new ProposalRepository(database));
                 var target = CanonicalId.Parse(request.Target);
                 var intent = new SetTextRichStringIntent(target, request.RichString);
                 var authored = SetTextRichStringComposer.Authored(intent);

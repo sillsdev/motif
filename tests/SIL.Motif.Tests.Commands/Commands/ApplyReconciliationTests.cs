@@ -84,6 +84,129 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void PendingDraftCannotBeStagedBetweenAuthorizationAndMutation()
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        var proposalId = CreateMeasuredProposal(path, "race-target",
+            CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value, SeededProject.FirstGloss + " applied");
+        Assert.True(ProposalCommands.New(new NewDraftRequest(path, "1.0", PendingChanges.DraftName, "Pending")).Succeeded);
+        CommandOutcome<SetGlossAddedResponse>? staged = null;
+        var reachedSave = false;
+        try
+        {
+            ProposalCommands.BeforeDraftSave.Value = _ => reachedSave = true;
+            ProposalCommands.ApplyLoaderOverride.Value = () =>
+            {
+                staged = ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", PendingChanges.DraftName,
+                    CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value, NewLangProjFixture.AnalysisTag, "pending"));
+                return new FwDataProjectLoader();
+            };
+            var applied = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposalId, Force: true));
+            Assert.True(reachedSave);
+            Assert.NotNull(staged);
+            Assert.True(applied.Succeeded, applied.Refusal?.Message);
+            Assert.Equal("draft.revision-conflict", staged!.Refusal?.Code);
+        }
+        finally
+        {
+            ProposalCommands.BeforeDraftSave.Value = null;
+            ProposalCommands.ApplyLoaderOverride.Value = null;
+        }
+    }
+
+    [Fact]
+    public void ReopeningThePendingProposalCannotRaceAnApply()
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        using (var database = ProjectMotifDatabase.Open(path))
+            PendingChanges.EnsurePendingDraft(database, new ProposalRepository(database));
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", PendingChanges.DraftName,
+            CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value, NewLangProjFixture.AnalysisTag,
+            SeededProject.FirstGloss + " pending")).Succeeded);
+        DraftRationale.Author(path, PendingChanges.DraftName, "Clarify a gloss", "Record the intended meaning.");
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, "1.0", PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var proposalId = finalized.Value!.ProposalId;
+        var request = new ReopenRequest(path, "1.0", PendingChanges.DraftName, proposalId);
+        using (var lease = ProjectApplyLease.TryAcquire(path))
+        {
+            Assert.NotNull(lease);
+            var refused = ProposalCommands.Reopen(request);
+            Assert.Equal(RefusalCodes.ApplyInProgress, refused.Refusal?.Code);
+        }
+        var reopened = ProposalCommands.Reopen(request);
+        Assert.True(reopened.Succeeded, reopened.Refusal?.Message);
+    }
+
+    [Fact]
+    public void CoreApplyRechecksThePendingDraftBeforeMutation()
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        var target = CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value;
+        var proposalId = CreateMeasuredProposal(path, "recheck-target", target, SeededProject.FirstGloss + " applied");
+        Assert.True(ProposalCommands.New(new NewDraftRequest(path, "1.0", PendingChanges.DraftName, "Pending")).Succeeded);
+        string emptyJson;
+        using (var database = ProjectMotifDatabase.Open(path))
+            emptyJson = new ProposalRepository(database).GetDraft(PendingChanges.DraftName).ProposalJson!;
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", PendingChanges.DraftName,
+            target, NewLangProjFixture.AnalysisTag, "pending")).Succeeded);
+        string stagedJson;
+        using (var database = ProjectMotifDatabase.Open(path))
+        {
+            var repository = new ProposalRepository(database);
+            stagedJson = repository.GetDraft(PendingChanges.DraftName).ProposalJson!;
+            Assert.True(repository.TrySaveDraft(PendingChanges.DraftName, stagedJson, emptyJson));
+        }
+        try
+        {
+            ProposalCommands.ApplyLoaderOverride.Value = () =>
+            {
+                using var database = ProjectMotifDatabase.Open(path);
+                Assert.True(new ProposalRepository(database).TrySaveDraft(PendingChanges.DraftName, emptyJson, stagedJson));
+                return new FwDataProjectLoader();
+            };
+            var applied = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposalId, Force: true));
+            Assert.Equal(RefusalCodes.ApplyPendingChanges, applied.Refusal?.Code);
+            AssertGlossOnDisk(path, pristine.Seed.FirstSenseId, NewLangProjFixture.AnalysisTag, SeededProject.FirstGloss);
+        }
+        finally { ProposalCommands.ApplyLoaderOverride.Value = null; }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CoreApplyRefusesAFinalizedProposalWhilePendingChangesExist(bool force)
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        var target = CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value;
+        var proposalId = CreateMeasuredProposal(path, "other-proposal", target, SeededProject.FirstGloss + " applied");
+        Assert.True(ProposalCommands.New(new NewDraftRequest(path, "1.0", PendingChanges.DraftName, "Pending")).Succeeded);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", PendingChanges.DraftName,
+            target, NewLangProjFixture.AnalysisTag, "pending")).Succeeded);
+        var outcome = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposalId, force));
+        Assert.Equal(RefusalCodes.ApplyPendingChanges, outcome.Refusal?.Code);
+        AssertGlossOnDisk(path, pristine.Seed.FirstSenseId, NewLangProjFixture.AnalysisTag, SeededProject.FirstGloss);
+    }
+
+    [Fact]
+    public void CoreApplyAllowsAFinalizedProposalWhenThePendingDraftIsEmpty()
+    {
+        string path;
+        using (var scratch = pristine.NewScratch()) path = scratch.ProjectId.Path;
+        var gloss = SeededProject.FirstGloss + " after empty";
+        var proposalId = CreateMeasuredProposal(path, "empty-pending-target",
+            CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value, gloss);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(path, "1.0", PendingChanges.DraftName, "Pending")).Succeeded);
+        var outcome = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposalId, Force: true));
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        AssertGlossOnDisk(path, pristine.Seed.FirstSenseId, NewLangProjFixture.AnalysisTag, gloss);
+    }
+
+    [Fact]
     public void ReceiptWriteFailureAfterSavedApplyIsStoreInconsistent()
     {
         var seed = pristine.Seed;
@@ -302,7 +425,7 @@ public sealed class ApplyReconciliationTests(PristineProjectFixture pristine)
             parameter => parameter.ParameterType == typeof(System.Threading.CancellationToken)));
     }
 
-    private static string CreateMeasuredProposal(string projectPath, string draftName, string target, string gloss)
+    internal static string CreateMeasuredProposal(string projectPath, string draftName, string target, string gloss)
     {
         Assert.True(ProposalCommands.New(new NewDraftRequest(
             projectPath, "1.0", draftName, null)).Succeeded);

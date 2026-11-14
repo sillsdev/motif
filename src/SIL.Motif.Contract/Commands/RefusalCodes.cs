@@ -31,6 +31,8 @@ public static class RefusalCodes
     public const string ApplyNoteUnavailable = "apply.note-unavailable";
     /// <summary>The save returned but the project file does not hold the change, so nothing was recorded as applied.</summary>
     public const string ApplyNotSaved = "apply.not-saved";
+    public const string ApplyPendingChanges = "apply.pending-changes";
+
     public const string ApplyNotReady = "apply.not-ready";
     public const string ApplyPreconditionFailed = "apply.precondition-failed";
     public const string ApplyProjectInUse = "apply.project-in-use";

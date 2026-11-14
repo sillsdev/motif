@@ -2,6 +2,7 @@ using System.Linq;
 using System.Text.Json;
 using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
@@ -24,18 +25,20 @@ namespace SIL.Motif.Commands;
 /// <param name="HasAnchor">Whether a Dry Run is bound to the Proposal at all.</param>
 /// <param name="Considered">How many Correctness Assessments of the revision were weighed to find the candidate.</param>
 /// <param name="Unread">How many older Assessments of the revision were left unread past the newest ten.</param>
+/// <param name="PendingRefusal">The pending changes that must be resolved before another Proposal can be applied.</param>
 internal sealed record ApplyAuthorizationDecision(
     Readiness.Decision Readiness, AssessmentRecord? Candidate, DryRunModel? BoundDryRun, bool HasAnchor,
-    int Considered = 0, int Unread = 0)
+    int Considered = 0, int Unread = 0, Refusal? PendingRefusal = null)
 {
     /// <summary>Whether Apply may proceed: a bound Dry Run is required even with force, Readiness only without.</summary>
-    public bool Authorized(bool force) => HasAnchor && (force || Readiness.Reasons.Count == 0);
+    public bool Authorized(bool force) => PendingRefusal is null && HasAnchor && (force || Readiness.Reasons.Count == 0);
 
     /// <summary>The Readiness shown to a person, naming a missing bound Dry Run as a reason.</summary>
     public ReadinessProjection ToProjection(bool forced)
     {
         var reasons = HasAnchor ? Readiness.Reasons
             : [.. Readiness.Reasons, "no Dry Run is bound to it, so nothing has shown what it would change"];
+        if (PendingRefusal is not null) reasons = [.. reasons, PendingRefusal.Message];
         return new ReadinessProjection(
             IsReady: reasons.Count == 0,
             CorrectnessAssessmentRequired: Readiness.CorrectnessAssessmentRequired,
@@ -56,12 +59,57 @@ internal sealed record ApplyAuthorizationDecision(
 /// </summary>
 internal static class ApplyAuthorization
 {
+    internal static Refusal? PendingChangesRefusal(MotifDatabase database, CanonicalId proposalId)
+    {
+        var pending = new ProposalRepository(database).FindPendingChangesDraft();
+        if (pending is null || pending.ProposalId == proposalId) return null;
+        var draft = JsonSerializer.Deserialize<DraftDocument>(pending.ProposalJson!,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            ?? throw new InvalidDataException("The pending Draft has no content.");
+        var names = new List<string>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var provenance = draft.ComposerProvenance
+            .Where(item => PendingChanges.Property(item, "changeId") is not null)
+            .GroupBy(item => PendingChanges.Property(item, "changeId")!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
+        var operationNames = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var entry in draft.ComposerProvenance)
+        {
+            if (!entry.TryGetProperty("operationIds", out var ids) || ids.ValueKind != JsonValueKind.Array) continue;
+            var input = entry.TryGetProperty("input", out var value) ? value : default;
+            var label = PendingChanges.Property(input, "pendingName");
+            if (label is null) continue;
+            foreach (var id in ids.EnumerateArray())
+                if (id.ValueKind == JsonValueKind.String) operationNames[id.GetString()!] = label;
+        }
+        foreach (var operation in draft.Operations)
+        {
+            var changeId = operation.Extensions is { } ext ? PendingChanges.Property(ext, "changeId") : null;
+            if (changeId is not null)
+            {
+                if (!seen.Add(changeId)) continue;
+                var word = provenance.TryGetValue(changeId, out var entry) ? PendingChanges.Property(entry, "word") : null;
+                names.Add(string.IsNullOrWhiteSpace(word) ? "change '" + changeId + "'" : "word '" + word + "'");
+            }
+            else names.Add(operationNames.GetValueOrDefault(operation.OperationId) ??
+                "change '" + (operation.Target ?? operation.OperationId) + "'");
+        }
+        if (names.Count == 0) return null;
+        var listed = string.Join(", ", names.Take(3));
+        if (names.Count > 3) listed += $" and {names.Count - 3} more";
+        var noun = names.Count == 1 ? "change" : "changes";
+        var pronoun = names.Count == 1 ? "it" : "them";
+        return new Refusal(RefusalCodes.ApplyPendingChanges, FailureReason.Refused,
+            $"You have {names.Count} {noun} not applied yet ({listed}). Apply or discard {pronoun} first.");
+    }
+
     /// <summary>Weighs the Proposal's evidence the way Apply does, without refusing or changing anything.</summary>
     public static ApplyAuthorizationDecision Evaluate(MotifDatabase database, ProjectLocator project,
         ProposalRecord record, SIL.Motif.Contract.Model.Proposal content, ManifestDocument manifest)
     {
+        var pendingRefusal = PendingChangesRefusal(database, record.ProposalId);
         if (manifest.Anchor is null)
-            return new ApplyAuthorizationDecision(new Readiness.Decision([], false), null, null, false);
+            return new ApplyAuthorizationDecision(new Readiness.Decision([], false), null, null, false, PendingRefusal: pendingRefusal);
 
         var configuration = new ProjectConfigurationReader().Read(project);
         var assessments = new AssessmentRepository(database);
@@ -124,7 +172,7 @@ internal static class ApplyAuthorization
         var choice = ProposalCommands.ChooseCandidate(candidateIds, assessments.Get, EvaluateFor);
         var candidate = choice.Candidate;
         var readiness = choice.Decision;
-        return new ApplyAuthorizationDecision(readiness, candidate, boundDryRun, true, choice.Considered, choice.Unread);
+        return new ApplyAuthorizationDecision(readiness, candidate, boundDryRun, true, choice.Considered, choice.Unread, pendingRefusal);
     }
 
     private static AssessmentRecord? ReusedBeforeCorrectness(MotifDatabase database, ProjectLocator project,

@@ -728,7 +728,7 @@ public static partial class ProposalCommands
                         SIL.Motif.Contract.Model.OperationKind.GetGroup(operation.Kind) == group))
                     draft.ContractVersions.Remove(group);
             _ = ProposalJsonParser.Parse(BuildProposalJson(draft));
-            if (!TrySaveLoadedDraft(repository, draftName, loadedJson, draft))
+            if (!TrySaveLoadedDraft(database, repository, draftName, loadedJson, draft))
                 return CommandOutcome<ComposedOperationsResponse[]>.Refused(DraftRevisionConflict(draftName));
             return CommandOutcome<ComposedOperationsResponse[]>.Success(steps.Zip(composed, (step, result) =>
             {

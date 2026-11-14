@@ -728,7 +728,7 @@ public sealed class ProposalRepository : IProposalRepository
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT p.CurrentIntentDigest, r.ProposalJson, p.Status, p.Label, p.Rationale, p.SupersededBy, p.AnchorJson,
-                   p.RationaleIntentDigest, p.RationaleUpdatedUtc
+                   p.RationaleIntentDigest, p.RationaleUpdatedUtc, p.Role
             FROM Proposals p LEFT JOIN ProposalRevisions r
                 ON r.ProposalId = p.ProposalId AND r.IntentDigest = p.CurrentIntentDigest
             WHERE p.ProposalId = $id AND p.DraftName IS NULL;
@@ -783,7 +783,8 @@ public sealed class ProposalRepository : IProposalRepository
                 $"not the bound '{digest}' (store inconsistency).");
         }
 
-        var record = new ProposalRecord(proposalId, digest, json, status, label, comment, supersededBy, bytes, anchorJson)
+        var record = new ProposalRecord(proposalId, digest, json, status, label, comment, supersededBy, bytes, anchorJson,
+            Role: Text(reader, 9))
         {
             RationaleIntentDigest = Text(reader, 7), RationaleUpdatedUtc = Text(reader, 8),
         };

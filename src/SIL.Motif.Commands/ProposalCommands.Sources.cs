@@ -65,7 +65,7 @@ public static partial class ProposalCommands
             var draftName = PendingChanges.DraftName;
             try
             {
-                draftName = PendingChanges.EnsurePendingDraft(new ProposalRepository(database));
+                draftName = PendingChanges.EnsurePendingDraft(database, new ProposalRepository(database));
                 var authored = JsonSerializer.SerializeToElement(authoredInput);
                 var step = ComposeStep.From(definition, authored) with
                 {

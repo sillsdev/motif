@@ -120,9 +120,7 @@ public static class PendingChangesWorkflow
         using var lease = ProjectApplyLease.TryAcquire(target.ProjectPath);
         if (lease is null)
         {
-            return CommandOutcome<ApplyPendingResult>.Refused(new Refusal("apply.in-progress", FailureReason.Busy,
-                "Another Apply is already running for this project. Try again when it finishes.",
-                new Dictionary<string, string>(StringComparer.Ordinal) { ["fwDataPath"] = target.ProjectPath }));
+            return CommandOutcome<ApplyPendingResult>.Refused(ProjectApplyLease.Busy(target.ProjectPath));
         }
         HoldLeaseForTest(target.ProjectPath);
         return ApplyLeased(target, cancellationToken, dryRunTimeout, runnerLauncher);
@@ -194,7 +192,7 @@ public static class PendingChangesWorkflow
         };
         if (unbound is not null) return ReopenAfterRefusal(target.ProjectPath, identity, unbound);
 
-        var applied = ProposalCommands.Apply(new ApplyRequest(target.ProjectPath, version, proposalId, target.Force,
+        var applied = ProposalCommands.ApplyWithinLease(new ApplyRequest(target.ProjectPath, version, proposalId, target.Force,
             target.Attribution));
         if (applied.Succeeded)
             return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(applied.Value!,
@@ -219,6 +217,8 @@ public static class PendingChangesWorkflow
         {
             return CommandOutcome<ApplyIdentity>.Refused(ProposalCommands.ProposalLoadRefusal(exception));
         }
+        if (ApplyAuthorization.PendingChangesRefusal(database, record.ProposalId) is { } pendingRefusal)
+            return CommandOutcome<ApplyIdentity>.Refused(pendingRefusal);
         var isDraft = record.DraftName is not null;
         var isPending = isDraft && record.IsPendingChanges;
         string revision;

@@ -22,6 +22,32 @@ public sealed class DraftEditRaceTests(PristineProjectFixture pristine)
     private static string Version => MotifProductVersion.CurrentText;
 
     [Fact]
+    public void AWordChangeCannotBeSavedWhileApplyHoldsTheProjectLease()
+    {
+        string path;
+        var wordformId = Guid.Empty;
+        using (var scratch = pristine.NewScratch())
+        {
+            path = scratch.ProjectId.Path;
+            NonUndoableUnitOfWorkHelper.Do(scratch.ActionHandlerAccessor, () =>
+                wordformId = scratch.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                    .Create(TsStringUtils.MakeString("lease-word", scratch.DefaultVernWs)).Guid);
+            new FwDataProjectLoader().Save(scratch);
+        }
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "pending-lease-root");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var initial = PendingChanges.Load(new PendingChangesRequest(path, Version));
+        using var lease = ProjectApplyLease.TryAcquire(path);
+        Assert.NotNull(lease);
+        var staged = PendingChanges.Put(new PutPendingChangeRequest(path, Version, initial.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "incorrect-spelling", CanonicalId.FromGuid(wordformId).Value,
+                "lease-word")));
+        Assert.False(staged.Succeeded);
+        Assert.Equal("change.revision-conflict", staged.Refusal?.Code);
+        Assert.Empty(PendingChanges.Load(new PendingChangesRequest(path, Version)).Value!.Changes);
+    }
+
+    [Fact]
     public void AComposerWhoseDraftChangedWhileItComposedIsRefusedAndTheOtherEditIsKept()
     {
         var path = NewProject();

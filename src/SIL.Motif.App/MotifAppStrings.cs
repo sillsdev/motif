@@ -3312,6 +3312,9 @@ public static class MotifAppStrings
 
     public static string RefusalApplyPreconditionFailed => Text("MotifApp.RefusalApplyPreconditionFailed");
 
+    /// <summary>Asks the person to resolve pending changes before applying another Proposal.</summary>
+    public static string RefusalApplyPendingChanges => Text("MotifApp.RefusalApplyPendingChanges");
+
     public static string RefusalApplyNotReady => Text("MotifApp.RefusalApplyNotReady");
 
     public static string RefusalApplyProjectInUse => Text("MotifApp.RefusalApplyProjectInUse");

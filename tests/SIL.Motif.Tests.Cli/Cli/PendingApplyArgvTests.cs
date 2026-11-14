@@ -9,6 +9,7 @@ using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -27,6 +28,69 @@ namespace SIL.Motif.Tests.Cli;
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group3)]
 public sealed class PendingApplyArgvTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public async Task PendingWordApprovalRefusesBothCliAndEngineApply()
+    {
+        var (path, wordformId) = ReleasedProjectWithWord("pending-approval");
+        Guid analysisId = Guid.Empty;
+        using (var cache = new FwDataProjectLoader().LoadCache(path))
+        {
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            {
+                var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(wordformId);
+                var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisFactory>().Create();
+                wordform.AnalysesOC.Add(analysis);
+                var entry = cache.ServiceLocator.GetInstance<ILexEntryRepository>().GetObject(pristine.Seed.FirstEntryId);
+                var bundle = cache.ServiceLocator.GetInstance<IWfiMorphBundleFactory>().Create();
+                analysis.MorphBundlesOS.Add(bundle);
+                bundle.MorphRA = entry.LexemeFormOA;
+                bundle.MsaRA = entry.MorphoSyntaxAnalysesOC.First();
+                analysisId = analysis.Guid;
+            });
+            new FwDataProjectLoader().Save(cache);
+        }
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "pending-refusal");
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root).Succeeded);
+        var draft = ProposalCommands.New(new NewDraftRequest(path, "1.0", "other", "Other changes"));
+        Assert.True(draft.Succeeded, draft.Refusal?.Message);
+        var pending = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
+        var staged = PendingChanges.Put(new PutPendingChangeRequest(path, "1.0", pending.Value!.Revision,
+            new ChangeIntent(CanonicalId.Mint().Value, "approve", CanonicalId.FromGuid(wordformId).Value,
+                "pending-approval", StoredAnalysisId: CanonicalId.FromGuid(analysisId).Value)));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var id = draft.Value!.ProposalId;
+        var engine = PendingChangesWorkflow.Apply(new ApplyProposalRequest(path, id, null));
+        var cli = await CliProcess.RunAsync(CliProcess.Start(IsolatedRunner.Options(root),
+            "apply", "--proposal", id, "--project", path, "--json"));
+        Assert.Equal(RefusalCodes.ApplyPendingChanges, engine.Refusal?.Code);
+        Assert.Contains("pending-approval", engine.Refusal!.Message);
+        Assert.True(cli.ExitCode != 0, cli.Error);
+        var failure = ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!;
+        Assert.Equal(engine.Refusal.Code, failure.Code);
+        Assert.Contains("pending-approval", cli.Error);
+    }
+
+    [Fact]
+    public async Task EmptyPendingDraftAllowsCliApplyOfARealProposal()
+    {
+        var (path, _) = ReleasedProjectWithWord("empty-pending", out var senseId);
+        var root = Path.Combine(Path.GetDirectoryName(path)!, "empty-pending-apply");
+        var target = CanonicalId.FromGuid(senseId).Value;
+        var created = ProposalCommands.New(new NewDraftRequest(path, "1.0", "other", "Other changes"));
+        Assert.True(created.Succeeded, created.Refusal?.Message);
+        Assert.True(ProposalCommands.AddSetGloss(new AddSetGlossRequest(path, "1.0", "other", target, "en", "new gloss")).Succeeded);
+        DraftRationale.Author(path, "other", "Edit a gloss", "Clarify the intended lexical meaning.");
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, "1.0", "other"));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        Assert.True(DryRunJobRunner.Run(path, "1.0", finalized.Value!.ProposalId).Succeeded);
+        Assert.True(ProposalCommands.New(new NewDraftRequest(path, "1.0", PendingChanges.DraftName, "Pending")).Succeeded);
+        var start = CliProcess.Start(IsolatedRunner.Options(root), "apply", finalized.Value.ProposalId,
+            "--project", path, "--force", "--json");
+        CliProcess.EnableAdvancedAiMode(start, root);
+        var outcome = await CliProcess.RunAsync(start);
+        Assert.True(outcome.ExitCode == 0, outcome.Error);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
