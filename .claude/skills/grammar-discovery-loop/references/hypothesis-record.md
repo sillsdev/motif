@@ -1,7 +1,7 @@
 # Hypothesis record
 
 One record per hypothesis; one hypothesis per brief. The record is a row of the hypothesis ledger in the Motif store
-(ADR 0115); `motif hypothesis add --file <record.json>` reads these fields as snake_case JSON (`host_class`,
+(ADR 0117); `motif hypothesis add --file <record.json>` reads these fields as snake_case JSON (`host_class`,
 `objects_added`, `attested_types_gained`, `questions`). Only the CLI writes it; MCP never does.
 
 | Field | Content |

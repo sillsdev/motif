@@ -72,7 +72,7 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
 
 ## Completion
 
-A hypothesis is finished when its ledger row has a verdict (`motif hypothesis decide`; the ledger is in the Motif store, ADR 0115), its encoding follows the verdict (rule for PASS;
+A hypothesis is finished when its ledger row has a verdict (`motif hypothesis decide`; the ledger is in the Motif store, ADR 0117), its encoding follows the verdict (rule for PASS;
 list only after FAIL or for a lexical fact; speaker questions queued for UNDECIDED), and its GDR matches the
 rules as Trial left them. A brief for a hypothesis-first package uses
 [references/brief-template.md](references/brief-template.md).

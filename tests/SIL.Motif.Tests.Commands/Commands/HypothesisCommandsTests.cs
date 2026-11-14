@@ -11,7 +11,7 @@ using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.Commands;
 
-/// <summary>The hypothesis ledger (ADR 0115): rules about what may be recorded, and the cost of every lookup.</summary>
+/// <summary>The hypothesis ledger (ADR 0117): rules about what may be recorded, and the cost of every lookup.</summary>
 public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-hypothesis", Guid.NewGuid().ToString("N"));

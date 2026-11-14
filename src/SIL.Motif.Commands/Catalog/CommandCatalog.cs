@@ -351,7 +351,7 @@ public static class CommandCatalog
             CommandSurface.Released, AgentClass.HumanOnly),
         new CommandDescriptor("request ask-again", typeof(AskAgainRequest), typeof(RequestCreatedResponse),
             CommandSurface.Released, AgentClass.HumanOnly),
-        // HypothesisCommands: the ledger is CLI-only (ADR 0115); nothing here is an MCP tool.
+        // HypothesisCommands: the ledger is CLI-only (ADR 0117); nothing here is an MCP tool.
         new CommandDescriptor("hypothesis add", typeof(AddHypothesisRequest), typeof(HypothesisResponse),
             CommandSurface.Developer, AgentClass.HumanOnly),
         new CommandDescriptor("hypothesis test", typeof(RecordHypothesisTestRequest), typeof(HypothesisResponse),

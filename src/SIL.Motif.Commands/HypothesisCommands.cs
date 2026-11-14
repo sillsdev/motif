@@ -9,7 +9,7 @@ using SIL.Motif.Worker.Store;
 namespace SIL.Motif.Commands;
 
 /// <summary>
-/// The hypothesis ledger: one record per rule, with its prediction, test and decision, in Motif's store (ADR 0115).
+/// The hypothesis ledger: one record per rule, with its prediction, test and decision, in Motif's store (ADR 0117).
 /// These commands are the whole API. A later control-test runner (#172) calls <see cref="RecordTest"/> and a rule-attempt
 /// gate (#171) calls <see cref="Neighbours"/>; neither needs to know the tables. Nothing here writes the FieldWorks project.
 /// </summary>

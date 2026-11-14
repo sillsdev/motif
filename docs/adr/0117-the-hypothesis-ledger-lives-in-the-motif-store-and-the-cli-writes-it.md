@@ -1,4 +1,4 @@
-# 0115. The hypothesis ledger lives in the Motif store, and only the CLI writes it
+# 0117. The hypothesis ledger lives in the Motif store, and only the CLI writes it
 
 **In plain terms:** every rule a builder proposes for a grammar gets one record: the rule, the forms it predicts, how it
 tested and what was decided. Builders ask the ledger "do we already have a rule for this change, environment, host class
@@ -29,7 +29,7 @@ stand-in.
    no GDR text is copied into the ledger. Hypothesis rows describe a project's grammar, so they live in that project's
    store and never in the Motif repository (ADR 0076).
 3. **The CLI writes it; MCP does not.** The write verbs are `HumanOnly` in the catalog and every ledger verb is
-   `ExposeAsAgentTool = false`, so no MCP tool exists for any of them. They are Developer-surface commands. The ledger
+   `ExposeAsAgentTool = false`, so no MCP tool exists for any of them. They are Developer-surface commands: an agent driving the shell CLI runs `hypothesis add|test|decide|link` with `MOTIF_DEVELOPER_COMMANDS=1` set and no human step (`HumanOnly` here means never an MCP tool; the CLI dispatch gate looks only at the surface). The ledger
    records a decision; it applies nothing. A later change may expose the read verbs through MCP.
 4. **One record per hypothesis, with these fields:** id (`H-n`, permanent), pattern, statement, mechanism, change,
    environment, host class and slot (the *shape*), neighbour (the check, required), predictions, falsifier, exceptions,
