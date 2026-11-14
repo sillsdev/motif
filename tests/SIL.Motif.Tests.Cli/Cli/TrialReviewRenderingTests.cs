@@ -36,6 +36,10 @@ public sealed class TrialReviewRenderingTests
         Assert.Contains("Attested gained: 95; generated gained: 924", text, StringComparison.Ordinal);
         Assert.Contains("Grammar size delta: 46 objects (entries 40", text, StringComparison.Ordinal);
         Assert.Contains("gain gate hold: WithinThreshold", text, StringComparison.Ordinal);
+        var held = GainSummary.Create(1, 0, size, new GainGatePolicy(GainGateMode.Hold, 1.5), incomplete: false);
+        var heldText = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
+            { Summary = report.Summary with { Flags = [], Gains = held } }));
+        Assert.Contains("HOLD (report only; Apply does not read it)", heldText, StringComparison.Ordinal);
     }
 
     [Fact]

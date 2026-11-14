@@ -38,6 +38,24 @@ public sealed class GrammarSizeDeltaCounterTests
     }
 
     [Fact]
+    public void AVariantEntryWithSeveralRefsCountsAsOneVariant()
+    {
+        var entry = Id();
+        var delta = GrammarSizeDeltaCounter.Count([
+            Create("lexical/lexDb/createEntries", entry), Child("lexical/lexEntry/createVariantRef", entry),
+            Child("lexical/lexEntry/createVariantRef", entry)]);
+        Assert.Equal(1, delta.Variants);
+        Assert.Equal(1, delta.ObjectsAdded);
+    }
+
+    [Fact]
+    public void HostsOfFeaturesThatAlreadyExistAreNotCounted()
+    {
+        var delta = GrammarSizeDeltaCounter.Count([Host("grammar/moStemMsa/addRefProdRestrict", Id(), Id())]);
+        Assert.Equal(0, delta.ExceptionFeatureHosts);
+    }
+
+    [Fact]
     public void PartsAddedToAnExistingEntryEachCountAsObjects()
     {
         var existing = Id();
@@ -75,6 +93,28 @@ public sealed class GrammarSizeDeltaCounterTests
         var delta = GrammarSizeDeltaCounter.Count([Create("lexical/lexSense/setGloss", Id()), Create("lexical/lexEntry/removeSenses", Id())]);
         Assert.Equal(0, delta.ObjectsAdded);
         Assert.Equal(GrammarSizeDelta.None, delta);
+    }
+
+    [Fact]
+    public void CountingCebScaleOperationsTakesUnderOneSecond()
+    {
+        var operations = new List<OperationEnvelope>();
+        var features = Enumerable.Range(0, 200).Select(_ => Id()).ToArray();
+        foreach (var feature in features) operations.Add(Create("lists/cmPossibilityList/createPossibilities", feature));
+        for (var i = 0; i < 20_000; i++)
+        {
+            var entry = Id();
+            operations.Add(Create("lexical/lexDb/createEntries", entry));
+            operations.Add(Child("lexical/lexEntry/createSenses", entry));
+            operations.Add(Child("lexical/lexEntry/createLexemeForm", entry));
+            operations.Add(Host("grammar/moStemMsa/addRefProdRestrict", Id(), features[i % features.Length]));
+        }
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var delta = GrammarSizeDeltaCounter.Count(operations);
+        watch.Stop();
+        Assert.Equal(20_000, delta.Entries);
+        Assert.Equal(20_000, delta.ExceptionFeatureHosts);
+        Assert.True(watch.ElapsedMilliseconds < 1000, $"took {watch.ElapsedMilliseconds} ms for {operations.Count} operations");
     }
 
     private static CanonicalId Id() => CanonicalId.Mint("x/");

@@ -159,6 +159,20 @@ public sealed class ReviewReportExpandedTests
         }
     }
 
+    [Fact]
+    public void AReportWrittenWithoutGainsReadsWithNullGains()
+    {
+        var report = CreateReport();
+        Assert.Null(report.Summary.Gains);
+        var json = JsonSerializer.Serialize(report, ReviewJson.Options);
+        Assert.DoesNotContain("\"gains\"", json, StringComparison.Ordinal);
+        Assert.Null(JsonSerializer.Deserialize<ReportView>(json, ReviewJson.Options)!.Summary.Gains);
+        var withGains = report with { Summary = report.Summary with
+            { Gains = GainSummary.Create(1, 2, GrammarSizeDelta.None, GainGatePolicy.Default, false) } };
+        var round = JsonSerializer.Deserialize<ReportView>(JsonSerializer.Serialize(withGains, ReviewJson.Options), ReviewJson.Options)!;
+        Assert.Equal(withGains.Summary.Gains, round.Summary.Gains);
+    }
+
     private static ReportView CreateReport()
     {
         var report = (ReportView)Create(typeof(ReportView));

@@ -142,7 +142,8 @@ public static class Trials
         if (first is null) return null;
         var record = TryBuildRecord(first, context, includeWordResults);
         if (record is null)
-            Console.Error.WriteLine($"warning: the newest Trial '{first.Job.JobId}' of a Proposal could not be read; it reads as not tried.");
+            System.Diagnostics.Trace.TraceWarning("The newest Trial '{0}' of a Proposal could not be read; it reads as not tried.",
+                first.Job.JobId);
         return record;
     }
 

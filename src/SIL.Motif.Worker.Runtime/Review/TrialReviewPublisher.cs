@@ -383,7 +383,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         }
     }
 
-    private static GainSummary BuildGains(ReviewAccumulatedFacts facts, FrozenReviewInputs inputs,
+    internal static GainSummary BuildGains(ReviewAccumulatedFacts facts, FrozenReviewInputs inputs,
         IEnumerable<OperationEnvelope> operations) =>
         GainSummary.Create(facts.AttestedGained, facts.GeneratedGained, GrammarSizeDeltaCounter.Count(operations),
             inputs.GainGate ?? GainGatePolicy.Default, facts.IncompleteCases > 0);

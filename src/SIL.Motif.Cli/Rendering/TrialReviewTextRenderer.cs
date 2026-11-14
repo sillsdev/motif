@@ -85,7 +85,8 @@ public static class TrialReviewTextRenderer
             $"exception features {size.ExceptionFeatures} on {size.ExceptionFeatureHosts} hosts, other {size.OtherObjects})");
         var ratio = gains.ObjectsPerAttestedType is { } value ? value.ToString("0.##", CultureInfo.InvariantCulture) : "none";
         text.AppendLine($"Objects per attested type gained: {ratio}; gain gate {gains.Gate.Mode.ToString().ToLowerInvariant()}: " +
-            $"{gains.Gate.Outcome}{(gains.Gate.Hold ? "; HOLD" : "")} (advisory; never blocks Apply)");
+            $"{gains.Gate.Outcome}" +
+            (gains.Gate.Hold ? "; HOLD (report only; Apply does not read it)" : ""));
     }
 
     private static string Flag(FlagFact flag) => flag.Facts switch

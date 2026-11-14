@@ -62,6 +62,41 @@ public sealed class ReviewTrialCaptureTests(PristineProjectFixture pristine)
         finally { Directory.Delete(root, recursive: true); }
     }
 
+    [Fact]
+    public void AConfiguredGainGateIsFrozenIntoTheCapturedInputsAndSurvivesTheArtifact()
+    {
+        string path;
+        using (var cache = pristine.NewScratch())
+        {
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var root = Directory.CreateTempSubdirectory("motif-review-gain-gate-").FullName;
+        try
+        {
+            File.WriteAllText(Path.ChangeExtension(path, ".motif.toml"),
+                "[gain-gate]\nmode = \"hold\"\nmin-attested-per-object = 3\n");
+            var baseline = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), root);
+            Assert.True(baseline.Succeeded, baseline.Refusal?.Message);
+            var draft = SIL.Motif.Commands.ProposalCommands.New(new(path, "1.0", "capture-revision", null));
+            Assert.True(draft.Succeeded, draft.Refusal?.Message);
+            var project = new ProjectLocator(path, Path.GetFileNameWithoutExtension(path));
+            using var database = MotifDatabase.OpenOwned(ProjectDatabaseCatalog.DatabasePathFor(project), project,
+                MotifSchema.CurrentSchema, new Version(1, 0));
+            AddWordChange(new ProposalRepository(database), "gatealpha");
+            var frozen = SIL.Motif.Commands.JobCommands.FreezeTrialProposal(new EnqueueTrialRequest(path, "1.0", draft.Value!.ProposalId));
+            Assert.True(frozen.Succeeded, frozen.Refusal?.Message);
+            var words = SIL.Motif.Commands.JobCommands.ResolveTrialWords(frozen.Value!);
+            Assert.True(words.Succeeded, words.Refusal?.Message);
+            var captured = ReviewTrialCapture.Capture(frozen.Value!, words.Value, null);
+            Assert.True(captured.Succeeded, captured.Refusal?.Message);
+            var policy = new SIL.Motif.Contract.Review.GainGatePolicy(SIL.Motif.Contract.Review.GainGateMode.Hold, 3);
+            var stored = ReviewInputArtifacts.Read(database, captured.Value!.ReviewInputs!);
+            Assert.Equal(policy, stored.Inputs.GainGate);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     private static void AddWordChange(ProposalRepository repository, string word)
     {
         var id = SIL.Motif.Contract.Ids.CanonicalId.FromGuid(Guid.NewGuid()).Value;
