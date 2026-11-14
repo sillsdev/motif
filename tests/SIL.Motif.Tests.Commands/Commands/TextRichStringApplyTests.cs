@@ -300,6 +300,39 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void RetryingAnAppliedTitleReturnsAlreadyAppliedWithoutWritingAgain()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("mine", "en")],
+            new(title.Text, title.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var first = Apply(path);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var id = first.Value!.Receipt!.ProposalId;
+        var before = File.ReadAllBytes(path);
+        long ReceiptCount()
+        {
+            using var database = ProjectMotifDatabase.Open(path);
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $id;";
+            command.Parameters.AddWithValue("$id", id);
+            return (long)command.ExecuteScalar()!;
+        }
+        Assert.Equal(1, ReceiptCount());
+
+        var retry = PendingChangesWorkflow.Apply(new ApplyRequest(path, MotifProductVersion.CurrentText, id, true));
+
+        Assert.True(retry.Succeeded, retry.Refusal?.Code + ": " + retry.Refusal?.Message);
+        Assert.True(retry.Value!.Receipt!.AlreadyApplied);
+        Assert.Equal(before, File.ReadAllBytes(path));
+        Assert.Equal(1, ReceiptCount());
+    }
+
+    [Fact]
     public void AStringFieldTakesNoWritingSystemAndIsWritten()
     {
         var path = Project();
