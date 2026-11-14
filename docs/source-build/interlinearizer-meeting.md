@@ -27,3 +27,12 @@ interlinearizer's shapes. Their extension is sillsdev/interlinearizer-extension;
    Motif anchors an occurrence as `MAT 5:3#2`: the verse in the Source's versification, then the 1-based index of words
    with a letter or digit. Your tokens are keyed by verse and character offset. Can we agree on one format, or a fixed
    conversion between the two?
+9. **Command or network object.** Our local hook has a provider register its own command, and the interlinearizer calls
+   it (`registerSuggestionProvider`, `getProvidedSuggestions`). Would you rather have a network object or service the
+   provider implements?
+10. **Provided analyses: display-only?** Should analyses a provider offers stay display-only until a person approves
+    one into your store, or should they be persistable with their own id and owner?
+11. **Token reference format.** Our selection event and suggestion request carry a token reference. Which format: your
+    offset keys, Motif's `MAT 5:3#2` (question 8), or a fixed conversion? Is verse-only selection enough?
+12. **Tier order.** Where does a provider tier sit relative to #128 (the analysis query API), #148 (sibling-project
+    pool) and #218? How should timeouts and order work when several providers answer?

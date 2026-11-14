@@ -6,6 +6,8 @@ it travels with Send/Receive.
 
 **Status:** accepted, 2026-11-12 (owner, decisions 28-39 in the Phase 1 personas record).
 
+**Note, 2026-11-13:** partly superseded for phase 1 by [ADR 0113](0113-the-phase-1-paratext-plugin-is-an-expanded-interlinearizer-on-fw-lite.md): steps 5-7, the Words view (decision 11) and the .fwdata judgement storage no longer apply to the plugin on FW Lite.
+
 ## Context
 
 The Phase 1 flow is Motif beside Paratext 10 ([ADR 0100](0100-motif-has-two-stages-grow-and-polish.md), Grow). Importing
