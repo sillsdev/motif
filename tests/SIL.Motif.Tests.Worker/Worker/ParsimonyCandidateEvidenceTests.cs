@@ -260,6 +260,15 @@ public sealed class ParsimonyCandidateEvidenceTests : IDisposable
         var response = JsonSerializer.Deserialize<ParsimonyCandidateEvidenceResponse>(completed.ResultJson!,
             SIL.Motif.Contract.MotifJson.CreateOptions())!;
         Assert.Equal(trialJob!.JobId, response.Candidate.DryRunJobId);
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            var snapshot = QuerySnapshotStore.Read(connection, transaction);
+            Assert.NotNull(snapshot);
+            Assert.Equal(trialJob.JobId, snapshot.TrialId);
+            Assert.Equal(response.After.Inputs.BundleId, snapshot.BundleId);
+            Assert.Equal(response.After.Inputs.ModelFingerprint, snapshot.GrammarHash);
+        }
         using var published = JsonDocument.Parse(fromTrial.PublishedDryRunJson);
         Assert.Equal(published.RootElement.GetProperty("effectDigest").GetString(),
             response.Candidate.DryRunEffectDigest);

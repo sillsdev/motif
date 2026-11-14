@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 70;
+    public const int CurrentSchema = 71;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -34,7 +34,7 @@ public static class MotifSchema
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
-                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl;
+                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl;
             command.ExecuteNonQuery();
         }
 
@@ -70,7 +70,8 @@ public static class MotifSchema
             "ReviewReports", "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents",
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
             "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
-            "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests"
+            "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests",
+            "query_snapshot", "query_forms", "query_stems"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -498,6 +499,11 @@ public static class MotifSchema
 
     private static IReadOnlyList<ColumnShape> ColumnsFor(string table) => table switch
     {
+        "query_snapshot" => [C("Id", "INTEGER", false, 1), C("TrialId", "TEXT", true),
+            C("GrammarHash", "TEXT", true), C("BundleId", "TEXT", true), C("WritingSystem", "TEXT", true),
+            C("GraphemesJson", "TEXT", true), C("UnresolvedVariants", "INTEGER", true), C("SourceWriteTicks", "INTEGER", true),
+            C("TrialCreatedUtc", "TEXT", true), C("TrialQueueOrder", "REAL", true)],
+        "query_forms" or "query_stems" => [C("Ordinal", "INTEGER", false, 1), C("RowJson", "TEXT", true)],
         "MotifMetadata" =>
         [C("Id", "INTEGER", false, 1), C("FullFwDataPath", "TEXT", true),
             C("FieldWorksProjectIdentity", "TEXT", true), C("MinimumWorkerVersion", "TEXT", true),
@@ -1574,4 +1580,21 @@ public static class MotifSchema
             UNIQUE (AssessmentId, Path)
         );
         """;
+    private const string QueryDdl = """
+        CREATE TABLE query_snapshot (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            TrialId TEXT NOT NULL,
+            GrammarHash TEXT NOT NULL,
+            BundleId TEXT NOT NULL,
+            WritingSystem TEXT NOT NULL,
+            GraphemesJson TEXT NOT NULL,
+            UnresolvedVariants INTEGER NOT NULL,
+            SourceWriteTicks INTEGER NOT NULL,
+            TrialCreatedUtc TEXT NOT NULL,
+            TrialQueueOrder REAL NOT NULL
+        );
+        CREATE TABLE query_forms (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
+        CREATE TABLE query_stems (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
+        """;
+
 }

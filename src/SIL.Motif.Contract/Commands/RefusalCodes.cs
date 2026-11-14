@@ -219,6 +219,11 @@ public static class RefusalCodes
     public const string ProposalRationaleUnchecked = "proposal.rationale-unchecked";
     public const string ProposalRationaleStale = "proposal.rationale-stale";
 
+    public const string QueryInvalid = "query.invalid";
+    /// <summary>The requested grouping exceeds the bounded result size.</summary>
+    public const string QueryTooManyGroups = "query.too-many-groups";
+    public const string QueryNoTrialRows = "query.no-trial-rows";
+
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
     public const string ProjectInUse = "project.in-use";

@@ -16,6 +16,7 @@ public sealed class ParsimonyToolSurfaceTests
         "motif_start_proposal",
         "motif_finalize_proposal",
         "motif_dry_run",
+        "motif_query",
         "motif_parsimony_measures",
         "motif_run_parsimony_measure",
         "motif_parsimony_report",
@@ -40,6 +41,19 @@ public sealed class ParsimonyToolSurfaceTests
         "motif_add_affix_slot",
         "motif_add_affix_template",
     ];
+
+    [Fact]
+    public void QueryIsReadOnlyInBothProfiles()
+    {
+        foreach (var profile in new[] { "default", "parsimony-experimental" })
+        {
+            var query = Assert.Single(MotifMcpServer.Expose(ToolProfile.Load(ShippedProfile(profile))),
+                tool => tool.Name == "motif_query");
+            Assert.Equal(AgentClass.Read, query.Tool.Class);
+            Assert.True(query.Describe().Annotations!.ReadOnlyHint);
+            Assert.False(query.Describe().Annotations!.DestructiveHint);
+        }
+    }
 
     [Fact]
     public void ExperimentalProfileExposesOnlyTheNamedParsimonyWorkflowTools()

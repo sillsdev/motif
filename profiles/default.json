@@ -44,6 +44,7 @@
     { "tool": "motif_difference" },
     { "tool": "motif_proposal_difference" },
     { "tool": "motif_difference_produce" },
+    { "tool": "motif_query" },
     { "tool": "motif_list_requests" },
     { "tool": "motif_add_affix_process" },
     { "tool": "motif_add_affix_process_allomorph" },

@@ -1504,6 +1504,103 @@
     "idempotentHint": false
   },
   {
+    "name": "motif_query",
+    "description": "Query forms. Filters and groups forms from available Trial evidence. Compare each form with its base and inspect the changes.\nCommand: query forms. Agent class: Read.\n",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Query source.",
+          "enum": [
+            "forms"
+          ]
+        },
+        "where": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "col": {
+                "type": "string",
+                "description": "Column name."
+              },
+              "op": {
+                "type": "string",
+                "description": "Selector operator.",
+                "enum": [
+                  "is",
+                  "in",
+                  "not",
+                  "~",
+                  "has",
+                  "\u003C",
+                  "\u003E"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "description": "Selector value."
+              }
+            },
+            "required": [
+              "col",
+              "op",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "ANDed selectors."
+        },
+        "group": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Columns to group by."
+        },
+        "minCount": {
+          "type": "integer",
+          "description": "Minimum group count.",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "examples": {
+          "type": "integer",
+          "description": "Maximum examples per group.",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "ids": {
+          "type": "boolean",
+          "description": "Include canonical ids."
+        },
+        "rawLetters": {
+          "type": "boolean",
+          "description": "Use characters instead of graphemes."
+        },
+        "trialId": {
+          "type": "string",
+          "description": "Trial id; only the latest Trial has query rows."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "from",
+        "where",
+        "group",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_parsimony_measures",
     "description": "List Parsimony measures. Lists registered grammar checks, their axes, evidence tiers, citations, and fixed views. It reads the catalog without invoking PanGloss.\nCommand: parsimony measures. Agent class: Read.\n",
     "inputSchema": {

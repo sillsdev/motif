@@ -17,6 +17,7 @@ internal static class CliCommandNames
             return "proposal comment " + positionals[1];
         if (verb == "proposal" && positionals.FirstOrDefault() is "trial" or "review" or "looked-at" or "rationale" or "note")
             return "proposal " + positionals[0];
+        if (verb == "query" && positionals.FirstOrDefault() == "forms") return "query forms";
         if (verb == "parsimony")
         {
             if (positionals.SequenceEqual(new[] { "expectations" })) return "parsimony expectations";

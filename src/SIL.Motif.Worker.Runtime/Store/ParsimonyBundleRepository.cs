@@ -162,7 +162,8 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
     public void Publish(ParsimonyBundleRecord bundle, ReportRecord report,
         CancellationToken cancellationToken = default, Action? beforeCommit = null, Action? afterCommit = null,
         bool requireCurrentBaseline = true, bool setCurrentBaseline = true,
-        IReadOnlyList<ReportRecord>? moreReports = null, IReadOnlyList<FrozenParsimonyView>? frozenViews = null)
+        IReadOnlyList<ReportRecord>? moreReports = null, IReadOnlyList<FrozenParsimonyView>? frozenViews = null,
+        QuerySnapshotStore.Stored? querySnapshot = null)
     {
         ArgumentNullException.ThrowIfNull(bundle);
         ArgumentNullException.ThrowIfNull(report);
@@ -275,6 +276,13 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
             current.Parameters.AddWithValue("$project", bundle.ProjectKey);
             current.Parameters.AddWithValue("$bundle", bundle.BundleId);
             current.ExecuteNonQuery();
+        }
+        if (querySnapshot is not null)
+        {
+            if (bundle.InputKind != "candidate" || querySnapshot.BundleId != bundle.BundleId ||
+                querySnapshot.GrammarHash != bundle.ModelFingerprint)
+                throw new ArgumentException("Query rows must match their candidate bundle.", nameof(querySnapshot));
+            QuerySnapshotStore.ReplaceIfNewer(connection, transaction, querySnapshot);
         }
         using (var claim = connection.CreateCommand())
         {
@@ -700,6 +708,7 @@ public class EvidenceArtifactRepository : IBaselinePinQuery
         command.Parameters.AddWithValue("$bundle", bundleId);
         command.Parameters.AddWithValue("$now", Stamp(now));
         var deleted = command.ExecuteNonQuery() == 1;
+        if (deleted) QuerySnapshotStore.ClearForBundle(connection, transaction, bundleId);
         transaction.Commit();
         return deleted;
     }

@@ -2334,6 +2334,19 @@
     },
     {
       "kind": "command",
+      "code": "query forms",
+      "slug": "query-forms",
+      "title": "Query forms",
+      "description": "Filters and groups forms from available Trial evidence. Compare each form with its base and inspect the changes.",
+      "helpPage": "# Query forms\n\n\u0060query forms\u0060 reads forms and their bases from the latest available Parsimony evidence for a Trial. It does not change the FieldWorks project. Run a Trial and wait for its evidence job. If the project changes or a newer Trial completes, the result marks the older evidence as stale.\n\nUse repeated \u0060--where\u0060 selectors to combine conditions. The operators are \u0060=\u0060, \u0060in\u0060, \u0060not\u0060, \u0060has\u0060, \u0060~\u0060, \u0060\u003C\u0060 and \u0060\u003E\u0060; regular expressions use the non-backtracking engine. For example:\n\n\u0060\u0060\u0060powershell\nmotif query forms --project \u0022project.fwdata\u0022 --where kind=alternate --where \u0027change=d\u003Er\u0027\nmotif query forms --project \u0022project.fwdata\u0022 --where kind=alternate --group letters.dropped --json\n\u0060\u0060\u0060\n\n\u0060--group\u0060 accepts comma-separated columns, \u0060--min-count\u0060 filters groups, and \u0060--examples\u0060 selects examples ordered by form. \u0060--ids\u0060 includes ids for use by other commands. \u0060--trial\u0060 selects the Trial whose evidence is available; only one evidence bundle has query rows. Token frequency is not available in this phase. Forms use the project\u0027s graphemes; \u0060--raw-letters\u0060 uses individual characters instead.\n",
+      "usage": [
+        "Usage: motif query forms --project \u003Cfwdata\u003E [--where \u003Cselector\u003E] [--group \u003Ccolumns\u003E] [--min-count \u003Cn\u003E] [--examples \u003Cn\u003E] [--ids] [--raw-letters] [--trial \u003Cid\u003E] [--json]"
+      ],
+      "surface": "Released",
+      "url": "https://motif-docs.pages.dev/reference/commands/query-forms/"
+    },
+    {
+      "kind": "command",
       "code": "reject --proposal",
       "slug": "reject-proposal",
       "title": "Decline a Proposal",

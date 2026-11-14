@@ -6,6 +6,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -52,6 +53,14 @@ public sealed class GrammarHealthSingleImportTests(PristineProjectFixture pristi
             Assert.Equal(separate.Facts!.SourceSha256, combined.Facts!.SourceSha256);
             Assert.Equal(separate.Facts.ModelFingerprint, combined.Facts.ModelFingerprint);
             Assert.Equal(ReadEveryFact(separate.Facts.Path), ReadEveryFact(combined.Facts.Path));
+            var full = Assert.IsType<PanGlossOutcome.Completed>(await invoker.RunAsync(
+                new PanGlossRequest.Facts(oldSnapshot, context, Light: false), "full-facts", CancellationToken.None));
+            using var fullLease = full.FactsArtifactLease;
+            var lightWs = QueryFactsReader.DefaultWritingSystem(combined.Facts.Path);
+            var fullWs = QueryFactsReader.DefaultWritingSystem(full.Facts!.Path);
+            Assert.Equal(fullWs, lightWs);
+            Assert.Equal(JsonSerializer.Serialize(QueryFactsReader.Read(full.Facts.Path, fullWs)),
+                JsonSerializer.Serialize(QueryFactsReader.Read(combined.Facts.Path, lightWs)));
             var snapshotBytes = File.ReadAllBytes(newSnapshot);
             var snapshot = PanGlossImportedSnapshot.Capture(cache.ProjectId.Path, newSnapshot) with { TransferOwnership = true };
             var words = new[] { SeededProject.FirstForm, "mofita" };

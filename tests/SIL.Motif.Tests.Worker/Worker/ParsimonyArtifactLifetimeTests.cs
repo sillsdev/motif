@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Jobs;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
@@ -138,6 +139,48 @@ public sealed class ParsimonyArtifactLifetimeTests : IDisposable
         Assert.True(cancelAfterCommit.IsCancellationRequested);
         Assert.NotNull(_artifacts.Get(after.Bundle.BundleId));
         Assert.Equal("stored report", new ReportRepository(_database).Get(after.Report.ReportId)!.RenderedText);
+    }
+
+    [Fact]
+    public void CandidateRowsPublishAndPruneAtomicallyWithTheirBundle()
+    {
+        _ = new JobRepository(_database, _clock).Create("trial", _projectKey, "trial", "{}",
+            JobTimestamp.FormatUtc(_clock.UtcNow));
+        var built = CreateFiles(_publisher, "query-atomic", "query-material");
+        var bundle = built.Bundle with { InputKind = "candidate", CandidateIdentity = "candidate" };
+        var snapshot = new QuerySnapshotStore.Stored("trial", bundle.ModelFingerprint, bundle.BundleId, "ws",
+            new QueryFactsReader.Snapshot([new QueryForm("id", "a", "b", "alternate", "e", "", "", [], [])], [], 0));
+        using var cancelled = new CancellationTokenSource();
+        Assert.Throws<OperationCanceledException>(() => _artifacts.Publish(bundle, built.Report,
+            cancelled.Token, beforeCommit: cancelled.Cancel, querySnapshot: snapshot));
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+            Assert.Null(QuerySnapshotStore.ReadIdentity(connection, transaction));
+        Assert.Null(_artifacts.Get(bundle.BundleId));
+        _artifacts.Publish(bundle, built.Report, querySnapshot: snapshot);
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+            Assert.Equal(("trial", bundle.BundleId), QuerySnapshotStore.ReadIdentity(connection, transaction));
+        _artifacts.RemoveReference(bundle.BundleId, "report", built.Report.ReportId);
+        Assert.True(_artifacts.TryMarkDeleting(bundle.BundleId, DateTimeOffset.UtcNow));
+        Assert.True(_artifacts.CompleteDeletion(bundle.BundleId, DateTimeOffset.UtcNow));
+        using var readConnection = _database.OpenConnection();
+        using var read = readConnection.BeginTransaction();
+        Assert.Null(QuerySnapshotStore.ReadIdentity(readConnection, read));
+    }
+
+    [Fact]
+    public void EvidenceCanPublishWithoutRowsAfterItsSourceTrialIsDeleted()
+    {
+        var built = CreateFiles(_publisher, "query-orphan", "query-orphan-material");
+        var bundle = built.Bundle with { InputKind = "candidate", CandidateIdentity = "candidate" };
+        var snapshot = new QuerySnapshotStore.Stored("deleted-trial", bundle.ModelFingerprint, bundle.BundleId, "ws",
+            new QueryFactsReader.Snapshot([new QueryForm("id", "a", "b", "alternate", "e", "", "", [], [])], [], 0));
+        _artifacts.Publish(bundle, built.Report, querySnapshot: snapshot);
+        Assert.NotNull(_artifacts.Get(bundle.BundleId));
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        Assert.Null(QuerySnapshotStore.ReadIdentity(connection, transaction));
     }
 
     [Fact]

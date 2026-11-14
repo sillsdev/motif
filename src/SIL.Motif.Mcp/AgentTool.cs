@@ -7,14 +7,16 @@ namespace SIL.Motif.Mcp;
 
 /// <summary>Everything a tool call needs from the server that is not in its arguments.</summary>
 internal sealed class ServerContext(string projectPath, string productVersion, IJobRunnerLauncher runner,
-    ActivityLog activity, ToolProfile profile, TextWriter log, bool advancedAiModeEnabled, string? parserPath = null)
+    ActivityLog activity, ToolProfile profile, TextWriter log, bool advancedAiModeEnabled, string? parserPath = null, SIL.Motif.Commands.Queries.FormsQuerySnapshotCache? queryCache = null)
 {
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> Gates = new();
+
+    public SIL.Motif.Commands.Queries.FormsQuerySnapshotCache QueryCache { get; } = queryCache ?? new();
 
     public bool AdvancedAiModeEnabled { get; } = advancedAiModeEnabled;
 
     public ServerContext ForProject(string path) => new(path, ProductVersion, runner, Activity, Profile, Log,
-        AdvancedAiModeEnabled, ParserPath);
+        AdvancedAiModeEnabled, ParserPath, QueryCache);
 
     public string ProjectPath { get; } = projectPath;
 
