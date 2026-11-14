@@ -170,20 +170,20 @@ public sealed class HypothesisRepository
 
     /// <summary>
     /// Hypotheses on the same shape: the same change (ignoring case), and the same environment, host class and slot for
-    /// each of those given. A blank condition matches any value. A seek on the shape index: O(log n + k) for k matches.
+    /// each of those given. A blank condition matches any value, unless <paramref name="exact"/> (then only a blank). A seek on the shape index: O(log n + k) for k matches.
     /// </summary>
     public IReadOnlyList<HypothesisRecord> Neighbours(
-        string? change, string? environment, string? hostClass, string? slot)
+        string? change, string? environment, string? hostClass, string? slot, bool exact = false)
     {
         using var connection = _database.OpenConnection();
         using var command = connection.CreateCommand();
         var filters = new List<string>();
         void Equal(string column, string parameter, string? value)
         {
-            if (string.IsNullOrWhiteSpace(value)) return;
+            if (string.IsNullOrWhiteSpace(value) && !exact) return;
             // Same collation as the index, or the planner cannot seek it.
             filters.Add($"{column} = {parameter} COLLATE NOCASE");
-            command.Parameters.AddWithValue(parameter, value);
+            command.Parameters.AddWithValue(parameter, value ?? "");
         }
         Equal("ChangeText", "$change", change);
         Equal("Environment", "$env", environment);

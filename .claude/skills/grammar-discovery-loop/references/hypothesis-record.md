@@ -10,7 +10,7 @@ One record per hypothesis; one hypothesis per brief. The record is a row of the 
 | pattern | the regularity, stated over forms, not a list of words |
 | statement | the broadest statement that fits |
 | mechanism | environment, then class, then feature, then exception, ad hoc last ([mechanism-ladder.md](mechanism-ladder.md)) |
-| neighbour | the ledger and rule query, and its result; the rule widened or merged, or "none" |
+| neighbour | `none-found` after the neighbour query, or the ids of the hypotheses widened or merged (`H-3, H-7`); checked |
 | predictions | 20 or more forms beyond the forms that suggested it |
 | falsifier | the observation that would refute it (a control matching, an attested loss, a speaker rejecting a predicted form) |
 | exceptions | expected, with the polarity: which side is default, and the number of objects tagged; a FieldWorks limitation (positive-only restriction forcing the majority to carry the tag) is recorded here |

@@ -9,7 +9,7 @@ python3 scripts/control_test.py ... --json > control.json
 motif hypothesis test H-12 --project <fwdata> --file control.json --command "control_test.py ..."
 ```
 
-The file is the JSON `control_test.py --json` prints (`predicted`, `rule_hits`, `controls`, `margin`, `verdict`), optionally with `trial_attested_losses`, `trial_new_readings`, `trial_work_steps` and `command`. A PASS with fewer than 20 predicted forms, or with an attested Trial loss, is refused.
+The file is the JSON `control_test.py --json` prints (`predicted`, `rule_hits`, `controls`, `margin`, `verdict`), with `trial_attested_losses` (required for a PASS, 0 when nothing attested was lost), and optionally `trial_new_readings`, `trial_work_steps` and `command`. A PASS is refused with fewer than 20 predicted forms, an attested Trial loss, no Trial losses recorded, no controls, fewer than 20 hits, or under twice the best control; record those as UNDECIDED or FAIL.
 
 ## Related commands
 

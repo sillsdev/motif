@@ -27,8 +27,8 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
    candidate has a pattern (not a word list), its stems, and its token mass. Never open held-out books.
 2. **Neighbour check.** Run `motif hypothesis neighbours --project <fwdata> --change <x>:<y> [--environment …] [--host-class …] [--slot …]`
    and query the live rules for the same change, environment, host class or slot. `hasPassed` means a passed rule
-   stands: widen or merge it. `hasFailedAttempt` means a rule attempt is on record, which permits a list. Done when the result is written down: a neighbour exists (the hypothesis is "widen rule X"
-   or "X and this are one rule"), or none, with the query used.
+   stands: widen or merge it. `hasFailedAttempt` means a rule attempt is on record, which permits a list. Done when the result is written down: a neighbour exists (the `neighbour` field is the id of the hypothesis widened or merged, `H-3`),
+   or `none-found`. Free text is refused, and `none-found` is refused when the exact shape is already in the ledger.
 3. **State the hypothesis** using [references/hypothesis-record.md](references/hypothesis-record.md): the
    broadest statement that fits, the mechanism, at least 20 predicted forms beyond the ones that suggested it,
    the falsifier, expected exceptions. Pick the mechanism with the ladder in

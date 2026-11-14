@@ -19,6 +19,8 @@ public static class HypothesisCommands
     public const int MinimumPredictions = 20;
 
     private static readonly Regex GdrIdPattern = new(@"^GDR-\d+$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+    private const int MinimumHits = 20;
+    private static readonly Regex IdPattern = new(@"^H-\d+$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
     private static readonly Regex Spaces = new(@"\s+", RegexOptions.CultureInvariant);
 
     /// <summary>States a hypothesis and returns it with the neighbours already on its shape.</summary>
@@ -35,11 +37,14 @@ public static class HypothesisCommands
             }.FirstOrDefault(field => string.IsNullOrWhiteSpace(field.Item1));
             if (missing.Item2 is not null)
                 return Refused<HypothesisResponse>(RefusalCodes.HypothesisInvalid, FailureReason.InvalidArgument,
-                    $"A hypothesis needs a {missing.Item2}. The neighbour field records the ledger query and its result, " +
-                    "or the rule widened, so the check is on record.");
+                    $"A hypothesis needs a {missing.Item2}. The neighbour field is 'none-found' or the ids of the hypotheses " +
+                    "it widens or merges (H-3, H-7), so the check is on record.");
+            var ledger = new HypothesisRepository(database);
+            var shape = (Squash(draft.Change), Squash(draft.Environment), Squash(draft.HostClass), Squash(draft.Slot));
+            if (CheckNeighbour(ledger, draft.Neighbour, shape) is { } problem)
+                return Rule<HypothesisResponse>(problem);
             var questions = (draft.Questions ?? []).Where(q => !string.IsNullOrWhiteSpace(q.Question))
                 .Select(q => new HypothesisQuestion(q.Question.Trim(), Clean(q.Predicted), null)).ToList();
-            var ledger = new HypothesisRepository(database);
             var created = ledger.Add(new HypothesisRepository.NewHypothesis(
                 Clean(draft.Pattern), draft.Statement.Trim(), Squash(draft.Mechanism), Squash(draft.Change),
                 Squash(draft.Environment), Squash(draft.HostClass), Squash(draft.Slot), Clean(draft.Neighbour),
@@ -67,13 +72,19 @@ public static class HypothesisCommands
                 return Invalid<HypothesisResponse>("Counts cannot be negative.");
             if (hypothesis.Status == HypothesisStatuses.Superseded)
                 return Rule<HypothesisResponse>($"{hypothesis.HypothesisId} is superseded by {hypothesis.SupersededBy}; test that one.");
+            var best = controls.Values.DefaultIfEmpty(0).Max();
+            var margin = result.RuleHits - best;
+            if (result.Margin is { } given && given != margin)
+                return Invalid<HypothesisResponse>($"The margin {given} is not the rule hits {result.RuleHits} minus the best " +
+                    $"control {best}.");
+            if (verdict == HypothesisVerdicts.Pass && PassProblem(result, controls, best) is { } passProblem)
+                return Rule<HypothesisResponse>(passProblem);
             if (verdict == HypothesisVerdicts.Pass && result.Predicted < MinimumPredictions)
                 return Rule<HypothesisResponse>($"A PASS needs at least {MinimumPredictions} predicted forms; this test predicted " +
                     $"{result.Predicted}. Record it as UNDECIDED, or predict more forms.");
             if (verdict == HypothesisVerdicts.Pass && result.TrialAttestedLosses > 0)
                 return Rule<HypothesisResponse>("Any attested loss is a FAIL until explained; this PASS reports " +
                     $"{result.TrialAttestedLosses}.");
-            var margin = result.Margin ?? result.RuleHits - controls.Values.DefaultIfEmpty(0).Max();
             ledger.AddTest(hypothesis.HypothesisId, verdict, result.Predicted, result.RuleHits, controls, margin,
                 result.TrialAttestedLosses, result.TrialNewReadings, result.TrialWorkSteps, Clean(result.Command));
             return Done(ledger, hypothesis.HypothesisId);
@@ -130,7 +141,9 @@ public static class HypothesisCommands
                 var named = (request.Supersedes ?? []).Select(id => ledger.Get(id)?.HypothesisId).ToList();
                 if (named.Any(id => id is null))
                     return NotFound<HypothesisResponse>(request.Supersedes!.First(id => ledger.Get(id) is null));
-                var standing = ledger.Neighbours(hypothesis.ChangeText, hypothesis.Environment, hypothesis.HostClass, hypothesis.Slot)
+                if (named.Contains(hypothesis.HypothesisId, StringComparer.OrdinalIgnoreCase))
+                    return Rule<HypothesisResponse>("A hypothesis cannot supersede itself.");
+                var standing = ledger.Neighbours(hypothesis.ChangeText, hypothesis.Environment, hypothesis.HostClass, hypothesis.Slot, exact: true)
                     .Where(other => other.Status == HypothesisStatuses.Passed &&
                         !string.Equals(other.HypothesisId, hypothesis.HypothesisId, StringComparison.OrdinalIgnoreCase) &&
                         !string.Equals(other.Mechanism, hypothesis.Mechanism, StringComparison.OrdinalIgnoreCase) &&
@@ -298,6 +311,35 @@ public static class HypothesisCommands
             return CommandOutcome<HypothesisReportResponse>.Success(kind == "decisions"
                 ? DecisionRecord(ledger, all) : QuestionLog(all));
         });
+    }
+
+    /// <summary>The <c>rule-hypothesis-test</c> thresholds: 20 hits, 2x best control, losses recorded.</summary>
+    private static string? PassProblem(HypothesisTestResult result, IReadOnlyDictionary<string, int> controls, int best)
+    {
+        if (result.TrialAttestedLosses is null)
+            return "A PASS needs trial_attested_losses (0 when the Trial lost nothing attested); run the Trial first.";
+        if (controls.Count == 0) return "A PASS needs the control hits; a rule is never measured against nothing.";
+        if (result.RuleHits < MinimumHits || result.RuleHits <= best || result.RuleHits < 2 * Math.Max(best, 1))
+            return $"{result.RuleHits} rule hits against a best control of {best} is not a PASS: it needs at least " +
+                $"{MinimumHits} hits and twice the best control. Record it as UNDECIDED or FAIL.";
+        return null;
+    }
+
+    // "none-found", or the ids of the hypotheses this one widens or merges, each optionally followed by ": note".
+    private static string? CheckNeighbour(HypothesisRepository ledger, string neighbour,
+        (string Change, string Environment, string HostClass, string Slot) shape)
+    {
+        var head = neighbour.Split(':', 2)[0].Trim();
+        var onShape = ledger.Neighbours(shape.Change, shape.Environment, shape.HostClass, shape.Slot, exact: true);
+        if (string.Equals(head, "none-found", StringComparison.OrdinalIgnoreCase))
+            return onShape.Count == 0 ? null
+                : $"The ledger already holds {string.Join(", ", onShape.Select(h => h.HypothesisId))} on this exact shape, so " +
+                  "'none-found' is wrong. Name the hypothesis this widens or merges, such as 'H-3: widened'.";
+        var ids = head.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (ids.Length == 0 || ids.Any(id => !IdPattern.IsMatch(id) || ledger.Get(id) is null))
+            return "The neighbour is 'none-found' (after running hypothesis neighbours) or the ids of existing hypotheses it " +
+                $"widens or merges, such as 'H-3, H-7'; '{head}' is neither.";
+        return null;
     }
 
     private static HypothesisReportResponse DecisionRecord(HypothesisRepository ledger, IReadOnlyList<HypothesisRecord> all)

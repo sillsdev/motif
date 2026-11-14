@@ -41,12 +41,16 @@ stand-in.
    objects and attested types before and after, from which objects per attested type is derived; (4) agent hours against
    the list-package alternative.
 6. **Rules the ledger enforces** (a refusal says which):
-   - a hypothesis records its neighbour check, or it is not stated;
-   - a PASS test needs at least 20 predicted forms and no attested Trial loss;
+   - a hypothesis names its neighbour check: `none-found` (refused when the ledger holds the exact shape) or the ids of
+     the hypotheses it widens or merges (`H-3, H-7`), each id checked to exist; free text alone is refused;
+   - a PASS test needs at least 20 predicted forms, `trial_attested_losses` present and 0, and the skill thresholds
+     recomputed from the hits and controls (at least 20 hits, at least 2x the best control); a contradicting PASS is refused;
    - `passed` needs a latest test of PASS and a GDR link, or a stated reason none changed (the GDR sync rule);
    - `failed` needs a recorded test whose latest verdict is FAIL or UNDECIDED;
    - the contradiction guard: a pass is refused while another hypothesis has passed on the same shape with a different
      mechanism, until the pass names it with `--supersedes`; that is how the 5 Nov ruling would have bound the ALTH variant;
+   - the contradiction guard compares all four shape parts exactly, a blank part matching only a blank one;
+     a hypothesis cannot supersede itself;
    - a decided hypothesis changes only by being superseded; a superseded one names its replacement.
 7. **The API for later writers is the command layer.** `HypothesisCommands.RecordTest` takes the JSON that
    `control_test.py --json` prints, so the control test (#172) writes its result in one call; `HypothesisCommands.Neighbours`

@@ -8,7 +8,7 @@
 motif hypothesis decide H-12 --project <fwdata> --status passed --decision "Rule stands as the default; 3 stems tagged."
 ```
 
-`--status` is `passed`, `failed` or `superseded`, and `--decision` is required. A pass needs the latest test to be PASS and a GDR link or a stated reason for none (see [link](cmd:hypothesis%20link)). If another hypothesis already passed on the same shape with a different mechanism, the pass is refused unless `--supersedes` names it. A decided hypothesis changes only by being superseded.
+`--status` is `passed`, `failed` or `superseded`, and `--decision` is required. A pass needs the latest test to be PASS and a GDR link or a stated reason for none (see [link](cmd:hypothesis%20link)). If another hypothesis already passed on the same shape with a different mechanism, the pass is refused unless `--supersedes` names it; the shape is compared whole, a blank part matching only a blank one. A hypothesis cannot supersede itself. A decided hypothesis changes only by being superseded.
 
 ## Related commands
 

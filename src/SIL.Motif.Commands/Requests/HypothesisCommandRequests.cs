@@ -12,7 +12,7 @@ public sealed record HypothesisQuestionDraft(string Question, string? Predicted 
 /// <param name="Statement">The broadest statement that fits.</param>
 /// <param name="Mechanism">The mechanism chosen on the ladder.</param>
 /// <param name="Change">The change the hypothesis is about, such as <c>d&gt;r</c>; with the environment, host class and slot it is the shape the neighbour check queries.</param>
-/// <param name="Neighbour">The neighbour query and what it returned, or the rule widened; required, so the check is on record.</param>
+/// <param name="Neighbour"><c>none-found</c> after running <c>hypothesis neighbours</c> for this shape, or the ids of the hypotheses this one widens or merges (<c>H-3, H-7</c>), optionally followed by <c>: a note</c>; checked against the ledger.</param>
 /// <param name="Pattern">The regularity, stated over forms.</param>
 /// <param name="Environment">The environment the change fires in.</param>
 /// <param name="HostClass">The host class.</param>

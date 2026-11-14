@@ -37,8 +37,8 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
     }
 
     private static HypothesisDraft Draft(string change = "d>r", string mechanism = "environment", string? environment = "_ an",
-        int predictions = 25) =>
-        new("Stem-final d becomes r before -an.", mechanism, change, "none: queried d>r, no row", Environment: environment,
+        int predictions = 25, string neighbour = "none-found") =>
+        new("Stem-final d becomes r before -an.", mechanism, change, neighbour, Environment: environment,
             Predictions: Enumerable.Range(0, predictions).Select(i => $"form{i}").ToList(),
             Questions: [new HypothesisQuestionDraft("Is kadan a word?", "yes")]);
 
@@ -50,7 +50,7 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
     }
 
     private CommandOutcome<HypothesisResponse> Test(string id, string verdict, int predicted = 25, int hits = 60,
-        int? losses = null) => HypothesisCommands.RecordTest(new RecordHypothesisTestRequest(Project, "1.0", id,
+        int? losses = 0) => HypothesisCommands.RecordTest(new RecordHypothesisTestRequest(Project, "1.0", id,
         new HypothesisTestResult(verdict, predicted, hits, new Dictionary<string, int> { ["l"] = 20, ["n"] = 30 },
             TrialAttestedLosses: losses)));
 
@@ -64,7 +64,7 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
     public void AHypothesisGetsAPermanentIdAndTheNeighboursAlreadyOnItsShape()
     {
         var first = Add(Draft());
-        var second = HypothesisCommands.Add(new AddHypothesisRequest(Project, "1.0", Draft(change: "D>R")));
+        var second = HypothesisCommands.Add(new AddHypothesisRequest(Project, "1.0", Draft(change: "D>R", neighbour: "H-1: same shape, spelled differently")));
 
         Assert.Equal("H-1", first.HypothesisId);
         Assert.Equal("H-2", second.Value!.Hypothesis.HypothesisId);
@@ -96,6 +96,63 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
 
         Assert.Equal(RefusalCodes.HypothesisInvalid, outcome.Refusal!.Code);
         Assert.Contains("neighbour", outcome.Refusal.Message);
+    }
+
+    [Fact]
+    public void ANeighbourIsNoneFoundOrTheIdsOfExistingHypothesesAndNoneFoundIsCheckedAgainstTheLedger()
+    {
+        Add(Draft());
+        var freeText = Draft(change: "x>y") with { Neighbour = "none: queried x>y, no row" };
+        Assert.Equal(RefusalCodes.HypothesisRule,
+            HypothesisCommands.Add(new AddHypothesisRequest(Project, "1.0", freeText)).Refusal!.Code);
+        var unknownId = Draft(change: "x>y", neighbour: "H-77");
+        Assert.Equal(RefusalCodes.HypothesisRule,
+            HypothesisCommands.Add(new AddHypothesisRequest(Project, "1.0", unknownId)).Refusal!.Code);
+        // none-found on a shape the ledger already holds is a false check.
+        var liar = HypothesisCommands.Add(new AddHypothesisRequest(Project, "1.0", Draft()));
+        Assert.Equal(RefusalCodes.HypothesisRule, liar.Refusal!.Code);
+        Assert.Contains("H-1", liar.Refusal.Message);
+        Add(Draft(change: "x>y"));
+    }
+
+    [Fact]
+    public void ASupersessionNamingTheHypothesisItselfIsRefused()
+    {
+        var id = Add(Draft()).HypothesisId;
+        Test(id, "PASS");
+        LinkGdr(id);
+        var outcome = Decide(id, "passed", supersedes: [id.ToLowerInvariant()]);
+        Assert.Equal(RefusalCodes.HypothesisRule, outcome.Refusal!.Code);
+        Assert.Contains("itself", outcome.Refusal.Message);
+    }
+
+    [Fact]
+    public void TheContradictionGuardComparesTheWholeShapeAndABlankPartMatchesOnlyABlank()
+    {
+        var narrow = Add(Draft(change: "hC>Ch", mechanism: "ordered rule", environment: "_ an")).HypothesisId;
+        Test(narrow, "PASS");
+        LinkGdr(narrow);
+        Assert.True(Decide(narrow, "passed").Succeeded);
+
+        var broad = Add(Draft(change: "hC>Ch", mechanism: "other mechanism", environment: null, neighbour: narrow)).HypothesisId;
+        Test(broad, "PASS");
+        LinkGdr(broad);
+        var outcome = Decide(broad, "passed");
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+    }
+
+    [Fact]
+    public void APassNeedsTrialLossesRecordedAndTheSkillThresholdsRecomputed()
+    {
+        var id = Add(Draft()).HypothesisId;
+        Assert.Equal(RefusalCodes.HypothesisRule, Test(id, "PASS", losses: null).Refusal!.Code);
+        // Best control is 30: 39 hits is under twice that; 19 hits is under the 20-hit floor.
+        Assert.Equal(RefusalCodes.HypothesisRule, Test(id, "PASS", hits: 39).Refusal!.Code);
+        Assert.Equal(RefusalCodes.HypothesisRule, Test(id, "PASS", hits: 19).Refusal!.Code);
+        var noControls = HypothesisCommands.RecordTest(new RecordHypothesisTestRequest(Project, "1.0", id,
+            new HypothesisTestResult("PASS", 25, 60, new Dictionary<string, int>(), TrialAttestedLosses: 0)));
+        Assert.Equal(RefusalCodes.HypothesisRule, noControls.Refusal!.Code);
+        Assert.True(Test(id, "PASS", hits: 60).Succeeded);
     }
 
     [Fact]
@@ -148,7 +205,8 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
         LinkGdr(ordered);
         Assert.True(Decide(ordered, "passed").Succeeded);
 
-        var variant = Add(Draft(change: "hC>Ch", mechanism: "bound variant", environment: null)).HypothesisId;
+        var variant = Add(Draft(change: "hC>Ch", mechanism: "bound variant", environment: null,
+            neighbour: ordered)).HypothesisId;
         Test(variant, "PASS");
         LinkGdr(variant);
 
@@ -169,7 +227,7 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
         var first = Add(Draft()).HypothesisId;
         Test(first, "FAIL", hits: 10);
         Assert.True(Decide(first, "failed").Succeeded);
-        var second = Add(Draft(mechanism: "feature")).HypothesisId;
+        var second = Add(Draft(mechanism: "feature", neighbour: first)).HypothesisId;
 
         var check = HypothesisCommands.Neighbours(new HypothesisNeighboursRequest(Project, "1.0", "d>r")).Value!;
         Assert.True(check.HasFailedAttempt);
