@@ -616,6 +616,36 @@ public static class CliVerbCatalog
             new[] { "proposal picture show <proposalId> [<pictureId> --out <path>] --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Commands", "list", "list requests",
             new[] { "list requests --project <fwdata> [--status open|answered] [--offset <n>] [--limit <n>] [--json]" }),
+        new CliVerbDescriptor("Commands", "hypothesis", "hypothesis add",
+            new[] { "hypothesis add --project <fwdata> --file <hypothesis.json> [--json]" }),
+        new CliVerbDescriptor("Commands", "hypothesis", "hypothesis test",
+            new[] { "hypothesis test <H-n> --project <fwdata> --file <control-test.json> [--command <text>] [--json]" }),
+        new CliVerbDescriptor("Commands", "hypothesis", "hypothesis decide",
+            new[]
+            {
+                "hypothesis decide <H-n> --project <fwdata> --status passed|failed|superseded --decision <text> " +
+                "[--superseded-by <H-n>] [--supersedes <H-n,...>] [--json]",
+            }),
+        new CliVerbDescriptor("Commands", "hypothesis", "hypothesis link",
+            new[]
+            {
+                "hypothesis link <H-n> --project <fwdata> [--proposal <id,...>] [--gdr <GDR-n> --gdr-section <text> | --gdr-none <reason>] [--json]",
+            }),
+        new CliVerbDescriptor("Commands", "hypothesis", "hypothesis grade",
+            new[]
+            {
+                "hypothesis grade <H-n> --project <fwdata> [--sealed-verdict match|mismatch] [--verdict-source <text>] " +
+                "[--word-questions <n>] [--objects-before <n>] [--types-before <n>] [--objects-after <n>] [--types-after <n>] " +
+                "[--agent-hours <x>] [--alternative-hours <x>] [--json]",
+            }),
+        new CliVerbDescriptor("Commands", "hypothesis", "hypothesis answer",
+            new[] { "hypothesis answer <H-n> --project <fwdata> --question <n> --answer <text> [--json]" }),
+        new CliVerbDescriptor("Commands", "hypothesis", "hypothesis neighbours",
+            new[] { "hypothesis neighbours --project <fwdata> --change <x>:<y> [--environment <text>] [--host-class <text>] [--slot <text>] [--json]" }),
+        new CliVerbDescriptor("Commands", "hypothesis", "hypothesis report",
+            new[] { "hypothesis report --project <fwdata> --kind decisions|questions [--json]" }),
+        new CliVerbDescriptor("Commands", "list", "list hypotheses",
+            new[] { "list hypotheses --project <fwdata> [--id <H-n> | --status proposed|passed|failed|superseded] [--offset <n>] [--limit <n>] [--json]" }),
         new CliVerbDescriptor("Commands", "request", "request create",
             new[]
             {

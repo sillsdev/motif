@@ -2433,5 +2433,50 @@
     "title": "Clear the Current chapter",
     "description": "Forgets the Current chapter of a Source on this machine.",
     "source": "Hand-written from the SourceLocalCommand behavior."
+  },
+  "hypothesis add": {
+    "title": "State a hypothesis",
+    "description": "Records a rule hypothesis in the ledger from a JSON file: statement, mechanism, change, the neighbour check and the predicted forms. It returns the permanent H-n id and the hypotheses already on the same shape.",
+    "source": "Hand-written from command behavior."
+  },
+  "hypothesis test": {
+    "title": "Record a hypothesis test",
+    "description": "Records a rule-hypothesis-test result for a hypothesis from the JSON that control_test.py prints, with optional Trial numbers. A PASS needs 20 predicted forms and no attested loss.",
+    "source": "Hand-written from command behavior."
+  },
+  "hypothesis decide": {
+    "title": "Decide a hypothesis",
+    "description": "Marks a hypothesis passed, failed or superseded with its decision. A pass needs a PASS test, a GDR link and no passed neighbour with another mechanism.",
+    "source": "Hand-written from command behavior."
+  },
+  "hypothesis link": {
+    "title": "Link a hypothesis to Proposals and a GDR",
+    "description": "Links a hypothesis to the Proposals that carry its rule change and to the GDR section it changed, or states why no GDR changed.",
+    "source": "Hand-written from command behavior."
+  },
+  "hypothesis grade": {
+    "title": "Grade a hypothesis against the answer key",
+    "description": "Records the four numbers for a hypothesis once the answer key is known: whether the sealed loop reached the verdict, the word questions it needed, objects per attested type before and after, and agent hours against the list alternative.",
+    "source": "Hand-written from command behavior."
+  },
+  "hypothesis answer": {
+    "title": "Record a speaker's answer",
+    "description": "Records a speaker's answer to one question queued on a hypothesis.",
+    "source": "Hand-written from command behavior."
+  },
+  "hypothesis neighbours": {
+    "title": "Check the neighbours of a change",
+    "description": "Asks the ledger whether a hypothesis already exists for a change, environment, host class and slot, and whether a passed rule stands or a rule attempt failed. Run it before authoring any object.",
+    "source": "Hand-written from command behavior."
+  },
+  "hypothesis report": {
+    "title": "Generate a record from the ledger",
+    "description": "Prints the decision record or the speaker-question log, generated from the ledger so nobody writes either by hand.",
+    "source": "Hand-written from command behavior."
+  },
+  "list hypotheses": {
+    "title": "List the hypotheses",
+    "description": "Lists hypotheses in id order with their tests, Proposals, GDR link and graded numbers, or shows one by id.",
+    "source": "Hand-written from command behavior."
   }
 }

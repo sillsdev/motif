@@ -204,6 +204,9 @@ public static class RefusalCodes
     public const string ProposalCommentInvalid = "proposal.comment-invalid";
     public const string ProposalPictureInvalid = "proposal.picture-invalid";
     public const string RequestInvalid = "request.invalid";
+    public const string HypothesisInvalid = "hypothesis.invalid";
+    public const string HypothesisNotFound = "hypothesis.not-found";
+    public const string HypothesisRule = "hypothesis.rule";
     public const string RequestNoRequest = "request.no-request";
     public const string RequestNotFound = "request.not-found";
     public const string RequestNotOpen = "request.not-open";

@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 69;
+    public const int CurrentSchema = 70;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -34,7 +34,7 @@ public static class MotifSchema
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
-                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl;
+                PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl;
             command.ExecuteNonQuery();
         }
 
@@ -70,7 +70,7 @@ public static class MotifSchema
             "ReviewReports", "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents",
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
             "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
-            "Requests"
+            "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -86,7 +86,8 @@ public static class MotifSchema
             "IX_ProposalDifferences_ProposalText", "IX_ProposalDifferenceOccurrences_Order", "IX_ProposalDifferenceBuckets_Bucket",
             "IX_ReviewReports_ProjectManifest", "IX_ReviewReportCases_Order", "IX_ReviewReportMemberships_Cell",
             "IX_PhonologyExampleSets_Name", "IX_PhonologyExampleSetRevisions_SetRevision",
-            "IX_PhonologyExamples_RevisionExampleId", "IX_Requests_Status"
+            "IX_PhonologyExamples_RevisionExampleId", "IX_Requests_Status",
+            "IX_Hypotheses_Shape", "IX_Hypotheses_Seq", "IX_Hypotheses_StatusSeq", "IX_HypothesisProposals_Proposal"
         };
         var expectedTriggers = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -373,6 +374,8 @@ public static class MotifSchema
         "IX_PhonologyExampleSetRevisions_SetRevision" => "PhonologyExampleSetRevisions",
         "IX_PhonologyExamples_RevisionExampleId" => "PhonologyExamples",
         "IX_Requests_Status" => "Requests",
+        "IX_Hypotheses_Shape" or "IX_Hypotheses_Seq" or "IX_Hypotheses_StatusSeq" => "Hypotheses",
+        "IX_HypothesisProposals_Proposal" => "HypothesisProposals",
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -424,6 +427,10 @@ public static class MotifSchema
         "IX_PhonologyExampleSetRevisions_SetRevision" => ["SetId", "RevisionNumber"],
         "IX_PhonologyExamples_RevisionExampleId" => ["RevisionId", "ExampleId"],
         "IX_Requests_Status" => ["Status", "CreatedUtc"],
+        "IX_Hypotheses_Shape" => ["ChangeText", "Environment", "HostClass", "Slot"],
+        "IX_Hypotheses_Seq" => ["Seq"],
+        "IX_Hypotheses_StatusSeq" => ["Status", "Seq"],
+        "IX_HypothesisProposals_Proposal" => ["ProposalId"],
         _ => throw new InvalidDataException($"Motif index {index} is not registered.")
     };
 
@@ -633,6 +640,27 @@ public static class MotifSchema
         [C("RequestId", "TEXT", false, 1), C("TargetKind", "TEXT", true), C("TargetId", "TEXT", true),
             C("TargetLabel", "TEXT", true), C("Note", "TEXT"), C("Status", "TEXT", true, defaultValue: "'open'"),
             C("CreatedUtc", "TEXT", true), C("ClosedUtc", "TEXT"), C("AskedAgainOf", "TEXT")],
+        "Hypotheses" =>
+        [C("HypothesisId", "TEXT", false, 1), C("Seq", "INTEGER", true), C("Pattern", "TEXT"),
+            C("Statement", "TEXT", true), C("Mechanism", "TEXT", true), C("ChangeText", "TEXT", true),
+            C("Environment", "TEXT", true, defaultValue: "''"), C("HostClass", "TEXT", true, defaultValue: "''"),
+            C("Slot", "TEXT", true, defaultValue: "''"), C("Neighbour", "TEXT"),
+            C("PredictionsJson", "TEXT", true, defaultValue: "'[]'"), C("Falsifier", "TEXT"), C("Exceptions", "TEXT"),
+            C("ObjectsAdded", "INTEGER"), C("AttestedTypesGained", "INTEGER"),
+            C("QuestionsJson", "TEXT", true, defaultValue: "'[]'"),
+            C("Status", "TEXT", true, defaultValue: "'proposed'"), C("Decision", "TEXT"), C("SupersededBy", "TEXT"),
+            C("GdrId", "TEXT"), C("GdrSection", "TEXT"), C("GdrNone", "TEXT"),
+            C("SealedVerdict", "TEXT"), C("VerdictSource", "TEXT"), C("WordQuestionsAsked", "INTEGER"),
+            C("ObjectsBefore", "INTEGER"), C("TypesBefore", "INTEGER"), C("ObjectsAfter", "INTEGER"),
+            C("TypesAfter", "INTEGER"), C("AgentHours", "REAL"), C("AlternativeHours", "REAL"),
+            C("CreatedUtc", "TEXT", true), C("UpdatedUtc", "TEXT", true)],
+        "HypothesisProposals" =>
+        [C("HypothesisId", "TEXT", true, 1), C("ProposalId", "TEXT", true, 2), C("LinkedUtc", "TEXT", true)],
+        "HypothesisTests" =>
+        [C("HypothesisId", "TEXT", true, 1), C("TestNumber", "INTEGER", true, 2), C("Verdict", "TEXT", true),
+            C("PredictedForms", "INTEGER", true), C("RuleHits", "INTEGER", true), C("ControlHitsJson", "TEXT", true),
+            C("Margin", "INTEGER", true), C("TrialAttestedLosses", "INTEGER"), C("TrialNewReadings", "INTEGER"),
+            C("TrialWorkSteps", "INTEGER"), C("Command", "TEXT"), C("RecordedUtc", "TEXT", true)],
         "ProposalRevisions" =>
         [C("ProposalId", "TEXT", true, 1), C("IntentDigest", "TEXT", true, 2),
             C("ProposalJson", "BLOB", true), C("CreatedUtc", "TEXT", true)],
@@ -1267,6 +1295,71 @@ public static class MotifSchema
             AskedAgainOf TEXT NULL
         );
         CREATE INDEX IX_Requests_Status ON Requests(Status, CreatedUtc);
+        """;
+
+    private const string HypothesisDdl = """
+        CREATE TABLE Hypotheses (
+            HypothesisId TEXT PRIMARY KEY,
+            Seq INTEGER NOT NULL,
+            Pattern TEXT NULL,
+            Statement TEXT NOT NULL,
+            Mechanism TEXT NOT NULL,
+            ChangeText TEXT NOT NULL,
+            Environment TEXT NOT NULL DEFAULT '',
+            HostClass TEXT NOT NULL DEFAULT '',
+            Slot TEXT NOT NULL DEFAULT '',
+            Neighbour TEXT NULL,
+            PredictionsJson TEXT NOT NULL DEFAULT '[]',
+            Falsifier TEXT NULL,
+            Exceptions TEXT NULL,
+            ObjectsAdded INTEGER NULL,
+            AttestedTypesGained INTEGER NULL,
+            QuestionsJson TEXT NOT NULL DEFAULT '[]',
+            Status TEXT NOT NULL DEFAULT 'proposed' CHECK (Status IN ('proposed', 'passed', 'failed', 'superseded')),
+            Decision TEXT NULL,
+            SupersededBy TEXT NULL,
+            GdrId TEXT NULL,
+            GdrSection TEXT NULL,
+            GdrNone TEXT NULL,
+            SealedVerdict TEXT NULL CHECK (SealedVerdict IS NULL OR SealedVerdict IN ('match', 'mismatch')),
+            VerdictSource TEXT NULL,
+            WordQuestionsAsked INTEGER NULL,
+            ObjectsBefore INTEGER NULL,
+            TypesBefore INTEGER NULL,
+            ObjectsAfter INTEGER NULL,
+            TypesAfter INTEGER NULL,
+            AgentHours REAL NULL,
+            AlternativeHours REAL NULL,
+            CreatedUtc TEXT NOT NULL,
+            UpdatedUtc TEXT NOT NULL
+        );
+        -- NOCASE so the neighbour check seeks the index instead of scanning the table.
+        CREATE INDEX IX_Hypotheses_Shape ON Hypotheses(
+            ChangeText COLLATE NOCASE, Environment COLLATE NOCASE, HostClass COLLATE NOCASE, Slot COLLATE NOCASE);
+        CREATE INDEX IX_Hypotheses_Seq ON Hypotheses(Seq);
+        CREATE INDEX IX_Hypotheses_StatusSeq ON Hypotheses(Status, Seq);
+        CREATE TABLE HypothesisProposals (
+            HypothesisId TEXT NOT NULL,
+            ProposalId TEXT NOT NULL,
+            LinkedUtc TEXT NOT NULL,
+            PRIMARY KEY (HypothesisId, ProposalId)
+        );
+        CREATE INDEX IX_HypothesisProposals_Proposal ON HypothesisProposals(ProposalId);
+        CREATE TABLE HypothesisTests (
+            HypothesisId TEXT NOT NULL,
+            TestNumber INTEGER NOT NULL,
+            Verdict TEXT NOT NULL CHECK (Verdict IN ('PASS', 'FAIL', 'UNDECIDED')),
+            PredictedForms INTEGER NOT NULL,
+            RuleHits INTEGER NOT NULL,
+            ControlHitsJson TEXT NOT NULL,
+            Margin INTEGER NOT NULL,
+            TrialAttestedLosses INTEGER NULL,
+            TrialNewReadings INTEGER NULL,
+            TrialWorkSteps INTEGER NULL,
+            Command TEXT NULL,
+            RecordedUtc TEXT NOT NULL,
+            PRIMARY KEY (HypothesisId, TestNumber)
+        );
         """;
 
     private const string ReviewMarkDdl = """

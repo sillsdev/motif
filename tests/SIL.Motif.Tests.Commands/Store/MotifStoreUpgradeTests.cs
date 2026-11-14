@@ -186,7 +186,7 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         var output = Path.Combine(_root, "copy.db");
         var report = MotifStoreUpgrade.Copy(Source, output);
         Assert.Equal(68, report.SourceSchema);
-        Assert.Equal(69, report.TargetSchema);
+        Assert.Equal(MotifSchema.CurrentSchema, report.TargetSchema);
         using var upgraded = Connect(output);
         Assert.Equal("request/1", Text(upgraded, "SELECT RequestId FROM Proposals WHERE ProposalId = 'open';"));
         Assert.Equal(1, Count(upgraded, "Requests"));
@@ -212,6 +212,26 @@ public sealed class MotifStoreUpgradeTests : IDisposable
         using var upgraded = Connect(Path.Combine(_root, "copy.db"));
         Assert.Equal("Please look.", Text(upgraded, "SELECT Note FROM Requests WHERE RequestId = 'request/1';"));
         Assert.Equal("request/1", Text(upgraded, "SELECT RequestId FROM Proposals WHERE ProposalId = 'open';"));
+    }
+
+    [Fact]
+    public void UpgradeKeepsTheHypothesisLedgerWithItsProposalLinksAndTests()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+            Execute(old, """
+                INSERT INTO Hypotheses (HypothesisId, Seq, Statement, Mechanism, ChangeText, CreatedUtc, UpdatedUtc)
+                    VALUES ('H-1', 1, 'd becomes r', 'environment', 'd>r', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+                INSERT INTO HypothesisProposals (HypothesisId, ProposalId, LinkedUtc) VALUES ('H-1', 'p/1', '2026-01-01T00:00:00Z');
+                INSERT INTO HypothesisTests (HypothesisId, TestNumber, Verdict, PredictedForms, RuleHits, ControlHitsJson, Margin, RecordedUtc)
+                    VALUES ('H-1', 1, 'PASS', 25, 60, '{}', 40, '2026-01-01T00:00:00Z');
+                """);
+
+        var report = MotifStoreUpgrade.Copy(Source, Path.Combine(_root, "copy.db"));
+
+        Assert.Equal(1, report.Carried["Hypotheses"]);
+        Assert.Equal(1, report.Carried["HypothesisProposals"]);
+        Assert.Equal(1, report.Carried["HypothesisTests"]);
     }
 
     [Fact]

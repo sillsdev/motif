@@ -136,6 +136,11 @@ if (args.Length == 0)
 var verb = args[0];
 var rest = args[1..];
 var asJson = Array.IndexOf(args, "--json") >= 0;
+var HypothesisFileOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+{
+    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    PropertyNameCaseInsensitive = true,
+};
 string? namedProject = null;
 
 try
@@ -695,6 +700,17 @@ try
             break;
 
         case "list":
+            if (positionals is ["hypotheses"])
+            {
+                if (!flags.TryGetValue("project", out var listHypothesesProject) ||
+                    !int.TryParse(flags.GetValueOrDefault("offset") ?? "0", out var hypothesesOffset) ||
+                    !int.TryParse(flags.GetValueOrDefault("limit") ?? "50", out var hypothesesLimit))
+                    return Usage(UsageLineFor("list hypotheses"), asJson);
+                result = RenderCommand(HypothesisCommands.List(new ListHypothesesRequest(listHypothesesProject,
+                    CliProductVersion(), flags.GetValueOrDefault("status"), flags.GetValueOrDefault("id"),
+                    hypothesesOffset, hypothesesLimit)));
+                break;
+            }
             if (positionals is ["requests"])
             {
                 if (!flags.TryGetValue("project", out var listRequestsProject) ||
@@ -2046,6 +2062,91 @@ try
                 break;
             }
             return Usage("Usage: motif request (create | withdraw | ask-again) ... --project <fwdata>", asJson);
+
+        case "hypothesis":
+        {
+            var sub = positionals.Count > 0 ? positionals[0] : "";
+            var hypothesisId = positionals.Count > 1 ? positionals[1] : null;
+            if (!flags.TryGetValue("project", out var hypothesisProject) || sub == "" ||
+                (sub is "add" or "neighbours" or "report" ? positionals.Count != 1 : positionals.Count != 2))
+                return Usage("Usage: motif hypothesis (add | test | decide | link | grade | answer | neighbours | report) ... --project <fwdata>", asJson);
+            string[]? Split(string? list) => list?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            switch (sub)
+            {
+                case "add":
+                case "test":
+                    if (!flags.TryGetValue("file", out var hypothesisFile) || !File.Exists(hypothesisFile))
+                        return Usage(UsageLineFor("hypothesis " + sub), asJson);
+                    var fileJson = File.ReadAllText(hypothesisFile);
+                    try
+                    {
+                        result = sub == "add"
+                            ? RenderCommand(HypothesisCommands.Add(new AddHypothesisRequest(hypothesisProject, CliProductVersion(),
+                                JsonSerializer.Deserialize<HypothesisDraft>(fileJson, HypothesisFileOptions)!)))
+                            : RenderCommand(HypothesisCommands.RecordTest(new RecordHypothesisTestRequest(hypothesisProject,
+                                CliProductVersion(), hypothesisId!,
+                                JsonSerializer.Deserialize<HypothesisTestResult>(fileJson, HypothesisFileOptions)! with
+                                {
+                                    Command = flags.GetValueOrDefault("command") ??
+                                        JsonSerializer.Deserialize<HypothesisTestResult>(fileJson, HypothesisFileOptions)!.Command,
+                                })));
+                    }
+                    catch (Exception exception) when (exception is JsonException or NullReferenceException)
+                    {
+                        return Usage($"The file '{hypothesisFile}' is not a valid {(sub == "add" ? "hypothesis" : "test result")} " +
+                            "record. " + UsageLineFor("hypothesis " + sub), asJson);
+                    }
+                    break;
+                case "decide":
+                    if (!flags.TryGetValue("status", out var decideStatus) || !flags.TryGetValue("decision", out var decideText))
+                        return Usage(UsageLineFor("hypothesis decide"), asJson);
+                    result = RenderCommand(HypothesisCommands.Decide(new DecideHypothesisRequest(hypothesisProject,
+                        CliProductVersion(), hypothesisId!, decideStatus, decideText, flags.GetValueOrDefault("superseded-by"),
+                        Split(flags.GetValueOrDefault("supersedes")))));
+                    break;
+                case "link":
+                    result = RenderCommand(HypothesisCommands.Link(new LinkHypothesisRequest(hypothesisProject,
+                        CliProductVersion(), hypothesisId!, Split(flags.GetValueOrDefault("proposal")),
+                        flags.GetValueOrDefault("gdr"), flags.GetValueOrDefault("gdr-section"), flags.GetValueOrDefault("gdr-none"))));
+                    break;
+                case "grade":
+                    int? Count(string name) => int.TryParse(flags.GetValueOrDefault(name), NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? n : null;
+                    double? Hours(string name) => double.TryParse(flags.GetValueOrDefault(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var h) ? h : null;
+                    foreach (var name in new[] { "word-questions", "objects-before", "types-before", "objects-after", "types-after" })
+                        if (flags.ContainsKey(name) && Count(name) is null) return Usage(UsageLineFor("hypothesis grade"), asJson);
+                    foreach (var name in new[] { "agent-hours", "alternative-hours" })
+                        if (flags.ContainsKey(name) && Hours(name) is null) return Usage(UsageLineFor("hypothesis grade"), asJson);
+                    result = RenderCommand(HypothesisCommands.Grade(new GradeHypothesisRequest(hypothesisProject,
+                        CliProductVersion(), hypothesisId!, flags.GetValueOrDefault("sealed-verdict"),
+                        flags.GetValueOrDefault("verdict-source"), Count("word-questions"), Count("objects-before"),
+                        Count("types-before"), Count("objects-after"), Count("types-after"), Hours("agent-hours"),
+                        Hours("alternative-hours"))));
+                    break;
+                case "answer":
+                    if (!int.TryParse(flags.GetValueOrDefault("question"), out var questionNumber) ||
+                        !flags.TryGetValue("answer", out var questionAnswer))
+                        return Usage(UsageLineFor("hypothesis answer"), asJson);
+                    result = RenderCommand(HypothesisCommands.AnswerQuestion(new AnswerHypothesisQuestionRequest(
+                        hypothesisProject, CliProductVersion(), hypothesisId!, questionNumber, questionAnswer)));
+                    break;
+                case "neighbours":
+                    if (!flags.TryGetValue("change", out var neighbourChange))
+                        return Usage(UsageLineFor("hypothesis neighbours"), asJson);
+                    result = RenderCommand(HypothesisCommands.Neighbours(new HypothesisNeighboursRequest(hypothesisProject,
+                        CliProductVersion(), neighbourChange, flags.GetValueOrDefault("environment"),
+                        flags.GetValueOrDefault("host-class"), flags.GetValueOrDefault("slot"))));
+                    break;
+                case "report":
+                    if (!flags.TryGetValue("kind", out var hypKind))
+                        return Usage(UsageLineFor("hypothesis report"), asJson);
+                    result = RenderCommand(HypothesisCommands.Report(new HypothesisReportRequest(
+                        hypothesisProject, CliProductVersion(), hypKind)));
+                    break;
+                default:
+                    return Usage("Usage: motif hypothesis (add | test | decide | link | grade | answer | neighbours | report) ... --project <fwdata>", asJson);
+            }
+            break;
+        }
 
         case "warnings":
             if (!flags.TryGetValue("project", out var warningsProject) ||

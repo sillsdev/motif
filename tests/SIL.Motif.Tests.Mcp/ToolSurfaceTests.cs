@@ -164,6 +164,9 @@ public sealed class ToolSurfaceTests
             "compose-retire-boundary-marker",
             "compose-set-stem-part-of-speech",
             "compose-tag-stems-by-query",
+            "hypothesis neighbours",
+            "hypothesis report",
+            "list hypotheses",
             "project tag",
             "store artifacts",
             "store prune",
@@ -201,7 +204,8 @@ public sealed class ToolSurfaceTests
 
         Assert.All(CommandCatalog.All.Except(numeralEditors).Where(command =>
             command.Name != "activity" && command.Name != "project tag" &&
-            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store upgrade"), command =>
+            command.Name != "store artifacts" && command.Name != "store prune" && command.Name != "store upgrade" &&
+            command.Name is not ("hypothesis neighbours" or "hypothesis report" or "list hypotheses")), command =>
             Assert.True(command.ExposeAsAgentTool));
         Assert.DoesNotContain(AgentTools.All, tool => tool.Name == "motif_activity" && tool.Requests.Count > 0);
     }

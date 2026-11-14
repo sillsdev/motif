@@ -43,6 +43,8 @@ internal static class CliCommandNames
             return "apply --all-pending";
         if (verb == "delete") return "delete --proposal";
         if (verb == "list" && positionals.SequenceEqual(new[] { "requests" })) return "list requests";
+        if (verb == "list" && positionals.SequenceEqual(new[] { "hypotheses" })) return "list hypotheses";
+        if (verb == "hypothesis" && positionals.Count > 0) return "hypothesis " + positionals[0];
         if (verb == "request" && positionals.Count > 0) return "request " + positionals[0];
         if (verb is "reject" or "reopen" && flags.ContainsKey("proposal")) return verb + " --proposal";
         if (verb == "apply" && flags.ContainsKey("proposal"))
