@@ -82,11 +82,13 @@ public static class TagStemsByQueryComposer
     /// <summary>What a query selected and which stems a gate needs tagged, before any operation is built.</summary>
     /// <param name="Scope">Every stem grammatical info the query ranges over.</param>
     /// <param name="Matching">The stems the query selects.</param>
-    /// <param name="Targets">The stems to tag or untag.</param>
+    /// <param name="Targets">The stems that should carry the feature once the change is made (those to lose it, for an untag).</param>
+    /// <param name="Wrong">The stems on the other side that carry the feature now and must lose it.</param>
     /// <param name="Polarity">"matching" or "others" for a tag; "matching" for an untag.</param>
     /// <param name="Limitation">The FieldWorks limitation that forced the polarity, or null.</param>
     public sealed record Plan(IReadOnlyList<IMoStemMsa> Scope, IReadOnlyList<IMoStemMsa> Matching,
-        IReadOnlyList<IMoStemMsa> Targets, string Polarity, string? Limitation);
+        IReadOnlyList<IMoStemMsa> Targets, string Polarity, string? Limitation,
+        IReadOnlyList<IMoStemMsa> Wrong);
 
     /// <summary>Evaluates the query and chooses the polarity.</summary>
     public static Plan Evaluate(LcmCache cache, TagStemsByQueryIntent intent)
@@ -124,18 +126,24 @@ public static class TagStemsByQueryComposer
 
         if (intent.Action == "untag")
             return new Plan(scope, matching, matching.Where(msa => msa.ProdRestrictRC.Any(i => i.Guid == feature.ToGuid())).ToArray(),
-                "matching", null);
+                "matching", null, []);
         var matchingSet = matching.ToHashSet();
         var others = scope.Where(msa => !matchingSet.Contains(msa)).ToArray();
+        var held = feature.ToGuid();
+        bool Carries(IMoStemMsa msa) => msa.ProdRestrictRC.Any(item => item.Guid == held);
+        if (intent.Gate == "rule" && others.Length < matching.Count && query.Category is null)
+            throw new InvalidOperationException($"'{ConstructName}': tagging the {others.Length} other stems instead of the " +
+                $"{matching.Count} matching ones would count every part of speech ({scope.Count} stems). Give 'category' so the " +
+                "other side is the stems the rule can see.");
         if (intent.Gate != "rule")
             return new Plan(scope, matching, matching, "matching", others.Length < matching.Count
                 ? $"FieldWorks affix restrictions only require a stem exception feature, never exclude one, so the {matching.Count} " +
                   $"matching stems must carry it although the other {others.Length} would need fewer tags. " +
                   "Motif adds no negative mechanism; record this as a FieldWorks limitation."
-                : null);
+                : null, others.Where(Carries).ToArray());
         return others.Length < matching.Count
-            ? new Plan(scope, matching, others, "others", null)
-            : new Plan(scope, matching, matching, "matching", null);
+            ? new Plan(scope, matching, others, "others", null, matching.Where(Carries).ToArray())
+            : new Plan(scope, matching, matching, "matching", null, others.Where(Carries).ToArray());
     }
 
     /// <summary>Builds the additions or removals; a stem already in the wanted state contributes nothing.</summary>
@@ -146,13 +154,20 @@ public static class TagStemsByQueryComposer
         var untag = intent.Action == "untag";
         var kinds = (Add: MoStemMsaProdRestrictOperationKinds.AddRefProdRestrict,
             Remove: MoStemMsaProdRestrictOperationKinds.RemoveRefProdRestrict);
-        return plan.Targets
-            .Where(msa => msa.ProdRestrictRC.Any(item => item.Guid == feature.ToGuid()) == untag)
-            .OrderBy(msa => msa.Guid)
-            .Select(msa => new OperationEnvelope(CanonicalId.Mint(), untag ? kinds.Remove : kinds.Add,
-                target: CanonicalId.FromGuid(msa.Guid),
-                after: JsonSerializer.SerializeToElement(new { member = feature.Value }), rationale: Rationale))
-            .ToArray();
+        var (adds, removes) = Changes(plan, feature, untag);
+        OperationEnvelope Operation(IMoStemMsa msa, string kind) => new(CanonicalId.Mint(), kind,
+            target: CanonicalId.FromGuid(msa.Guid),
+            after: JsonSerializer.SerializeToElement(new { member = feature.Value }), rationale: Rationale);
+        return adds.Select(msa => Operation(msa, kinds.Add)).Concat(removes.Select(msa => Operation(msa, kinds.Remove))).ToArray();
+    }
+
+    /// <summary>Stems that gain and lose the feature so the tagged set equals the chosen side.</summary>
+    private static (IMoStemMsa[] Adds, IMoStemMsa[] Removes) Changes(Plan plan, CanonicalId feature, bool untag)
+    {
+        bool Carries(IMoStemMsa msa) => msa.ProdRestrictRC.Any(item => item.Guid == feature.ToGuid());
+        var targets = plan.Targets.OrderBy(msa => msa.Guid).ToArray();
+        return untag ? ([], targets.Where(Carries).ToArray())
+            : (targets.Where(msa => !Carries(msa)).ToArray(), plan.Wrong.OrderBy(msa => msa.Guid).ToArray());
     }
 
     /// <summary>One summary stating the counts first, then the polarity and any FieldWorks limitation.</summary>
@@ -161,8 +176,9 @@ public static class TagStemsByQueryComposer
         var plan = Evaluate(cache, intent);
         var feature = LexicalFormAuthoring.Normalize(intent.ExceptionFeature);
         var verb = intent.Action == "untag" ? "untag" : "tag";
+        var (adds, removes) = Changes(plan, feature, intent.Action == "untag");
         var text = $"{plan.Matching.Count} of {plan.Scope.Count} stems match; {verb} {plan.Targets.Count} " +
-                   $"({plan.Polarity}). ";
+                   $"({plan.Polarity}); {adds.Length} tags added, {removes.Length} removed. ";
         if (verb == "tag")
             text += plan.Polarity == "others"
                 ? "The rule must EXCLUDE this feature (ExcludedFeatures), because the other stems are fewer. "

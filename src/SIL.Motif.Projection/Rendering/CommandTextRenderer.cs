@@ -347,6 +347,18 @@ public static class CommandTextRenderer
             false => "Not suppressed",
             null => "Unavailable",
         }}");
+        if (projection.ReadingIdentity is { } identity)
+        {
+            sb.AppendLine($"  readings of affected words: {identity.Status}; {identity.IdenticalWords} of " +
+                $"{identity.AffectedWords} words identical; {identity.LostReadings} lost, {identity.NewReadings} new " +
+                $"of {identity.ReadingsBefore} before");
+            foreach (var difference in identity.Differences.Take(20))
+                sb.AppendLine($"    {difference.Word}: lost [{string.Join("; ", difference.Lost)}] " +
+                    $"new [{string.Join("; ", difference.New)}]");
+            if (identity.IncompleteWords.Count > 0)
+                sb.AppendLine($"    incomplete: {string.Join(", ", identity.IncompleteWords.Take(20))}" +
+                    (identity.IncompleteWords.Count > 20 ? $" and {identity.IncompleteWords.Count - 20} more" : ""));
+        }
         if (projection.UnresolvedReferences.UnresolvedApprovedAnalyses > 0 ||
             projection.UnresolvedReferences.UnresolvedAdhocRules > 0 ||
             projection.UnresolvedReferences.OtherReferences > 0 ||

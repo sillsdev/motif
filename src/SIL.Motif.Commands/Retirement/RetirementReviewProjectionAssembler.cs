@@ -95,12 +95,18 @@ internal static class RetirementReviewProjectionAssembler
         var observedAfter = translation.Original.Cases.Where(@case => afterSurfaces.ContainsKey(@case.Surface))
             .ToDictionary(@case => @case.CaseId, @case => afterSurfaces[@case.Surface], StringComparer.Ordinal);
         var diagnostics = CombineDiagnostics(footprint, retirement);
-        var identity = ReadingIdentityProof.Prove(RecipeVerificationTrialProjection.From(beforeAssessment), afterRun,
-            footprint.AffectedWordforms.SelectMany(item => item.Forms.Select(form => form.Text)), translation.Mappings);
+        var identity = ProveReadingIdentity(RecipeVerificationTrialProjection.From(beforeAssessment), afterRun,
+            footprint, translation);
         return RetirementProposalReviewProjectionBuilder.Build(proposal, dryRun, statistics, translation,
             verification, evidence, footprint, boundFinding.Finding.FindingId, attributions, observedAfter, diagnostics,
             boundFinding.OperationIds) with { ReadingIdentity = identity };
     }
+
+    /// <summary>Compares every reading of the footprint's affected words across the Trial's two runs.</summary>
+    internal static ReadingIdentityResult ProveReadingIdentity(RecipeVerificationRun before, RecipeVerificationRun after,
+        AllomorphReferenceFootprint footprint, RetirementExpectationTranslation translation) =>
+        ReadingIdentityProof.Prove(before, after,
+            footprint.AffectedWordforms.SelectMany(item => item.Forms.Select(form => form.Text)), translation.Mappings);
 
     private static BoundFinding? FindBoundFinding(MotifDatabase database, DraftDocument draft)
     {

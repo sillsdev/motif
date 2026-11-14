@@ -79,4 +79,27 @@ public sealed class DryRunOperationRenderingTests
         Assert.Contains("1 distinct unresolved Approved analyses; 1 unresolved ad hoc rules; 0 other references", text,
             StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReviewTextShowsTheReadingIdentityWithItsDifferencesAndIncompleteWords()
+    {
+        var digest = "sha256:" + new string('b', 64);
+        var dryRun = new DryRunProjection("proposal/one", "intent/one", "Baseline", [], "effects/one", "footprint/one");
+        var projection = new RetirementProposalReviewProjection("proposal/one", "intent/one", dryRun,
+            new SIL.Motif.Contract.Retirement.RetirementReviewStatistics(new(0, 0, 0, 0), new(0, 0, 0, 0),
+                new(0, 0, 0, 0), 0,
+                [new(true, true, 0, 0), new(true, false, 0, 0), new(false, true, 0, 0), new(false, false, 0, 0)],
+                0, 0, 0, 0, new("finding/one", 0, 0, 0, 0, digest, digest, true), digest),
+            [], [], new("finding/one", 0, 0, 0, 0, digest, digest, true, false), new(0, 0, 0, 0, []), [])
+        {
+            ReadingIdentity = new ReadingIdentityResult(ReadingIdentityStatus.Differs, 3, 1, 4, 1, 0,
+                [new("kan", ["a"], [])], ["kaun"], ["1 affected words have no completed search on both sides."]),
+        };
+
+        var text = CommandTextRenderer.Render(projection);
+
+        Assert.Contains("readings of affected words: Differs; 1 of 3 words identical; 1 lost, 0 new of 4 before", text);
+        Assert.Contains("kan: lost [a] new []", text);
+        Assert.Contains("incomplete: kaun", text);
+    }
 }

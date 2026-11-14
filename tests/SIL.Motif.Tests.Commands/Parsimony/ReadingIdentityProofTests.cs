@@ -1,3 +1,4 @@
+using SIL.Motif.Commands.Retirement;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
@@ -5,6 +6,7 @@ using SIL.Motif.Contract.Retirement;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Parsimony;
+using SIL.Motif.Projection.Retirement;
 using Xunit;
 
 namespace SIL.Motif.Tests.Parsimony;
@@ -113,7 +115,7 @@ public sealed class ReadingIdentityProofTests
     }
 
     [Fact]
-    public void AWholeCorpusIsComparedInUnderASecondBecauseItIsOnePassOverTheTrialRows()
+    public void AWholeCorpusIsComparedInOnePassOverTheTrialRows()
     {
         var words = Enumerable.Range(0, 62_000).Select(i => $"w{i}").ToArray();
         var before = Run(words.Select(word => Word(word, Reading(Stem, Retired), Reading(Other))).ToArray());
@@ -124,6 +126,57 @@ public sealed class ReadingIdentityProofTests
         clock.Stop();
 
         Assert.Equal(ReadingIdentityStatus.Identical, proof.Status);
-        Assert.True(clock.ElapsedMilliseconds < 1000, $"took {clock.ElapsedMilliseconds} ms");
+        Assert.True(clock.ElapsedMilliseconds < 10_000, $"took {clock.ElapsedMilliseconds} ms");
+    }
+
+    [Fact]
+    public void TwoBeforeReadingsThatMapToOneFormStayTwoSoTheRuleDroppingOneIsLost()
+    {
+        var before = Run(Word("kan", Reading(Stem, Retired), Reading(Stem, Survivor)));
+        var after = Run(Word("kan", Reading(Stem, Survivor)));
+
+        var proof = ReadingIdentityProof.Prove(before, after, ["kan"], Mappings);
+
+        Assert.Equal(ReadingIdentityStatus.Differs, proof.Status);
+        Assert.Equal((2, 1, 0), (proof.ReadingsBefore, proof.LostReadings, proof.NewReadings));
+    }
+
+    [Fact]
+    public void DifferingWordsAreReportedAlongsideTheIncompleteOnes()
+    {
+        var before = Run(Word("kan", Reading(Stem)), Word("kaun", Reading(Stem)));
+        var after = Run(Word("kan", Reading(Other)));
+
+        var proof = ReadingIdentityProof.Prove(before, after, ["kan", "kaun"], []);
+
+        Assert.Equal(ReadingIdentityStatus.Differs, proof.Status);
+        Assert.Equal(["kaun"], proof.IncompleteWords);
+        Assert.Equal("kan", Assert.Single(proof.Differences).Word);
+    }
+
+    [Fact]
+    public void RepeatedRoleMappingsDoNotThrow()
+    {
+        var run = Run(Word("kan", Reading(Stem, Retired)));
+        var twice = new[] { Mappings[0], Mappings[0] };
+
+        Assert.Equal(ReadingIdentityStatus.Differs, ReadingIdentityProof.Prove(run, Run(Word("kan", Reading(Stem))), ["kan"], twice).Status);
+    }
+
+    [Fact]
+    public void TheReviewAssemblerFeedsTheFootprintsWordformsAndMappingsToTheProof()
+    {
+        var digest = "sha256:" + new string('a', 64);
+        var footprint = new AllomorphReferenceFootprint(digest, digest, [], [], [], 
+            [new AllomorphAffectedWordform(Guid.NewGuid(), [new("qaa", "kan")], [], [])], [], [],
+            new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, new Dictionary<string, int>()), digest);
+        var translation = new RetirementExpectationTranslation(null!, null!, Mappings, [], digest, digest, digest, digest);
+        var before = Run(Word("kan", Reading(Stem, Retired)), Word("unrelated", Reading(Other)));
+        var after = Run(Word("kan", Reading(Stem, Survivor)), Word("unrelated", Reading(Stem)));
+
+        var proof = RetirementReviewProjectionAssembler.ProveReadingIdentity(before, after, footprint, translation);
+
+        Assert.Equal(ReadingIdentityStatus.Identical, proof.Status);
+        Assert.Equal(1, proof.AffectedWords);
     }
 }

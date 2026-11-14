@@ -31,9 +31,10 @@ public static class ReadingIdentityProof
             .Order(StringComparer.Ordinal).ToArray();
         var unavailable = new List<string>();
         if (words.Length == 0) unavailable.Add("There are no affected words to compare.");
-        var translation = mappings.ToDictionary(
-            item => (Key(item.RetiredForm), Key(item.Msa), item.InflType is null ? null : Key(item.InflType)),
-            item => item.ReplacementForm);
+        var translation = new Dictionary<(string Form, string Msa, string? InflType), string>();
+        foreach (var item in mappings)
+            translation.TryAdd((Key(item.RetiredForm), Key(item.Msa), item.InflType is null ? null : Key(item.InflType)),
+                item.ReplacementForm);
         var beforeByWord = Index(before, "before", unavailable);
         var afterByWord = Index(after, "after", unavailable);
 
@@ -47,11 +48,12 @@ public static class ReadingIdentityProof
                 incomplete.Add(word);
                 continue;
             }
-            var beforeReadings = beforeWord.Analyses.Select(item => Render(item, translation)).ToHashSet(StringComparer.Ordinal);
-            var afterReadings = afterWord.Analyses.Select(item => Render(item, null)).ToHashSet(StringComparer.Ordinal);
-            var lostHere = beforeReadings.Except(afterReadings).Order(StringComparer.Ordinal).ToArray();
-            var newHere = afterReadings.Except(beforeReadings).Order(StringComparer.Ordinal).ToArray();
-            readingsBefore += beforeReadings.Count;
+            // A multiset: two before readings mapping to one form stay two, so dropping one shows as lost.
+            var beforeReadings = Count(beforeWord.Analyses.Select(item => Render(item, translation)));
+            var afterReadings = Count(afterWord.Analyses.Select(item => Render(item, null)));
+            var lostHere = Surplus(beforeReadings, afterReadings);
+            var newHere = Surplus(afterReadings, beforeReadings);
+            readingsBefore += beforeWord.Analyses.Count;
             lost += lostHere.Length;
             gained += newHere.Length;
             if (lostHere.Length == 0 && newHere.Length == 0) identical++;
@@ -66,6 +68,17 @@ public static class ReadingIdentityProof
         return new ReadingIdentityResult(status, words.Length, identical, readingsBefore, lost, gained,
             differences, incomplete, unavailable);
     }
+
+    private static Dictionary<string, int> Count(IEnumerable<string> readings)
+    {
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var reading in readings) counts[reading] = counts.GetValueOrDefault(reading) + 1;
+        return counts;
+    }
+
+    private static string[] Surplus(Dictionary<string, int> side, Dictionary<string, int> other) => side
+        .SelectMany(pair => Enumerable.Repeat(pair.Key, pair.Value - Math.Min(pair.Value, other.GetValueOrDefault(pair.Key))))
+        .Order(StringComparer.Ordinal).ToArray();
 
     private static string Key(string text) => text.Normalize(NormalizationForm.FormD);
 
