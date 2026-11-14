@@ -31,6 +31,7 @@ public static class TrialReviewTextRenderer
         text.AppendLine("Sampled tokens: " + Coverage(report.Summary.SampledTokens.Before) + " before; " + Coverage(report.Summary.SampledTokens.After) + " after");
         text.AppendLine("Paradigm cells: " + Coverage(report.Summary.ParadigmCells.Before) + " before; " + Coverage(report.Summary.ParadigmCells.After) + " after");
         if (report.Summary.Gains is { } gains) AppendGains(text, gains);
+        if (report.Summary.RuleAttempts is { Groups.Count: > 0 } attempts) AppendRuleAttempts(text, attempts);
         text.AppendLine("Parser work: " + (report.Summary.ParserWork.PercentChange is { } change
             ? change.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture) + "%" : "not comparable"));
         text.AppendLine($"Trial {report.Pins.TrialJobId}; report {report.ReportId}; {report.Freshness.Relation}");
@@ -87,6 +88,14 @@ public static class TrialReviewTextRenderer
         text.AppendLine($"Objects per attested type gained: {ratio}; gain gate {gains.Gate.Mode.ToString().ToLowerInvariant()}: " +
             $"{gains.Gate.Outcome}" +
             (gains.Gate.Hold ? "; HOLD (report only; Apply does not read it)" : ""));
+    }
+
+    private static void AppendRuleAttempts(StringBuilder text, RuleAttemptSummary attempts)
+    {
+        foreach (var group in attempts.Groups)
+            text.AppendLine($"Rule attempt: {group.Count} added variants share shape {group.ShapeKey}; " +
+                (group.AttemptRecorded ? "attempt recorded" : "no rule attempt recorded (advisory)"));
+        if (attempts.Hold) text.AppendLine("HOLD: rule attempt required (opted in; report only; Apply does not read it)");
     }
 
     private static string Flag(FlagFact flag) => flag.Facts switch

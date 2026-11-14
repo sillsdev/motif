@@ -458,6 +458,10 @@ public sealed record ReviewSummary(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public GainSummary? Gains { get; init; }
 
+    /// <summary>The same-shape rule-attempt check over the variants the Proposal adds; absent from older reports.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RuleAttemptSummary? RuleAttempts { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

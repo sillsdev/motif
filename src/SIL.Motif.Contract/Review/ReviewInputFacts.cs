@@ -132,4 +132,13 @@ public sealed record FrozenReviewInputs(
 {
     /// <summary>The gain gate frozen with the Trial; null means the default policy.</summary>
     public GainGatePolicy? GainGate { get; init; }
+
+    /// <summary>The Parsimony measures the project opted in to blocking on, frozen with the Trial; null means none.</summary>
+    public IReadOnlyList<string>? ParsimonyBlockOn { get; init; }
+
+    /// <summary>
+    /// Lexeme forms, by canonical id suffix, of the entries and senses the Proposal's variant links name, read from the
+    /// Baseline at capture so the rule-attempt check needs no project access; null means none were captured.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? VariantForms { get; init; }
 }

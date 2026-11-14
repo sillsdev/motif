@@ -1,4 +1,4 @@
-# ADR 0115 - Same-shape additions need a rule attempt, and Parsimony runs weekly with opt-in blocking
+# ADR 0116 - Same-shape additions need a rule attempt, and Parsimony runs weekly with opt-in blocking
 
 A package that adds five or more variants of one shape must carry a recorded rule attempt; Parsimony runs weekly with a trend line; a closed subset of measures may block in autonomous mode when a project opts in; four redundancy measures are declared.
 

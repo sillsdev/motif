@@ -4,6 +4,7 @@ using System.Text.Json;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Canonicalization;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsimony.RuleAttempts;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
@@ -88,7 +89,7 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
             Digest(inputs.Sets), Digest(inputs.Cases.Select(item => item.Assertions)), new WarningCheckPins(null, null),
             parsimony?.Pins ?? [], inputs.EvidenceManifestDigest, "review-v2");
         var summary = BuildSummary(facts, inputs, ledger, overlappingLosses.Count, negativeSets.Order(StringComparer.Ordinal).ToArray(), hasWarnings)
-            with { Gains = BuildGains(facts, inputs, proposal.Operations) };
+            with { Gains = BuildGains(facts, inputs, proposal.Operations), RuleAttempts = BuildRuleAttempts(inputs, proposal.Operations) };
         summary = summary with { SectionCounts = summary.SectionCounts.Select(section => section.Section == "parser-work"
             ? new SectionCount("parser-work", wordWorkRows is null ? null : work!.RequiredCases.Count + (ruleWorkRows?.Count ?? 0), "rows",
                 wordWorkRows is null ? null : work!.RequiredCases.Count + (ruleWorkRows?.Count ?? 0)) : section).ToArray() };
@@ -387,6 +388,14 @@ public sealed class TrialReviewPublisher(MotifDatabase database)
         IEnumerable<OperationEnvelope> operations) =>
         GainSummary.Create(facts.AttestedGained, facts.GeneratedGained, GrammarSizeDeltaCounter.Count(operations),
             inputs.GainGate ?? GainGatePolicy.Default, facts.IncompleteCases > 0);
+
+    internal static RuleAttemptSummary BuildRuleAttempts(FrozenReviewInputs inputs, IEnumerable<OperationEnvelope> operations)
+    {
+        var forms = inputs.VariantForms;
+        var shapes = VariantOperationShapes.FromOperations(operations,
+            id => forms is not null && forms.TryGetValue(id, out var form) ? form : null);
+        return RuleAttemptSummary.Create(shapes, NoRuleAttemptLedger.Instance, inputs.ParsimonyBlockOn ?? []);
+    }
 
     private static ReviewSummary BuildSummary(ReviewAccumulatedFacts facts, FrozenReviewInputs inputs, TrialReviewLedger ledger,
         long overlappingLosses, IReadOnlyList<string> negativeSets, bool hasWarnings)

@@ -90,7 +90,7 @@ public sealed class ReviewReportExpandedTests
         var expected = new Dictionary<string, string>
         {
             ["ReportView"] = "schema schemaVersion reportId reportDigest detail pins freshness summary flagEvidence limitations detailAvailability sections page word trace links",
-            ["ReviewSummary"] = "notice flags incomplete wordforms approved sampledTokens paradigmCells controls negatives parserWork warnings parsimony effects sectionCounts gains",
+            ["ReviewSummary"] = "notice flags incomplete wordforms approved sampledTokens paradigmCells controls negatives parserWork warnings parsimony effects sectionCounts gains ruleAttempts",
             ["FlagFact"] = "id text wordCount readingCount evidenceState sectionIds sampleEventIds facts",
             ["WorkChange"] = "kind percentChange wordCount scopeDigest comparison reasonCodes",
             ["RuleWorkRow"] = "rowKind kind key identityQuality scope name status percentChange unavailableReason",
@@ -171,6 +171,20 @@ public sealed class ReviewReportExpandedTests
             { Gains = GainSummary.Create(1, 2, GrammarSizeDelta.None, GainGatePolicy.Default, false) } };
         var round = JsonSerializer.Deserialize<ReportView>(JsonSerializer.Serialize(withGains, ReviewJson.Options), ReviewJson.Options)!;
         Assert.Equal(withGains.Summary.Gains, round.Summary.Gains);
+    }
+
+    [Fact]
+    public void AReportWrittenWithoutRuleAttemptsReadsWithNullAndOneWithThemRoundTrips()
+    {
+        var report = CreateReport();
+        var json = JsonSerializer.Serialize(report, ReviewJson.Options);
+        Assert.DoesNotContain("\"ruleAttempts\"", json, StringComparison.Ordinal);
+        Assert.Null(JsonSerializer.Deserialize<ReportView>(json, ReviewJson.Options)!.Summary.RuleAttempts);
+        var summary = new RuleAttemptSummary(5, 7, [new RuleAttemptGroupRow("shape", 6, ["a", "b"], false)], true, true);
+        var with = report with { Summary = report.Summary with { RuleAttempts = summary } };
+        var round = JsonSerializer.Deserialize<ReportView>(JsonSerializer.Serialize(with, ReviewJson.Options), ReviewJson.Options)!;
+        Assert.Equal("shape", Assert.Single(round.Summary.RuleAttempts!.Groups).ShapeKey);
+        Assert.True(round.Summary.RuleAttempts.Hold);
     }
 
     private static ReportView CreateReport()

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Globalization;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Review;
 
 namespace SIL.Motif.Host.Config;
@@ -32,12 +33,14 @@ public static class ProjectConfigurationFile
     private const string ApplyTable = "apply";
     private const string RetentionTable = "retention";
     private const string GainGateTable = "gain-gate";
+    private const string ParsimonyTable = "parsimony";
     private const string ScopeTable = "scope";
     private const string ReviewTable = "review-word-set";
 
     private static readonly HashSet<string> RegressionKeys = new(StringComparer.Ordinal) { "gate" };
     private static readonly HashSet<string> ApplyKeys = new(StringComparer.Ordinal) { "purge-on-apply" };
     private static readonly HashSet<string> GainGateKeys = new(StringComparer.Ordinal) { "mode", "min-attested-per-object" };
+    private static readonly HashSet<string> ParsimonyKeys = new(StringComparer.Ordinal) { "block-on" };
     private static readonly HashSet<string> RetentionKeys = new(StringComparer.Ordinal) { "standalone-assessments-per-kind" };
 
     private static readonly HashSet<string> ScopeKeys = new(StringComparer.Ordinal)
@@ -57,6 +60,7 @@ public static class ProjectConfigurationFile
         int? standaloneCount = null;
         GainGateMode? gateMode = null;
         double? gateMinimum = null;
+        List<string>? blockOn = null;
         var scopes = new List<AssessmentScopeConfiguration>();
         var reviewSets = new List<ReviewWordSetConfiguration>();
         var review = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -92,7 +96,7 @@ public static class ProjectConfigurationFile
                 var name = HeaderName(trimmed, "[", "]", path, lineNumber);
                 if (name == ScopeTable)
                     throw Malformed(path, lineNumber, "'scope' must be declared as '[[scope]]', not '[scope]'");
-                if (name != RegressionTable && name != ApplyTable && name != RetentionTable && name != GainGateTable)
+                if (name != RegressionTable && name != ApplyTable && name != RetentionTable && name != GainGateTable && name != ParsimonyTable)
                     throw Malformed(path, lineNumber, $"unknown table '[{name}]'");
                 section = name;
                 continue;
@@ -127,6 +131,13 @@ public static class ProjectConfigurationFile
                     if (key == "mode") gateMode = ParseGateMode(path, lineNumber, key, rawValue);
                     else gateMinimum = ParsePositiveNumber(path, lineNumber, key, rawValue);
                     break;
+                case ParsimonyTable:
+                    if (!ParsimonyKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[parsimony]");
+                    blockOn = ParseStringArray(path, lineNumber, key, rawValue);
+                    foreach (var id in blockOn.Where(id => !BlockingPolicy.BlockCapable.Contains(id)))
+                        throw Malformed(path, lineNumber,
+                            $"'{id}' cannot block; block-on accepts {string.Join(", ", BlockingPolicy.BlockCapable)}");
+                    break;
                 case ReviewTable:
                     if (key is not ("id" or "name" or "role" or "selection" or "manifest"))
                         throw UnknownKey(path, lineNumber, key, "[[review-word-set]]");
@@ -154,7 +165,8 @@ public static class ProjectConfigurationFile
         return new ProjectConfiguration(scopes, gate ?? true, purge ?? true,
             standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount, reviewSets,
             new GainGatePolicy(gateMode ?? GainGatePolicy.Default.Mode,
-                gateMinimum ?? GainGatePolicy.Default.MinAttestedPerObject));
+                gateMinimum ?? GainGatePolicy.Default.MinAttestedPerObject),
+            blockOn);
     }
 
     /// <summary>Renders a resolved configuration back to the same TOML shape <see cref="Parse"/> reads.</summary>
@@ -178,6 +190,13 @@ public static class ProjectConfigurationFile
             sb.AppendLine($"mode = {Quote(configuration.GainGate.Mode.ToString().ToLowerInvariant())}");
             sb.AppendLine("min-attested-per-object = " +
                 configuration.GainGate.MinAttestedPerObject.ToString("R", CultureInfo.InvariantCulture));
+        }
+
+        if (configuration.ParsimonyBlockOn.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"[{ParsimonyTable}]");
+            sb.AppendLine($"block-on = [{string.Join(", ", configuration.ParsimonyBlockOn.Select(Quote))}]");
         }
 
         foreach (var scope in configuration.Scopes)

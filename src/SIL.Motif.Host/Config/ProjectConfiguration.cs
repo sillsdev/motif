@@ -99,7 +99,8 @@ public sealed record ProjectConfiguration
         bool purgeOnApply,
         int standaloneAssessmentCount = DefaultStandaloneAssessmentCount,
         IReadOnlyList<ReviewWordSetConfiguration>? reviewWordSets = null,
-        GainGatePolicy? gainGate = null)
+        GainGatePolicy? gainGate = null,
+        IReadOnlyList<string>? parsimonyBlockOn = null)
     {
         ArgumentNullException.ThrowIfNull(scopes);
         if (scopes.Count == 0)
@@ -112,6 +113,7 @@ public sealed record ProjectConfiguration
         StandaloneAssessmentCount = standaloneAssessmentCount;
         ReviewWordSets = reviewWordSets ?? Array.Empty<ReviewWordSetConfiguration>();
         GainGate = gainGate ?? GainGatePolicy.Default;
+        ParsimonyBlockOn = parsimonyBlockOn ?? Array.Empty<string>();
     }
 
     /// <summary>Every declared Assessment scope, at least one.</summary>
@@ -131,6 +133,9 @@ public sealed record ProjectConfiguration
 
     /// <summary>The gain gate over attested gains per grammar object added; advisory by default.</summary>
     public GainGatePolicy GainGate { get; }
+
+    /// <summary>Parsimony measure ids the project opted in to blocking on (ADR 0116); empty means advisory everywhere.</summary>
+    public IReadOnlyList<string> ParsimonyBlockOn { get; }
 
     /// <summary>The documented configuration for a project with no <c>.motif.toml</c>.</summary>
     public static ProjectConfiguration Defaults() => new(

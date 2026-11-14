@@ -816,6 +816,9 @@
         },
         "gains": {
           "$ref": "#/$defs/GainSummary"
+        },
+        "ruleAttempts": {
+          "$ref": "#/$defs/RuleAttemptSummary"
         }
       },
       "required": [
@@ -4212,6 +4215,29 @@
         "minAttestedPerObject",
         "hold"
       ],
+      "additionalProperties": false
+    },
+    "RuleAttemptGroupRow": {
+      "type": "object",
+      "properties": {
+        "shapeKey": { "type": "string", "minLength": 1 },
+        "count": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "sampleObjectIds": { "type": "array", "items": { "type": "string" } },
+        "attemptRecorded": { "type": "boolean" }
+      },
+      "required": ["shapeKey", "count", "sampleObjectIds", "attemptRecorded"],
+      "additionalProperties": false
+    },
+    "RuleAttemptSummary": {
+      "type": "object",
+      "properties": {
+        "threshold": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "shapesEvaluated": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "groups": { "type": "array", "items": { "$ref": "#/$defs/RuleAttemptGroupRow" } },
+        "optedIn": { "type": "boolean" },
+        "hold": { "type": "boolean" }
+      },
+      "required": ["threshold", "shapesEvaluated", "groups", "optedIn", "hold"],
       "additionalProperties": false
     },
     "GainSummary": {
