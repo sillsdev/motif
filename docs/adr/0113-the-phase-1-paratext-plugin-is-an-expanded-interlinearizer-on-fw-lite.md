@@ -73,11 +73,14 @@ hook for another extension's suggestions (`interlinearizer-extension-points.md`)
 
 ## Consequences
 
-- **Supersedes, for phase 1:** ADR 0110 steps 5-7 (the Words view, the Proposals list, and the Harmony-log step 7 that
-  now comes first in the build order above), its decision 11 (the Words view), and its .fwdata judgement storage
-  (decisions 4-5, which stays for the .fwdata Home). Phase-1 decisions 36-39 apply to an FW Lite Home through decision 13.
-- **Supersedes** the grammar-owner parts of earlier phase-1 decisions (4, 23, 25, 53, 57, 58) and persona review items 3-15.
-- Everything else in ADR 0110 stands: scripture stays in Paratext, the Source, Passage and Context terms, and the anchor format.
+- **Supersedes, for phase 1:** the earlier build order's plugin views and Words view (ADR 0110 decision 11) and its
+  Proposals list, its background service step, and its "Harmony later" step, which now comes first in the build order
+  above; and ADR 0110's .fwdata judgement storage (decisions 4-5, which stays for the .fwdata Home). Phase-1 decisions
+  36-39 apply to an FW Lite Home through decision 13.
+- **Supersedes** the grammar-owner parts of earlier phase-1 decisions (4, 23, 25, 53, 57, 58) and persona review
+  items 3-15.
+- Everything else in ADR 0110 stands: scripture stays in Paratext, the Source, Passage and Context terms, and the
+  anchor format.
 - The interlinearizer team's agreement is needed before the hook is offered as a PR and before the one-way copy can go
   away. Four questions for them are in `docs/source-build/interlinearizer-meeting.md` (items 9-12).
 - motif-cli is told to pause W1-W4; motif-app is told the plugin has no Words view or Proposals list.
