@@ -927,6 +927,9 @@ public static class MotifAppStrings
     /// <summary>Says the Rationale changed elsewhere during the edit.</summary>
     public static string RationaleChangedElsewhere => Text("MotifApp.RationaleChangedElsewhere");
 
+    /// <summary>The Comment or its Proposal changed while editing.</summary>
+    public static string CommentChangedElsewhere => Text("MotifApp.CommentChangedElsewhere");
+
     /// <summary>Asks to save or cancel the Rationale edit before switching.</summary>
     public static string RationaleSaveOrCancelFirst => Text("MotifApp.RationaleSaveOrCancelFirst");
 

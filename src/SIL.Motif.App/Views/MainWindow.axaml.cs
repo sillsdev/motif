@@ -91,6 +91,11 @@ public sealed partial class MainWindow : Window
             this.FindControl<MenuItem>(name)?.AddHandler(MenuItem.ClickEvent, (_, _) => HideProjectMenu(), handledEventsToo: true);
         if (this.FindControl<Menu>("MainMenu") is { } menuBar)
             foreach (var item in menuBar.GetLogicalDescendants().OfType<MenuItem>()) ActivateOnSpace(item);
+        Closing += (_, e) =>
+        {
+            if (DataContext is WorkspaceShellViewModel workspace && workspace.Context.RefuseLeavingProject())
+                e.Cancel = true;
+        };
         Closed += (_, _) => FlushPreferences();
         AddHandler(InputElement.KeyDownEvent, OnMenuAccessKeyDown, RoutingStrategies.Tunnel);
         if (!rememberBounds) return;

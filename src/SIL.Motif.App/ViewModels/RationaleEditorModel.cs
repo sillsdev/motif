@@ -36,6 +36,9 @@ public sealed partial class RationaleEditorModel : ObservableObject
     private bool _isComment;
     private long? _commentId;
     private Action<RationaleEditorModel>? _deleted;
+    private Action<RationaleEditorModel>? _afterCancel;
+    private bool _commentUnavailable;
+    private IReadOnlyList<string> _storedCommentFindings = [];
 
     /// <summary>Creates a Comment editor using the same rich field as the Rationale.</summary>
     public RationaleEditorModel(WorkspaceContext context, ProposalDetailProjection detail, CommentView? comment,
@@ -47,11 +50,24 @@ public sealed partial class RationaleEditorModel : ObservableObject
         Author = comment?.AuthorLabel ?? (string.IsNullOrEmpty(comment?.PersonName) ? MotifAppStrings.RationaleRevisionAPerson : comment.PersonName);
         _markdown = comment?.Markdown ?? string.Empty;
         _document = Read(_markdown, out _isPlainText);
+        Findings = _storedCommentFindings = (comment?.Findings ?? ProposalTextChecker.Check(_markdown, null, null).Findings)
+            .Select(Describe).ToArray();
         if (comment is null && CanEdit) Edit();
     }
 
     /// <summary>Whether this field holds a Comment.</summary>
     public bool IsComment => _isComment;
+    internal long? CommentId => _commentId;
+
+    internal void ReconcileComment(CommentView? current, ProposalDetailProjection detail, Action<RationaleEditorModel> afterCancel)
+    {
+        _afterCancel = afterCancel;
+        _commentUnavailable = (current is null && _commentId.HasValue) ||
+            (current is not null && current.Markdown != _markdown) ||
+            (detail.DraftName is null && IsDecided(detail.Status));
+        IsChangedElsewhere = IsEditing && _commentUnavailable;
+        SaveCommand.NotifyCanExecuteChanged();
+    }
     /// <summary>The Comment's displayed author.</summary>
     public string Author { get; } = string.Empty;
     /// <summary>Whether a stored Comment can be deleted.</summary>
@@ -60,6 +76,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
     public string PlainTextNotice => _isComment ? MotifAppStrings.CommentPlainText : MotifAppStrings.RationalePlainText;
     /// <summary>The warning shown when another Proposal cannot be selected.</summary>
     public string SwitchWarning => _isComment ? MotifAppStrings.CommentSaveOrCancelFirst : MotifAppStrings.RationaleSaveOrCancelFirst;
+    /// <summary>Why an edit cannot be saved after the stored text or Proposal changed.</summary>
+    public string ChangedElsewhereWarning => _isComment ? MotifAppStrings.CommentChangedElsewhere : MotifAppStrings.RationaleChangedElsewhere;
 
     /// <summary>Deletes this Comment and its attachments.</summary>
     [RelayCommand(CanExecute = nameof(CanDeleteComment))]
@@ -175,9 +193,10 @@ public sealed partial class RationaleEditorModel : ObservableObject
     }
 
     private bool CanSaveOrCancel() => IsEditing && !IsSaving;
+    private bool CanSave() => CanSaveOrCancel() && !_commentUnavailable;
 
     /// <summary>Writes the field's text as the Rationale; on a refusal the text stays in the field.</summary>
-    [RelayCommand(CanExecute = nameof(CanSaveOrCancel))]
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private Task Save() => Working = SaveAsync();
 
     /// <summary>Discards the edit and shows the stored Rationale, read anew if it changed elsewhere.</summary>
@@ -189,11 +208,12 @@ public sealed partial class RationaleEditorModel : ObservableObject
         IsSwitchRefused = false;
         Document = Read(_markdown, out var plain);
         IsPlainText = plain;
-        Findings = [];
+        Findings = _isComment ? _storedCommentFindings : [];
         Refusal = null;
         Revisions = [];
         IsEditing = false;
         if (_isComment && !_commentId.HasValue) _deleted?.Invoke(this);
+        else if (_isComment && _afterCancel is { } refresh) refresh(this);
         else if (changedElsewhere) Working = ReloadAsync();
     }
 
@@ -253,8 +273,9 @@ public sealed partial class RationaleEditorModel : ObservableObject
                     : await _context.Commands.AddCommentAsync(new AddCommentRequest(path, MotifProductVersion.CurrentText, ProposalId, text, ""), CancellationToken.None).ConfigureAwait(true);
                 if (!result.Succeeded) { Refusal = WindowRefusal.From(result.Refusal!); return; }
                 _commentId = result.Value!.CommentId;
+                _afterCancel = null;
                 _markdown = text;
-                Findings = result.Value.Findings.Select(Describe).ToArray();
+                Findings = _storedCommentFindings = result.Value.Findings.Select(Describe).ToArray();
                 Refusal = null;
                 Document = Read(_markdown, out var commentPlain);
                 IsPlainText = commentPlain;

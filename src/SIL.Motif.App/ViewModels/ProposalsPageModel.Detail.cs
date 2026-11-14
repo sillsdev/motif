@@ -103,12 +103,37 @@ public sealed partial class ProposalsPageModel
         }
         else RationaleEditor = new RationaleEditorModel(Context, shown.Value!);
         _lastRationaleEditor = RationaleEditor;
-        if (_lastComments is { } kept && kept.Any(editor => editor.ProposalId == proposalId && editor.IsEditing))
-            Comments = kept;
-        else
-            Comments = new ObservableCollection<RationaleEditorModel>((shown.Value!.Comments ?? [])
-                .Select(comment => new RationaleEditorModel(Context, shown.Value!, comment, RemoveComment)));
+        var detail = shown.Value!;
+        var edits = _lastComments?.Where(editor => editor.ProposalId == proposalId && editor.IsEditing).ToArray() ?? [];
+        var fresh = detail.Comments ?? [];
+        var reconciled = new List<RationaleEditorModel>();
+        foreach (var comment in fresh)
+        {
+            var editingComment = edits.FirstOrDefault(editor => editor.CommentId == comment.CommentId);
+            if (editingComment is null) reconciled.Add(new RationaleEditorModel(Context, detail, comment, RemoveComment));
+            else
+            {
+                editingComment.ReconcileComment(comment, detail, ReplaceAfterCancel);
+                reconciled.Add(editingComment);
+            }
+        }
+        foreach (var editingComment in edits.Where(editor => !editor.CommentId.HasValue ||
+                     fresh.All(comment => comment.CommentId != editor.CommentId)))
+        {
+            editingComment.ReconcileComment(null, detail, ReplaceAfterCancel);
+            reconciled.Add(editingComment);
+        }
+        Comments = new ObservableCollection<RationaleEditorModel>(reconciled);
         _lastComments = Comments;
+
+        void ReplaceAfterCancel(RationaleEditorModel editor)
+        {
+            var index = Comments.IndexOf(editor);
+            if (index < 0) return;
+            var current = fresh.FirstOrDefault(comment => comment.CommentId == editor.CommentId);
+            if (current is null) Comments.RemoveAt(index);
+            else Comments[index] = new RationaleEditorModel(Context, detail, current, RemoveComment);
+        }
         MarkSelectedRead();
         var review = await Context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(path, proposalId),
             CancellationToken.None).ConfigureAwait(true);

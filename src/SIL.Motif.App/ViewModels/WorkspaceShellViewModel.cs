@@ -596,6 +596,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         string fwDataPath, CancellationToken cancellationToken = default, bool captureFreshProject = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fwDataPath);
+        if (Context.RefuseLeavingProject()) return;
         var projectKey = Path.GetFullPath(fwDataPath);
         var captureFirstBaseline = captureFreshProject && !_openedProjectPaths.Contains(projectKey) &&
             !File.Exists(Path.ChangeExtension(fwDataPath, ".motif.db"));
@@ -613,6 +614,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             var openedProjectIsCurrent = string.Equals(
                 Context.ProjectPath, fwDataPath, StringComparison.OrdinalIgnoreCase);
             if (openedProjectIsCurrent) _openedProjectPaths.Add(projectKey);
+            else if (Context.ProjectPath is not null) Project.ShowChosen(Context.ProjectPath);
             if (captureFirstBaseline && openedProjectIsCurrent &&
                 !Baseline.HasBaseline && Baseline.ShownRefusal is null)
                 await RefreshAsync().ConfigureAwait(true);
@@ -697,6 +699,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
     private async Task OpenProjectSafelyAsync(string fwDataPath, bool captureFreshProject = true)
     {
+        if (Context.RefuseLeavingProject()) return;
         StopConfirmingStoreDeletion();
         ShowOpenRefusal(null);
         if (FieldWorksBackupCommand.IsBackup(fwDataPath))

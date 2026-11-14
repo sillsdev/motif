@@ -606,6 +606,13 @@ public sealed partial class ProposalsPageModel : PageModel
         return true;
     }
 
+    internal bool RefuseLeavingWithUnsavedEdit()
+    {
+        if (UnsavedEditor is not { } editor) return false;
+        editor.MarkSwitchRefused();
+        return true;
+    }
+
     private RationaleEditorModel? UnsavedEditor => UnsavedRationaleEditor ?? UnsavedCommentEditor;
 
     private RationaleEditorModel? UnsavedCommentEditor

@@ -1565,8 +1565,19 @@ public static partial class ProposalCommands
     }
 
     public static CommandOutcome<ProposalDetailProjection> Show(ShowProposalRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
-            BuildProposalDetail(new ProposalRepository(database), request.ProposalId, database));
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        {
+            var result = BuildProposalDetail(new ProposalRepository(database), request.ProposalId, database);
+            if (!result.Succeeded) return result;
+            var detail = result.Value!;
+            return CommandOutcome<ProposalDetailProjection>.Success(detail with
+            {
+                Comments = detail.Comments?.Select(comment => comment with
+                {
+                    Findings = ProposalTexts.Check(database, project, comment.Markdown).Findings,
+                }).ToArray(),
+            });
+        });
 
     internal static CommandOutcome<ProposalDetailProjection> BuildProposalDetail(
         IProposalRepository repository, string proposalSelector, MotifDatabase? marksDatabase = null)
