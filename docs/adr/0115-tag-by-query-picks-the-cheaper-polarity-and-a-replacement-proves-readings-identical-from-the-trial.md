@@ -1,4 +1,4 @@
-# 0114. Tag by query picks the cheaper polarity; a replacement proves identical readings from the Trial
+# 0115. Tag by query picks the cheaper polarity; a replacement proves identical readings from the Trial
 
 **In plain terms:** Motif can give one exception feature to every stem that matches a question, and says up front how
 many that is. Where FieldWorks lets a rule either require or exclude the feature, Motif tags whichever side is smaller.
