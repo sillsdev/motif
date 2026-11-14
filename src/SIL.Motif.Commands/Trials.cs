@@ -19,7 +19,10 @@ using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Model.DryRun;
 using SIL.Motif.Projection;
+using SIL.Motif.Host.Parsimony;
+using SIL.Motif.Runner.Composers;
 using SIL.Motif.Runner.Operations;
+using SIL.Motif.Worker.Parsimony;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
@@ -261,6 +264,8 @@ public static class Trials
                 record.Assessor == trialAssessment.Assessor && Assess.BeforeAssessmentReuse.MatchesBaseline(database, record, trialAssessment));
         var work = trialAssessment is not null
             ? TrialWorkComparison.Compare(baselineAssessment, trialAssessment, baselineAssessment is not null) : null;
+        var readingIdentity = completed && trialAssessment is not null && ComposesFeatureRemoval(proposal)
+            ? ProveFeatureRemoval(baselineAssessment, trialAssessment) : null;
         var grammarCheckId = new GrammarCheckRepository(database).GetLatest(tokenJson, proposalId, intentDigest) is null
             ? null
             : "trial:" + proposalId + ":" + intentDigest;
@@ -280,11 +285,23 @@ public static class Trials
             GrammarCheckId = grammarCheckId,
             WordResults = wordResults,
             Work = work,
+            ReadingIdentity = readingIdentity,
             GrammarCheckWarning = completion?.GrammarCheckWarning,
             DroppedGrammar = completion?.DroppedGrammar,
             DroppedGrammarNotChecked = completed && completion?.DroppedGrammar is not { Checked: true },
         };
     }
+
+    private static bool ComposesFeatureRemoval(Contract.Model.Proposal proposal) =>
+        proposal.Operations.Any(operation => operation.Rationale == RemoveExceptionFeatureComposer.Rationale);
+
+    // The Trial's words are the affected words: removing a rule exclusion can change any word the rule reads.
+    private static ReadingIdentityResult ProveFeatureRemoval(AssessmentRecord? before, AssessmentRecord after) =>
+        before is null
+            ? new ReadingIdentityResult(ReadingIdentityStatus.Incomplete, after.Selection.Words.Count, 0, 0, 0, 0, [], [],
+                ["The Trial has no matching before Assessment to compare readings with."])
+            : FeatureRemovalReadingProof.Prove(RecipeVerificationTrialProjection.From(before),
+                RecipeVerificationTrialProjection.From(after), after.Selection.Words);
 
     private static TrialFreshness GetFreshness(BaselineToken source, string intentDigest,
         CurrentBaselineEvidence? current, string? currentIntentDigest)

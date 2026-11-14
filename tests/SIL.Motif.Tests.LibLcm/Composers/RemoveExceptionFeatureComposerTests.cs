@@ -71,15 +71,99 @@ public sealed class RemoveExceptionFeatureComposerTests(PristineProjectFixture p
         Assert.Equal(3, operations.Count(op => op.Kind == MoStemMsaProdRestrictOperationKinds.RemoveRefProdRestrict));
         Assert.Single(operations, op => op.Kind == PhSegRuleRHSExclRuleFeatsOperationKinds.RemoveRefExclRuleFeats);
         Assert.Single(operations, op => op.Kind == PhSegRuleRHSReqRuleFeatsOperationKinds.RemoveRefReqRuleFeats);
-        Assert.Equal(5, operations.Count);
+        Assert.Equal(UnusedObjectDeleteOperationKinds.DeleteExceptionFeature, operations[^1].Kind);
+        Assert.Equal(6, operations.Count);
+        var deadWrapper = Assert.Single(cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS
+            .OfType<IPhPhonRuleFeat>(), w => w.ItemRA?.Guid == dead.ToGuid()).Guid;
         ApplyOps(cache, operations);
+
+        Assert.False(Exists(cache, dead));
+        Assert.DoesNotContain(cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS, w => w.Guid == deadWrapper);
+        Assert.Contains(cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS.OfType<IPhPhonRuleFeat>(),
+            w => w.ItemRA?.Guid == live.ToGuid());
 
         Assert.All(stems, stem => Assert.False(Carries(cache, stem, dead)));
         Assert.True(Carries(cache, clean, live));
         Assert.Empty(Rhs(cache, excluding).ExclRuleFeatsRC);
         Assert.Equal([live.ToGuid()], Rhs(cache, requiring).ReqRuleFeatsRC.Select(w => w.ItemRA.Guid));
         Assert.Equal([live.ToGuid()], Rhs(cache, untouched).ReqRuleFeatsRC.Select(w => w.ItemRA.Guid));
+    }
+
+    [Fact]
+    public void KeepingTheFeatureRemovesOnlyTheReferencesAndLeavesTheItemAndItsWrapper()
+    {
+        var (cache, dead, _, excluding, _, _, stems, _) = Project();
+        using var _c = cache;
+        var intent = new RemoveExceptionFeatureIntent(dead, "Retains", KeepFeature: true);
+
+        var operations = RemoveExceptionFeatureComposer.Build(cache, intent);
+        Assert.Equal(5, operations.Count);
+        Assert.DoesNotContain(operations, op => op.Kind == UnusedObjectDeleteOperationKinds.DeleteExceptionFeature);
+        ApplyOps(cache, operations);
+
+        Assert.True(Exists(cache, dead));
+        Assert.Contains(cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS.OfType<IPhPhonRuleFeat>(),
+            w => w.ItemRA?.Guid == dead.ToGuid());
         Assert.Empty(RemoveExceptionFeatureComposer.Build(cache, intent));
+        Assert.Contains("kept (keepFeature)", Assert.Single(RemoveExceptionFeatureComposer.Summarize(cache, intent)).Name);
+    }
+
+    [Fact]
+    public void AnAffixThatNamesTheFeatureIsNotEditedKeepsTheFeatureAndTheSummaryWarnsItWillMatchNoStem()
+    {
+        var (cache, dead, _, _, _, _, stems, _) = Project();
+        using var _c = cache;
+        var verb = AddCategory(cache, "Noun");
+        var prefix = AddInflectionalPrefix(cache, "ku", verb).Msa;
+        ApplyOps(cache, EditExceptionFeaturesComposer.Build(cache, new(prefix, [dead])));
+        var derivational = ApplyOps(cache, AuthorLexicalEntryComposer.Build(cache, new AuthorLexicalEntryIntent("pag",
+            Vern(cache), MorphType(MoMorphTypeTags.kguidMorphPrefix), "pag", Anal(cache),
+            new LexicalEntryMsa(LexicalEntryMsaKind.Derivational, verb, verb))));
+        var derivationalMsa = Created(derivational, LexEntryMorphoSyntaxAnalysesOperationKinds.Create);
+        ApplyOps(cache, EditDerivationalAffixRestrictionComposer.Build(cache,
+            new(derivationalMsa, FromExceptionFeatures: [dead], ToExceptionFeatures: [dead])));
+        var intent = new RemoveExceptionFeatureIntent(dead, "Retains");
+
+        Assert.Equal(2, RemoveExceptionFeatureComposer.Evaluate(cache, intent).OtherReferrers);
+        var operations = RemoveExceptionFeatureComposer.Build(cache, intent);
+        Assert.Equal(5, operations.Count);
+        Assert.DoesNotContain(operations, op => op.Kind == UnusedObjectDeleteOperationKinds.DeleteExceptionFeature);
+        var summary = Assert.Single(RemoveExceptionFeatureComposer.Summarize(cache, intent)).Name;
+        Assert.Contains("2 affix analyses still name this feature", summary);
+        Assert.Contains("will match no stem", summary);
+        Assert.Contains("compose-edit-exception-features", summary);
+        Assert.Contains("compose-edit-derivational-affix-restriction", summary);
+        ApplyOps(cache, operations);
+
+        Assert.Contains(dead.ToGuid(), Get<IMoInflAffMsa>(cache, prefix).FromProdRestrictRC.Select(item => item.Guid));
+        Assert.Contains(dead.ToGuid(), Get<IMoDerivAffMsa>(cache, derivationalMsa).ToProdRestrictRC.Select(item => item.Guid));
+        Assert.All(stems, stem => Assert.False(Carries(cache, stem, dead)));
+    }
+
+    [Fact]
+    public void ARuleBranchThatOnlyRequiresTheFeatureIsWarnedAsWidening()
+    {
+        var (cache, dead, _, _, _, _, _, _) = Project();
+        using var _c = cache;
+        var only = NewRule(cache, "requires only dead");
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(only, RequiredFeatures: [dead])));
+
+        var plan = RemoveExceptionFeatureComposer.Evaluate(cache, new(dead, "Retains"));
+
+        Assert.Equal(1, plan.Widened);
+        Assert.Contains("WARNING: 1 rule branches require only this feature, so afterwards they apply to every stem",
+            Assert.Single(RemoveExceptionFeatureComposer.Summarize(cache, new(dead, "Retains"))).Name);
+    }
+
+    [Fact]
+    public void DeletingAFeatureHeldByARuleBranchIsRefusedNamingTheBranch()
+    {
+        var (cache, dead, _, _, _, _, _, _) = Project();
+        using var _c = cache;
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            DeleteUnusedObjectsComposer.BuildExceptionFeature(cache, new(dead, "Retains")));
+        Assert.Contains("PhSegRuleRHS", refusal.Message);
     }
 
     [Fact]
@@ -93,7 +177,7 @@ public sealed class RemoveExceptionFeatureComposerTests(PristineProjectFixture p
         Assert.Equal(RemoveExceptionFeatureComposer.SummaryKind, summary.Kind);
         Assert.StartsWith("3 stems and 2 rule branches carry this feature (1 excluded, 1 required);", summary.Name);
         Assert.Contains("0 other objects", summary.Name);
-        Assert.Contains("feature item itself stays", summary.Name);
+        Assert.Contains("deleted too, as FieldWorks does", summary.Name);
     }
 
     [Fact]
@@ -111,12 +195,32 @@ public sealed class RemoveExceptionFeatureComposerTests(PristineProjectFixture p
     }
 
     [Fact]
+    public void DeletingAFeatureWhoseOnlyReferrerIsAnUnheldWrapperDeletesTheWrapperToo()
+    {
+        using var cache = pristine.NewScratch();
+        RealParserProject.PrepareForParsing(cache, "u", "i", "a", "n");
+        var rule = NewRule(cache, "once excluded");
+        var feature = NewFeature(cache, "Gone");
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, ExcludedFeatures: [feature])));
+        ApplyOps(cache, EditPhonologicalRuleFeaturesComposer.Build(cache, new(rule, ExcludedFeatures: [])));
+        Assert.Single(cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS);
+
+        ApplyOps(cache, DeleteUnusedObjectsComposer.BuildExceptionFeature(cache, new(feature, "Gone")));
+
+        Assert.False(Exists(cache, feature));
+        Assert.Empty(cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA.PossibilitiesOS);
+    }
+
+    [Fact]
     public void TheClosedIntentNamesTheFeatureAndItsExpectedName()
     {
         var feature = CanonicalId.FromGuid(Guid.NewGuid()).Value;
         var parsed = RemoveExceptionFeatureIntentParser.Parse(JsonDocument.Parse(
             $"{{\"feature\":\"{feature}\",\"expectedName\":\"Retains\"}}").RootElement);
         Assert.Equal("Retains", parsed.ExpectedName);
+        Assert.False(parsed.KeepFeature);
+        Assert.True(RemoveExceptionFeatureIntentParser.Parse(JsonDocument.Parse(
+            $"{{\"feature\":\"{feature}\",\"expectedName\":\"x\",\"keepFeature\":true}}").RootElement).KeepFeature);
         Assert.ThrowsAny<Exception>(() => RemoveExceptionFeatureIntentParser.Parse(JsonDocument.Parse(
             $"{{\"feature\":\"{feature}\"}}").RootElement));
         Assert.ThrowsAny<Exception>(() => RemoveExceptionFeatureIntentParser.Parse(JsonDocument.Parse(

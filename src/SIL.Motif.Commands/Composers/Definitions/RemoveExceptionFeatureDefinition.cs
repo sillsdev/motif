@@ -22,7 +22,8 @@ internal sealed class RemoveExceptionFeatureDefinition : ComposerDefinition<Remo
     /// <inheritdoc />
     public override IntentShape Shape { get; } = IntentShape.Of(
         Field.Id("feature", required: true),
-        Field.Text("expectedName", required: true));
+        Field.Text("expectedName", required: true),
+        Field.Flag("keepFeature"));
 
     /// <inheritdoc />
     public override ComposerExposure Exposure { get; } =

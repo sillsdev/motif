@@ -145,6 +145,7 @@ public static class CommandTextRenderer
         var text = new StringBuilder();
         text.AppendLine($"Trial {trial.JobId}: {trial.Status} ({trial.Freshness})");
         AppendDroppedGrammar(text, trial);
+        if (trial.ReadingIdentity is { } identity) ProjectionText.AppendReadingIdentity(text, identity);
         if (trial.Work is not { } work)
         {
             text.AppendLine("Parser work is unavailable.");

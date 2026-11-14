@@ -53,8 +53,30 @@ public static class UnusedObjects
             throw new InvalidOperationException(
                 $"'{kind}': exception feature '{id.Value}' has {feature.SubPossibilitiesOS.Count} sub-item(s) " +
                 $"({string.Join(", ", feature.SubPossibilitiesOS.Take(5).Select(sub => sub.Guid.ToString("D")))}); delete those first.");
-        RequireNone(Referrers(feature), $"exception feature '{id.Value}'", kind,
+        RequireNone(FeatureReferrers(feature), $"exception feature '{id.Value}'", kind,
             "Remove the feature from each with compose-edit-exception-features first.");
+    }
+
+    /// <summary>
+    /// The Phonological Rule Features wrappers (<c>PhPhonRuleFeat</c>) that name <paramref name="feature"/>. FieldWorks
+    /// keeps one per feature a rule has used and removes it with the feature: LibLCM's <c>CmPossibilityList</c>
+    /// <c>RemoveObjectSideEffectsInternal</c> calls <c>IPhPhonData.RemovePhonRuleFeat</c> when an item leaves the Exception
+    /// Features list (<c>MoMorphData.ProdRestrict</c>).
+    /// </summary>
+    public static IReadOnlyList<IPhPhonRuleFeat> Wrappers(LcmCache cache, ICmPossibility feature) =>
+        (cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA?.PossibilitiesOS ?? Enumerable.Empty<ICmPossibility>())
+        .OfType<IPhPhonRuleFeat>().Where(wrapper => wrapper.ItemRA?.Guid == feature.Guid).ToArray();
+
+    // A wrapper no rule branch holds goes with the feature; one a branch still holds is listed through its holders.
+    private static IReadOnlyList<ICmObject> FeatureReferrers(ICmPossibility feature)
+    {
+        var cache = feature.Cache;
+        var wrappers = Wrappers(cache, feature).Select(wrapper => wrapper.Guid).ToHashSet();
+        var result = new List<ICmObject>();
+        foreach (var user in Referrers(feature))
+            if (user is IPhPhonRuleFeat wrapper && wrappers.Contains(wrapper.Guid)) result.AddRange(Referrers(wrapper));
+            else result.Add(user);
+        return result.OrderBy(user => user.ClassName, StringComparer.Ordinal).ThenBy(user => user.Guid).ToArray();
     }
 
     /// <summary>Requires an environment of the phonological data that nothing refers to.</summary>

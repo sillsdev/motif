@@ -67,6 +67,12 @@ public sealed record TrialRecord(
     /// <summary>The root ParseTime word results when the caller requested them.</summary>
     public IReadOnlyList<AssessmentWordResult> WordResults { get; init; } = [];
 
+    /// <summary>
+    /// For a Proposal that removes an exception feature: whether the Trial words kept the same readings before and after
+    /// (ADR 0118, built on ADR 0115). Null for any other Proposal and for a Trial that has not finished.
+    /// </summary>
+    public ReadingIdentityResult? ReadingIdentity { get; init; }
+
     /// <summary>Parser work compared with the Baseline on the Trial words, when available.</summary>
     public TrialWork? Work { get; init; }
 

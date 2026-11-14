@@ -5,6 +5,7 @@ using System.Text.Json;
 using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Model;
+using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
 
@@ -18,7 +19,11 @@ namespace SIL.Motif.Runner.Composers;
 /// </summary>
 /// <param name="Feature">Canonical id of the exception feature.</param>
 /// <param name="ExpectedName">The name the feature must still carry, in any writing system.</param>
-public sealed record RemoveExceptionFeatureIntent(CanonicalId Feature, string ExpectedName);
+/// <param name="KeepFeature">
+/// True leaves the feature's Exception Features list entry (and its Phonological Rule Features wrapper) in place. The
+/// default deletes both in the same Proposal, as FieldWorks does, unless an affix still refers to the feature.
+/// </param>
+public sealed record RemoveExceptionFeatureIntent(CanonicalId Feature, string ExpectedName, bool KeepFeature = false);
 
 /// <summary>Parses the closed JSON intent for removing an exception feature.</summary>
 public static class RemoveExceptionFeatureIntentParser
@@ -26,21 +31,26 @@ public static class RemoveExceptionFeatureIntentParser
     /// <summary>Reads <c>{ "feature", "expectedName" }</c>.</summary>
     public static RemoveExceptionFeatureIntent Parse(JsonElement authored)
     {
-        SoundSystemIntentParsing.Object(authored, "RemoveExceptionFeature", "feature", "expectedName");
-        return new(SoundSystemIntentParsing.Id(authored, "feature"), SoundSystemIntentParsing.Text(authored, "expectedName"));
+        SoundSystemIntentParsing.Object(authored, "RemoveExceptionFeature", "feature", "expectedName", "keepFeature");
+        var keep = false;
+        if (authored.TryGetProperty("keepFeature", out var value))
+            keep = value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean()
+                : throw new ContractParseException("'RemoveExceptionFeature': 'keepFeature' must be a boolean.");
+        return new(SoundSystemIntentParsing.Id(authored, "feature"), SoundSystemIntentParsing.Text(authored, "expectedName"), keep);
     }
 }
 
 /// <summary>
 /// Finds every reference in one pass, O(analyses + rules), with no reference index (LibLCM builds that lazily at a cost of seconds): the lexicon's analyses, then the phonological rules' right
 /// hand sides, whose required and excluded sets hold the Phonological Rule Features wrappers of the feature. It parses
-/// nothing and builds nothing per stem. Affix restrictions (From and To Exception Features) are not edited: they only
-/// ever require a feature, so removing it would loosen an affix, and they stay for a person to decide.
+/// nothing and builds nothing per stem. Affix restrictions (From and To Exception Features) are not edited: they stay for a person to decide,
+/// and while one names the feature it is not deleted.
 /// </summary>
 public static class RemoveExceptionFeatureComposer
 {
     private const string Construct = "RemoveExceptionFeature";
-    private const string Rationale = "Authored by the RemoveExceptionFeature composer.";
+    /// <summary>The rationale every operation of this composer carries, so a Trial's review can tell its Proposals.</summary>
+    public const string Rationale = "Authored by the RemoveExceptionFeature composer.";
 
     /// <summary>The kind a summary carries in the related objects of a composed intent.</summary>
     public const string SummaryKind = "remove-exception-feature-summary";
@@ -51,9 +61,14 @@ public static class RemoveExceptionFeatureComposer
     /// <param name="Excluding">Rule branches that exclude it, with the wrappers that hold it.</param>
     /// <param name="Requiring">Rule branches that require it, with the wrappers that hold it.</param>
     /// <param name="OtherReferrers">Affix analyses whose From or To Exception Features still hold it afterwards.</param>
+    /// <param name="Widened">Rule branches whose required set holds nothing but this feature, so they apply to every stem afterwards.</param>
     public sealed record Plan(ICmPossibility Feature, IReadOnlyList<IMoStemMsa> Stems,
         IReadOnlyList<(IPhSegRuleRHS Branch, IPhPhonRuleFeat[] Wrappers)> Excluding,
-        IReadOnlyList<(IPhSegRuleRHS Branch, IPhPhonRuleFeat[] Wrappers)> Requiring, int OtherReferrers);
+        IReadOnlyList<(IPhSegRuleRHS Branch, IPhPhonRuleFeat[] Wrappers)> Requiring, int OtherReferrers, int Widened)
+    {
+        /// <summary>Whether the feature item and its wrapper are deleted with the references.</summary>
+        public bool DeletesFeature(RemoveExceptionFeatureIntent intent) => !intent.KeepFeature && OtherReferrers == 0;
+    }
 
     /// <summary>Resolves the feature and collects its stems and rule branches.</summary>
     public static Plan Evaluate(LcmCache cache, RemoveExceptionFeatureIntent intent)
@@ -96,10 +111,11 @@ public static class RemoveExceptionFeatureComposer
                 if (req.Length > 0) requiring.Add((rhs, req));
             }
 
-        return new Plan(feature, stems.OrderBy(msa => msa.Guid).ToArray(), excluding, requiring, affixUsers);
+        var widened = requiring.Count(item => item.Item1.ReqRuleFeatsRC.All(w => wrappers.Contains(w.Guid)));
+        return new Plan(feature, stems.OrderBy(msa => msa.Guid).ToArray(), excluding, requiring, affixUsers, widened);
     }
 
-    /// <summary>Builds one removal per stem and per rule branch wrapper; a feature nothing carries builds nothing.</summary>
+    /// <summary>Builds one removal per stem and rule branch wrapper, then deletes the feature unless it is kept or an affix still names it.</summary>
     public static IReadOnlyList<OperationEnvelope> Build(LcmCache cache, RemoveExceptionFeatureIntent intent)
     {
         var plan = Evaluate(cache, intent);
@@ -115,6 +131,11 @@ public static class RemoveExceptionFeatureComposer
         foreach (var (branch, wrappers) in plan.Requiring.OrderBy(item => item.Branch.Guid))
             operations.AddRange(wrappers.OrderBy(w => w.Guid).Select(w => Remove(
                 PhSegRuleRHSReqRuleFeatsOperationKinds.RemoveRefReqRuleFeats, branch, CanonicalId.FromGuid(w.Guid))));
+        if (plan.DeletesFeature(intent))
+            operations.Add(new OperationEnvelope(CanonicalId.Mint(), UnusedObjectDeleteOperationKinds.DeleteExceptionFeature,
+                target: feature, after: JsonSerializer.SerializeToElement(new { }),
+                dependsOn: operations.Select(item => new OperationDependency(item.OperationId)).ToArray(),
+                rationale: Rationale));
         return operations;
     }
 
@@ -124,10 +145,18 @@ public static class RemoveExceptionFeatureComposer
         var plan = Evaluate(cache, intent);
         var branches = plan.Excluding.Count + plan.Requiring.Count;
         var text = $"{plan.Stems.Count} stems and {branches} rule branches carry this feature " +
-                   $"({plan.Excluding.Count} excluded, {plan.Requiring.Count} required); all are removed. " +
-                   $"{plan.OtherReferrers} other objects (affix restrictions) still refer to it and are not edited. " +
-                   "The feature item itself stays in the Exception Features list, and so does its Phonological Rule Features " +
-                   "wrapper, because Motif has no operation that deletes the wrapper; delete them in FieldWorks if unwanted.";
-        return [new ComposedRelatedObject(SummaryKind, CanonicalId.FromGuid(plan.Feature.Guid).Value, text)];
+                   $"({plan.Excluding.Count} excluded, {plan.Requiring.Count} required); all are removed. ";
+        if (plan.Widened > 0)
+            text += $"WARNING: {plan.Widened} rule branches require only this feature, so afterwards they apply to every stem. ";
+        if (plan.OtherReferrers > 0)
+            text += $"{plan.OtherReferrers} affix analyses still name this feature in their From or To Exception Features and are " +
+                    "not edited. An affix that requires it will match no stem once no stem carries it, and its readings disappear; " +
+                    "edit them with compose-edit-exception-features or compose-edit-derivational-affix-restriction. ";
+        else text += "0 other objects refer to it. ";
+        text += plan.DeletesFeature(intent)
+            ? "The feature item and its Phonological Rule Features wrapper are deleted too, as FieldWorks does. "
+            : intent.KeepFeature ? "The feature item and its wrapper are kept (keepFeature). "
+            : "The feature item and its wrapper are kept because affixes still refer to it. ";
+        return [new ComposedRelatedObject(SummaryKind, CanonicalId.FromGuid(plan.Feature.Guid).Value, text.Trim())];
     }
 }

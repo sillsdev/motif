@@ -7,13 +7,15 @@ motif compose-remove-exception-feature --project language.fwdata --draft drop-re
   --intent '{"feature":"<feature-id>","expectedName":"Retains initial cluster"}'
 ```
 
-`expectedName` must match the feature's current name in some writing system, so a stale id is refused.
+`expectedName` must match the feature's current name in some writing system, so a stale id is refused. `keepFeature: true` removes the references but leaves the feature in the Exception Features list.
 
-The command finds the references in one pass over the stems and the rules, so its cost grows with their number and it starts no parser. Before you finalize, run a Trial and compare the readings of the words that used the feature: removing a rule exclusion can allow a reading it used to block. The comparison is the reading-identity proof of ADR 0115, which reports readings lost and gained from the Trial's two runs; it is not yet printed in the review for this command.
+The command finds the references in one pass over the analyses and the rules, so its cost grows with their number and it starts no parser. It then deletes the feature and its Phonological Rule Features wrapper in the same Proposal, as FieldWorks does when you delete an exception feature, unless you keep it or an affix still names it.
 
-What it does not do:
+Read the output before you finalize:
 
-- It leaves the feature item in the Exception Features list and its Phonological Rule Features wrapper, because Motif has no operation that deletes the wrapper. Delete them in FieldWorks, or with `compose-delete-exception-feature` once nothing refers to them.
-- It does not edit affix From or To Exception Features. FieldWorks affix restrictions only require a feature, so removing one loosens the affix; the output counts these objects so a person can decide.
+- **Affixes.** It does not edit affix From or To Exception Features. An affix that requires the removed feature matches no stem afterwards and its readings disappear. The output counts these analyses and keeps the feature; edit them with `compose-edit-exception-features` or `compose-edit-derivational-affix-restriction`.
+- **Widening.** A rule branch that required only this feature applies to every stem afterwards; the output warns you.
 
-The command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal, then Finalize it for a person to review and Apply.
+Run a Trial after Dry Run. The Trial prints the reading-identity proof (ADR 0115) for the words it parsed: how many words kept the same readings, and each reading lost or newly allowed.
+
+The command stages operations in a Draft and does not change the saved FieldWorks project. Finalize the Proposal for a person to review and Apply.

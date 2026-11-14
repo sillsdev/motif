@@ -58,8 +58,22 @@ internal sealed class UnusedObjectDeleteHandler(string kind) : IOperationHandler
         if (target is INote note && note.Owner is ISegment segment)
             segment.NotesOS.Remove(note);
         else
+        {
+            if (target is ICmPossibility feature) RemoveWrappers(cache, feature, touchedTargets);
             target.Delete();
+        }
         return new ExpectedEffect(id, Field, before, ReferenceFieldAlternatives.ToAlternatives(null));
+    }
+
+    // What FieldWorks does when an exception feature is deleted: its Phonological Rule Features wrapper goes too.
+    private static void RemoveWrappers(LcmCache cache, ICmPossibility feature, List<CanonicalId> touchedTargets)
+    {
+        var list = cache.LangProject.PhonologicalDataOA.PhonRuleFeatsOA;
+        foreach (var wrapper in UnusedObjects.Wrappers(cache, feature).OrderBy(item => item.Guid))
+        {
+            touchedTargets.Add(CanonicalId.FromGuid(wrapper.Guid));
+            list!.PossibilitiesOS.Remove(wrapper);
+        }
     }
 
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)

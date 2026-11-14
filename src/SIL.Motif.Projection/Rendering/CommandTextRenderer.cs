@@ -288,6 +288,22 @@ public static class CommandTextRenderer
         return sb.ToString();
     }
 
+    /// <summary>Writes the reading-identity verdict, its counts, and each word that lost or gained a reading.</summary>
+    public static void AppendReadingIdentity(StringBuilder sb, ReadingIdentityResult identity)
+    {
+        sb.AppendLine($"  readings of affected words: {identity.Status}; {identity.IdenticalWords} of " +
+            $"{identity.AffectedWords} words identical; {identity.LostReadings} lost, {identity.NewReadings} new " +
+            $"of {identity.ReadingsBefore} before");
+        foreach (var difference in identity.Differences.Take(20))
+            sb.AppendLine($"    {difference.Word}: lost [{string.Join("; ", difference.Lost)}] " +
+                $"new [{string.Join("; ", difference.New)}]");
+        if (identity.IncompleteWords.Count > 0)
+            sb.AppendLine($"    incomplete: {string.Join(", ", identity.IncompleteWords.Take(20))}" +
+                (identity.IncompleteWords.Count > 20 ? $" and {identity.IncompleteWords.Count - 20} more" : ""));
+        foreach (var reason in identity.Unavailable)
+            sb.AppendLine($"    unavailable: {reason}");
+    }
+
     public static string Render(RetirementProposalReviewProjection projection)
     {
         var sb = new StringBuilder();
@@ -347,18 +363,7 @@ public static class CommandTextRenderer
             false => "Not suppressed",
             null => "Unavailable",
         }}");
-        if (projection.ReadingIdentity is { } identity)
-        {
-            sb.AppendLine($"  readings of affected words: {identity.Status}; {identity.IdenticalWords} of " +
-                $"{identity.AffectedWords} words identical; {identity.LostReadings} lost, {identity.NewReadings} new " +
-                $"of {identity.ReadingsBefore} before");
-            foreach (var difference in identity.Differences.Take(20))
-                sb.AppendLine($"    {difference.Word}: lost [{string.Join("; ", difference.Lost)}] " +
-                    $"new [{string.Join("; ", difference.New)}]");
-            if (identity.IncompleteWords.Count > 0)
-                sb.AppendLine($"    incomplete: {string.Join(", ", identity.IncompleteWords.Take(20))}" +
-                    (identity.IncompleteWords.Count > 20 ? $" and {identity.IncompleteWords.Count - 20} more" : ""));
-        }
+        if (projection.ReadingIdentity is { } identity) AppendReadingIdentity(sb, identity);
         if (projection.UnresolvedReferences.UnresolvedApprovedAnalyses > 0 ||
             projection.UnresolvedReferences.UnresolvedAdhocRules > 0 ||
             projection.UnresolvedReferences.OtherReferences > 0 ||

@@ -465,6 +465,23 @@ public sealed class CatalogTextRenderingTests
     }
 
     [Fact]
+    public void TrialTextPrintsTheReadingIdentityProofOfAFeatureRemoval()
+    {
+        var identity = new ReadingIdentityResult(ReadingIdentityStatus.Differs, 3, 2, 5, 0, 1,
+            [new ReadingIdentityDifference("kaun", [], ["kaun/m/i/g"])], ["tulog"], []);
+        var trial = new TrialRecord("job/1", "p/1", "sha256:x", new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-10-05T00:00:00Z", "sha256:" + new string('b', 64)),
+            null, new Dictionary<string, string>(), [], false, null, JobStatus.Completed, null, TrialFreshness.Current)
+        { ReadingIdentity = identity };
+
+        var output = CommandTextRenderer.Render(CommandOutcome<TrialRecord>.Success(trial), asJson: false).Output;
+
+        Assert.Contains("readings of affected words: Differs; 2 of 3 words identical; 0 lost, 1 new of 5 before", output, StringComparison.Ordinal);
+        Assert.Contains("kaun: lost [] new [kaun/m/i/g]", output, StringComparison.Ordinal);
+        Assert.Contains("incomplete: tulog", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TrialTextNamesDroppedGrammarTheProposalIntroducedAndIsNotClean()
     {
         var finding = new DroppedGrammarFinding("grammar.environment.invalid",
