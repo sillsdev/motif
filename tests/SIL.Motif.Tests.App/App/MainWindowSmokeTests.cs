@@ -843,6 +843,17 @@ public sealed class MainWindowSmokeTests
                     Comments: existing ? [comment] : [])));
             await page.DetailReading;
             Assert.Contains(editor, page.Comments);
+            fake.ProposalStandingsCompleteWith(new ProposalStandings([], 1));
+            fake.ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection("p/one", "rejected", "Label", null, null, [],
+                    Comments: existing ? [comment] : [])));
+            await workspace.Context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+            await page.DetailReading;
+            Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+            Assert.Contains(editor, page.Comments);
+            Assert.False(editor.SaveCommand.CanExecute(null));
+            window.Close();
+            Assert.True(window.IsVisible);
             editor.CancelCommand.Execute(null);
             window.Close();
             Assert.False(window.IsVisible);

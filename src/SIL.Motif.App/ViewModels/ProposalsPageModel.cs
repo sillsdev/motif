@@ -2,9 +2,11 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Windows.Input;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -495,9 +497,11 @@ public sealed partial class ProposalsPageModel : PageModel
 {
     private int _readGeneration;
     private bool _rereading;
+    private ProposalCard? _rereadCard;
     private string? _differenceProposalId;
     private string? _differenceProject;
     private bool _includeSetAside;
+    private bool _retainedClosedCard;
     private ProposalStandings _standings = new([], 0);
 
     public ProposalsPageModel(WorkspaceContext context) : this(context, null)
@@ -813,7 +817,8 @@ public sealed partial class ProposalsPageModel : PageModel
         get
         {
             if (!IsListed) return string.Empty;
-            var count = Groups.Sum(group => group.Cards.Count) + (_includeSetAside ? 0 : _standings.SetAsideCount);
+            var count = Groups.Sum(group => group.Cards.Count) + (_includeSetAside ? 0 : _standings.SetAsideCount) -
+                (_retainedClosedCard && !_includeSetAside ? 1 : 0);
             return PluralText.Format(MotifAppStrings.ProposalCountPattern, count);
         }
     }
@@ -856,9 +861,11 @@ public sealed partial class ProposalsPageModel : PageModel
         _requestGeneration++;
         Requests.Show([], Context.Clock.GetUtcNow());
         _rereading = false;
+        _rereadCard = null;
         _lastRationaleEditor = null;
         _lastComments = null;
         _includeSetAside = false;
+        _retainedClosedCard = false;
         SelectedGroupFilter = null;
         SetSelectedProposal(null);
         ClearDifference();
@@ -882,7 +889,9 @@ public sealed partial class ProposalsPageModel : PageModel
         var generation = ++_readGeneration;
         State = ProposalsPageState.Loading;
         ShownRefusal = null;
-        var keepSelected = SelectedProposal?.ProposalId;
+        var selectedCard = SelectedProposal?.Card ?? (_rereading ? _rereadCard : null);
+        _rereadCard = selectedCard;
+        var keepSelected = selectedCard?.ProposalId;
         _rereading = true;
         SetSelectedProposal(null);
         Rows = [];
@@ -901,7 +910,33 @@ public sealed partial class ProposalsPageModel : PageModel
                 return;
             }
             ShownRefusal = null;
-            Apply(read.Value!, keepSelected);
+            var standings = read.Value!;
+            _retainedClosedCard = false;
+            if (selectedCard is not null && UnsavedEditor is { } editing &&
+                editing.ProposalId == selectedCard.ProposalId &&
+                standings.Proposals.All(card => card.ProposalId != selectedCard.ProposalId))
+            {
+                var detail = await Context.Commands.ShowProposalAsync(
+                    new ShowProposalRequest(projectPath, MotifProductVersion.CurrentText, selectedCard.ProposalId),
+                    cancellationToken).ConfigureAwait(true);
+                if (generation != _readGeneration || projectPath != Context.ProjectPath) return;
+                if (detail.Succeeded)
+                {
+                    var decided = PicturesFrozen(detail.Value!.Status) && detail.Value.DraftName is null;
+                    var retained = selectedCard with
+                    {
+                        Status = detail.Value.Status,
+                        Group = decided ? ProposalGroup.SetAside : selectedCard.Group,
+                        IsDraft = detail.Value.DraftName is not null,
+                        IsPendingDraft = decided ? false : selectedCard.IsPendingDraft,
+                    };
+                    if (SelectedGroupFilter is { } filter && !IsInFilter(retained.Group, filter))
+                        SelectedGroupFilter = null;
+                    _retainedClosedCard = decided && standings.SetAsideCount > 0;
+                    standings = standings with { Proposals = [.. standings.Proposals, retained] };
+                }
+            }
+            Apply(standings, keepSelected);
             await LoadRequestsAsync(projectPath, cancellationToken).ConfigureAwait(true);
         }
         finally
@@ -1088,6 +1123,7 @@ public sealed partial class ProposalsPageModel : PageModel
     private void EndReread()
     {
         _rereading = false;
+        _rereadCard = null;
         if (SelectedProposal is null)
         {
             ClearDifference();
