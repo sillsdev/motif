@@ -9,6 +9,8 @@ public sealed class ReviewSummaryAccumulator
     private readonly HashSet<string> _noParse = new(StringComparer.Ordinal);
     private readonly HashSet<string> _approved = new(StringComparer.Ordinal);
     private readonly HashSet<string> _negative = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _gained = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _attestedWords = new(StringComparer.Ordinal);
     private readonly HashSet<string> _alreadyAcceptedNegative = new(StringComparer.Ordinal);
     private readonly HashSet<string> _unknownNegative = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ControlTotals> _controlTotals = new(StringComparer.Ordinal);
@@ -64,6 +66,10 @@ public sealed class ReviewSummaryAccumulator
         if (!_cases.Add(item.CaseKey)) return;
         _wordBefore.Add(ReviewCoverage.Observed(item.Before), 1, item.Before.Completion != Completion.Complete);
         _wordAfter.Add(ReviewCoverage.Observed(item.After), 1, item.After.Completion != Completion.Complete);
+        if (item.Before.Parsed == false && item.After.Parsed == true) _gained.Add(item.WordKey);
+        if (item.Memberships.Any(member => member.Role == "sampled-tokens") ||
+            item.Assertions.Any(assertion => assertion.Eligible && assertion.Approved && !assertion.WholeWordNegative))
+            _attestedWords.Add(item.WordKey);
         if (item.NewNoParse) _noParse.Add(item.WordKey);
         if (item.NewApprovedLoss) _approved.Add(item.WordKey);
         if (item.NewlyAcceptedNegative)
@@ -185,6 +191,8 @@ public sealed class ReviewSummaryAccumulator
             _incompleteTokenProblem is not null || _incompleteTokens > 9007199254740991L ? null : _incompleteTokens,
             _incompleteCells.Count, _sets.Count)
         {
+            AttestedGained = _gained.Count(_attestedWords.Contains),
+            GeneratedGained = _gained.Count(word => !_attestedWords.Contains(word)),
             ApprovedExpected = _approvedIdentityIncomplete ? null : _approvedExpectations.Count,
             ApprovedBeforeMatched = _approvedIdentityIncomplete ? null : _approvedExpectations.Values.Count(value => value.Before == true),
             ApprovedAfterMatched = _approvedIdentityIncomplete ? null : _approvedExpectations.Values.Count(value => value.After == true),
@@ -331,6 +339,10 @@ public sealed record ReviewAccumulatedFacts(Coverage WordBefore, Coverage WordAf
     long IncompleteAfter, IncompleteSide BeforeIncomplete, IncompleteSide AfterIncomplete,
     long? IncompleteTokenWeight, long IncompleteCellCount, long SetCount)
 {
+    /// <summary>Words that gain a parse and are in the texts or carry an approved analysis.</summary>
+    public long AttestedGained { get; init; }
+    /// <summary>Words that gain a parse and are neither in the texts nor approved: synthetic probes.</summary>
+    public long GeneratedGained { get; init; }
     /// <summary>Reference and regression totals, kept separate by role.</summary>
     public IReadOnlyList<ControlSummary> Controls { get; init; } = [];
     /// <summary>Confirmed and unresolved negative-set outcomes.</summary>

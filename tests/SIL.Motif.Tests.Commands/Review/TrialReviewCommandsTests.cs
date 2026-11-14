@@ -47,6 +47,9 @@ public sealed class TrialReviewCommandsTests : IDisposable
         Assert.Equal(1, report.Summary.Incomplete.AffectedWords);
         Assert.NotEmpty(report.Summary.Incomplete.RunInterruptions);
         Assert.DoesNotContain(report.Summary.Flags, flag => flag.Id == ReviewFlagId.NewWordFailures);
+        var gains = Assert.IsType<GainSummary>(report.Summary.Gains);
+        Assert.Equal(GainOutcome.Incomplete, gains.Gate.Outcome);
+        Assert.False(gains.Gate.Hold);
     }
 
     [Fact]

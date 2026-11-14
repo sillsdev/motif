@@ -546,6 +546,13 @@ A specific Parsimony finding about one grammar object or group, tied to its exac
 recipe or stated limitation. Its evidence digest is separate from its stable finding identity.
 _Avoid_: lint, warning, verdict
 
+**Attested gain**:
+A word that newly parses under a Trial and is in the project's texts or carries an Approved analysis. A word
+that newly parses only as a generated probe form is a generated gain. The Trial report keeps the two apart and
+sets attested gains against the grammar size delta, the objects a Proposal adds by kind; its advisory gain gate
+reports when too many objects buy too few attested words ([ADR 0114](docs/adr/0114-trial-reports-split-attested-from-generated-gains-and-record-grammar-size.md)).
+_Avoid_: gained words (unqualified), coverage gain
+
 **Measure**:
 One fixed Parsimony check registered in a Motif build, such as repeated ad hoc prohibitions or a reviewed
 negative that still parses. It names the axis it serves, the evidence it needs, and its Recipe; the

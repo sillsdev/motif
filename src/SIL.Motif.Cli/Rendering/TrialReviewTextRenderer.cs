@@ -30,6 +30,7 @@ public static class TrialReviewTextRenderer
         text.AppendLine("Wordforms: " + Coverage(report.Summary.Wordforms.Before) + " before; " + Coverage(report.Summary.Wordforms.After) + " after");
         text.AppendLine("Sampled tokens: " + Coverage(report.Summary.SampledTokens.Before) + " before; " + Coverage(report.Summary.SampledTokens.After) + " after");
         text.AppendLine("Paradigm cells: " + Coverage(report.Summary.ParadigmCells.Before) + " before; " + Coverage(report.Summary.ParadigmCells.After) + " after");
+        if (report.Summary.Gains is { } gains) AppendGains(text, gains);
         text.AppendLine("Parser work: " + (report.Summary.ParserWork.PercentChange is { } change
             ? change.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture) + "%" : "not comparable"));
         text.AppendLine($"Trial {report.Pins.TrialJobId}; report {report.ReportId}; {report.Freshness.Relation}");
@@ -72,6 +73,19 @@ public static class TrialReviewTextRenderer
                 text.AppendLine("The diagnostic readings differ from the saved Trial evidence.");
         }
         return text.ToString();
+    }
+
+    private static void AppendGains(StringBuilder text, GainSummary gains)
+    {
+        var size = gains.Size;
+        text.AppendLine($"Attested gained: {gains.AttestedGained}; generated gained: {gains.GeneratedGained} (probe forms, not evidence)");
+        text.AppendLine($"Grammar size delta: {size.ObjectsAdded} objects (entries {size.Entries}, senses {size.Senses}, " +
+            $"MSAs {size.Msas}, allomorphs {size.Allomorphs}, variants {size.Variants}, affix processes {size.AffixProcesses}, " +
+            $"phonological rules {size.PhonologicalRules}, environments {size.Environments}, " +
+            $"exception features {size.ExceptionFeatures} on {size.ExceptionFeatureHosts} hosts, other {size.OtherObjects})");
+        var ratio = gains.ObjectsPerAttestedType is { } value ? value.ToString("0.##", CultureInfo.InvariantCulture) : "none";
+        text.AppendLine($"Objects per attested type gained: {ratio}; gain gate {gains.Gate.Mode.ToString().ToLowerInvariant()}: " +
+            $"{gains.Gate.Outcome}{(gains.Gate.Hold ? "; HOLD" : "")} (advisory; never blocks Apply)");
     }
 
     private static string Flag(FlagFact flag) => flag.Facts switch

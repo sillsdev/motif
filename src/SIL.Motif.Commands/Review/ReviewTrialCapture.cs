@@ -139,7 +139,7 @@ internal static class ReviewTrialCapture
                 }
                 var inputs = ReviewInputCapture.CaptureAsync(ProjectWorkspaceKey.Compute(project), request.ProposalId,
                     ParserIdentity.Read(parserPath)?.Sha256, sets, selectedIds, ordinary, identities,
-                    assertions, negatives, policyDigest: policyDigest).GetAwaiter().GetResult();
+                    assertions, negatives, policyDigest: policyDigest).GetAwaiter().GetResult() with { GainGate = configuration.GainGate };
                 IReadOnlyList<ReviewBaselinePartition>? suppliedBaselines = null;
                 if (request.BaselineAssessmentIds is { } assessmentIds)
                 {

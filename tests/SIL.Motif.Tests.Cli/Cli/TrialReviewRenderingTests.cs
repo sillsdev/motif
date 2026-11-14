@@ -26,6 +26,19 @@ public sealed class TrialReviewRenderingTests
     }
 
     [Fact]
+    public void GainsShowAttestedAndGeneratedSeparatelyWithTheSizeDeltaAndGate()
+    {
+        var report = (ReportView)Create(typeof(ReportView));
+        var size = GrammarSizeDelta.None with { Entries = 40, Variants = 6 };
+        var gains = GainSummary.Create(95, 924, size, new GainGatePolicy(GainGateMode.Hold, 1.5), incomplete: false);
+        var text = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
+            { Summary = report.Summary with { Flags = [], Gains = gains } }));
+        Assert.Contains("Attested gained: 95; generated gained: 924", text, StringComparison.Ordinal);
+        Assert.Contains("Grammar size delta: 46 objects (entries 40", text, StringComparison.Ordinal);
+        Assert.Contains("gain gate hold: WithinThreshold", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ExplicitTraceShowsNodesAndContinuationWithoutRawCost()
     {
         var report = (ReportView)Create(typeof(ReportView));

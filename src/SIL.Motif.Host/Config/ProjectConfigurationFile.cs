@@ -1,5 +1,7 @@
 using System.Text;
+using System.Globalization;
 using SIL.Motif.Contract.Assess;
+using SIL.Motif.Contract.Review;
 
 namespace SIL.Motif.Host.Config;
 
@@ -29,11 +31,13 @@ public static class ProjectConfigurationFile
     private const string RegressionTable = "regression";
     private const string ApplyTable = "apply";
     private const string RetentionTable = "retention";
+    private const string GainGateTable = "gain-gate";
     private const string ScopeTable = "scope";
     private const string ReviewTable = "review-word-set";
 
     private static readonly HashSet<string> RegressionKeys = new(StringComparer.Ordinal) { "gate" };
     private static readonly HashSet<string> ApplyKeys = new(StringComparer.Ordinal) { "purge-on-apply" };
+    private static readonly HashSet<string> GainGateKeys = new(StringComparer.Ordinal) { "mode", "min-attested-per-object" };
     private static readonly HashSet<string> RetentionKeys = new(StringComparer.Ordinal) { "standalone-assessments-per-kind" };
 
     private static readonly HashSet<string> ScopeKeys = new(StringComparer.Ordinal)
@@ -51,6 +55,8 @@ public static class ProjectConfigurationFile
         bool? gate = null;
         bool? purge = null;
         int? standaloneCount = null;
+        GainGateMode? gateMode = null;
+        double? gateMinimum = null;
         var scopes = new List<AssessmentScopeConfiguration>();
         var reviewSets = new List<ReviewWordSetConfiguration>();
         var review = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -86,7 +92,7 @@ public static class ProjectConfigurationFile
                 var name = HeaderName(trimmed, "[", "]", path, lineNumber);
                 if (name == ScopeTable)
                     throw Malformed(path, lineNumber, "'scope' must be declared as '[[scope]]', not '[scope]'");
-                if (name != RegressionTable && name != ApplyTable && name != RetentionTable)
+                if (name != RegressionTable && name != ApplyTable && name != RetentionTable && name != GainGateTable)
                     throw Malformed(path, lineNumber, $"unknown table '[{name}]'");
                 section = name;
                 continue;
@@ -116,6 +122,11 @@ public static class ProjectConfigurationFile
                     if (!RetentionKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[retention]");
                     standaloneCount = ParsePositiveInteger(path, lineNumber, key, rawValue);
                     break;
+                case GainGateTable:
+                    if (!GainGateKeys.Contains(key)) throw UnknownKey(path, lineNumber, key, "[gain-gate]");
+                    if (key == "mode") gateMode = ParseGateMode(path, lineNumber, key, rawValue);
+                    else gateMinimum = ParsePositiveNumber(path, lineNumber, key, rawValue);
+                    break;
                 case ReviewTable:
                     if (key is not ("id" or "name" or "role" or "selection" or "manifest"))
                         throw UnknownKey(path, lineNumber, key, "[[review-word-set]]");
@@ -141,7 +152,9 @@ public static class ProjectConfigurationFile
                 $"{Path.GetFileName(path)}: scope name '{duplicate.Key}' is declared more than once.");
 
         return new ProjectConfiguration(scopes, gate ?? true, purge ?? true,
-            standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount, reviewSets);
+            standaloneCount ?? ProjectConfiguration.DefaultStandaloneAssessmentCount, reviewSets,
+            new GainGatePolicy(gateMode ?? GainGatePolicy.Default.Mode,
+                gateMinimum ?? GainGatePolicy.Default.MinAttestedPerObject));
     }
 
     /// <summary>Renders a resolved configuration back to the same TOML shape <see cref="Parse"/> reads.</summary>
@@ -157,6 +170,15 @@ public static class ProjectConfigurationFile
         sb.AppendLine();
         sb.AppendLine($"[{RetentionTable}]");
         sb.AppendLine($"standalone-assessments-per-kind = {configuration.StandaloneAssessmentCount}");
+
+        if (configuration.GainGate != GainGatePolicy.Default)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"[{GainGateTable}]");
+            sb.AppendLine($"mode = {Quote(configuration.GainGate.Mode.ToString().ToLowerInvariant())}");
+            sb.AppendLine("min-attested-per-object = " +
+                configuration.GainGate.MinAttestedPerObject.ToString("R", CultureInfo.InvariantCulture));
+        }
 
         foreach (var scope in configuration.Scopes)
         {
@@ -289,6 +311,23 @@ public static class ProjectConfigurationFile
     {
         if (!int.TryParse(rawValue, out var value) || value <= 0)
             throw Malformed(path, lineNumber, $"'{key}' must be a positive whole number, found '{rawValue}'");
+        return value;
+    }
+
+    private static GainGateMode ParseGateMode(string path, int lineNumber, string key, string rawValue) =>
+        ParseString(path, lineNumber, key, rawValue) switch
+        {
+            "off" => GainGateMode.Off,
+            "advisory" => GainGateMode.Advisory,
+            "hold" => GainGateMode.Hold,
+            var other => throw Malformed(path, lineNumber, $"'{key}' must be \"off\", \"advisory\" or \"hold\", found '{other}'"),
+        };
+
+    private static double ParsePositiveNumber(string path, int lineNumber, string key, string rawValue)
+    {
+        if (!double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ||
+            !(value > 0) || double.IsInfinity(value))
+            throw Malformed(path, lineNumber, $"'{key}' must be a positive number, found '{rawValue}'");
         return value;
     }
 
