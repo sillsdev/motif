@@ -2,6 +2,7 @@ using System.Reflection;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Commands.Assistants;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Commands.Preferences;
@@ -34,6 +35,8 @@ public sealed class WorkspaceContextWidthTests
             typeof(IAdvancedAiModePreferenceStore), typeof(IAssistantConnectionService), typeof(ITryWordSessions),
             typeof(ICredentialStore), typeof(ITunnelClient),
             typeof(SIL.Motif.Host.Preferences.IDefaultProposalChecksStore), typeof(ProjectViewMemory),
+            // The stage and its page entries are navigation metadata, not page-owned models.
+            typeof(MotifStage), typeof(IReadOnlyList<PageEntry>),
         ];
         var carried = typeof(WorkspaceContext).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Select(property => Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);
