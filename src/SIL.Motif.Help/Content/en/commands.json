@@ -1219,6 +1219,24 @@
     ],
     "redirect": "Tags stems only; it edits no rule or affix, so afterwards set the rule's required or excluded features with compose-edit-phonological-rule-features (guides suffix-prefix-slots)."
   },
+  "compose-remove-exception-feature": {
+    "title": "Remove exception feature",
+    "description": "Takes one exception feature off every stem that carries it and out of every phonological rule branch that requires or excludes it, in one Proposal, and reports the counts first. Affix restrictions are listed, not edited. Motif stages a Draft for a person to review and Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "feature": "The project exception feature to remove.",
+      "expectedName": "The name the feature must still carry, in any writing system; a stale name refuses the command."
+    },
+    "goals": [
+      "Drop a redundant exception feature from every stem and rule",
+      "Remove a dead rule exclusion and its stem tags together"
+    ],
+    "guides": [
+      "suffix-prefix-slots"
+    ],
+    "redirect": "Removes references only; compose-tag-stems-by-query tags or untags stems by a query, and compose-edit-phonological-rule-features sets one rule's sets (guides suffix-prefix-slots)."
+  },
   "compose-edit-phonological-rule-features": {
     "title": "Set rule features",
     "description": "Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes. An empty list clears a set. Motif stages a Draft for a person to review and Apply.",
