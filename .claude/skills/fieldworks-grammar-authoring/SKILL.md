@@ -20,6 +20,9 @@ authoring. Before writing LibLCM code for a construct, check whether a Motif ope
 construct's spec so it maps one-to-one onto an operation later. The recipes are ordered by construct for
 exactly that migration.
 
+This skill is plumbing for synthetic samples. The method for building a real grammar (find patterns, test rules,
+record GDRs) is `grammar-discovery-loop`.
+
 ## Steps
 
 1. **Model the language first, in words.** For each construct you will author, write one line of what it
