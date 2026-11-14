@@ -1226,7 +1226,7 @@
   },
   "compose-remove-exception-feature": {
     "title": "Remove exception feature",
-    "description": "Takes one exception feature off every stem that carries it and out of every phonological rule branch that requires or excludes it, then deletes the feature, in one Proposal, and reports the counts first. Affix restrictions are counted, not edited. Motif stages a Draft for a person to review and Apply.",
+    "description": "Deletes one exception feature and clears every use of it in one Proposal, reporting the counts first. Affix restrictions are counted, not edited. Motif stages a Draft for a person to review and Apply.",
     "source": "Authored from the typed command contract.",
     "fields": {
       "draft": "Draft name.",
@@ -1235,8 +1235,8 @@
       "keepFeature": "true to leave the feature in the Exception Features list; by default it is deleted unless an affix still names it."
     },
     "goals": [
-      "Drop a redundant exception feature from every stem and rule",
-      "Remove a dead rule exclusion and its stem tags together"
+      "Delete a dead feature from the whole grammar",
+      "Retire a feature the grammar no longer needs"
     ],
     "guides": [
       "suffix-prefix-slots"

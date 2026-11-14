@@ -227,6 +227,7 @@ public static class GdrSyncChecker
         if (started || current.Count > 0) yield return new Section(record.Label, title, expectation, current);
     }
 
+    // "Heading N" is the SIL.TextEditing Markdown reader default and the name a new FieldWorks project has.
     private static int HeadingLevel(string? style) =>
         style is not null && style.StartsWith("Heading ", StringComparison.OrdinalIgnoreCase) && int.TryParse(style.AsSpan(8), out var level)
             ? level : 0;

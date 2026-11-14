@@ -577,7 +577,7 @@ internal sealed class TrialJobHandler
                 candidate = new CandidateRun(dryRun, scope, Selection.Create(scopeConfiguration.Name, words),
                     exportedDirectory, Path.GetFullPath(cache?.ProjectId.Path
                         ?? throw new InvalidOperationException("A Trial requires a scratch project for grammar health.")),
-                    projectStandings, partitions, GdrSyncAdvisory(claim.Database, cache));
+                    projectStandings, partitions, GdrSyncAdvisory(claim.JobId, () => GdrSyncCheck(claim.Database, cache)));
             }
             finally
             {
@@ -589,17 +589,23 @@ internal sealed class TrialJobHandler
         return candidate ?? throw new InvalidOperationException("The lane produced no candidate.");
     }
 
-    // ADR 0119: advisory only, so a failed check leaves the report without it.
-    private static GdrCheckResponse? GdrSyncAdvisory(MotifDatabase database, LcmCache? cache)
+    private static GdrCheckResponse? GdrSyncCheck(MotifDatabase database, LcmCache? cache)
     {
         if (cache is null) return null;
-        try
+        var ledger = new HypothesisRepository(database).PassedGdrLinks()
+            .Select(link => new GdrLedgerLink(link.HypothesisId, link.GdrId, link.GdrSection)).ToArray();
+        return GdrSyncChecker.Check(cache, new GdrExampleEvidenceRepository(database), ledger);
+    }
+
+    // ADR 0119: advisory only, so a failed check is logged and leaves the report without it.
+    internal static GdrCheckResponse? GdrSyncAdvisory(string jobId, Func<GdrCheckResponse?> check)
+    {
+        try { return check(); }
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            var ledger = new HypothesisRepository(database).PassedGdrLinks()
-                .Select(link => new GdrLedgerLink(link.HypothesisId, link.GdrId, link.GdrSection)).ToArray();
-            return GdrSyncChecker.Check(cache, new GdrExampleEvidenceRepository(database), ledger);
+            ReportTrialMaintenanceFailure(jobId, "run the advisory GDR sync check", exception);
+            return null;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException) { return null; }
     }
 
     private IReadOnlyList<NewAssessmentRecord> PrepareAll(IReadOnlyList<ProducedAssessment> produced,

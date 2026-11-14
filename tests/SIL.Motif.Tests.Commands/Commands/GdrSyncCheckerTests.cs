@@ -110,12 +110,19 @@ public sealed class GdrSyncCheckerTests(PristineProjectFixture pristine)
                 record.DiscussionOA.ParagraphsOS.Add(paragraph);
                 paragraph.Contents = Build(cache, pieces);
                 var rules = TsStringUtils.MakePropsBldr();
-                rules.SetStrPropValue((int)FwTextPropType.ktptNamedStyle, heading ? "Heading 2" : "Normal");
+                rules.SetStrPropValue((int)FwTextPropType.ktptNamedStyle, heading ? new MarkdownStyleNames().Heading2 : new MarkdownStyleNames().Normal);
                 paragraph.StyleRules = rules.GetTextProps();
             }
         });
 
     private static Piece[] Heading(string text) => [Prose("# " + text)];
+
+    [Fact]
+    public void TheHeadingStyleNameIsTheOneTheMarkdownReaderWrites()
+    {
+        var names = new MarkdownStyleNames();
+        Assert.Equal(["Heading 1", "Heading 2", "Heading 3"], [names.Heading1, names.Heading2, names.Heading3]);
+    }
 
     [Fact]
     public void AProjectWithRulesAndNoRecordsWarnsThatEveryKindHasNoSection()
