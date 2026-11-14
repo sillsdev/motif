@@ -212,6 +212,9 @@ public static class RefusalCodes
     public const string RequestNotOpen = "request.not-open";
     public const string RequestProposalOpen = "request.proposal-open";
     public const string ProposalRationaleEmpty = "proposal.rationale-empty";
+    public const string ProposalRationaleFindings = "proposal.rationale-findings";
+    public const string ProposalRationaleUnchecked = "proposal.rationale-unchecked";
+    public const string ProposalRationaleStale = "proposal.rationale-stale";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";
     public const string ProjectBusy = "project.busy";
@@ -458,6 +461,8 @@ public static class RefusalCodes
 
     /// <summary>A rich-text field no longer holds the text its edit began from.</summary>
     public const string TextFieldStale = "text.field-stale";
+    /// <summary>A rich-text edit names a paragraph or character style the project does not have.</summary>
+    public const string TextStyleUnknown = "text.style-unknown";
     /// <summary>A segment's Notes changed since the Note edit was composed.</summary>
     public const string TextNotesStaleSource = "text-notes.stale-source";
 

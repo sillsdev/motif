@@ -51,9 +51,79 @@ public sealed class ProposalWorkflowModelTests
         await page.DetailReading;
 
         Assert.Equal("Why this helps", page.Detail!.Rationale!.Markdown);
+        Assert.Equal("Why this helps", page.RationaleEditor!.Markdown);
+        Assert.True(page.RationaleEditor.CanStartEdit);
         Assert.True(page.Detail.Rationale.OutOfDate);
         Assert.Equal(["Add a phonological rule.", "Add a wordform (affects 1 word)."],
             page.OperationDescriptions);
+    }
+
+    [Fact]
+    public async Task AReReadDuringThePersonsOwnSaveLeavesNoChangedElsewhereNotice()
+    {
+        var fake = NewFake();
+        fake.ProposalDetail = new ProposalDetailProjection(Id, "proposed", "Sound change",
+            new RationaleView("Why this helps", null, "2026-10-01", false, null, false), "new", []);
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(Path);
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        var marked = false;
+        fake.SetRationaleHandler = request =>
+        {
+            // The list is read again while the save is in flight, and already shows the saved text.
+            fake.ProposalDetail = fake.ProposalDetail! with
+            {
+                Rationale = new RationaleView(request.Text, null, "2026-10-02", false, null, false),
+            };
+            // A real re-read of the list: the fake answers at once.
+            _ = page.EvidencePublishedAsync(context.EvidenceLens, CancellationToken.None);
+            marked = editor.IsChangedElsewhere;
+            return null;
+        };
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[^1].Text += " Typed.";
+
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        Assert.True(marked);
+        Assert.False(editor.IsEditing);
+        Assert.False(editor.IsChangedElsewhere);
+        Assert.Equal("Why this helps Typed.", editor.Markdown);
+    }
+
+    [Fact]
+    public async Task ARationaleBeingEditedSurvivesARereadOfTheSameProposal()
+    {
+        var fake = NewFake();
+        fake.ProposalDetail = new ProposalDetailProjection(Id, "proposed", "Sound change",
+            new RationaleView("Why this helps", null, "2026-10-01", false, null, false), "new", []);
+        var context = WorkspaceContextTests.NewContext(fake);
+        var page = new ProposalsPageModel(context);
+        await context.OpenProjectAsync(Path);
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[^1].Text += " Typed.";
+
+        await page.EvidencePublishedAsync(context.EvidenceLens, CancellationToken.None);
+        await page.DetailReading;
+
+        Assert.Same(editor, page.RationaleEditor);
+        Assert.Equal("Why this helps Typed.", editor.Text());
+        Assert.False(editor.IsChangedElsewhere);
+
+        fake.ProposalDetail = fake.ProposalDetail! with
+        {
+            Rationale = new RationaleView("Changed elsewhere.", null, "2026-10-02", false, null, false),
+        };
+        await page.EvidencePublishedAsync(context.EvidenceLens, CancellationToken.None);
+        await page.DetailReading;
+
+        Assert.Same(editor, page.RationaleEditor);
+        Assert.True(editor.IsChangedElsewhere);
+        Assert.Equal("Why this helps Typed.", editor.Text());
     }
 
     [Fact]

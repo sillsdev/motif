@@ -296,7 +296,7 @@
         },
         "rationale": {
           "type": "string",
-          "description": "What this Proposal changes and why, in Markdown: the evidence, in a few sentences."
+          "description": "What this Proposal changes and why, in FieldWorks Markdown: the evidence, in a few sentences. Write a word or morpheme of the language as [form]{.v}, or [form]{ws=code} for another writing system, so it links to its writing system; backticks are plain text. Finalize needs it free of findings."
         },
         "request_id": {
           "type": "string",

@@ -2,6 +2,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.RichText;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
@@ -9,7 +10,8 @@ namespace SIL.Motif.Commands;
 /// <summary>
 /// The Comments on a Proposal. An agent may add one, with a label it chose for itself, and never edits or deletes
 /// one; a person adds, edits and deletes any. The label is shown to readers and is no identity check. Comments
-/// freeze when the Proposal is decided, as the Rationale does.
+/// freeze when the Proposal is decided, as the Rationale does. A Comment is FieldWorks Markdown; one with findings
+/// saves, returns them, and never blocks Finalize or Apply (ADR 0099).
 /// </summary>
 /// <remarks>
 /// Edit and delete take no author because only a person may call them; an agent-facing surface registers them
@@ -21,7 +23,7 @@ public static class ProposalComments
     public static CommandOutcome<ProposalCommentChangedResponse> Add(AddCommentRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return Run(request.FwDataPath, request.ProductVersion, request.ProposalId, (discussion, id) =>
+        return Run(request.FwDataPath, request.ProductVersion, request.ProposalId, (discussion, id, check) =>
         {
             if (string.IsNullOrWhiteSpace(request.Text))
                 return Refusal(ProposalTexts.Refuse(RefusalCodes.ProposalCommentInvalid, FailureReason.InvalidArgument,
@@ -29,8 +31,9 @@ public static class ProposalComments
             if (AuthorProblem(request.AuthorLabel, request.PersonName) is { } problem)
                 return Refusal(ProposalTexts.Refuse(RefusalCodes.ProposalCommentInvalid, FailureReason.InvalidArgument,
                     problem, id.Value));
-            return Result(id, discussion.AddComment(id, request.Text,
-                new DiscussionAuthor(request.AuthorLabel, request.PersonName ?? "")), "added");
+            var checkedText = check(request.Text);
+            return Result(id, discussion.AddComment(id, checkedText.Text,
+                new DiscussionAuthor(request.AuthorLabel, request.PersonName ?? "")), "added", checkedText.Findings);
         });
     }
 
@@ -38,19 +41,23 @@ public static class ProposalComments
     public static CommandOutcome<ProposalCommentChangedResponse> Edit(EditCommentRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return Run(request.FwDataPath, request.ProductVersion, request.ProposalId, (discussion, id) =>
-            string.IsNullOrWhiteSpace(request.Text)
-                ? Refusal(ProposalTexts.Refuse(RefusalCodes.ProposalCommentInvalid, FailureReason.InvalidArgument,
-                    "A Comment cannot be empty. Delete it instead.", id.Value))
-                : Result(id, discussion.EditComment(id, request.CommentId, request.Text), "edited"));
+        return Run(request.FwDataPath, request.ProductVersion, request.ProposalId, (discussion, id, check) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Text))
+                return Refusal(ProposalTexts.Refuse(RefusalCodes.ProposalCommentInvalid, FailureReason.InvalidArgument,
+                    "A Comment cannot be empty. Delete it instead.", id.Value));
+            var checkedText = check(request.Text);
+            return Result(id, discussion.EditComment(id, request.CommentId, checkedText.Text), "edited",
+                checkedText.Findings);
+        });
     }
 
     /// <summary>Deletes a Comment and the pictures attached to it.</summary>
     public static CommandOutcome<ProposalCommentChangedResponse> Delete(DeleteCommentRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return Run(request.FwDataPath, request.ProductVersion, request.ProposalId, (discussion, id) =>
-            Result(id, discussion.DeleteComment(id, request.CommentId), "deleted"));
+        return Run(request.FwDataPath, request.ProductVersion, request.ProposalId, (discussion, id, _) =>
+            Result(id, discussion.DeleteComment(id, request.CommentId), "deleted", []));
     }
 
     /// <summary>Why an author label or person name is unacceptable, or null when both are.</summary>
@@ -65,17 +72,18 @@ public static class ProposalComments
     }
 
     private delegate CommandOutcome<ProposalCommentChangedResponse> Step(
-        ProposalDiscussionRepository discussion, CanonicalId id);
+        ProposalDiscussionRepository discussion, CanonicalId id, Func<string, CheckedProposalText> check);
 
     private static CommandOutcome<ProposalCommentChangedResponse> Run(string fwDataPath, string productVersion,
         string proposalId, Step step) =>
-        ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        ProjectStoreCommand.Run(fwDataPath, productVersion, (database, project) =>
         {
             if (!CanonicalId.TryParse(proposalId, out var id))
                 return Refusal(ProposalTexts.Refuse("proposal.not-found", FailureReason.NotFound,
                     $"'{proposalId}' is not a full Proposal id. Use the proposalId a Proposal listing returns; " +
                     "prefixes and names are not accepted.", proposalId));
-            var outcome = step(new ProposalDiscussionRepository(database), id);
+            var outcome = step(new ProposalDiscussionRepository(database), id,
+                text => ProposalTexts.Check(database, project, text));
             if (!outcome.Succeeded) return outcome;
             var record = new ProposalRepository(database).Get(id);
             return CommandOutcome<ProposalCommentChangedResponse>.Success(
@@ -83,10 +91,10 @@ public static class ProposalComments
         });
 
     private static CommandOutcome<ProposalCommentChangedResponse> Result(CanonicalId id, CommentWrite write,
-        string change) => write.Outcome switch
+        string change, IReadOnlyList<TextFinding> findings) => write.Outcome switch
     {
         CommentWriteOutcome.Written => CommandOutcome<ProposalCommentChangedResponse>.Success(
-            new ProposalCommentChangedResponse(id.Value, write.CommentId, change, false)),
+            new ProposalCommentChangedResponse(id.Value, write.CommentId, change, false) { Findings = findings }),
         CommentWriteOutcome.Closed => Refusal(ProposalTexts.Refuse("proposal.closed", FailureReason.Refused,
             $"Proposal '{id.Value}' is decided, so its Comments can no longer change.", id.Value)),
         CommentWriteOutcome.CommentNotFound => Refusal(ProposalTexts.Refuse("proposal.not-found",

@@ -881,6 +881,20 @@
     "control": "ItemsControl"
   },
   {
+    "view": "RationaleEditor",
+    "name": "RationaleFindings",
+    "source": "Findings",
+    "mode": "finite",
+    "control": "ItemsControl"
+  },
+  {
+    "view": "RationaleEditor",
+    "name": "RationaleRevisions",
+    "source": "Revisions",
+    "mode": "inline",
+    "control": "ItemsControl"
+  },
+  {
     "view": "ProposalPicturesPanel",
     "name": "ProposalPictureItems",
     "source": "Items",

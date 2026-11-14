@@ -12,6 +12,7 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class ProposalsPageModel
 {
     private int _detailGeneration;
+    private RationaleEditorModel? _lastRationaleEditor;
     private string? _markingReadId;
     private string? _pendingUserSelectionId;
     private bool _selectionByUser;
@@ -19,6 +20,10 @@ public sealed partial class ProposalsPageModel
     /// <summary>The selected Proposal's stored detail, if it could be read.</summary>
     [ObservableProperty]
     private ProposalDetailProjection? _detail;
+
+    /// <summary>The selected Proposal's Rationale in the rich field, editable while the Proposal is open.</summary>
+    [ObservableProperty]
+    private RationaleEditorModel? _rationaleEditor;
 
     /// <summary>The selected Proposal's operation descriptions.</summary>
     [ObservableProperty]
@@ -42,6 +47,7 @@ public sealed partial class ProposalsPageModel
     {
         var generation = ++_detailGeneration;
         Detail = null;
+        RationaleEditor = null;
         DetailRefusal = null;
         OperationDescriptions = [];
         ReviewProgress = string.Empty;
@@ -61,6 +67,14 @@ public sealed partial class ProposalsPageModel
             return;
         }
         Detail = shown.Value;
+        // A re-read of the list keeps a Rationale the person is editing, and says so if it changed meanwhile.
+        if (_lastRationaleEditor is { IsEditing: true } editing && editing.ProposalId == proposalId)
+        {
+            if (editing.Markdown != (shown.Value!.Rationale?.Markdown ?? string.Empty)) editing.MarkChangedElsewhere();
+            RationaleEditor = editing;
+        }
+        else RationaleEditor = new RationaleEditorModel(Context, shown.Value!);
+        _lastRationaleEditor = RationaleEditor;
         MarkSelectedRead();
         var review = await Context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(path, proposalId),
             CancellationToken.None).ConfigureAwait(true);

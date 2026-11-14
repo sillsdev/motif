@@ -31,7 +31,16 @@ public enum DraftFinalizationResult
 
     /// <summary>The requested follow-up status move was refused, so the Draft was not finalized either.</summary>
     MoveRefused,
+
+    /// <summary>The Draft's Rationale is no longer the one the caller checked, and no store rows changed.</summary>
+    RationaleChanged,
 }
+
+/// <summary>
+/// The status and Draft name a Proposal had when its new Rationale was checked, which the write needs unchanged, and,
+/// when <paramref name="Rationale"/> is given, the Rationale it replaces, where an empty one stands for none.
+/// </summary>
+public sealed record RationaleWriteExpectation(string Status, string? DraftName, string? Rationale = null);
 
 /// <summary>A status move a finalize performs in its own transaction, so both happen or neither does.</summary>
 public sealed record FinalizeMove(IReadOnlyCollection<string> AllowedFrom, string To, string? Comment = null);
@@ -73,8 +82,12 @@ public interface IProposalRepository
     /// While the Proposal is open the text is also kept as a revision carrying <paramref name="author"/>, a person with
     /// no name when omitted; a decided Proposal's revisions are dropped at the decision.
     /// </remarks>
-    /// <returns>Whether a Proposal with this id exists.</returns>
-    bool SetRationale(CanonicalId proposalId, string? rationale, DiscussionAuthor? author = null);
+    /// <returns>
+    /// Whether it was written: false when no Proposal has this id, or when <paramref name="expected"/> is given and the
+    /// Proposal's status or Draft name is no longer that.
+    /// </returns>
+    bool SetRationale(CanonicalId proposalId, string? rationale, DiscussionAuthor? author = null,
+        RationaleWriteExpectation? expected = null);
     /// <summary>The content of one stored revision of a Proposal, or null when that revision is not stored.</summary>
     Proposal? GetRevisionContent(CanonicalId proposalId, string intentDigest);
     /// <summary>Lists every Draft, ordered by name.</summary>
@@ -96,10 +109,12 @@ public interface IProposalRepository
     /// <see cref="DraftFinalizationResult.Finalized"/> for a first commit,
     /// <see cref="DraftFinalizationResult.Amended"/> for a new revision, or
     /// <see cref="DraftFinalizationResult.DraftChanged"/> when the expected revision no longer matches and no rows changed, or
-    /// <see cref="DraftFinalizationResult.MoveRefused"/> when <paramref name="thenMove"/> was refused and no rows changed.
+    /// <see cref="DraftFinalizationResult.MoveRefused"/> when <paramref name="thenMove"/> was refused and no rows changed, or
+    /// <see cref="DraftFinalizationResult.RationaleChanged"/> when <paramref name="expectedRationale"/> is given and the
+    /// Draft's Rationale is no longer that, and no rows changed.
     /// </returns>
     DraftFinalizationResult Finalize(string draftName, string intentDigest, string proposalJson, string label,
-        string? expectedDraftRevision = null, FinalizeMove? thenMove = null);
+        string? expectedDraftRevision = null, FinalizeMove? thenMove = null, string? expectedRationale = null);
     /// <summary>
     /// Loads one finalized Proposal, verifying that its recorded revision exists and that the
     /// revision's own embedded id and recomputed digest agree with the pointer that named it.
@@ -613,7 +628,7 @@ public sealed class ProposalRepository : IProposalRepository
 
     /// <inheritdoc />
     public DraftFinalizationResult Finalize(string draftName, string intentDigest, string proposalJson, string label,
-        string? expectedDraftRevision = null, FinalizeMove? thenMove = null)
+        string? expectedDraftRevision = null, FinalizeMove? thenMove = null, string? expectedRationale = null)
     {
         if (string.IsNullOrWhiteSpace(intentDigest) || string.IsNullOrWhiteSpace(proposalJson))
             throw new ArgumentException("Finalize requires an intent digest and Proposal content.", nameof(intentDigest));
@@ -635,6 +650,7 @@ public sealed class ProposalRepository : IProposalRepository
         }
         if (expectedDraftRevision is not null && DraftRevision.Compute(draftJson) != expectedDraftRevision)
             return DraftFinalizationResult.DraftChanged;
+
         var bytes = Encoding.UTF8.GetBytes(proposalJson);
         object? stored;
         using (var existing = connection.CreateCommand())
@@ -681,13 +697,14 @@ public sealed class ProposalRepository : IProposalRepository
                     DraftName = NULL, DraftJson = NULL, ArchivedUtc = NULL,
                     AnchorJson = CASE WHEN json_extract(AnchorJson, '$.IntentDigest') = $digest
                         OR json_extract(AnchorJson, '$.intentDigest') = $digest THEN AnchorJson ELSE NULL END
-                WHERE DraftName = $name;
+                WHERE DraftName = $name AND ($expectedRationale IS NULL OR COALESCE(Rationale, '') = $expectedRationale);
                 """;
+            commit.Parameters.AddWithValue("$expectedRationale", (object?)expectedRationale ?? DBNull.Value);
             commit.Parameters.AddWithValue("$digest", intentDigest);
             commit.Parameters.AddWithValue("$status", ProposalLifecycle.ToWire(ProposalStatus.Proposed));
             commit.Parameters.AddWithValue("$label", label);
             commit.Parameters.AddWithValue("$name", draftName);
-            commit.ExecuteNonQuery();
+            if (commit.ExecuteNonQuery() != 1) return DraftFinalizationResult.RationaleChanged;
         }
         ProposalDiscussionRepository.StampDigest(connection, transaction, proposalId, intentDigest);
         RequestRepository.AnswerFor(connection, transaction, proposalId, Now());
@@ -860,7 +877,8 @@ public sealed class ProposalRepository : IProposalRepository
         reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
 
     /// <inheritdoc />
-    public bool SetRationale(CanonicalId proposalId, string? rationale, DiscussionAuthor? author = null)
+    public bool SetRationale(CanonicalId proposalId, string? rationale, DiscussionAuthor? author = null,
+        RationaleWriteExpectation? expected = null)
     {
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction();
@@ -868,8 +886,15 @@ public sealed class ProposalRepository : IProposalRepository
         update.Transaction = transaction;
         update.CommandText = """
             UPDATE Proposals SET Rationale = $text, RationaleIntentDigest = CurrentIntentDigest,
-                RationaleUpdatedUtc = $now WHERE ProposalId = $id;
+                RationaleUpdatedUtc = $now WHERE ProposalId = $id
+                AND ($expected = 0 OR (Status IS $status AND DraftName IS $draftName))
+                AND ($replaces = 0 OR COALESCE(Rationale, '') = $replaced);
             """;
+        update.Parameters.AddWithValue("$replaces", expected?.Rationale is null ? 0 : 1);
+        update.Parameters.AddWithValue("$replaced", (object?)expected?.Rationale ?? DBNull.Value);
+        update.Parameters.AddWithValue("$expected", expected is null ? 0 : 1);
+        update.Parameters.AddWithValue("$status", (object?)expected?.Status ?? DBNull.Value);
+        update.Parameters.AddWithValue("$draftName", (object?)expected?.DraftName ?? DBNull.Value);
         var now = Now();
         update.Parameters.AddWithValue("$text", (object?)rationale ?? DBNull.Value);
         update.Parameters.AddWithValue("$now", now);

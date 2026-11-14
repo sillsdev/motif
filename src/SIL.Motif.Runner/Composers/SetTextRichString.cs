@@ -26,9 +26,13 @@ public static class SetTextRichStringComposer
         ArgumentNullException.ThrowIfNull(intent);
         var payload = Canonical(cache, TextRichStringPayload.Parse(intent.RichString.ToJson()));
         var after = payload.ToJson();
-        TextRichStringFields.Flid(CanonicalIdResolver.Resolve(cache, intent.Target), payload.Field);
+        var owner = CanonicalIdResolver.Resolve(cache, intent.Target);
+        var flid = TextRichStringFields.Flid(owner, payload.Field);
         if (payload.Text.Normalize(NormalizationForm.FormC) == payload.Expected.Text.Normalize(NormalizationForm.FormC) &&
             RunsDigest(payload) == payload.Expected.Runs) return [];
+        var ws = payload.Ws is { } tag ? RichTextRuns.WritingSystem(cache, tag, TextRichStringOperationKinds.Set) : 0;
+        RichTextRuns.RequireStyles(cache, [], payload.Runs,
+            RichTextRuns.StylesIn(TextRichStringFields.Read(owner, flid, ws)).ToHashSet(StringComparer.Ordinal));
         return [new(CanonicalId.Mint(), TextRichStringOperationKinds.Set, target: intent.Target, after: after,
             rationale: $"Edit the {payload.Field}{(payload.Ws is null ? "" : $" ({payload.Ws})")}.")];
     }

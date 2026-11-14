@@ -98,6 +98,9 @@ public sealed partial record WindowRefusal
         [C.RequestNotFound] = () => MotifAppStrings.RefusalRequestNotFound,
         [C.RequestNotOpen] = () => MotifAppStrings.RefusalRequestNotOpen,
         [C.ProposalRationaleEmpty] = () => MotifAppStrings.RefusalProposalRationaleEmpty,
+        [C.ProposalRationaleFindings] = () => MotifAppStrings.RefusalProposalRationaleFindings,
+        [C.ProposalRationaleStale] = () => MotifAppStrings.RefusalProposalRationaleStale,
+        [C.ProposalRationaleUnchecked] = () => MotifAppStrings.RefusalProposalRationaleUnchecked,
         [C.ProposalUnreadable] = () => MotifAppStrings.RefusalProposalUnreadable,
         [C.ApplyPreconditionFailed] = () => MotifAppStrings.RefusalApplyPreconditionFailed,
         [C.ApplyNotReady] = () => MotifAppStrings.RefusalApplyNotReady,
@@ -216,6 +219,7 @@ public sealed partial record WindowRefusal
 
         [C.SelectionDefaultMissing] = () => MotifAppStrings.RefusalSelectionDefaultMissing,
         [C.TextFieldStale] = () => MotifAppStrings.RefusalTextFieldStale,
+        [C.TextStyleUnknown] = () => MotifAppStrings.RefusalTextStyleUnknown,
         [C.SelectionEmpty] = () => MotifAppStrings.RefusalSelectionEmpty,
         [C.SelectionInvalid] = () => MotifAppStrings.RefusalSelectionInvalid,
         [C.SelectionTextNotFound] = () => MotifAppStrings.RefusalSelectionTextNotFound,

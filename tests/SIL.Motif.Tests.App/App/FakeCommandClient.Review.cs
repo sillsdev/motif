@@ -16,6 +16,49 @@ public sealed partial class FakeCommandClient
         ShowProposalHandler?.Invoke(request, cancellationToken) ??
         Completed(ProposalDetail ?? new ProposalDetailProjection(request.ProposalId, "proposed", null, null, null, []));
 
+    public List<SetRationaleRequest> SetRationaleRequests { get; } = [];
+
+    /// <summary>What a Rationale save from the stored base answers; null, or a null answer, saves it as the store would.</summary>
+    public Func<SetRationaleRequest, CommandOutcome<ProposalTextChangedResponse>?>? SetRationaleHandler { get; set; }
+
+    private string? _storedRationale;
+    private bool _rationaleStored;
+
+    /// <summary>The Rationale the store holds, null for none; until set or saved, the one <see cref="ProposalDetail"/> shows.</summary>
+    public string? StoredRationale
+    {
+        get => _rationaleStored ? _storedRationale : ProposalDetail?.Rationale?.Markdown;
+        set
+        {
+            _storedRationale = value;
+            _rationaleStored = true;
+        }
+    }
+
+    /// <summary>As the store does: a save from another base is stale, none stored is empty, and clean text is tidied.</summary>
+    public Task<CommandOutcome<ProposalTextChangedResponse>> SetRationaleAsync(
+        SetRationaleRequest request, CancellationToken cancellationToken)
+    {
+        SetRationaleRequests.Add(request);
+        if (request.ExpectedRationale is { } expected && (StoredRationale ?? string.Empty) != expected)
+            return Task.FromResult(CommandOutcome<ProposalTextChangedResponse>.Refused(new Refusal(
+                RefusalCodes.ProposalRationaleStale, FailureReason.Refused, "Changed meanwhile.",
+                new Dictionary<string, string> { ["proposalId"] = request.ProposalId })));
+        if (SetRationaleHandler?.Invoke(request) is { } handled) return Task.FromResult(handled);
+        StoredRationale = request.Text.Replace("\r\n", "\n", StringComparison.Ordinal).TrimEnd();
+        return Task.FromResult(CommandOutcome<ProposalTextChangedResponse>.Success(
+            new ProposalTextChangedResponse(request.ProposalId, "rationale", "2026-11-11T00:00:00.0000000Z", false)
+            {
+                Text = StoredRationale,
+            }));
+    }
+
+    public IReadOnlyList<RationaleRevisionView> RationaleRevisions { get; set; } = [];
+
+    public Task<CommandOutcome<IReadOnlyList<RationaleRevisionView>>> ListRationaleRevisionsAsync(
+        RationaleRevisionsRequest request, CancellationToken cancellationToken) =>
+        Completed(RationaleRevisions);
+
     public List<DeferRequest> DeferProposalRequests { get; } = [];
 
     public Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(

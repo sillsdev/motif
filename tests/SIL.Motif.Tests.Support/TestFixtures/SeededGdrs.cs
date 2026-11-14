@@ -4,6 +4,7 @@ using SIL.LCModel.Core.Text;
 using SIL.LCModel.DomainServices;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.Host.Gdr;
+using SIL.Motif.Host.RichText;
 using SIL.TextEditing.LCModel;
 using SIL.TextEditing.Markdown;
 using SIL.TextEditing.Project;
@@ -121,6 +122,7 @@ public static class SeededGdrs
             Paths = new ProjectPathResolver(cache),
             LinkBase = "/lists/GDR/GDR-47.fw.md",
             ProjectName = "Sena3",
+            StyleNames = MotifMarkdownStyles.Names(),
         };
         string Guid(ILexEntry entry) => entry.Guid.ToString("D");
         var spellings = new[]
@@ -173,6 +175,18 @@ public static class SeededGdrs
         }).ToArray();
         styles[0].BasedOnRA = styles[1];
         styles[1].BasedOnRA = styles[0];
+    });
+
+    /// <summary>Adds Motif's table styles, <see cref="MotifMarkdownStyles.TableHeader"/> and <see cref="MotifMarkdownStyles.TableRow"/>, as paragraph styles.</summary>
+    public static void SeedTableStyles(LcmCache cache) => NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+    {
+        foreach (var name in new[] { MotifMarkdownStyles.TableHeader, MotifMarkdownStyles.TableRow })
+        {
+            var style = cache.ServiceLocator.GetInstance<IStStyleFactory>().Create();
+            cache.LangProject.StylesOC.Add(style);
+            style.Name = name;
+            style.Type = StyleType.kstParagraph;
+        }
     });
 
     /// <summary>The seeded Grammar Design Records list.</summary>

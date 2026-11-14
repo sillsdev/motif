@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.RationaleEditor"
+             x:DataType="vm:RationaleEditorModel">
+  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+    <ContentControl x:Name="FieldHost" />
+    <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.RationalePlainText}" TextWrapping="Wrap"
+               IsVisible="{Binding IsPlainText}" />
+    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+      <Button x:Name="RationaleEditButton" Content="{x:Static app:MotifAppStrings.RationaleEdit}"
+              Command="{Binding EditCommand}" IsVisible="{Binding CanStartEdit}" />
+      <Button x:Name="RationaleSaveButton" Content="{x:Static app:MotifAppStrings.RationaleSave}"
+              Command="{Binding SaveCommand}" IsVisible="{Binding IsEditing}" />
+      <Button x:Name="RationaleCancelButton" Content="{x:Static app:MotifAppStrings.Cancel}"
+              Command="{Binding CancelCommand}" IsVisible="{Binding IsEditing}" />
+    </StackPanel>
+    <TextBlock Classes="error" Text="{x:Static app:MotifAppStrings.RationaleChangedElsewhere}" TextWrapping="Wrap"
+               IsVisible="{Binding IsChangedElsewhere}" />
+    <TextBlock Classes="error" Text="{x:Static app:MotifAppStrings.RationaleSaveOrCancelFirst}" TextWrapping="Wrap"
+               IsVisible="{Binding IsSwitchRefused}" />
+    <views:RefusalBlock DataContext="{Binding Refusal}" />
+    <StackPanel IsVisible="{Binding HasFindings}">
+      <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.RationaleFindingsHeading}" />
+      <ItemsControl x:Name="RationaleFindings" ItemsSource="{Binding Findings}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+    <StackPanel IsVisible="{Binding HasRevisions}">
+      <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.RationaleRestoreHeading}" />
+      <ItemsControl x:Name="RationaleRevisions" ItemsSource="{Binding Revisions}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:RationaleRevisionChoice">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+              <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+              <Button Content="{x:Static app:MotifAppStrings.RationaleRestore}"
+                      Command="{Binding $parent[views:RationaleEditor].((vm:RationaleEditorModel)DataContext).RestoreCommand}"
+                      CommandParameter="{Binding}" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

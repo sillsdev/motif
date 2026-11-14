@@ -14,6 +14,14 @@ public sealed partial class CommandClient
         ShowProposalRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ProposalCommands.Show(request), cancellationToken);
 
+    public Task<CommandOutcome<ProposalTextChangedResponse>> SetRationaleAsync(
+        SetRationaleRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalTexts.SetRationale(request), cancellationToken);
+
+    public Task<CommandOutcome<IReadOnlyList<RationaleRevisionView>>> ListRationaleRevisionsAsync(
+        RationaleRevisionsRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalTexts.RationaleRevisions(request), cancellationToken);
+
     public Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(
         DeferRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ProposalCommands.Defer(request), cancellationToken);

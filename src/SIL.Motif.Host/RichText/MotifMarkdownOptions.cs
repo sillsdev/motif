@@ -7,8 +7,8 @@ namespace SIL.Motif.Host.RichText;
 /// <summary>
 /// The FieldWorks Markdown options Motif reads and writes project text with, wherever the text comes from: a project copy
 /// open in a cache, or what a command returned about one. Motif's choices are made here once, so every reader and writer
-/// of FieldWorks Markdown in Motif agrees: no front matter, and a link to an object the project does not have is marked
-/// broken rather than refused. Only a path resolver can tell which objects the project has, so options made without one
+/// of FieldWorks Markdown in Motif agrees: no front matter, Motif's table styles (<see cref="MotifMarkdownStyles"/>), and
+/// a link to an object the project does not have is marked broken rather than refused. Only a path resolver can tell which objects the project has, so options made without one
 /// take a link's GUID as written and never mark it broken.
 /// </summary>
 public static class MotifMarkdownOptions
@@ -28,6 +28,7 @@ public static class MotifMarkdownOptions
         {
             WriteFrontMatter = false,
             UnknownGuids = UnknownGuidPolicy.MarkBroken,
+            StyleNames = MotifMarkdownStyles.Names(),
             WritingSystems = writingSystems,
             Styles = styles,
             Paths = paths,

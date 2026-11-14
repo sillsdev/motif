@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Input;
+using Avalonia.Headless;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
@@ -462,6 +463,76 @@ public sealed class ProposalsWorkspacePaneTests
                 Assert.Same(mainInspector, mainProvider.InspectorContent);
                 Assert.Same(mainSideParent, mainSidePanel.Parent);
                 Assert.Same(mainInspectorParent, mainInspector.Parent);
+            }
+            finally
+            {
+                standalone.Close();
+                window.Close();
+            }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void ARowClickOrArrowKeyKeepsTheListOnTheProposalWhoseRationaleEditIsUnsaved()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var cards = new[]
+            {
+                Card("p/one", "First change", ProposalGroup.WaitingForYou),
+                Card("p/two", "Second change", ProposalGroup.WaitingForYou),
+            };
+            var fake = new FakeCommandClient();
+            fake.OnProposalStandings((_, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+                new ProposalStandings(cards, 0))));
+            fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection(request.ProposalId, "proposed", "Label",
+                    new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false), null, [])));
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            var standalone = new MotifTestWindow { Width = 2400, Height = 780 };
+            try
+            {
+                var model = workspace.PageModel<ProposalsPageModel>();
+                var page = new ProposalsPage(model);
+                var host = WorkspaceLayoutHost.ForPage(page);
+                standalone.Content = host;
+                standalone.Show();
+                PageScreenshots.Settle(standalone);
+                // The list is under test, not the rich field, so the field is kept out of the drawn frames.
+                var table = Assert.IsType<ListBox>(page.FindControl<ListBox>("ProposalsRowsItems"));
+                var first = model.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/one");
+                var second = model.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/two");
+                model.SelectProposalCommand.Execute(first);
+                await model.DetailReading;
+                PageScreenshots.Settle(standalone);
+                var editor = model.RationaleEditor!;
+                editor.EditCommand.Execute(null);
+                editor.RestoreCommand.Execute(new RationaleRevisionChoice(
+                    new RationaleRevisionView(1, "Why. Typed.", null, "A", "2026-11-10T00:00:00Z")));
+                PageScreenshots.Settle(standalone);
+                Assert.True(editor.HasUnsavedChanges);
+                Assert.Same(first, table.SelectedItem);
+
+                var secondContainer = Assert.Single(table.GetVisualDescendants().OfType<ListBoxItem>(),
+                    item => ReferenceEquals(item.DataContext, second));
+                var secondRow = Assert.Single(secondContainer.GetVisualDescendants().OfType<Border>(), border =>
+                    AutomationProperties.GetAutomationId(border) == second.RowAutomationId);
+                HeadlessClick.Click(standalone, secondRow, second.Label);
+                PageScreenshots.Settle(standalone);
+                Assert.Same(first, model.SelectedProposal);
+                Assert.Same(first, table.SelectedItem);
+                Assert.Same(editor, model.RationaleEditor);
+                Assert.Equal("Why. Typed.", editor.Text());
+
+                var firstContainer = Assert.Single(table.GetVisualDescendants().OfType<ListBoxItem>(),
+                    item => ReferenceEquals(item.DataContext, first));
+                firstContainer.Focus();
+                standalone.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
+                PageScreenshots.Settle(standalone);
+                Assert.Same(first, model.SelectedProposal);
+                Assert.Same(first, table.SelectedItem);
+                Assert.Same(editor, model.RationaleEditor);
+                Assert.Equal("Why. Typed.", editor.Text());
             }
             finally
             {

@@ -15,6 +15,7 @@ using SIL.Motif.Host;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Host.RichText;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
@@ -245,6 +246,76 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
 
         Assert.Equal("first", Text(Assert.Single(Show(path, "GDR-2").Discussion)));
     }
+
+    [Fact]
+    public void ATableInTheProjectsTableStylesIsWrittenAndReadsBackAsOneThroughGdrShow()
+    {
+        var path = ProjectWithGdrs(SeededGdrs.SeedTableStyles);
+        var shown = Show(path, "GDR-2");
+        Assert.Contains(shown.Styles, style => style is { Name: MotifMarkdownStyles.TableHeader, Kind: GdrStyleKind.Paragraph });
+        Assert.Contains(shown.Styles, style => style is { Name: MotifMarkdownStyles.TableRow, Kind: GdrStyleKind.Paragraph });
+
+        Staged(path, shown.Record.Id, Edit([null, null, null], TableRows(shown.DefaultAnalysis), []));
+        Applied(path);
+
+        var after = Show(path, "GDR-2");
+        Assert.Equal([MotifMarkdownStyles.TableHeader, MotifMarkdownStyles.TableRow, MotifMarkdownStyles.TableRow],
+            after.Discussion.Select(paragraph => paragraph.Style));
+        Assert.Equal(["Form\tGloss", "form-1\tgloss-1", "form-2\tgloss-2"], after.Discussion.Select(Text));
+        Assert.Contains(after.Styles, style => style.Name == MotifMarkdownStyles.TableRow);
+    }
+
+    [Fact]
+    public void AStyleTheFieldAlreadyUsesStillStagesThoughTheProjectLacksIt()
+    {
+        var path = ProjectWithGdrs();
+        InFieldWorks(path, "GDR-1a", (_, text) => ((IStTxtPara)text.ParagraphsOS[0]).StyleName = "Legacy Style");
+        Recaptured(path);
+        var shown = Show(path, "GDR-1a");
+        var only = Assert.Single(shown.Discussion);
+        Assert.Equal("Legacy Style", only.Style);
+
+        Staged(path, shown.Record.Id, Edit([only.Key],
+            [new TextParagraphChange(0, only.Key, "Legacy Style", [new TextRun("edited", only.Runs[0].WritingSystem)])], [], only));
+
+        Assert.Equal(1, PendingOperations(path));
+    }
+
+    [Fact]
+    public void AParagraphStyleTheProjectLacksIsRefusedAtStagingNamingTheStyle()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-2");
+
+        var refused = ProposalCommands.StageTextParagraphs(new StageTextParagraphsRequest(path, shown.Record.Id,
+            Edit([null, null, null], TableRows(shown.DefaultAnalysis), [])));
+
+        Assert.Equal(RefusalCodes.TextStyleUnknown, refused.Refusal?.Code);
+        Assert.Equal(MotifMarkdownStyles.TableHeader, refused.Refusal!.Facts["style"]);
+        Assert.Equal("paragraph", refused.Refusal.Facts["styleKind"]);
+        Assert.Contains($"'{MotifMarkdownStyles.TableHeader}'", refused.Refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void ACharacterStyleTheProjectLacksIsRefusedAtStaging()
+    {
+        var path = ProjectWithGdrs();
+        var shown = Show(path, "GDR-2");
+
+        var refused = ProposalCommands.StageTextParagraphs(new StageTextParagraphsRequest(path, shown.Record.Id,
+            Edit([null], [new TextParagraphChange(0, null, "Normal", [new TextRun("x", shown.DefaultAnalysis, "No Such Style")])], [])));
+
+        Assert.Equal(RefusalCodes.TextStyleUnknown, refused.Refusal?.Code);
+        Assert.Equal(("No Such Style", "character"), (refused.Refusal!.Facts["style"], refused.Refusal.Facts["styleKind"]));
+    }
+
+    private static TextParagraphChange[] TableRows(string ws) =>
+    [
+        new(0, null, MotifMarkdownStyles.TableHeader, [new TextRun("Form\tGloss", ws)]),
+        new(1, null, MotifMarkdownStyles.TableRow, [new TextRun("form-1\tgloss-1", ws)]),
+        new(2, null, MotifMarkdownStyles.TableRow, [new TextRun("form-2\tgloss-2", ws)]),
+    ];
 
     [Fact]
     public void ALaterSessionReplacesTheFieldsEditAndAnEditBackToTheStartLeavesTheDraft()
@@ -560,10 +631,11 @@ public sealed class TextParagraphsApplyTests(PristineProjectFixture pristine)
         (database, _) => CommandOutcome<string>.Success(new ProposalRepository(database).FindPendingChangesDraft()!.ProposalJson!))
         .Value! is { } json ? System.Text.Json.JsonDocument.Parse(json).RootElement.GetProperty("operations").GetArrayLength() : 0;
 
-    private string ProjectWithGdrs()
+    private string ProjectWithGdrs(Action<LcmCache>? alsoSeed = null)
     {
         using var cache = pristine.NewScratch();
         SeededGdrs.Seed(cache);
+        alsoSeed?.Invoke(cache);
         var path = cache.ProjectId.Path;
         new FwDataProjectLoader().Save(cache);
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), RootFor(path)).Succeeded);
