@@ -813,6 +813,9 @@
           "items": {
             "$ref": "#/$defs/SectionCount"
           }
+        },
+        "gains": {
+          "$ref": "#/$defs/GainSummary"
         }
       },
       "required": [
@@ -2321,21 +2324,88 @@
     "RuleWorkRow": {
       "type": "object",
       "properties": {
-        "rowKind": { "const": "rule-work" },
-        "kind": { "type": "string", "minLength": 1 },
-        "key": { "type": "string", "minLength": 1 },
-        "identityQuality": { "type": "string", "minLength": 1 },
-        "scope": { "type": ["string", "null"] },
-        "name": { "type": "string" },
-        "status": { "enum": ["paired", "new", "missing", "unavailable"] },
-        "percentChange": { "type": ["number", "null"] },
-        "unavailableReason": { "type": ["string", "null"] }
+        "rowKind": {
+          "const": "rule-work"
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "identityQuality": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "paired",
+            "new",
+            "missing",
+            "unavailable"
+          ]
+        },
+        "percentChange": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "unavailableReason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       },
-      "required": ["rowKind", "kind", "key", "identityQuality", "scope", "name", "status", "percentChange", "unavailableReason"],
+      "required": [
+        "rowKind",
+        "kind",
+        "key",
+        "identityQuality",
+        "scope",
+        "name",
+        "status",
+        "percentChange",
+        "unavailableReason"
+      ],
       "additionalProperties": false,
       "oneOf": [
-        { "properties": { "status": { "const": "paired" }, "percentChange": { "type": "number" } } },
-        { "properties": { "status": { "enum": ["new", "missing", "unavailable"] }, "percentChange": { "type": "null" } } }
+        {
+          "properties": {
+            "status": {
+              "const": "paired"
+            },
+            "percentChange": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "properties": {
+            "status": {
+              "enum": [
+                "new",
+                "missing",
+                "unavailable"
+              ]
+            },
+            "percentChange": {
+              "type": "null"
+            }
+          }
+        }
       ]
     },
     "WordRow": {
@@ -2405,7 +2475,9 @@
         },
         "samplePositions": {
           "type": "array",
-          "items": { "$ref": "#/$defs/TokenRow" }
+          "items": {
+            "$ref": "#/$defs/TokenRow"
+          }
         },
         "samplePositionsTotal": {
           "type": "integer",
@@ -4021,6 +4093,152 @@
         "message",
         "facts",
         "next"
+      ],
+      "additionalProperties": false
+    },
+    "GrammarSizeDelta": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "senses": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "msas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "allomorphs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "variants": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "affixProcesses": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "phonologicalRules": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "environments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "exceptionFeatures": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "exceptionFeatureHosts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "otherObjects": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "entries",
+        "senses",
+        "msas",
+        "allomorphs",
+        "variants",
+        "affixProcesses",
+        "phonologicalRules",
+        "environments",
+        "exceptionFeatures",
+        "exceptionFeatureHosts",
+        "otherObjects"
+      ],
+      "additionalProperties": false
+    },
+    "GainGateMode": {
+      "type": "string",
+      "enum": [
+        "off",
+        "advisory",
+        "hold"
+      ]
+    },
+    "GainOutcome": {
+      "type": "string",
+      "enum": [
+        "within-threshold",
+        "under-threshold",
+        "rule-added",
+        "no-objects-added",
+        "incomplete",
+        "not-evaluated"
+      ]
+    },
+    "GainGateResult": {
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "$ref": "#/$defs/GainOutcome"
+        },
+        "mode": {
+          "$ref": "#/$defs/GainGateMode"
+        },
+        "minAttestedPerObject": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "hold": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "outcome",
+        "mode",
+        "minAttestedPerObject",
+        "hold"
+      ],
+      "additionalProperties": false
+    },
+    "GainSummary": {
+      "type": "object",
+      "properties": {
+        "attestedGained": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "generatedGained": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "size": {
+          "$ref": "#/$defs/GrammarSizeDelta"
+        },
+        "gate": {
+          "$ref": "#/$defs/GainGateResult"
+        }
+      },
+      "required": [
+        "attestedGained",
+        "generatedGained",
+        "size",
+        "gate"
       ],
       "additionalProperties": false
     }

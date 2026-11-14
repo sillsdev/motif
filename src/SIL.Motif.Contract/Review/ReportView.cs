@@ -454,6 +454,10 @@ public sealed record ReviewSummary(
     [property: JsonRequired] EffectsSummary Effects,
     [property: JsonRequired] IReadOnlyList<SectionCount> SectionCounts) : IJsonOnDeserialized, IJsonOnSerializing
 {
+    /// <summary>Attested and generated gains with the grammar size delta; absent from older reports.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public GainSummary? Gains { get; init; }
+
     void IJsonOnDeserialized.OnDeserialized() => Validate();
     void IJsonOnSerializing.OnSerializing() => Validate();
 

@@ -128,4 +128,8 @@ public sealed record ReviewPlannedCase(
 public sealed record FrozenReviewInputs(
     string ProjectKey, string ProposalId, string ScopeDigest, string EvidenceManifestDigest,
     string? ParserDigest, IReadOnlyList<ReviewSetBinding> Sets, IReadOnlyList<string> OmittedSetIds,
-    IReadOnlyList<ReviewPlannedCase> Cases);
+    IReadOnlyList<ReviewPlannedCase> Cases)
+{
+    /// <summary>The gain gate frozen with the Trial; null means the default policy.</summary>
+    public GainGatePolicy? GainGate { get; init; }
+}
