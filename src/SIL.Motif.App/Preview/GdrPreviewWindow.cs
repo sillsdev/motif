@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using SIL.Motif.App.Compare;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Queries;
@@ -22,7 +24,7 @@ namespace SIL.Motif.App.Preview;
 /// one pending <see cref="GdrDiscussionEdit"/>, measured against the text the record was shown with, which an
 /// <see cref="IGdrEditStore"/> keeps as one operation in the pending-changes Draft and applies.
 /// </summary>
-public sealed class GdrPreviewWindow : Window
+public sealed partial class GdrPreviewWindow : Window
 {
     /// <summary>The start-up argument that opens this window, followed by the project file, when the developer flag is set.</summary>
     public const string StartupArgument = "--gdr-preview";
@@ -141,6 +143,9 @@ public sealed class GdrPreviewWindow : Window
             apply.Click += async (_, _) => await ApplyAsync();
             actions.Children.Add(apply);
         }
+        var undoMarkdown = new Button { Content = "Undo Edit as Markdown" };
+        undoMarkdown.Click += async (_, _) => await UndoMarkdownAsync();
+        actions.Children.Add(undoMarkdown);
         actions.Children.Add(_status);
         DockPanel.SetDock(actions, Dock.Bottom);
         right.Children.Add(actions);
@@ -150,6 +155,15 @@ public sealed class GdrPreviewWindow : Window
         panel.Children.Add(_records);
         panel.Children.Add(right);
         Content = panel;
+        AddHandler(KeyDownEvent, async (_, e) =>
+        {
+            if (_markdownDocument is null && _markdownUndo is not null && Session?.UndoSteps == 0 &&
+                e.Key == Key.Z && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            {
+                e.Handled = true;
+                await UndoMarkdownAsync();
+            }
+        }, RoutingStrategies.Tunnel);
     }
 
     /// <summary>The records listed.</summary>
@@ -311,6 +325,9 @@ public sealed class GdrPreviewWindow : Window
             return button;
         }
 
+        var wholeMarkdown = new Button { Content = "Open as Markdown…" };
+        wholeMarkdown.Click += async (_, _) => await OpenMarkdownAsync();
+        _toolbar.Children.Add(wholeMarkdown);
         _toolbar.Children.Add(_sourceToggle);
         _toolbar.Children.Add(_paragraphStyles);
         _toolbar.Children.Add(_characterStyles);
@@ -416,6 +433,7 @@ public sealed class GdrPreviewWindow : Window
     public async Task<bool> ApplyAsync()
     {
         if (_store is null) return false;
+        if (_markdownDocument is not null && !BackToFields()) return false;
         if (!PreviewSourceMode.ReturnToRichText(_opened.Values.Select(opened => opened.Field), _status)) return false;
         Session?.EndSession();
         // A refused staging is tried again, so a busy Draft only holds Apply back while it stays busy.
@@ -611,7 +629,9 @@ public sealed class GdrPreviewWindow : Window
             opened.Session.Applied();
             var discussion = GdrDiscussion.From(reloaded);
             opened.Field.SourceForm = new DiscussionSourceForm(discussion, _projectName);
-            _opened[id] = opened with { Discussion = discussion, Began = null };
+            var heading = $"{reloaded.Record.Abbreviation}  {reloaded.Record.Title}\n{reloaded.Record.Description}";
+            _opened[id] = opened with { Discussion = discussion, Began = null, Heading = heading };
+            if (_shownId == id) _heading.Text = heading;
             return;
         }
         _opened.Remove(id);
@@ -625,6 +645,11 @@ public sealed class GdrPreviewWindow : Window
     /// <summary>Closes unless a Discussion holds Markdown that cannot go back to rich text, which stays with the window.</summary>
     protected override void OnClosing(WindowClosingEventArgs e)
     {
+        if (MarkdownDirty || _markdownSaving || _markdownOpening)
+        {
+            e.Cancel = true;
+            _status.Text = "Save or throw away your Markdown changes before closing.";
+        }
         PreviewSourceMode.KeepUnreturnedMarkdown(e, _opened.Values.Select(opened => opened.Field), _status);
         base.OnClosing(e);
     }
@@ -636,6 +661,11 @@ public sealed class GdrPreviewWindow : Window
     /// </summary>
     public void Show(string id)
     {
+        if (_shownId != id && (_markdownOpening || _markdownDocument is not null && !BackToFields()))
+        {
+            _records.SelectedIndex = Records.ToList().FindIndex(record => record.Id == _shownId);
+            return;
+        }
         // Markdown is never dropped: the shown record goes back to rich text first, or stays shown while it cannot.
         if (_shownId is { } shown && shown != id && _opened.TryGetValue(shown, out var leaving) &&
             !PreviewSourceMode.ReturnToRichText([leaving.Field], _status))

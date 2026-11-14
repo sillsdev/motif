@@ -51,9 +51,9 @@ public static class TextRichStringOperationKinds
 }
 
 /// <summary>
-/// The String and MultiString fields a person may edit as rich text: the inventory's in-scope settable ones that the
+/// The String, MultiString and GDR title fields a person may edit: the inventory's in-scope settable ones that the
 /// parser neither references nor reaches (an unconfirmed reach is not enough), less the fields other kinds own (a
-/// paragraph's contents, a morph bundle's form and a judgment record's title). Each is read and written through the
+/// paragraph's contents and a morph bundle's form). Each is read and written through the
 /// project's metadata, so subclasses share a field.
 /// </summary>
 public static class TextRichStringFields
@@ -65,6 +65,7 @@ public static class TextRichStringFields
         ["CmPicture.Caption"] = true,
         ["CmPicture.Description"] = true,
         ["CmPossibility.Description"] = true,
+        ["CmPossibility.Name"] = true,
         ["CmTranslation.Translation"] = true,
         ["FsFeatDefn.Description"] = true,
         ["FsFeatStrucType.Description"] = true,
@@ -127,10 +128,19 @@ public static class TextRichStringFields
     /// <summary>The field's id on <paramref name="owner"/>; an owner without the field is refused.</summary>
     internal static int Flid(ICmObject owner, string field)
     {
+        if (field == "CmPossibility.Name")
+        {
+            ICmObject? ancestor = owner;
+            while (ancestor is ICmPossibility possibility) ancestor = possibility.Owner;
+            if (ancestor is not ICmPossibilityList list ||
+                !list.Name.AvailableWritingSystemIds.Any(ws => list.Name.get_String(ws).Text == "Grammar Design Records"))
+                throw new ContractParseException("'CmPossibility.Name' is editable only on Grammar Design Records.");
+        }
         var metadata = owner.Cache.ServiceLocator.GetInstance<IFwMetaDataCacheManaged>();
         var parts = field.Split('.');
         var declared = metadata.GetFieldId(parts[0], parts[1], true);
-        var expected = Multi[field] ? CellarPropertyType.MultiString : CellarPropertyType.String;
+        var expected = field == "CmPossibility.Name" ? CellarPropertyType.MultiUnicode
+            : Multi[field] ? CellarPropertyType.MultiString : CellarPropertyType.String;
         int onOwner;
         try
         {
@@ -204,6 +214,10 @@ public sealed record TextRichStringPayload(string Field, string? Ws, IReadOnlyLi
         if (!TextRichStringFields.IsMultiString(field) && ws is not null)
             throw Invalid($"'{field}' is one String, not an alternative, so it takes no 'ws'");
         var runs = RichTextRuns.ReadRuns(after, "runs", Kind);
+        if (field == "CmPossibility.Name" && runs.Any(run =>
+            !string.Equals(run.Ws, ws, StringComparison.OrdinalIgnoreCase) || run.CharacterStyle is not null ||
+            run.ObjData is not null || run.Props is { } props && (props.Ints.Count != 0 || props.Strings.Count != 0)))
+            throw Invalid("'CmPossibility.Name' holds plain text in its alternative's writing system");
         if (!after.TryGetProperty("expected", out var expected) || expected.ValueKind != JsonValueKind.Object)
             throw Invalid("'expected' is required and must be the field's starting text and runs");
         ClosedPayloadParsing.RejectUnknownProperties(expected, ExpectedProperties, Kind);

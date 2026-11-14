@@ -18,6 +18,8 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.PanGloss;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.TextEditing;
 using Xunit;
@@ -78,6 +80,41 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
                 Assert.Equal("title-3", third.Title);
                 Assert.Equal("", third.Description);
             });
+    }
+
+    [Fact]
+    public void ShowReadsTheTitleAndDescriptionAsWritingSystemAlternatives()
+    {
+        using var cache = pristine.NewScratch();
+        SeededGdrs.Seed(cache);
+
+        var shown = GdrReader.Show(cache, "GDR-1")!;
+
+        Assert.Contains(shown.TitleAlternatives, item => item.WritingSystem == "en" && item.Text == "title-1");
+        Assert.Contains(shown.DescriptionAlternatives, item => item.WritingSystem == "en" && item.Text == "abstract-1");
+    }
+
+    [Fact]
+    public void WholeRecordEditsStageTogetherAndARefusalKeepsTheDraftUnchanged()
+    {
+        var path = ProjectWithGdrs(captureBaseline: true);
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var description = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        TextRichStringPayload Edit(string field, RichStringAlternative began, string text) =>
+            new(field, "en", [new TextRun(text, "en")], new(began.Text, began.Digest));
+        var name = Edit("CmPossibility.Name", title, "new title");
+        var abstractEdit = Edit("CmPossibility.Description", description, "new abstract");
+
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [name, abstractEdit], null));
+
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(2, staged.Value![^1].OperationCount);
+        var invalid = abstractEdit with { Runs = [new TextRun("bad", "en", "No Such Style")] };
+        var refused = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [name with { Runs = [new TextRun("other", "en")] }, invalid], null));
+        Assert.False(refused.Succeeded);
+        var pending = ProposalCommands.PendingTextRichString(new TextRichStringFieldRequest(path, shown.Record.Id, "CmPossibility.Name", "en"));
+        Assert.Equal("new title", pending.Value!.RichString!.Text);
     }
 
     [Fact]

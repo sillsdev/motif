@@ -28,6 +28,9 @@ public sealed class GdrContractTests
             Styles = [new GdrStyle("Emphasis", GdrStyleKind.Character,
                 new Dictionary<string, GdrTextProperties> { ["en"] = italic })],
             WritingSystems = [new GdrWritingSystem("ar", "rtl", "Scheherazade"), new GdrWritingSystem("en", "ltr", "Charis SIL")],
+            TitleAlternatives = [new RichStringAlternative("en", [new GdrRun("title", "en", null, plain)])],
+            DescriptionAlternatives = [new RichStringAlternative("en", [new GdrRun("abstract", "en", null, plain)])],
+            Position = 1,
         };
     }
 

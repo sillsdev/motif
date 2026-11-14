@@ -63,6 +63,102 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void AGdrTitleAlternativeCanBeAddressedByTheRichTextOperation()
+    {
+        var payload = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("title", "en")],
+            new("", TextRunsDigest.Of([])));
+
+        var parsed = TextRichStringPayload.Parse(payload.ToJson());
+        Assert.Equal((payload.Field, payload.Ws, payload.Text), (parsed.Field, parsed.Ws, parsed.Text));
+    }
+
+    [Fact]
+    public void ATitleEditCannotRenameAnUnrelatedPossibility()
+    {
+        var path = Project();
+        string id;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+            id = CanonicalId.FromGuid(cache.LangProject.PartsOfSpeechOA.PossibilitiesOS[0].Guid).Value;
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("other", "en")],
+            new("", TextRunsDigest.Of([])));
+
+        var result = ProposalCommands.StageGdrMarkdown(path, new(id, [edit], null));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("only on Grammar Design Records", result.Refusal!.Message);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void WholeRecordTitleAbstractAndDiscussionApplyThroughThePendingChangesDraft()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var description = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        TextRichStringPayload Edit(string field, RichStringAlternative before, string text) =>
+            new(field, "en", [new TextRun(text, "en")], new(before.Text, before.Digest));
+        var paragraph = shown.Discussion[1];
+        var paragraphRuns = paragraph.Runs.Select(Carried).ToArray();
+        paragraphRuns[0] = paragraphRuns[0] with { Text = "discussion-new" };
+        var paragraphs = new TextParagraphsPayload("CmPossibility.Discussion",
+            shown.Discussion.Select(item => item.Key).ToArray(),
+            [new TextParagraphChange(1, paragraph.Key, paragraph.Style, paragraphRuns, new TextProps(
+                paragraph.Properties.Ints.ToDictionary(item => item.Key, item => (item.Value.Variation, item.Value.Value)),
+                paragraph.Properties.Strings.Where(item => item.Key != 133).ToDictionary(item => item.Key, item => item.Value)))],
+            [], new Dictionary<string, TextParagraphExpected>
+            {
+                [paragraph.Key!] = new(string.Concat(paragraph.Runs.Select(run => run.Text)), paragraph.Style ?? "", TextRunsDigest.Of(paragraph))
+            });
+        var changes = new GdrMarkdownEdits(shown.Record.Id,
+            [Edit("CmPossibility.Name", title, "title-new"), Edit("CmPossibility.Description", description, "abstract-new")], paragraphs);
+        var staged = ProposalCommands.StageGdrMarkdown(path, changes);
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(3, PendingOperations(path));
+
+        var restored = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id,
+            [new("CmPossibility.Name", "en", title.Runs.Select(Carried).ToArray(), new(title.Text, title.Digest)),
+             new("CmPossibility.Description", "en", description.Runs.Select(Carried).ToArray(), new(description.Text, description.Digest))],
+            new TextParagraphsPayload("CmPossibility.Discussion", shown.Discussion.Select(item => item.Key).ToArray(), [], [],
+                new Dictionary<string, TextParagraphExpected>())));
+        Assert.True(restored.Succeeded, restored.Refusal?.Message);
+        Assert.Equal(0, PendingOperations(path));
+        staged = ProposalCommands.StageGdrMarkdown(path, changes);
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+
+        Applied(path);
+
+        var after = GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!;
+        Assert.Equal("title-new", after.Record.Title);
+        Assert.Equal("abstract-new", after.Record.Description);
+        Assert.StartsWith("discussion-new", string.Concat(after.Discussion[1].Runs.Select(run => run.Text)));
+    }
+
+    [Fact]
+    public void ATitleChangedInFieldWorksRefusesTheWholeRecordSaveByField()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var description = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var record = SeededGdrs.Records(cache).PossibilitiesOS[0];
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => record.Name.set_String(cache.DefaultAnalWs, "outside"));
+            new FwDataProjectLoader().Save(cache);
+        }
+        TextRichStringPayload Edit(string field, RichStringAlternative before, string text) =>
+            new(field, "en", [new TextRun(text, "en")], new(before.Text, before.Digest));
+
+        var refused = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id,
+            [Edit("CmPossibility.Name", title, "mine"), Edit("CmPossibility.Description", description, "other")], null));
+
+        Assert.False(refused.Succeeded);
+        Assert.Contains("Name", refused.Refusal!.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
     public void AStringFieldTakesNoWritingSystemAndIsWritten()
     {
         var path = Project();
@@ -225,7 +321,7 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
             .Where(row => row.Scope == "in" && row.Kind == "basic" && row.Sig is "String" or "MultiString").ToArray();
         string[] ownedElsewhere = ["StTxtPara.Contents", "WfiMorphBundle.Form", "RnGenericRec.Title"];
         var expected = rows.Where(row => row.HcReferenced == "no" && row.HcReachable == "no" && row.Verbs.Split('|').Contains("set"))
-            .Select(row => $"{row.Class}.{row.Field}").Except(ownedElsewhere).Order().ToArray();
+            .Select(row => $"{row.Class}.{row.Field}").Except(ownedElsewhere).Append("CmPossibility.Name").Order().ToArray();
 
         Assert.Equal(expected, TextRichStringFields.Names.Order());
         Assert.All(rows.Where(row => TextRichStringFields.Names.Contains($"{row.Class}.{row.Field}")),

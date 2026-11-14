@@ -24,6 +24,22 @@ public interface IGdrEditStore
     Task<GdrApplyRefusal?> ApplyAsync();
 }
 
+/// <summary>The extra Draft operations needed by the whole-record Markdown view.</summary>
+public interface IGdrMarkdownEditStore
+{
+    /// <summary>Reads one pending rich-string alternative.</summary>
+    Task<RichStringPendingRead> PendingRichStringAsync(string recordId, string field, string ws);
+
+    /// <summary>Stages all field edits atomically; returns a refusal or null.</summary>
+    Task<GdrMarkdownStageResult> StageMarkdownAsync(GdrMarkdownEdits edits);
+
+    /// <summary>Refreshes the Baseline before reloading the document.</summary>
+    Task<string?> RefreshAsync();
+}
+
+/// <summary>The Draft's operation count after staging, or a refusal.</summary>
+public sealed record GdrMarkdownStageResult(int Count, string? Refusal = null);
+
 /// <summary>
 /// Why Apply wrote nothing. <paramref name="StaleRecordId"/> names an object whose text changed in FieldWorks since its
 /// edit began, and <paramref name="StaleWritingSystem"/> the alternative when the field has several; the Baseline is
@@ -40,10 +56,29 @@ public sealed record GdrPendingRead(TextParagraphsPayload? Paragraphs, string? R
 /// <paramref name="runnerLauncher"/>, when given, replace the installation's managed root and Runner, so a test can
 /// apply into a disposable root of its own.
 /// </summary>
-public sealed class GdrEditStore(string projectPath, string? managedRoot = null, IJobRunnerLauncher? runnerLauncher = null) : IGdrEditStore
+public sealed class GdrEditStore(string projectPath, string? managedRoot = null, IJobRunnerLauncher? runnerLauncher = null) : IGdrEditStore, IGdrMarkdownEditStore
 {
     /// <summary>What Apply says when FieldWorks changed the project since it was read, and it has been read again.</summary>
     public const string RefreshedMessage = "Nothing was applied: the project changed in FieldWorks and has been read again. Apply again.";
+
+    public Task<RichStringPendingRead> PendingRichStringAsync(string recordId, string field, string ws) => Task.Run(() =>
+    {
+        var result = ProposalCommands.PendingTextRichString(new TextRichStringFieldRequest(projectPath, recordId, field, ws));
+        return result.Succeeded ? new RichStringPendingRead(result.Value!.RichString) : new RichStringPendingRead(null, result.Refusal!.Message);
+    });
+
+    public Task<GdrMarkdownStageResult> StageMarkdownAsync(GdrMarkdownEdits edits) => Task.Run(() =>
+    {
+        var result = ProposalCommands.StageGdrMarkdown(projectPath, edits);
+        return result.Succeeded ? new GdrMarkdownStageResult(result.Value!.LastOrDefault()?.OperationCount ?? 0)
+            : new GdrMarkdownStageResult(0, result.Refusal!.Message);
+    });
+
+    public Task<string?> RefreshAsync() => Task.Run(() =>
+    {
+        var result = Capture();
+        return result.Succeeded ? null : result.Refusal!.Message;
+    });
 
     public Task<string?> StageAsync(string recordId, TextParagraphsPayload paragraphs) => Task.Run(() =>
     {
