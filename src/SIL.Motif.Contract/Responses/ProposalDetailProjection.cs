@@ -69,7 +69,15 @@ public sealed record RationaleView(
 /// <param name="ChangesSince">How the Proposal changed since the Comment was written; null when it did not.</param>
 public sealed record CommentView(
     long CommentId, string Kind, string? AuthorLabel, string PersonName, string Markdown, string? WrittenForIntentDigest,
-    string CreatedUtc, string? EditedUtc, bool OutOfDate, ProposalChangesSince? ChangesSince);
+    string CreatedUtc, string? EditedUtc, bool OutOfDate, ProposalChangesSince? ChangesSince)
+{
+    /// <summary>
+    /// Findings from checking the Comment against the current project. A missing value means it was not checked;
+    /// an empty list means it was checked and clean; a non-empty list contains the findings.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<TextFinding>? Findings { get; init; }
+}
 
 /// <summary>The <c>show</c> report: a Proposal's review state and its full operation list.</summary>
 /// <param name="ProposalId">The Proposal's portable identity.</param>

@@ -2533,8 +2533,8 @@
       "code": "show",
       "slug": "show",
       "title": "Show a Proposal",
-      "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations. It does not change the FieldWorks project.",
-      "helpPage": "# Show a Proposal\n\nReads one saved Proposal by its canonical id, or a Draft by name or canonical id, with its status, label, Rationale, Comments and operations. The Rationale shows whether it is out of date and whether you have looked at it; the Comments show whether a person\u0027s is newer than the Rationale. It does not change the FieldWorks project.\n",
+      "description": "Reads one saved Proposal or Draft by id, with its status, label, Rationale, Comments and operations. In JSON Comments, missing findings means unchecked, [] means checked and clean, and a non-empty array lists findings. It does not change the FieldWorks project.",
+      "helpPage": "# Show a Proposal\n\nReads one saved Proposal by its canonical id, or a Draft by name or canonical id, with its status, label, Rationale, Comments and operations. The Rationale shows whether it is out of date and whether you have looked at it; the Comments show whether a person\u0027s is newer than the Rationale. It does not change the FieldWorks project.\n\nIn the JSON Comment objects returned by \u0060show\u0060 and the MCP \u0060motif_proposals\u0060 tool, a missing \u0060findings\u0060 field means the Comment was not checked. An empty array (\u0060[]\u0060) means it was checked and clean; a non-empty array lists the findings.\n",
       "usage": [
         "Usage: motif show --project \u003Cfwdata\u003E \u003CproposalId|draftName\u003E [--json]"
       ],

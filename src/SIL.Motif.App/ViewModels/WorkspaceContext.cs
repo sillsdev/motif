@@ -426,8 +426,16 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     }
 
     /// <summary>Forgets the evidence and tells every page to drop what it showed for the previous project.</summary>
+    internal bool RefuseLeavingProject()
+    {
+        if (!_pages.OfType<ProposalsPageModel>().Any(page => page.RefuseLeavingWithUnsavedEdit())) return false;
+        OpenPage(WorkspacePage.Proposals);
+        return true;
+    }
+
     internal void ClearProject()
     {
+        if (RefuseLeavingProject()) return;
         Interlocked.Increment(ref _openGeneration);
         Interlocked.Exchange(ref _openCancellation, null)?.Cancel();
         SelectionReads.Clear();
@@ -463,6 +471,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public async Task OpenProjectAsync(string projectPath, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
+        if (RefuseLeavingProject()) return;
         var generation = Interlocked.Increment(ref _openGeneration);
         var openCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var superseded = Interlocked.Exchange(ref _openCancellation, openCancellation);
@@ -471,7 +480,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         try
         {
             await StopProjectWorkAsync().ConfigureAwait(true);
-            if (!IsCurrentOpen(generation)) return;
+            if (!IsCurrentOpen(generation) || RefuseLeavingProject()) return;
             openCancellation.Token.ThrowIfCancellationRequested();
 
             ((IProjectStateParticipant)this).ClearProject();

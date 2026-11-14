@@ -123,6 +123,55 @@ public sealed class ProposalsWorkspacePaneTests
     }
 
     [Fact]
+    public void PausedFilterNoticeAppearsBesideFiltersAndClearsAfterCancel()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+            var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+            fake.ProposalStandingsCompleteWith(new ProposalStandings([one, two], 0));
+            var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+            var status = "proposed";
+            fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [], Comments: [comment])));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProposalsPageModel(context);
+            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
+            await model.DetailReading;
+            await model.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+            var editor = Assert.Single(model.Comments);
+            editor.EditCommand.Execute(null);
+            editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+            var page = new ProposalsPage(model);
+            var provider = Assert.IsAssignableFrom<IWorkspacePaneProvider>(page);
+            var side = Assert.IsAssignableFrom<Control>(provider.SidePanel);
+            var host = WorkspaceLayoutHost.ForPage(page);
+            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Assert.DoesNotContain(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
+                status = "rejected";
+                fake.ProposalStandingsCompleteWith(new ProposalStandings([two], 1));
+                await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+                await model.DetailReading;
+                PageScreenshots.Settle(window);
+                Assert.Contains(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
+                editor.CancelCommand.Execute(null);
+                PageScreenshots.Settle(window);
+                Assert.DoesNotContain(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
+                Assert.Equal(ProposalListFilter.WaitingForYou, model.SelectedGroupFilter);
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
     public void EmptyPageExplainsThatThereAreNoProposalsAndHidesFilters()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -539,6 +588,43 @@ public sealed class ProposalsWorkspacePaneTests
                 standalone.Close();
                 window.Close();
             }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void AddingACommentShowsItsPageWhenThereAreManyComments()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.OnProposalStandings((_, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+                new ProposalStandings([Card("p/one", "First", ProposalGroup.WaitingForYou)], 0))));
+            fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [], Comments:
+                    Enumerable.Range(1, 25).Select(id => new CommentView(id, "person", null, "", "Comment", null,
+                        "now", null, false, null)).ToArray())));
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            var standalone = new MotifTestWindow { Width = 1600, Height = 780 };
+            try
+            {
+                var model = workspace.PageModel<ProposalsPageModel>();
+                var page = new ProposalsPage(model);
+                standalone.Content = WorkspaceLayoutHost.ForPage(page);
+                standalone.Show();
+                model.SelectProposalCommand.Execute(model.Rows.OfType<ProposalCardViewModel>().First());
+                await model.DetailReading;
+                PageScreenshots.Settle(standalone);
+                var button = Assert.Single(page.InspectorContent.GetVisualDescendants().OfType<Button>(),
+                    item => Equals(item.Content, MotifAppStrings.CommentAdd));
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                PageScreenshots.Settle(standalone);
+                var added = model.Comments.Last();
+                Assert.True(added.IsEditing);
+                var comments = Assert.Single(page.InspectorContent.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
+                    item => item.Name == "ProposalComments");
+                Assert.Contains(added, comments.Items.Cast<object>());
+            }
+            finally { standalone.Close(); window.Close(); }
         }, TimeSpan.FromMinutes(3));
     }
 

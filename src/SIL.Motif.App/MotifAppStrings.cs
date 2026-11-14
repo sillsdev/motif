@@ -927,6 +927,12 @@ public static class MotifAppStrings
     /// <summary>Says the Rationale changed elsewhere during the edit.</summary>
     public static string RationaleChangedElsewhere => Text("MotifApp.RationaleChangedElsewhere");
 
+    /// <summary>The Comment or its Proposal changed while editing.</summary>
+    public static string CommentChangedElsewhere => Text("MotifApp.CommentChangedElsewhere");
+
+    /// <summary>The group filter is temporarily paused during a Proposal edit.</summary>
+    public static string ProposalFilterPaused => Text("MotifApp.ProposalFilterPaused");
+
     /// <summary>Asks to save or cancel the Rationale edit before switching.</summary>
     public static string RationaleSaveOrCancelFirst => Text("MotifApp.RationaleSaveOrCancelFirst");
 
@@ -3300,6 +3306,12 @@ public static class MotifAppStrings
     public static string RefusalProposalClosed => Text("MotifApp.RefusalProposalClosed");
 
     public static string RefusalProposalNotFound => Text("MotifApp.RefusalProposalNotFound");
+
+    public static string CommentPlainText => Text("MotifApp.CommentPlainText");
+    public static string CommentDelete => Text("MotifApp.CommentDelete");
+    public static string CommentAdd => Text("MotifApp.CommentAdd");
+    public static string CommentsHeading => Text("MotifApp.CommentsHeading");
+    public static string CommentSaveOrCancelFirst => Text("MotifApp.CommentSaveOrCancelFirst");
 
     public static string RefusalProposalCommentInvalid => Text("MotifApp.RefusalProposalCommentInvalid");
     public static string RefusalProposalPictureInvalid => Text("MotifApp.RefusalProposalPictureInvalid");

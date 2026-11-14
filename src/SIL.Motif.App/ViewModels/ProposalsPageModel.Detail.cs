@@ -1,5 +1,7 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
@@ -13,6 +15,34 @@ public sealed partial class ProposalsPageModel
 {
     private int _detailGeneration;
     private RationaleEditorModel? _lastRationaleEditor;
+    private ObservableCollection<RationaleEditorModel>? _lastComments;
+
+    /// <summary>The selected Proposal's Comments in rich fields.</summary>
+    [ObservableProperty]
+    private ObservableCollection<RationaleEditorModel> _comments = [];
+
+    /// <summary>Whether a Comment can be added to the selected Proposal.</summary>
+    public bool CanAddComment => Detail is { } detail && (detail.DraftName is not null ||
+        detail.Status is not ("applied" or "rejected" or "superseded" or "withdrawn"));
+
+    /// <summary>Starts a new Comment.</summary>
+    [RelayCommand(CanExecute = nameof(CanAddComment))]
+    private void AddComment()
+    {
+        if (Detail is not { } detail) return;
+        var editor = new RationaleEditorModel(Context, detail, null, RemoveComment);
+        Comments.Add(editor);
+        TrackPausedEditor(editor);
+    }
+
+    private void RemoveComment(RationaleEditorModel editor) => Comments.Remove(editor);
+
+    partial void OnDetailChanged(ProposalDetailProjection? value)
+    {
+        OnPropertyChanged(nameof(CanAddComment));
+        AddCommentCommand.NotifyCanExecuteChanged();
+    }
+
     private string? _markingReadId;
     private string? _pendingUserSelectionId;
     private bool _selectionByUser;
@@ -48,6 +78,7 @@ public sealed partial class ProposalsPageModel
         var generation = ++_detailGeneration;
         Detail = null;
         RationaleEditor = null;
+        Comments = [];
         DetailRefusal = null;
         OperationDescriptions = [];
         ReviewProgress = string.Empty;
@@ -75,6 +106,38 @@ public sealed partial class ProposalsPageModel
         }
         else RationaleEditor = new RationaleEditorModel(Context, shown.Value!);
         _lastRationaleEditor = RationaleEditor;
+        var detail = shown.Value!;
+        var edits = _lastComments?.Where(editor => editor.ProposalId == proposalId && editor.IsEditing).ToArray() ?? [];
+        var fresh = detail.Comments ?? [];
+        var reconciled = new List<RationaleEditorModel>();
+        foreach (var comment in fresh)
+        {
+            var editingComment = edits.FirstOrDefault(editor => editor.CommentId == comment.CommentId);
+            if (editingComment is null) reconciled.Add(new RationaleEditorModel(Context, detail, comment, RemoveComment));
+            else
+            {
+                editingComment.ReconcileComment(comment, detail, ReplaceAfterCancel);
+                reconciled.Add(editingComment);
+            }
+        }
+        foreach (var editingComment in edits.Where(editor => !editor.CommentId.HasValue ||
+                     fresh.All(comment => comment.CommentId != editor.CommentId)))
+        {
+            editingComment.ReconcileComment(null, detail, ReplaceAfterCancel);
+            reconciled.Add(editingComment);
+        }
+        Comments = new ObservableCollection<RationaleEditorModel>(reconciled);
+        _lastComments = Comments;
+        TrackPausedEditors();
+
+        void ReplaceAfterCancel(RationaleEditorModel editor)
+        {
+            var index = Comments.IndexOf(editor);
+            if (index < 0) return;
+            var current = fresh.FirstOrDefault(comment => comment.CommentId == editor.CommentId);
+            if (current is null) Comments.RemoveAt(index);
+            else Comments[index] = new RationaleEditorModel(Context, detail, current, RemoveComment);
+        }
         MarkSelectedRead();
         var review = await Context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(path, proposalId),
             CancellationToken.None).ConfigureAwait(true);
