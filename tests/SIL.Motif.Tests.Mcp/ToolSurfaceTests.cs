@@ -163,6 +163,7 @@ public sealed class ToolSurfaceTests
             "compose-retire-affix-slot",
             "compose-retire-boundary-marker",
             "compose-set-stem-part-of-speech",
+            "compose-tag-stems-by-query",
             "project tag",
             "store artifacts",
             "store prune",
@@ -187,8 +188,9 @@ public sealed class ToolSurfaceTests
                 "compose-retire-boundary-marker" or "compose-retire-affix-slot" or "compose-add-exception-features" or
                 "compose-merge-boundary-markers" or "compose-edit-text-notes" or
                 "compose-delete-environment" or "compose-delete-exception-feature" or
-                "compose-delete-natural-class" or "compose-delete-text-segment-note").ToArray();
-        Assert.Equal(21, numeralEditors.Length);
+                "compose-delete-natural-class" or "compose-delete-text-segment-note" or
+                "compose-tag-stems-by-query").ToArray();
+        Assert.Equal(22, numeralEditors.Length);
         Assert.All(numeralEditors, command =>
         {
             Assert.Equal(CommandSurface.AdvancedAi, command.Surface);

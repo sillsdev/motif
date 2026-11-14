@@ -44,6 +44,7 @@ internal static class ComposerDefinitions
         new AuthorExceptionFeatureDefinition(),
         new EditExceptionFeaturesDefinition(),
         new AddExceptionFeaturesDefinition(),
+        new TagStemsByQueryDefinition(),
         new EditPhonologicalRuleFeaturesDefinition(),
         new EditPhonologicalRuleDefinition(),
         new OrderPhonologicalRulesDefinition(),

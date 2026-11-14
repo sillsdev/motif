@@ -1198,6 +1198,27 @@
     ],
     "redirect": "Adds only; compose-edit-exception-features replaces one entry's whole set, and compose-edit-derivational-affix-restriction replaces a derivational affix's sets (guides suffix-prefix-slots)."
   },
+  "compose-tag-stems-by-query": {
+    "title": "Tag stems by query",
+    "description": "Gives one exception feature to every stem a query selects (category, final letters, an existing feature, a gloss), reporting how many match and how many are tagged first. For a rule gate it tags whichever of the matching or the other stems is fewer; an affix gate can only require the feature. Motif stages a Draft for a person to review and Apply.",
+    "source": "Authored from the typed command contract.",
+    "fields": {
+      "draft": "Draft name.",
+      "query": "Which stems belong to the class: category, finalLetters, hasFeature, lacksFeature, glossContains; give at least one, and every one given must hold.",
+      "exceptionFeature": "The project exception feature to give, or take away.",
+      "gate": "rule when a phonological rule reads the feature (it can require or exclude it, so the fewer side is tagged); affix (the default) when an affix requires it (FieldWorks affix restrictions only require).",
+      "action": "tag (the default) or untag, which removes the feature from the matching stems that carry it."
+    },
+    "goals": [
+      "Tag every stem ending in some letters with one feature",
+      "Make a rule the default and tag only the minority of stems",
+      "Remove a feature from every stem that matches a query"
+    ],
+    "guides": [
+      "suffix-prefix-slots"
+    ],
+    "redirect": "Tags stems only; it edits no rule or affix, so afterwards set the rule's required or excluded features with compose-edit-phonological-rule-features (guides suffix-prefix-slots)."
+  },
   "compose-edit-phonological-rule-features": {
     "title": "Set rule features",
     "description": "Sets the exact exception features or inflection classes a phonological rewrite rule requires of a stem, and the ones it excludes. An empty list clears a set. Motif stages a Draft for a person to review and Apply.",

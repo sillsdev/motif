@@ -148,6 +148,35 @@ public sealed class ExceptionFeatureDraftTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void TaggingByQuerySeesStemsStagedEarlierInTheDraftAndReportsTheCountFirst()
+    {
+        using var cache = pristine.NewScratch();
+        var path = cache.ProjectId.Path;
+        var vernacular = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultVernWs);
+        var ws = cache.WritingSystemFactory.GetStrFromWs(cache.DefaultAnalWs);
+        var category = CanonicalId.FromGuid(pristine.Seed.PartOfSpeechId).Value;
+        cache.Dispose();
+        Assert.True(ProposalCommands.New(new(path, Version, "query", "Tag by query")).Succeeded);
+        var feature = ProposalCommands.ComposeIntent(new(path, Version, "query", "compose-author-exception-feature",
+            Intent(new { name = "Keeps n", ws })));
+        var featureId = Assert.Single(feature.Value!.Operations,
+            item => item.Kind == "lists/cmPossibilityList/createPossibilities").EntityId!;
+        foreach (var form in new[] { "kaun", "inum", "tulog" })
+            Assert.True(ProposalCommands.ComposeAuthorLexicalEntry(new(path, Version, "query", Intent(new
+            {
+                form, formWs = vernacular, morphType = CanonicalId.FromGuid(MoMorphTypeTags.kguidMorphStem).Value,
+                gloss = form, analysisWs = ws, msa = new { kind = "stem", category },
+            }))).Succeeded);
+
+        var tagged = ProposalCommands.ComposeIntent(new(path, Version, "query", "compose-tag-stems-by-query",
+            Intent(new { query = new { finalLetters = "n" }, exceptionFeature = featureId, gate = "rule" })));
+
+        Assert.True(tagged.Succeeded, tagged.Refusal?.Message);
+        Assert.Equal(1, tagged.Value!.Operations.Count(item => item.Kind == MoStemMsaProdRestrictOperationKinds.AddRefProdRestrict));
+        Assert.StartsWith("1 of ", Assert.Single(tagged.Value.RelatedObjects!).Name);
+    }
+
+    [Fact]
     public void TwoBatchStepsAddingTheSameFeatureToTheSameStemStageOneAddition()
     {
         using var cache = pristine.NewScratch();

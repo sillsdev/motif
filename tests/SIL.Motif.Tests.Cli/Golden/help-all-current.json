@@ -1474,6 +1474,19 @@
     },
     {
       "kind": "command",
+      "code": "compose-tag-stems-by-query",
+      "slug": "compose-tag-stems-by-query",
+      "title": "Tag stems by query",
+      "description": "Gives one exception feature to every stem a query selects (category, final letters, an existing feature, a gloss), reporting how many match and how many are tagged first. For a rule gate it tags whichever of the matching or the other stems is fewer; an affix gate can only require the feature. Motif stages a Draft for a person to review and Apply.",
+      "helpPage": "# Tag stems by query\n\nUse this command to give one exception feature to every stem that matches a query, instead of one intent per stem. It reports the count first: how many stems match, how many are tagged, and which polarity was chosen.\n\n\u0060\u0060\u0060sh\nmotif compose-tag-stems-by-query --project language.fwdata --draft tag-d-final \\\n  --intent \u0027{\u0022query\u0022:{\u0022finalLetters\u0022:\u0022d\u0022},\u0022exceptionFeature\u0022:\u0022\u003Cfeature-id\u003E\u0022,\u0022gate\u0022:\u0022rule\u0022}\u0027\n\u0060\u0060\u0060\n\n\u0060query\u0060 takes \u0060category\u0060, \u0060finalLetters\u0060, \u0060hasFeature\u0060, \u0060lacksFeature\u0060 and \u0060glossContains\u0060. Give at least one; every one given must hold. The query reads each stem once, so its cost grows with the number of stems and does not depend on how many conditions you give. \u0060exceptionFeature\u0060 must already be in the project\u0027s Exception Features list.\n\n**Polarity.** The query selects the stems the rule or affix should treat as in the class. What FieldWorks can express decides which stems carry the tag:\n\n- \u0060\u0022gate\u0022:\u0022rule\u0022\u0060: a phonological rule can require a feature or exclude it. Motif tags the smaller of the matching stems and the other stems in scope, and says which: tag the matching stems and give the rule \u0060requiredFeatures\u0060, or tag the others and give it \u0060excludedFeatures\u0060 (\u0060compose-edit-phonological-rule-features\u0060).\n- \u0060\u0022gate\u0022:\u0022affix\u0022\u0060 (the default): an affix\u0027s From Exception Features only require a feature. Motif tags the matching stems even when the others are fewer, and says so in its output as a FieldWorks limitation. It adds no negative mechanism (ADR 0112).\n\n\u0060\u0022action\u0022:\u0022untag\u0022\u0060 removes the feature from the matching stems that carry it. A stem already in the wanted state is skipped, so the command can be repeated.\n\nThe command stages operations in a Draft and does not change the saved FieldWorks project. Dry Run and Trial the Proposal on stems that should and should not take the rule, then Finalize it for a person to review and Apply.\n",
+      "usage": [
+        "Usage: motif compose-tag-stems-by-query --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-tag-stems-by-query/"
+    },
+    {
+      "kind": "command",
       "code": "config show",
       "slug": "config-show",
       "title": "Show project settings",

@@ -162,6 +162,7 @@ public static class ChangeVocabulary
             ["DeleteNaturalClass"] = ("Delete natural class", "Delete an unused natural class"),
             ["DeleteTextSegmentNote"] = ("Delete note", "Delete a Note of a text segment"),
         ["EditExceptionFeatures"] = ("Change exception features", "Change the exception features of a stem or affix"),
+            ["TagStemsByQuery"] = ("Tag stems by query", "Tag every stem matching a query with an exception feature"),
             ["AddExceptionFeatures"] = ("Add exception features", "Add exception features to many stems or affixes"),
             ["MergePhoneme"] = ("Merge into phoneme", "Merge one phoneme into another"),
             ["SplitPhoneme"] = ("Split out phoneme", "Split a spelling out into its own phoneme"),
