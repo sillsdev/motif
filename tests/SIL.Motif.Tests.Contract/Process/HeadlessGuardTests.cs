@@ -28,56 +28,46 @@ public sealed class HeadlessGuardTests
             if (path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
                 CheckProject(source, relative, violations);
             else
-                CheckSource(source, relative, violations);
+                CheckSource(source, relative, violations, relative.Replace('\\', '/') == "tests/SIL.Motif.Tests.App/App/AppSmokeLauncher.cs");
         }
         Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations));
     }
 
     [Theory]
-    [InlineData("Use" + "X11()")]
-    [InlineData("Send" + "Input()")]
-    [InlineData("keybd_" + "event()")]
-    [InlineData("System.Windows.Forms." + "Clipboard.GetText()")]
-    [InlineData("Process." + "Start(\"SIL.Motif.App\")!;")]
-    [InlineData("System.Windows." + "Clipboard.GetText()")]
-    [InlineData("Process." + "Start(\"SIL.Motif.App\");")]
-    [InlineData("var app = \"SIL.Motif.App.exe\"; Process." + "Start(new ProcessStartInfo(app, \"--other\"));")]
-    [InlineData("Process." + "Start(\"Playground.Desktop.exe\", \"--smoke\");")]
-    public void GuardDetectsForbiddenSource(string source)
-    {
-        var violations = new List<string>();
-        CheckSource(source, "test.cs", violations);
-        Assert.NotEmpty(violations);
-    }
-
-    [Theory]
-    [InlineData("var s = new System.Diagnostics.ProcessStartInfo(\"SIL.Motif.App\"); Process.Start(s);", true)]
-    [InlineData("var s = new ProcessStartInfo(); s.FileName = \"SIL.Motif.App\"; Process.Start(s);", true)]
-    [InlineData("var s = new ProcessStartInfo { FileName = \"Host48.exe\" }; Process.Start(s);", true)]
-    [InlineData("var s = new ProcessStartInfo { FileName = \"Playground.Desktop\" }; Process.Start(s);", true)]
-    [InlineData("var s = new ProcessStartInfo { FileName = \"tool.exe\" }; Process.Start(s);", false)]
-    [InlineData("Process.Start(\"SIL.Motif.App\" /* \"--smoke\" */);", true)]
-    [InlineData("Process.Start(\"SIL.Motif.App\", new[] { \"--other\", \"--smoke\" });", true)]
-    [InlineData("Process.Start(\"SIL.Motif.App\", new[] { \"--smoke\", \"--other\" });", false)]
-    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\", \"--smoke\"); s.ArgumentList.Insert(0, \"--other\"); Process.Start(s);", true)]
-    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\", \"--smoke\"); Process.Start(s);", false)]
+    [InlineData("UseX11()", true)]
+    [InlineData("NativeMethods.SendInput()", true)]
     [InlineData("using System.Windows.Forms; Clipboard.SetText(\"hello\");", true)]
     [InlineData("using System.Windows; Clipboard.GetText();", true)]
     [InlineData("using static System.Windows.Forms.Clipboard; SetText(\"hello\");", true)]
+    [InlineData("using static System.Windows.Clipboard; SetDataObject(value);", true)]
+    [InlineData("System.Windows.Forms.Clipboard.GetText();", true)]
     [InlineData("fake.Clipboard.SetText(\"hello\");", false)]
     [InlineData("// Do not call SendInput(); use a fake input seam.\n", false)]
     [InlineData("var diagnostic = \"UsePlatformDetect() is forbidden\";", false)]
-    [InlineData("using static System.Windows.Clipboard; SetDataObject(value);", true)]
-    [InlineData("Process.Start(\"SIL.Motif.App\", \"--smoke\" + suffix);", true)]
-    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\"); s.ArgumentList.Add(\"--smoke\"); s.ArgumentList[0] = \"--other\"; Process.Start(s);", true)]
     [InlineData("class Fake { void SendInput() { } void Test() { fake.SendInput(); } }", false)]
     [InlineData("fake.SendInput();", false)]
-    [InlineData("Process.Start(\"SIL.Motif.App\", GetArgs(\"--smoke\"));", true)]
-    [InlineData("{ var s = new ProcessStartInfo(\"SIL.Motif.App\"); } { Process.Start(s); }", false)]
-    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\"); s.ArgumentList.Add(\"--other\"); s.ArgumentList.Add(\"--smoke\"); Process.Start(s);", true)]
-    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\"); s.ArgumentList.Add(\"--smoke\"); Process.Start(s);", false)]
-    [InlineData("SendInput();", true)]
-    public void ReviewCasesAreClassified(string source, bool forbidden)
+    public void GuardClassifiesCalls(string source, bool forbidden)
+    {
+        var violations = new List<string>();
+        CheckSource(source, "test.cs", violations);
+        Assert.Equal(forbidden, violations.Count > 0);
+    }
+
+    [Theory]
+    [InlineData("ProcessStartInfo start = new() { FileName = \"SIL.Motif.App\" }; Process.Start(start);", true)]
+    [InlineData("var app = \"SIL.Motif.App.exe\"; var s = new ProcessStartInfo(app, \"--smoke\"); Process.Start(s);", true)]
+    [InlineData("Process.Start(\"SIL.Motif.App\", new[] { \"--smoke --other\" });", true)]
+    [InlineData("Process.Start(new System.Diagnostics.ProcessStartInfo(\"SIL.Motif.App\", \"--smoke\"));", true)]
+    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\") { ArgumentList = { \"--smoke\" } }; Process.Start(s);", true)]
+    [InlineData("var x = \"Host48.exe\"; ToolProcess.Run(x);", true)]
+    [InlineData("var x = \"Playground.Desktop\"; Process.Start(x);", true)]
+    [InlineData("var x = \"SIL.Motif.App.dll\"; Process.Start(x);", true)]
+    [InlineData("var x = \"SIL.Motif.App.exe\"; File.Exists(x);", false)]
+    [InlineData("Process.Start(BuildOutput.App);", true)]
+    [InlineData("Process.Start(\"tool.exe\");", false)]
+    [InlineData("var p = Path.Combine(root, \"src\", \"SIL.Motif.App\", \"Views\"); Process.Start(\"tool.exe\");", false)]
+    [InlineData("// Process.Start(\"SIL.Motif.App\")\n", false)]
+    public void GuardRequiresTheDesignatedLauncher(string source, bool forbidden)
     {
         var violations = new List<string>();
         CheckSource(source, "test.cs", violations);
@@ -99,15 +89,33 @@ public sealed class HeadlessGuardTests
     }
 
     [Fact]
-    public void GuardAllowsHeadlessAppSmoke()
+    public void AppLauncherHasOnlyTheFixedHeadlessStart()
     {
-        var violations = new List<string>();
-        CheckSource("var app = \"SIL.Motif.App.exe\"; Process." + "Start(new ProcessStartInfo(app, \"--smoke\"));", "test.cs", violations);
-        Assert.Empty(violations);
-        CheckSource("var app = \"SIL.Motif.App.exe\"; var start = new " +
-            "ProcessStartInfo(app); start.ArgumentList.Add(\"--smoke\"); Process." + "Start(start);",
-            "test.cs", violations);
-        Assert.Empty(violations);
+        var source = File.ReadAllText(Path.Combine(FindRoot(), "tests", "SIL.Motif.Tests.App", "App", "AppSmokeLauncher.cs"));
+        const string expected = """
+            using System.Diagnostics;
+            using SIL.Motif.Tests.TestFixtures;
+
+            namespace SIL.Motif.Tests.App;
+
+            internal static class AppSmokeLauncher
+            {
+                public static Process Start()
+                {
+                    var app = Path.Combine(BuildOutput.ProductDirectory,
+                        OperatingSystem.IsWindows() ? "SIL.Motif.App.exe" : "SIL.Motif.App");
+                    var start = new ProcessStartInfo(app, "--smoke")
+                    {
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                    };
+                    start.Environment.Remove("ICU_DATA");
+                    return Process.Start(start)!;
+                }
+            }
+            """;
+        Assert.Equal(expected, source.Replace("\r\n", "\n").TrimEnd('\n'));
     }
 
     [Fact]
@@ -141,9 +149,9 @@ public sealed class HeadlessGuardTests
         }
     }
 
-    private static void CheckSource(string source, string path, List<string> violations)
+    private static void CheckSource(string source, string path, List<string> violations, bool allowedLauncher = false)
     {
-        foreach (var offset in HeadlessSourceScanner.Find(source))
+        foreach (var offset in HeadlessSourceScanner.Find(source, allowedLauncher))
         {
             var line = 1 + source.Take(offset).Count(c => c == '\n');
             violations.Add(path + ":" + line + ": forbidden desktop access. " + Guidance);
