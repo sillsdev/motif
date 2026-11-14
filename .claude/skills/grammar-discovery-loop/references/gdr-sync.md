@@ -7,15 +7,17 @@ examples"). Claude translates GDRs into FieldWorks rules. A GDR is a living page
 
 ## Sync rule
 
-A Proposal that changes a rule, affix process or the objects behind a GDR section changes that section in the
-same Proposal. A rule with no GDR section, or a section whose examples no longer parse as stated, blocks the
-Proposal. Done when every rule and affix process touched maps to a GDR section and every example in it was
+The owner's decision (#178): a Proposal that changes a rule, affix process or the objects behind a GDR section
+changes that section in the same Proposal. The product does not enforce this yet: the GDR spec has Finalize
+warn on a missing section and does not require a Proposal to update a GDR, and the automated sync check is
+future work (#178). Under this skill the agent enforces it as a self-check: a rule with no GDR section, or a
+section whose examples no longer parse as stated, fails the completion criterion and the Proposal waits. Done when every rule and affix process touched maps to a GDR section and every example in it was
 re-read from the grammar as it stands after the change (live examples, not remembered ones).
 
 ## Before writing or changing a GDR
 
-Consult Andy Black's guidance and the other research each time: [mechanism-ladder.md](mechanism-ladder.md),
-the digest it names, and `docs/research/grammar-authoring/own-guidance-review.md`. State in the GDR which
+Consult Andy Black's guidance and the other research each time: [black-guidance.md](black-guidance.md),
+[mechanism-ladder.md](mechanism-ladder.md) and `docs/research/grammar-authoring/own-guidance-review.md`. State in the GDR which
 mechanism was chosen and why a lower rung did not do. Read the GDR index at Proposal start and the section
 bodies of the topics you touch.
 
@@ -43,7 +45,8 @@ Lexically marked stems keep their first consonant: [[exc:Keeps first consonant]]
 
 Write a GDR in the shape of its hypothesis: the pattern, the rule in notation, the predicted forms that were
 attested, the exceptions with polarity, the verdict from `rule-hypothesis-test`, and the speaker judgements
-that settled open points. The speaker never sees the GDR.
+that settled open points, and any FieldWorks limitation that forced the majority to carry a tag. The speaker
+never sees the GDR. Linguists comment on the Proposal, not on the GDR.
 
 ## Route
 

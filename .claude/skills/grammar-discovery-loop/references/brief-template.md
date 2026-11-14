@@ -16,5 +16,5 @@ apply-time writer lock, not a design constraint; a builder may touch an existing
 8. **Word questions**: the 5-10 word judgements asked or queued, with predicted answers.
 
 Reviewer checklist: broader rule tried? neighbour merged? gains attested, generated forms separate? size
-delta stated? GDR matches the rules? questions free of grammar vocabulary and asked before apply?
+delta stated? GDR matches the rules? questions free of grammar vocabulary and asked before apply (apply is CLI only; MCP never applies)?
 Exit: every section filled, or a section marked "none" with its reason.

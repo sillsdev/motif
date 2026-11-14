@@ -26,7 +26,8 @@ smallest step of `grammar-discovery-loop`; that skill calls this one at its step
 2. **Run the control test.** For a boundary change "stem-final X becomes Y before suffix S":
    `python3 scripts/control_test.py --stems … --suffixes … --change X:Y --heldout … --discovery … --json`.
    A hit is a predicted form attested in held-out and absent from discovery. The script reruns with 5 control
-   letters in place of Y and prints rule hits, control hits, margin and a verdict. A rule that is not a
+   letters in place of Y (same class as Y, from the language's own letters; `--control-letters` overrides) and
+   prints rule hits, control hits, margin and a verdict. Exit code 0 PASS, 1 FAIL, 2 UNDECIDED. A rule that is not a
    one-letter boundary change goes through the same count: write its predicted forms, write 5 controls that
    change one thing (the letter, the environment, the suffix), and count held-out hits for each.
 3. **Add the Trial.** On a rig copy, run a Trial of the encoded rule: attested losses, new readings on words that
@@ -41,7 +42,7 @@ Exactly one verdict, with the numbers that produced it:
 - **PASS**: rule hits clear every control by the margin, Trial shows 0 attested losses.
 - **FAIL**: a control matches or beats the rule, or an attested loss stands. Record it; a failed rule attempt
   is what permits a list for that shape.
-- **UNDECIDED**: below minimum N or inside the margin. List the 5-10 word questions that would decide it
+- **UNDECIDED**: below minimum N (20 attested hits) unless a control clearly beats the rule, or inside the margin. List the 5-10 word questions that would decide it
   (word judgements and minimal pairs only; `grammar-discovery-loop` step 5 asks them).
 
 Append the verdict, counts and the script command to the hypothesis ledger before encoding anything.

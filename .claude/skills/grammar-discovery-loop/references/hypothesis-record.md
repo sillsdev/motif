@@ -1,7 +1,7 @@
 # Hypothesis record
 
 One record per hypothesis; one hypothesis per brief. Ledger fields (JSONL or TSV, per project) are the same
-names. Until the ledger exists as a Motif feature, keep it as `hypotheses.jsonl` beside the project record.
+names. The ledger as a Motif feature is future work (#174); until then keep it as `hypotheses.jsonl` beside the project record.
 
 | Field | Content |
 |---|---|
@@ -12,7 +12,7 @@ names. Until the ledger exists as a Motif feature, keep it as `hypotheses.jsonl`
 | neighbour | the ledger and rule query, and its result; the rule widened or merged, or "none" |
 | predictions | 20 or more forms beyond the forms that suggested it |
 | falsifier | the observation that would refute it (a control matching, an attested loss, a speaker rejecting a predicted form) |
-| exceptions | expected, with the polarity: which side is default |
+| exceptions | expected, with the polarity: which side is default, and the number of objects tagged; a FieldWorks limitation (positive-only restriction forcing the majority to carry the tag) is recorded here |
 | test | `rule-hypothesis-test` verdict, counts, controls, Trial losses and new readings |
 | size_delta | objects added (entries, allomorphs, variants, MSAs, tags, features, rules, environments), attested held-out types gained, ratio |
 | word_questions | the batch asked or queued, and answers |
