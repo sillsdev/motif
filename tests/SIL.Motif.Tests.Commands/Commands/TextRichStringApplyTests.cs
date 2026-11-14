@@ -19,6 +19,8 @@ using SIL.Motif.Generator.Manifest;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Model.Effects;
+using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
@@ -63,13 +65,12 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public void AGdrTitleAlternativeCanBeAddressedByTheRichTextOperation()
+    public void AGdrTitleIsNotAnEditableRichStringField()
     {
         var payload = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("title", "en")],
             new("", TextRunsDigest.Of([])));
 
-        var parsed = TextRichStringPayload.Parse(payload.ToJson());
-        Assert.Equal((payload.Field, payload.Ws, payload.Text), (parsed.Field, parsed.Ws, parsed.Text));
+        Assert.Throws<ContractParseException>(() => TextRichStringPayload.Parse(payload.ToJson()));
     }
 
     [Fact]
@@ -85,8 +86,21 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
         var result = ProposalCommands.StageGdrMarkdown(path, new(id, [edit], null));
 
         Assert.False(result.Succeeded);
-        Assert.Contains("only on Grammar Design Records", result.Refusal!.Message);
+        Assert.NotNull(result.Refusal);
         Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void GeneratedPossibilityNamesNeedProofOfGdrOwnershipForTheProseExemption()
+    {
+        var target = CanonicalId.FromGuid(Guid.NewGuid());
+        var operation = new OperationEnvelope(CanonicalId.Mint(), CmPossibilityNameOperationKinds.SetName,
+            target: target, after: JsonSerializer.SerializeToElement(new { ws = "en", text = "name" }));
+        var proposal = new Proposal(new Dictionary<string, string> { ["lists"] = "1.0" }, CanonicalId.Mint(), [], [operation]);
+        var effect = new ExpectedEffect(target, SnapshotFields.CmPossibilityName,
+            new Dictionary<string, string>(), new Dictionary<string, string> { ["en"] = "name" });
+        Assert.Null(ProseOnlyProposalReadiness.ExemptionFor(proposal, [effect], _ => false));
+        Assert.NotNull(ProseOnlyProposalReadiness.ExemptionFor(proposal, [effect], _ => true));
     }
 
     [Fact]
@@ -115,6 +129,7 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
         var staged = ProposalCommands.StageGdrMarkdown(path, changes);
         Assert.True(staged.Succeeded, staged.Refusal?.Message);
         Assert.Equal(3, PendingOperations(path));
+        Assert.Contains(ReadDraft(path).Operations, operation => operation.Kind == CmPossibilityNameOperationKinds.SetName);
 
         var restored = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id,
             [new("CmPossibility.Name", "en", title.Runs.Select(Carried).ToArray(), new(title.Text, title.Digest)),
@@ -156,6 +171,76 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
         Assert.False(refused.Succeeded);
         Assert.Contains("Name", refused.Refusal!.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void TitleRunsAreCombinedAndNormalizedBeforeTheGeneratedOperationApplies()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en",
+            [new TextRun("caf", "en"), new TextRun("é", "en")], new(title.Text, title.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var operation = Assert.Single(ReadDraft(path).Operations);
+        Assert.Equal(CmPossibilityNameOperationKinds.SetName, operation.Kind);
+        Assert.Equal("cafe\u0301", operation.After!["text"].GetString());
+        Applied(path);
+        Assert.Equal("café", GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!.Record.Title.Normalize());
+    }
+
+    [Fact]
+    public void ClearingATitleUsesTheGeneratedClearOperation()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [], new(title.Text, title.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(CmPossibilityNameOperationKinds.ClearName, Assert.Single(ReadDraft(path).Operations).Kind);
+        Applied(path);
+        Assert.Equal("", GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!.Record.Title);
+    }
+
+    [Fact]
+    public void AChangedRecordLocationHasARegisteredRefusalCode()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("new", "en")], new(title.Text, title.Digest));
+        var result = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null,
+            new GdrMarkdownIdentity(shown.Record.Abbreviation, shown.Record.ParentId, shown.Position + 1)));
+        Assert.False(result.Succeeded);
+        Assert.Equal(RefusalCodes.GdrRecordMoved, result.Refusal!.Code);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void ATitleChangedAfterStagingIsRefusedAtApplyAfterRefresh()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("mine", "en")], new(title.Text, title.Digest));
+        Assert.True(ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null)).Succeeded);
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var record = SeededGdrs.Records(cache).PossibilitiesOS[0];
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => record.Name.set_String(cache.DefaultAnalWs, "outside"));
+            new FwDataProjectLoader().Save(cache);
+        }
+
+        var refused = Apply(path);
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal(RefusalCodes.TextFieldStale, refused.Refusal!.Code);
+        Assert.Contains("Name", refused.Refusal.Message, StringComparison.Ordinal);
+        Recaptured(path);
+        Assert.Equal(RefusalCodes.TextFieldStale, Apply(path).Refusal?.Code);
+        Assert.Equal("outside", GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!.Record.Title);
     }
 
     [Fact]
@@ -321,7 +406,7 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
             .Where(row => row.Scope == "in" && row.Kind == "basic" && row.Sig is "String" or "MultiString").ToArray();
         string[] ownedElsewhere = ["StTxtPara.Contents", "WfiMorphBundle.Form", "RnGenericRec.Title"];
         var expected = rows.Where(row => row.HcReferenced == "no" && row.HcReachable == "no" && row.Verbs.Split('|').Contains("set"))
-            .Select(row => $"{row.Class}.{row.Field}").Except(ownedElsewhere).Append("CmPossibility.Name").Order().ToArray();
+            .Select(row => $"{row.Class}.{row.Field}").Except(ownedElsewhere).Order().ToArray();
 
         Assert.Equal(expected, TextRichStringFields.Names.Order());
         Assert.All(rows.Where(row => TextRichStringFields.Names.Contains($"{row.Class}.{row.Field}")),

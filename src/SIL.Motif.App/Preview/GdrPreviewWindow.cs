@@ -661,6 +661,7 @@ public sealed partial class GdrPreviewWindow : Window
     /// </summary>
     public void Show(string id)
     {
+        if (_shownId == id && _markdownDocument is not null) return;
         if (_shownId != id && (_markdownOpening || _markdownDocument is not null && !BackToFields()))
         {
             _records.SelectedIndex = Records.ToList().FindIndex(record => record.Id == _shownId);

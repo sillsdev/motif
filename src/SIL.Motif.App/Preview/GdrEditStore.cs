@@ -63,7 +63,8 @@ public sealed class GdrEditStore(string projectPath, string? managedRoot = null,
 
     public Task<RichStringPendingRead> PendingRichStringAsync(string recordId, string field, string ws) => Task.Run(() =>
     {
-        var result = ProposalCommands.PendingTextRichString(new TextRichStringFieldRequest(projectPath, recordId, field, ws));
+        var request = new TextRichStringFieldRequest(projectPath, recordId, field, ws);
+        var result = field == "CmPossibility.Name" ? ProposalCommands.PendingGdrTitle(request) : ProposalCommands.PendingTextRichString(request);
         return result.Succeeded ? new RichStringPendingRead(result.Value!.RichString) : new RichStringPendingRead(null, result.Refusal!.Message);
     });
 

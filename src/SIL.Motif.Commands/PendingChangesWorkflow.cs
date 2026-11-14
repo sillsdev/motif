@@ -151,6 +151,9 @@ public static class PendingChangesWorkflow
         var released = ProjectStoreCommand.Run(target.ProjectPath, version, (_, project) =>
         {
             using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+            if (identity.DraftJson is { } json &&
+                ProposalCommands.CheckGdrTitleExpectations(ProposalCommands.DeserializeDraft(json), cache) is { } stale)
+                return CommandOutcome<ApplyIdentity>.Refused(stale);
             return CommandOutcome<ApplyIdentity>.Success(identity);
         });
         if (!released.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(released.Refusal!);

@@ -739,7 +739,10 @@ operation, the owner and the field. A Proposal still applies whole or not at all
 the Draft stays as it was, every other edit included. The person either edits the field again from its current text,
 which replaces the operation, or takes the field's operation out of the Draft, which leaves the other edits there. A
 Draft whose every operation is `text/setParagraphs` or `text/setRichString` needs no Correctness Assessment, because
-the parser reads none of these fields.
+the parser reads none of these fields. The same exemption covers those operations combined with
+`lists/cmPossibility/setName` or `lists/cmPossibility/clearName` when each name operation targets a Grammar Design
+Record; names of other possibilities do not qualify. A GDR title saved from whole-record Markdown carries its
+starting value with the Draft, so Apply refuses a title changed since editing began.
 
 ### Rich-text string edits
 

@@ -113,7 +113,7 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
         var invalid = abstractEdit with { Runs = [new TextRun("bad", "en", "No Such Style")] };
         var refused = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [name with { Runs = [new TextRun("other", "en")] }, invalid], null));
         Assert.False(refused.Succeeded);
-        var pending = ProposalCommands.PendingTextRichString(new TextRichStringFieldRequest(path, shown.Record.Id, "CmPossibility.Name", "en"));
+        var pending = ProposalCommands.PendingGdrTitle(new TextRichStringFieldRequest(path, shown.Record.Id, "CmPossibility.Name", "en"));
         Assert.Equal("new title", pending.Value!.RichString!.Text);
     }
 

@@ -332,6 +332,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.GdrLinkPathInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.GdrNoBaseline, FailureReason.NotFound),
         Spec(RefusalCodes.GdrNotFound, FailureReason.NotFound),
+        Spec(RefusalCodes.GdrRecordMoved, FailureReason.Refused),
         Spec(RefusalCodes.GdrStyleCycle, FailureReason.StoreInconsistent),
         Spec(RefusalCodes.SourceIdInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.SourceListAmbiguous, FailureReason.Refused),

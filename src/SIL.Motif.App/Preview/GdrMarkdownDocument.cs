@@ -117,8 +117,14 @@ public sealed class GdrMarkdownDocument
             if (read.HasErrors) continue;
             if (field.Original.Count != read.Paragraphs.Count ||
                 !field.Original.Zip(read.Paragraphs).All(pair => field.Form.AreEquivalent(pair.First, pair.Second)))
-                changes.Add(new GdrMarkdownChange(field.Name, field.AlternativeWs, read.Paragraphs,
-                    field.Inline ? field.Source.ProjectRuns(read.Paragraphs[0]) : null));
+            {
+                var runs = field.Inline ? field.Source.ProjectRuns(read.Paragraphs[0]) : null;
+                if (field.Name == "title" && runs!.Any(run => run.CharacterStyle is not null || run.ObjData is not null ||
+                    !string.Equals(run.Ws, field.AlternativeWs, StringComparison.OrdinalIgnoreCase) ||
+                    run.Props is { } props && (props.Ints.Count != 0 || props.Strings.Count != 0)))
+                    errors.Add("title: only plain text in its writing system is allowed.");
+                else changes.Add(new GdrMarkdownChange(field.Name, field.AlternativeWs, read.Paragraphs, runs));
+            }
         }
         if (seen.Count != _fields.Count) errors.Add("Every field must be present once.");
         return new(changes, errors, warnings);

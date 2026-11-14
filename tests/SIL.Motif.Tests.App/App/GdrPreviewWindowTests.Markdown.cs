@@ -4,6 +4,9 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Commands;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Host.Gdr;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -27,6 +30,18 @@ public sealed partial class GdrPreviewWindowTests
         Assert.Contains("::: {field=discussion}", markdown.Text);
         Assert.False(markdown.Read(markdown.Text).HasErrors);
         Assert.Empty(markdown.Read(markdown.Text).Changes);
+    }
+
+    [Theory]
+    [InlineData("**title**")]
+    [InlineData("[title](https://example.invalid)")]
+    [InlineData("[title]{.v}")]
+    public void TitleFormattingProducesAFinding(string edited)
+    {
+        var document = new GdrMarkdownDocument(MarkdownRecord(), null);
+        var read = document.Read(document.Text.Replace("title-text", edited, StringComparison.Ordinal));
+        Assert.True(read.HasErrors);
+        Assert.Contains(read.Errors, error => error.Contains("title", StringComparison.OrdinalIgnoreCase));
     }
     private sealed class MarkdownStore : IGdrEditStore, IGdrMarkdownEditStore
     {
@@ -102,6 +117,8 @@ public sealed partial class GdrPreviewWindowTests
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(shown.Record.Id);
+            var list = window.GetLogicalDescendants().OfType<ListBox>().Single();
+            list.SelectedIndex = 0;
             Completed(window.Loading);
             Assert.True(window.ToggleSourceMode());
             Assert.True(Completed(window.OpenMarkdownAsync()));
@@ -110,9 +127,15 @@ public sealed partial class GdrPreviewWindowTests
             window.Show(Second.Id);
             Assert.True(window.IsMarkdownOpen);
             Assert.Equal(kept, window.MarkdownText);
+            Assert.Contains(window.GetLogicalDescendants().OfType<TextBox>(), box => box.Text == kept);
+            Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button => Equals(button.Content, "Save"));
+            list.SelectedIndex = 1;
+            Assert.Contains(window.GetLogicalDescendants().OfType<TextBox>(), box => box.Text == kept);
+            var discard = Assert.Single(window.GetLogicalDescendants().OfType<Button>(),
+                button => Equals(button.Content, "Throw away my Markdown changes"));
             window.Close();
             Assert.True(window.IsVisible);
-            window.DiscardMarkdown();
+            discard.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             window.Show(Second.Id);
             Assert.False(window.IsMarkdownOpen);
         });
