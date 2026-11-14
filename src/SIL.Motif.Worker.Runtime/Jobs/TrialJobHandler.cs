@@ -16,6 +16,7 @@ using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Corpus;
+using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.PanGloss;
 using SIL.Motif.Host.Parser;
 using SIL.Motif.Host.Store;
@@ -229,6 +230,12 @@ internal sealed class TrialJobHandler
             Ledger = Ledger with { BeforeWarnings = before.Findings.ToArray(), AfterWarnings = after.Findings.ToArray() };
             Save();
         }
+        public void SetGdrSync(GdrCheckResponse? check)
+        {
+            if (check is null) return;
+            Ledger = Ledger with { GdrSync = check };
+            Save();
+        }
         public void BindCandidate(string path)
         {
             if (!File.Exists(path)) return;
@@ -296,6 +303,7 @@ internal sealed class TrialJobHandler
                 scratchRoot, reviewArtifact is null ? null : ReviewInputPartitions.Create(reviewArtifact.Inputs),
                 cancellationToken).ConfigureAwait(false);
             review?.BindCandidate(candidate.GrammarPath);
+            review?.SetGdrSync(candidate.GdrSync);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -518,7 +526,7 @@ internal sealed class TrialJobHandler
 
     private sealed record CandidateRun(DryRunModel DryRun, AssessmentScope.Words Scope, Selection Selection,
         string ExportedDirectory, string GrammarPath, IReadOnlyDictionary<string, string> ProjectStandings,
-        IReadOnlyList<CandidatePartition> Partitions);
+        IReadOnlyList<CandidatePartition> Partitions, GdrCheckResponse? GdrSync = null);
 
     private async Task<CandidateRun> RunCandidateAsync(ClaimedJob claim, ProjectLane lane,
         Contract.Model.Proposal proposal, IReadOnlyList<FrozenProposalRevision> frozenPrerequisites,
@@ -569,7 +577,7 @@ internal sealed class TrialJobHandler
                 candidate = new CandidateRun(dryRun, scope, Selection.Create(scopeConfiguration.Name, words),
                     exportedDirectory, Path.GetFullPath(cache?.ProjectId.Path
                         ?? throw new InvalidOperationException("A Trial requires a scratch project for grammar health.")),
-                    projectStandings, partitions);
+                    projectStandings, partitions, GdrSyncAdvisory(claim.Database, cache));
             }
             finally
             {
@@ -579,6 +587,19 @@ internal sealed class TrialJobHandler
 
         // The lane either runs the work item to completion or rethrows, so this is set by here.
         return candidate ?? throw new InvalidOperationException("The lane produced no candidate.");
+    }
+
+    // ADR 0119: advisory only, so a failed check leaves the report without it.
+    private static GdrCheckResponse? GdrSyncAdvisory(MotifDatabase database, LcmCache? cache)
+    {
+        if (cache is null) return null;
+        try
+        {
+            var ledger = new HypothesisRepository(database).PassedGdrLinks()
+                .Select(link => new GdrLedgerLink(link.HypothesisId, link.GdrId, link.GdrSection)).ToArray();
+            return GdrSyncChecker.Check(cache, new GdrExampleEvidenceRepository(database), ledger);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException) { return null; }
     }
 
     private IReadOnlyList<NewAssessmentRecord> PrepareAll(IReadOnlyList<ProducedAssessment> produced,

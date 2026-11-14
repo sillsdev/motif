@@ -67,10 +67,14 @@ follows it. The example table is tab-separated row paragraphs.
 8. **The ledger.** A *passed* hypothesis that names a GDR and section (ADR 0117) must find that GDR (by `GDR-n`) and a
    heading of that name, or the GDR's own title, or `Abstract`. Otherwise it is reported.
 9. **Every finding is a warning.** `InSync` is true only with no finding. The loop treats a warning as incomplete.
-10. **Finalize.** Finalize has no project copy of the Proposal's result, so it cannot run this check against the post-change
-    grammar; running it against the Baseline would report the grammar the Proposal replaces. The check is therefore the
-    loop's completion test today, run against a Dry Run or Trial copy once a Proposal has been applied there. Wiring the
-    Finalize warning needs the Proposal's scratch copy at Finalize and is the one part not built.
+10. **The Trial review is the hook, not Finalize.** Finalize has no project copy of the Proposal's result, and running the
+    check against the Baseline would report the grammar the Proposal replaces. A Trial has the post-Proposal scratch
+    project, so the Trial runs the check on it once, on the lane, right after the Dry Run, and keeps the response in its
+    review ledger. The review report's summary carries it as `GdrSync` and the text report prints each finding as an
+    advisory line. It never holds Apply and never fails the Trial; a check that cannot run leaves `GdrSync` absent.
+    The example evidence is the Trial and Assessment rows stored before this Trial, because the Trial's own rows do not
+    exist yet; an example the Trial just changed shows at its next Trial. The skill's completion rule already treats any
+    warning as incomplete. The Finalize warning is not built.
 
 ## Performance
 

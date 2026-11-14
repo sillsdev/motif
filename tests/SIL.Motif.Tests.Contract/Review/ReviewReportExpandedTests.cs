@@ -187,6 +187,21 @@ public sealed class ReviewReportExpandedTests
         Assert.True(round.Summary.RuleAttempts.Hold);
     }
 
+    [Fact]
+    public void AReportWrittenWithoutGdrSyncReadsWithNullAndOneWithItRoundTrips()
+    {
+        var report = CreateReport();
+        var json = JsonSerializer.Serialize(report, ReviewJson.Options);
+        Assert.DoesNotContain("\"gdrSync\"", json, StringComparison.Ordinal);
+        Assert.Null(JsonSerializer.Deserialize<ReportView>(json, ReviewJson.Options)!.Summary.GdrSync);
+        var finding = new SIL.Motif.Contract.Responses.GdrSyncFinding("gdr.no-records", "none", null, null, null, 0, []);
+        var check = new SIL.Motif.Contract.Responses.GdrCheckResponse(true, false, [], [finding],
+            new SIL.Motif.Contract.Responses.GdrSyncCounts(0, 0, 0, 0, 0, []));
+        var with = report with { Summary = report.Summary with { GdrSync = check } };
+        var round = JsonSerializer.Deserialize<ReportView>(JsonSerializer.Serialize(with, ReviewJson.Options), ReviewJson.Options)!;
+        Assert.Equal("gdr.no-records", Assert.Single(round.Summary.GdrSync!.Findings).Code);
+    }
+
     private static ReportView CreateReport()
     {
         var report = (ReportView)Create(typeof(ReportView));

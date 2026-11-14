@@ -2,7 +2,7 @@ namespace SIL.Motif.Host.Parsimony;
 
 public sealed partial class ParsimonyQuerySession
 {
-    // The lexeme form is the entry's last allomorph by ordinal (see ReadLexicon), and its form is the first by ordinal.
+    // The lexeme form is the entry's last allomorph by ordinal (see ReadLexicon); its form is the first.
     private const string LexemeFormsCte = """
         WITH lex AS (
             SELECT a.entry_guid AS entry_guid, a.guid AS allomorph_guid,

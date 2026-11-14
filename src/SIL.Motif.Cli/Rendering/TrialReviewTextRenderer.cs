@@ -32,6 +32,7 @@ public static class TrialReviewTextRenderer
         text.AppendLine("Paradigm cells: " + Coverage(report.Summary.ParadigmCells.Before) + " before; " + Coverage(report.Summary.ParadigmCells.After) + " after");
         if (report.Summary.Gains is { } gains) AppendGains(text, gains);
         if (report.Summary.RuleAttempts is { Groups.Count: > 0 } attempts) AppendRuleAttempts(text, attempts);
+        if (report.Summary.GdrSync is { InSync: false } gdr) AppendGdrSync(text, gdr);
         text.AppendLine("Parser work: " + (report.Summary.ParserWork.PercentChange is { } change
             ? change.ToString("+0.#;-0.#;0", CultureInfo.InvariantCulture) + "%" : "not comparable"));
         text.AppendLine($"Trial {report.Pins.TrialJobId}; report {report.ReportId}; {report.Freshness.Relation}");
@@ -88,6 +89,12 @@ public static class TrialReviewTextRenderer
         text.AppendLine($"Objects per attested type gained: {ratio}; gain gate {gains.Gate.Mode.ToString().ToLowerInvariant()}: " +
             $"{gains.Gate.Outcome}" +
             (gains.Gate.Hold ? "; HOLD (report only; Apply does not read it)" : ""));
+    }
+
+    private static void AppendGdrSync(StringBuilder text, SIL.Motif.Contract.Responses.GdrCheckResponse gdr)
+    {
+        foreach (var finding in gdr.Findings)
+            text.AppendLine("GDR sync (advisory, incomplete until fixed): " + finding.Message);
     }
 
     private static void AppendRuleAttempts(StringBuilder text, RuleAttemptSummary attempts)

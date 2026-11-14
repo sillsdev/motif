@@ -8,8 +8,8 @@ examples"). Claude translates GDRs into FieldWorks rules. A GDR is a living page
 ## Sync rule
 
 The owner's decision (#178): a Proposal that changes a rule, affix process or the objects behind a GDR section
-changes that section in the same Proposal. The GDR spec has Finalize warn on a missing section and does not require a
-Proposal to update a GDR. Run the check `motif gdr check --project <fwdata>` (ADR 0119) with
+changes that section in the same Proposal. The Trial review report carries the same check as advisory `GdrSync` lines for the
+post-Proposal project (ADR 0119); Finalize does not. Run the check `motif gdr check --project <fwdata>` (ADR 0119) with
 `MOTIF_DEVELOPER_COMMANDS=1` after the Proposal is applied to the project and its Baseline is captured. It reports every rule or
 affix process no GDR links, every section that links a deleted object, and every example word whose stored Trial or
 Assessment row no longer parses as the section says. It parses nothing: put the example words in the Trial's words

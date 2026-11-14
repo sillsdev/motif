@@ -43,6 +43,22 @@ public sealed class TrialReviewRenderingTests
     }
 
     [Fact]
+    public void GdrSyncFindingsAreAdvisoryLinesAndAnInSyncCheckPrintsNothing()
+    {
+        var report = (ReportView)Create(typeof(ReportView));
+        var finding = new SIL.Motif.Contract.Responses.GdrSyncFinding("gdr.object-uncovered", "2 of 2 Phonological rules have no GDR section.",
+            null, null, "Phonological rule", 2, []);
+        var counts = new SIL.Motif.Contract.Responses.GdrSyncCounts(0, 0, 0, 0, 0, []);
+        var dirty = new SIL.Motif.Contract.Responses.GdrCheckResponse(true, false, [], [finding], counts);
+        var text = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
+            { Summary = report.Summary with { Flags = [], GdrSync = dirty } }));
+        Assert.Contains("GDR sync (advisory, incomplete until fixed): 2 of 2 Phonological rules have no GDR section.", text, StringComparison.Ordinal);
+        var clean = TrialReviewTextRenderer.Render(new AvailableTrialResult(report with
+            { Summary = report.Summary with { Flags = [], GdrSync = dirty with { InSync = true, Findings = [] } } }));
+        Assert.DoesNotContain("GDR sync", clean, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ExplicitTraceShowsNodesAndContinuationWithoutRawCost()
     {
         var report = (ReportView)Create(typeof(ReportView));

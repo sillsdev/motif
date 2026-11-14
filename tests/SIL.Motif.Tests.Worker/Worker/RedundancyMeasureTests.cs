@@ -156,8 +156,7 @@ public sealed class RedundancyMeasureTests(PristineProjectFixture pristine, ITes
     [Fact]
     public async Task TagPolarityIsPartialAndDoesNotDetectARuleThatOnlyItsFormContextSelects()
     {
-        // The d>r shape: one tag on 40 of 2,000 stems, a rule with no category scope. The stems that matter are the
-        // d-final ones, which the measure cannot see, so the ratio over every stem is 2% and nothing is found.
+        // The d>r shape: one tag on 40 of 2,000 stems; the d-final stems that matter are unseen, so 2% finds nothing.
         var tag = G('f', 1);
         var result = await Run("P-tag-polarity-majority", c =>
         {

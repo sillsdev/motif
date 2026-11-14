@@ -40,6 +40,8 @@ public sealed record TrialReviewLedger(string JobId, ReviewInputReference Inputs
     public IReadOnlyList<GrammarWarning>? AfterWarnings { get; init; }
     /// <summary>The saved candidate file's exact bytes used for diagnostic trace binding.</summary>
     public string? CandidateFileDigest { get; init; }
+    /// <summary>The advisory GDR sync check of the post-Proposal scratch project, null when it could not run.</summary>
+    public SIL.Motif.Contract.Responses.GdrCheckResponse? GdrSync { get; init; }
 }
 
 /// <summary>Persists a Trial's attributed evidence independently of its terminal status.</summary>

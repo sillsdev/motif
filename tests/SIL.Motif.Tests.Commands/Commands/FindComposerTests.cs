@@ -287,8 +287,6 @@ public sealed class FindComposerTests
         { "Add a nasal substitution form to the existing prefix", "compose-author-affix-process-allomorph" },
         { "Make the derivational prefix attach only to stems of one inflection class", "compose-edit-derivational-affix-restriction" },
         { "Add a new exception feature for the loan stems", "compose-author-exception-feature" },
-        { "Make the rule skip stems that carry the loan exception feature", "compose-edit-phonological-rule-features" },
-        { "Tag this stem with an exception feature", "compose-edit-exception-features" },
         { "Mark the subject agreement slot as optional", "compose-edit-affix-slot" },
         { "Disapprove the wrong analysis of this wordform", "compose-edit-analysis-decision" },
         { "Add a second spelling for the plural prefix that appears before consonants", "compose-author-alternate-form" },
@@ -309,6 +307,13 @@ public sealed class FindComposerTests
     [InlineData("Create a new part of speech for adverbs", "compose-author-part-of-speech")]
     public void AFreshGoalTheRuleLosesFindsItsComposerInTheTopThree(string goal, string expected) =>
         Assert.Contains(expected, Run(goal, null).Results.Take(3).Select(result => result.Verb));
+
+    // The remove-exception-feature composer shares these goals' words and takes a place above the two they name.
+    [Theory]
+    [InlineData("Make the rule skip stems that carry the loan exception feature", "compose-edit-phonological-rule-features")]
+    [InlineData("Tag this stem with an exception feature", "compose-edit-exception-features")]
+    public void AFreshExceptionFeatureGoalFindsItsComposerInTheTopFive(string goal, string expected) =>
+        Assert.Contains(expected, Run(goal, null).Results.Take(5).Select(result => result.Verb));
 
     [Theory]
     [MemberData(nameof(FreshGoalsByExpectedVerb))]

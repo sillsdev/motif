@@ -20,7 +20,7 @@ public sealed class RedundancyMeasureRealFactsTimingTests(PristineProjectFixture
 
     public void Dispose() => _harness.Dispose();
 
-    // The harness facts keep their own metadata, which the session checks; only the rows the measures read come across.
+    // The harness facts keep their own metadata; only the rows the measures read come across.
     private static void CopyTables(string real, string path)
     {
         using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
