@@ -15,10 +15,6 @@ public sealed class HeadlessGuardTests
     private static readonly Regex ForbiddenCall = new(
         @"\b(?:UseWin32|UsePlatformDetect|UseX11|UseAvaloniaNative|SendInput|keybd_event|mouse_event|SetForegroundWindow|OpenClipboard|SetClipboardData|GetClipboardData)\s*\(|\bSystem\s*\.\s*Windows\s*\.\s*(?:Forms\s*\.\s*)?Clipboard\b",
         RegexOptions.CultureInvariant);
-    private static readonly Regex GuiName = new(@"\b(?:SIL\.Motif\.App|Playground\.Desktop|Host48)(?:\.exe)?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex Assignment = new(@"\b(?:var|string)\s+(?<name>\w+)\s*=\s*(?<value>[^;]+);", RegexOptions.CultureInvariant);
-    private static readonly Regex Launch = new(@"\b(?:new\s+(?:System\.Diagnostics\.)?ProcessStartInfo|(?:System\.Diagnostics\.)?Process\.Start)\s*\((?<args>[^;]+?)\)(?=\s*[!;{])", RegexOptions.CultureInvariant);
-
     [Fact]
     public void AutomatedTestsStayHeadless()
     {
@@ -45,13 +41,47 @@ public sealed class HeadlessGuardTests
     [InlineData("Process." + "Start(\"SIL.Motif.App\")!;")]
     [InlineData("System.Windows." + "Clipboard.GetText()")]
     [InlineData("Process." + "Start(\"SIL.Motif.App\");")]
-    [InlineData("var app = \"SIL.Motif.App.exe\"; new " + "ProcessStartInfo(app, \"--other\");")]
+    [InlineData("var app = \"SIL.Motif.App.exe\"; Process." + "Start(new ProcessStartInfo(app, \"--other\"));")]
     [InlineData("Process." + "Start(\"Playground.Desktop.exe\", \"--smoke\");")]
     public void GuardDetectsForbiddenSource(string source)
     {
         var violations = new List<string>();
         CheckSource(source, "test.cs", violations);
         Assert.NotEmpty(violations);
+    }
+
+    [Theory]
+    [InlineData("var s = new System.Diagnostics.ProcessStartInfo(\"SIL.Motif.App\"); Process.Start(s);", true)]
+    [InlineData("var s = new ProcessStartInfo(); s.FileName = \"SIL.Motif.App\"; Process.Start(s);", true)]
+    [InlineData("var s = new ProcessStartInfo { FileName = \"Host48.exe\" }; Process.Start(s);", true)]
+    [InlineData("var s = new ProcessStartInfo { FileName = \"Playground.Desktop\" }; Process.Start(s);", true)]
+    [InlineData("var s = new ProcessStartInfo { FileName = \"tool.exe\" }; Process.Start(s);", false)]
+    [InlineData("Process.Start(\"SIL.Motif.App\" /* \"--smoke\" */);", true)]
+    [InlineData("Process.Start(\"SIL.Motif.App\", new[] { \"--other\", \"--smoke\" });", true)]
+    [InlineData("Process.Start(\"SIL.Motif.App\", new[] { \"--smoke\", \"--other\" });", false)]
+    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\", \"--smoke\"); s.ArgumentList.Insert(0, \"--other\"); Process.Start(s);", true)]
+    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\", \"--smoke\"); Process.Start(s);", false)]
+    [InlineData("using System.Windows.Forms; Clipboard.SetText(\"hello\");", true)]
+    [InlineData("using System.Windows; Clipboard.GetText();", true)]
+    [InlineData("using static System.Windows.Forms.Clipboard; SetText(\"hello\");", true)]
+    [InlineData("fake.Clipboard.SetText(\"hello\");", false)]
+    [InlineData("// Do not call SendInput(); use a fake input seam.\n", false)]
+    [InlineData("var diagnostic = \"UsePlatformDetect() is forbidden\";", false)]
+    [InlineData("using static System.Windows.Clipboard; SetDataObject(value);", true)]
+    [InlineData("Process.Start(\"SIL.Motif.App\", \"--smoke\" + suffix);", true)]
+    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\"); s.ArgumentList.Add(\"--smoke\"); s.ArgumentList[0] = \"--other\"; Process.Start(s);", true)]
+    [InlineData("class Fake { void SendInput() { } void Test() { fake.SendInput(); } }", false)]
+    [InlineData("fake.SendInput();", false)]
+    [InlineData("Process.Start(\"SIL.Motif.App\", GetArgs(\"--smoke\"));", true)]
+    [InlineData("{ var s = new ProcessStartInfo(\"SIL.Motif.App\"); } { Process.Start(s); }", false)]
+    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\"); s.ArgumentList.Add(\"--other\"); s.ArgumentList.Add(\"--smoke\"); Process.Start(s);", true)]
+    [InlineData("var s = new ProcessStartInfo(\"SIL.Motif.App\"); s.ArgumentList.Add(\"--smoke\"); Process.Start(s);", false)]
+    [InlineData("SendInput();", true)]
+    public void ReviewCasesAreClassified(string source, bool forbidden)
+    {
+        var violations = new List<string>();
+        CheckSource(source, "test.cs", violations);
+        Assert.Equal(forbidden, violations.Count > 0);
     }
 
     [Theory]
@@ -72,7 +102,7 @@ public sealed class HeadlessGuardTests
     public void GuardAllowsHeadlessAppSmoke()
     {
         var violations = new List<string>();
-        CheckSource("var app = \"SIL.Motif.App.exe\"; new " + "ProcessStartInfo(app, \"--smoke\");", "test.cs", violations);
+        CheckSource("var app = \"SIL.Motif.App.exe\"; Process." + "Start(new ProcessStartInfo(app, \"--smoke\"));", "test.cs", violations);
         Assert.Empty(violations);
         CheckSource("var app = \"SIL.Motif.App.exe\"; var start = new " +
             "ProcessStartInfo(app); start.ArgumentList.Add(\"--smoke\"); Process." + "Start(start);",
@@ -100,48 +130,11 @@ public sealed class HeadlessGuardTests
 
     private static void CheckSource(string source, string path, List<string> violations)
     {
-        foreach (Match match in ForbiddenCall.Matches(source))
-            AddViolation(source, path, match, violations);
-
-        var variables = Assignment.Matches(source).Cast<Match>()
-            .Where(m => GuiName.IsMatch(m.Groups["value"].Value))
-            .Select(m => m.Groups["name"].Value).Distinct().ToArray();
-        foreach (Match launch in Launch.Matches(source))
+        foreach (var offset in HeadlessSourceScanner.Find(source))
         {
-            var args = launch.Groups["args"].Value;
-            var namesGui = GuiName.IsMatch(args) || variables.Any(v => Regex.IsMatch(args, @"\b" + Regex.Escape(v) + @"\b"));
-            if (!namesGui)
-                continue;
-            var isSample = Regex.IsMatch(args, @"Playground\.Desktop|Host48", RegexOptions.IgnoreCase)
-                || Assignment.Matches(source).Cast<Match>().Any(m => variables.Contains(m.Groups["name"].Value)
-                    && Regex.IsMatch(args, @"\b" + Regex.Escape(m.Groups["name"].Value) + @"\b")
-                    && Regex.IsMatch(m.Groups["value"].Value, @"Playground\.Desktop|Host48", RegexOptions.IgnoreCase));
-            if (isSample || !HasSmokeArgument(source, launch, args))
-                AddViolation(source, path, launch, violations);
+            var line = 1 + source.Take(offset).Count(c => c == '\n');
+            violations.Add(path + ":" + line + ": forbidden desktop access. " + Guidance);
         }
-    }
-
-    private static bool HasSmokeArgument(string source, Match launch, string args)
-    {
-        if (Regex.IsMatch(args, "[\"']--smoke[\"']"))
-            return true;
-        var prefix = source.Substring(0, launch.Index);
-        var declaration = Regex.Match(prefix, @"(?:var|ProcessStartInfo)\s+(?<name>\w+)\s*=\s*$");
-        if (!declaration.Success)
-            return false;
-        var name = Regex.Escape(declaration.Groups["name"].Value);
-        var following = source.Substring(launch.Index + launch.Length);
-        var start = Regex.Match(following, @"\bProcess\.Start\s*\(\s*" + name + @"\s*\)");
-        if (!start.Success)
-            return false;
-        var arguments = following.Substring(0, start.Index);
-        return Regex.IsMatch(arguments, @"\b" + name + "\\.ArgumentList\\.Add\\s*\\(\\s*[\"']--smoke[\"']\\s*\\)");
-    }
-
-    private static void AddViolation(string source, string path, Match match, List<string> violations)
-    {
-        var line = 1 + source.Take(match.Index).Count(c => c == '\n');
-        violations.Add(path + ":" + line + ": " + match.Value.Trim() + ". " + Guidance);
     }
 
     private static string FindRoot()
