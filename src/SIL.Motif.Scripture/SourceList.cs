@@ -78,7 +78,7 @@ public static class SourceList
 
     private static string Real(IMultiAccessorBase text, int preferredWs)
     {
-        var preferred = text.get_String(preferredWs).Text;
+        var preferred = preferredWs == 0 ? null : text.get_String(preferredWs).Text;
         return !string.IsNullOrEmpty(preferred)
             ? preferred
             : Texts(text).FirstOrDefault(value => value.Length > 0) ?? "";

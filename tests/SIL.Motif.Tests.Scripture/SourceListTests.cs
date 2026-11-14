@@ -80,6 +80,23 @@ public sealed class SourceListTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public void FallsBackToAnotherAlternativeWhenDefaultAnalysisWritingSystemIsZero()
+    {
+        using var cache = pristine.NewScratch();
+        SeededSourceList.AddList(cache, Web with { Status = "Active" });
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            cache.ServiceLocator.WritingSystems.CurrentAnalysisWritingSystems.Clear());
+        Assert.Equal(0, cache.DefaultAnalWs);
+
+        var entry = Assert.Single(SourceList.Read(cache));
+
+        Assert.True(entry.IsValid, entry.Error);
+        Assert.Equal(Web.Name, entry.Name);
+        Assert.Equal(Web.Id, entry.Id);
+        Assert.Equal(Web.Context, entry.ContextText);
+    }
+
+    [Fact]
     public void ListMadeByHandWithoutTheCustomFieldsReadsAsParatextButNeedsAVersification()
     {
         using var cache = pristine.NewScratch();
