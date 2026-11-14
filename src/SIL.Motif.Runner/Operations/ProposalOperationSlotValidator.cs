@@ -14,9 +14,15 @@ public static class ProposalOperationSlotValidator
         if (FindConflict(proposal.Operations) is { } collision)
             throw new ContractParseException(
                 $"Operations {collision.Existing.OperationId.Value} and {collision.Duplicate.OperationId.Value} " +
-                "address the same target, field, and member slot.");
+                "address the same target, field, and member slot." + ChainedMergeHint(collision));
         TextCreateDependencies.Validate(proposal.Operations);
     }
+
+    internal static string ChainedMergeHint(
+        (OperationEnvelope Existing, OperationEnvelope Duplicate) collision) =>
+        collision.Existing.Kind == LexEntryMergeOperationKinds.Merge && collision.Duplicate.Kind == LexEntryMergeOperationKinds.Merge
+            ? " A merge chain (an entry merged into one that is itself merged away): use one Proposal per merge."
+            : string.Empty;
 
     /// <summary>
     /// Runs at the moment a change is added to a Draft, so a same-slot conflict is refused when the second

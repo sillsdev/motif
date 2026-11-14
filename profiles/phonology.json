@@ -18,6 +18,12 @@
       "tool": "motif_word"
     },
     {
+      "tool": "motif_sources"
+    },
+    {
+      "tool": "motif_current"
+    },
+    {
       "tool": "motif_start_proposal"
     },
     {

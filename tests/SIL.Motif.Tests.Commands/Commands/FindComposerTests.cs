@@ -28,6 +28,7 @@ public sealed class FindComposerTests
         { "parsimony-dispositions", "Mark this Parsimony finding as intentional", "compose-record-parsimony-disposition" },
         { "infixation", "Add an infix inside the verb root after its first consonant", "compose-author-affix-process" },
         { "reduplication", "Copy the first syllable of the stem to mark the plural", "compose-author-affix-process" },
+        { "scripture-sources", "Add a Bible translation as a source for this project", "compose-add-source" },
     };
 
     private static FindComposerResponse Run(string? goal, string? subject, string detail = "concise")

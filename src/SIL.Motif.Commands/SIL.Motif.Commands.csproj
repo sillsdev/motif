@@ -18,6 +18,7 @@
     <ProjectReference Include="..\SIL.Motif.Model\SIL.Motif.Model.csproj" />
     <ProjectReference Include="..\SIL.Motif.Projection\SIL.Motif.Projection.csproj" />
     <ProjectReference Include="..\SIL.Motif.Runner\SIL.Motif.Runner.csproj" />
+    <ProjectReference Include="..\SIL.Motif.Scripture\SIL.Motif.Scripture.csproj" />
     <ProjectReference Include="..\SIL.Motif.LiveHost\SIL.Motif.LiveHost.csproj" />
     <ProjectReference Include="..\SIL.Motif.Help\SIL.Motif.Help.csproj" />
     <ProjectReference Include="..\SIL.Motif.Worker.Runtime\SIL.Motif.Worker.Runtime.csproj" />

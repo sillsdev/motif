@@ -35,7 +35,8 @@ public sealed class ProposalSlotIndex
         {
             var slots = OperationSlotRegistry.Resolve(operation);
             if (FindEarliest(slots) is { } existing)
-                throw new ConflictRefusal(existing.OperationId, operation.OperationId);
+                throw new ConflictRefusal(existing.OperationId, operation.OperationId,
+                    ProposalOperationSlotValidator.ChainedMergeHint((existing, operation)));
             Insert(operation, slots);
         }
         if (_hasWordformCreate)

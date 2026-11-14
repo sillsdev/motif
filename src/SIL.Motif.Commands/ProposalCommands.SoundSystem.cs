@@ -406,6 +406,11 @@ public static partial class ProposalCommands
             ? CommandOutcome<ComposedOperationsResponse>.Success(outcome.Value![0])
             : CommandOutcome<ComposedOperationsResponse>.Refused(outcome.Refusal!);
 
+    private static readonly JsonSerializerOptions ComposerProvenanceOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
+
     /// <summary>One intent composed into a Draft; an Independent step bridges what it replaces.</summary>
     private sealed record ComposeStep(
         string? Verb,
@@ -419,7 +424,8 @@ public static partial class ProposalCommands
         string? Label = null,
         IComposerDefinition? Definition = null,
         bool ResolvePlacementLabels = false,
-        bool Independent = false)
+        bool Independent = false,
+        PendingRowSpec? PendingRow = null)
     {
         internal static ComposeStep From(IComposerDefinition composer, JsonElement authored,
             OperationCitation? citation = null, string? label = null, bool resolvePlacementLabels = false) =>
@@ -663,10 +669,18 @@ public static partial class ProposalCommands
             draft.Operations = draft.Operations.Where(operation => !replacedSet.Contains(operation.OperationId)).ToList();
             foreach (var (step, result) in steps.Zip(composed))
             {
+                // A step that is a row of the pending list tags its operations with the change and its fit check.
+                var changeId = step.PendingRow is null || result.Added.Length == 0 ? null : CanonicalId.Mint().Value;
                 foreach (var declared in result.Added)
                 {
                     var authored = ToDraftOperation(declared);
                     authored.Cite(step.Citation);
+                    if (changeId is not null)
+                        authored.Extensions = JsonSerializer.SerializeToElement(new
+                        {
+                            changeId,
+                            changeFit = new { generic = new GenericChangeFit(step.PendingRow!.Domain, step.PendingRow.Subject) },
+                        });
                     draft.Operations.Add(authored);
                     EnsureContractVersion(draft, declared.Kind);
                 }
@@ -692,7 +706,11 @@ public static partial class ProposalCommands
                         composer = step.Composer,
                         input = result.Input,
                         operationIds = result.Added.Select(operation => operation.OperationId.Value).ToArray(),
-                    }));
+                        changeId,
+                        kind = step.PendingRow?.Kind,
+                        word = step.PendingRow?.Subject,
+                        displayReading = step.PendingRow?.Summary,
+                    }, ComposerProvenanceOptions));
             }
             if (cancelledCreationMembers.Count > 0)
                 for (var index = 0; index < draft.ComposerProvenance.Count; index++)

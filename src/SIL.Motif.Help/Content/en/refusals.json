@@ -258,5 +258,53 @@
   "difference.unreadable": {
     "why": "Every saved comparison of the Proposal is damaged, so none can be shown. The refusal names each by Text, reference and time; run difference produce for one of them to make it again.",
     "source": "Hand-written for Proposal Difference retention."
+  },
+  "source.list-ambiguous": {
+    "why": "More than one possibility list in the project is named \"Motif Sources\", so Motif cannot choose one. Rename or remove all but one in FieldWorks.",
+    "source": "Hand-written from SourceQuery."
+  },
+  "source.not-found": {
+    "why": "The project's Source list has no Source with that id. List the Sources to see the ids.",
+    "source": "Hand-written from SourceQuery."
+  },
+  "source.id-invalid": {
+    "why": "A Source id is needed and has no spaces, for example WEB. A new id may not differ from an existing id only by case.",
+    "source": "Hand-written from SourceQuery."
+  },
+  "source.ref-invalid": {
+    "why": "A chapter is a book and a chapter number, for example MAT 5.",
+    "source": "Hand-written from SourceQuery."
+  },
+  "source.folder-missing": {
+    "why": "The folder named for the Source does not exist on this machine, or the recorded folder has gone. Give an existing Paratext project folder.",
+    "source": "Hand-written from SourceLocalCommand."
+  },
+  "source.chapter-not-in-source": {
+    "why": "The Source's Paratext text on this machine has no such chapter, so it cannot be the Current chapter. Place the chapter first with source where.",
+    "source": "Hand-written from SourceLocalCommand."
+  },
+  "source.id-in-use": {
+    "why": "A Source with that id is already in the list or staged in the pending changes. Choose another id, or change that Source.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.id-removed": {
+    "why": "A removed Source has that id, and an id is never reused. Restore that Source instead.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.context-invalid": {
+    "why": "The Context is not a valid range list in the Source's versification, for example GEN-ROM; 1CO 13-15. The refusal says what is wrong. To change the versification and the Context together, set the Context first.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.versification-unknown": {
+    "why": "The versification is not one of the built-in names. The refusal lists the names that are allowed.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.kind-unsupported": {
+    "why": "Only a Paratext Source can be added so far. A corpus Source is planned but not built.",
+    "source": "Hand-written from SourceComposers."
+  },
+  "source.ai-needs-proposal": {
+    "why": "An AI may not edit Sources in the pending changes, which hold a person's own Save. Start a Proposal with motif_start_proposal, compose the Source edits in that Draft, and Finalize it for a person to review and Apply.",
+    "source": "Hand-written from the request for Motif Sources."
   }
 }

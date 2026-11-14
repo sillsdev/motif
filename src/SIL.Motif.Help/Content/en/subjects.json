@@ -236,5 +236,18 @@
       "spreadsheet",
       "tone sandhi"
     ]
+  },
+  "scripture-sources": {
+    "title": "Scripture sources",
+    "description": "The Bible translations and other texts a project keeps as Sources, with the books and chapters each covers and the versification it uses.",
+    "terms": [
+      "bible",
+      "translation",
+      "scripture",
+      "source",
+      "versification",
+      "book and chapter",
+      "paratext"
+    ]
   }
 }

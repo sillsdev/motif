@@ -199,20 +199,24 @@ public static class LexEntryLexemeFormEmitter
                 touchedTargets.Add(id);
 
                 var before = ReferenceFieldSnapshotting.ReadAlternatives(entry.LexemeFormOA);
+                HomographNumbering homographs;
                 if (after.TryGetProperty("class", out _))
                 {
                     if (operation.StorageIdOverride is not null)
                         throw new InvalidOperationException("Storage GUID overrides are not supported for process creation.");
+                    homographs = HomographNumbering.Before(entry, null);
                     AffixProcessConstruction.Apply(cache, entry, entityId, after);
                 }
                 else
                 {
                     var (morphTypeId, ws, text) = LexEntryLexemeFormCreatePayload.Parse(after);
+                    homographs = HomographNumbering.Before(entry, text);
                     LexEntryLexemeFormCreateLowering.Apply(cache, entry, entityId.ToGuid(), morphTypeId, ws, text);
                 }
                 var afterValue = ReferenceFieldSnapshotting.ReadAlternatives(entry.LexemeFormOA);
 
-                return new ExpectedEffect(id, SnapshotFields.LexEntryLexemeForm, before, afterValue);
+                // LibLCM renumbers the homograph set itself, as FieldWorks does; the preview shows the result.
+                return new ExpectedEffect(id, SnapshotFields.LexEntryLexemeForm, before, afterValue, homographs.After());
             }
 
             public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation)

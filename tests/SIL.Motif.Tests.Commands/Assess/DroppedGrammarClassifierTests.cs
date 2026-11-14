@@ -237,7 +237,7 @@ public sealed class DroppedGrammarClassifierTests
     public void TheRecordedCodeListIsTheOneOfTheReleaseTheProjectPins()
     {
         using var pinned = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.17.0.json")));
+            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.19.4.json")));
         using var release = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoPaths.FindRepoRoot(),
             "pangloss-release.json")));
 
@@ -250,7 +250,7 @@ public sealed class DroppedGrammarClassifierTests
     public void EveryDroppedGrammarCodeIsACodeOfThePinnedParserRelease()
     {
         using var pinned = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.17.0.json")));
+            "TestFixtures", "GrammarHealth", "import-warning-codes-v0.19.4.json")));
         var released = pinned.RootElement.GetProperty("codes").EnumerateArray()
             .Select(code => code.GetString()!).ToHashSet(StringComparer.Ordinal);
 

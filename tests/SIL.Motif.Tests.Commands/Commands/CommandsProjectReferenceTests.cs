@@ -17,7 +17,7 @@ public sealed class CommandsProjectReferenceTests
             new[]
             {
                 "SIL.Motif.Contract", "SIL.Motif.Help", "SIL.Motif.Host", "SIL.Motif.LiveHost", "SIL.Motif.Model",
-                "SIL.Motif.Projection", "SIL.Motif.Runner", "SIL.Motif.Worker.Runtime",
+                "SIL.Motif.Projection", "SIL.Motif.Runner", "SIL.Motif.Scripture", "SIL.Motif.Worker.Runtime",
             },
             ReferencedProjectNames("SIL.Motif.Commands").Order(StringComparer.Ordinal));
     }

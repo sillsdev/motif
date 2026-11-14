@@ -176,6 +176,20 @@ try
         return CommandTextRenderer.Render(outcome, asJson, successAsJson);
     }
 
+    // --apply stages the change, then applies every pending change like apply --all-pending.
+    CommandResult StageSource(string projectPath, Func<CommandOutcome<SourceStageResponse>> stage)
+    {
+        if (!flags.ContainsKey("apply")) return RenderCommand(stage());
+        var attribution = ApplyAttributionFromFlags(flags, environment);
+        if (ApplyAttributionCheck.Refusal(attribution) is { } refusal)
+            return RenderProposal(CommandOutcome<ApplyPendingResult>.Refused(refusal));
+        var staged = stage();
+        if (!staged.Succeeded) return RenderCommand(staged);
+        var request = new ApplyPendingRequest(projectPath, DraftId: null, Revision: null, Attribution: attribution);
+        return RunWithConsoleCancellation(cancellationToken => RenderProposal(
+            PendingChangesWorkflow.Apply(request, cancellationToken)));
+    }
+
     var hasCitationFlag = flags.ContainsKey("cite-source") || flags.ContainsKey("cite-locator");
     SIL.Motif.Contract.Model.OperationCitation? commandCitation = null;
     if (hasCitationFlag)
@@ -1763,6 +1777,80 @@ try
                 : RenderCommand(GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1])));
             break;
 
+        case "source":
+            if (!flags.TryGetValue("project", out var sourceProject) || positionals.Count < 1)
+                return Usage(UsageLineFor("source list") + " OR " + UsageLineFor("source show") + " OR " + UsageLineFor("source where"), asJson);
+            switch (positionals[0])
+            {
+                case "list" when positionals.Count == 1:
+                    result = RenderCommand(SourceQuery.List(new SourceListRequest(sourceProject, flags.ContainsKey("all"))));
+                    break;
+                case "show" when positionals.Count == 2:
+                    result = RenderCommand(SourceQuery.Show(new SourceShowRequest(sourceProject, positionals[1])));
+                    break;
+                case "where" when positionals.Count == 2:
+                    result = RenderCommand(SourceQuery.Where(new SourceWhereRequest(
+                        sourceProject, positionals[1], flags.GetValueOrDefault("source"))));
+                    break;
+                case "set-folder" when positionals.Count == 3:
+                    result = RenderCommand(SourceLocalCommand.SetFolder(new SourceSetFolderRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
+                case "clear-folder" when positionals.Count == 2:
+                    result = RenderCommand(SourceLocalCommand.ClearFolder(new SourceClearFolderRequest(sourceProject, positionals[1])));
+                    break;
+                case "add" when positionals.Count == 2 && flags.ContainsKey("name") && flags.ContainsKey("versification") && flags.ContainsKey("context"):
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceAdd(new SourceAddRequest(
+                        sourceProject, positionals[1], flags["name"], flags["versification"], flags["context"],
+                        flags.GetValueOrDefault("kind", "Paratext"), flags.GetValueOrDefault("folder"))));
+                    break;
+                case "set-name" when positionals.Count == 3:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceSetName(
+                        new SourceSetNameRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
+                case "set-context" when positionals.Count == 3:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceSetContext(
+                        new SourceSetContextRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
+                case "set-versification" when positionals.Count == 3:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceSetVersification(
+                        new SourceSetVersificationRequest(sourceProject, positionals[1], positionals[2])));
+                    break;
+                case "remove" when positionals.Count == 2:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceRemove(
+                        new SourceRemoveRequest(sourceProject, positionals[1])));
+                    break;
+                case "restore" when positionals.Count == 2:
+                    result = StageSource(sourceProject, () => ProposalCommands.StageSourceRestore(
+                        new SourceRestoreRequest(sourceProject, positionals[1])));
+                    break;
+                default:
+                    return Usage(string.Join(" OR ", new[]
+                    {
+                        "source list", "source show", "source where", "source set-folder", "source clear-folder", "source add",
+                        "source set-name", "source set-context", "source set-versification", "source remove", "source restore",
+                    }.Select(UsageLineFor)), asJson);
+            }
+            break;
+
+        case "current":
+            if (!flags.TryGetValue("project", out var currentProject) || positionals.Count < 1)
+                return Usage(UsageLineFor("current get") + " OR " + UsageLineFor("current set") + " OR " + UsageLineFor("current set --clear"), asJson);
+            switch (positionals[0])
+            {
+                case "get" when positionals.Count == 1:
+                    result = RenderCommand(SourceQuery.CurrentGet(new CurrentGetRequest(currentProject, flags.GetValueOrDefault("source"))));
+                    break;
+                case "set" when positionals.Count == 3 && !flags.ContainsKey("clear"):
+                    result = RenderCommand(SourceLocalCommand.SetCurrent(new CurrentSetRequest(currentProject, positionals[1], positionals[2])));
+                    break;
+                case "set" when positionals.Count == 2 && flags.ContainsKey("clear"):
+                    result = RenderCommand(SourceLocalCommand.ClearCurrent(new CurrentClearRequest(currentProject, positionals[1])));
+                    break;
+                default:
+                    return Usage(UsageLineFor("current get") + " OR " + UsageLineFor("current set") + " OR " + UsageLineFor("current set --clear"), asJson);
+            }
+            break;
+
         case "word-context":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var contextProject) ||
                 !flags.TryGetValue("word", out var contextWord) || string.IsNullOrWhiteSpace(contextWord))
@@ -3027,7 +3115,7 @@ static (Dictionary<string, string> Flags, List<string> Positionals, IReadOnlyLis
         if (token.StartsWith("--", StringComparison.Ordinal))
         {
             var name = token[2..];
-            if (name is "word-results" or "refresh-report" or "trace")
+            if (name is "word-results" or "refresh-report" or "trace" or "apply")
             {
                 flags[name] = "true";
                 continue;

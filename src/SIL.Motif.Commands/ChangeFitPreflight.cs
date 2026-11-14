@@ -67,6 +67,18 @@ public static class ChangeFitPreflight
                 result.Add(NoFit(ChangeFitReasons.FingerprintMissing, ""));
                 continue;
             }
+            if (fit.TryGetProperty("generic", out var generic) && generic.ValueKind == JsonValueKind.Object)
+            {
+                // A change that is not about a wordform names its own check and has no Baseline evidence to compare.
+                var reason = GenericChangeFits.Evaluate(cache, proposal, operation, generic);
+                result.Add(reason is null
+                    ? new ChangeFitResult(operation.OperationId.Value, true, "Still fits the live project.", "")
+                    {
+                        ChangeId = changeId,
+                    }
+                    : NoFit(reason, ""));
+                continue;
+            }
             ChangeFitFingerprint? fingerprint;
             try
             {

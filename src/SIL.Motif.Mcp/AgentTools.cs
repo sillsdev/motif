@@ -188,6 +188,8 @@ internal static class AgentTools
                 new WordContextRequest(c.ProjectPath, a.Required("word"))),
                 _ => "To see why the parser does or does not analyze it, call motif_try_word."))) { Requests = [typeof(WordContextRequest)] },
 
+        ..SourceTools.All,
+
         new("motif_texts",
             string.Empty,
             AgentClass.Read,
@@ -1260,6 +1262,9 @@ internal static class AgentTools
         if (refusals.Count > 0)
             throw new ToolArgumentException("tool.invalid-argument",
                 "Every step must use one of the ordinary grammar composer verbs. " + string.Join(" ", refusals));
+        foreach (var step in steps)
+            if (SourceAiGuard.Check(arguments.Required("proposal"), step!["verb"]!.GetValue<string>()) is { } needsProposal)
+                return ToolOutcome.Refused(needsProposal);
         IReadOnlyList<ComposeStepRequest> parsed;
         try
         {
@@ -1304,6 +1309,9 @@ internal static class AgentTools
             throw new ToolArgumentException("tool.invalid-argument",
                 "Every batch entry must use one of the ordinary grammar composer verbs. " + string.Join(" ", refusals));
 
+        foreach (var intent in intents)
+            if (SourceAiGuard.Check(arguments.Required("draft"), intent!["verb"]!.GetValue<string>()) is { } needsProposal)
+                return ToolOutcome.Refused(needsProposal);
         return ToolOutcome.From(ProposalCommands.ComposeBatch(new(context.ProjectPath, context.ProductVersion,
                 arguments.Required("draft"), arguments.IntentJson("intents"))),
             result => $"Draft now has {result.OperationCount} changes from {result.Intents.Count} intents. Dry Run the Draft, then Finalize for a person to Apply.");

@@ -237,9 +237,16 @@ internal sealed class LexSenseRemoveHandler : ICompoundOperationHandler
     public ExpectedEffect ReadCurrentFootprint(LcmCache cache, OperationEnvelope operation) =>
         ReadCurrentFootprintEffects(cache, operation)[0];
 
-    public IReadOnlyList<ExpectedEffect> ReadCurrentFootprintEffects(LcmCache cache, OperationEnvelope operation)
+    public IReadOnlyList<ExpectedEffect> ReadCurrentFootprintEffects(LcmCache cache, OperationEnvelope operation) =>
+        ReadFootprintEffects(cache, operation, ownerMoved: false);
+
+    /// <summary>Reads the footprint of a removal of a sense an earlier merge of the same Proposal moves, so the owner is the one before the merge.</summary>
+    internal IReadOnlyList<ExpectedEffect> ReadMovedFootprintEffects(LcmCache cache, OperationEnvelope operation) =>
+        ReadFootprintEffects(cache, operation, ownerMoved: true);
+
+    private IReadOnlyList<ExpectedEffect> ReadFootprintEffects(LcmCache cache, OperationEnvelope operation, bool ownerMoved)
     {
-        var (_, plan, payload) = Resolve(cache, operation, checkPlan: false);
+        var (_, plan, payload) = Resolve(cache, operation, checkPlan: false, ownerMoved);
         var owned = ReadOwned(plan);
         var effects = new List<ExpectedEffect> { new(payload.Owner, OwnerField(payload), owned, owned, Preview(plan)) };
         if (payload.Msas.Count != 0)
@@ -254,14 +261,14 @@ internal sealed class LexSenseRemoveHandler : ICompoundOperationHandler
         payload.TopLevel ? SnapshotFields.LexEntrySenses : SnapshotFields.LexSenseSubsenses;
 
     private static (CanonicalId Id, SenseRemovalPlan Plan, LexSenseRemovePayload Payload) Resolve(
-        LcmCache cache, OperationEnvelope operation, bool checkPlan)
+        LcmCache cache, OperationEnvelope operation, bool checkPlan, bool ownerMoved = false)
     {
         var payload = LexSenseRemovePayload.Parse(operation.After ??
             throw new ContractParseException($"'{Kind}' operation requires 'after'."));
         var (id, sense) = TargetResolution.Resolve<ILexSense>(cache, operation, Kind);
         var entry = SenseRemoval.EntryOf(sense);
-        if (entry is null || sense.Owner.Guid != payload.Owner.ToGuid() || (sense.Owner is ILexEntry) != payload.TopLevel ||
-            entry.Guid != payload.Entry.ToGuid())
+        if (entry is null || (!ownerMoved && (sense.Owner.Guid != payload.Owner.ToGuid() ||
+                (sense.Owner is ILexEntry) != payload.TopLevel || entry.Guid != payload.Entry.ToGuid())))
             throw new InvalidOperationException($"'{Kind}' names an owner the sense no longer has; recompute the Draft.");
         // The footprint only locates the sense; Apply checks the refusals.
         var plan = checkPlan ? SenseRemoval.Inspect(sense)

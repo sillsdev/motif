@@ -28,4 +28,11 @@
     <ProjectReference Include="..\..\src\SIL.Motif.Worker\SIL.Motif.Worker.csproj" ReferenceOutputAssembly="false" Private="false" />
     <ProjectReference Include="..\SIL.Motif.Tests.Support\SIL.Motif.Tests.Support.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- motif-bible's Source list fixtures, compiled in rather than copied. -->
+    <Compile Include="..\SIL.Motif.Tests.Scripture\Fixtures\*.cs" Link="Scripture\%(Filename)%(Extension)" />
+    <ProjectReference Include="..\..\src\SIL.Motif.Scripture\SIL.Motif.Scripture.csproj" />
+  </ItemGroup>
+
 </Project>

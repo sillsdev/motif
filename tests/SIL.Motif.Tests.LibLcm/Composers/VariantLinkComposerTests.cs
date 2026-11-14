@@ -25,7 +25,10 @@ public sealed class VariantLinkComposerTests : IDisposable
         var operations = LinkVariantComposer.Build(_cache, new(Id(reference), Id(target), Id(type)));
         var proposal = Proposal(operations);
         var dry = ScratchDryRun.Of(_cache, proposal);
-        Assert.Equal(2, dry.ExpectedEffects.Count);
+        // The two link fields, plus the warning that the sense-less source variant has no stem-analysed component.
+        Assert.Equal(["lexical/lexEntryRef/componentLexemes", "lexical/lexEntryRef/variantEntryTypes", "dryRunWarning"],
+            dry.ExpectedEffects.Select(e => e.Field));
+        Assert.Equal(Id(source), dry.ExpectedEffects[2].CanonicalId);
         Assert.Empty(reference.ComponentLexemesRS);
         ProposalApplier.Apply(_cache, proposal, dry.Anchor, "tester");
         Assert.Equal(target.Guid, Assert.Single(reference.ComponentLexemesRS).Guid);

@@ -27,6 +27,7 @@ internal static class ComposerSubjects
         "parsimony-dispositions",
         "infixation",
         "reduplication",
+        "scripture-sources",
     ];
 
     /// <summary>

@@ -77,6 +77,11 @@ internal static class ComposerDefinitions
         new DeleteTextSegmentNoteDefinition(),
         new RecordParsimonyDispositionDefinition(),
         new RecordSourceValidatedDecisionDefinition(),
+        new AddSourceDefinition(),
+        new SetSourceNameDefinition(),
+        new SetSourceContextDefinition(),
+        new SetSourceVersificationDefinition(),
+        new SetSourceStatusDefinition(),
     ];
 }
 

@@ -204,3 +204,12 @@ public sealed record EmptyDraftKept(string DraftName, string Code, string Reason
 
 /// <summary>The never-finalized empty Drafts removed from the store, and any that stayed.</summary>
 public sealed record EmptyDraftsDiscardedResponse(IReadOnlyList<string> Discarded, IReadOnlyList<EmptyDraftKept> Kept);
+
+/// <summary>A Source change staged in the pending changes.</summary>
+/// <param name="Source">The Source id as the change names it.</param>
+/// <param name="DraftName">The pending-changes Draft that now holds the change.</param>
+/// <param name="Operations">The operations staged.</param>
+/// <param name="Folder">The folder recorded on this machine by the same command; null when none was given.</param>
+public sealed record SourceStageResponse(
+    string Source, string DraftName, IReadOnlyList<OperationSummary> Operations,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Folder = null);

@@ -11,7 +11,7 @@ public sealed class TraceFailureSentenceTests
     public void EveryPinnedPanGlossReasonHasOneWindowSentence()
     {
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,
-            "TestFixtures", "pangloss-0.17.0-trace-reasons.json")));
+            "TestFixtures", "pangloss-0.19.4-trace-reasons.json")));
         var repository = new DirectoryInfo(AppContext.BaseDirectory);
         while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "pangloss-release.json")))
             repository = repository.Parent;
@@ -19,7 +19,7 @@ public sealed class TraceFailureSentenceTests
         using var pin = JsonDocument.Parse(File.ReadAllText(Path.Combine(repository!.FullName, "pangloss-release.json")));
         Assert.Equal(pin.RootElement.GetProperty("version").GetString(), catalog.RootElement.GetProperty("version").GetString());
         var codes = catalog.RootElement.GetProperty("codes").EnumerateArray().Select(item => item.GetString()!).ToArray();
-        Assert.Equal(24, codes.Length);
+        Assert.Equal(25, codes.Length);
         Assert.Equal(codes.Order(), TraceFailureSentences.Catalog.Keys.Order());
         Assert.All(codes, code => Assert.DoesNotContain("not recorded", TraceFailureSentences.Explain(code)));
     }

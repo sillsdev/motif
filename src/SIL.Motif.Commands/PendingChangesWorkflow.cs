@@ -496,6 +496,8 @@ public static class PendingChangesWorkflow
         Add(AnalysisChangeKinds.AddCandidate, "Added", "analysis as Unknown", "analyses as Unknown");
         Add(AnalysisChangeKinds.IncorrectSpelling, "Marked", "word as incorrectly spelled",
             "words as incorrectly spelled");
+        var sources = changes.Count(change => change.Kind.StartsWith("source-", StringComparison.Ordinal));
+        if (sources > 0) parts.Add($"Changed {Counted(sources, "Source setting", "Source settings")}");
         return parts.Count == 0 ? "Applied pending changes." : string.Join(", ", parts) + ".";
 
         void Add(string kind, string verb, string singular, string plural)

@@ -143,6 +143,31 @@ public static class RefusalCodes
     /// <summary>No Grammar Design Record has that id or number.</summary>
     public const string GdrNotFound = "gdr.not-found";
 
+    /// <summary>More than one possibility list is named "Motif Sources", so no Source list can be chosen.</summary>
+    public const string SourceListAmbiguous = "source.list-ambiguous";
+    /// <summary>The project's Source list has no Source with that id.</summary>
+    public const string SourceNotFound = "source.not-found";
+    /// <summary>A Source read named no id.</summary>
+    public const string SourceIdInvalid = "source.id-invalid";
+    /// <summary>A chapter reference is not a book and a chapter number, such as MAT 5.</summary>
+    public const string SourceRefInvalid = "source.ref-invalid";
+    /// <summary>The folder named for a Source does not exist on this machine.</summary>
+    public const string SourceFolderMissing = "source.folder-missing";
+    /// <summary>The Source's opened Paratext text has no such chapter, so it cannot be made Current.</summary>
+    public const string SourceChapterNotInSource = "source.chapter-not-in-source";
+    /// <summary>The id of a new Source is already used by a Source in the list or staged in the pending changes.</summary>
+    public const string SourceIdInUse = "source.id-in-use";
+    /// <summary>The id of a new Source belongs to a removed Source; restore that Source instead.</summary>
+    public const string SourceIdRemoved = "source.id-removed";
+    /// <summary>The Context text does not parse in the Source's versification.</summary>
+    public const string SourceContextInvalid = "source.context-invalid";
+    /// <summary>The versification is not one of the built-in names.</summary>
+    public const string SourceVersificationUnknown = "source.versification-unknown";
+    /// <summary>The Source kind is modelled but not built.</summary>
+    public const string SourceKindUnsupported = "source.kind-unsupported";
+    /// <summary>An AI named the reserved pending-changes Draft for a Source edit; it must use a named Proposal.</summary>
+    public const string SourceAiNeedsProposal = "source.ai-needs-proposal";
+
     public const string GrammarCheckCancelled = "grammarcheck.cancelled";
     public const string GrammarCheckFailed = "grammarcheck.failed";
     public const string GrammarCheckMalformedFindings = "grammarcheck.malformed-findings";

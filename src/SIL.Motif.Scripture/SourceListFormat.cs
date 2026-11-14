@@ -24,19 +24,19 @@ namespace SIL.Motif.Scripture;
 public static class SourceListFormat
 {
     /// <summary>The name of the possibility list that holds the Sources.</summary>
-    public const string ListName = "Motif Sources";
+    public const string ListName = SIL.Motif.Runner.Operations.ScriptureSourceFields.ListName;
 
     /// <summary>The internal name of the custom field that holds the kind.</summary>
-    public const string KindField = "MotifSourceKind";
+    public const string KindField = SIL.Motif.Runner.Operations.ScriptureSourceFields.KindField;
 
     /// <summary>The internal name of the custom field that holds the versification name.</summary>
-    public const string VersificationField = "MotifSourceVersification";
+    public const string VersificationField = SIL.Motif.Runner.Operations.ScriptureSourceFields.VersificationField;
 
     /// <summary>The internal name of the custom field that holds the status (<c>Active</c> or <c>Removed</c>).</summary>
-    public const string StatusField = "MotifSourceStatus";
+    public const string StatusField = SIL.Motif.Runner.Operations.ScriptureSourceFields.StatusField;
 
     /// <summary>The CmPossibility class name the custom fields belong to.</summary>
-    public const string FieldOwnerClass = "CmPossibility";
+    public const string FieldOwnerClass = SIL.Motif.Runner.Operations.ScriptureSourceFields.FieldOwnerClass;
 
     /// <summary>The kind written as stored text.</summary>
     public static string KindText(SourceKind kind) => kind.ToString();

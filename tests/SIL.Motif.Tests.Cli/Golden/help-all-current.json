@@ -239,6 +239,19 @@
     },
     {
       "kind": "command",
+      "code": "compose-add-source",
+      "slug": "compose-add-source",
+      "title": "Add a Source",
+      "description": "Stages a new Source in the project\u0027s Motif Sources list, which the first one creates. Nothing is written until a person applies the pending changes.",
+      "helpPage": "# Add a Source\n\nStage a new Source in the project\u0027s Motif Sources list. The first one creates the list. The intent gives the id, name, versification, Context and kind; nothing is written until a person applies the pending changes.\n\n\u0060\u0060\u0060sh\nmotif compose-add-source --project language.fwdata --draft pending --intent \u0027{\u0022id\u0022:\u0022WEB\u0022,\u0022name\u0022:\u0022World English Bible\u0022,\u0022versification\u0022:\u0022English\u0022,\u0022context\u0022:\u0022MAT-JHN\u0022,\u0022kind\u0022:\u0022Paratext\u0022}\u0027\n\u0060\u0060\u0060\n\nThe command refuses an id that is empty, has spaces, is in use or was removed (a removed Source is restored, never re-added), a versification Motif does not know, and a Context that does not read in it. To stage a Source and apply it in one step use \u0060motif source add --apply\u0060.\n",
+      "usage": [
+        "Usage: motif compose-add-source --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-add-source/"
+    },
+    {
+      "kind": "command",
       "code": "compose-author-adhoc-prohibition",
       "slug": "compose-author-adhoc-prohibition",
       "title": "Create an ad hoc prohibition",
@@ -1370,6 +1383,58 @@
     },
     {
       "kind": "command",
+      "code": "compose-set-source-context",
+      "slug": "compose-set-source-context",
+      "title": "Change a Source\u0027s Context",
+      "description": "Stages the books and chapters a Source covers, read in the Source\u0027s versification.",
+      "helpPage": "# Change a Source\u0027s Context\n\nStage the books and chapters a Source covers. The Context is read in the Source\u0027s versification.\n\n\u0060\u0060\u0060sh\nmotif compose-set-source-context --project language.fwdata --draft pending --intent \u0027{\u0022source\u0022:\u0022WEB\u0022,\u0022context\u0022:\u0022MAT-ACT\u0022}\u0027\n\u0060\u0060\u0060\n\nThe command refuses a Context that does not read in the versification.\n",
+      "usage": [
+        "Usage: motif compose-set-source-context --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-set-source-context/"
+    },
+    {
+      "kind": "command",
+      "code": "compose-set-source-name",
+      "slug": "compose-set-source-name",
+      "title": "Rename a Source",
+      "description": "Stages a new display name for a Source in the project or staged in the Draft.",
+      "helpPage": "# Rename a Source\n\nStage a new display name for a Source that is in the project or was added earlier in the Draft.\n\n\u0060\u0060\u0060sh\nmotif compose-set-source-name --project language.fwdata --draft pending --intent \u0027{\u0022source\u0022:\u0022WEB\u0022,\u0022name\u0022:\u0022World Bible\u0022}\u0027\n\u0060\u0060\u0060\n\nA later rename of the same Source replaces an earlier one in the Draft.\n",
+      "usage": [
+        "Usage: motif compose-set-source-name --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-set-source-name/"
+    },
+    {
+      "kind": "command",
+      "code": "compose-set-source-status",
+      "slug": "compose-set-source-status",
+      "title": "Remove or restore a Source",
+      "description": "Stages a Source as Removed or Active again. A removed Source stays in the list, so its id is never reused.",
+      "helpPage": "# Remove or restore a Source\n\nStage a Source as Removed, or as Active again. A removed Source stays in the list and keeps its id.\n\n\u0060\u0060\u0060sh\nmotif compose-set-source-status --project language.fwdata --draft pending --intent \u0027{\u0022source\u0022:\u0022WEB\u0022,\u0022status\u0022:\u0022Removed\u0022}\u0027\n\u0060\u0060\u0060\n",
+      "usage": [
+        "Usage: motif compose-set-source-status --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-set-source-status/"
+    },
+    {
+      "kind": "command",
+      "code": "compose-set-source-versification",
+      "slug": "compose-set-source-versification",
+      "title": "Change a Source\u0027s versification",
+      "description": "Stages a new versification for a Source; its Context must still read in it.",
+      "helpPage": "# Change a Source\u0027s versification\n\nStage a new versification for a Source. Its present Context must still read in the new one.\n\n\u0060\u0060\u0060sh\nmotif compose-set-source-versification --project language.fwdata --draft pending --intent \u0027{\u0022source\u0022:\u0022WEB\u0022,\u0022versification\u0022:\u0022Original\u0022}\u0027\n\u0060\u0060\u0060\n\nThe command refuses a versification Motif does not know.\n",
+      "usage": [
+        "Usage: motif compose-set-source-versification --draft \u003Cname\u003E --project \u003Cfwdata\u003E --intent \u0027\u003Cclosed intent JSON\u003E\u0027 [--cite-source \u003Ctext\u003E [--cite-locator \u003Ctext\u003E]]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/compose-set-source-versification/"
+    },
+    {
+      "kind": "command",
       "code": "compose-set-stem-part-of-speech",
       "slug": "compose-set-stem-part-of-speech",
       "title": "Set a stem\u0027s part of speech",
@@ -1432,6 +1497,19 @@
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/corpora/"
+    },
+    {
+      "kind": "command",
+      "code": "current get",
+      "slug": "current-get",
+      "title": "Read the Current chapters",
+      "description": "Reads the Current chapter of each Source from this machine\u0027s local file. An empty answer is normal.",
+      "helpPage": "# Read the Current chapters\n\n\u0060current get\u0060 reads the Current chapter of each Source from this machine\u0027s local file (\u0060scripture-local.json\u0060, per user, never synced). Each row carries where that chapter sits against the Source\u0027s Context. Nothing set is a normal, empty answer.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif current get --project Koro.fwdata --source WEB --json\n\u0060\u0060\u0060\n\n## Related commands\n\n- [Place a chapter](cmd:source%20where) places any chapter.\n- [List Sources](cmd:source%20list) lists the Sources.\n",
+      "usage": [
+        "Usage: motif current get --project \u003Cfwdata\u003E [--source \u003Cid\u003E] [--json]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/current-get/"
     },
     {
       "kind": "command",
@@ -2436,6 +2514,45 @@
       ],
       "surface": "Released",
       "url": "https://motif-docs.pages.dev/reference/commands/show-corpus/"
+    },
+    {
+      "kind": "command",
+      "code": "source list",
+      "slug": "source-list",
+      "title": "List Sources",
+      "description": "Lists the Sources the project\u0027s Motif Sources list holds, with their Context and any reason one cannot be used. Removed Sources are hidden unless asked for.",
+      "helpPage": "# List Sources\n\n\u0060source list\u0060 reads the project\u0027s \u0022Motif Sources\u0022 list from the current Baseline and prints one row per Source: its id, name, status, Context, and the reason when the item cannot be used. A bad item never hides the others.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif source list --project Koro.fwdata --json\n\u0060\u0060\u0060\n\nRemoved Sources are hidden; \u0060--all\u0060 shows them. The list does not open the live FieldWorks project, so \u0060isStale\u0060 says whether FieldWorks has saved since the Baseline. A project with no such list has no Sources. Two lists with the same name are refused as ambiguous.\n\n## Related commands\n\n- [Show one Source](cmd:source%20show) reads a Source\u0027s Context ranges and folder.\n- [Place a chapter](cmd:source%20where) says where a chapter sits.\n",
+      "usage": [
+        "Usage: motif source list --project \u003Cfwdata\u003E [--all] [--json]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/source-list/"
+    },
+    {
+      "kind": "command",
+      "code": "source show",
+      "slug": "source-show",
+      "title": "Show one Source",
+      "description": "Reads one Source: its Context as book and chapter ranges, how many chapters that is, its folder on this machine and its status.",
+      "helpPage": "# Show one Source\n\n\u0060source show \u003Cid\u003E\u0060 reads one Source from the current Baseline: its Context as book and chapter ranges, how many chapters that is, its status, and the folder recorded for it on this machine (or none). The id is matched ignoring case. A Removed Source can still be shown.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif source show --project Koro.fwdata WEB --json\n\u0060\u0060\u0060\n\nThe folder lives in a per-user local file and is never part of the project.\n\n## Related commands\n\n- [List Sources](cmd:source%20list) lists every Source.\n- [Place a chapter](cmd:source%20where) says where a chapter sits.\n",
+      "usage": [
+        "Usage: motif source show --project \u003Cfwdata\u003E \u003Cid\u003E [--json]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/source-show/"
+    },
+    {
+      "kind": "command",
+      "code": "source where",
+      "slug": "source-where",
+      "title": "Place a chapter in the Sources",
+      "description": "Says whether a chapter is in each Source\u0027s Context, is the Current chapter, or comes later.",
+      "helpPage": "# Place a chapter in the Sources\n\n\u0060source where \u003Cref\u003E\u0060 says where a chapter such as \u0060MAT 5\u0060 sits in a Source: \u0060InContext\u0060 when its Context includes it, \u0060Current\u0060 when it is outside the Context but is the Current chapter, otherwise \u0060Later\u0060. With no \u0060--source\u0060 it answers for every Active Source, one row each.\n\n## Example\n\n\u0060\u0060\u0060text\nmotif source where --project Koro.fwdata \u0022MAT 5\u0022 --source WEB --json\n\u0060\u0060\u0060\n\nWhen the Source has a folder on this machine, the Paratext text is opened and a chapter the text does not hold is reported as an error on that row. With no folder, the place comes from the Context and the Current chapter alone.\n\n## Related commands\n\n- [Read the Current chapters](cmd:current%20get) reads the Current chapters.\n- [Show one Source](cmd:source%20show) reads a Source.\n",
+      "usage": [
+        "Usage: motif source where --project \u003Cfwdata\u003E \u003Cref\u003E [--source \u003Cid\u003E] [--json]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/source-where/"
     },
     {
       "kind": "command",
