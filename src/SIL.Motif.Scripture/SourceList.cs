@@ -39,9 +39,9 @@ public static class SourceList
 
     private static SourceListEntry ReadItem(LcmCache cache, ICmPossibility item, int kindField, int versificationField, int statusField)
     {
-        var id = Real(item.Abbreviation).Trim();
-        var name = Real(item.Name);
-        var contextText = Real(item.Description).Trim();
+        var id = Real(item.Abbreviation, cache.DefaultAnalWs).Trim();
+        var name = Real(item.Name, cache.DefaultAnalWs);
+        var contextText = Real(item.Description, cache.DefaultAnalWs).Trim();
         var kindText = Custom(cache, item, kindField);
         var versificationName = Custom(cache, item, versificationField);
         var statusText = Custom(cache, item, statusField);
@@ -76,9 +76,13 @@ public static class SourceList
     private static IEnumerable<string> Texts(IMultiAccessorBase text) =>
         text.AvailableWritingSystemIds.Select(ws => text.get_String(ws).Text ?? "");
 
-    // The first writing system with text wins.
-    private static string Real(IMultiAccessorBase text) =>
-        Texts(text).FirstOrDefault(value => value.Length > 0) ?? "";
+    private static string Real(IMultiAccessorBase text, int preferredWs)
+    {
+        var preferred = text.get_String(preferredWs).Text;
+        return !string.IsNullOrEmpty(preferred)
+            ? preferred
+            : Texts(text).FirstOrDefault(value => value.Length > 0) ?? "";
+    }
 
     private static int FindField(LcmCache cache, string name)
     {

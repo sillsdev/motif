@@ -1,4 +1,6 @@
 using SIL.LCModel;
+using SIL.LCModel.Core.Text;
+using SIL.LCModel.Infrastructure;
 using SIL.Motif.Scripture;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
@@ -45,6 +47,36 @@ public sealed class SourceListTests(PristineProjectFixture pristine)
                 Assert.Equal(SourceKind.Paratext, second.Kind);
                 Assert.True(second.Context!.Contains("MAT", 1));
             });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PrefersDefaultAnalysisTextAndFallsBackToAnotherAlternative(bool hasDefaultText)
+    {
+        using var cache = pristine.NewScratch();
+        SeededSourceList.AddList(cache, Web);
+        cache.ServiceLocator.WritingSystemManager.GetOrSet("fr", out var french);
+        var item = cache.LangProject.CheckListsOC
+            .Single(list => list.Name.get_String(cache.DefaultAnalWs).Text == SourceListFormat.ListName)
+            .PossibilitiesOS.Single();
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            cache.ServiceLocator.WritingSystems.CurrentAnalysisWritingSystems.Insert(0, french);
+            if (!hasDefaultText) return;
+            item.Name.set_String(french.Handle, "Bible anglaise");
+            item.Abbreviation.set_String(french.Handle, "BIB");
+            item.Description.set_String(french.Handle, TsStringUtils.MakeString("MAT-JHN", french.Handle));
+        });
+        Assert.Equal(french.Handle, cache.DefaultAnalWs);
+        Assert.NotEqual(cache.DefaultAnalWs, item.Name.AvailableWritingSystemIds.First());
+
+        var entry = Assert.Single(SourceList.Read(cache));
+
+        Assert.True(entry.IsValid, entry.Error);
+        Assert.Equal(hasDefaultText ? "Bible anglaise" : Web.Name, entry.Name);
+        Assert.Equal(hasDefaultText ? "BIB" : Web.Id, entry.Id);
+        Assert.Equal(hasDefaultText ? "MAT-JHN" : Web.Context, entry.ContextText);
     }
 
     [Fact]
