@@ -41,6 +41,15 @@ public static class ParsimonyQueryIds
     /// <summary>The wire spelling <c>entry-duplicate/v1</c>.</summary>
     public const string EntryDuplicate = "entry-duplicate/v1";
 
+    /// <summary>The wire spelling <c>lexeme-near-duplicate/v1</c>.</summary>
+    public const string LexemeNearDuplicate = "lexeme-near-duplicate/v1";
+
+    /// <summary>The wire spelling <c>tag-polarity-majority/v1</c>.</summary>
+    public const string TagPolarityMajority = "tag-polarity-majority/v1";
+
+    /// <summary>The wire spelling <c>variant-same-shape/v1</c>.</summary>
+    public const string VariantSameShape = "variant-same-shape/v1";
+
     /// <summary>The wire spelling <c>gloss-echoes-form/v1</c>.</summary>
     public const string GlossEchoesForm = "gloss-echoes-form/v1";
 

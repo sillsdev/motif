@@ -1274,6 +1274,17 @@ try
             break;
 
         case "parsimony":
+            if (flags.ContainsKey("rule-attempts"))
+            {
+                if (positionals.Count != 0 || !flags.TryGetValue("project", out var attemptProject) ||
+                    !flags.TryGetValue("plan", out var attemptPlan))
+                    return Usage(UsageLineFor("parsimony --rule-attempts"), asJson);
+                if (!File.Exists(attemptPlan))
+                    return Usage($"The --plan file '{attemptPlan}' does not exist.", asJson);
+                result = RenderCommand(RuleAttemptCommands.Check(
+                    new CheckRuleAttemptsRequest(attemptProject, CliProductVersion(), File.ReadAllText(attemptPlan))));
+                break;
+            }
             if (positionals.Count == 2 && positionals[0] == "revise")
             {
                 const string reviseCommandName = "parsimony revise";

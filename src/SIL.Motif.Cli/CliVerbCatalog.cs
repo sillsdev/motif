@@ -321,6 +321,8 @@ public static class CliVerbCatalog
             new[] { "parsimony --project <fwdata> --measure all --wait " +
                 "[--evidence-scope default-selection|project-approved] [--assessment <ParseTime-id> ...] " +
                 "[--wait-timeout-ms <ms>] [--trend <tsv>] [--json]" }),
+        new CliVerbDescriptor("Reports", "parsimony", "parsimony --rule-attempts",
+            new[] { "parsimony --project <fwdata> --rule-attempts --plan <intents.json> [--json]" }),
         new CliVerbDescriptor("Reports", "parsimony", "parsimony --group",
             new[] { "parsimony --project <fwdata> --group grammar|text|all [--measure <measure-id>] " +
                 "[--assessment <ParseTime-id> ...] [--wait-timeout-ms <ms>] [--json]" }),

@@ -33,6 +33,7 @@ internal static class CliCommandNames
             if (positionals.FirstOrDefault() == "view") return "parsimony view";
             if (positionals.FirstOrDefault() == "record-types") return "parsimony record-types";
             if (positionals.FirstOrDefault() == "dispose") return "parsimony dispose";
+            if (flags.ContainsKey("rule-attempts")) return "parsimony --rule-attempts";
             if (flags.ContainsKey("group") && !flags.ContainsKey("dry-run")) return "parsimony --group";
             if (flags.ContainsKey("wait"))
                 return flags.GetValueOrDefault("measure") == ParsimonyAdmission.AllMeasures && !flags.ContainsKey("dry-run")

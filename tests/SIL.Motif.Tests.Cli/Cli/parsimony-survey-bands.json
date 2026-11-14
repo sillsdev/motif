@@ -67,6 +67,24 @@
         "findingsMin": 0,
         "findingsMax": 3
       },
+      "P-lexeme-near-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-tag-polarity-majority": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-variant-same-shape": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
       "P-msa-no-category": {
         "status": "Computed",
         "eligibleMin": 69,
@@ -180,6 +198,24 @@
         "eligibleMin": 914,
         "findingsMin": 0,
         "findingsMax": 3
+      },
+      "P-lexeme-near-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-tag-polarity-majority": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-variant-same-shape": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
       },
       "P-msa-no-category": {
         "status": "Computed",
@@ -295,6 +331,24 @@
         "findingsMin": 0,
         "findingsMax": 6
       },
+      "P-lexeme-near-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-tag-polarity-majority": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-variant-same-shape": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
       "P-msa-no-category": {
         "status": "Computed",
         "eligibleMin": 59,
@@ -406,6 +460,24 @@
         "eligibleMin": 351,
         "findingsMin": 0,
         "findingsMax": 3
+      },
+      "P-lexeme-near-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-tag-polarity-majority": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-variant-same-shape": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
       },
       "P-msa-no-category": {
         "status": "Computed",
@@ -520,6 +592,24 @@
         "eligibleMin": 1487,
         "findingsMin": 0,
         "findingsMax": 6
+      },
+      "P-lexeme-near-duplicate": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-tag-polarity-majority": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
+      },
+      "P-variant-same-shape": {
+        "status": "Computed",
+        "eligibleMin": 0,
+        "findingsMin": 0,
+        "findingsMax": 5000
       },
       "P-msa-no-category": {
         "status": "Computed",

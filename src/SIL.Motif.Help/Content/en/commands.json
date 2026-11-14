@@ -64,6 +64,11 @@
     "description": "Queues the requested Parsimony measure and waits for its stored Report. It does not capture a Baseline or require an Assessment.",
     "source": "Hand-written from command behavior."
   },
+  "parsimony --rule-attempts": {
+    "title": "Check a batch for same-shape additions",
+    "description": "Reads a compose-batch intents file and reports groups of five or more variants that share one shape and have no recorded rule try. It reads the current Baseline only and runs no parse.",
+    "source": "Hand-written from command behavior."
+  },
   "parsimony --group": {
     "title": "Run a Parsimony group",
     "description": "Runs the Grammar group, the Text group or both over the current Baseline, then waits and returns one stored Report per measure. It captures a Baseline when none is current, and the Text group reads the saved Parsimony Selection.",

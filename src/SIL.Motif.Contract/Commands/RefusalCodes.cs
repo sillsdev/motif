@@ -232,6 +232,10 @@ public static class RefusalCodes
     public const string ReviewNumbersUnavailable = "review.numbers-unavailable";
     public const string ReviewWrongAssessmentKind = "review.wrong-assessment-kind";
 
+    public const string RuleAttemptsInvalid = "rule-attempts.invalid";
+    public const string RuleAttemptsNoBaseline = "rule-attempts.no-baseline";
+    public const string RuleAttemptsPlanInvalid = "rule-attempts.plan-invalid";
+
     public const string SelectionDefaultMissing = "selection.default-missing";
     public const string SelectionEmpty = "selection.empty";
     public const string SelectionInvalid = "selection.invalid";

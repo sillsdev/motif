@@ -26,17 +26,8 @@ public static class ParsimonyCapabilities
     /// <summary>The wire spelling <c>allomorph-environments</c>.</summary>
     public const string AllomorphEnvironments = "allomorph-environments";
 
-    /// <summary>The wire spelling <c>added-variant-shapes</c>.</summary>
-    public const string AddedVariantShapes = "added-variant-shapes";
-
     /// <summary>The wire spelling <c>tag-rule-context-match</c>.</summary>
     public const string TagRuleContextMatch = "tag-rule-context-match";
-
-    /// <summary>The wire spelling <c>tag-rule-host-counts</c>.</summary>
-    public const string TagRuleHostCounts = "tag-rule-host-counts";
-
-    /// <summary>The wire spelling <c>lexeme-form-index</c>.</summary>
-    public const string LexemeFormIndex = "lexeme-form-index";
 
     /// <summary>The wire spelling <c>allomorph-forms</c>.</summary>
     public const string AllomorphForms = "allomorph-forms";

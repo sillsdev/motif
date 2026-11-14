@@ -150,3 +150,9 @@ public sealed record WaitForParsimonyReportSetRequest(
 /// <param name="ProductVersion">The Motif product version writing the store.</param>
 /// <param name="ProposalId">The Proposal to read the status of.</param>
 public sealed record ReadProposalParsimonyStatusRequest(string FwDataPath, string ProductVersion, string ProposalId);
+
+/// <summary>Checks the variants a plan file's intents add against the same-shape rule-attempt requirement.</summary>
+/// <param name="FwDataPath">The recorded project path.</param>
+/// <param name="ProductVersion">The Motif product version writing the store.</param>
+/// <param name="PlanJson">The text of a <c>compose-batch</c> intents file.</param>
+public sealed record CheckRuleAttemptsRequest(string FwDataPath, string ProductVersion, string PlanJson);

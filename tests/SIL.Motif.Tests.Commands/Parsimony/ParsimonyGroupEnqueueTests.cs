@@ -20,7 +20,7 @@ namespace SIL.Motif.Tests.Commands;
 
 public sealed class ParsimonyGroupEnqueueTests
 {
-    private static readonly int GrammarMeasureCount = MeasureCatalog.All.Count(item => item.Group == ParsimonyMeasureGroup.Grammar);
+    private static readonly int GrammarMeasureCount = ParsimonyAdmission.MeasureIdsFor(ParsimonyGroupRequest.Grammar).Count;
 
     private static readonly Guid TextId = Guid.NewGuid();
 
@@ -110,7 +110,7 @@ public sealed class ParsimonyGroupEnqueueTests
             Assert.True(queued.Succeeded, queued.Refusal?.Message);
             Assert.Null(queued.Value!.Note);
             var input = ReadInput(fixture.ProjectPath, queued.Value.JobId);
-            Assert.Equal(MeasureCatalog.All.Count, Prop(input, "measureIds").GetArrayLength());
+            Assert.Equal(ParsimonyAdmission.SupportedMeasureIds().Count, Prop(input, "measureIds").GetArrayLength());
             var scope = Prop(input, "scopeBinding");
             Assert.Equal("parsimony-selection", Prop(scope, "kind").GetString());
             Assert.Equal("Texts", Prop(Prop(scope, "selection"), "name").GetString());

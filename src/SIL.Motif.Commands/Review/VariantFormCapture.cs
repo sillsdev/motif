@@ -28,11 +28,21 @@ internal static class VariantFormCapture
         return forms.Count == 0 ? null : forms;
     }
 
+    /// <summary>The lexeme form of the entry, or the entry of the sense, that <paramref name="id"/> names; null when unknown.</summary>
+    internal static string? FormOf(ICmObjectRepository repository, string id) =>
+        CanonicalId.TryParse(id, out var parsed) && repository.TryGetObject(parsed.ToGuid(), out var item)
+            ? FormOf(item) : null;
+
+    private static string? FormOf(ICmObject item)
+    {
+        var entry = item as ILexEntry ?? (item as ILexSense)?.Entry;
+        var text = entry?.LexemeFormOA?.Form.BestVernacularAlternative?.Text;
+        return string.IsNullOrEmpty(text) ? null : text;
+    }
+
     private static void Add(ICmObjectRepository repository, Dictionary<string, string> forms, Guid guid)
     {
         if (!repository.TryGetObject(guid, out var item)) return;
-        var entry = item as ILexEntry ?? (item as ILexSense)?.Entry;
-        var text = entry?.LexemeFormOA?.Form.BestVernacularAlternative?.Text;
-        if (!string.IsNullOrEmpty(text)) forms[CanonicalId.FromGuid(guid).CanonicalSuffix] = text;
+        if (FormOf(item) is { } text) forms[CanonicalId.FromGuid(guid).CanonicalSuffix] = text;
     }
 }

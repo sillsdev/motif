@@ -1,6 +1,6 @@
 # ADR 0116 - Same-shape additions need a rule attempt, and Parsimony runs weekly with opt-in blocking
 
-A package that adds five or more variants of one shape must carry a recorded rule attempt; Parsimony runs weekly with a trend line; a closed subset of measures may block in autonomous mode when a project opts in; four redundancy measures are declared.
+A package that adds five or more variants of one shape must carry a recorded rule attempt; Parsimony runs weekly with a trend line; a closed subset of measures may block in autonomous mode when a project opts in; three redundancy measures run and one waits on PanGloss.
 
 **Status:** accepted, 2026-11-13. Amends [ADR 0060](0060-parsimony-evidence-and-advisory-dispositions.md) decision 6 for opted-in projects in autonomous mode only. Follows the CEB audit of 2026-11-13 (46 CVAR and 24 CSPELL variants added with no rule attempt).
 
@@ -14,37 +14,65 @@ Nothing required a rule attempt before a list, so same-shape objects piled up. P
 
 The shape of an added variant is its variant type, environments, features and string correspondence. The correspondence is the minimal difference between main form and variant form with every vowel written `V`, an anchor (initial, medial, final) and a trailing-hyphen flag, so `angka` to `angk-` and `ayri` to `ayr-` share a shape. A package that adds five or more objects of one shape must carry a rule attempt for that shape: the rule, its prediction-test result and why it failed, all non-blank. A reviewer HOLDs a package whose large group has none. Shapes for features and tags beyond string correspondence are not defined here.
 
-The attempt is recorded through `IRuleAttemptLedger` (`Record`, `Find` by shape key). The hypothesis ledger will back it. Until then `NoRuleAttemptLedger` finds nothing, so every large group holds. This ADR builds no store.
+The attempt is recorded through `IRuleAttemptLedger` (`Record`, `Find` by shape key). The hypothesis ledger (#174) will back it. Until then `NoRuleAttemptLedger` finds nothing, so every large group is reported. This ADR builds no store.
+
+Where it runs:
+
+- **Trial review.** At capture, `VariantFormCapture` reads from the Baseline the lexeme forms of the entries and senses the Proposal's `createVariantRef` operations name (O(variant links) object lookups) and freezes them, with the opt-in list, in `FrozenReviewInputs`. The publisher then groups the variants from the operations (`VariantOperationShapes`, O(operations)) and writes `summary.ruleAttempts`. It is a report line like the gain gate; Apply does not read it.
+- **Plan file.** `motif parsimony --project <fwdata> --rule-attempts --plan <intents.json>` runs the same check over a `compose-batch` intents file, reading main forms from the current Baseline.
+- **Readiness.** The Trial review summary is the one place the check is attached; no separate Readiness field was added, as with the ADR 0114 gain gate.
 
 ### 2. Blocking is opt-in, closed, and needs a measured wrong reading
 
-`BlockingPolicy` is advisory unless a project opts a measure in. Only `R-word-disapproved-produced`, `R-word-negative-accepted` and `P-variant-same-shape` can ever block, only in autonomous mode, and the first two only when a Trial measured a wrong reading (the disable-Trial-bisect-delete method). Other measures, and any consultant-mode window, stay advisory under ADR 0060. Persisting a project's opt-in and calling `Decide` from Readiness are not done here.
+`BlockingPolicy` is advisory unless a project opts a measure in. Only `R-word-disapproved-produced`, `R-word-negative-accepted` and `P-variant-same-shape` can ever block, only in autonomous mode, and the first two only when a Trial measured a wrong reading (the disable-Trial-bisect-delete method). Other measures, and any consultant-mode window, stay advisory under ADR 0060.
 
-### 3. Four redundancy measures
+The opt-in lives in `<project>.motif.toml`, like ADR 0114's `[gain-gate]`, and is frozen into the Trial inputs:
 
-`P-tag-polarity-majority` (a tag on at least half a rule's candidate hosts), `P-tag-implied-by-context` (every carrier already matches the rule context), `P-variant-same-shape`, `P-lexeme-near-duplicate` (forms equal after NFC, case folding and iy to y). They are declared with recipes and named capabilities and are not yet executable (`not-available` in a report). The pure detectors exist in `RedundancyMeasures` and `SameShapeGroups`. `P-allo-alternation-family` is left as it is; making it conclusive is separate.
+```toml
+[parsimony]
+block-on = ["P-variant-same-shape"]
+```
+
+A missing table means advisory. An id that cannot block is a configuration error naming its line. The Trial report sets `ruleAttempts.hold` only for an opted-in project with a group that has no complete attempt; the other two block-capable measures are wired to `Decide` by their callers when autonomous Apply gates on a measured wrong reading, which this ADR does not add.
+
+### 3. Redundancy measures
+
+Three run from the grammar-facts file the sweep already writes, with one query each and no parse:
+
+| Measure | Reads | Big-O |
+|---|---|---|
+| `P-lexeme-near-duplicate` (forms equal after NFC, case folding and iy to y; exact repeats stay with `P-entry-duplicate`) | lexeme form per entry | O(entries), one hash bucket per folded form |
+| `P-variant-same-shape` (five or more existing variants of one shape) | variant links, both forms, phone environments | O(variant links), one hash bucket per shape |
+| `P-tag-polarity-majority` (a tag that at least half of five or more stems in a rule's or affix's category scope carry) | stems per category, tag carriers per category, rule and affix requirements | O(MSAs + rules), three grouped reads |
+
+`P-tag-implied-by-context` stays declared and `not-available`. It needs, per tag and rule, how many carriers match the rule context; that is a pattern match over every carrier and PanGloss already holds the compiled context (see the PanGloss ask). `P-allo-alternation-family` is left as it is.
 
 ### 4. Weekly sweep
 
 `motif parsimony --measure all --wait --trend <tsv>` appends one row per counted class after the sweep. Motif installs no scheduled task; the help page shows Task Scheduler and cron lines.
 
+### 5. Compatibility
+
+`ParsimonyGroupKind` gained `tag-polarity`, `tag-implied-by-context`, `variant-same-shape` and `near-duplicate-lexemes`. They are appended with explicit wire names, so an older report's text and ordinals are unchanged and still read (`GroupKindNamesWrittenBeforeTheNewKindsStillReadAndTheNewOnesRoundTrip`). The reverse is not true: a report holding a new kind is not readable by a build that predates this ADR, because the group-kind converter is closed. `ReviewSummary.ruleAttempts` is optional and omitted when absent, so older reports read with it null (`AReportWrittenWithoutRuleAttemptsReadsWithNull...`).
+
 ## Cost (owner rule: no analysis over one second)
 
-| Check | Big-O | CEB-scale time |
-|---|---|---|
-| Same-shape grouping | O(added objects), one hash bucket per shape | 62,000 variants: part of 117 ms total |
-| Near-duplicate lexemes | O(entries), hash by folded form, no pairing | 8,000 entries: part of 117 ms total |
-| Polarity, implied tag | O(tag and rule rows), one pass | 1,200 tags: part of 117 ms total |
-| Trend rows | O(measures) over stored reports | microseconds, no parse |
+Measured on a read-only copy of the live CEB grammar-facts file (24,992 entries, 3,631 variant links, 91 tag requirements), `RedundancyMeasureRealFactsTimingTests` with `MOTIF_REAL_FACTS` set, load and measure apart (milliseconds, one cold run):
 
-The 117 ms is one run of `CebScaleChecksRunWellUnderOneSecond` on synthetic data of CEB size (62,000 added variants, 8,000 entries, 1,200 tags), including JIT; the test fails over 1,000 ms. It was not run on the live fwdata because the measures are not wired to read it yet.
+| Measure | Load | Measure | Groups found |
+|---|---|---|---|
+| `P-lexeme-near-duplicate` | 121.0 | 84.1 | 129 groups, 150 redundant entries |
+| `P-variant-same-shape` | 89.1 | 35.9 | 88 groups, 2,120 redundant variants |
+| `P-tag-polarity-majority` | 62.1 | 3.4 | 0 |
+
+Each is well under one second. On synthetic data at CEB size (8,000 entries, 1,200 stems, 60 rules) `RedundancyMeasuresAtCebScaleEachRunInUnderASecond` asserts the same bound. The Trial rule-attempt check is O(Proposal operations) plus one object lookup per variant link at capture; the trend rows are O(measures) over stored reports. No check parses a word or compares entries pairwise.
 
 ## PanGloss asks
 
-The executable measures need counts PanGloss computes cheaply in its grammar-facts file and does not expose: per rule, the candidate-host count and, per tag, the carriers among them (`tag-rule-host-counts`); per tag and rule, how many carriers match the rule context (`tag-rule-context-match`). Lexeme forms (`lexeme-form-index`) and added-variant shapes (`added-variant-shapes`) come from Motif's own load and the Proposal. No measure re-parses a word.
+`P-tag-implied-by-context` needs, per tag and rule, how many of the tag's carriers satisfy the rule's context. PanGloss compiles every rule context and holds each stem's form, so it can emit one `(tag, rule, carriers, carriers_matching_context)` row in the grammar-facts file at no extra parse; Motif would otherwise match patterns itself, which is the slow hand-rolled version the owner rule forbids. Everything else here reads tables PanGloss already writes.
 
 ## Consequences
 
-- A same-shape list needs a rule attempt on record, or it holds.
-- Nothing blocks by default, so CEB is not held unexpectedly.
-- Wiring `Decide` and the ledger, and the four measures' queries, are follow-on work.
+- A same-shape list needs a rule attempt on record, or the Trial review reports it; an opted-in project's autonomous loop holds.
+- Nothing blocks by default, so CEB is not held unexpectedly. CEB's own facts show 88 same-shape groups among existing variants, so opting in changes only future additions.
+- The hypothesis ledger replaces `NoRuleAttemptLedger` when #174 lands.

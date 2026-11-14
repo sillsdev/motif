@@ -52,6 +52,27 @@ public static class ParsimonyFindingIdentity
     public static string DuplicateEntriesIdentity(string kind, IReadOnlyList<string> memberIds) =>
         $"entries/{kind}/{memberIds[0]}/" + Digest(string.Join("\n", memberIds));
 
+    /// <summary>The group key shared by every tag-polarity finding.</summary>
+    public const string TagPolarityGroupKey = "tag-polarity";
+
+    /// <summary>The attachment identity of one tag required by one rule or affix MSA.</summary>
+    public static string TagPolarityIdentity(string tagGuid, string requirerKind, string requirerGuid) =>
+        $"tag-polarity/{tagGuid}/{requirerKind}/{requirerGuid}";
+
+    /// <summary>The group key of one same-shape variant group, named by the shape's digest.</summary>
+    public static string VariantShapeGroupKey(string shapeKey) => "variant-shape/" + Digest(shapeKey);
+
+    /// <summary>The attachment identity of one same-shape variant group: its shape and member digest.</summary>
+    public static string VariantShapeIdentity(string shapeKey, IReadOnlyList<string> memberIds) =>
+        VariantShapeGroupKey(shapeKey) + "/" + Digest(string.Join("\n", memberIds));
+
+    /// <summary>The group key shared by every near-duplicate-lexeme group.</summary>
+    public const string NearDuplicateLexemesGroupKey = "near-duplicate-lexemes";
+
+    /// <summary>The attachment identity of one near-duplicate-lexeme group, named by its member entries.</summary>
+    public static string NearDuplicateLexemesIdentity(IReadOnlyList<string> memberIds) =>
+        $"near-duplicate-lexemes/{memberIds[0]}/" + Digest(string.Join("\n", memberIds));
+
     /// <summary>The Finding ID of an item-attached Finding, one per item and digested site key.</summary>
     public static string SiteFindingId(string measureId, string itemGuid, string siteKey) =>
         $"{measureId}:{itemGuid}:{Digest(siteKey)}";
@@ -131,6 +152,13 @@ public static class ParsimonyFindingIdentity
             ParsimonyGroupKind.DuplicateEntries => key is not null &&
                 key.StartsWith("entries/", StringComparison.Ordinal) &&
                 identity.StartsWith(key + "/", StringComparison.Ordinal),
+            ParsimonyGroupKind.TagPolarity => key == TagPolarityGroupKey &&
+                identity.StartsWith("tag-polarity/", StringComparison.Ordinal),
+            ParsimonyGroupKind.VariantSameShape => key is not null &&
+                key.StartsWith("variant-shape/", StringComparison.Ordinal) &&
+                identity.StartsWith(key + "/", StringComparison.Ordinal),
+            ParsimonyGroupKind.NearDuplicateLexemes => key == NearDuplicateLexemesGroupKey &&
+                identity.StartsWith("near-duplicate-lexemes/", StringComparison.Ordinal),
             ParsimonyGroupKind.AlternationFamily or ParsimonyGroupKind.DuplicateEnvironments => identity == key,
             ParsimonyGroupKind.AdhocSlotOrder => key is not null && identity == AdhocSlotOrderIdentity(key),
             ParsimonyGroupKind.LiteralContext => key is not null &&
@@ -187,7 +215,8 @@ public static class ParsimonyFindingIdentity
         ParsimonyGroupKind.DuplicateEnvironments => className == "PhEnvironment",
         ParsimonyGroupKind.MsaWithoutCategory => className == "MoStemMsa",
         ParsimonyGroupKind.GlossEchoesForm => className == "LexSense",
-        ParsimonyGroupKind.DuplicateEntries => className == "LexEntry",
+        ParsimonyGroupKind.DuplicateEntries or ParsimonyGroupKind.VariantSameShape or
+            ParsimonyGroupKind.NearDuplicateLexemes => className == "LexEntry",
         _ => false,
     };
 
