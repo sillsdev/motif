@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Input.Platform;
+using SIL.Motif.App.Services;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
@@ -85,7 +85,7 @@ public sealed partial class GdrPreviewWindow
             bar.Children.Add(Button("Reload", async () => await ReloadMarkdownAsync()));
             bar.Children.Add(Button("Copy Markdown", async () =>
             {
-                if (Clipboard is { } clipboard) await clipboard.SetTextAsync(MarkdownText);
+                await new AvaloniaClipboard(this).SetTextAsync(MarkdownText);
             }));
             var panel = new DockPanel();
             DockPanel.SetDock(bar, Dock.Top);

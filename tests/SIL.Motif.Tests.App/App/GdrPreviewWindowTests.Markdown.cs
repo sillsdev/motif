@@ -5,6 +5,7 @@ using SIL.Motif.Commands;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Host.Gdr;
 using Avalonia.Controls;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Xunit;
@@ -74,6 +75,27 @@ public sealed partial class GdrPreviewWindowTests
             ],
             Position = 1,
         };
+    }
+
+    [Fact]
+    public void CopyMarkdownCopiesTheCurrentUnsavedText()
+    {
+        _avalonia.Invoke(() =>
+        {
+            var shown = MarkdownRecord();
+            var window = new GdrPreviewWindow([shown.Record], _ => shown, new MarkdownStore());
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(shown.Record.Id);
+            Completed(window.Loading);
+            Assert.True(Completed(window.OpenMarkdownAsync()));
+            window.MarkdownText += "unsaved";
+            var copy = Assert.Single(window.GetLogicalDescendants().OfType<Button>(),
+                button => Equals(button.Content, "Copy Markdown"));
+            copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var clipboard = Assert.IsAssignableFrom<IClipboard>(window.Clipboard);
+            Assert.Equal(window.MarkdownText, Completed(clipboard.TryGetTextAsync()));
+        });
     }
 
     [Fact]
