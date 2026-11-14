@@ -275,6 +275,46 @@
       "sources": [
         "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
       ]
+    },
+    {
+      "measureId": "P-tag-polarity-majority",
+      "recipeVersion": 1,
+      "title": "Tag on most candidate hosts",
+      "shortTitle": "tags carried by most candidate hosts",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
+      ]
+    },
+    {
+      "measureId": "P-tag-implied-by-context",
+      "recipeVersion": 1,
+      "title": "Tag the context implies",
+      "shortTitle": "tags a rule context already implies",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
+      ]
+    },
+    {
+      "measureId": "P-variant-same-shape",
+      "recipeVersion": 1,
+      "title": "Variants of one shape",
+      "shortTitle": "variants of one shape",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
+      ]
+    },
+    {
+      "measureId": "P-lexeme-near-duplicate",
+      "recipeVersion": 1,
+      "title": "Entries differing in spelling",
+      "shortTitle": "entries that differ only in spelling",
+      "updateIntents": [],
+      "sources": [
+        "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"
+      ]
     }
   ]
 }

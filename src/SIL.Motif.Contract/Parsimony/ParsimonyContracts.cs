@@ -134,6 +134,22 @@ public enum ParsimonyGroupKind
     /// <summary>Lexical entries that duplicate or clone each other.</summary>
     [JsonStringEnumMemberName("duplicate-entries")]
     DuplicateEntries,
+
+    /// <summary>A tag that most of a rule's candidate hosts carry, so the rule should be the default and the exceptions tagged.</summary>
+    [JsonStringEnumMemberName("tag-polarity")]
+    TagPolarity,
+
+    /// <summary>A tag whose carriers all already match a rule's context.</summary>
+    [JsonStringEnumMemberName("tag-implied-by-context")]
+    TagImpliedByContext,
+
+    /// <summary>Variants of one shape that one rule might replace.</summary>
+    [JsonStringEnumMemberName("variant-same-shape")]
+    VariantSameShape,
+
+    /// <summary>Lexical entries whose forms differ only in case, Unicode form or iy/y.</summary>
+    [JsonStringEnumMemberName("near-duplicate-lexemes")]
+    NearDuplicateLexemes,
 }
 
 /// <summary>The completeness of recipe-level before and after verification.</summary>

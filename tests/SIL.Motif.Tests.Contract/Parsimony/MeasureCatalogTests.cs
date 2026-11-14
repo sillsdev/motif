@@ -35,13 +35,23 @@ public sealed class MeasureCatalogTests
     }
 
     [Fact]
+    public void TheFourRedundancyMeasuresAreDeclaredAndEveryBlockCapableMeasureIsInTheCatalog()
+    {
+        foreach (var id in new[] { "P-tag-polarity-majority", "P-tag-implied-by-context", "P-variant-same-shape",
+                     "P-lexeme-near-duplicate" })
+            Assert.Null(MeasureCatalog.Find(id)!.QueryId);
+        Assert.All(BlockingPolicy.BlockCapable, id => Assert.NotNull(MeasureCatalog.Find(id)));
+    }
+
+    [Fact]
     public void GrammarMeasuresRunInTheGrammarGroupAndNineInTheTextGroup()
     {
         string[] grammar =
         [
             "P-adhoc-duplicate", "P-allo-alternation-family", "P-allo-duplicate-form", "P-allo-repeated-form",
             "P-entry-duplicate", "P-env-duplicate", "P-env-literal-host", "P-feature-few-carriers",
-            "P-gloss-echoes-form", "P-msa-no-category", "P-statement-unused", "R-allo-unconditioned",
+            "P-gloss-echoes-form", "P-lexeme-near-duplicate", "P-msa-no-category", "P-statement-unused",
+            "P-tag-implied-by-context", "P-tag-polarity-majority", "P-variant-same-shape", "R-allo-unconditioned",
         ];
         Assert.Equal(grammar, MeasureCatalog.All.Where(measure => measure.Group == ParsimonyMeasureGroup.Grammar)
             .Select(measure => measure.Id).Order(StringComparer.Ordinal));

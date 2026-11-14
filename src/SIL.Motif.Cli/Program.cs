@@ -1540,10 +1540,17 @@ try
                     var parsimonyJobId = enqueuedParsimony.Value!.JobId;
                     var parsimonyWakeWarnings = RunnerWarnings.Once(error.WriteLine);
                     result = flags.GetValueOrDefault("measure") == ParsimonyAdmission.AllMeasures
-                        ? RunWithConsoleCancellation(cancellationToken => RenderCommand(ParsimonyCommands.WaitAll(
-                            new WaitForParsimonyReportSetRequest(parsimonyProject, CliProductVersion(),
-                                parsimonyJobId, parsimonyWaitTimeout), cancellationToken,
-                            () => startRunner(parsimonyProject, parsimonyWakeWarnings))))
+                        ? RunWithConsoleCancellation(cancellationToken =>
+                        {
+                            var waitedAll = ParsimonyCommands.WaitAll(
+                                new WaitForParsimonyReportSetRequest(parsimonyProject, CliProductVersion(),
+                                    parsimonyJobId, parsimonyWaitTimeout), cancellationToken,
+                                () => startRunner(parsimonyProject, parsimonyWakeWarnings));
+                            if (waitedAll.Succeeded && flags.TryGetValue("trend", out var trendPath))
+                                SweepTrend.Append(trendPath, SweepTrend.Rows(DateOnly.FromDateTime(DateTime.UtcNow),
+                                    waitedAll.Value!.Reports.SelectMany(report => report.MeasureRuns)));
+                            return RenderCommand(waitedAll);
+                        })
                         : RunWithConsoleCancellation(cancellationToken => RenderCommand(ParsimonyCommands.Wait(
                             new WaitForParsimonyReportRequest(parsimonyProject, CliProductVersion(),
                                 parsimonyJobId, parsimonyWaitTimeout), cancellationToken,

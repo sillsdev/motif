@@ -151,6 +151,14 @@ public static class MeasureCatalog
             ParsimonyCapabilities.ApprovedSignatures, ParsimonyCapabilities.FeatureContributions,
             ParsimonyCapabilities.IncomingReferences, ParsimonyCapabilities.LoadedZeroRealizations,
             ParsimonyCapabilities.RetireRedundantZeroAffixIntent),
+        DefineGroup("P-tag-polarity-majority", ParsimonyAxis.Parsimony, ParsimonyTier.Static,
+            ParsimonyGroupKind.TagPolarity, ["black-2018"], ParsimonyCapabilities.TagRuleHostCounts),
+        DefineGroup("P-tag-implied-by-context", ParsimonyAxis.Parsimony, ParsimonyTier.Static,
+            ParsimonyGroupKind.TagImpliedByContext, ["black-2018"], ParsimonyCapabilities.TagRuleContextMatch),
+        DefineGroup("P-variant-same-shape", ParsimonyAxis.Parsimony, ParsimonyTier.Static,
+            ParsimonyGroupKind.VariantSameShape, ["black-2018"], ParsimonyCapabilities.AddedVariantShapes),
+        DefineGroup("P-lexeme-near-duplicate", ParsimonyAxis.Parsimony, ParsimonyTier.Static,
+            ParsimonyGroupKind.NearDuplicateLexemes, ["black-2018"], ParsimonyCapabilities.LexemeFormIndex),
     ]);
 
     private static readonly IReadOnlyDictionary<string, MeasureDefinition> ById =

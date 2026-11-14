@@ -12,6 +12,12 @@ The JSON answer lists the job id, the shared bundle id, and every stored Report 
 
 Capture a Baseline first. Use `--wait-timeout-ms` to set the wait bound; omit `--wait` to receive the queued job id. The job reports the stage it is in, which `jobs show` prints while it runs. Press Ctrl-C while waiting to cancel the job; a cancelled job stores no Report.
 
+## Weekly sweep
+
+Add `--trend <file.tsv>` to append one row per counted class (date, class, eligible objects, findings) after the run. The rows come from the counts the stored Reports already hold, so the trend costs a few rows of work and runs no extra parse. The file gets a header the first time.
+
+Motif installs no scheduled task. To run the sweep weekly, schedule the same command yourself, for example a Windows Task Scheduler weekly trigger that runs `motif parsimony --project "<fwdata>" --measure all --wait --trend "<folder>\parsimony-trend.tsv"`, or on Linux or macOS a crontab line `0 6 * * 1 motif parsimony --project "<fwdata>" --measure all --wait --trend "<folder>/parsimony-trend.tsv"`. Capture a Baseline first when the project has none current.
+
 `--measure all` applies to a Baseline review only. With `--dry-run`, name one measure.
 
 ## Related commands
