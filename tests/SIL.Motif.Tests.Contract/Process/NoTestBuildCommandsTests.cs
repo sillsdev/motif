@@ -92,7 +92,7 @@ public sealed class NoTestBuildCommandsTests
         var explainedWordCard = File.ReadAllText(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
             "App", "Walkthrough", "WalkthroughReplayTests.cs"));
         var startup = File.ReadAllText(Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.App",
-            "App", "EntryPointStartupTests.cs"));
+            "App", "AppStartupSmokeSystemTests.cs"));
 
         Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]", portablePackage, StringComparison.Ordinal);
         Assert.Contains("[Trait(\"MotifTestLevel\", \"System\")]", explainedWordCard, StringComparison.Ordinal);
