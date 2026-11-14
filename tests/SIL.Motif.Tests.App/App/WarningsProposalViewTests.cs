@@ -44,6 +44,7 @@ public sealed class WarningsProposalViewTests
             _ => CommandOutcome<StoredGrammarCheckResponse>.Success(new StoredGrammarCheckResponse(proposal)),
         });
         var context = WorkspaceContextTests.NewContext(fake);
+        context.Diagnostics = true;
         var page = new WarningsPageModel(context);
         fake.ReadTrialCompletesWith(OverviewProposalViewTests.Trial());
         await context.OpenProjectAsync(Path.Combine(Path.GetTempPath(), "sample.fwdata"));

@@ -202,7 +202,6 @@ public static class AutomationIds
     public const string AssistantsEmptyText = "motif-assistants-empty-text";
 
     /// <summary>The word list and its content grid on the Texts matrix, Lists and Review pages and Timing.</summary>
-    public const string MatrixWordsGrid = "motif-matrix-words-grid";
     public const string ListsWordsSlot = "motif-lists-words-slot";
     public const string ListsWordsGrid = "motif-lists-words-grid";
     public const string TimingWordsGrid = "motif-timing-words-grid";
@@ -215,16 +214,6 @@ public static class AutomationIds
     public const string ReviewApplyCount = "motif-review-apply-count";
 
     /// <summary>The parts of the Texts matrix: a row's label and count, a cell's three lines, the list heading.</summary>
-    public const string MatrixRowOpinionLabel = "motif-matrix-row-opinion-label";
-    public const string MatrixRowCount = "motif-matrix-row-count";
-    public const string MatrixCellCount = "motif-matrix-cell-count";
-    public const string MatrixCellPlaces = "motif-matrix-cell-places";
-    public const string MatrixCellLabel = "motif-matrix-cell-label";
-    public const string MatrixListHeading = "motif-matrix-list-heading";
-    public const string MatrixListSummary = "motif-matrix-list-summary";
-    public const string MatrixListExplanation = "motif-matrix-list-explanation";
-    public const string MatrixSortChoice = "motif-matrix-sort-choice";
-    public const string MatrixParseAgain = "motif-matrix-parse-again";
 
     /// <summary>A word row's Open in text and Try a Word buttons, and the Keep and Undo buttons on a row in the review list.</summary>
     public const string WordOpenInText = "motif-word-open-in-text";

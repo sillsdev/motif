@@ -176,10 +176,6 @@
     <value>Edit "{0}" in FieldWorks</value>
     <comment>Accessible name and tooltip for the link to edit a morpheme; {0} is its form.</comment>
   </data>
-  <data name="MotifApp.MatrixListSelectionFormat" xml:space="preserve">
-    <value>Showing: {0} (chosen in Lists) ·</value>
-    <comment>Matrix selection summary; {0} is the list name, followed by a Clear action.</comment>
-  </data>
   <data name="MotifApp.StatusChangesPattern" xml:space="preserve">
     <value>{0, plural, one {# change not applied yet} other {# changes not applied yet}}</value>
     <comment>Plural pattern: the status bar changes sentence; # is the count.</comment>
@@ -396,12 +392,13 @@
     <value>Approved Analyses Kept</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.OverviewMatrixLink" xml:space="preserve">
-    <value>Matrix →</value>
-    <comment>Link to the Matrix. The arrow is decoration; mirror it in a right-to-left language.</comment>
+  <data name="MotifApp.OpenInLists" xml:space="preserve"><value>Open in Lists</value></data>
+  <data name="MotifApp.OverviewListsLink" xml:space="preserve">
+    <value>Lists →</value>
+    <comment>Link to Lists. The arrow is decoration; mirror it in a right-to-left language.</comment>
   </data>
-  <data name="MotifApp.OpenMatrixFromApprovedKeptAccessibleName" xml:space="preserve">
-    <value>Open Approved analyses kept in the Matrix</value>
+  <data name="MotifApp.OpenListsFromApprovedKeptAccessibleName" xml:space="preserve">
+    <value>Open Approved analyses kept in Lists</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.ApprovedAnalysesKeptOutcomesAccessibleName" xml:space="preserve">
@@ -511,14 +508,6 @@
   <data name="MotifApp.NamedByAGrammarWarning" xml:space="preserve">
     <value>Named by a grammar warning</value>
     <comment>Window text.</comment>
-  </data>
-  <data name="MotifApp.Matrix" xml:space="preserve">
-    <value>Matrix</value>
-    <comment>Window text.</comment>
-  </data>
-  <data name="MotifApp.MatrixTabAccessibleName" xml:space="preserve">
-    <value>Matrix tab</value>
-    <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.AnalyzeTexts" xml:space="preserve">
     <value>Analyze Texts</value>
@@ -3170,14 +3159,6 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Check the grammar</value>
     <comment>Accessible name (read by screen readers) on the Warnings page.</comment>
   </data>
-  <data name="MotifApp.CompareRowsNotSortedNotice" xml:space="preserve">
-    <value>These words aren't sorted by what FieldWorks holds yet. Parse all words again to fill the rows.</value>
-    <comment>Sentence shown on the Compare panel (Matrix). It is read as a complete message; keep it a complete sentence.</comment>
-  </data>
-  <data name="MotifApp.CompareMatrixAxisLabel" xml:space="preserve">
-    <value>FieldWorks ↓  PanGloss →</value>
-    <comment>Caption of the Compare matrix: FieldWorks is the row axis and PanGloss the column axis; the arrows show reading direction and may be mirrored.</comment>
-  </data>
   <data name="MotifApp.FixTheseFirst" xml:space="preserve">
     <value>Fix These First</value>
     <comment>Heading in the Compare panel above the words that should be fixed first.</comment>
@@ -3197,54 +3178,6 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.CompareParseAgainTip" xml:space="preserve">
     <value>Parse the stopped and unparsed words again</value>
     <comment>Tooltip on the Compare panel.</comment>
-  </data>
-  <data name="MotifApp.CompareMatrixAccessibleName" xml:space="preserve">
-    <value>Compare matrix</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Compare matrix". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.FixTheseFirstCountAccessibleName" xml:space="preserve">
-    <value>Fix these first count</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Fix these first count". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.WordsToCheckFirstAccessibleName" xml:space="preserve">
-    <value>Words to check first</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Words to check first". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.WhatTheseWordsShareAccessibleName" xml:space="preserve">
-    <value>What these words share</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "What these words share". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.OrderTheListedWordsAccessibleName" xml:space="preserve">
-    <value>Order the listed words</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Order the listed words". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.SearchTheListedWordsAccessibleName" xml:space="preserve">
-    <value>Search the listed words</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Search the listed words". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.CompareParseAgainAccessibleName" xml:space="preserve">
-    <value>Parse the stopped and unparsed words again</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Parse the stopped and unparsed words again". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.SecondsEachWordGetsWhenRunAgainAccessibleName" xml:space="preserve">
-    <value>Seconds each word gets when run again</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Seconds each word gets when run again". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.AIHandoffForTheListedWordsAccessibleName" xml:space="preserve">
-    <value>AI Handoff for the listed words</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "AI Handoff for the listed words". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.AddCheckedWordsAsUnknownAccessibleName" xml:space="preserve">
-    <value>Add checked words as Unknown</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Add checked words as Unknown". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.MarkCheckedWordsAsIncorrectSpellingAccessibleName" xml:space="preserve">
-    <value>Mark checked words as incorrect spelling</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Mark checked words as incorrect spelling". Not visible on screen.</comment>
-  </data>
-  <data name="MotifApp.WordsInTheChosenCellsAccessibleName" xml:space="preserve">
-    <value>Words in the chosen cells</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the Compare panel (Matrix): "Words in the chosen cells". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.HandoffIntro" xml:space="preserve">
     <value>Give a chat model the files it needs to help you read these results.</value>
@@ -6978,10 +6911,6 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Editing</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
-  <data name="MotifApp.ShortcutMatrixPreview" xml:space="preserve">
-    <value>Matrix Preview</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
   <data name="MotifApp.ShortcutMoveBetweenWords" xml:space="preserve">
     <value>Move Between Words</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
@@ -7100,10 +7029,6 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.ShortcutFocusWordSearch" xml:space="preserve">
     <value>Focus the Word Search</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
-  <data name="MotifApp.ShortcutChooseCell" xml:space="preserve">
-    <value>Choose This Cell</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
   <data name="MotifApp.ShortcutOpenInspector" xml:space="preserve">
@@ -7527,11 +7452,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Overview coverage segment name used in its action name.</comment>
   </data>
   <data name="MotifApp.OverviewOpenOutcomeWordsFormat" xml:space="preserve">
-    <value>Open {0} {1} words in the Matrix</value>
+    <value>Open {0} {1} words in Lists</value>
     <comment>Action name of an Overview coverage segment. {0} is the word count; {1} is the outcome name.</comment>
   </data>
   <data name="MotifApp.OverviewOpenApprovedWordsFormat" xml:space="preserve">
-    <value>Open {0} Approved {1} words in the Matrix</value>
+    <value>Open {0} Approved {1} words in Lists</value>
     <comment>Action name of an Overview accuracy segment. {0} is the word count; {1} is the outcome name.</comment>
   </data>
   <data name="MotifApp.OverviewAccuracyNothingApproved" xml:space="preserve">
@@ -9302,29 +9227,9 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>{0} With this Proposal, the cell reads {1}.</value>
     <comment>Spoken name of a matrix cell while the Proposal bar shows the Proposal's numbers: {0} the cell's usual name, {1} the number the cell now shows.</comment>
   </data>
-  <data name="MotifApp.TextsMatrixCountsNoun" xml:space="preserve">
-    <value>matrix counts</value>
-    <comment>Lower-case noun in the Texts page's Proposal notes, as in 'These are today's matrix counts only.'</comment>
-  </data>
-  <data name="MotifApp.TextsProposalPairedNote" xml:space="preserve">
-    <value>Each cell, row and column reads today's words, then the words with this Proposal, for the same words. The cells count words, so a cell that reads the same on both sides can still hold different words. A chosen cell lists its words today and its words with this Proposal, and the With This Proposal column says where the Proposal puts each one; the other columns are today's. Lists and What Changed read the same two sides.</value>
-    <comment>Note on the Texts page's Matrix tab in the Today to Proposal view when both sides cover the same words.</comment>
-  </data>
-  <data name="MotifApp.TextsProposalDifferentWordsNote" xml:space="preserve">
-    <value>This Proposal's Trial measured different words from today's matrix, so nothing is paired and the matrix shows today's counts. The listed words are today's; the With This Proposal column says where the Proposal puts each one, or that its try did not measure it. Lists show today's counts, and What Changed compares only the words both sides measured.</value>
-    <comment>Note on the Texts page's Matrix tab in the Today to Proposal view when the Trial's words are not the words in today's matrix.</comment>
-  </data>
-  <data name="MotifApp.TextsProposalViewNote" xml:space="preserve">
-    <value>Each cell, row and column reads the words with this Proposal. A chosen cell lists the words the Proposal puts in it that today's matrix also has, with their FieldWorks analyses and what the Proposal's try made of them; a word only the Proposal's try measured is counted but not listed, and the list's heading says how many. The places under a cell are the Proposal's; today's parse is left to the Today view. Lists read the Proposal's counts too, and What Changed lists the words the Proposal moves from the cells they are in today.</value>
-    <comment>Note on the Texts page's Matrix tab in the Proposal view.</comment>
-  </data>
   <data name="MotifApp.TextsProposalWordCardsNote" xml:space="preserve">
     <value>Each word card shows what this Proposal builds for the word. The words listed here are today's.</value>
     <comment>Note on the Texts page's Analyze Texts tab while a Proposal view other than Today is chosen.</comment>
-  </data>
-  <data name="MotifApp.TextsProposalReadingNote" xml:space="preserve">
-    <value>Reading this Proposal's counts. Until they arrive the matrix shows today's counts.</value>
-    <comment>Note on the Texts page's Matrix tab in the Today to Proposal view while the Proposal's counts are being read.</comment>
   </data>
   <data name="MotifApp.TextsWordNotMeasured" xml:space="preserve">
     <value>Not measured with this Proposal</value>
@@ -9336,7 +9241,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.CompareWordsNotListedPattern" xml:space="preserve">
     <value>{0, plural, one {# more word is counted but not listed} other {# more words are counted but not listed}}</value>
-    <comment>Plural pattern in the Texts word list's heading in the Proposal view: words the Proposal's try measured that today's matrix does not have, so they count in the cell but cannot be listed; # is how many.</comment>
+    <comment>Plural pattern in the Texts word list's heading in the Proposal view: words the Proposal's try measured that today's results does not have, so they count in the cell but cannot be listed; # is how many.</comment>
   </data>
   <data name="MotifApp.WordRowWithProposalFormat" xml:space="preserve">
     <value>{0}: {1}</value>
@@ -9372,7 +9277,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   </data>
   <data name="MotifApp.TextsListPlacesNotCounted" xml:space="preserve">
     <value>places not counted with this Proposal</value>
-    <comment>Texts list header in the Proposal view when the places of the Proposal's words in the list cannot be counted, because its try measured words today's matrix lacks.</comment>
+    <comment>Texts list header in the Proposal view when the places of the Proposal's words in the list cannot be counted, because its try measured words today's results lacks.</comment>
   </data>
   <data name="MotifApp.TextsListPlacesTodayFormat" xml:space="preserve">
     <value>{0} today</value>
@@ -9411,12 +9316,12 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>A cell and its row as What Changed names where the open Proposal puts a word: {0} the cell, {1} its row.</comment>
   </data>
   <data name="MotifApp.DifferenceProposalEmptyState" xml:space="preserve">
-    <value>No word is in both today's matrix and this Proposal's try, so there is nothing to compare.</value>
+    <value>No word is in both today's results and this Proposal's try, so there is nothing to compare.</value>
     <comment>What Changed in the Today to Proposal view when the two sides share no word.</comment>
   </data>
   <data name="MotifApp.DifferenceProposalOnlyInOneFormat" xml:space="preserve">
-    <value>Not compared: {0} in today's matrix only and {1} in this Proposal's try only.</value>
-    <comment>What Changed in the Today to Proposal view: {0} words only today's matrix has, {1} words only the Proposal's try measured.</comment>
+    <value>Not compared: {0} in today's results only and {1} in this Proposal's try only.</value>
+    <comment>What Changed in the Today to Proposal view: {0} words only today's results has, {1} words only the Proposal's try measured.</comment>
   </data>
   <data name="MotifApp.DifferenceProposalFromLabel" xml:space="preserve">
     <value>Today</value>
@@ -9439,11 +9344,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Note on the Texts page's Lists tab in the Today to Proposal view when both sides cover the same words.</comment>
   </data>
   <data name="MotifApp.TextsListsDifferentWordsNote" xml:space="preserve">
-    <value>This Proposal's Trial measured different words from today's matrix, so nothing is paired and each list shows today's counts. A chosen list shows today's words; the With This Proposal column says where the Proposal puts each one, or that its try did not measure it.</value>
-    <comment>Note on the Texts page's Lists tab in the Today to Proposal view when the Trial's words are not the words in today's matrix.</comment>
+    <value>This Proposal's Trial measured different words from today's results, so nothing is paired and each list shows today's counts. A chosen list shows today's words; the With This Proposal column says where the Proposal puts each one, or that its try did not measure it.</value>
+    <comment>Note on the Texts page's Lists tab in the Today to Proposal view when the Trial's words are not the words in today's results.</comment>
   </data>
   <data name="MotifApp.TextsListsViewNote" xml:space="preserve">
-    <value>Each list chip and header reads the words with this Proposal. A chosen list shows the words the Proposal puts in its cells that today's matrix also has, with their FieldWorks analyses and what the Proposal's try made of them; a word only the Proposal's try measured is counted but not listed, and the line under the list says how many. The places are those of the words the Proposal puts in the list; today's parse is left to the Today view.</value>
+    <value>Each list chip and header reads the words with this Proposal. A chosen list shows the words the Proposal puts in its cells that today's results also has, with their FieldWorks analyses and what the Proposal's try made of them; a word only the Proposal's try measured is counted but not listed, and the line under the list says how many. The places are those of the words the Proposal puts in the list; today's parse is left to the Today view.</value>
     <comment>Note on the Texts page's Lists tab in the Proposal view.</comment>
   </data>
   <data name="MotifApp.TextsListsReadingNote" xml:space="preserve">
@@ -9455,11 +9360,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Note on the Texts page's What Changed tab in the Today to Proposal view while the Proposal's counts are being read.</comment>
   </data>
   <data name="MotifApp.TextsWhatChangedPairedNote" xml:space="preserve">
-    <value>Each move is the cell a word is in today and the cell the Proposal puts it in. Only words that today's matrix and the Proposal's try both have are compared; the words only one side has are counted under the summary and are never listed as moved. Today's own comparison of the last two runs shows in the Today view.</value>
+    <value>Each move is the cell a word is in today and the cell the Proposal puts it in. Only words that today's results and the Proposal's try both have are compared; the words only one side has are counted under the summary and are never listed as moved. Today's own comparison of the last two runs shows in the Today view.</value>
     <comment>Note on the Texts page's What Changed tab in the Today to Proposal view.</comment>
   </data>
   <data name="MotifApp.TextsWhatChangedViewNote" xml:space="preserve">
-    <value>These are the same moves as in Today → Proposal: each is the cell a word is in today and the cell the Proposal puts it in. Only words that today's matrix and the Proposal's try both have are compared; the words only one side has are counted under the summary and are never listed as moved. The Proposal's own cells are on the Matrix and Lists tabs.</value>
+    <value>These are the same moves as in Today → Proposal: each is the cell a word is in today and the cell the Proposal puts it in. Only words that today's results and the Proposal's try both have are compared; the words only one side has are counted under the summary and are never listed as moved. The Proposal's own word lists are on the Lists tab.</value>
     <comment>Note on the Texts page's What Changed tab in the Proposal view, which lists the words the Proposal moves as the pair does.</comment>
   </data>
   <data name="MotifApp.TextsListChipProposalNoneAccessibleNameFormat" xml:space="preserve">
@@ -9479,7 +9384,7 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <comment>Help for the list's AI Handoff button in the Today to Proposal view.</comment>
   </data>
   <data name="MotifApp.TextsListHandOffProposalHelp" xml:space="preserve">
-    <value>Sends the words this Proposal puts in this list that today's matrix also has; a word only its try measured is not sent.</value>
+    <value>Sends the words this Proposal puts in this list that today's results also has; a word only its try measured is not sent.</value>
     <comment>Help for the list's AI Handoff button in the Proposal view.</comment>
   </data>
   <data name="MotifApp.DifferenceMovedNoneWorseUnknownFormat" xml:space="preserve">
@@ -9537,10 +9442,6 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.ChosenCellSeparatorMark" xml:space="preserve">
     <value>×</value>
     <comment>Separator glyph between a matrix cell's row label and its column label in the Compare panel; it is not a button and removes nothing.</comment>
-  </data>
-  <data name="MotifApp.ClearChosenMatrixCellsAccessibleName" xml:space="preserve">
-    <value>Clear the chosen matrix cells</value>
-    <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.AiAssistantsTitle" xml:space="preserve">
     <value>AI Assistants</value>
@@ -9808,4 +9709,11 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.CompareUseYourOrder" xml:space="preserve"><value>Use your order</value></data>
   <data name="MotifApp.CompareUseOtherOrderFormat" xml:space="preserve"><value>Use the order from {0}</value></data>
   <data name="MotifApp.CompareParagraphRemovedUnavailableAccessibleFormat" xml:space="preserve"><value>Paragraph removed in {0}, {1}. The original text is unavailable.</value><comment>{0} is the other author or FieldWorks, {1} the paragraph location.</comment></data>
+  <data name="MotifApp.MenuDiagnostics" xml:space="preserve">
+    <value>_Diagnostics</value>
+  </data>
+  <data name="MotifApp.DiagnosticsGroup" xml:space="preserve"><value>Diagnostics</value></data>
+  <data name="MotifApp.SelectedWords" xml:space="preserve">
+    <value>Selected Words</value>
+  </data>
 </root>

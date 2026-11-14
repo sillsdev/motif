@@ -136,17 +136,15 @@ public sealed class FirstProjectSmokeTests(PristineProjectFixture pristine)
                 InteractiveControlFamily.Collection);
             Assert.True(walkthrough.Find<Border>("Project summary").IsEffectivelyVisible);
             walkthrough.ShowPage(WorkspacePage.Texts);
-            walkthrough.ShowTextsTab(TextsTab.Matrix);
-            InteractiveControlSweep.AssertScene(walkthrough, "completed Compare Matrix",
+            walkthrough.ShowTextsTab(TextsTab.Lists);
+            InteractiveControlSweep.AssertScene(walkthrough, "completed Lists",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
-                InteractiveControlFamily.Filter,
                 InteractiveControlFamily.TextEntry,
                 InteractiveControlFamily.Choice,
                 InteractiveControlFamily.Check,
                 InteractiveControlFamily.Disclosure,
                 InteractiveControlFamily.List,
-                InteractiveControlFamily.MatrixCell,
                 InteractiveControlFamily.SelectableText,
                 InteractiveControlFamily.Mark,
                 InteractiveControlFamily.Morpheme,

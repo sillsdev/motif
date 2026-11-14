@@ -589,59 +589,6 @@ public sealed partial class ComponentStyleTests
             Button.ForegroundProperty, "Intent.Primary");
 
         yield return new("HeatCell", "a heat shade", host => Add(host, Box("heat")), Border.BackgroundProperty, "Intent.Warning");
-        yield return new("MatrixCell", "a matrix cell", host => Add(host, Box("matrixCell")),
-            Border.BackgroundProperty, "Intent.Surface");
-        yield return new("MatrixCell", "a grid cell's inset", host => Add(host, Box("matrixCell")),
-            Border.PaddingProperty, "Component.MatrixCell.CellPadding");
-        yield return new("MatrixCell", "a cell's label", host => Within(host, Box("matrixCell"), "matrixCellLabel"),
-            TextBlock.FontSizeProperty, "Intent.Type.Label");
-        yield return new("MatrixCell", "a cell's count", host => Within(host, Box("matrixCell"), "matrixCellCount"),
-            TextBlock.FontSizeProperty, "Intent.Type.Title");
-        yield return new("MatrixCell", "an empty cell's count", host => Within(host, Box("matrixCell", "empty"), "matrixCellCount"),
-            TextBlock.FontSizeProperty, "Intent.Type.Title");
-        yield return new("MatrixCell", "the dash cell's count",
-            host => Within(host, Box("matrixCell", "empty", "none"), "matrixCellCount"),
-            TextBlock.FontSizeProperty, "Intent.Type.Title");
-        yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
-            Border.BackgroundProperty, "Intent.Surface.Subtle");
-        yield return new("MatrixCell", "the chosen cells' list", host => Add(host, Box("card", "matrixChosen")),
-            Border.PaddingProperty, "Component.MatrixCell.Padding");
-        yield return new("MatrixCell", "the chosen outcome glyph", MatrixChosenMark,
-            TextBlock.FontSizeProperty, "Intent.Type.Body");
-        yield return new("MatrixCell", "the chosen outcome icon's width", MatrixChosenIcon,
-            PathIcon.WidthProperty, "Component.Mark.BodyGlyphSize");
-        yield return new("MatrixCell", "the chosen outcome icon's height", MatrixChosenIcon,
-            PathIcon.HeightProperty, "Component.Mark.BodyGlyphSize");
-        yield return new("MatrixCell", "what the words share", host => Add(host, Box("matrixShared")),
-            Border.PaddingProperty, "Component.MatrixCell.Padding");
-        yield return new("MatrixCell", "how many share a morpheme", host => Within(host, Box("matrixShared"), "matrixSharedCount"),
-            TextBlock.ForegroundProperty, "Intent.TextMuted");
-        yield return new("MatrixCell", "a cell's words", host => Inside(host, Box("matrixCell")),
-            TextBlock.ForegroundProperty, "Intent.Consequence.Neutral");
-        yield return new("MatrixCell", "a kept cell", host => Add(host, Box("matrixCell", "good")),
-            Border.BackgroundProperty, "Intent.Surface");
-        yield return new("MatrixCell", "a kept cell's words", host => Inside(host, Box("matrixCell", "good")),
-            TextBlock.ForegroundProperty, "Intent.Consequence.Fine");
-        yield return new("MatrixCell", "a fine cell's words", host => Inside(host, Box("matrixCell", "fine")),
-            TextBlock.ForegroundProperty, "Intent.Consequence.Fine");
-        yield return new("MatrixCell", "a violation cell", host => Add(host, Box("matrixCell", "violation")),
-            Border.BackgroundProperty, "Intent.Consequence.Problem.Fill");
-        yield return new("MatrixCell", "a violation cell", host => Add(host, Box("matrixCell", "violation")),
-            Border.BorderBrushProperty, "Intent.Consequence.Problem.Edge");
-        yield return new("MatrixCell", "a violation cell's words", host => Inside(host, Box("matrixCell", "violation")),
-            TextBlock.ForegroundProperty, "Intent.Consequence.Problem");
-        yield return new("MatrixCell", "a have-a-look cell", host => Add(host, Box("matrixCell", "review")),
-            Border.BackgroundProperty, "Intent.Consequence.Look.Fill");
-        yield return new("MatrixCell", "a have-a-look cell", host => Add(host, Box("matrixCell", "review")),
-            Border.BorderBrushProperty, "Intent.Consequence.Look.Edge");
-        yield return new("MatrixCell", "a have-a-look cell's words", host => Inside(host, Box("matrixCell", "review")),
-            TextBlock.ForegroundProperty, "Intent.Consequence.Look");
-        yield return new("MatrixCell", "a new cell", host => Add(host, Box("matrixCell", "new")),
-            Border.BackgroundProperty, "Intent.Consequence.Look.Fill");
-        yield return new("MatrixCell", "a new cell's words", host => Inside(host, Box("matrixCell", "new")),
-            TextBlock.ForegroundProperty, "Intent.Consequence.Look");
-        yield return new("MatrixCell", "a compact matrix cell", host => Add(host, Box("matrixCell", "compact")),
-            Border.WidthProperty, "Component.MatrixCell.CompactWidth");
         yield return new("WordMorphology", "a morphology separator", host => Add(host, new MorphemePanel
             { Morphs = [new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, null))], Separators = true }),
             MorphemePanel.SeparatorBrushProperty, "Intent.Border");
@@ -1325,24 +1272,6 @@ public sealed partial class ComponentStyleTests
         var glyph = new MarkGlyph { Mark = mark, Classes = { "inline" } };
         host.Children.Add(glyph);
         return Assert.IsType<PathIcon>(glyph.Child);
-    }
-
-    private static TextBlock MatrixChosenMark(Panel host)
-    {
-        var group = new StackPanel { Classes = { "matrixChosenMarks" } };
-        var mark = new MarkGlyph { Classes = { "inline", "bodyText", "matrixChosenWord" }, Mark = SIL.Motif.App.ViewModels.Mark.Same };
-        group.Children.Add(mark);
-        host.Children.Add(group);
-        return Assert.IsType<TextBlock>(mark.Child);
-    }
-
-    private static PathIcon MatrixChosenIcon(Panel host)
-    {
-        var group = new StackPanel { Classes = { "matrixChosenMarks" } };
-        var mark = new MarkGlyph { Classes = { "inline", "bodyText", "matrixChosenWord" }, Mark = SIL.Motif.App.ViewModels.Mark.Stopped };
-        group.Children.Add(mark);
-        host.Children.Add(group);
-        return Assert.IsType<PathIcon>(mark.Child);
     }
 
     private static Control WarningIcon(Panel host)

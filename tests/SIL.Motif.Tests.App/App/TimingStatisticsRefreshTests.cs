@@ -48,6 +48,7 @@ public sealed class TimingStatisticsRefreshTests
             if (workspace.Context.Setup is { IsOpen: true } setup) await setup.SkipCommand.ExecuteAsync(null);
             var window = new MainWindow();
             window.Compose(workspace);
+            workspace.Context.Diagnostics = true;
             window.Show();
             try
             {

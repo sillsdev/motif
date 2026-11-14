@@ -192,6 +192,7 @@ public sealed class ProposalReadFailureTests
         fake.OnReadTrial((request, _) => Task.FromResult(
             CommandOutcome<TrialRecord?>.Success(TimingProposalViewTests.TrialFor(request.ProposalId, true))));
         var context = WorkspaceContextTests.NewContext(fake);
+        context.Diagnostics = true;
         var page = new TimingPageModel(context);
         await context.OpenProjectAsync(TimingProposalViewTests.ProjectPath);
         context.OpenPage(WorkspacePage.Timing);

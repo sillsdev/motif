@@ -145,25 +145,6 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         Assert.True(new CompareCellViewModel(WordProjectStatus.Approved, CompareColumnKind.Match).ShowsLabel);
     }
 
-    [Fact]
-    public void TheImpossibleCellRendersNoLabel()
-    {
-        avalonia.Invoke(() =>
-        {
-            var compare = Compare(EveryKindOfWord);
-            var labels = WithWindow(new ComparePanel(compare), window =>
-            {
-                var cell = Assert.Single(window.GetLogicalDescendants().OfType<MatrixCell>(), cell =>
-                    cell.DataContext is CompareCellViewModel
-                        { Row: WordProjectStatus.NotPresent, Column: CompareColumnKind.Match });
-                Assert.False(cell.FindControl<StackPanel>("CellValues")!.IsVisible);
-                return cell.GetVisualDescendants().OfType<TextBlock>()
-                    .Where(text => text.IsEffectivelyVisible).Select(text => text.Text ?? string.Empty).ToArray();
-            });
-
-            Assert.Equal(new[] { "0" }, labels);
-        });
-    }
 
     [Fact]
     public void MatrixShortcutsNameTheCellsTheyChoose()
@@ -320,7 +301,6 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
             compare.ClearSelectionCommand.Execute(null);
             shown.AddRange(compare.Words.SelectMany(word => new[] { word.Meaning, word.RowLabel, word.ColumnLabel,
                 word.PanGlossLabel, word.AccessibleName }));
-            shown.AddRange(Rendered(new ComparePanel(compare)));
 
             AssertWindowWords(shown);
             Assert.DoesNotContain("Approve one analysis at a time, in the text.", shown);
@@ -353,11 +333,6 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
         avalonia.Invoke(() =>
         {
             var compare = Compare(EveryKindOfWord);
-            var matrixButtons = Buttons(new ComparePanel(compare));
-            Assert.DoesNotContain(matrixButtons, button => button.CommandParameter is ChangeKinds.Approve
-                or ChangeKinds.Reject or ChangeKinds.Candidate);
-            Assert.Contains(matrixButtons, button => Equals(button.Content, "Add as Unknown"));
-
             var lists = new TextsListsViewModel(compare);
             WithWindow(new TextsListsPanel(lists), window =>
             {

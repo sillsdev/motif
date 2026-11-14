@@ -36,6 +36,7 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
+                  <StackPanel IsVisible="{Binding Context.Diagnostics}">
                   <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="{x:Static app:MotifAppStrings.OpenASavedTrace}" Click="OnOpenDiagnosticClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenASavedTraceAccessibleName}" />
                   <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="{x:Static app:MotifAppStrings.CopyForAChatModel}" Click="OnCopyInstructionsClick" AutomationProperties.Name="{x:Static app:MotifAppStrings.CopyAIDiagnosticInstructionsAccessibleName}" />
                   <Button Theme="{DynamicResource BorderlessButton}" Classes="menuEntry" Content="{x:Static app:MotifAppStrings.SaveTheTrace}" Click="OnSaveClick" IsEnabled="{Binding Trace.HasDiagnosticJson}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SaveFullDiagnosticJSONAccessibleName}" />
@@ -43,12 +44,13 @@
                   <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TryWordNoTraceToSave}" TextWrapping="Wrap" Classes="muted" IsVisible="{Binding !Trace.HasDiagnosticJson}" />
                   <views:CopyableTextBlock Text="{Binding Trace.CaptureDetails}" Classes="muted" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasCaptureDetails}" AutomationProperties.Name="{x:Static app:MotifAppStrings.DiagnosticCaptureDetailsAccessibleName}" />
                   <views:CopyableTextBlock Text="{Binding Trace.WritingSystemSummary}" Classes="muted" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Label}" IsVisible="{Binding Trace.HasResult}" AutomationProperties.Name="{x:Static app:MotifAppStrings.WritingSystemDirectionAndFontAccessibleName}" />
+                  </StackPanel>
                 </StackPanel>
                 </ScrollViewer>
               </Flyout>
             </Button.Flyout>
           </Button>
-          <Border x:Name="TryWordModeButtons" HorizontalAlignment="Left" Grid.Column="2" Classes="traceModeGroup" Margin="{DynamicResource Intent.Gap.AfterRelated}">
+          <Border x:Name="TryWordModeButtons" IsVisible="{Binding Context.Diagnostics}" HorizontalAlignment="Left" Grid.Column="2" Classes="traceModeGroup" Margin="{DynamicResource Intent.Gap.AfterRelated}">
             <StackPanel Orientation="Horizontal">
               <Button Content="{x:Static app:MotifAppStrings.TryWordPlainTab}" Command="{Binding Trace.SetExpertCommand}" Classes="traceMode"
                       Classes.chosen="{Binding !Trace.IsExpert}" AutomationProperties.Name="{x:Static app:MotifAppStrings.PlainTraceViewAccessibleName}">
@@ -103,7 +105,7 @@
             <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}"
                        LineSpacing="{DynamicResource Intent.Space.Related}">
               <Button Classes="tryWordResultAction" Content="{x:Static app:MotifAppStrings.AnalyzeTexts}" Command="{Binding OpenInTextsCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TryWordOpenInAnalyzeTextsAccessibleName}" />
-              <Button Classes="tryWordResultAction" Content="{x:Static app:MotifAppStrings.TryWordTimingLabel}" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingForThisWordAccessibleName}" />
+              <Button IsVisible="{Binding Context.Diagnostics}" Classes="tryWordResultAction" Content="{x:Static app:MotifAppStrings.TryWordTimingLabel}" Command="{Binding OpenTimingCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static app:MotifAppStrings.TimingForThisWordAccessibleName}" />
       <Button IsVisible="False" Classes="tryWordResultAction" Content="{x:Static vm:WindowCopy.AiHandoffForThisWord}" Command="{Binding HandOffCommand}" Theme="{DynamicResource BorderlessButton}" AutomationProperties.Name="{x:Static vm:WindowCopy.AiHandoffForThisWord}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.TryWordHandOff}" />
             </WrapPanel>
 
@@ -218,6 +220,7 @@
         </StackPanel>
       </Border>
       </Grid>
+<StackPanel x:Name="TraceDetails" IsVisible="{Binding Context.Diagnostics}">
 <StackPanel DataContext="{Binding Trace}" x:DataType="vm:TraceWordViewModel">
       <!-- A parsed word's stopped attempts wait folded under their count. -->
       <ToggleButton Classes="tryWordPathsToggle" Content="{Binding DroppedPathsText}" IsChecked="{Binding ShowDroppedPaths, Mode=TwoWay}"
@@ -359,6 +362,7 @@
           </ItemsControl>
         </StackPanel>
       </Border>
+      </StackPanel>
     </StackPanel>
     </Border>
   </ScrollViewer>

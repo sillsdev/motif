@@ -1,5 +1,7 @@
 # Warnings
 
+The **Warnings** page is available when **View → Diagnostics** is on.
+
 **Warnings** shows findings from a check of the whole grammar and allomorph refusals recorded by **Parse all words** for the current [Baseline](term:baseline) and **Selection**. Findings from the parse are labelled **Parse all words** and retain the parser's refusal reason. The grammar check and the parse can report different findings. PanGloss may include an explanation or guidance with each finding.
 
 PanGloss reports an unreadable phonological environment as a warning. Roots ignore that restriction but keep valid ones; ordinary affixes add an unrestricted pass beside valid passes; an infix with no valid position is skipped.

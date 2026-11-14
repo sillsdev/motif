@@ -33,7 +33,6 @@ public sealed class TextsProposalMovedChipWindowTests
 
     [Theory]
     [InlineData(TextsTab.Lists, "TextsListsMovedChip", "TextsListsPanelWordsItems")]
-    [InlineData(TextsTab.Matrix, "ComparePanelMovedChip", "ComparePanelWordsItems")]
     public void TheChipShowsInThePairAndTheProposalViewNotInTodayAndNarrowsTheRowsOfItsTab(
         TextsTab tab, string chip, string rows)
     {
@@ -90,7 +89,7 @@ public sealed class TextsProposalMovedChipWindowTests
                     Application.Current!.RequestedThemeVariant = variant;
                     window.Width = 1240;
                     window.Height = 1000;
-                    foreach (var (tab, tabName) in new[] { (TextsTab.Matrix, "matrix"), (TextsTab.Lists, "lists") })
+                    foreach (var (tab, tabName) in new[] { (TextsTab.Lists, "lists") })
                     {
                         page.Tab = tab;
                         foreach (var (name, view) in new[] { ("pair", MarkupView.TodayToProposal), ("proposal", MarkupView.Proposal) })

@@ -201,6 +201,7 @@ public sealed class WorkspaceShellViewModelTests
     public async Task RerunningFromTimingKeepsTimingOpen()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
+        workspace.Context.Diagnostics = true;
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         workspace.Context.OpenPage(WorkspacePage.Timing);
         fake.AssessCompletesWith(NewAssessResponse("rerun"));
@@ -1060,7 +1061,6 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(workspace.Context.NeedsAssessment);
         Assert.True(workspace.ShowsParseAllWordsAction);
         var texts = workspace.PageModel<TextsPageModel>();
-        Assert.True(texts.ShowCentredParsePrompt);
         texts.Tab = TextsTab.AnalyzeTexts;
         Assert.True(texts.ShowAnalyzeParsePrompt);
         Assert.Single(fake.AssessRequests);
@@ -1086,7 +1086,6 @@ public sealed class WorkspaceShellViewModelTests
         var texts = workspace.PageModel<TextsPageModel>();
         Assert.True(texts.ShowAssessRefusal);
         Assert.False(texts.ShowParsePrompt);
-        Assert.False(texts.ShowCentredParsePrompt);
         texts.Tab = TextsTab.AnalyzeTexts;
         Assert.False(texts.ShowAnalyzeParsePrompt);
         Assert.True(texts.ShowAnalyzeTextsContent);
@@ -1141,13 +1140,11 @@ public sealed class WorkspaceShellViewModelTests
         var texts = workspace.PageModel<TextsPageModel>();
         Assert.True(workspace.Context.NeedsAssessment);
         Assert.True(texts.ShowParsePrompt);
-        Assert.False(texts.ShowMatrixContent);
         Assert.Same(workspace.ParseAllWordsCommand, workspace.Context.ParseAllWordsCommand);
 
         texts.Tab = TextsTab.AnalyzeTexts;
         Assert.True(texts.ShowParsePrompt);
         Assert.True(texts.ShowAnalyzeParsePrompt);
-        Assert.False(texts.ShowCentredParsePrompt);
         Assert.True(texts.ShowAnalyzeTextsContent);
         texts.AnalyzeView = AnalyzeTextsView.WordList;
         Assert.False(texts.ShowAnalyzeParsePrompt);

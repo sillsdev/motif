@@ -80,7 +80,7 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
             var rounds = new List<(int Tokens, int Created)>();
             for (var round = 0; round < 2; round++)
             {
-                texts.Tab = TextsTab.Matrix;
+                texts.Tab = TextsTab.Lists;
                 PageScreenshots.Settle(window.Window, passes: 9);
                 var before = Visuals(window);
 

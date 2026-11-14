@@ -677,6 +677,7 @@ public sealed class TimingSharesTests
         var fake = new FakeCommandClient();
         fake.StoredGrammarCheckIs(new GrammarCheckResponse([finding], HasBaseline: true));
         var context = WorkspaceContextTests.NewContext(fake);
+        context.Diagnostics = true;
         var warnings = new WarningsPageModel(context);
         var timing = new TimingPageModel(context);
         await context.OpenProjectAsync(ProjectPath);

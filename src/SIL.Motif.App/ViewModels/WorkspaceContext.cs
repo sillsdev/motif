@@ -914,33 +914,34 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>Whether <paramref name="page"/> is shown and can be opened in this window.</summary>
     public bool CanOpenPage(WorkspacePage page) =>
-        PageEntries.FirstOrDefault(entry => entry.Page == page) is not { } entry || entry.ShowsIn(Stage);
+        PageEntries.FirstOrDefault(entry => entry.Page == page) is not { IsDiagnostic: true } || Diagnostics;
 
-    /// <summary>The registered pages whose stages decide <see cref="CanOpenPage"/>; tests may supply their own.</summary>
+    /// <summary>The registered pages that determine which pages can be opened.</summary>
     public IReadOnlyList<PageEntry> PageEntries { get; init; } = PageRegistry.Entries;
 
-    /// <summary>The stage this window shows (ADR 0100); changing it can close the page on screen.</summary>
+    /// <summary>Whether diagnostic pages are available.</summary>
     [ObservableProperty]
-    private MotifStage _stage = MotifStage.Polish;
+    private bool _diagnostics;
 
-    partial void OnStageChanged(MotifStage value)
+    partial void OnDiagnosticsChanged(bool value)
     {
         if (!CanOpenPage(CurrentPage)) CurrentPage = WorkspacePage.Overview;
     }
 
-    /// <summary>
-    /// Takes the stage from <paramref name="preferences"/> and saves each later change there, so the person's
-    /// choice survives a restart.
-    /// </summary>
-    public void UseStagePreferences(IUserPreferencesStore preferences)
+    /// <summary>Loads and persists the person's Diagnostics preference.</summary>
+    public void UseDiagnosticsPreferences(IUserPreferencesStore preferences)
     {
         ArgumentNullException.ThrowIfNull(preferences);
-        Stage = preferences.Current.Stage;
+        Diagnostics = preferences.Current.Diagnostics;
         PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(Stage)) preferences.Update(current => current with { Stage = Stage });
+            if (e.PropertyName == nameof(Diagnostics)) preferences.Update(current => current with { Diagnostics = Diagnostics });
         };
     }
+
+    /// <summary>Toggles the diagnostic pages.</summary>
+    [RelayCommand]
+    private void ToggleDiagnostics() => Diagnostics = !Diagnostics;
 
     /// <summary>Opens <paramref name="page"/> as it stands; a page this window does not offer stays closed.</summary>
     public void OpenPage(WorkspacePage page)

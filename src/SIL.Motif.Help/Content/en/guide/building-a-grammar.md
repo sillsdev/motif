@@ -50,7 +50,7 @@ Our own suggestion, which has no source: Motif measures only the Default Selecti
 
 **In our experience.** Give each stem its class as you add it. In a Tamil build, a restriction that limited a past-tense suffix to one inflection class made nine types that had parsed stop parsing, because two verb stems had no class yet. Eight parsed again once those two stems were given the class (Tamil checkpoint report).
 
-**In Motif.** The **Lost** outcome in the **Matrix** marks a word FieldWorks holds an Approved analysis for that the grammar no longer builds (see [Texts](guide:texts)).
+**In Motif.** The **Lost** list in **Texts** marks a word FieldWorks holds an Approved analysis for that the grammar no longer builds (see [Texts](guide:texts)).
 
 ## Agreement
 

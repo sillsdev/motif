@@ -21,7 +21,7 @@ public sealed class ResponsivePageLayoutTests(ResponsivePageLayoutTests.SampleWi
                 if (entry.Page == WorkspacePage.AiHandoff) continue;
                 if (entry.Page == WorkspacePage.Parsimony)
                 {
-                    yield return ["parsimony-enabled", entry.Page, TextsTab.Matrix];
+                    yield return ["parsimony-enabled", entry.Page, TextsTab.Lists];
                     continue;
                 }
                 var routes = PageScreenshots.Views().Where(view => view.Page == entry.Page).ToArray();

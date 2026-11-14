@@ -28,6 +28,8 @@ internal static class SetupWalkthroughActions
 
     internal static void ClickParseAllWordsFromTexts(WalkthroughWindow walkthrough)
     {
+        walkthrough.ShowPage(WorkspacePage.Texts);
+        walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
         var texts = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<TextsPage>());
         var button = Assert.Single(texts.GetLogicalDescendants().OfType<Button>(), candidate =>
             Avalonia.Automation.AutomationProperties.GetName(candidate) == "Parse all words");

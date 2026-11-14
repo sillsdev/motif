@@ -72,9 +72,6 @@ internal static class ComponentStateContractCases
         new("HyperlinkButton:pointerover", nameof(InteractionCueTests.ALinkUnderlinesUnderThePointer)),
         new("HyperlinkButton.outcomeLegendLink:pointerover TextBlock.outcomeLegendText",
             nameof(InteractionCueTests.AnOutcomeLegendLinkIsVisibleAtRestAndUnderlinesUnderThePointer)),
-        new("Border.matrixCell.violation:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
-        new("Border.matrixCell.review:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
-        new("Border.matrixCell.new:pointerover", nameof(InteractionCueTests.AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen)),
     ];
 
     /// <summary>
@@ -197,24 +194,12 @@ internal static class ComponentStateContractCases
             StatePart.Self, Panel.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.morph.inspectable:pointerover", "hover", () => Alone(BorderMorpheme()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
-        yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
-            StatePart.Self, Border.BorderBrushProperty, "Intent.Primary");
-        yield return new("Border.matrixCell:pointerover", "hover", () => Alone(Cell()), StateStimulus.Pointer,
-            StatePart.Self, Border.BorderThicknessProperty, "Component.MatrixCell.HoverThickness");
-        yield return new("Border.matrixCell:pointerover", "keyboard focus", () => Alone(Cell()), StateStimulus.KeyboardFocus,
-            StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
         yield return new("Border.overviewTile:pointerover", "hover", () => Alone(new Border
         {
             Classes = { "overviewTile" }, Width = 200, Height = 80,
             Child = new TextBlock { Text = "Summary" },
         }),
             StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
-        yield return new("Border.matrixCell.selected", "selected", () => Alone(Cell("selected")), StateStimulus.None,
-            StatePart.Self, Border.BorderThicknessProperty, "Component.MatrixCell.SelectedThickness");
-        yield return new("Border.matrixCell.selected", "selected under the pointer", () => Alone(Cell("selected")),
-            StateStimulus.Pointer, StatePart.Self, Border.BorderThicknessProperty, "Component.MatrixCell.SelectedThickness");
-        yield return new("Border.matrixCell.selected", "selected and keyboard focus", () => Alone(Cell("selected")),
-            StateStimulus.KeyboardFocus, StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
         foreach (var (how, stimulus) in Hovers)
         {
             yield return new($"Button.overviewTile:{how}" + face, how, () => Alone(Press("overviewTile")), stimulus,
@@ -534,13 +519,6 @@ internal static class ComponentStateContractCases
     private static Border BorderMorpheme() =>
         new() { Classes = { "morph", "inspectable" }, Focusable = true, Width = 80, Height = 40, Child = new TextBlock { Text = "kat" } };
 
-    private static Border Cell(params string[] classes)
-    {
-        var cell = new Border { Classes = { "matrixCell" }, Focusable = true, Width = 160, Height = 60, Child = new TextBlock { Text = "5" } };
-        cell.Classes.AddRange(classes);
-        return cell;
-    }
-
     private static Border Strip(params string[] classes)
     {
         var strip = new Border { Classes = { "wordStrip" }, Focusable = true, Child = new TextBlock { Text = "Sungura" } };
@@ -634,7 +612,6 @@ internal enum TooltipScene
     Warnings,
     Handoff,
     ReaderStaged,
-    MatrixStaged,
     ListsStaged,
     WordCardWithoutOccurrence,
     ReviewStaged,
@@ -671,9 +648,10 @@ internal static class TooltipOwners
     [
         new("navigation badge", "Views/MotifWorkspaceView.axaml", "{Binding BadgeTip}", TooltipScene.Overview,
             control => control is Border && control.Classes.Contains("pageBadge")),
-        new("opinion mark", "OpinionMark.cs", "name", TooltipScene.Matrix,
-            control => control is OpinionMark && control.FindAncestorOfType<WordCard>() is null &&
-                control.FindAncestorOfType<ReviewPanel>() is null),
+        new("opinion mark", "OpinionMark.cs", "name", TooltipScene.WordCard,
+            control => control is OpinionMark && control.FindAncestorOfType<ReviewPanel>() is null &&
+                (control.FindAncestorOfType<WordCard>() is null || control.GetVisualAncestors().OfType<Border>()
+                    .Any(border => border.Classes.Contains("wordPresentationCardHeader")))),
         new("mark chip", "Views/MarkChip.cs", "Mark?.Word", TooltipScene.TryAWordRecordedDetails,
             control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is null &&
                 !control.GetVisualAncestors().OfType<Border>()
@@ -751,33 +729,8 @@ internal static class TooltipOwners
         new("recent project", "Views/MainWindow.axaml.cs", "recent.FullFwDataPath", TooltipScene.OpenRecent,
             control => control is MenuItem && control.Name != "ConfigureMenuItem" &&
                 AutomationProperties.GetAutomationId(control) != AutomationIds.MenuButton),
-        new("Matrix cell", "Views/ComparePanel.axaml", "{Binding Explanation}", TooltipScene.Matrix,
-            control => MatrixCellOrTipText(control, compact: false)),
-        new("Matrix cell blank places", "Views/MatrixCell.axaml", "{Binding PlacesNote}", TooltipScene.Matrix,
-            control => control is TextBlock { DataContext: CompareCellViewModel } && control.Classes.Contains("matrixCellPlaces"))
-        {
-            Pending = "the places are blank only in the open Proposal's own view, which no tooltip scene opens; TextsProposalMatrixTests reads the note",
-        },
-        new("Matrix column heading", "Views/ComparePanel.axaml", "{Binding Label}", TooltipScene.Matrix,
-            control => control is TextBlock { DataContext: CompareColumnViewModel } &&
-                control.FindAncestorOfType<ComparePanel>() is not null),
-        new("Parse stopped words again", "Views/ComparePanel.axaml", "Parse the stopped and unparsed words again",
-            TooltipScene.Matrix,
-            control => control is SplitButton && Name(control) == "Parse the stopped and unparsed words again"),
-        new("add checked words as Unknown", "Views/ComparePanel.axaml", "{Binding Compare.ProposeTip}", TooltipScene.Matrix,
-            control => control is Button && Name(control) == "Add checked words as Unknown")
-        {
-            Pending = "the Matrix scene has no checked words, so the action is hidden",
-        },
-        new("mark checked words as incorrect spelling", "Views/ComparePanel.axaml", "{Binding Compare.ProposeTip}", TooltipScene.Matrix,
-            control => control is Button && Name(control) == "Mark checked words as incorrect spelling")
-        {
-            Pending = "the Matrix scene has no checked words, so the action is hidden",
-        },
-        new("filter chip label", "Views/FilterChip.cs", "string.IsNullOrEmpty(Label) ? null : Label", TooltipScene.Matrix,
+        new("filter chip label", "Views/FilterChip.cs", "string.IsNullOrEmpty(Label) ? null : Label", TooltipScene.Statistics,
             control => control is FilterChip),
-        new("pending change in a Matrix cell", "Views/MatrixCell.axaml", "{Binding PendingChangeStatus}", TooltipScene.MatrixStaged,
-            control => control is Ellipse && control.Classes.Contains("matrixPending")),
         new("word cell", "Controls/WordPresentation/WordRow.cs", "facts.SummaryWith(data.WithProposal)", TooltipScene.Matrix,
             control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationForm") &&
                 control.FindAncestorOfType<WordRow>() is not null),
@@ -803,11 +756,6 @@ internal static class TooltipOwners
         new("Word Analyses on a row", "Controls/WordPresentation/WordRow.cs", "data.Facts.WordAnalysesTip", TooltipScene.Matrix,
             control => control is HyperlinkButton && control.Classes.Contains("wordPresentationNextAction") &&
                 control.FindAncestorOfType<WordRow>() is not null),
-        new("compact Matrix cell", "Views/MiniMatrix.axaml", "{Binding AccessibleName}", TooltipScene.Matrix,
-            control => MatrixCellOrTipText(control, compact: true))
-        {
-            Pending = "the sample has one parse, so What changed draws no before-and-after Matrix",
-        },
         new("text to read", "Views/ResultsInTextPanel.axaml", "{Binding Title}", TooltipScene.TextPicker,
             control => control is TextBlock && control.DataContext is ResultsTextViewModel),
         new("word strip", "Controls/WordPresentation/WordStripToken.axaml", "{Binding TooltipSummary}", TooltipScene.Reader,
@@ -839,7 +787,8 @@ internal static class TooltipOwners
         new("staged change", "Tokens/Components/WordStripParts.axaml", "{Binding FitStatus}", TooltipScene.ReaderStaged,
             control => control is Border && control.Classes.Contains("stagedStrip")),
         new("opinion on a word card", "Controls/WordPresentation/WordCard.axaml", "{Binding OpinionLabel}", TooltipScene.WordCard,
-            control => control is OpinionMark && control.FindAncestorOfType<WordCard>() is not null),
+            control => control is OpinionMark && control.FindAncestorOfType<WordCard>() is not null &&
+                !control.GetVisualAncestors().OfType<Border>().Any(border => border.Classes.Contains("wordPresentationCardHeader"))),
         new("Word Analyses link in a word card", "Views/ResultsInTextPanel.axaml", "{Binding WordLinkText}",
             TooltipScene.WordCard,
             control => control is HyperlinkButton &&
@@ -1158,15 +1107,6 @@ internal static class TooltipOwners
     private static bool ProposalNumberCell(Control control, int column) =>
         control is TextBlock { DataContext: ProposalCardViewModel } && control.Classes.Contains("proposalNumber") &&
         control.Parent is Control cell && Grid.GetColumn(cell) == column;
-
-    private static bool MatrixCellOrTipText(Control control, bool compact)
-    {
-        if (control is not MatrixCell && control is not TextBlock) return false;
-        if (control.Classes.Contains("matrixCellPlaces")) return false;
-        var cell = control as MatrixCell ?? control.FindAncestorOfType<MatrixCell>();
-        if (cell is null || (cell.FindAncestorOfType<MiniMatrix>() is not null) != compact) return false;
-        return control is MatrixCell || ToolTip.GetTip(control) is not null;
-    }
 
     private static string? Name(Control control) => Avalonia.Automation.AutomationProperties.GetName(control);
 }

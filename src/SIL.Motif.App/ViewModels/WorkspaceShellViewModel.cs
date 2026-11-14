@@ -233,11 +233,17 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private readonly IReadOnlyList<PageEntry> _pageEntries;
     private IReadOnlyList<PageViewModel> _visiblePages;
 
-    private IReadOnlyList<PageViewModel> ComputeVisiblePages() => Pages
-        .Where(page => page.IsAvailable && _pageEntries.Single(entry => entry.Page == page.Page).ShowInRail)
-        .ToArray();
+    private IReadOnlyList<PageViewModel> ComputeVisiblePages()
+    {
+        var visible = Pages.Where(page => page.IsAvailable && _pageEntries.Single(entry => entry.Page == page.Page).ShowInRail)
+            .OrderBy(page => _pageEntries.Single(entry => entry.Page == page.Page).IsDiagnostic).ToArray();
+        foreach (var page in Pages) page.IsDiagnosticsGroupStart = false;
+        var first = visible.FirstOrDefault(page => _pageEntries.Single(entry => entry.Page == page.Page).IsDiagnostic);
+        if (first is not null) first.IsDiagnosticsGroupStart = true;
+        return visible;
+    }
 
-    // The stage decides which pages exist; the context has already moved off a page the new stage hides.
+    // The context moves off a diagnostic page before the rail refreshes.
     private void RefreshVisiblePages()
     {
         foreach (var page in Pages) page.IsAvailable = Context.CanOpenPage(page.Page);
@@ -914,7 +920,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         switch (e.PropertyName)
         {
-            case nameof(WorkspaceContext.Stage):
+            case nameof(WorkspaceContext.Diagnostics):
                 RefreshVisiblePages();
                 break;
             case nameof(WorkspaceContext.CurrentPage):

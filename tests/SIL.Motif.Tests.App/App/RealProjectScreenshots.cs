@@ -308,12 +308,12 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     private static void SaveCompareWithCellsChosen(WalkthroughWindow walkthrough, string folder)
     {
         var compare = walkthrough.Workspace.Assess.Compare;
-        walkthrough.Workspace.Context.OpenTexts(TextsTab.Matrix);
+        walkthrough.Workspace.Context.OpenTexts(TextsTab.Lists);
         compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Lost"));
         Save(walkthrough.Window, Path.Combine(folder, "2f-texts-matrix-violations-light.png"));
         compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
         Save(walkthrough.Window, Path.Combine(folder, "2g-texts-matrix-largest-cell-light.png"));
-        walkthrough.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
+        walkthrough.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
         Save(walkthrough.Window, Path.Combine(folder, "2h-texts-matrix-selected-light.png"));
         compare.ClearSelectionCommand.Execute(null);
     }
@@ -331,7 +331,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
         {
             Application.Current!.RequestedThemeVariant = variant;
-            workspace.Context.OpenTexts(TextsTab.Matrix);
+            workspace.Context.OpenTexts(TextsTab.Lists);
             Save(walkthrough.Window, Path.Combine(folder, $"2a-texts-matrix-after-rerun-{theme}.png"));
         }
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;

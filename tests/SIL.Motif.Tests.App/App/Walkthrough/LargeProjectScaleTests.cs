@@ -136,14 +136,14 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
             measurements.AssertReadCounts("Open stored Overview", 1, 267, wordCount, 162189);
             Capture(window, "overview");
             var texts = window.Workspace.PageModel<TextsPageModel>();
-            await measurements.MeasureAsync("Open Matrix", 15, () =>
+            await measurements.MeasureAsync("Open Lists", 15, () =>
             {
                 window.ShowPage(WorkspacePage.Texts);
-                window.ShowTextsTab(TextsTab.Matrix);
+                window.ShowTextsTab(TextsTab.Lists);
                 Assert.Equal(wordCount, texts.Assess.Compare.Cells.Sum(cell => cell.WordCount));
                 PageScreenshots.Settle(window.Window);
             });
-            Capture(window, "matrix");
+            Capture(window, "lists");
             await measurements.MeasureAsync("Open largest List", 5, () =>
             {
                 window.ShowTextsTab(TextsTab.Lists);

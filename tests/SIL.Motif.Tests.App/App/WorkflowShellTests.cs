@@ -226,9 +226,8 @@ public sealed class WorkflowShellTests
 
                 var entries = SidebarEntries(window);
                 Assert.Equal(
-                    ["Overview page", "Proposals page", "Texts page", "Try a Word page", "Parser Work page",
-                        "Warnings page", "Parsimony page", "Review Changes page",
-                        "AI Assistants page"],
+                    ["Overview page", "Proposals page", "Texts page", "Try a Word page", "Review Changes page",
+                        "AI Assistants page", "Parser Work page", "Warnings page", "Parsimony page"],
                     entries.Select(AutomationProperties.GetName));
 
                 foreach (var page in workspace.VisiblePages.Select(entry => entry.Page).Reverse())
@@ -780,10 +779,9 @@ public sealed class WorkflowShellTests
                 window.Show();
                 window.UpdateLayout();
 
-                // The matrix is the first view Texts opens on; the others are one click away.
-                Assert.Contains("active", ButtonNamed(window, "Matrix tab").Classes);
-                Assert.DoesNotContain("active", ButtonNamed(window, "Analyze texts tab").Classes);
-                Assert.True(Host(window, "CompareHost").IsEffectivelyVisible);
+                Assert.Contains("active", ButtonNamed(window, "Analyze texts tab").Classes);
+                Assert.DoesNotContain("active", ButtonNamed(window, "Lists tab").Classes);
+                Assert.True(Host(window, "AnalyzeTextsHost").IsEffectivelyVisible);
 
                 ButtonNamed(window, "Analyze texts tab").Command!.Execute(TextsTab.AnalyzeTexts);
                 window.UpdateLayout();
@@ -892,7 +890,8 @@ public sealed class WorkflowShellTests
         entries.Single(entry => entry.DataContext is PageViewModel model && model.Page == page);
 
     private static TextBlock Label(ListBoxItem entry) =>
-        entry.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Classes.Contains("pageLabel"));
+        entry.GetVisualDescendants().OfType<TextBlock>().Single(text =>
+            AutomationProperties.GetAutomationId(text) == AutomationIds.SidebarPageLabel);
 
     private static void Click(MainWindow window, Control control)
     {
@@ -944,6 +943,7 @@ public sealed class WorkflowShellTests
             fake, clipboard: new AvaloniaClipboard(window), advancedAiModeEnabled: true);
 
         window.Compose(workspace);
+        workspace.Context.Diagnostics = true;
         return (workspace, window);
     }
 

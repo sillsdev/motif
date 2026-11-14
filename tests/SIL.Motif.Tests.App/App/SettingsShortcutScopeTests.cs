@@ -93,7 +93,7 @@ public sealed class SettingsShortcutScopeTests
                 settings.ShortcutSearch = searchAction;
                 settings.OpenGroup(SettingsGroup.KeyboardShortcuts);
                 PageScreenshots.Settle(window);
-                Assert.Equal(new[] { "Analyze Texts", "Lists", "Matrix", "Word List" },
+                Assert.Equal(new[] { "Analyze Texts", "Lists", "Word List" },
                     settings.ShortcutEntries.Select(entry => entry.Group).Order().ToArray());
                 Assert.Single(settings.ShortcutEntries.Select(entry => entry.Keys).Distinct());
                 Assert.Single(settings.ShortcutEntries.Select(entry => entry.Action).Distinct());
@@ -101,7 +101,7 @@ public sealed class SettingsShortcutScopeTests
                 var list = SettingsTestAccess.ShortcutList(page);
                 var rows = list.GetVisualDescendants().OfType<Border>()
                     .Where(row => row.Classes.Contains("settingsShortcutRow")).ToArray();
-                Assert.Equal(4, rows.Length);
+                Assert.Equal(3, rows.Length);
                 foreach (var row in rows)
                 {
                     var entry = Assert.IsType<ShortcutEntry>(row.DataContext);

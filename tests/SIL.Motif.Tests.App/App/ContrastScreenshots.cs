@@ -12,8 +12,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Saves the two states the every-page capture cannot reach where contrast was measured: setup's last step, with
-/// its solid primary button, and a Matrix holding every kind of cell, both zero and counted.
+/// Saves setup's last step, with its solid primary button, for contrast inspection.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class ContrastScreenshots
@@ -36,7 +35,7 @@ public sealed class ContrastScreenshots
     }
 
     [ScreenshotFact]
-    public void CaptureSetupAndEveryKindOfMatrixCell()
+    public void CaptureSetup()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
@@ -61,36 +60,7 @@ public sealed class ContrastScreenshots
                 window.Close();
             }
 
-            foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
-            {
-                var compare = MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord);
-                var matrix = new MotifTestWindow
-                {
-                    Content = new ComparePanel(compare), RequestedThemeVariant = variant, Width = 1100, Height = 700,
-                };
-                MatrixCell? explanationCell = null;
-                try
-                {
-                    matrix.Show();
-                    PageScreenshots.Settle(matrix);
-                    explanationCell = matrix.GetVisualDescendants().OfType<MatrixCell>().Single(cell =>
-                        cell.DataContext is CompareCellViewModel viewModel &&
-                        viewModel.Explanation == "You approved these in FieldWorks; PanGloss builds a different analysis.");
-                    Assert.Equal("You approved these in FieldWorks; PanGloss builds a different analysis.",
-                        ToolTip.GetTip(explanationCell));
-                    ToolTip.SetIsOpen(explanationCell, true);
-                    PageScreenshots.Settle(matrix);
-                    LayoutAssertions.BeforeCapture(matrix);
-                    using var frame = matrix.CaptureRenderedFrame()
-                        ?? throw new InvalidOperationException("No frame rendered for the Matrix.");
-                    frame.Save(Path.Combine(folder, $"15-matrix-every-cell-1100-{theme}.png"), PngBitmapEncoderOptions.Default);
-                }
-                finally
-                {
-                    if (explanationCell is not null) ToolTip.SetIsOpen(explanationCell, false);
-                    matrix.Close();
-                }
-            }
+
         }, TimeSpan.FromMinutes(2));
     }
 

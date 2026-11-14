@@ -39,9 +39,9 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Assert.NotNull(result);
             Assert.NotEmpty(result!.Words);
             walkthrough.ShowPage(WorkspacePage.Overview);
-            walkthrough.Click("Open Approved analyses kept in the Matrix");
+            walkthrough.Click("Open Approved analyses kept in Lists");
             Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.CurrentPage);
-            Assert.Equal(TextsTab.Matrix, walkthrough.Workspace.PageModel<TextsPageModel>().Tab);
+            Assert.Equal(TextsTab.Lists, walkthrough.Workspace.PageModel<TextsPageModel>().Tab);
             Assert.Contains(walkthrough.Workspace.Assess.Compare.Cells,
                 cell => cell.Row == WordProjectStatus.Approved && cell.IsSelected);
 
@@ -123,10 +123,9 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             walkthrough.ShowPage(WorkspacePage.Overview);
             walkthrough.Click("Open Text coverage in Texts");
             var comparedWord = walkthrough.Workspace.Assess.Compare.Words.First().Word;
-            walkthrough.ShowTextsTab(TextsTab.Matrix);
-            // Lists offers the same tick on its own tab, so name the Matrix's list of words.
-            var matrixWords = walkthrough.Find<ListBox>("Words in the chosen cells");
-            var tick = matrixWords.GetVisualDescendants().OfType<CheckBox>().Single(box =>
+            walkthrough.ShowTextsTab(TextsTab.Lists);
+            var listWords = walkthrough.Find<ListBox>("Words in the selected list");
+            var tick = listWords.GetVisualDescendants().OfType<CheckBox>().Single(box =>
                 AutomationProperties.GetName(box) == $"Tick {comparedWord}");
             HeadlessClick.Click(walkthrough.Window, tick, $"Tick {comparedWord}");
             Assert.True(tick.IsChecked);
@@ -179,9 +178,10 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Dispatcher.UIThread.RunJobs();
             walkthrough.Window.UpdateLayout();
             walkthrough.ShowPage(WorkspacePage.Texts);
-            walkthrough.ShowTextsTab(TextsTab.Matrix);
-            var comparePanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<ComparePanel>());
-            Assert.Same(walkthrough.Workspace.Assess.Compare, comparePanel.Compare);
+            walkthrough.ShowTextsTab(TextsTab.Lists);
+            var comparePanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<TextsListsPanel>());
+            comparePanel.Lists.ShowCells([]);
+            Assert.Same(walkthrough.Workspace.Assess.Compare, comparePanel.Lists.Compare);
             Assert.Equal(result.Words.Select(word => word.Word).Order(StringComparer.Ordinal),
                 walkthrough.Workspace.Assess.Compare.Words.Select(word => word.Word).Order(StringComparer.Ordinal));
             var rows = walkthrough.Workspace.Assess.Words.Rows.Cast<AssessWordRowViewModel>().ToList();
@@ -194,6 +194,8 @@ public sealed class AssessmentWalkthroughTests(PristineProjectFixture pristine)
             Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
 
             Assert.True(walkthrough.Workspace.Context.HasEvidence);
+            walkthrough.Workspace.Context.Diagnostics = true;
+            walkthrough.ShowPage(WorkspacePage.Timing);
             Assert.True(walkthrough.Named<ContentControl>("StatisticsHost").IsVisible);
             Assert.NotNull(walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
             Assert.Equal(walkthrough.Workspace.PageModel<TimingPageModel>().Statistics.Groups[0],

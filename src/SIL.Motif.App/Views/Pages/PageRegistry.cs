@@ -20,11 +20,8 @@ public sealed record PageEntry(
     /// <summary>Whether this page appears in the primary navigation rail.</summary>
     public bool ShowInRail { get; init; } = true;
 
-    /// <summary>The stages this page shows in; a page outside the window's stage is neither listed nor openable.</summary>
-    public IReadOnlyCollection<MotifStage> Stages { get; init; } = [MotifStage.Grow, MotifStage.Polish];
-
-    /// <summary>Whether this page shows in <paramref name="stage"/>.</summary>
-    public bool ShowsIn(MotifStage stage) => Stages.Contains(stage);
+    /// <summary>Whether this page requires Diagnostics to be enabled.</summary>
+    public bool IsDiagnostic { get; init; }
 
     /// <summary>An entry whose view is built from a model of the one type its model factory builds.</summary>
     public static PageEntry Of<TModel>(
@@ -57,13 +54,13 @@ public static class PageRegistry
             context => new TryWordPageModel(context), model => new TryAWordPage(model)),
         PageEntry.Of(WorkspacePage.Timing, MotifAppStrings.PageTiming,
             Of(Circle(12, 13, 7), "M12 13V9M10 3h4M12 3v3M18 6l1.5-1.5"),
-            context => new TimingPageModel(context), model => new TimingPage(model)),
+            context => new TimingPageModel(context), model => new TimingPage(model)) with { IsDiagnostic = true },
         PageEntry.Of(WorkspacePage.Warnings, "Warnings",
             "M12 4l9 16H3z M12 10v4M12 17v.5",
-            context => new WarningsPageModel(context), model => new WarningsPage(model)),
+            context => new WarningsPageModel(context), model => new WarningsPage(model)) with { IsDiagnostic = true },
         PageEntry.Of(WorkspacePage.Parsimony, "Parsimony",
             "M4 20V12 M10 20V6 M16 20v-5 M22 20H2",
-            context => new ParsimonyPageModel(context), model => new ParsimonyPage(model)),
+            context => new ParsimonyPageModel(context), model => new ParsimonyPage(model)) with { IsDiagnostic = true },
         PageEntry.Of(WorkspacePage.Review, "Review Changes",
             "M7 4v16M17 4v16 M4 8l3-3 3 3M14 16l3 3 3-3",
             context => new ReviewPageModel(context), model => new ReviewPanel(model)),

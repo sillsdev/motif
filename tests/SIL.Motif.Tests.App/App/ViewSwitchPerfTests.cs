@@ -121,7 +121,7 @@ public sealed class ViewSwitchPerfTests
                         }
 
                         MotifTrace.RunLabel = $"prepare {size}";
-                        workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
+                        workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
                         MotifTrace.RunLabel = $"warm {size}";
                         foreach (var (name, page, tab) in PageScreenshots.Views())
                             await Switch(workspace, window, name, page, tab);

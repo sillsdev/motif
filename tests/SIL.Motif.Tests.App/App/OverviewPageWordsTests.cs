@@ -683,7 +683,7 @@ public sealed class OverviewPageWordsTests
 
                 different.Command!.Execute(null);
 
-                Assert.Equal(TextsTab.Matrix, texts.Tab);
+                Assert.Equal(TextsTab.Lists, texts.Tab);
                 Assert.All(texts.Assess.Compare.Cells.Where(cell => cell.IsSelected),
                     cell => Assert.Equal(CompareColumnKind.NoMatch, cell.Column));
             }

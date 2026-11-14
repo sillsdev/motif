@@ -62,7 +62,7 @@
                 AutomationProperties.Name="{x:Static app:MotifAppStrings.OrderTheWordsInTheSelectedAccessibleName}">
         <ComboBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CompareSort">
-            <TextBlock Text="{Binding Converter={x:Static views:ComparePanel.SortLabel}}" />
+            <TextBlock Text="{Binding Converter={x:Static views:TextsListsPanel.SortLabel}}" />
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>

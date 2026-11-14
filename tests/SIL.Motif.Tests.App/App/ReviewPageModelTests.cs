@@ -659,6 +659,7 @@ public sealed class ReviewPageModelTests
         fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         var context = NewContext(fake);
+        context.Diagnostics = true;
         var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         context.OpenPage(WorkspacePage.Texts);

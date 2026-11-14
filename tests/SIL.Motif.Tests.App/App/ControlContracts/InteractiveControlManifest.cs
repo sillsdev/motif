@@ -13,7 +13,6 @@ internal enum InteractiveControlFamily
     Radio,
     Disclosure,
     List,
-    MatrixCell,
     SelectableText,
     Mark,
     Grid,
@@ -66,7 +65,6 @@ internal static class InteractiveControlManifest
             ["ListBox"] = InteractiveControlFamily.List,
             ["DataGrid"] = InteractiveControlFamily.Grid,
             ["TreeView"] = InteractiveControlFamily.Tree,
-            ["views:MatrixCell"] = InteractiveControlFamily.MatrixCell,
             ["views:FilterChip"] = InteractiveControlFamily.Filter,
             ["views:CopyableTextBlock"] = InteractiveControlFamily.SelectableText,
             ["views:TraceNotationToken"] = InteractiveControlFamily.Action,
@@ -81,21 +79,6 @@ internal static class InteractiveControlManifest
 
     public static IReadOnlyList<MarkupControlDeclaration> MarkupDeclarations { get; } =
     [
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "Button", 5),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "SplitButton", 1),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "TextBox", 1),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "ComboBox", 1),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "NumericUpDown", 1),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "Expander", 1),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "ListBox", 2),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "views:MatrixCell", 1),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "views:FilterChip", 2),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "views:CopyableTextBlock", 11),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "word:MorphemePanel", 1),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "controls:OpinionMark", 2),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "Border", 5),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "StackPanel", 14),
-        new("src/SIL.Motif.App/Views/ComparePanel.axaml", "UserControl", 1),
         new("src/SIL.Motif.App/Views/CrashWindow.axaml", "Button", 2),
         new("src/SIL.Motif.App/Views/CrashWindow.axaml", "Expander", 1),
         new("src/SIL.Motif.App/Views/CrashWindow.axaml", "StackPanel", 3),
@@ -149,14 +132,6 @@ internal static class InteractiveControlManifest
         new("src/SIL.Motif.App/Views/Inspector.axaml", "UserControl", 1),
         new("src/SIL.Motif.App/Views/MainWindow.axaml", "Button", 2),
         new("src/SIL.Motif.App/Views/MainWindow.axaml", "Border", 2),
-        new("src/SIL.Motif.App/Views/MatrixCell.axaml", "Border", 1),
-        new("src/SIL.Motif.App/Views/MatrixCell.axaml", "StackPanel", 2),
-        new("src/SIL.Motif.App/Views/MatrixCell.axaml", "UserControl", 1),
-        new("src/SIL.Motif.App/Views/MiniMatrix.axaml", "HyperlinkButton", 1),
-        new("src/SIL.Motif.App/Views/MiniMatrix.axaml", "views:MatrixCell", 1),
-        new("src/SIL.Motif.App/Views/MiniMatrix.axaml", "Border", 1),
-        new("src/SIL.Motif.App/Views/MiniMatrix.axaml", "StackPanel", 4),
-        new("src/SIL.Motif.App/Views/MiniMatrix.axaml", "UserControl", 1),
         new("src/SIL.Motif.App/Views/MotifWorkspaceView.axaml", "Button", 12),
         new("src/SIL.Motif.App/Views/MotifWorkspaceView.axaml", "HyperlinkButton", 1),
         new("src/SIL.Motif.App/Views/MotifWorkspaceView.axaml", "ListBox", 1),
@@ -326,8 +301,6 @@ internal static class InteractiveControlManifest
         new("assessment progress bar", InteractiveControlFamily.Progress,
             "src/SIL.Motif.App/Views/MotifWorkspaceView.axaml", "ParseAllWordsProgressAccessibleName"),
 
-        new("Matrix selection summary", InteractiveControlFamily.Container,
-            "src/SIL.Motif.App/Views/ComparePanel.axaml", "AutomationProperties.Name=\"{Binding Compare.SelectionText}\""),
     ];
 
     public static IReadOnlyList<ReportedSceneGap> ReportedSceneGaps { get; } =

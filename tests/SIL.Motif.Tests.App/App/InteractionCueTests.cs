@@ -25,7 +25,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
 {
     private static readonly ThemeVariant[] Themes = [ThemeVariant.Light, ThemeVariant.Dark];
 
-    public static TheoryData<string> Focusables() => new() { "button", "sidebar", "overviewTile", "matrixCell", "wordStrip" };
+    public static TheoryData<string> Focusables() => new() { "button", "sidebar", "overviewTile", "wordStrip" };
 
     [Theory]
     [MemberData(nameof(Focusables))]
@@ -134,49 +134,6 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
-    [Theory]
-    [InlineData("violation", "Intent.Consequence.Problem.Edge")]
-    [InlineData("review", "Intent.Consequence.Look.Edge")]
-    [InlineData("new", "Intent.Consequence.Look.Edge")]
-    public void AMeaningCellKeepsItsEdgeUnderThePointerAndWhenChosen(string family, string edge)
-    {
-        var failures = new List<string>();
-        avalonia.Invoke(() =>
-        {
-            foreach (var variant in Themes)
-            {
-                var cell = new Border { Classes = { "matrixCell", family }, Width = 160, Height = 60, Child = new TextBlock { Text = "5" } };
-                var window = new MotifTestWindow { Content = cell, RequestedThemeVariant = variant, Width = 300, Height = 120 };
-                try
-                {
-                    window.Show();
-                    Dispatcher.UIThread.RunJobs();
-                    window.UpdateLayout();
-                    var warning = Resource(edge, variant);
-                    var restingBrush = cell.BorderBrush;
-                    var resting = cell.BorderThickness;
-                    var centre = cell.TranslatePoint(new Point(80, 30), window)!.Value;
-                    window.MouseMove(centre);
-                    Dispatcher.UIThread.RunJobs();
-                    if (!Equals(warning, cell.BorderBrush)) failures.Add($"{variant} hover: edge is {cell.BorderBrush}, not the warning");
-                    if (cell.BorderThickness == resting && Equals(cell.BorderBrush, restingBrush))
-                        failures.Add($"{variant} hover: the cell looks the same as it does at rest");
-                    window.MouseMove(new Point(290, 110));
-                    cell.Classes.Add("selected");
-                    Dispatcher.UIThread.RunJobs();
-                    if (!Equals(warning, cell.BorderBrush)) failures.Add($"{variant} selected: edge is {cell.BorderBrush}, not the warning");
-                    if (cell.BorderThickness == resting)
-                        failures.Add($"{variant} selected: the cell looks the same as it does at rest");
-                }
-                finally
-                {
-                    window.Close();
-                }
-            }
-        });
-        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
-    }
-
     [Fact]
     public void ALinkUnderlinesUnderThePointer()
     {
@@ -264,9 +221,6 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
             case "overviewTile":
                 var tile = new Button { Classes = { "overviewTile" }, Content = "Speed" };
                 return (tile, tile);
-            case "matrixCell":
-                var cell = new Border { Classes = { "matrixCell", "violation" }, Focusable = true, Child = new TextBlock { Text = "5" } };
-                return (cell, cell);
             default:
                 var strip = new Border { Classes = { "wordStrip" }, Focusable = true, Child = new TextBlock { Text = "Sungura" } };
                 return (strip, strip);

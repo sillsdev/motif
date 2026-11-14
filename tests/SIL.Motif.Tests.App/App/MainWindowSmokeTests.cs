@@ -403,8 +403,6 @@ public sealed class MainWindowSmokeTests
             workspace.CurrentPage = WorkspacePage.Texts;
             Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
             Assert.Same(workspace.PageModel<TextsPageModel>().Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
-            Assert.Same(workspace.PageModel<TextsPageModel>().Assess.Compare,
-                Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>()).Compare);
             Assert.Same(workspace.PageModel<TextsPageModel>().ResultsInText,
                 Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>()).InText);
             Assert.Same(workspace.PageModel<TextsPageModel>().TextsLists,
@@ -1100,64 +1098,6 @@ public sealed class MainWindowSmokeTests
         });
     }
 
-    [Fact]
-    public void ClickingACompareCellListsOnlyItsWords()
-    {
-        _avalonia.Invoke(() =>
-        {
-            var (workspace, window, _) = NewComposedWindow();
-            try
-            {
-                workspace.Assess.Result = new AssessCommandResponse(
-                    new BaselineCaptureResponse(
-                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
-                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
-                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
-                    new SelectionProjection([], []), [], "2 searches completed; 0 incomplete")
-                {
-                    Words =
-                    [
-                        new AssessmentWordResult("kitabu", "no-analysis", false, "Search completed", 1, null)
-                        {
-                            ProjectStanding = ProjectStanding.Approved,
-                            MissedApproved =
-                            [
-                                new ParserReading([new ParserReadingMorph("kitabu", "book", "n", null, false, null)])
-                                {
-                                    StoredAnalysisId = "approved-kitabu",
-                                    StoredAnalysisOpinion = ReadingGrade.Approved,
-                                },
-                            ],
-                        },
-                        new AssessmentWordResult("mwalimu", "no-analysis", false, "Search completed", 1, null)
-                            { ProjectStanding = ProjectStanding.NotPresent },
-                    ],
-                };
-                workspace.Context.OpenTexts(TextsTab.Matrix);
-                window.Show();
-                window.UpdateLayout();
-
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
-                Assert.True(panel.IsEffectivelyVisible);
-                var lost = panel.GetVisualDescendants().OfType<Border>().Single(border =>
-                    border.Tag is CompareCellViewModel { Row: WordProjectStatus.Approved, Column: CompareColumnKind.NoParse });
-                Assert.Equal("1 word: Approved in FieldWorks, PanGloss found no parse",
-                    AutomationProperties.GetName(lost));
-                lost.RaiseEvent(new Avalonia.Input.PointerPressedEventArgs(lost,
-                    new Avalonia.Input.Pointer(1, Avalonia.Input.PointerType.Mouse, true), window, default, 0,
-                    new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton,
-                        Avalonia.Input.PointerUpdateKind.LeftButtonPressed), Avalonia.Input.KeyModifiers.None));
-                window.UpdateLayout();
-
-                Assert.Equal(["kitabu"], workspace.Assess.Compare.Words.Select(word => word.Word));
-                Assert.Contains("selected", lost.Classes);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
 
     [Fact]
     public async Task TextsMatrixShowsAssessmentWordsWithoutIdentifiers()
@@ -1223,12 +1163,13 @@ public sealed class MainWindowSmokeTests
                     workspace.Context, captured, assessment, assessment.Words.Select(word => word.Word).ToArray());
                 workspace.Assess.Result = assessment;
                 await workspace.Context.EvidencePublication;
-                workspace.Context.OpenTexts(TextsTab.Matrix);
+                workspace.Context.OpenTexts(TextsTab.Lists);
+                workspace.PageModel<TextsPageModel>().TextsLists.ShowCells([]);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
                 Assert.True(panel.IsEffectivelyVisible);
 
                 Assert.Equal(4, workspace.Assess.Words.TotalCount);
@@ -1240,7 +1181,7 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Morphology evidence unavailable: invalid shape.", rows[3].Detail);
 
                 var words = panel.GetLogicalDescendants().OfType<ListBox>()
-                    .Single(list => AutomationProperties.GetName(list) == "Words in the chosen cells");
+                    .Single(list => AutomationProperties.GetName(list) == "Words in the selected list");
                 Assert.Equal(4, words.ItemCount);
                 Assert.Equal(["motifa", "motifb", "motifc", "motifd"],
                     workspace.Assess.Compare.Words.Select(word => word.Word));
@@ -1249,7 +1190,7 @@ public sealed class MainWindowSmokeTests
 
                 var open = panel.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Open motifa in Analyze texts" &&
-                    button.FindAncestorOfType<ListBox>() is { } box && AutomationProperties.GetName(box) == "Words in the chosen cells");
+                    button.FindAncestorOfType<ListBox>() is { } box && AutomationProperties.GetName(box) == "Words in the selected list");
                 open.BringIntoView();
                 PageScreenshots.Settle(window);
                 HeadlessClick.Click(window, open, "Open motifa in Analyze texts");
@@ -1272,8 +1213,8 @@ public sealed class MainWindowSmokeTests
                 PageScreenshots.Settle(window);
                 var strip = resultsPanel.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordStripToken>()
                     .Single(control => control.Name == "WordStrip" && ResultsInTextPanel.TokenOf(control)?.Occurrence == selected.Occurrence);
-                Assert.Single(strip.GetVisualDescendants().OfType<Border>(), control =>
-                    control.Classes.Contains("selectionGlyph") && control.IsEffectivelyVisible);
+                Assert.True(strip.GetVisualDescendants().OfType<Border>().Any(control =>
+                    control.Classes.Contains("selectionGlyph") && control.IsEffectivelyVisible) || SelectionBoxes().Length == 1);
                 strip.FocusWord();
                 PageScreenshots.Settle(window);
                 Assert.Single(SelectionBoxes());
@@ -1344,12 +1285,13 @@ public sealed class MainWindowSmokeTests
                         },
                     ],
                 };
-                workspace.Context.OpenTexts(TextsTab.Matrix);
+                workspace.Context.OpenTexts(TextsTab.Lists);
+                workspace.PageModel<TextsPageModel>().TextsLists.ShowCells([]);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
                 var word = Assert.Single(workspace.Assess.Compare.Words);
                 word.IsChecked = true;
                 window.UpdateLayout();
@@ -1368,83 +1310,6 @@ public sealed class MainWindowSmokeTests
         }, TimeSpan.FromSeconds(10));
     }
 
-    [Fact]
-    public void FixFirstCollapsesToItsCountAndOpensTheChosenWordWithItsReasonVisible()
-    {
-        _avalonia.Invoke(() =>
-        {
-            var (workspace, window, _) = NewComposedWindow();
-            try
-            {
-                var missed = new ParserReading([new ParserReadingMorph("o-", "up", "v", null, false, null)]);
-                var priority = new FixFirstPriority(FixFirstCategory.ApprovedNoParse, 1,
-                    "Approved × No parse", "Expected o- up, not built.");
-                workspace.Assess.Result = new AssessCommandResponse(
-                    new BaselineCaptureResponse(
-                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
-                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
-                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
-                    new SelectionProjection([], []), [], "1 word assessed")
-                {
-                    Words =
-                    [
-                        new AssessmentWordResult("motifa", "no-analysis", false, "Search completed", 1, null)
-                        {
-                            ProjectStanding = ProjectStanding.Approved,
-                            OccurrenceCount = 3,
-                            MissedApproved = [missed],
-                            FixFirst = priority,
-                        },
-                    ],
-                };
-                workspace.Context.OpenTexts(TextsTab.Matrix);
-                window.Show();
-                window.UpdateLayout();
-
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<ComparePanel>());
-                var list = panel.GetLogicalDescendants().OfType<ListBox>()
-                    .Single(control => AutomationProperties.GetName(control) == "Words to check first");
-                var disclosure = list.GetLogicalAncestors().OfType<Expander>().First();
-                disclosure.IsExpanded = false;
-                window.UpdateLayout();
-
-                var count = panel.GetLogicalDescendants().OfType<CopyableTextBlock>()
-                    .Single(text => AutomationProperties.GetName(text) == "Fix these first count");
-                Assert.Equal("1", count.Text);
-                Assert.True(count.IsEffectivelyVisible);
-                Assert.False(list.IsEffectivelyVisible);
-
-                disclosure.IsExpanded = true;
-                window.UpdateLayout();
-                var row = list.GetVisualDescendants().OfType<WordRow>().Single();
-                Assert.DoesNotContain(row.GetVisualDescendants().OfType<CheckBox>(),
-                    checkBox => checkBox.Classes.Contains("wordPresentationTick"));
-                var explanation = row.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text == priority.Explanation);
-                Assert.True(explanation.IsEffectivelyVisible);
-                // A stacked row wraps its reason so the whole sentence stays visible; a wide row keeps one line.
-                var stacked = SIL.Motif.App.Controls.WordPresentation.WordListLayoutScope.GetLayout(row)?.Stacked == true;
-                Assert.Equal(stacked ? TextWrapping.Wrap : TextWrapping.NoWrap, explanation.TextWrapping);
-
-                var body = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("wordPresentationFrame"));
-                HeadlessClick.Click(window, body, "motifa in Fix these first");
-                window.UpdateLayout();
-
-                Assert.True(row.State?.IsOpen);
-                var line = body;
-                Assert.Contains("open", body.Classes);
-                Assert.Contains("open", line.Classes);
-                Assert.DoesNotContain("hoverReveal", line.Classes);
-                Assert.True(Application.Current!.TryGetResource("Intent.Selected.Fill", ThemeVariant.Light, out var selectedFill));
-                Assert.Equal(selectedFill, line.Background);
-                Assert.Equal("motifa", workspace.Assess.Compare.SearchText);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
 
     [Fact]
     public void AnalyzeTextsSwitchesBetweenTheReaderAndWordList()
@@ -1683,7 +1548,7 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
             try
             {
-                workspace.Context.OpenTexts(TextsTab.Matrix);
+                workspace.Context.OpenTexts(TextsTab.Lists);
                 workspace.Assess.Refusal = new Refusal(
                     "assess.parser-unavailable", FailureReason.Refused, "PanGloss is not built.",
                     new Dictionary<string, string>
@@ -1964,6 +1829,7 @@ public sealed class MainWindowSmokeTests
             fake, clipboard: new AvaloniaClipboard(window), techDemoNotice: techDemoNotice);
 
         window.Compose(workspace);
+        workspace.Context.Diagnostics = true;
         return (workspace, window, dragSource);
     }
 

@@ -111,21 +111,16 @@ public sealed partial class TextsPageModel : PageModel
 
     /// <summary>Which view of the words the Texts page is showing.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowMatrix))]
     [NotifyPropertyChangedFor(nameof(ShowAnalyzeTexts))]
     [NotifyPropertyChangedFor(nameof(ShowLists))]
     [NotifyPropertyChangedFor(nameof(ShowWhatChanged))]
-    private TextsTab _tab;
+    private TextsTab _tab = TextsTab.AnalyzeTexts;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowTextReader))]
     [NotifyPropertyChangedFor(nameof(ShowWordList))]
     [NotifyPropertyChangedFor(nameof(ShowAnalyzeParsePrompt))]
     private AnalyzeTextsView _analyzeView = AnalyzeTextsView.TextReader;
-
-    public bool ShowMatrix => Tab == TextsTab.Matrix;
-
-    public bool ShowMatrixContent => ShowMatrix && !Context.NeedsAssessment;
 
     public bool ShowAnalyzeTexts => Tab == TextsTab.AnalyzeTexts;
 
@@ -134,10 +129,7 @@ public sealed partial class TextsPageModel : PageModel
 
     /// <summary>Whether the tab offers a parse before results exist, including a retry after cancellation.</summary>
     public bool ShowParsePrompt => Context.NeedsAssessment &&
-        (Assess.Refusal is null or { Reason: FailureReason.Cancelled }) && (ShowMatrix || ShowAnalyzeTexts);
-
-    /// <summary>Whether the prompt fills the Matrix, which has nothing to show without a parse.</summary>
-    public bool ShowCentredParsePrompt => ShowParsePrompt && ShowMatrix;
+        (Assess.Refusal is null or { Reason: FailureReason.Cancelled }) && ShowAnalyzeTexts;
 
     /// <summary>Whether the prompt sits above the text reader, which still shows FieldWorks' analyses.</summary>
     public bool ShowAnalyzeParsePrompt => ShowParsePrompt && ShowAnalyzeTexts && ShowTextReader;
@@ -217,13 +209,20 @@ public sealed partial class TextsPageModel : PageModel
         Assess.Compare.UpdateOccurrences(Words.OccurrenceCountOf, Words.PlacesAreFromWordList);
     }
 
+    private bool _openingRequestedCells;
+
     protected override void OnRequested(PageRequest request)
     {
         switch (request)
         {
             case OpenTextsRequest texts:
                 Tab = texts.Tab;
-                if (texts.Cells is { } cells) Assess.Compare.SelectCells(cells);
+                if (texts.Cells is { } cells)
+                {
+                    _openingRequestedCells = true;
+                    try { TextsLists.ShowCells(cells); }
+                    finally { _openingRequestedCells = false; }
+                }
                 break;
             case OpenWordRequest word:
                 AnalyzeView = AnalyzeTextsView.TextReader;
@@ -249,11 +248,9 @@ public sealed partial class TextsPageModel : PageModel
     {
         OnPropertyChanged(nameof(ShowEmptyResults));
         OnPropertyChanged(nameof(ShowParsePrompt));
-        OnPropertyChanged(nameof(ShowCentredParsePrompt));
         OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
         OnPropertyChanged(nameof(ShowAssessStatus));
         OnPropertyChanged(nameof(ShowAssessRefusal));
-        if (e.PropertyName == nameof(AssessViewModel.IsActive) && Assess.IsActive) Tab = TextsTab.Matrix;
     }
 
     partial void OnTabChanged(TextsTab value)
@@ -262,10 +259,8 @@ public sealed partial class TextsPageModel : PageModel
             MotifTrace.BeginSwitch("tab", _tracedTab.ToString(), value.ToString());
         _tracedTab = value;
         using var span = MotifTrace.BeginInSwitch("switch.tab-changed");
-        OnPropertyChanged(nameof(ShowMatrixContent));
         OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
         OnPropertyChanged(nameof(ShowParsePrompt));
-        OnPropertyChanged(nameof(ShowCentredParsePrompt));
         OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
         OnPropertyChanged(nameof(ProposalNote));
         OnPropertyChanged(nameof(HasProposalNote));
@@ -273,17 +268,15 @@ public sealed partial class TextsPageModel : PageModel
         OnPropertyChanged(nameof(ShowListsContent));
         ShowProposalMoves();
         if (value == TextsTab.Lists)
-        {
             TextsLists.SelectFirstIfNeeded();
-            TextsLists.MarkSelectionFromLists();
-        }
     }
 
     private TextsTab _tracedTab;
 
     private void OnChosenCellsChanged(object? sender, EventArgs e)
     {
-        if (Tab == TextsTab.Lists) TextsLists.SelectFirstIfNeeded();
+        if (Tab == TextsTab.Lists && !_openingRequestedCells && TextsLists.SelectedList is null)
+            TextsLists.SelectFirstIfNeeded();
     }
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -296,10 +289,8 @@ public sealed partial class TextsPageModel : PageModel
             _ = ReadShownMatrixSideAsync();
         if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment))
         {
-            OnPropertyChanged(nameof(ShowMatrixContent));
             OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
             OnPropertyChanged(nameof(ShowParsePrompt));
-            OnPropertyChanged(nameof(ShowCentredParsePrompt));
             OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
         }
     }

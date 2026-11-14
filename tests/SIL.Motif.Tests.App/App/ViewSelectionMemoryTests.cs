@@ -200,7 +200,7 @@ public sealed class ViewSelectionMemoryTests
         "\"ProjectViews\":{\"id:a\":{\"AssessWords\":{\"SortColumn\":null,\"SortDescending\":false,\"Filter\":\"Missed\",\"SelectedKey\":\"mtoto\"}}}}";
 
     [Fact]
-    public void AFormatThreeFileReadsAsPolishAndIsRewrittenAsFormatFour()
+    public void AFormatThreeFileDefaultsDiagnosticsOffAndIsRewrittenAsFormatFive()
     {
         var folder = Directory.CreateTempSubdirectory("motif-stage-").FullName;
         try
@@ -210,17 +210,17 @@ public sealed class ViewSelectionMemoryTests
             var store = new FileUserPreferencesStore(path);
 
             Assert.Equal(PreferenceState.Ready, store.State);
-            Assert.Equal(MotifStage.Polish, store.Current.Stage);
+            Assert.False(store.Current.Diagnostics);
             Assert.Equal(125, store.Current.ZoomPercent);
             Assert.Equal(FormatThreeFile, File.ReadAllText(path));
 
-            store.Update(p => p with { Stage = MotifStage.Grow });
+            store.Update(p => p with { Diagnostics = true });
 
             using (var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path)))
-                Assert.Equal(4, document.RootElement.GetProperty("FormatVersion").GetInt32());
+                Assert.Equal(5, document.RootElement.GetProperty("FormatVersion").GetInt32());
             var reread = new FileUserPreferencesStore(path);
             Assert.Equal(PreferenceState.Ready, reread.State);
-            Assert.Equal(MotifStage.Grow, reread.Current.Stage);
+            Assert.True(reread.Current.Diagnostics);
             Assert.Equal(125, reread.Current.ZoomPercent);
             Assert.Equal(new ViewState(null, false, "Missed", "mtoto"), reread.GetViewState("id:a", "AssessWords"));
         }

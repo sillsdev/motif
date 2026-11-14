@@ -36,7 +36,7 @@ public sealed class WorkspaceContextWidthTests
             typeof(ICredentialStore), typeof(ITunnelClient),
             typeof(SIL.Motif.Host.Preferences.IDefaultProposalChecksStore), typeof(ProjectViewMemory),
             // The stage and its page entries are navigation metadata, not page-owned models.
-            typeof(MotifStage), typeof(IReadOnlyList<PageEntry>),
+            typeof(IReadOnlyList<PageEntry>),
         ];
         var carried = typeof(WorkspaceContext).GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Select(property => Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType);

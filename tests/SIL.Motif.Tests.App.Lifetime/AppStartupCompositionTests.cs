@@ -514,7 +514,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 await ShowPageAsync(session, WorkspacePage.Texts);
                 var texts = workspace.PageModel<TextsPageModel>();
                 Assert.True(texts.ShowParsePrompt);
-                Assert.False(texts.ShowMatrixContent);
+                Assert.True(texts.ShowAnalyzeTextsContent);
                 await Wait.UntilAsync(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
                         AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
                         text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible),
@@ -553,7 +553,8 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 Assert.False(workspace.ShowsParseAllWordsAction);
                 Assert.False(workspace.ShowsParseAllWordsProgress);
                 Assert.True(workspace.ShowsRefreshAction);
-                Assert.True(texts.ShowMatrixContent);
+                Assert.True(texts.ShowAnalyzeTextsContent);
+                Assert.False(texts.ShowParsePrompt);
                 Assert.True(workspace.Context.HasEvidence);
             }
             finally

@@ -289,44 +289,6 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
-    [Fact]
-    public void EveryMatrixCellsTextIsReadableEvenWhenItsCountIsZero()
-    {
-        var failures = new List<string>();
-        avalonia.Invoke(() =>
-        {
-            foreach (var theme in Themes)
-            {
-                var compare = MatrixListsWindowWordsTests.Compare(MatrixListsWindowWordsTests.EveryKindOfWord);
-                var window = new MotifTestWindow
-                {
-                    Content = new ComparePanel(compare), RequestedThemeVariant = theme, Width = 1400, Height = 900,
-                };
-                try
-                {
-                    window.Show();
-                    window.UpdateLayout();
-                    var cells = window.GetVisualDescendants().OfType<MatrixCell>().Where(cell => cell.IsEffectivelyVisible).ToArray();
-                    Assert.Contains(cells, cell => cell.DataContext is CompareCellViewModel { IsEmpty: true });
-                    Assert.Contains(cells, cell => cell.DataContext is CompareCellViewModel { IsNone: true });
-                    Assert.Contains(cells, cell => cell.DataContext is CompareCellViewModel { IsGood: true, IsEmpty: false });
-                    foreach (var cell in cells)
-                    foreach (var text in cell.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsEffectivelyVisible))
-                    {
-                        var ratio = Effective(text);
-                        if (ratio < Text)
-                            failures.Add($"{theme} {((CompareCellViewModel)cell.DataContext!).AccessibleName} '{text.Text}': {ratio:F2}:1");
-                    }
-                }
-                finally
-                {
-                    window.Close();
-                }
-            }
-        });
-
-        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
-    }
 
     [Fact]
     public void TimingsChartHasItsOwnColoursEachVisibleOnItsCard()

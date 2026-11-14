@@ -23,7 +23,7 @@ internal static class InteractiveControlSweep
             ["first project setup"] = [AutomationIds.SetupNext, AutomationIds.SkipSetup],
             ["setup text selection"] = [AutomationIds.SetupSelectAllTexts, AutomationIds.SetupClearTexts],
             ["completed Overview"] = [AutomationIds.RefreshProject],
-            ["completed Compare Matrix"] = [AutomationIds.RunAssessment],
+            ["completed Lists"] = [AutomationIds.RunAssessment],
             ["pending changes in Review"] = [AutomationIds.MeasureChanges, AutomationIds.ApplyChanges],
             ["pending change in Review"] = [AutomationIds.MeasureChanges, AutomationIds.ApplyChanges],
             ["Review receipt"] = [AutomationIds.ApplyReceipt],
@@ -145,7 +145,7 @@ internal static class InteractiveControlSweep
         return family is InteractiveControlFamily.Action or InteractiveControlFamily.Link or
             InteractiveControlFamily.Filter or InteractiveControlFamily.TextEntry or InteractiveControlFamily.Choice or
             InteractiveControlFamily.Check or InteractiveControlFamily.Radio or InteractiveControlFamily.Disclosure or
-            InteractiveControlFamily.List or InteractiveControlFamily.MatrixCell or InteractiveControlFamily.Tree or
+            InteractiveControlFamily.List or InteractiveControlFamily.Tree or
             InteractiveControlFamily.Grid or InteractiveControlFamily.FocusableSurface;
     }
 
@@ -225,7 +225,6 @@ internal static class InteractiveControlSweep
         if (walkthrough.Workspace.CurrentPage != WorkspacePage.Texts) return true;
 
         var tab = walkthrough.Workspace.PageModel<TextsPageModel>().Tab;
-        if (names.Contains("CompareHost") && tab != TextsTab.Matrix) return false;
         if (names.Contains("ListsHost") && tab != TextsTab.Lists) return false;
         if ((names.Contains("SelectionHost") || names.Contains("ResultsInTextHost")) &&
             tab != TextsTab.AnalyzeTexts) return false;
@@ -236,7 +235,6 @@ internal static class InteractiveControlSweep
     {
         Control when control.GetType().Name == "MarkdownRenderer" => InteractiveControlFamily.Container,
         FilterChip => InteractiveControlFamily.Filter,
-        MatrixCell => InteractiveControlFamily.MatrixCell,
         CopyableTextBlock => InteractiveControlFamily.SelectableText,
         OpinionMark or UnreadMark or MarkChip or MarkGlyph => InteractiveControlFamily.Mark,
         PathIcon icon when AutomationProperties.GetAutomationId(icon) == AutomationIds.MarkGlyph =>

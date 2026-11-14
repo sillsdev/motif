@@ -56,6 +56,7 @@ public sealed class TextsProposalMatrixTests
         context.PublishEvidence(evidence);
         await context.EvidencePublication;
         context.OpenPage(onTexts ? WorkspacePage.Texts : WorkspacePage.Overview);
+        page.Tab = TextsTab.Lists;
         if (open) await context.OpenProposalAsync(proposal, CancellationToken.None);
         if (open) await Wait.ForAsync(() => page.Assess.Compare.ProposalWordsMatch is not null || page.ProposalNote is not null,
             Wait.Default);
@@ -82,7 +83,7 @@ public sealed class TextsProposalMatrixTests
         Assert.False(Cell(page, CompareColumnKind.Match).IsMoved);
         Assert.Equal(Pair("2", "1"), page.Assess.Compare.Columns.Single(column => column.Column == CompareColumnKind.NoParse).CountText);
         Assert.StartsWith(Pair("4", "4"), page.Assess.Compare.Rows.Single(row => row.Row == WordProjectStatus.NotPresent).CountText);
-        Assert.Equal(MotifAppStrings.TextsProposalPairedNote, page.ProposalNote);
+        Assert.Equal(MotifAppStrings.TextsListsPairedNote, page.ProposalNote);
     }
 
     [Fact]
@@ -95,7 +96,7 @@ public sealed class TextsProposalMatrixTests
         Assert.Equal("2", Cell(page, CompareColumnKind.NoParse).CountNumberText);
         Assert.False(Cell(page, CompareColumnKind.NoParse).IsMoved);
         Assert.Equal(false, page.Assess.Compare.ProposalWordsMatch);
-        Assert.Equal(MotifAppStrings.TextsProposalDifferentWordsNote, page.ProposalNote);
+        Assert.Equal(MotifAppStrings.TextsListsDifferentWordsNote, page.ProposalNote);
         context.ShowProposalView(MarkupView.Proposal);
         Assert.Equal("2", Cell(page, CompareColumnKind.NoParse).CountNumberText);
         Assert.Equal("3", Cell(page, CompareColumnKind.Skipped).CountNumberText);
@@ -113,7 +114,7 @@ public sealed class TextsProposalMatrixTests
         Assert.Equal("1", page.Assess.Compare.Columns.Single(column => column.Column == CompareColumnKind.NoParse).CountText);
         Assert.False(page.Assess.Compare.ShowsTodayWords);
         Assert.False(page.Assess.Compare.ShowsFixFirst);
-        Assert.Equal(MotifAppStrings.TextsProposalViewNote, page.ProposalNote);
+        Assert.Equal(MotifAppStrings.TextsListsViewNote, page.ProposalNote);
         context.ShowProposalView(MarkupView.Today);
         Assert.Equal("2", Cell(page, CompareColumnKind.NoParse).CountNumberText);
         Assert.True(page.Assess.Compare.ShowsTodayWords);
@@ -149,8 +150,8 @@ public sealed class TextsProposalMatrixTests
     {
         var (context, page, reads) = await OpenedAsync();
         var compare = page.Assess.Compare;
-        var chosen = Cell(page, CompareColumnKind.NoParse);
-        chosen.IsSelected = true;
+        var chosen = page.TextsLists.Lists.First(list => list.HasWords);
+        page.TextsLists.SelectListCommand.Execute(chosen);
         compare.Sort = CompareSort.Alphabetical;
         compare.SearchText = "a";
         var summaries = reads.Summaries;
@@ -159,8 +160,7 @@ public sealed class TextsProposalMatrixTests
             context.ShowProposalView(view);
 
         Assert.Equal(summaries, reads.Summaries);
-        Assert.True(chosen.IsSelected);
-        Assert.Same(chosen, compare.ChosenCell);
+        Assert.Same(chosen, page.TextsLists.SelectedList);
         Assert.Equal(CompareSort.Alphabetical, compare.Sort);
         Assert.Equal("a", compare.SearchText);
     }
@@ -332,7 +332,7 @@ public sealed class TextsProposalMatrixTests
         Assert.Equal("2", Cell(page, CompareColumnKind.NoParse).CountNumberText);
         Assert.Equal("1", Cell(page, CompareColumnKind.Skipped).CountNumberText);
         Assert.False(Cell(page, CompareColumnKind.NoParse).IsMoved);
-        Assert.Equal(MotifAppStrings.TextsProposalDifferentWordsNote, page.ProposalNote);
+        Assert.Equal(MotifAppStrings.TextsListsDifferentWordsNote, page.ProposalNote);
     }
 
     [Fact]
@@ -387,11 +387,11 @@ public sealed class TextsProposalMatrixTests
         await Task.Delay(100);
 
         context.ShowProposalView(MarkupView.TodayToProposal);
-        Assert.Equal(MotifAppStrings.TextsProposalReadingNote, page.ProposalNote);
+        Assert.Equal(MotifAppStrings.TextsListsReadingNote, page.ProposalNote);
         Assert.Equal("2", Cell(page, CompareColumnKind.NoParse).CountNumberText);
 
         gate.Set();
-        await Wait.UntilAsync(() => page.ProposalNote == MotifAppStrings.TextsProposalPairedNote);
+        await Wait.UntilAsync(() => page.ProposalNote == MotifAppStrings.TextsListsPairedNote);
         Assert.Equal(Pair("2", "1"), Cell(page, CompareColumnKind.NoParse).CountNumberText);
     }
 
@@ -407,9 +407,9 @@ public sealed class TextsProposalMatrixTests
         Assert.Equal(MotifAppStrings.TextsListsPairedNote, page.ProposalNote);
         context.ShowProposalView(MarkupView.Proposal);
         Assert.Equal(MotifAppStrings.TextsListsViewNote, page.ProposalNote);
-        page.Tab = TextsTab.Matrix;
+        page.Tab = TextsTab.WhatChanged;
         context.ShowProposalView(MarkupView.TodayToProposal);
-        Assert.Contains("can still hold different words", page.ProposalNote);
+        Assert.Equal(MotifAppStrings.TextsWhatChangedPairedNote, page.ProposalNote);
 
         context.Assess.Restore(new WorkspaceEvidence(TimingProposalViewTests.Assessment() with { Words = [] },
             DateTimeOffset.UtcNow, false));

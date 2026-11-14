@@ -102,6 +102,7 @@ public sealed class WorkspacePageTests
     public void ShowingAPageMovesTheCurrentMarkerToThatPageAlone(WorkspacePage page)
     {
         var (_, _, workspace) = NewWorkspace();
+        workspace.Context.Diagnostics = true;
 
         workspace.ShowPageCommand.Execute(page);
 
@@ -123,14 +124,13 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public void TheTextsPageOpensOnMatrixAndEachTabShowsOnlyItsOwnContent()
+    public void TheTextsPageOpensOnAnalyzeAndEachTabShowsOnlyItsOwnContent()
     {
         var (_, _, workspace) = NewWorkspace();
         var texts = workspace.PageModel<TextsPageModel>();
 
-        Assert.Equal(TextsTab.Matrix, texts.Tab);
-        Assert.True(texts.ShowMatrix);
-        Assert.False(texts.ShowAnalyzeTexts);
+        Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
+        Assert.True(texts.ShowAnalyzeTexts);
         Assert.False(texts.ShowLists);
         Assert.False(texts.ShowWhatChanged);
 
@@ -139,7 +139,6 @@ public sealed class WorkspacePageTests
             texts.ShowTabCommand.Execute(tab);
 
             Assert.Equal(tab, texts.Tab);
-            Assert.Equal(tab == TextsTab.Matrix, texts.ShowMatrix);
             Assert.Equal(tab == TextsTab.AnalyzeTexts, texts.ShowAnalyzeTexts);
             Assert.Equal(tab == TextsTab.Lists, texts.ShowLists);
             Assert.Equal(tab == TextsTab.WhatChanged, texts.ShowWhatChanged);
@@ -207,13 +206,13 @@ public sealed class WorkspacePageTests
         var running = workspace.Assess.RunCommand.ExecuteAsync(null);
 
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowMatrix);
+        Assert.True(workspace.PageModel<TextsPageModel>().ShowAnalyzeTexts);
         workspace.Assess.CancelCommand.Execute(null);
         await running;
     }
 
     [Fact]
-    public async Task ARunOpensTheMatrixAndARerunWithMovesOpensWhatChanged()
+    public async Task ARunKeepsTheCurrentTabAndARerunWithMovesOpensWhatChanged()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
@@ -222,7 +221,7 @@ public sealed class WorkspacePageTests
             new("alimpiga", outcome, incomplete, "Search completed", 10, null) { ProjectStanding = ProjectStanding.NotPresent };
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("timed-out", true)] });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowMatrix);
+        Assert.True(workspace.PageModel<TextsPageModel>().ShowAnalyzeTexts);
 
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RerunAsync(["alimpiga"], 30_000);
@@ -233,7 +232,7 @@ public sealed class WorkspacePageTests
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
 
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowMatrix);
+        Assert.Equal(TextsTab.WhatChanged, workspace.PageModel<TextsPageModel>().Tab);
     }
 
     [Fact]

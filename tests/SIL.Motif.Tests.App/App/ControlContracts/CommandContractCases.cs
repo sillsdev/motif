@@ -73,6 +73,8 @@ internal static class CommandContractCases
             "ProjectViewModelTests.BrowseCommandRaisesProjectChosenWithThePickedPath"),
         new(typeof(BaselineViewModel), nameof(BaselineViewModel.RefreshCommand), null, null, false,
             "BaselineViewModelTests.RefreshCommandUpdatesStateOnSuccess"),
+        new(typeof(WorkspaceContext), nameof(WorkspaceContext.ToggleDiagnosticsCommand), null, null, true,
+            "DiagnosticsPlumbingTests.ViewMenuTogglesAndPersistsDiagnostics"),
         new(typeof(WorkspaceContext), nameof(WorkspaceContext.BrowseForProjectCommand), null, null, true,
             "ProjectViewModelTests.BrowseCommandRaisesProjectChosenWithThePickedPath",
             nameof(ProjectViewModel) + "." + nameof(ProjectViewModel.BrowseCommand)),

@@ -39,7 +39,7 @@ public sealed class TextsProposalTabsWindowTests
         var (workspace, window) = await PageScreenshots.OpenOverSampleData(
             configure: (fake, _) => fake.ReadTrialCompletesWith(Trial(today)), capturedAssessment: today);
         workspace.CurrentPage = WorkspacePage.Texts;
-        workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
+        workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
         await workspace.Context.OpenProposalAsync(ProposalId, CancellationToken.None);
         await Wait.UntilAsync(() => workspace.Assess.Compare.ProposalWordsMatch is not null,
             "The Matrix never compared the Proposal's words.", between: () => PageScreenshots.Settle(window));

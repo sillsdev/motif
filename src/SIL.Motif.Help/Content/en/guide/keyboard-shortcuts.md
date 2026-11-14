@@ -73,21 +73,6 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | Menu key or ↓ | Menu key or Alt+↓ | Menu key or Alt+↓ | Tables | Open Row Actions |
 | Enter | Enter | Enter | Tables | Open Row Details |
 
-## Matrix
-
-| Key | Windows / Linux | macOS | Page or scope | Action |
-| --- | --- | --- | --- | --- |
-| Enter or Space | Enter or Space | Enter or Space | Matrix | Open or Close the Word Card |
-| ↑ | ↑ | ↑ | Matrix | Move to the Previous Row |
-| ↓ | ↓ | ↓ | Matrix | Move to the Next Row |
-| Page Up | Page Up | Page Up | Matrix | Move Up One Screen of Words |
-| Page Down | Page Down | Page Down | Matrix | Move Down One Screen of Words |
-| Home | Home | Home | Matrix | Go to the First Row |
-| End | End | End | Matrix | Go to the Last Row |
-| Escape | Esc | Esc | Matrix | Close the Word Card |
-| F | Ctrl+F | ⌘+F | Matrix | Focus the Word Search |
-| Enter or Space | Enter or Space | Enter or Space | Matrix | Choose This Cell |
-
 ## Review Changes
 
 | Key | Windows / Linux | macOS | Page or scope | Action |
@@ -104,12 +89,6 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | ↓ | Alt+↓ | Alt+↓ | Review Changes | Next Change |
 | K | Alt+K | Alt+K | Review Changes | Keep Change |
 | U | Alt+Shift+U | Alt+Shift+U | Review Changes | Undo Change |
-
-## Matrix Preview
-
-| Key | Windows / Linux | macOS | Page or scope | Action |
-| --- | --- | --- | --- | --- |
-| Enter or Space | Enter or Space | Enter or Space | Matrix Preview | Choose This Cell |
 
 ## Morpheme
 

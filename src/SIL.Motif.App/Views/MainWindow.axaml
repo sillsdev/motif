@@ -63,6 +63,9 @@
             <MenuItem x:Name="CopyMenuItem" Header="{x:Static app:MotifAppStrings.MenuCopy}" Tag="Copy" Click="OnEditMenuClick" />
           </MenuItem>
           <MenuItem x:Name="ViewMenu" Header="{x:Static app:MotifAppStrings.MenuView}">
+            <MenuItem x:Name="DiagnosticsMenuItem" Header="{x:Static app:MotifAppStrings.MenuDiagnostics}" ToggleType="CheckBox"
+                      IsChecked="{Binding Context.Diagnostics, Mode=OneWay}" Command="{Binding Context.ToggleDiagnosticsCommand}" />
+            <Separator />
             <MenuItem x:Name="ZoomInMenuItem" Header="{x:Static app:MotifAppStrings.MenuZoomIn}" Tag="ZoomIn" Click="OnViewMenuClick" />
             <MenuItem x:Name="ZoomOutMenuItem" Header="{x:Static app:MotifAppStrings.MenuZoomOut}" Tag="ZoomOut" Click="OnViewMenuClick" />
             <MenuItem x:Name="ResetZoomMenuItem" Header="{x:Static app:MotifAppStrings.MenuResetZoom}" Tag="ResetZoom" Click="OnViewMenuClick" />

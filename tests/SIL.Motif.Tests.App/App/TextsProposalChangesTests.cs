@@ -161,18 +161,6 @@ public sealed class TextsProposalChangesTests
     }
 
     [Fact]
-    public async Task TheMatrixNoteInTheProposalViewSaysWhatChangedListsTheMoves()
-    {
-        var (_, page, _) = await TextsProposalMatrixTests.OpenedAsync();
-        page.Tab = TextsTab.Matrix;
-        page.Context.ShowProposalView(MarkupView.Proposal);
-
-        Assert.Equal(MotifAppStrings.TextsProposalViewNote, page.ProposalNote);
-        Assert.Contains("What Changed lists the words the Proposal moves", page.ProposalNote, StringComparison.Ordinal);
-        Assert.DoesNotContain("nothing to show", page.ProposalNote, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task TheProposalViewWithoutItsSideListsNoMovesAndMakesNone()
     {
         var reads = new TextsProposalMatrixTests.Reads { Behave = _ => throw new InvalidOperationException("cannot read") };

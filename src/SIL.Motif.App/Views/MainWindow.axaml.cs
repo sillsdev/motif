@@ -170,7 +170,7 @@ public sealed partial class MainWindow : Window
         workspace.ProposalBar.Left += (_, _) =>
             Dispatcher.UIThread.Post(() => _workspaceView?.FocusCurrentPage(), DispatcherPriority.Background);
         workspace.Context.ViewMemory.UseStore(_preferences);
-        workspace.Context.UseStagePreferences(_preferences);
+        workspace.Context.UseDiagnosticsPreferences(_preferences);
         _host = new MotifWorkspaceHost(workspace, this, _preferences, _applicationFacts, _uriLauncher,
             _problemReportServices, ShowProblemReportAsync);
         ConfigureZoom();
@@ -330,7 +330,7 @@ public sealed partial class MainWindow : Window
     [KeyboardShortcutHandler(
         "Window:ShowHelp", "Window:Back", "Window:ShowShortcuts", "Window:OpenSettings", "Window:OpenProject",
         "Window:ZoomIn", "Window:ZoomOut", "Window:ResetZoom", "Window:Copy", "Window:Undo", "Window:Redo",
-        "TextReader:FocusWordSearch", "WordList:FocusWordSearch", "Lists:FocusWordSearch", "Matrix:FocusWordSearch")]
+        "TextReader:FocusWordSearch", "WordList:FocusWordSearch", "Lists:FocusWordSearch")]
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
         var modifiers = e.KeyModifiers;

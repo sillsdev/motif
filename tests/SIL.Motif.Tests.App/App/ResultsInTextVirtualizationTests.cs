@@ -34,7 +34,7 @@ public sealed class ResultsInTextVirtualizationTests
                 var page = workspace.PageModel<TextsPageModel>();
                 var cardAnchor = page.ResultsInText.SelectedToken!.Occurrence!;
                 if (!openCard) page.ResultsInText.CloseTokenCard();
-                page.Tab = TextsTab.Matrix;
+                page.Tab = TextsTab.Lists;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
 

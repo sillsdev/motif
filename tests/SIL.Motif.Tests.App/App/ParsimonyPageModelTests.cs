@@ -46,6 +46,7 @@ public sealed class ParsimonyPageModelTests
         var fake = new FakeCommandClient();
         ExpectNoReport(fake);
         var (context, page) = Build(fake, advancedAi: false);
+        context.Diagnostics = true;
 
         await context.OpenProjectAsync(ProjectA);
         context.OpenPage(WorkspacePage.Parsimony);
@@ -61,6 +62,7 @@ public sealed class ParsimonyPageModelTests
         var fake = new FakeCommandClient();
         ExpectNoReport(fake);
         var (context, _) = Build(fake, advancedAi: true);
+        context.Diagnostics = true;
 
         await context.OpenProjectAsync(ProjectA);
         context.OpenPage(WorkspacePage.Parsimony);

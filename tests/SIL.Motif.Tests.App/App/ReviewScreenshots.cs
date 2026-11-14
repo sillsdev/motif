@@ -575,6 +575,7 @@ public sealed class ReviewScreenshots
             clock, techDemoNotice: PageScreenshots.FirstRunNotice());
         var window = new MainWindow();
         window.Compose(workspace);
+        workspace.Context.Diagnostics = true;
         window.Show();
         await workspace.SetProjectAsync(ProjectPath);
         workspace.Context.Setup?.SkipCommand.Execute(null);

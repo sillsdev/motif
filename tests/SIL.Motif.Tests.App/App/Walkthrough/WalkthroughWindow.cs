@@ -110,6 +110,7 @@ public sealed class WalkthroughWindow : IDisposable
         }, startGate);
         Window = composition.Window;
         Workspace = composition.Workspace;
+        Workspace.Context.Diagnostics = true;
         // A real parser would spend minutes producing a Parsimony Report that most walkthroughs never look at.
         Workspace.PageModel<ParsimonyPageModel>().AutomaticProduction = advancedAiModePreferences?.IsEnabled == true;
     }
@@ -728,8 +729,7 @@ public sealed class WalkthroughWindow : IDisposable
         ShowPage(owning);
         if (owning != WorkspacePage.Texts) return;
 
-        if (owners.Contains("CompareHost")) ShowTextsTab(TextsTab.Matrix);
-        else if (owners.Contains("ListsHost")) ShowTextsTab(TextsTab.Lists);
+        if (owners.Contains("ListsHost")) ShowTextsTab(TextsTab.Lists);
         else if (owners.Contains("SelectionHost") || owners.Contains("ResultsInTextHost")) ShowTextsTab(TextsTab.AnalyzeTexts);
     }
 
@@ -740,7 +740,6 @@ public sealed class WalkthroughWindow : IDisposable
 
         var name = tab switch
         {
-            TextsTab.Matrix => "Matrix tab",
             TextsTab.AnalyzeTexts => "Analyze texts tab",
             TextsTab.Lists => "Lists tab",
             _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, null),
@@ -802,7 +801,7 @@ public sealed class WalkthroughWindow : IDisposable
             }
         }
 
-        Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
+        Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
         Workspace.CurrentPage = opening;
         Window.UpdateLayout();
     }

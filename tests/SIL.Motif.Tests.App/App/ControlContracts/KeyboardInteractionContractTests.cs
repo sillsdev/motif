@@ -76,13 +76,6 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         Assert.All(KeyboardShortcutRegistry.Bindings, binding =>
             Assert.Same(binding, KeyboardShortcutRegistry.Find(binding.Scope, binding.Key, binding.Modifiers,
                 targetBehaviors: [binding.Behavior])));
-        Assert.Null(KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Matrix, Key.Enter, KeyModifiers.None));
-        Assert.Equal(KeyboardShortcutBehavior.ToggleMatrixCell,
-            KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Matrix, Key.Enter, KeyModifiers.None,
-                targetBehaviors: [KeyboardShortcutBehavior.ToggleMatrixCell])?.Behavior);
-        Assert.Equal(KeyboardShortcutBehavior.OpenWordCard,
-            KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Matrix, Key.Enter, KeyModifiers.None,
-                targetBehaviors: [KeyboardShortcutBehavior.OpenWordCard])?.Behavior);
         Assert.Equal(new[] { "Action", "Gesture", "Key", "Scope" },
             typeof(KeyboardShortcutEntry).GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Select(property => property.Name).Order(StringComparer.Ordinal));
@@ -131,11 +124,6 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("A", "A", "Analyze Texts"), ("D", "D", "Analyze Texts"), ("U", "U", "Analyze Texts"),
             ("Delete", "Delete", "Analyze Texts"), ("S", "S", "Analyze Texts"), ("P", "P", "Analyze Texts"),
             ("F10", "Shift+F10", "Analyze Texts"),
-            ("F", primarySearchGesture, "Matrix"), ("Enter or Space", "Enter or Space", "Matrix"),
-            ("Enter or Space", "Enter or Space", "Matrix"),
-            ("↑", "↑", "Matrix"), ("↓", "↓", "Matrix"),
-            ("Page Up", "Page Up", "Matrix"), ("Page Down", "Page Down", "Matrix"),
-            ("Home", "Home", "Matrix"), ("End", "End", "Matrix"), ("Escape", "Esc", "Matrix"),
             ("Enter or Space", "Enter or Space", "Review Changes"),
             ("↑", "↑", "Review Changes"), ("↓", "↓", "Review Changes"),
             ("Page Up", "Page Up", "Review Changes"), ("Page Down", "Page Down", "Review Changes"),
@@ -143,7 +131,6 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("Escape", "Esc", "Review Changes"),
             ("↑", "Alt+↑", "Review Changes"), ("↓", "Alt+↓", "Review Changes"),
             ("K", "Alt+K", "Review Changes"), ("U", "Alt+Shift+U", "Review Changes"),
-            ("Enter or Space", "Enter or Space", "Matrix Preview"),
             ("Space", "Space", "Menus"),
             ("Enter or Space", "Enter or Space", "Morpheme"),
             ("Enter or Space", "Enter or Space", "Pages Rail"),
@@ -632,7 +619,6 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                     (TextsTab.AnalyzeTexts, AnalyzeTextsView.TextReader, "ReaderWordSearch"),
                     (TextsTab.AnalyzeTexts, AnalyzeTextsView.WordList, "WordListSearch"),
                     (TextsTab.Lists, AnalyzeTextsView.TextReader, "ListsWordSearch"),
-                    (TextsTab.Matrix, AnalyzeTextsView.TextReader, "MatrixWordSearch"),
                 };
                 var primaryModifier = CurrentPlatform == ShortcutPlatform.MacOS
                     ? RawInputModifiers.Meta
@@ -807,101 +793,6 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         });
     }
 
-    [Fact]
-    public void PointerAndKeyboardSelectionRespectTheSameCellGuards()
-    {
-        avalonia.Invoke(() =>
-        {
-            var compare = LoadedCompare();
-            var window = MatrixWindow(new ComparePanel(compare));
-            try
-            {
-                window.Show();
-                window.UpdateLayout();
-                var cell = Assert.Single(window.GetLogicalDescendants().OfType<MatrixCell>(), control =>
-                    control.Tag is CompareCellViewModel { IsEmptyImpossible: true });
-                var model = Assert.IsType<CompareCellViewModel>(cell.Tag);
-
-                Click(window, cell);
-                Assert.False(model.IsSelected);
-
-                Assert.True(cell.Focus(), "The matrix cell can receive keyboard focus.");
-                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
-                Assert.False(model.IsSelected, "Enter cannot select an impossible empty matrix cell.");
-
-                var ordinaryCell = window.GetLogicalDescendants().OfType<MatrixCell>().First(control =>
-                    control.Tag is CompareCellViewModel { IsEmptyImpossible: false });
-                var ordinaryModel = Assert.IsType<CompareCellViewModel>(ordinaryCell.Tag);
-                Assert.True(ordinaryCell.Focus(), "An ordinary matrix cell can receive keyboard focus.");
-                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
-                Assert.True(ordinaryModel.IsSelected, "Enter selects an ordinary matrix cell.");
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
-
-    [Fact]
-    public void AReadOnlyMiniMatrixCannotChangeSelection()
-    {
-        avalonia.Invoke(() =>
-        {
-            var compare = LoadedCompare();
-            var miniMatrix = new MiniMatrix { DataContext = compare, IsInteractive = false };
-            var window = MatrixWindow(miniMatrix);
-            try
-            {
-                window.Show();
-                window.UpdateLayout();
-                var cell = Assert.Single(window.GetLogicalDescendants().OfType<MatrixCell>(), control =>
-                    control.Tag is CompareCellViewModel { Count: > 0 });
-                var model = Assert.IsType<CompareCellViewModel>(cell.Tag);
-                Assert.False(cell.IsEffectivelyEnabled);
-
-                Click(window, cell);
-                Assert.False(model.IsSelected);
-
-                var key = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter };
-                cell.RaiseEvent(key);
-                Assert.False(key.Handled);
-                Assert.False(model.IsSelected);
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
-
-    [Fact]
-    public void MiniMatrixCannotSelectAnImpossibleCellByKeyboard()
-    {
-        avalonia.Invoke(() =>
-        {
-            var compare = LoadedCompare();
-            var miniMatrix = new MiniMatrix { DataContext = compare, IsInteractive = true };
-            var window = MatrixWindow(miniMatrix);
-            try
-            {
-                window.Show();
-                window.UpdateLayout();
-                var impossibleCell = Assert.Single(window.GetLogicalDescendants().OfType<MatrixCell>(), control =>
-                    control.Tag is CompareCellViewModel { IsEmptyImpossible: true });
-                var model = Assert.IsType<CompareCellViewModel>(impossibleCell.Tag);
-                Assert.True(impossibleCell.Focus(), "The matrix cell can receive keyboard focus.");
-
-                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
-
-                Assert.False(model.IsSelected, "Enter cannot select an impossible empty matrix cell.");
-            }
-            finally
-            {
-                window.Close();
-            }
-        });
-    }
 
     [Fact]
     public void WordCardArrowsRespectOccurrenceBoundariesAndChildInputs()
@@ -980,33 +871,6 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             }
         }, TimeSpan.FromSeconds(60));
     }
-
-    private static CompareViewModel LoadedCompare()
-    {
-        var approved = new ParserReading([new ParserReadingMorph("kitabu", "book", "n", null, false, null)])
-        {
-            StoredAnalysisId = "analysis-1",
-            StoredAnalysisOpinion = ReadingGrade.Approved,
-        };
-        var compare = new CompareViewModel();
-        compare.Load([new AssessWordRowViewModel(new AssessmentWordResult(
-            "kitabu", "no-analysis", false, "Search completed", 10, null)
-        {
-            ProjectStanding = ProjectStanding.Approved,
-            ExpectedAnalysis = approved,
-            MissedApproved = [approved],
-            StoredAnalyses = [approved],
-        })]);
-        return compare;
-    }
-
-    private static Window MatrixWindow(Control content) => new()
-    {
-        Content = content,
-        RequestedThemeVariant = ThemeVariant.Light,
-        Width = 1400,
-        Height = 900,
-    };
 
     private static void Click(Window window, Control control)
     {

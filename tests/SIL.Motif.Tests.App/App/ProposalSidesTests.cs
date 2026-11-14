@@ -162,6 +162,7 @@ public sealed class ProposalSidesTests
         { EvidenceDigest = "sha256:evidence", Label = "Sound change" };
 
         var context = WorkspaceContextTests.NewContext(fake);
+        context.Diagnostics = true;
         var overview = new OverviewPageModel(context);
         var texts = new TextsPageModel(context);
         var timing = new TimingPageModel(context);

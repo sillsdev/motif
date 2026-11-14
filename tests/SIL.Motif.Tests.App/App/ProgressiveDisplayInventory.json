@@ -7,62 +7,6 @@
     "control": "ItemsControl"
   },
   {
-    "view": "ComparePanel",
-    "name": "ComparePanelPresetsItems",
-    "source": "Compare.Presets",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ComparePanel",
-    "name": "ComparePanelColumnsItems",
-    "source": "Compare.Columns",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ComparePanel",
-    "name": "ComparePanelRowsItems",
-    "source": "Compare.Rows",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ComparePanel",
-    "name": "ComparePanelCellsItems",
-    "source": "Cells",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ComparePanel",
-    "name": "ComparePanelFixFirstRowsItems",
-    "source": "Compare.FixFirstRows",
-    "mode": "rows",
-    "control": "ListBox"
-  },
-  {
-    "view": "ComparePanel",
-    "name": "ComparePanelSharedItems",
-    "source": "Compare.Shared",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ComparePanel",
-    "name": "ComparePanelSortChoicesItems",
-    "source": "Compare.SortChoices",
-    "mode": "finite",
-    "control": "ComboBox"
-  },
-  {
-    "view": "ComparePanel",
-    "name": "ComparePanelWordsItems",
-    "source": "Compare.Words",
-    "mode": "rows",
-    "control": "ListBox"
-  },
-  {
     "view": "DiagnosticPanel",
     "name": "DiagnosticPanelNoParseReasonsItems",
     "source": "NoParseReasons",
@@ -332,27 +276,6 @@
     "source": "VisiblePages",
     "mode": "finite",
     "control": "ListBox"
-  },
-  {
-    "view": "MiniMatrix",
-    "name": "MiniMatrixColumnsItems",
-    "source": "Columns",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "MiniMatrix",
-    "name": "MiniMatrixRowsItems",
-    "source": "Rows",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "MiniMatrix",
-    "name": "MiniMatrixCellsItems",
-    "source": "Cells",
-    "mode": "finite",
-    "control": "ItemsControl"
   },
   {
     "view": "Pages/OverviewPage",

@@ -21,7 +21,7 @@ public sealed class UserPreferencesV2Tests
 
         Assert.Equal(PreferenceState.Ready, store.State);
         var current = store.Current;
-        Assert.Equal(4, current.FormatVersion);
+        Assert.Equal(5, current.FormatVersion);
         Assert.Equal(150, current.ZoomPercent);
         Assert.Equal(UserTheme.Dark, current.Theme);
         Assert.Equal(SettingsGroup.Parsing, current.LastSettingsGroup);
@@ -44,12 +44,35 @@ public sealed class UserPreferencesV2Tests
         store.Update(p => p with { Theme = UserTheme.Light });
 
         using (var document = JsonDocument.Parse(File.ReadAllText(path)))
-            Assert.Equal(4, document.RootElement.GetProperty("FormatVersion").GetInt32());
+            Assert.Equal(5, document.RootElement.GetProperty("FormatVersion").GetInt32());
         var reread = new FileUserPreferencesStore(path);
         Assert.Equal(PreferenceState.Ready, reread.State);
         Assert.Equal(store.Current, reread.Current);
         Assert.Equal(150, reread.Current.ZoomPercent);
         Assert.Equal(UserTheme.Light, reread.Current.Theme);
+    }
+
+    [Theory]
+    [InlineData("Grow")]
+    [InlineData("Polish")]
+    public void FormatFourIgnoresStageAndIsRewrittenWithDiagnosticsOff(string stage)
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.File("user-preferences.json");
+        var json = V1File.Replace("\"FormatVersion\":1", "\"FormatVersion\":4")
+            .Replace("\"HasSeenTechDemoNotice\":true}",
+                "\"HasSeenTechDemoNotice\":true,\"ExpandedSections\":{},\"ProjectViews\":{},\"Stage\":\"" + stage + "\"}");
+        File.WriteAllText(path, json);
+
+        var store = new FileUserPreferencesStore(path);
+
+        Assert.Equal(PreferenceState.Ready, store.State);
+        Assert.False(store.Current.Diagnostics);
+        Assert.Equal(150, store.Current.ZoomPercent);
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        Assert.Equal(5, document.RootElement.GetProperty("FormatVersion").GetInt32());
+        Assert.False(document.RootElement.GetProperty("Diagnostics").GetBoolean());
+        Assert.False(document.RootElement.TryGetProperty("Stage", out _));
     }
 
     [Fact]
@@ -95,7 +118,7 @@ public sealed class UserPreferencesV2Tests
     {
         using var folder = new TemporaryFolder();
         var path = folder.File("user-preferences.json");
-        var newer = V1File.Replace("\"FormatVersion\":1", "\"FormatVersion\":4") + " ";
+        var newer = V1File.Replace("\"FormatVersion\":1", "\"FormatVersion\":6") + " ";
         File.WriteAllText(path, newer);
         var store = new FileUserPreferencesStore(path);
 

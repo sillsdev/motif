@@ -15,8 +15,6 @@ public sealed partial class ExtractedPageTextTests
         "Views/TryWordPanel.axaml",
         "Views/Pages/ParsimonyPage.axaml",
         "Views/HandoffPanel.axaml",
-        "Views/ComparePanel.axaml",
-        "Views/MiniMatrix.axaml",
         "Views/Pages/AssistantConnectionsPage.axaml",
     ];
 

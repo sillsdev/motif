@@ -28,8 +28,8 @@ public sealed partial class OverviewPageModel : PageModel
             OnPropertyChanged(nameof(LastParseRefusal));
             OnPropertyChanged(nameof(HasLastParseRefusal));
         };
-        OpenTextCoverageCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix, []));
-        OpenAccuracyCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix,
+        OpenTextCoverageCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Lists, []));
+        OpenAccuracyCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.Lists,
             Enum.GetValues<CompareColumnKind>()
                 .Select(column => new TextsListCell(WordProjectStatus.Approved, column)).ToArray()));
         OpenWordCommand = new RelayCommand<string?>(word =>
@@ -447,7 +447,7 @@ public sealed partial class OverviewPageModel : PageModel
         return new OverviewLookFirstRow(number, PluralText.Format(MotifAppStrings.OverviewUnparsedPattern, unparsed.Words),
             string.Join(Environment.NewLine, detail),
             PluralText.Format(MotifAppStrings.OverviewSeeWordsPattern, unparsed.Words),
-            new RelayCommand(() => Context.OpenTexts(TextsTab.Matrix, cells)))
+            new RelayCommand(() => Context.OpenTexts(TextsTab.Lists, cells)))
         {
             Words = [.. unparsed.Top.Select(word => new OverviewRowWord(word.Word,
                 unparsed.RankedByOccurrences && word.Occurrences is { } count ? Number(count) : string.Empty))],
@@ -771,11 +771,11 @@ public sealed partial class OverviewPageModel : PageModel
             Number(count), meaning),
     };
 
-    private void OpenOutcomeColumn(CompareColumnKind column) => Context.OpenTexts(TextsTab.Matrix,
+    private void OpenOutcomeColumn(CompareColumnKind column) => Context.OpenTexts(TextsTab.Lists,
         Enum.GetValues<WordProjectStatus>().Select(status => new TextsListCell(status, column)).ToArray());
 
     private void OpenCell(WordProjectStatus status, CompareColumnKind column) =>
-        Context.OpenTexts(TextsTab.Matrix, [new TextsListCell(status, column)]);
+        Context.OpenTexts(TextsTab.Lists, [new TextsListCell(status, column)]);
 
     private static string FormatPercent(double? value) => value is { } percent
         ? percent.ToString("N0", CultureInfo.CurrentCulture) + "%" : MotifAppStrings.OverviewNotRecorded;

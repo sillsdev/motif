@@ -209,7 +209,8 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 "the released grammar check did not finish");
             await grammarCheck;
 
-            Assert.True(walkthrough.Workspace.PageModel<TextsPageModel>().ShowCentredParsePrompt);
+            walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
+            Assert.True(walkthrough.Workspace.PageModel<TextsPageModel>().ShowAnalyzeParsePrompt);
             if (Environment.GetEnvironmentVariable("MOTIF_SCREENSHOTS") is { Length: > 0 } captureRoot)
             {
                 Directory.CreateDirectory(captureRoot);

@@ -305,7 +305,7 @@ internal sealed class TooltipScenes
                 await Until(() => Workspace.IsSidebarCollapsed, "the collapsed sidebar");
                 break;
             case TooltipScene.FrameSidePanel:
-                Show(WorkspacePage.Texts, TextsTab.Matrix);
+                Show(WorkspacePage.Texts, TextsTab.Lists);
                 if (Window.Width >= (double)Window.FindResource("Component.Shell.SidePanelCollapseWidth")!)
                     await Until(() => Visible<Button>().Any(button => button.Name == "SidePanelCollapseButton"),
                         "the Texts side panel");
@@ -327,7 +327,7 @@ internal sealed class TooltipScenes
                     "the open Inspector");
                 break;
             case TooltipScene.Matrix:
-                Show(WorkspacePage.Texts, TextsTab.Matrix);
+                Show(WorkspacePage.Texts, TextsTab.Lists);
                 await Until(() => Workspace.Assess.State == RunState.Completed && Workspace.Assess.Result is not null,
                     "the Sample Assessment to finish");
                 if (Workspace.Assess.RunCommand.ExecutionTask is { } assessment)
@@ -336,7 +336,7 @@ internal sealed class TooltipScenes
                     "the Sample Assessment task to return");
                 PageScreenshots.Settle(Window);
                 var wordRowsList = Visible<ListBox>().Single(box =>
-                    AutomationProperties.GetName(box) == "Words in the chosen cells");
+                    AutomationProperties.GetName(box) == "Words in the selected list");
                 var word = Workspace.Assess.Compare.Words.First();
                 var wordIndex = ((System.Collections.IList)Workspace.Assess.Compare.Words).IndexOf(word);
                 wordRowsList.ScrollIntoView(wordIndex);
@@ -348,11 +348,14 @@ internal sealed class TooltipScenes
                     .First(border => border.Classes.Contains("wordPresentationFrame")).BringIntoView();
                 PageScreenshots.Settle(Window);
                 MatrixTargetRow = row;
+                foreach (var panel in row.GetVisualDescendants().OfType<MorphemePanel>())
+                    panel.MaxVisibleMorphs = 2;
+                PageScreenshots.Settle(Window);
                 row.FocusWord();
                 PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.WhatChanged:
-                Show(WorkspacePage.Texts, TextsTab.Matrix);
+                Show(WorkspacePage.Texts, TextsTab.Lists);
                 await Until(() => Workspace.Assess.State == RunState.Completed && Workspace.Assess.Result is not null,
                     "the Sample Assessment to finish");
                 var firstRun = Workspace.Assess.Result!;
@@ -375,7 +378,6 @@ internal sealed class TooltipScenes
                 await Until(() => Visible<WordListSlot>().Any(slot => slot.CurrentLayout is not null),
                     "the What changed word list");
                 break;
-            case TooltipScene.MatrixStaged: Show(WorkspacePage.Texts, TextsTab.Matrix); break;
             case TooltipScene.Reader:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
                 await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);

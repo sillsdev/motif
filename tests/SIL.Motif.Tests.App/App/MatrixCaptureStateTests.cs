@@ -27,9 +27,9 @@ public sealed class MatrixCaptureStateTests
                     var textsView = window.PageView(WorkspacePage.Texts);
 
                     await AssertSceneSaveRejected(root, window, workspace, "wrong-current-page",
-                        WorkspacePage.Texts, TextsTab.Matrix, "Expected CurrentPage Texts");
+                        WorkspacePage.Texts, TextsTab.Lists, "Expected CurrentPage Texts");
 
-                    workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
+                    workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
                     workspace.CurrentPage = WorkspacePage.Texts;
                     PageScreenshots.Settle(window);
                     await AssertSceneSaveRejected(root, window, workspace, "wrong-texts-tab",
@@ -60,7 +60,7 @@ public sealed class MatrixCaptureStateTests
                     PageScreenshots.Settle(window);
                     var standardPath = Path.Combine(root, "standard-page-loop.png");
                     var standardFailure = Assert.ThrowsAny<XunitException>(() => PageScreenshots.SavePageFrame(window,
-                        workspace, WorkspacePage.Texts, TextsTab.Matrix, standardPath));
+                        workspace, WorkspacePage.Texts, TextsTab.Lists, standardPath));
                     Assert.Contains("Expected CurrentPage Texts", standardFailure.Message);
                     Assert.False(File.Exists(standardPath));
                 }
@@ -90,10 +90,10 @@ public sealed class MatrixCaptureStateTests
                     var sizes = new[] { new MatrixSize("full", 900, 700) };
                     await CaptureScene(root, window, workspace, "overview-good", WorkspacePage.Overview, null, sizes);
 
-                    workspace.PageModel<TextsPageModel>().Tab = TextsTab.Matrix;
+                    workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
                     workspace.CurrentPage = WorkspacePage.Texts;
                     await CaptureScene(root, window, workspace, "texts-matrix-good", WorkspacePage.Texts,
-                        TextsTab.Matrix, sizes);
+                        TextsTab.Lists, sizes);
 
                     AssertPngExists(root, "overview-good", "overview-good-full-100-light.png");
                     AssertPngExists(root, "texts-matrix-good", "texts-matrix-good-full-100-light.png");

@@ -33,7 +33,7 @@ public sealed class PageDeltaBadgeWindowTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await TextsProposalTabsWindowTests.OpenedAsync(TextsTab.Matrix);
+            var (workspace, window) = await TextsProposalTabsWindowTests.OpenedAsync(TextsTab.Lists);
             try
             {
                 var texts = workspace.PageModel<TextsPageModel>();
@@ -64,7 +64,7 @@ public sealed class PageDeltaBadgeWindowTests
         Directory.CreateDirectory(folder);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await TextsProposalTabsWindowTests.OpenedAsync(TextsTab.Matrix);
+            var (workspace, window) = await TextsProposalTabsWindowTests.OpenedAsync(TextsTab.Lists);
             try
             {
                 workspace.PageModel<WarningsPageModel>().ProposalDelta = PageDelta.Of(-2, PageDeltaKind.Warnings);

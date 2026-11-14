@@ -27,6 +27,8 @@ public sealed class TextsProposalMovedChipTests
         MarkupView view = MarkupView.TodayToProposal, TextsProposalMatrixTests.Reads? reads = null)
     {
         var (context, page, _) = await TextsProposalMatrixTests.OpenedAsync(reads: reads);
+        page.Tab = TextsTab.AnalyzeTexts;
+        page.Assess.Compare.SelectCells([]);
         context.ShowProposalView(view);
         return (context, page, page.Assess.Compare);
     }

@@ -57,8 +57,8 @@ public sealed class ProgressiveDisplayTests
 
     private static readonly string[] ViewNames =
     [
-        "ComparePanel", "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
-        "Inspector", "MiniMatrix", "MotifWorkspaceView", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
+        "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
+        "Inspector", "MotifWorkspaceView", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
         "Pages/ProposalsPage", "Pages/TimingPage",
         "ProposalDifferencePanel", "ProposalParsimonyPanel", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
@@ -110,7 +110,7 @@ public sealed class ProgressiveDisplayTests
                 var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
                 Assert.Equal("alikula", reader.SelectedToken!.Form);
                 Assert.NotEmpty(reader.LinePages!.RealizedLines);
-                if (viewName is "ComparePanel" or "MiniMatrix" or "TextsListsPanel")
+                if (viewName is "TextsListsPanel")
                 {
                     var source = workspace.Assess.Words.AllRows[0].Source;
                     workspace.Assess.Compare.Load(Enumerable.Range(0, 2000).Select(index =>
@@ -1100,7 +1100,6 @@ public sealed class ProgressiveDisplayTests
         }
         return name switch
         {
-            "ComparePanel" => new ComparePanel(workspace.Assess.Compare),
             "DiagnosticPanel" => new DiagnosticPanel(trace.Diagnostics),
             "DifferencePanel" => new DifferencePanel(workspace.Assess.Difference),
             "ExpertTracePanel" => new ExpertTracePanel { DataContext = trace.Trace },
@@ -1110,7 +1109,6 @@ public sealed class ProgressiveDisplayTests
             "OverviewInspector" => new OverviewInspector(workspace.PageModel<OverviewPageModel>()),
             "SettingsPage" => BuildSettingsPage(workspace),
             "SettingsNavigation" => BuildSettingsPage(workspace).Navigation,
-            "MiniMatrix" => new MiniMatrix { DataContext = workspace.Assess.Compare },
             "Pages/AssistantConnectionsPage" => new AssistantConnectionsPage(
                 workspace.PageModel<AssistantConnectionsPageModel>()),
             "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),

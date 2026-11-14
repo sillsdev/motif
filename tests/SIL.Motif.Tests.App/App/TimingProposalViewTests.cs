@@ -128,6 +128,7 @@ public sealed class TimingProposalViewTests
                 null, null, null, null));
         }
         var context = WorkspaceContextTests.NewContext(fake);
+        context.Diagnostics = true;
         var page = new TimingPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         if (!todayParsed)
@@ -443,6 +444,7 @@ public sealed class TimingProposalViewTests
         fake.OnReadTrial((request, _) => Task.FromResult(
             CommandOutcome<TrialRecord?>.Success(TrialFor(request.ProposalId, true))));
         var context = WorkspaceContextTests.NewContext(fake);
+        context.Diagnostics = true;
         var page = new TimingPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         context.OpenPage(WorkspacePage.Timing);

@@ -121,8 +121,10 @@ public sealed class BoundedAssessmentProjectionTests
     {
         var weak = new List<WeakReference<object>>();
         using var observation = compare.ObserveRowCreation(weak.Add);
-        var panel = new ComparePanel(compare);
-        var rows = panel.FindControl<ListBox>("ComparePanelWordsItems")!;
+        var lists = new TextsListsViewModel(compare);
+        lists.ShowCells([]);
+        var panel = new TextsListsPanel(lists);
+        var rows = panel.FindControl<ListBox>("TextsListsPanelWordsItems")!;
         var host = new Border { Child = panel };
         var window = new MotifTestWindow { Width = 1440, Height = 900, Content = host };
         try

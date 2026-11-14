@@ -744,8 +744,6 @@ public sealed class WordRow : UserControl
         "Lists:OpenWordCard", "Lists:CloseWordCard", "Lists:PreviousRow", "Lists:NextRow",
         "Lists:PreviousScreen", "Lists:NextScreen", "Lists:FirstItem", "Lists:LastItem",
         "Lists:Approve", "Lists:Disapprove", "Lists:Unknown",
-        "Matrix:OpenWordCard", "Matrix:CloseWordCard", "Matrix:PreviousRow", "Matrix:NextRow",
-        "Matrix:PreviousScreen", "Matrix:NextScreen", "Matrix:FirstItem", "Matrix:LastItem",
         "ReviewChanges:OpenWordCard", "ReviewChanges:CloseWordCard", "ReviewChanges:PreviousRow",
         "ReviewChanges:NextRow", "ReviewChanges:PreviousScreen", "ReviewChanges:NextScreen",
         "ReviewChanges:FirstItem", "ReviewChanges:LastItem")]
@@ -756,7 +754,6 @@ public sealed class WordRow : UserControl
         {
             WordListOwner.WordList => KeyboardShortcutScope.WordList,
             WordListOwner.Lists => KeyboardShortcutScope.Lists,
-            WordListOwner.Matrix or WordListOwner.FixFirst => KeyboardShortcutScope.Matrix,
             WordListOwner.Review => KeyboardShortcutScope.ReviewChanges,
             _ => (KeyboardShortcutScope?)null,
         };

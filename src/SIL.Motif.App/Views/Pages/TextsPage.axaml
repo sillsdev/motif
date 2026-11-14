@@ -13,9 +13,6 @@
               ColumnSpacing="{DynamicResource Intent.Space.Related}"
               RowSpacing="{DynamicResource Intent.Space.Compact}">
           <WrapPanel x:Name="TextsHeaderTabs">
-            <Button Content="{x:Static app:MotifAppStrings.Matrix}" Classes="tab" Classes.active="{Binding ShowMatrix}"
-                  Command="{Binding ShowTabCommand}"
-                  CommandParameter="{x:Static vm:TextsTab.Matrix}" AutomationProperties.Name="{x:Static app:MotifAppStrings.MatrixTabAccessibleName}" />
             <Button Content="{x:Static app:MotifAppStrings.AnalyzeTexts}" Classes="tab" Classes.active="{Binding ShowAnalyzeTexts}"
                   Command="{Binding ShowTabCommand}"
                   CommandParameter="{x:Static vm:TextsTab.AnalyzeTexts}" AutomationProperties.Name="{x:Static app:MotifAppStrings.AnalyzeTextsTabAccessibleName}"
@@ -35,8 +32,8 @@
                     AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewTheChangesNotAppliedYetAccessibleName}"
                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.ReviewChanges}">
               <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Snug}">
-                <Ellipse Width="{DynamicResource Component.MatrixCell.MarkerSize}"
-                         Height="{DynamicResource Component.MatrixCell.MarkerSize}"
+                <Ellipse Width="{DynamicResource Component.TextsPage.PendingMarkerSize}"
+                         Height="{DynamicResource Component.TextsPage.PendingMarkerSize}"
                          Fill="{DynamicResource Intent.Warning.Text}" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Changes.CountText}" FontWeight="{DynamicResource Intent.Weight.Strong}"
                            VerticalAlignment="Center" />
@@ -74,19 +71,6 @@
     </Border>
 
     <Panel Grid.Row="1">
-      <Grid RowDefinitions="Auto,*" IsVisible="{Binding ShowMatrixContent}" Classes.waiting="{Binding Assess.IsActive}">
-        <Grid x:Name="MatrixListSelection" ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}"
-              IsVisible="{Binding TextsLists.HasListSelectionInMatrix}">
-          <views:CopyableTextBlock Classes="muted" Text="{Binding TextsLists.MatrixListSelection}" TextWrapping="Wrap"
-                                   VerticalAlignment="Center" />
-          <Button Grid.Column="1" Content="{x:Static app:MotifAppStrings.Clear}"
-                  Command="{Binding Assess.Compare.ClearSelectionCommand}"
-                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ClearChosenMatrixCellsAccessibleName}" />
-        </Grid>
-        <views:LazyContent Grid.Row="1" x:Name="CompareHost" />
-        <views:CopyableTextBlock Grid.Row="1" Classes="muted" Text="{x:Static app:MotifAppStrings.NoResultsYetChooseTheWords}"
-            IsVisible="{Binding ShowEmptyResults}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-      </Grid>
       <ScrollViewer x:Name="AnalyzeTextsScroll" IsVisible="{Binding ShowAnalyzeTextsContent}"
                     HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
       <Grid x:Name="AnalyzeTextsHost" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
@@ -116,8 +100,6 @@
       <views:LazyContent x:Name="ListsHost" IsVisible="{Binding ShowListsContent}" Classes.waiting="{Binding Assess.IsActive}" />
       <views:LazyContent x:Name="DifferenceHost" IsVisible="{Binding ShowWhatChangedContent}" />
       <views:LazyContent x:Name="ProposalMovesHost" IsVisible="{Binding ShowProposalMovesContent}" />
-      <ContentControl x:Name="CentredParsePromptHost" IsVisible="{Binding ShowCentredParsePrompt}"
-                      HorizontalAlignment="Center" VerticalAlignment="Center" />
     </Panel>
   </Grid>
 </UserControl>

@@ -27,9 +27,9 @@ public sealed class TooltipPlacementTests
     private static readonly HashSet<string> RequiredOwnersAtEachWidth = new(StringComparer.Ordinal)
     {
         "refresh", "project chip", "word cell", "drag all files", "question to copy",
-        "Parse stopped words again", "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
+        "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
         "mark unread without a text occurrence", "FieldWorks link on a morpheme", "FieldWorks link in a finding",
-        "collapsed sidebar entry", "pending change in a Matrix cell", "WORDS column", "completion in detailed statistics",
+        "collapsed sidebar entry", "WORDS column", "completion in detailed statistics",
         "statistics object name", "statistics word", "statistics heat value",
     };
 
@@ -37,9 +37,8 @@ public sealed class TooltipPlacementTests
     private static readonly Dictionary<string, string> Gaps = new()
     {
         ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
-        ["pending change in a Matrix cell"] = "the compact Matrix leaves no clear side; the tip overlaps the next cell",
         ["show Inspector"] = "the notice's Got It sits left of the strip and the first word row fills the side below it",
-        ["tech demo promise"] = "Overview's full-width Open in Matrix footer sits above the status bar on every side",
+        ["tech demo promise"] = "Overview's full-width Open in Lists footer sits above the status bar on every side",
     };
 
     // Light theme only: placement is geometry, and some owners appear only at 1240.
@@ -330,7 +329,7 @@ public sealed class TooltipPlacementTests
         : control.GetType().Name;
 
     private static bool IsInteractive(Control control) => control is Button or SplitButton or TextBox or ComboBox or
-        NumericUpDown or ListBoxItem or TreeViewItem or MenuItem or Slider or ScrollBar or MatrixCell ||
+        NumericUpDown or ListBoxItem or TreeViewItem or MenuItem or Slider or ScrollBar ||
         control is Border { Focusable: true };
 
     // The part of a control left after every clipping ancestor, such as a scrolled list, has cut it.

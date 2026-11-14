@@ -442,19 +442,18 @@ public sealed class PageScreenshots
     /// <summary>Every page, and every tab of the Texts page, with the file name each is saved under.</summary>
     internal static IEnumerable<(string Name, WorkspacePage Page, TextsTab Tab)> Views() =>
     [
-        ("1-overview", WorkspacePage.Overview, TextsTab.Matrix),
-        ("2a-texts-matrix", WorkspacePage.Texts, TextsTab.Matrix),
+        ("1-overview", WorkspacePage.Overview, TextsTab.Lists),
         ("2b-texts-analyze", WorkspacePage.Texts, TextsTab.AnalyzeTexts),
         ("2c-texts-lists", WorkspacePage.Texts, TextsTab.Lists),
         ("2d-texts-what-changed", WorkspacePage.Texts, TextsTab.WhatChanged),
-        ("3-try-a-word", WorkspacePage.TryAWord, TextsTab.Matrix),
-        ("4-timing", WorkspacePage.Timing, TextsTab.Matrix),
-        ("5-warnings", WorkspacePage.Warnings, TextsTab.Matrix),
-        ("5a-parsimony", WorkspacePage.Parsimony, TextsTab.Matrix),
-        ("6-review", WorkspacePage.Review, TextsTab.Matrix),
-        ("8-ai-assistants", WorkspacePage.AiAssistants, TextsTab.Matrix),
-        ("9-proposals", WorkspacePage.Proposals, TextsTab.Matrix),
-        ("10-settings", WorkspacePage.Settings, TextsTab.Matrix),
+        ("3-try-a-word", WorkspacePage.TryAWord, TextsTab.Lists),
+        ("4-timing", WorkspacePage.Timing, TextsTab.Lists),
+        ("5-warnings", WorkspacePage.Warnings, TextsTab.Lists),
+        ("5a-parsimony", WorkspacePage.Parsimony, TextsTab.Lists),
+        ("6-review", WorkspacePage.Review, TextsTab.Lists),
+        ("8-ai-assistants", WorkspacePage.AiAssistants, TextsTab.Lists),
+        ("9-proposals", WorkspacePage.Proposals, TextsTab.Lists),
+        ("10-settings", WorkspacePage.Settings, TextsTab.Lists),
     ];
 
     [Fact]
@@ -858,6 +857,7 @@ public sealed class PageScreenshots
             var late = new MainWindow(rememberBounds: false, uriLauncher: null, preferencesStore: store);
             configureWindow?.Invoke(late);
             late.Compose(populated.Workspace);
+            if (preferencesStore is null && settingsFilePath is null) populated.Workspace.Context.Diagnostics = true;
             late.Closed += async (_, _) => await populated.DisposeAsync();
             late.Show();
             if (renderForCapture) Settle(late); else SettleLayout(late);
@@ -874,6 +874,7 @@ public sealed class PageScreenshots
                 configureWindow?.Invoke(window);
                 if (composeWindow) window.Compose(workspace);
                 else workspace.UpdateWindowWidth(window.Width);
+                if (preferencesStore is null && settingsFilePath is null) workspace.Context.Diagnostics = true;
                 window.Closed += async (_, _) => await sample!.DisposeAsync();
                 window.Show();
             },

@@ -331,7 +331,6 @@ public sealed partial class MotifWorkspaceView : UserControl
             TextsTab.AnalyzeTexts when shell.PageModel<TextsPageModel>().AnalyzeView == AnalyzeTextsView.TextReader => KeyboardShortcutScope.TextReader,
             TextsTab.AnalyzeTexts => KeyboardShortcutScope.WordList,
             TextsTab.Lists => KeyboardShortcutScope.Lists,
-            TextsTab.Matrix => KeyboardShortcutScope.Matrix,
             _ => KeyboardShortcutScope.Window,
         };
     }
@@ -344,7 +343,6 @@ public sealed partial class MotifWorkspaceView : UserControl
                 KeyboardShortcutScope.TextReader => box.Name == "ReaderWordSearch",
                 KeyboardShortcutScope.WordList => box.Name == "WordListSearch",
                 KeyboardShortcutScope.Lists => box.Name == "ListsWordSearch",
-                KeyboardShortcutScope.Matrix => box.Name == "MatrixWordSearch",
                 _ => false,
             }));
 

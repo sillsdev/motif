@@ -20,7 +20,6 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordVerdict.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/FilterChip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/HeatCell.axaml" />
-    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/MatrixCell.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/TextsPage.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/DifferencePanel.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordMorphology.axaml" />

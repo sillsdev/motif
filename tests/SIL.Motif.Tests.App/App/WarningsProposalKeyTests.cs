@@ -65,6 +65,7 @@ public sealed class WarningsProposalKeyTests
         fake.StoredGrammarCheckHandler = (request, _) => read(request);
         fake.OnReadTrial((request, _) => Task.FromResult(CommandOutcome<TrialRecord?>.Success(TrialOf(request.ProposalId))));
         var context = WorkspaceContextTests.NewContext(fake);
+        context.Diagnostics = true;
         return (fake, context, new WarningsPageModel(context));
     }
 

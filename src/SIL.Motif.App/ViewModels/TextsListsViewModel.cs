@@ -20,6 +20,11 @@ public sealed partial class TextsListDefinitionViewModel : ObservableObject
         foreach (var cell in Compare.Cells) cell.PropertyChanged += OnCellPropertyChanged;
     }
 
+    internal void StopObserving()
+    {
+        foreach (var cell in Compare.Cells) cell.PropertyChanged -= OnCellPropertyChanged;
+    }
+
     private CompareViewModel Compare { get; }
 
     public string Name { get; }
@@ -184,11 +189,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
                 SentenceFor(preset),
                 preset.Cells.Select(cell => new TextsListCell(cell.Row, cell.Column)).ToArray(), compare))
             .ToArray();
-        SelectListCommand = new RelayCommand<TextsListDefinitionViewModel>(list =>
-        {
-            SelectList(list);
-            MarkSelectionFromLists();
-        });
+        SelectListCommand = new RelayCommand<TextsListDefinitionViewModel>(SelectList);
         HandOffListCommand = new RelayCommand(HandOffList, CanHandOffList);
         HandOffCheckedWordsCommand = new RelayCommand(HandOffCheckedWords, CanHandOffCheckedWords);
         ParseAgainCommand = new AsyncRelayCommand(() => Compare.RerunCommand.ExecuteAsync(null), () => CanParseAgain);
@@ -217,24 +218,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     public bool HasSelectedList => SelectedList is not null;
 
-    private bool _selectionFromLists;
-
-    /// <summary>Whether Matrix is showing a list selected in Lists.</summary>
-    public bool HasListSelectionInMatrix => _selectionFromLists && SelectedList is not null;
-
-    /// <summary>Names the list whose cells are shown in Matrix.</summary>
-    public string MatrixListSelection => SelectedList is { } list
-        ? string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.MatrixListSelectionFormat, list.Name)
-        : string.Empty;
-
-    /// <summary>Records that the list visible in Lists supplies the shared Matrix selection.</summary>
-    public void MarkSelectionFromLists()
-    {
-        _selectionFromLists = SelectedList is not null;
-        OnPropertyChanged(nameof(HasListSelectionInMatrix));
-        OnPropertyChanged(nameof(MatrixListSelection));
-    }
-
+    private TextsListDefinitionViewModel? _requestedList;
 
     /// <summary>Whether a line says which words the list shows, because they are not simply today's.</summary>
     public bool ShowsListedLine => SelectedList is not null && (Compare.ListBasis != WordListBasis.Today || Compare.MovedFilterOn);
@@ -363,6 +347,22 @@ public sealed partial class TextsListsViewModel : ObservableObject
     private TextsListDefinitionViewModel? FirstWithWords() =>
         Lists.FirstOrDefault(list => list.HasWords) ?? Lists.FirstOrDefault();
 
+    /// <summary>Shows the exact word selection requested by another page.</summary>
+    public void ShowCells(IReadOnlyList<TextsListCell> cells)
+    {
+        if (_requestedList is not null)
+        {
+            _requestedList.PropertyChanged -= OnListPropertyChanged;
+            _requestedList.StopObserving();
+        }
+        var chosen = cells.Count == 0
+            ? Compare.Cells.Select(cell => new TextsListCell(cell.Row, cell.Column)).ToArray()
+            : cells.ToArray();
+        _requestedList = new TextsListDefinitionViewModel(MotifAppStrings.SelectedWords, string.Empty, chosen, Compare);
+        _requestedList.PropertyChanged += OnListPropertyChanged;
+        SelectList(_requestedList);
+    }
+
     private void SelectList(TextsListDefinitionViewModel? list)
     {
         if (list is null) return;
@@ -416,11 +416,7 @@ public sealed partial class TextsListsViewModel : ObservableObject
 
     private void OnChosenCellsChanged(object? sender, EventArgs e)
     {
-        var previousList = SelectedList;
         RefreshSelection();
-        _selectionFromLists = _selectionFromLists && ReferenceEquals(previousList, SelectedList) && SelectedList is not null;
-        OnPropertyChanged(nameof(HasListSelectionInMatrix));
-        OnPropertyChanged(nameof(MatrixListSelection));
         NotifyParseAgain();
         HandOffListCommand.NotifyCanExecuteChanged();
         HandOffCheckedWordsCommand.NotifyCanExecuteChanged();
@@ -464,7 +460,8 @@ public sealed partial class TextsListsViewModel : ObservableObject
     {
         var selected = Compare.Cells.Where(cell => cell.IsSelected)
             .Select(cell => new TextsListCell(cell.Row, cell.Column)).ToHashSet();
-        SelectedList = Lists.FirstOrDefault(list => selected.SetEquals(list.Cells));
+        SelectedList = Lists.FirstOrDefault(list => selected.SetEquals(list.Cells))
+            ?? (_requestedList is { } requested && selected.SetEquals(requested.Cells) ? requested : null);
         foreach (var list in Lists) list.IsSelected = ReferenceEquals(list, SelectedList);
     }
 }

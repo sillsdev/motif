@@ -250,7 +250,6 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         public int Height { get; init; } = 780;
     }
 
-    private const string MatrixWords = "Words in the chosen cells";
     private const string ListWords = "Words in the selected list";
 
     private static Task ResetTraceView(Stage stage)
@@ -328,47 +327,6 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         yield return new("overview", "history-expanded", stage => stage.Expand(WorkspacePage.Overview,
             () => stage.Named<Expander>("Project history"), "Project history"))
         { Height = 1000 };
-
-        // Texts, Matrix.
-        yield return new("matrix", "chip-hover", stage => stage.Hover(WorkspacePage.Texts,
-            () => stage.Visible<FilterChip>(chip => chip.Label != "All words").First(), "the first preset filter chip", TextsTab.Matrix));
-        yield return new("matrix", "cell-hover", stage => stage.Hover(WorkspacePage.Texts,
-            () => stage.LargestCell(), "the largest Matrix cell", TextsTab.Matrix));
-        yield return new("matrix", "cell-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Texts,
-            () => stage.LargestCell(), "the largest Matrix cell", TextsTab.Matrix));
-        yield return new("matrix", "cell-selected", async stage =>
-        {
-            // A second click on a chosen cell clears it, so each picture starts from no cell chosen.
-            stage.Workspace.Assess.Compare.ClearSelectionCommand.Execute(null);
-            stage.Open(WorkspacePage.Texts, TextsTab.Matrix);
-            var cell = stage.LargestCell();
-            HeadlessClick.Click(stage.Window, cell, "the largest Matrix cell");
-            await stage.Until(() => stage.Workspace.Assess.Compare.AnySelected, "the cell's word list");
-            return $"Clicked the largest Matrix cell; the list shows {stage.Workspace.Assess.Compare.Words.Count} words.";
-        })
-        {
-            Height = 1100,
-            Teardown = stage => { stage.Workspace.Assess.Compare.ClearSelectionCommand.Execute(null); return Task.CompletedTask; },
-        };
-        yield return new("matrix", "link-hover", async stage =>
-        {
-            await stage.Hover(WorkspacePage.Texts, () => stage.RowBody(MatrixWords), "the first word row", TextsTab.Matrix);
-            return await stage.Hover(null,
-                () => stage.Visible<Button>(link => link.Content as string == MotifAppStrings.WordRowOpenInText).First(), "Open in text");
-        })
-        { Height = 1100 };
-
-        yield return new("matrix", "row-hover", stage => stage.Hover(WorkspacePage.Texts,
-            () => stage.RowBody(MatrixWords), "the first word row", TextsTab.Matrix))
-        { Height = 1100 };
-        yield return new("matrix", "row-focus", stage => stage.FocusFromKeyboard(WorkspacePage.Texts,
-            () => stage.RowBody(MatrixWords), "the first word row", TextsTab.Matrix))
-        { Height = 1100 };
-        yield return new("matrix", "row-opened", stage => stage.OpenRow(WorkspacePage.Texts, TextsTab.Matrix, MatrixWords))
-        {
-            Height = 1100,
-            Teardown = stage => stage.CloseRows(),
-        };
 
         // Texts, Analyze texts.
         yield return new("analyze", "word-hover", async stage =>
@@ -627,7 +585,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         })
         { Setup = stage => stage.StageChakula(), Teardown = stage => stage.UnstageChakula() };
 
-        // The word row on the pages beyond the Matrix and Lists: each list at rest, and one row opened.
+        // Each list at rest, and one row opened.
         yield return new("timing", "word-rows", async stage =>
         {
             await stage.ShowTimingWords();
@@ -720,7 +678,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
         // Runs: a Parse all words in progress, then the refusals a person meets.
         yield return new("shell", "parse-progress", stage =>
         {
-            stage.Open(WorkspacePage.Texts, TextsTab.Matrix);
+            stage.Open(WorkspacePage.Texts, TextsTab.Lists);
             return Task.FromResult(stage.Workspace.ParseAllWordsProgressText);
         })
         {
@@ -740,7 +698,7 @@ public sealed class StateScreenshots(ITestOutputHelper output)
                 await stage.ParseAgain();
             },
         };
-        yield return new("texts", "parse-refusal", stage => stage.ExpandRefusal(WorkspacePage.Texts, TextsTab.Matrix))
+        yield return new("texts", "parse-refusal", stage => stage.ExpandRefusal(WorkspacePage.Texts, TextsTab.Lists))
         {
             ExpectedRefusalCode = RefusalCodes.AssessParserUnavailable,
             Setup = async stage =>
@@ -838,12 +796,6 @@ public sealed class StateScreenshots(ITestOutputHelper output)
 
         public ListBoxItem SidebarItem(string title) =>
             Visible<ListBoxItem>(item => item.DataContext is PageViewModel page && page.Title == title).Single();
-
-        public Border LargestCell()
-        {
-            var largest = Workspace.Assess.Compare.Cells.MaxBy(cell => cell.Count)!;
-            return Visible<Border>(border => border.Classes.Contains("matrixCell") && border.DataContext == largest).Single();
-        }
 
         public ResultsTokenViewModel Token(string form) =>
             Assert.IsType<ResultsTokenViewModel>(ResultsInTextPanel.TokenOf(Strip(form)));

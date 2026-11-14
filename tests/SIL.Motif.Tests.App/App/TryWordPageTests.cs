@@ -2004,8 +2004,10 @@ public sealed class TryWordPageTests
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         var selection = new SelectionViewModel(fake);
-        return (new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
-            new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake)), fake);
+        var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
+            new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake));
+        context.Diagnostics = true;
+        return (context, fake);
     }
 
     private static (WorkspaceShellViewModel Workspace, FakeCommandClient Fake) NewWorkspace()
@@ -2016,6 +2018,7 @@ public sealed class TryWordPageTests
         var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, new NoProjectPicker()),
             new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection), new NoFolderPicker(),
             new NoDragSource(), fake);
+        workspace.Context.Diagnostics = true;
         return (workspace, fake);
     }
 

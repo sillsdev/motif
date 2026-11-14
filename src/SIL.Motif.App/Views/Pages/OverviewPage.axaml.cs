@@ -14,7 +14,7 @@ public sealed partial class OverviewPage : UserControl, IWorkspacePaneProvider
     /// <summary>The stored Lost-word evidence attached to the workspace Inspector.</summary>
     public Control InspectorContent => _inspector;
 
-    /// <summary>The pinned action for opening recorded Lost words in the Matrix.</summary>
+    /// <summary>The pinned action for opening recorded Lost words in Lists.</summary>
     public Control InspectorFooter => _inspectorAction;
 
     /// <summary>Creates the page and its Inspector over one stored Overview model.</summary>
@@ -26,7 +26,7 @@ public sealed partial class OverviewPage : UserControl, IWorkspacePaneProvider
         _inspectorAction = new Button
         {
             Name = "OverviewLostWordsAction",
-            Content = "Open in Matrix",
+            Content = MotifAppStrings.OpenInLists,
             Classes = { "primary", "overviewInspectorAction" },
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
             Command = page.OpenLostWordsCommand,

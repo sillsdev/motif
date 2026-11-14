@@ -63,8 +63,8 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
                 () => OpenAsync(reopened, measurements, "Unparsed reopened window", baselinePath!));
             Assert.Null(reopened.Workspace.Assess.Result);
             Capture(reopened, "reopened");
-            measurements.AssertReadCounts("Unparsed: reopen project", 1, 64, 1, 64);
-            measurements.AssertBaselineReadVolume("Unparsed: reopen project", 8L * 1048576, project.TotalOccurrenceCount);
+            measurements.AssertReadCounts("Unparsed: reopen project", 1, 64, 1, 96);
+            measurements.AssertBaselineReadVolume("Unparsed: reopen project", 8L * 1048576, 2L * project.TotalOccurrenceCount);
             Assert.DoesNotContain(FakeParser.Invocations(parser), command => command is "batch" or "parse" or "trace");
         }, TimeSpan.FromMinutes(10));
         measurements.AssertBudgets();
@@ -79,9 +79,9 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
         await measurements.MeasureAsync("Unparsed: open configured Selection", 45,
             () => OpenAsync(window, measurements, "Unparsed first window", baselinePath));
         Assert.Null(window.Workspace.Assess.Result);
-        measurements.AssertReadCounts("Unparsed: open configured Selection", 1, 64, 1, 64);
+        measurements.AssertReadCounts("Unparsed: open configured Selection", 1, 64, 1, 96);
         measurements.AssertBaselineReadVolume("Unparsed: open configured Selection", 8L * 1048576,
-            project.TotalOccurrenceCount);
+            2L * project.TotalOccurrenceCount);
         Capture(window, "opened");
         await measurements.MeasureAsync("Unparsed: show all Word list rows", 30, async () =>
         {

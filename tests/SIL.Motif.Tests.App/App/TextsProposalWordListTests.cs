@@ -24,6 +24,7 @@ public sealed class TextsProposalWordListTests
 
     private static void Choose(TextsPageModel page, WordProjectStatus row, CompareColumnKind column)
     {
+        page.Tab = TextsTab.AnalyzeTexts;
         page.Assess.Compare.SelectCells([new(row, column)]);
     }
 
@@ -101,6 +102,7 @@ public sealed class TextsProposalWordListTests
         Assert.Equal(Pair("0", "2"), cell.CountNumberText);
         Assert.False(cell.IsEmptyImpossible);
         Assert.False(cell.IsNone);
+        page.Tab = TextsTab.AnalyzeTexts;
         compare.SelectCells([new(WordProjectStatus.NotPresent, CompareColumnKind.Match)]);
         Assert.Equal(["a", "b"], Listed(page));
 
@@ -118,6 +120,8 @@ public sealed class TextsProposalWordListTests
         var reads = new Reads { Trials = _ => [Word("a"), Word("b", true), Word("c", true)] };
         var (context, page, _) = await OpenedAsync(reads: reads);
         var compare = page.Assess.Compare;
+        page.Tab = TextsTab.AnalyzeTexts;
+        compare.SelectCells([]);
         CompareWordViewModel Of(string word) => compare.Words.Single(listed => listed.Word == word);
 
         context.ShowProposalView(MarkupView.Today);
@@ -165,7 +169,7 @@ public sealed class TextsProposalWordListTests
         Assert.Same(WordListSchemas.All, compare.WordListSchema);
 
         gate.Set();
-        await Wait.UntilAsync(() => page.ProposalNote == MotifAppStrings.TextsProposalPairedNote);
+        await Wait.UntilAsync(() => page.ProposalNote == MotifAppStrings.TextsListsPairedNote);
         context.ShowProposalView(MarkupView.Proposal);
         Assert.True(compare.ShowsWordList);
         Assert.True(compare.ShowsProposalColumn);
@@ -286,18 +290,18 @@ public sealed class TextsProposalWordListTests
         await Wait.UntilAsync(() => page.Assess.Compare.ProposalWordsMatch is not null);
 
         Assert.NotNull(reading);
-        Assert.Contains(MotifAppStrings.TextsMatrixCountsNoun, reading);
+        Assert.Contains(MotifAppStrings.TextsListCountsNoun, reading);
         Assert.Null(proposal);
     }
 
     [Fact]
-    public void TheNotesNoLongerSayTheWordListIsUnpairedButStillSayListsAndWhatChangedAre()
+    public void TheListsNotesDescribeTheChosenList()
     {
-        foreach (var note in new[] { MotifAppStrings.TextsProposalPairedNote, MotifAppStrings.TextsProposalDifferentWordsNote,
-            MotifAppStrings.TextsProposalViewNote })
+        foreach (var note in new[] { MotifAppStrings.TextsListsPairedNote, MotifAppStrings.TextsListsDifferentWordsNote,
+            MotifAppStrings.TextsListsViewNote })
         {
-            Assert.DoesNotContain("word list", note, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("What Changed", note);
+            Assert.Contains("list", note, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("matrix", note, StringComparison.OrdinalIgnoreCase);
         }
     }
 
@@ -379,7 +383,7 @@ public sealed class TextsProposalWordListTests
     [Fact]
     public void TheProposalViewNoteSaysAWordOnlyTheTrialMeasuredIsCountedButNotListed()
     {
-        Assert.Contains("counted but not listed", MotifAppStrings.TextsProposalViewNote);
+        Assert.Contains("counted but not listed", MotifAppStrings.TextsListsViewNote);
     }
 
     private static CompareCellViewModel CellOf(CompareViewModel compare, CompareColumnKind column) =>

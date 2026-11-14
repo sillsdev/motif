@@ -39,6 +39,7 @@ internal static class FakeComposedWindow
             clipboard: new AvaloniaClipboard(window), defaultProposalChecks: defaultProposalChecks,
             techDemoNotice: techDemoNotice);
         window.Compose(workspace);
+        if (preferencesStore is null && settingsFilePath is null) workspace.Context.Diagnostics = true;
         return (workspace, window);
     }
 

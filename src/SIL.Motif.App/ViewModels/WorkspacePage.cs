@@ -15,7 +15,7 @@ public enum WorkspacePage
     /// <summary>Every Proposal, grouped by what to do next, with its numbers before and after its Trial.</summary>
     Proposals,
 
-    /// <summary>Everything about the words in the texts: the Compare matrix, what changed, and the texts read in place.</summary>
+    /// <summary>The texts, their word lists, and what changed.</summary>
     Texts,
 
     /// <summary>One word traced through the grammar on demand, whether or not the texts hold it.</summary>
@@ -46,9 +46,6 @@ public enum WorkspacePage
 /// <summary>The views of the Texts page, each one a tab.</summary>
 public enum TextsTab
 {
-    /// <summary>The Compare matrix, its fix-first panel, and the list it filters.</summary>
-    Matrix,
-
     /// <summary>The chosen texts read in place, with the project's analysis and parser's answer together.</summary>
     AnalyzeTexts,
 
@@ -82,6 +79,10 @@ public sealed partial class PageViewModel : ObservableObject
             if (e.PropertyName == nameof(PageModel.ProposalDelta)) Delta = model.ProposalDelta;
         };
     }
+
+    /// <summary>Whether this entry begins the diagnostic group in the rail.</summary>
+    [ObservableProperty]
+    private bool _isDiagnosticsGroupStart;
 
     public WorkspacePage Page { get; }
 

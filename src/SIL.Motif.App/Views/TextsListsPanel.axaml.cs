@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Data.Converters;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
@@ -7,6 +8,14 @@ namespace SIL.Motif.App.Views;
 
 public sealed partial class TextsListsPanel : UserControl
 {
+    /// <summary>The words a sort choice is shown with.</summary>
+    public static readonly IValueConverter SortLabel = new FuncValueConverter<CompareSort, string>(sort => sort switch
+    {
+        CompareSort.Alphabetical => "A to Z",
+        CompareSort.Slowest => "Slowest first",
+        _ => "Most places first",
+    });
+
     public TextsListsPanel(TextsListsViewModel lists)
     {
         ArgumentNullException.ThrowIfNull(lists);

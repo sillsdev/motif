@@ -21,6 +21,7 @@ public sealed class OverviewTileNavigationTests
             var (workspace, window) = FakeComposedWindow.Create();
             try
             {
+                workspace.Context.Diagnostics = true;
                 workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
                 window.Show();
                 window.ApplyTemplate();
@@ -51,9 +52,12 @@ public sealed class OverviewTileNavigationTests
                     new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.Match),
                     new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.NoParse),
                 ];
-                workspace.Context.Open(new OpenTextsRequest(TextsTab.Matrix, cells));
+                workspace.PageModel<TextsPageModel>().TextsLists.SelectListCommand.Execute(
+                    workspace.PageModel<TextsPageModel>().TextsLists.Lists[0]);
+                workspace.Context.Open(new OpenTextsRequest(TextsTab.Lists, cells));
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                Assert.Equal(cells.ToHashSet(), workspace.PageModel<TextsPageModel>().TextsLists.SelectedList!.Cells.ToHashSet());
                 Assert.Equal(cells.ToHashSet(), workspace.PageModel<TextsPageModel>().Assess.Compare.Cells
                     .Where(cell => cell.IsSelected)
                     .Select(cell => new TextsListCell(cell.Row, cell.Column)).ToHashSet());
@@ -85,7 +89,7 @@ public sealed class OverviewTileNavigationTests
                 HeadlessClick.Click(window, row, "Look first row");
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
+                Assert.Equal(TextsTab.Lists, workspace.PageModel<TextsPageModel>().Tab);
                 Assert.True(workspace.PageModel<TextsPageModel>().Assess.Compare.Cells.Single(cell =>
                     cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse).IsSelected);
             }
@@ -116,8 +120,8 @@ public sealed class OverviewTileNavigationTests
                 FakeComposedWindow.Click(window, "Open Text coverage in Texts");
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
-                Assert.DoesNotContain(compare.Cells, cell => cell.IsSelected);
+                Assert.Equal(TextsTab.Lists, workspace.PageModel<TextsPageModel>().Tab);
+                Assert.All(compare.Cells, cell => Assert.True(cell.IsSelected));
             }
             finally
             {
@@ -141,10 +145,10 @@ public sealed class OverviewTileNavigationTests
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                FakeComposedWindow.Click(window, "Open Approved analyses kept in the Matrix");
+                FakeComposedWindow.Click(window, "Open Approved analyses kept in Lists");
 
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Matrix, workspace.PageModel<TextsPageModel>().Tab);
+                Assert.Equal(TextsTab.Lists, workspace.PageModel<TextsPageModel>().Tab);
                 Assert.Equal(Enum.GetValues<CompareColumnKind>()
                         .Select(column => new TextsListCell(WordProjectStatus.Approved, column)).ToHashSet(),
                     workspace.PageModel<TextsPageModel>().Assess.Compare.Cells.Where(cell => cell.IsSelected)

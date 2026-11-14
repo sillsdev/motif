@@ -7,7 +7,7 @@ using SIL.Motif.App.Views.Shell;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Texts page: Compare, Analyze texts and fixed word lists, with shared pending changes above them.</summary>
+/// <summary>The Texts page: Analyze texts and fixed word lists, with shared pending changes above them.</summary>
 public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
 {
     private readonly ContentControl _selectionHost;
@@ -63,7 +63,6 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         analyzeScroll.SizeChanged += (_, _) => FitAnalyzeHeight();
         FitAnalyzeHeight();
 
-        Lazy("CompareHost", () => new ComparePanel(page.Assess.Compare));
         var selection = new SelectionPanel(page.Selection, page.Words, settings);
         _selectionHost.Content = selection;
         PrepareSidePanel();
@@ -73,21 +72,10 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         Lazy("DifferenceHost", () => new DifferencePanel(page.Assess.Difference));
         Lazy("ProposalMovesHost", () => new DifferencePanel(page.ProposalChanges));
 
-        // One prompt, moved between its two places, so the page never holds two buttons of the same name.
-        var prompt = new Border { Classes = { "card" }, Child = new ParsePrompt { DataContext = page.Context } };
-        var above = Host("AnalyzeParsePromptHost");
-        var centred = Host("CentredParsePromptHost");
-        void Place()
+        Host("AnalyzeParsePromptHost").Content = new Border
         {
-            var host = page.ShowAnalyzeTexts ? above : centred;
-            if (ReferenceEquals(host.Content, prompt)) return;
-            (host == above ? centred : above).Content = null;
-            host.Content = prompt;
-        }
-        Place();
-        page.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TextsPageModel.ShowAnalyzeTexts)) Place();
+            Classes = { "card" },
+            Child = new ParsePrompt { DataContext = page.Context },
         };
     }
 

@@ -53,7 +53,12 @@ public static class MotifAppStrings
 
     public static string ShortcutEditing => Text("MotifApp.ShortcutEditing");
 
-    public static string ShortcutMatrixPreview => Text("MotifApp.ShortcutMatrixPreview");
+    public static string SelectedWords => Text("MotifApp.SelectedWords");
+
+    public static string MenuDiagnostics => Text("MotifApp.MenuDiagnostics");
+
+    public static string DiagnosticsGroup => Text("MotifApp.DiagnosticsGroup");
+
 
     public static string ShortcutMoveBetweenWords => Text("MotifApp.ShortcutMoveBetweenWords");
 
@@ -115,7 +120,6 @@ public static class MotifAppStrings
 
     public static string ShortcutFocusWordSearch => Text("MotifApp.ShortcutFocusWordSearch");
 
-    public static string ShortcutChooseCell => Text("MotifApp.ShortcutChooseCell");
 
     public static string ShortcutCompareVersions => Text("MotifApp.ShortcutCompareVersions");
 
@@ -382,8 +386,6 @@ public static class MotifAppStrings
 
     public static string EditMorphemeInFieldWorksFormat => Text("MotifApp.EditMorphemeInFieldWorksFormat");
 
-    public static string MatrixListSelectionFormat => Text("MotifApp.MatrixListSelectionFormat");
-
     public static string StatusChangesPattern => Text("MotifApp.StatusChangesPattern");
     public static string StatusFilterHidesPattern => Text("MotifApp.StatusFilterHidesPattern");
 
@@ -490,9 +492,11 @@ public static class MotifAppStrings
 
     public static string ApprovedAnalysesKept => Text("MotifApp.ApprovedAnalysesKept");
 
-    public static string OverviewMatrixLink => Text("MotifApp.OverviewMatrixLink");
+    public static string OpenInLists => Text("MotifApp.OpenInLists");
 
-    public static string OpenMatrixFromApprovedKeptAccessibleName => Text("MotifApp.OpenMatrixFromApprovedKeptAccessibleName");
+    public static string OverviewListsLink => Text("MotifApp.OverviewListsLink");
+
+    public static string OpenListsFromApprovedKeptAccessibleName => Text("MotifApp.OpenListsFromApprovedKeptAccessibleName");
 
     public static string ApprovedAnalysesKeptOutcomesAccessibleName => Text("MotifApp.ApprovedAnalysesKeptOutcomesAccessibleName");
 
@@ -548,9 +552,6 @@ public static class MotifAppStrings
 
     public static string NamedByAGrammarWarning => Text("MotifApp.NamedByAGrammarWarning");
 
-    public static string Matrix => Text("MotifApp.Matrix");
-
-    public static string MatrixTabAccessibleName => Text("MotifApp.MatrixTabAccessibleName");
 
     public static string AnalyzeTexts => Text("MotifApp.AnalyzeTexts");
 
@@ -1887,10 +1888,6 @@ public static class MotifAppStrings
 
     public static string CheckTheGrammarAccessibleName => Text("MotifApp.CheckTheGrammarAccessibleName");
 
-    public static string CompareRowsNotSortedNotice => Text("MotifApp.CompareRowsNotSortedNotice");
-
-    public static string CompareMatrixAxisLabel => Text("MotifApp.CompareMatrixAxisLabel");
-
     public static string FixTheseFirst => Text("MotifApp.FixTheseFirst");
 
     public static string WhatTheseWordsShare => Text("MotifApp.WhatTheseWordsShare");
@@ -1900,30 +1897,6 @@ public static class MotifAppStrings
     public static string IncorrectSpelling => Text("MotifApp.IncorrectSpelling");
 
     public static string CompareParseAgainTip => Text("MotifApp.CompareParseAgainTip");
-
-    public static string CompareMatrixAccessibleName => Text("MotifApp.CompareMatrixAccessibleName");
-
-    public static string FixTheseFirstCountAccessibleName => Text("MotifApp.FixTheseFirstCountAccessibleName");
-
-    public static string WordsToCheckFirstAccessibleName => Text("MotifApp.WordsToCheckFirstAccessibleName");
-
-    public static string WhatTheseWordsShareAccessibleName => Text("MotifApp.WhatTheseWordsShareAccessibleName");
-
-    public static string OrderTheListedWordsAccessibleName => Text("MotifApp.OrderTheListedWordsAccessibleName");
-
-    public static string SearchTheListedWordsAccessibleName => Text("MotifApp.SearchTheListedWordsAccessibleName");
-
-    public static string CompareParseAgainAccessibleName => Text("MotifApp.CompareParseAgainAccessibleName");
-
-    public static string SecondsEachWordGetsWhenRunAgainAccessibleName => Text("MotifApp.SecondsEachWordGetsWhenRunAgainAccessibleName");
-
-    public static string AIHandoffForTheListedWordsAccessibleName => Text("MotifApp.AIHandoffForTheListedWordsAccessibleName");
-
-    public static string AddCheckedWordsAsUnknownAccessibleName => Text("MotifApp.AddCheckedWordsAsUnknownAccessibleName");
-
-    public static string MarkCheckedWordsAsIncorrectSpellingAccessibleName => Text("MotifApp.MarkCheckedWordsAsIncorrectSpellingAccessibleName");
-
-    public static string WordsInTheChosenCellsAccessibleName => Text("MotifApp.WordsInTheChosenCellsAccessibleName");
 
     public static string HandoffIntro => Text("MotifApp.HandoffIntro");
 
@@ -4791,17 +4764,7 @@ public static class MotifAppStrings
     public static string CompareWordsEitherSideFormat => Text("MotifApp.CompareWordsEitherSideFormat");
     public static string CompareWordsNotListedPattern => Text("MotifApp.CompareWordsNotListedPattern");
 
-    public static string TextsMatrixCountsNoun => Text("MotifApp.TextsMatrixCountsNoun");
-
-    public static string TextsProposalPairedNote => Text("MotifApp.TextsProposalPairedNote");
-
-    public static string TextsProposalDifferentWordsNote => Text("MotifApp.TextsProposalDifferentWordsNote");
-
-    public static string TextsProposalViewNote => Text("MotifApp.TextsProposalViewNote");
-
     public static string TextsProposalWordCardsNote => Text("MotifApp.TextsProposalWordCardsNote");
-
-    public static string TextsProposalReadingNote => Text("MotifApp.TextsProposalReadingNote");
 
     public static string TextsWordNotMeasured => Text("MotifApp.TextsWordNotMeasured");
 
@@ -4895,7 +4858,6 @@ public static class MotifAppStrings
 
     public static string ChosenCellSeparatorMark => Text("MotifApp.ChosenCellSeparatorMark");
 
-    public static string ClearChosenMatrixCellsAccessibleName => Text("MotifApp.ClearChosenMatrixCellsAccessibleName");
 
     public static string AiAssistantsTitle => Text("MotifApp.AiAssistantsTitle");
 

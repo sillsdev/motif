@@ -90,7 +90,7 @@ public sealed class RefusedWordsWalkthroughTests(PristineProjectFixture pristine
                 Assert.False(texts.TextsLists.CanParseAgain);
 
                 compare.SelectCells([new TextsListCell(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch)]);
-                texts.Tab = TextsTab.Matrix;
+                texts.Tab = TextsTab.Lists;
                 PageScreenshots.Settle(walkthrough.Window);
                 var lion = Assert.Single(compare.Words);
                 Assert.Equal(2, lion.Readings.Count);

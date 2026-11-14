@@ -1375,6 +1375,7 @@ public sealed class WorkspaceContextTests
     public async Task OpeningTimingOnWordsQueriesStoredTimingForOnlyThoseWords()
     {
         var (fake, context) = NewContextWithFake();
+        context.Diagnostics = true;
         var timing = new TimingPageModel(context);
         var result = new TimingResponse("assessment-1", "all", "kind", 1, 5, 5, [],
             [new TimingAggregateRow("Affix template", "Affix template", 5, 1, 1) { Kind = "morph_rule" }], []);
@@ -1424,6 +1425,7 @@ public sealed class WorkspaceContextTests
     public async Task APageDefinedOutsideTheAppRunsItsOwnQueryAndIsOpenedThroughARegistryEntryAndTheContextAlone()
     {
         var (fake, context) = NewContextWithFake();
+        context.Diagnostics = true;
         fake.KnownProjectsListIs([new KnownProjectSummary(ProjectPath, DateTimeOffset.UtcNow)]);
         var entry = PageEntry.Of(WorkspacePage.Warnings, "Elsewhere", "M0 0h1", c => new ElsewherePageModel(c),
             _ => new Avalonia.Controls.Border());
@@ -1477,6 +1479,7 @@ public sealed class WorkspaceContextTests
     public async Task OpenInspectorShowsTheObjectBesideThePageAndANewProjectClosesIt()
     {
         var context = NewContext();
+        context.Diagnostics = true;
         await context.OpenProjectAsync(ProjectPath);
         context.OpenPage(WorkspacePage.Timing);
         var kat = InspectorSubject.Morpheme(new ParserReadingMorph("kat", "cut", "v", null, false, null)

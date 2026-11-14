@@ -499,6 +499,7 @@ public sealed class ParsimonyPageIntegrationTests(PristineProjectFixture pristin
             new ChangesViewModel(client), client, new FolderPicker(), new DragSource(), baseline)
         {
             AdvancedAiModeEnabled = advancedAi,
+            Diagnostics = true,
         };
         // The shell publishes this snapshot from the real Baseline model; this isolated page owns the same wiring.
         baseline.PropertyChanged += (_, _) => context.Baseline = context.ProjectPath is null ? null :

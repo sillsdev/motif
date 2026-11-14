@@ -36,11 +36,6 @@ public sealed partial class TextsPageModel
     /// <summary>The note saying what the tab pairs, what stays today's and why the Proposal may have nothing to show.</summary>
     public string? ProposalNote => Tab switch
     {
-        TextsTab.Matrix when !Assess.Compare.HasWords => null,
-        TextsTab.Matrix when ReadingInPair => MotifAppStrings.TextsProposalReadingNote,
-        TextsTab.Matrix => ProposalPageNote.For(Context, new ProposalPageNote.Parts(MotifAppStrings.TextsMatrixCountsNoun,
-            MatrixState == MatrixSideState.Reading, MatrixState == MatrixSideState.Unreadable,
-            MatrixState == MatrixSideState.Held, MatrixPairedNote(), MotifAppStrings.TextsProposalViewNote)),
         TextsTab.AnalyzeTexts => OffToday ? MotifAppStrings.TextsProposalWordCardsNote : null,
         TextsTab.Lists when !Assess.Compare.HasWords => null,
         TextsTab.Lists when ReadingInPair => MotifAppStrings.TextsListsReadingNote,
@@ -64,10 +59,6 @@ public sealed partial class TextsPageModel
 
     /// <summary>Whether the page has a note to show.</summary>
     public bool HasProposalNote => ProposalNote is not null;
-
-    // Says the cells are paired only when the two sides were checked to cover the same words.
-    private string MatrixPairedNote() => Assess.Compare.ProposalWordsMatch == true
-        ? MotifAppStrings.TextsProposalPairedNote : MotifAppStrings.TextsProposalDifferentWordsNote;
 
     // Reads nothing: draws the held side, or its absence, for the bar's current view.
     private void ShowMatrixProposal()

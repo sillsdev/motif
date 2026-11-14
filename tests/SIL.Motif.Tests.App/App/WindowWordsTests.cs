@@ -329,7 +329,7 @@ public sealed partial class WindowWordsTests
     private static IEnumerable<(WorkspacePage Page, TextsTab Tab)> EveryView() =>
     [
         .. Enum.GetValues<WorkspacePage>().Where(page => page != WorkspacePage.Texts)
-            .Select(page => (page, TextsTab.Matrix)),
+            .Select(page => (page, TextsTab.Lists)),
         .. Enum.GetValues<TextsTab>().Select(tab => (WorkspacePage.Texts, tab)),
     ];
 

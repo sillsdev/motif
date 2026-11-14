@@ -236,9 +236,9 @@
           <StackPanel Classes="overviewTileContent">
             <DockPanel LastChildFill="False">
               <TextBlock Classes="overviewTileTitle" Text="{x:Static app:MotifAppStrings.ApprovedAnalysesKept}" DockPanel.Dock="Left" />
-              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.OverviewMatrixLink}" DockPanel.Dock="Right"
+              <HyperlinkButton Classes="overviewTileLink" Content="{x:Static app:MotifAppStrings.OverviewListsLink}" DockPanel.Dock="Right"
                                Command="{Binding OpenAccuracyCommand}"
-                               AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenMatrixFromApprovedKeptAccessibleName}" />
+                               AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenListsFromApprovedKeptAccessibleName}" />
             </DockPanel>
             <TextBlock Classes="overviewTileValue" Text="{Binding AccuracyMain}" TextWrapping="Wrap" />
             <StackPanel Classes="overviewTileContent" IsVisible="{Binding ShowTodayDetail}">

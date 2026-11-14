@@ -81,8 +81,8 @@ public sealed record UserPreferences(
     public IReadOnlyDictionary<string, bool> ExpandedSections { get; init; } =
         ImmutableSortedDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal);
 
-    /// <summary>The stage the person works in (format 4); Polish until the owner decides the default.</summary>
-    public MotifStage Stage { get; init; } = MotifStage.Polish;
+    /// <summary>Whether diagnostic pages are available (format 5).</summary>
+    public bool Diagnostics { get; init; }
 
     /// <summary>Per-project view state: project key, then view name (format 2). Lives only in user preferences.</summary>
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, ViewState>> ProjectViews { get; init; } =
@@ -93,7 +93,7 @@ public sealed record UserPreferences(
     public bool Equals(UserPreferences? other) =>
         other is not null && FormatVersion == other.FormatVersion && ZoomPercent == other.ZoomPercent &&
         Theme == other.Theme && LastSettingsGroup == other.LastSettingsGroup && Equals(Window, other.Window) &&
-        Trace == other.Trace && HasSeenTechDemoNotice == other.HasSeenTechDemoNotice && Stage == other.Stage &&
+        Trace == other.Trace && HasSeenTechDemoNotice == other.HasSeenTechDemoNotice && Diagnostics == other.Diagnostics &&
         ExpandedSections.Count == other.ExpandedSections.Count &&
         ExpandedSections.All(pair => other.ExpandedSections.TryGetValue(pair.Key, out var v) && v == pair.Value) &&
         ProjectViews.Count == other.ProjectViews.Count &&
@@ -104,7 +104,7 @@ public sealed record UserPreferences(
     /// <inheritdoc />
     public override int GetHashCode() =>
         HashCode.Combine(FormatVersion, ZoomPercent, Theme, LastSettingsGroup, Window, Trace, HasSeenTechDemoNotice,
-            ExpandedSections.Count + ProjectViews.Count + (int)Stage);
+            ExpandedSections.Count + ProjectViews.Count + Diagnostics.GetHashCode());
 }
 
 /// <summary>A stable code and user-facing explanation for a preference-file problem.</summary>
@@ -142,10 +142,9 @@ public interface IUserPreferencesStore
 public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposable
 {
     /// <summary>
-    /// The format written on every save. Format 1 to 3 files are read and upgraded in memory; format 3 added the
-    /// optional selected row to each saved view; format 4 added the stage.
+    /// The format written on every save. Earlier files are upgraded in memory; format 5 replaces the retired stage with Diagnostics.
     /// </summary>
-    public const int LatestFormatVersion = 4;
+    public const int LatestFormatVersion = 5;
 
     private const int CurrentFormatVersion = LatestFormatVersion;
     private static readonly TimeSpan LockTimeout = TimeSpan.FromMilliseconds(750);
@@ -165,8 +164,10 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         nameof(UserPreferences.ExpandedSections),
         nameof(UserPreferences.ProjectViews),
     ];
-    private static readonly string[] RequiredProperties = [.. FormatThreeProperties, nameof(UserPreferences.Stage)];
+    private static readonly string[] FormatFourProperties = [.. FormatThreeProperties, "Stage"];
+    private static readonly string[] RequiredProperties = [.. FormatThreeProperties, nameof(UserPreferences.Diagnostics)];
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
+    private static readonly JsonSerializerOptions LegacyJsonOptions = CreateJsonOptions(allowUnknown: true);
     private readonly string _path;
     private readonly object _gate = new();
     private readonly object _writeGate = new();
@@ -209,6 +210,25 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         _current = read.Preferences;
         _state = read.State;
         _problem = read.Problem;
+        if (_state == PreferenceState.Ready && IsFormatFourFile())
+        {
+            Update(current => current);
+            Flush();
+        }
+    }
+
+    private bool IsFormatFourFile()
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(_path));
+            return document.RootElement.TryGetProperty(nameof(UserPreferences.FormatVersion), out var version) &&
+                version.TryGetInt32(out var number) && number == 4;
+        }
+        catch (Exception exception) when (exception is JsonException || IsStorageException(exception))
+        {
+            return false;
+        }
     }
 
     /// <summary>How long after the last change the installed App writes preferences.</summary>
@@ -499,7 +519,9 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
             if (!File.Exists(_path)) return (UserPreferences.Defaults, PreferenceState.Missing, null);
             var json = File.ReadAllText(_path);
             if (!HasExactShape(json, out var version)) return RefusedRead();
-            var preferences = JsonSerializer.Deserialize<UserPreferences>(json, JsonOptions);
+            var preferences = version == 4
+                ? JsonSerializer.Deserialize<UserPreferences>(json, LegacyJsonOptions)
+                : JsonSerializer.Deserialize<UserPreferences>(json, JsonOptions);
             if (preferences is null) return RefusedRead();
             // An older file keeps every preference; it is upgraded here and written as the latest format on the next save.
             if (version < LatestFormatVersion) preferences = preferences with { FormatVersion = LatestFormatVersion };
@@ -551,7 +573,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
         if (!document.RootElement.TryGetProperty(nameof(UserPreferences.FormatVersion), out var versionElement) ||
             !versionElement.TryGetInt32(out version)) return false;
         // An unknown (for example newer) version has no known shape: it is refused, never rewritten.
-        var required = version switch { 1 => FormatOneProperties, 2 or 3 => FormatThreeProperties, LatestFormatVersion => RequiredProperties, _ => null };
+        var required = version switch { 1 => FormatOneProperties, 2 or 3 => FormatThreeProperties, 4 => FormatFourProperties, LatestFormatVersion => RequiredProperties, _ => null };
         if (required is null) return false;
         var names = document.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
         return names.Length == required.Length && required.All(name => names.Contains(name, StringComparer.Ordinal));
@@ -560,7 +582,7 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
     internal static UserPreferences Validate(UserPreferences value)
     {
         if (value.FormatVersion != CurrentFormatVersion || !ZoomPolicy.Supports(value.ZoomPercent) ||
-            !Enum.IsDefined(value.Theme) || !Enum.IsDefined(value.LastSettingsGroup) || !Enum.IsDefined(value.Trace) || !Enum.IsDefined(value.Stage))
+            !Enum.IsDefined(value.Theme) || !Enum.IsDefined(value.LastSettingsGroup) || !Enum.IsDefined(value.Trace))
             throw new InvalidDataException("The preferences file contains an unsupported value.");
         if (value.Window is { } window &&
             (!double.IsFinite(window.Width) || window.Width <= 0 ||
@@ -585,9 +607,9 @@ public sealed class FileUserPreferencesStore : IUserPreferencesStore, IDisposabl
     private static (UserPreferences Preferences, PreferenceState State, PreferenceProblem? Problem) RefusedRead() =>
         (UserPreferences.Defaults, PreferenceState.Refused, RefusedProblem);
 
-    private static JsonSerializerOptions CreateJsonOptions()
+    private static JsonSerializerOptions CreateJsonOptions(bool allowUnknown = false)
     {
-        var options = new JsonSerializerOptions { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
+        var options = new JsonSerializerOptions { UnmappedMemberHandling = allowUnknown ? JsonUnmappedMemberHandling.Skip : JsonUnmappedMemberHandling.Disallow };
         options.Converters.Add(new JsonStringEnumConverter());
         return options;
     }

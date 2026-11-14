@@ -18,6 +18,7 @@ public sealed partial class TryWordPanel : UserControl
         Model = model;
         Trace = model.Trace;
         AttemptInspector = new TryWordAttemptInspector(Trace);
+        AttemptInspector.Bind(IsVisibleProperty, new Avalonia.Data.Binding(nameof(WorkspaceContext.Diagnostics)) { Source = model.Context });
         DataContext = model;
         AvaloniaXamlLoader.Load(this);
         this.FindControl<LazyContent>("RichDiagnosticHost")!.Factory = () =>

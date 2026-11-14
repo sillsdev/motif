@@ -142,7 +142,7 @@ public sealed class RealProjectReadmeCapture(ITestOutputHelper output)
 
         // One harmless pending change in the scratch copy, so Review has something to list.
         var compare = workspace.Assess.Compare;
-        workspace.Context.OpenTexts(TextsTab.Matrix);
+        workspace.Context.OpenTexts(TextsTab.Lists);
         Dispatcher.UIThread.RunJobs();
         foreach (var preset in compare.Presets)
         {
