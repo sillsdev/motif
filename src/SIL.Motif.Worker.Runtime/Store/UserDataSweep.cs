@@ -93,6 +93,27 @@ public sealed class UserDataSweep
         _options = options ?? new UserDataSweepOptions();
     }
 
+    /// <summary>
+    /// Sweeps right after a release: no byte budget, so every unreferenced source and run older than
+    /// <paramref name="minimumAge"/> goes, counting <paramref name="storePath"/> as live. Cancelling stops the sweep.
+    /// </summary>
+    public static UserDataSweepResult SweepAfterRelease(string root, string storePath, TimeSpan minimumAge,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var machine = MachineDatabase.Open(root);
+            return new UserDataSweep(root, new KnownProjectRegistry(machine), options: new UserDataSweepOptions
+            {
+                BudgetBytes = 0, BudgetMinimumAge = minimumAge,
+            }, alsoLive: [storePath]).Sweep(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return new UserDataSweepResult(0, 0, 0, 0, 0, 0, 0, ["stopped"]);
+        }
+    }
+
     /// <summary>Runs one sweep, checking <paramref name="cancellationToken"/> between entries.</summary>
     public UserDataSweepResult Sweep(CancellationToken cancellationToken = default)
     {

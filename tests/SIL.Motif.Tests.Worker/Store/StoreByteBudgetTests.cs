@@ -233,6 +233,102 @@ public sealed class StoreByteBudgetTests : IDisposable
         Assert.Equal("1", Scalar("SELECT COUNT(*) FROM ProposalDifferences WHERE WordDetailDroppedUtc IS NOT NULL;"));
     }
 
+    [Fact]
+    public void ANewerCompletedTrialReleasesWhatTheOlderOneRecordedAndKeepsTheLatest()
+    {
+        var open = OpenProposal();
+        Record("before", "Correctness", 0);
+        Record("first", "Correctness", 1, open);
+        Record("second", "Correctness", 2, open);
+        Trial("t1", open, "completed", "before", "first", "2026-01-01T00:00:00Z");
+        Trial("t2", open, "completed", "before", "second", "2026-01-02T00:00:00Z");
+
+        Assert.Equal(1, SweepSuperseded());
+
+        Assert.Equal(["before", "second"], Ids("SELECT AssessmentId FROM Assessments ORDER BY AssessmentId;"));
+        Assert.Equal(0, SweepSuperseded());
+    }
+
+    [Fact]
+    public void ATrialIsNotSupersededByANewerOneThatDidNotComplete()
+    {
+        var open = OpenProposal();
+        Record("before", "Correctness", 0);
+        Record("first", "Correctness", 1, open);
+        Trial("t1", open, "completed", "before", "first", "2026-01-01T00:00:00Z");
+        Trial("t2", open, "failed", "before", null, "2026-01-02T00:00:00Z");
+        Trial("t3", open, "running", "before", null, "2026-01-03T00:00:00Z");
+
+        Assert.Equal(0, SweepSuperseded());
+        Assert.Contains("first", Ids("SELECT AssessmentId FROM Assessments;"));
+    }
+
+    [Fact]
+    public void ASupersededTrialKeepsWhatAPinOrTheNewerTrialStillNames()
+    {
+        var open = OpenProposal();
+        var other = OpenProposal();
+        Record("before", "Correctness", 0);
+        Record("pinned", "Correctness", 1, open);
+        Record("shared", "Correctness", 2, open);
+        Record("gone", "Correctness", 3, open);
+        Record("other", "Correctness", 4, other);
+        Execute("INSERT INTO AssessmentPins VALUES ('pinned', 'person', '2026-01-01T00:00:00Z');");
+        Trial("t1", open, "completed", "before", null, "2026-01-01T00:00:00Z");
+        Execute("UPDATE Jobs SET ResultJson = '{\"assessmentIds\":[\"pinned\",\"shared\",\"gone\"]}' WHERE JobId = 't1';");
+        Trial("t2", open, "completed", "before", "shared", "2026-01-02T00:00:00Z");
+        Trial("o1", other, "completed", "before", "other", "2026-01-03T00:00:00Z");
+
+        Assert.Equal(1, SweepSuperseded());
+
+        Assert.Equal(["before", "other", "pinned", "shared"],
+            Ids("SELECT AssessmentId FROM Assessments ORDER BY AssessmentId;"));
+    }
+
+    [Fact]
+    public void ReleasingASupersededTrialRemovesItsRunDirectoryAndKeepsTheLatestRun()
+    {
+        var open = OpenProposal();
+        var workerRoot = Path.Combine(_root, "worker");
+        var cache = new SIL.Motif.Worker.Assess.StatsCacheStore(WorkspaceOwnership.Bootstrap(workerRoot), _database.FullPath);
+        var oldRun = cache.DirectoryFor("old-run");
+        var newRun = cache.DirectoryFor("new-run");
+        foreach (var run in new[] { oldRun, newRun })
+        {
+            Directory.CreateDirectory(run);
+            File.WriteAllText(Path.Combine(run, "stats.sqlite"), "cache");
+        }
+        Record("before", "Correctness", 0);
+        Record("first", "Correctness", 1, open, Path.Combine(oldRun, "stats.sqlite"));
+        Record("second", "Correctness", 2, open, Path.Combine(newRun, "stats.sqlite"));
+        Trial("t1", open, "completed", "before", "first", "2026-01-01T00:00:00Z");
+        Trial("t2", open, "completed", "before", "second", "2026-01-02T00:00:00Z");
+
+        using var lease = ProjectParseLease.TryAcquire(_database)!;
+        var released = SupersededTrialRetention.Run(_database, lease, workerRoot);
+
+        Assert.Equal((1, 1), released);
+        Assert.False(Directory.Exists(oldRun));
+        Assert.True(File.Exists(Path.Combine(newRun, "stats.sqlite")));
+    }
+
+    private CanonicalId OpenProposal()
+    {
+        var id = CanonicalId.Mint("proposal/");
+        Execute($"INSERT INTO Proposals (ProposalId, Status) VALUES ('{id.Value}', 'proposed');");
+        return id;
+    }
+
+    private int SweepSuperseded()
+    {
+        using var lease = ProjectParseLease.TryAcquire(_database)!;
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        var removed = AssessmentRetention.SweepSupersededTrials(connection, transaction, lease, out _);
+        transaction.Commit();
+        return removed;
+    }
+
     private int Sweep(int keep, long? budget)
     {
         using var lease = ProjectParseLease.TryAcquire(_database)!;
@@ -244,7 +340,7 @@ public sealed class StoreByteBudgetTests : IDisposable
         return removed;
     }
 
-    private void Record(string id, string kind, int run, CanonicalId? proposal = null)
+    private void Record(string id, string kind, int run, CanonicalId? proposal = null, string? cachePath = null)
     {
         var words = Enumerable.Range(0, 60)
             .Select(index => SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word($"w{run:D2}-{index:D3}", true)).ToArray();
@@ -254,15 +350,16 @@ public sealed class StoreByteBudgetTests : IDisposable
             Subject: new AssessmentSubject.Words(Selection.Create("selection-1", ["bo", "za"]), "whitespace", "1"),
             BaselineToken: "{\"baseline\":true}", OutcomeDigest: "sha256:outcome", SemanticDigest: "sha256:semantic",
             GrammarSourceSha256: "sha256:grammar", ModelFingerprint: "fingerprint", Pipeline: "pipeline",
-            DiagnosticCount: 0, Material: new AssessmentRecordMaterial.Words(words, null, null, []),
+            DiagnosticCount: 0, Material: new AssessmentRecordMaterial.Words(words, cachePath, cachePath is null ? null : "sha256:cache", []),
             SavedUtc: DateTimeOffset.UtcNow.AddMinutes(run - 30).ToString("O")));
     }
 
-    private void Trial(string jobId, CanonicalId proposal, string status, string before, string? after)
+    private void Trial(string jobId, CanonicalId proposal, string status, string before, string? after,
+        string created = "2026-01-01T00:00:00Z")
     {
         var proposalJson = System.Text.Json.JsonSerializer.Serialize(new { proposalId = proposal.Value });
         var input = System.Text.Json.JsonSerializer.Serialize(new { proposalJson, baselineAssessmentIds = new[] { before } });
-        new JobRepository(_database).Create(jobId, "project", "trial", input, "2026-01-01T00:00:00Z");
+        new JobRepository(_database).Create(jobId, "project", "trial", input, created);
         var result = after is null ? "NULL" : $"'{{\"assessmentIds\":[\"{after}\"]}}'";
         Execute($"UPDATE Jobs SET Status = '{status}', ResultJson = {result} WHERE JobId = '{jobId}';");
     }

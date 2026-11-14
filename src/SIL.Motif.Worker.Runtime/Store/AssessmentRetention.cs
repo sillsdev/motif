@@ -163,6 +163,30 @@ internal static class AssessmentRetention
         return count;
     }
 
+    /// <summary>
+    /// Removes the Assessments that only a superseded Trial recorded: those a completed Trial's result names, owned by
+    /// its Proposal, once a newer completed Trial of that Proposal exists. Everything the latest Trial, a Receipt, a
+    /// Report, a pin, a Before binding or an active job still names stays. <paramref name="removedInvocations"/> names
+    /// the run directories nothing else needs, for the caller to delete after the transaction commits.
+    /// </summary>
+    public static int SweepSupersededTrials(SqliteConnection connection, SqliteTransaction transaction,
+        ProjectParseLease lease, out IReadOnlyList<string> removedInvocations)
+    {
+        removedInvocations = [];
+        lease.EnsureHeld(connection, transaction);
+        var all = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments;");
+        var owned = ReadIds(connection, transaction, "SELECT AssessmentId FROM Assessments WHERE ProposalId IS NOT NULL;");
+        var removable = ReadJsonReferences(connection, transaction,
+            $"SELECT j.ResultJson FROM Jobs j WHERE {SupersededTrial} AND j.ResultJson IS NOT NULL;", all);
+        removable.IntersectWith(owned);
+        if (removable.Count == 0) return 0;
+        var artifacts = new List<(string Artifact, string[] Requires)>();
+        var deleted = RemoveUnneeded(connection, transaction, removable, null, [], all, artifacts, default, null, null);
+        removedInvocations = artifacts.Where(entry => entry.Requires.All(deleted.Contains))
+            .Select(entry => entry.Artifact).Distinct(StringComparer.Ordinal).ToArray();
+        return deleted.Count;
+    }
+
     /// <summary>The bytes of pages the store uses, free pages inside the file not counted.</summary>
     internal static long BytesInUse(SqliteConnection connection, SqliteTransaction? transaction)
     {
@@ -207,9 +231,20 @@ internal static class AssessmentRetention
         return deleted;
     }
 
-    // What a Trial Job cites stays needed while the Job is active or its Proposal is undecided.
+    // A completed Trial is superseded once a newer completed Trial of the same Proposal exists (ADR 0113).
+    private const string SupersededTrial = $"""
+        (j.Kind = 'trial' AND j.Status = 'completed' AND json_valid(j.InputJson)
+            AND json_valid(json_extract(j.InputJson, '$.proposalJson')) AND EXISTS (
+            SELECT 1 FROM Jobs n WHERE n.Kind = 'trial' AND n.Status = 'completed' AND n.ProjectKey = j.ProjectKey
+                AND json_valid(n.InputJson) AND json_valid(json_extract(n.InputJson, '$.proposalJson'))
+                AND json_extract(json_extract(n.InputJson, '$.proposalJson'), '$.proposalId')
+                    = json_extract(json_extract(j.InputJson, '$.proposalJson'), '$.proposalId')
+                AND (n.CreatedUtc > j.CreatedUtc OR (n.CreatedUtc = j.CreatedUtc AND n.JobId > j.JobId))))
+        """;
+
+    // A Trial Job's citations stay needed while it is active or its Proposal is undecided, unless superseded.
     private const string TrialJobsThatHold = $"""
-        FROM Jobs j WHERE j.Kind = 'trial' AND (j.Status IN {ActiveJobStatuses} OR NOT EXISTS (
+        FROM Jobs j WHERE j.Kind = 'trial' AND NOT {SupersededTrial} AND (j.Status IN {ActiveJobStatuses} OR NOT EXISTS (
             SELECT 1 FROM Proposals p WHERE p.Status IN {ClosedStatuses} AND json_valid(j.InputJson)
                 AND json_valid(json_extract(j.InputJson, '$.proposalJson'))
                 AND p.ProposalId = json_extract(json_extract(j.InputJson, '$.proposalJson'), '$.proposalId')))

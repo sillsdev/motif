@@ -93,6 +93,8 @@ public static class StorePruneCommand
                 roots = roots.Concat(protectedAssessments ?? []).ToArray();
                 removed = AssessmentRetention.SweepStandalone(connection, transaction, lease, keepPerKind, roots, out removedInvocations,
                     cancellationToken, progress, byteBudget);
+                removed += AssessmentRetention.SweepSupersededTrials(connection, transaction, lease, out var supersededRuns);
+                removedInvocations = [.. removedInvocations, .. supersededRuns];
                 ProposalDifferenceRetention.DropForClosedProposals(connection, transaction);
                 kept = AssessmentRetention.ExplainKept(connection, transaction, roots);
                 transaction.Commit();
@@ -146,21 +148,8 @@ public static class StorePruneCommand
     internal static readonly TimeSpan UnreferencedRunAge = TimeSpan.FromHours(1);
 
     // No byte budget: the daily sweep skips sources while any parse reads them, and prune holds the lease.
-    private static UserDataSweepResult SweepUserData(string root, string storePath, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var machine = MachineDatabase.Open(root);
-            return new UserDataSweep(root, new KnownProjectRegistry(machine), options: new UserDataSweepOptions
-            {
-                BudgetBytes = 0, BudgetMinimumAge = UnreferencedRunAge,
-            }, alsoLive: [storePath]).Sweep(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            return new UserDataSweepResult(0, 0, 0, 0, 0, 0, 0, ["stopped"]);
-        }
-    }
+    private static UserDataSweepResult SweepUserData(string root, string storePath, CancellationToken cancellationToken) =>
+        UserDataSweep.SweepAfterRelease(root, storePath, UnreferencedRunAge, cancellationToken);
 
     private static bool Checkpoint(SqliteConnection connection)
     {

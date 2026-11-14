@@ -459,6 +459,9 @@ internal sealed class TrialJobHandler
                     }
                 }
 
+                // The new Trial has replaced the earlier ones; release what only they held, while the lease is ours.
+                try { SupersededTrialRetention.Run(claim.Database, parseLease, _workerRoot); }
+                catch (Exception exception) { ReportTrialMaintenanceFailure(claim.JobId, "release superseded Trials", exception); }
                 ReleaseSettledTrialParseLease(parseLease, claim.JobId);
                 // Advisory follow-on work: whatever it does, the committed Trial stays as it is.
                 try { AfterCommit?.Invoke(claim, baseline.Token); }
