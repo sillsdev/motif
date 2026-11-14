@@ -275,7 +275,7 @@
           }
         },
         "schemaVersion": {
-          "const": 5
+          "const": 6
         },
         "baseline": {
           "$ref": "#/$defs/BaselineToken"
@@ -296,7 +296,10 @@
         "defaultAnalysis",
         "styles",
         "writingSystems",
-        "isStale"
+        "isStale",
+        "titleAlternatives",
+        "descriptionAlternatives",
+        "position"
       ],
       "properties": {
         "record": {
@@ -309,7 +312,7 @@
           }
         },
         "schemaVersion": {
-          "const": 5
+          "const": 6
         },
         "defaultVernacular": {
           "type": "string"
@@ -334,6 +337,54 @@
         },
         "isStale": {
           "type": "boolean"
+        },
+        "titleAlternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "writingSystem",
+              "runs"
+            ],
+            "properties": {
+              "writingSystem": {
+                "type": "string"
+              },
+              "runs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/GdrRun"
+                }
+              }
+            }
+          }
+        },
+        "descriptionAlternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "writingSystem",
+              "runs"
+            ],
+            "properties": {
+              "writingSystem": {
+                "type": "string"
+              },
+              "runs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/GdrRun"
+                }
+              }
+            }
+          }
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     }

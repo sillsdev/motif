@@ -2,20 +2,21 @@ using System.Collections.Generic;
 using System.Linq;
 using SIL.Motif.Contract.Model;
 using SIL.Motif.Model.Effects;
+using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Operations;
 
 namespace SIL.Motif.Commands;
 
 /// <summary>
-/// Lets a Proposal that only edits prose fields apply without a Correctness Assessment: the parser reads none of
-/// the fields <see cref="TextParagraphFields"/> and <see cref="TextRichStringFields"/> allow, so no word's parse can change.
+/// Lets a Proposal that only edits prose fields or GDR titles apply without a Correctness Assessment.
 /// </summary>
 internal static class ProseOnlyProposalReadiness
 {
     public const string ExemptionReason =
-        "The bound Dry Run shows only rich-text edits of prose fields, which the parser does not read.";
+        "The bound Dry Run shows only edits of prose fields, which the parser does not read.";
 
-    public static string? ExemptionFor(Proposal proposal, IReadOnlyList<ExpectedEffect> effects)
+    public static string? ExemptionFor(Proposal proposal, IReadOnlyList<ExpectedEffect> effects,
+        System.Func<OperationEnvelope, bool>? isGdrTitle = null)
     {
         var operations = proposal.Operations;
         if (operations.Count == 0 || operations.Count != effects.Count || operations.Any(operation => operation.Target is null))
@@ -23,7 +24,7 @@ internal static class ProseOnlyProposalReadiness
         var allowed = new HashSet<string>(System.StringComparer.Ordinal);
         foreach (var operation in operations)
         {
-            if (EffectField(operation) is not { } field) return null;
+            if (EffectField(operation, isGdrTitle) is not { } field) return null;
             allowed.Add(field);
         }
         var targets = operations.Select(operation => OperationSlotRegistry.ByGuid(operation.Target!.Value)).ToHashSet();
@@ -33,11 +34,13 @@ internal static class ProseOnlyProposalReadiness
     }
 
     // The effect field a prose edit reports, or null for any other operation.
-    private static string? EffectField(OperationEnvelope operation)
+    private static string? EffectField(OperationEnvelope operation, System.Func<OperationEnvelope, bool>? isGdrTitle)
     {
         if (operation.After is not { } after) return null;
         try
         {
+            if (operation.Kind is CmPossibilityNameOperationKinds.SetName or CmPossibilityNameOperationKinds.ClearName)
+                return isGdrTitle?.Invoke(operation) == true ? SnapshotFields.CmPossibilityName : null;
             if (operation.Kind == TextParagraphsOperationKinds.Set)
                 return TextParagraphsOperationKinds.FieldPrefix + TextParagraphsPayload.Parse(after).Field;
             if (operation.Kind != TextRichStringOperationKinds.Set) return null;

@@ -144,6 +144,7 @@ public static class RefusalCodes
     public const string GdrNoBaseline = "gdr.no-baseline";
     /// <summary>No Grammar Design Record has that id or number.</summary>
     public const string GdrNotFound = "gdr.not-found";
+    public const string GdrRecordMoved = "gdr.record-moved";
 
     /// <summary>More than one possibility list is named "Motif Sources", so no Source list can be chosen.</summary>
     public const string SourceListAmbiguous = "source.list-ambiguous";

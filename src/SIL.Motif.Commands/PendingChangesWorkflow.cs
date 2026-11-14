@@ -16,6 +16,7 @@ using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host;
 using SIL.Motif.Runner.Composers;
+using SIL.Motif.Runner.AppliedLog;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
 
@@ -148,12 +149,26 @@ public static class PendingChangesWorkflow
         if (identity.NothingToApply) return CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending);
 
         // FieldWorks' lock is refused here, before any Draft is finalized, checked or dry-run.
-        var released = ProjectStoreCommand.Run(target.ProjectPath, version, (_, project) =>
+        var released = ProjectStoreCommand.Run(target.ProjectPath, version, (database, project) =>
         {
             using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
+            if (identity.DraftName is null &&
+                ProjectAppliedLog.TryFindByProposalId(cache, CanonicalId.Parse(identity.ProposalId).ToGuid(), out _))
+                return CommandOutcome<ApplyIdentity>.Success(identity with { AlreadyInAppliedLog = true });
+            if (identity.ContentWithProvenance is { } content &&
+                ProposalCommands.CheckGdrTitleExpectations(content, cache) is { } stale)
+                return CommandOutcome<ApplyIdentity>.Refused(stale);
             return CommandOutcome<ApplyIdentity>.Success(identity);
         });
         if (!released.Succeeded) return CommandOutcome<ApplyPendingResult>.Refused(released.Refusal!);
+        if (released.Value!.AlreadyInAppliedLog)
+        {
+            var retry = ProposalCommands.ApplyWithinLease(new ApplyRequest(target.ProjectPath, version,
+                identity.ProposalId, target.Force, target.Attribution));
+            return retry.Succeeded
+                ? CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.AppliedWith(retry.Value!, identity.Summary!))
+                : CommandOutcome<ApplyPendingResult>.Refused(retry.Refusal!);
+        }
 
         // Every change is checked once, on the content as read, so a change that no longer fits finalizes nothing.
         var fit = ProposalCommands.Preflight(new PreflightRequest(target.ProjectPath, version, identity.ProposalId),
@@ -247,7 +262,7 @@ public static class PendingChangesWorkflow
             : $"Applied {(string.IsNullOrWhiteSpace(record.Label) ? "the Proposal" : record.Label)}.";
         return CommandOutcome<ApplyIdentity>.Success(new ApplyIdentity(id, record.DraftName, revision, summary,
             false, isPending, isDraft ? record.ProposalJson : null,
-            ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft))));
+            ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)), draft));
     }
 
     private static Refusal? RunFreshDryRun(string projectPath, string version, string proposalId,
@@ -530,7 +545,8 @@ public static class PendingChangesWorkflow
 
     private sealed record ApplyIdentity(string ProposalId, string? DraftName, string Revision, string? Summary,
         bool NothingToApply, bool IsPendingChanges, string? DraftJson = null,
-        SIL.Motif.Contract.Model.Proposal? Content = null);
+        SIL.Motif.Contract.Model.Proposal? Content = null, DraftDocument? ContentWithProvenance = null,
+        bool AlreadyInAppliedLog = false);
 
     private sealed record PendingDraftIdentity(string DraftId, string Revision);
 
