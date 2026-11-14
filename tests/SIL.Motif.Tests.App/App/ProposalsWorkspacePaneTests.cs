@@ -123,6 +123,55 @@ public sealed class ProposalsWorkspacePaneTests
     }
 
     [Fact]
+    public void PausedFilterNoticeAppearsBesideFiltersAndClearsAfterCancel()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+            var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+            fake.ProposalStandingsCompleteWith(new ProposalStandings([one, two], 0));
+            var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+            var status = "proposed";
+            fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [], Comments: [comment])));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProposalsPageModel(context);
+            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
+            await model.DetailReading;
+            await model.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+            var editor = Assert.Single(model.Comments);
+            editor.EditCommand.Execute(null);
+            editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+            var page = new ProposalsPage(model);
+            var provider = Assert.IsAssignableFrom<IWorkspacePaneProvider>(page);
+            var side = Assert.IsAssignableFrom<Control>(provider.SidePanel);
+            var host = WorkspaceLayoutHost.ForPage(page);
+            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Assert.DoesNotContain(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
+                status = "rejected";
+                fake.ProposalStandingsCompleteWith(new ProposalStandings([two], 1));
+                await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+                await model.DetailReading;
+                PageScreenshots.Settle(window);
+                Assert.Contains(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
+                editor.CancelCommand.Execute(null);
+                PageScreenshots.Settle(window);
+                Assert.DoesNotContain(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
+                Assert.Equal(ProposalListFilter.WaitingForYou, model.SelectedGroupFilter);
+            }
+            finally { window.Close(); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
     public void EmptyPageExplainsThatThereAreNoProposalsAndHidesFilters()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

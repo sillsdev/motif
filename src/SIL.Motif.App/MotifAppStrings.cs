@@ -930,6 +930,9 @@ public static class MotifAppStrings
     /// <summary>The Comment or its Proposal changed while editing.</summary>
     public static string CommentChangedElsewhere => Text("MotifApp.CommentChangedElsewhere");
 
+    /// <summary>The group filter is temporarily paused during a Proposal edit.</summary>
+    public static string ProposalFilterPaused => Text("MotifApp.ProposalFilterPaused");
+
     /// <summary>Asks to save or cancel the Rationale edit before switching.</summary>
     public static string RationaleSaveOrCancelFirst => Text("MotifApp.RationaleSaveOrCancelFirst");
 

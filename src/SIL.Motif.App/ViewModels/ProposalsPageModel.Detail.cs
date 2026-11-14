@@ -29,7 +29,10 @@ public sealed partial class ProposalsPageModel
     [RelayCommand(CanExecute = nameof(CanAddComment))]
     private void AddComment()
     {
-        if (Detail is { } detail) Comments.Add(new RationaleEditorModel(Context, detail, null, RemoveComment));
+        if (Detail is not { } detail) return;
+        var editor = new RationaleEditorModel(Context, detail, null, RemoveComment);
+        Comments.Add(editor);
+        TrackPausedEditor(editor);
     }
 
     private void RemoveComment(RationaleEditorModel editor) => Comments.Remove(editor);
@@ -125,6 +128,7 @@ public sealed partial class ProposalsPageModel
         }
         Comments = new ObservableCollection<RationaleEditorModel>(reconciled);
         _lastComments = Comments;
+        TrackPausedEditors();
 
         void ReplaceAfterCancel(RationaleEditorModel editor)
         {

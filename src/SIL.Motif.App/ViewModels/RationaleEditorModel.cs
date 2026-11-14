@@ -40,6 +40,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
     private bool _commentUnavailable;
     private IReadOnlyList<string> _storedCommentFindings = [];
 
+    internal event Action? EditFinished;
+
     /// <summary>Creates a Comment editor using the same rich field as the Rationale.</summary>
     public RationaleEditorModel(WorkspaceContext context, ProposalDetailProjection detail, CommentView? comment,
         Action<RationaleEditorModel> deleted) : this(context, detail)
@@ -215,6 +217,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
         if (_isComment && !_commentId.HasValue) _deleted?.Invoke(this);
         else if (_isComment && _afterCancel is { } refresh) refresh(this);
         else if (changedElsewhere) Working = ReloadAsync();
+        EditFinished?.Invoke();
     }
 
     /// <summary>Puts an earlier version into the field; it is saved only when the person saves.</summary>
@@ -310,6 +313,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
         finally
         {
             IsSaving = false;
+            if (!IsEditing) EditFinished?.Invoke();
         }
     }
 
