@@ -36,3 +36,6 @@ interlinearizer's shapes. Their extension is sillsdev/interlinearizer-extension;
     offset keys, Motif's `MAT 5:3#2` (question 8), or a fixed conversion? Is verse-only selection enough?
 12. **Tier order.** Where does a provider tier sit relative to #128 (the analysis query API), #148 (sibling-project
     pool) and #218? How should timeouts and order work when several providers answer?
+
+
+13. **Approval changes.** The interlinearizer has no "approval changed" event, so Motif cannot tell when a person approves or changes an analysis. Can we add one (we can contribute it), and what should it carry: the token reference, the new analysis, and who changed it?
