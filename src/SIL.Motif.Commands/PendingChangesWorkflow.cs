@@ -151,8 +151,8 @@ public static class PendingChangesWorkflow
         var released = ProjectStoreCommand.Run(target.ProjectPath, version, (_, project) =>
         {
             using var cache = new FwDataProjectLoader().LoadScratchCache(project.FullFwDataPath);
-            if (identity.DraftJson is { } json &&
-                ProposalCommands.CheckGdrTitleExpectations(ProposalCommands.DeserializeDraft(json), cache) is { } stale)
+            if (identity.ContentWithProvenance is { } content &&
+                ProposalCommands.CheckGdrTitleExpectations(content, cache) is { } stale)
                 return CommandOutcome<ApplyIdentity>.Refused(stale);
             return CommandOutcome<ApplyIdentity>.Success(identity);
         });
@@ -250,7 +250,7 @@ public static class PendingChangesWorkflow
             : $"Applied {(string.IsNullOrWhiteSpace(record.Label) ? "the Proposal" : record.Label)}.";
         return CommandOutcome<ApplyIdentity>.Success(new ApplyIdentity(id, record.DraftName, revision, summary,
             false, isPending, isDraft ? record.ProposalJson : null,
-            ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft))));
+            ProposalJsonParser.Parse(ProposalCommands.BuildProposalJson(draft)), draft));
     }
 
     private static Refusal? RunFreshDryRun(string projectPath, string version, string proposalId,
@@ -533,7 +533,7 @@ public static class PendingChangesWorkflow
 
     private sealed record ApplyIdentity(string ProposalId, string? DraftName, string Revision, string? Summary,
         bool NothingToApply, bool IsPendingChanges, string? DraftJson = null,
-        SIL.Motif.Contract.Model.Proposal? Content = null);
+        SIL.Motif.Contract.Model.Proposal? Content = null, DraftDocument? ContentWithProvenance = null);
 
     private sealed record PendingDraftIdentity(string DraftId, string Revision);
 

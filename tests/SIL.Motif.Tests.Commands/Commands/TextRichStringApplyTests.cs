@@ -243,6 +243,62 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
         Assert.Equal("outside", GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!.Record.Title);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task FinalizedTitleApplyChecksTheOriginalTitleBeforeWritingAnyField(bool changedOutside)
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var description = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        TextRichStringPayload Edit(string field, RichStringAlternative before, string text) =>
+            new(field, "en", [new TextRun(text, "en")], new(before.Text, before.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id,
+            [Edit("CmPossibility.Name", title, "mine"), Edit("CmPossibility.Description", description, "other")], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var version = MotifProductVersion.CurrentText;
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, version, PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        if (changedOutside)
+        {
+            using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+            var record = SeededGdrs.Records(cache).PossibilitiesOS[0];
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => record.Name.set_String(cache.DefaultAnalWs, "outside"));
+            new FwDataProjectLoader().Save(cache);
+        }
+        if (changedOutside) Recaptured(path);
+        var proposalId = finalized.Value!.ProposalId;
+        var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(path, version, proposalId));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(RootFor(path)));
+        try
+        {
+            runner.Start(path);
+            await runner.WhenIdleAsync();
+            var bound = JobCommands.WaitForDryRun(new WaitForDryRunRequest(path, version, proposalId,
+                queued.Value!.JobId, TimeSpan.FromMinutes(2)));
+            Assert.True(bound.Succeeded, bound.Refusal?.Message);
+            var applied = PendingChangesWorkflow.Apply(new ApplyRequest(path, version, proposalId));
+            if (changedOutside)
+            {
+                Assert.False(applied.Succeeded);
+                Assert.Equal(RefusalCodes.TextFieldStale, applied.Refusal!.Code);
+                Assert.Contains("Name", applied.Refusal.Message, StringComparison.Ordinal);
+            }
+            else
+                Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        }
+        finally
+        {
+            await runner.DisposeAsync();
+        }
+        Recaptured(path);
+        var after = GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!;
+        Assert.Equal(changedOutside ? "outside" : "mine", after.Record.Title);
+        Assert.Equal(changedOutside ? shown.Record.Description : "other", after.Record.Description);
+    }
+
     [Fact]
     public void AStringFieldTakesNoWritingSystemAndIsWritten()
     {
