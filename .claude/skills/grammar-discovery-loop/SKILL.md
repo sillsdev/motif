@@ -25,8 +25,9 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
    distinct stems, alternation candidates from near-pairs (stem plus affix expected, surface differs by one
    edit at the boundary). Output: a pattern ledger ranked by token mass. No grammar edit. Done when each
    candidate has a pattern (not a word list), its stems, and its token mass. Never open held-out books.
-2. **Neighbour check.** Query the hypothesis ledger and the live rules for the same change, environment, host
-   class or slot. Done when the result is written down: a neighbour exists (the hypothesis is "widen rule X"
+2. **Neighbour check.** Run `motif hypothesis neighbours --project <fwdata> --change <x>:<y> [--environment …] [--host-class …] [--slot …]`
+   and query the live rules for the same change, environment, host class or slot. `hasPassed` means a passed rule
+   stands: widen or merge it. `hasFailedAttempt` means a rule attempt is on record, which permits a list. Done when the result is written down: a neighbour exists (the hypothesis is "widen rule X"
    or "X and this are one rule"), or none, with the query used.
 3. **State the hypothesis** using [references/hypothesis-record.md](references/hypothesis-record.md): the
    broadest statement that fits, the mechanism, at least 20 predicted forms beyond the ones that suggested it,
@@ -53,8 +54,8 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
    [references/gdr-sync.md](references/gdr-sync.md): every rule or affix process this Proposal touches has its
    GDR section changed in the Proposal itself, with live examples. Read
    [references/black-guidance.md](references/black-guidance.md) before writing the section. Then append the
-   hypothesis, tests, verdict and size delta to the ledger. Done when the Proposal carries the rule change,
-   its GDR change and the ledger row together, Black's guidance was consulted, and the GDR names the
+   hypothesis, tests, verdict and size delta to the ledger (`hypothesis add`, `test`, `link`, `decide`). Done when the
+   Proposal carries the rule change, its GDR change and the ledger row together, Black's guidance was consulted, and the GDR names the
    mechanism rung chosen and why a lower rung did not do.
 8. **Sweep weekly**: disable, Trial, bisect, delete over alternates, variants, one-host features and tags that
    a rule context already implies. Done when removed objects, identical parses and newly opened hypotheses are
@@ -71,8 +72,7 @@ discovery set, a held-out set nobody mines, and a small dev set), the live gramm
 
 ## Completion
 
-A hypothesis is finished when its ledger row has a verdict (the ledger is future work, #174; until then
-`hypotheses.jsonl` beside the project), its encoding follows the verdict (rule for PASS;
+A hypothesis is finished when its ledger row has a verdict (`motif hypothesis decide`; the ledger is in the Motif store, ADR 0115), its encoding follows the verdict (rule for PASS;
 list only after FAIL or for a lexical fact; speaker questions queued for UNDECIDED), and its GDR matches the
 rules as Trial left them. A brief for a hypothesis-first package uses
 [references/brief-template.md](references/brief-template.md).

@@ -45,4 +45,7 @@ Exactly one verdict, with the numbers that produced it:
 - **UNDECIDED**: below minimum N (20 attested hits) unless a control clearly beats the rule, or inside the margin. List the 5-10 word questions that would decide it
   (word judgements and minimal pairs only; `grammar-discovery-loop` step 5 asks them).
 
-Append the verdict, counts and the script command to the hypothesis ledger before encoding anything.
+Record the verdict before encoding anything: `python3 scripts/control_test.py … --json > control.json`, then
+`motif hypothesis test <H-n> --project <fwdata> --file control.json --command "<the script command>"` (add
+`trial_attested_losses`, `trial_new_readings` and `trial_work_steps` to the JSON from the Trial). The ledger refuses a PASS with
+fewer than 20 predicted forms or any attested loss.

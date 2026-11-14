@@ -1,7 +1,8 @@
 # Hypothesis record
 
-One record per hypothesis; one hypothesis per brief. Ledger fields (JSONL or TSV, per project) are the same
-names. The ledger as a Motif feature is future work (#174); until then keep it as `hypotheses.jsonl` beside the project record.
+One record per hypothesis; one hypothesis per brief. The record is a row of the hypothesis ledger in the Motif store
+(ADR 0115); `motif hypothesis add --file <record.json>` reads these fields as snake_case JSON (`host_class`,
+`objects_added`, `attested_types_gained`, `questions`). Only the CLI writes it; MCP never does.
 
 | Field | Content |
 |---|---|
@@ -14,12 +15,16 @@ names. The ledger as a Motif feature is future work (#174); until then keep it a
 | falsifier | the observation that would refute it (a control matching, an attested loss, a speaker rejecting a predicted form) |
 | exceptions | expected, with the polarity: which side is default, and the number of objects tagged; a FieldWorks limitation (positive-only restriction forcing the majority to carry the tag) is recorded here |
 | test | `rule-hypothesis-test` verdict, counts, controls, Trial losses and new readings |
-| size_delta | objects added (entries, allomorphs, variants, MSAs, tags, features, rules, environments), attested held-out types gained, ratio |
-| word_questions | the batch asked or queued, and answers |
+| change, environment, host_class, slot | the shape the neighbour check looks up (`change` is required, e.g. `d>r`) |
+| size_delta | objects added (entries, allomorphs, variants, MSAs, tags, features, rules, environments), attested held-out types gained, ratio (`objects_added`, `attested_types_gained`) |
+| word_questions | the batch asked or queued, and answers (`questions`; `hypothesis answer` records an answer) |
 | status | proposed, passed, failed, superseded |
-| gdr | the GDR id and section changed, or "none: reason" |
-| proposal | Proposal id |
-| superseded_by | id, when a later hypothesis replaces this one |
+| gdr | the GDR id and section changed, or "none: reason" (`hypothesis link --gdr GDR-n --gdr-section …` or `--gdr-none …`) |
+| proposal | Proposal id(s) (`hypothesis link --proposal …`) |
+| superseded_by | id, when a later hypothesis replaces this one (`hypothesis decide --status superseded --superseded-by H-n`) |
+
+After the answer key is known, `hypothesis grade` adds the four numbers of #185: whether the sealed loop reached the
+verdict, word questions needed, objects and attested types before and after, and agent hours against the list alternative.
 
 ## When a list is right
 
@@ -33,4 +38,5 @@ earlier broad contraction rule had been measured and rejected, and the second 25
 
 Before status `passed`, search the ledger for a hypothesis with opposite polarity or a ruling on the same
 shape. A prior ruling that says "do not build X as an alternate; build the ordered rule" binds until a
-ledger row supersedes it.
+ledger row supersedes it. `hypothesis decide --status passed` enforces it: it refuses while another hypothesis has passed on
+the same shape with a different mechanism, unless `--supersedes H-n` names it.
