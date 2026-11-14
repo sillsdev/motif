@@ -147,6 +147,22 @@ public sealed class HypothesisRepository
         return reader.Read() ? Read(reader) : null;
     }
 
+    /// <summary>
+    /// The GDR link of every passed hypothesis that has one, for the GDR sync check (ADR 0119): one scan of the passed rows,
+    /// O(h) for h hypotheses and never the GDR text, which stays in the project.
+    /// </summary>
+    public IReadOnlyList<(string HypothesisId, string GdrId, string? GdrSection)> PassedGdrLinks()
+    {
+        using var connection = _database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT HypothesisId, GdrId, GdrSection FROM Hypotheses " +
+            "WHERE Status = 'passed' AND GdrId IS NOT NULL ORDER BY Seq;";
+        using var reader = command.ExecuteReader();
+        var links = new List<(string, string, string?)>();
+        while (reader.Read()) links.Add((reader.GetString(0), reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2)));
+        return links;
+    }
+
     /// <summary>One page of hypotheses in id order, and how many match; <paramref name="status"/> null means all.</summary>
     public (IReadOnlyList<HypothesisRecord> Page, int Total) List(string? status, int offset, int limit)
     {

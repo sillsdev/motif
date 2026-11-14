@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
@@ -7,6 +8,7 @@ using SIL.Motif.Host.Baselines;
 using SIL.Motif.Host.Gdr;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -35,6 +37,45 @@ public static class GdrQuery
             catch (GdrRefusalException refused)
             {
                 return CommandOutcome<GdrListResponse>.Refused(refused.Refusal);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Checks the Grammar Design Records against the grammar in the current Baseline (ADR 0119): rules and affix processes
+    /// without a section, links to deleted objects, and examples that no longer parse as their section says, read from the
+    /// Trial and Assessment rows already stored. It parses nothing. The warning count is what the loop's completion test reads.
+    /// </summary>
+    public static CommandOutcome<GdrCheckResponse> Check(GdrCheckRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        {
+            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            if (request.ExpectedBaseline is { } expected && expected != baseline?.Token) return BaselineChanged<GdrCheckResponse>();
+            if (baseline is null)
+                return CommandOutcome<GdrCheckResponse>.Success(new GdrCheckResponse(false, true, [], [],
+                    new GdrSyncCounts(0, 0, 0, 0, 0, [])));
+            if (!File.Exists(baseline.FwDataPath)) return BaselineUnavailable<GdrCheckResponse>();
+            var clock = Stopwatch.StartNew();
+            using var reader = BaselineReadCache.Open(baseline.FwDataPath);
+            var loaded = clock.ElapsedMilliseconds;
+            try
+            {
+                clock.Restart();
+                var ledger = new HypothesisRepository(database).PassedGdrLinks()
+                    .Select(link => new GdrLedgerLink(link.HypothesisId, link.GdrId, link.GdrSection)).ToArray();
+                var checkedResponse = GdrSyncChecker.Check(reader.Cache, new GdrExampleEvidenceRepository(database), ledger);
+                return CommandOutcome<GdrCheckResponse>.Success(checkedResponse with
+                {
+                    Baseline = baseline.Token,
+                    IsStale = IsStale(project, baseline),
+                    Timing = new GdrSyncTiming(loaded, clock.ElapsedMilliseconds),
+                });
+            }
+            catch (GdrRefusalException refused)
+            {
+                return CommandOutcome<GdrCheckResponse>.Refused(refused.Refusal);
             }
         });
     }

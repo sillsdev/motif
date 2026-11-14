@@ -253,6 +253,7 @@ public static class CommandCatalog
         // GdrQuery: Grammar Design Records from the current Baseline, behind the developer preview gate
         new CommandDescriptor("gdr list", typeof(GdrListRequest), typeof(GdrListResponse), CommandSurface.Developer, AgentClass.Read),
         new CommandDescriptor("gdr show", typeof(GdrShowRequest), typeof(GdrShowResponse), CommandSurface.Developer, AgentClass.Read),
+        new CommandDescriptor("gdr check", typeof(GdrCheckRequest), typeof(GdrCheckResponse), CommandSurface.Developer, AgentClass.Read),
 
         // SourceQuery: Motif Sources from the current Baseline and the local file, behind the developer gate
         new CommandDescriptor("source list", typeof(SourceListRequest), typeof(SourceListResponse), CommandSurface.AdvancedAi, AgentClass.Read),

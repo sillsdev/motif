@@ -111,6 +111,13 @@ does and why. It keeps one permanent ID and title, is stored in the FieldWorks p
 the Proposals that touched it are its history. Agents read it before changing the objects it describes. Also GDR.
 _Avoid_: design doc, wiki page, note, decision log
 
+**GDR sync check**:
+`gdr check`: compares the Grammar Design Records with the grammar in the Baseline and warns about a rule or affix process
+no record links, a section that links a deleted object, and an example word that no longer parses as its section says,
+from the Trial and Assessment rows already stored (ADR 0119). Every finding is a warning, and a warning means the work is
+not finished.
+_Avoid_: GDR lint, GDR validation
+
 **FieldWorks Markdown**:
 The Markdown form of FieldWorks text: a strict profile of Pandoc Markdown, marked by `fwmd: 1` in its front matter,
 that people and agents read and edit and that the clipboard carries. FieldWorks still stores the text; the Markdown is

@@ -34,7 +34,7 @@ public sealed class RefusalCodeRegistryTests
         "lexicon\\.(?:stem-typed-as-content-word|duplicate-entry|affix-hyphen-on-wrong-side)$|" +
         "job\\.claim-lost$|grammar\\.(?:compile\\.failed$|empty-lexicon|required-slot-empty|negated-feature-value|derived-stem-keeps-from-class|template-has-no-slots|phoneme-spelling-ambiguous|phoneme-case-alias-missing|phoneme-never-used$|allomorph-environment-ignored-by-parser|allomorph-repeats-environment-material|restricted-solid-blocks-hyphen|stored-analysis\\.)|" +
         "compare\\.(?:apply-filter|short-matrix-walk)$|context\\.publish-to-pages$|layout\\.(?:arrange|host-measure|measure)$|" +
-        "panes\\.|results-in-text\\.|review\\.(?:load|rebuild-entries)$|shell\\.(?:raise-freshness|update-notice-band)$|" +
+        "gdr\\.|panes\\.|results-in-text\\.|review\\.(?:load|rebuild-entries)$|shell\\.(?:raise-freshness|update-notice-band)$|" +
         "switch\\.|view\\.switch$|visible-lifetime\\.)", RegexOptions.None);
 
     private static IReadOnlyList<(string Name, string Value)> Registry() =>

@@ -52,6 +52,23 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public async Task CheckAgreesWithTheQueryInJsonAndReadsAsTextForAPerson()
+    {
+        var path = ProjectWithBaseline();
+
+        var json = await CliProcess.RunAsync(_root, null, true, "gdr", "check", "--project", path, "--json");
+        Assert.True(json.ExitCode == 0, json.Error);
+        var wire = ProjectionJson.Deserialize<GdrCheckResponse>(json.Output)!;
+        var query = GdrQuery.Check(new GdrCheckRequest(path)).Value!;
+        Assert.Equal(ProjectionJson.Serialize(query with { Timing = null }), ProjectionJson.Serialize(wire with { Timing = null }));
+
+        var text = await CliProcess.RunAsync(_root, null, true, "gdr", "check", "--project", path);
+        Assert.True(text.ExitCode == 0, text.Error);
+        Assert.Contains("GDRs are in sync with the grammar.", text.Output);
+        Assert.Contains("Read 4 record(s)", text.Output);
+    }
+
+    [Fact]
     public async Task ShowNeedsAnIdAndAnUnknownRecordIsRefused()
     {
         var path = ProjectWithBaseline();

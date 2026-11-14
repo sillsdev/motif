@@ -18,3 +18,12 @@ public sealed record GdrShowRequest(string ProjectPath, string Id, BaselineToken
 /// <param name="Path">The FieldWorks Markdown project path, such as <c>/lexicon/entry-1</c>.</param>
 /// <param name="ExpectedBaseline">The required Baseline identity, such as the one the linking record was read from; null accepts the current Baseline.</param>
 public sealed record GdrLinkToPathRequest(string ProjectPath, string Path, BaselineToken? ExpectedBaseline = null);
+
+/// <summary>
+/// Checks that the Grammar Design Records are in sync with the grammar in the current Baseline (ADR 0119): every rule and
+/// affix process has a section, no section cites a deleted object, and every example still parses as its section says
+/// by the latest Trial or Assessment rows already stored.
+/// </summary>
+/// <param name="ProjectPath">The recorded project path.</param>
+/// <param name="ExpectedBaseline">The required Baseline identity; null accepts the current Baseline.</param>
+public sealed record GdrCheckRequest(string ProjectPath, BaselineToken? ExpectedBaseline = null);

@@ -1804,11 +1804,14 @@ try
 
         case "gdr":
             if (!flags.TryGetValue("project", out var gdrProject) || positionals.Count is < 1 or > 2 ||
-                (positionals[0] == "list" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2))
-                return Usage(UsageLineFor("gdr list") + " OR " + UsageLineFor("gdr show"), asJson);
-            result = positionals[0] == "list"
-                ? RenderCommand(GdrQuery.List(new GdrListRequest(gdrProject)))
-                : RenderCommand(GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1])));
+                (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2))
+                return Usage(UsageLineFor("gdr list") + " OR " + UsageLineFor("gdr show") + " OR " + UsageLineFor("gdr check"), asJson);
+            result = positionals[0] switch
+            {
+                "list" => RenderCommand(GdrQuery.List(new GdrListRequest(gdrProject))),
+                "check" => RenderCommand(GdrQuery.Check(new GdrCheckRequest(gdrProject))),
+                _ => RenderCommand(GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1]))),
+            };
             break;
 
         case "source":

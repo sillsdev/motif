@@ -30,6 +30,25 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "SIL.Motif.Tests.GdrQuery", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public void CheckWithNoBaselineSaysSoAndCheckReadsTheBaselineWhenThereIsOne()
+    {
+        var none = GdrQuery.Check(new GdrCheckRequest(ProjectWithGdrs(captureBaseline: false)));
+        Assert.True(none.Succeeded, none.Refusal?.Message);
+        Assert.False(none.Value!.HasBaseline);
+
+        var path = ProjectWithGdrs(captureBaseline: true);
+        var checkedGdrs = GdrQuery.Check(new GdrCheckRequest(path));
+
+        Assert.True(checkedGdrs.Succeeded, checkedGdrs.Refusal?.Message);
+        var value = checkedGdrs.Value!;
+        Assert.True(value.HasBaseline);
+        Assert.NotNull(value.Baseline);
+        Assert.Equal(4, value.Counts.Records);
+        Assert.NotNull(value.Timing);
+        Assert.True(value.InSync, string.Join("; ", value.Findings.Select(finding => finding.Message)));
+    }
+
+    [Fact]
     public void ListNamesEachRecordByNumberTitleAndAbstract()
     {
         var path = ProjectWithGdrs(captureBaseline: true);

@@ -30,6 +30,18 @@ public static class GdrReader
         Records(cache).Select(entry => Summary(cache, entry)).ToArray();
 
     /// <summary>
+    /// The records with their live Discussion paragraphs, for the sync check (ADR 0119), which reads styles, runs and
+    /// links straight from the project and needs no wire conversion.
+    /// </summary>
+    internal static IReadOnlyList<GdrStructure> ReadStructure(LcmCache cache) => Records(cache).Select(entry =>
+    {
+        var abbreviation = Real(cache, entry.Record.Abbreviation);
+        var title = Real(cache, entry.Record.Name);
+        return new GdrStructure(entry.Record.Guid, abbreviation, title, abbreviation.Length > 0 ? abbreviation : title,
+            entry.Record.DiscussionOA?.ParagraphsOS.OfType<IStTxtPara>().ToArray() ?? []);
+    }).ToArray();
+
+    /// <summary>
     /// The record whose number or canonical id is <paramref name="id"/>, or null. A link naming the project
     /// <paramref name="projectName"/>, or the open copy's own name, is a link into this project.
     /// </summary>
@@ -256,6 +268,10 @@ public static class GdrReader
         bag.IntProps.ToDictionary(pair => pair.Key, pair => new GdrIntProperty(pair.Value.Variation, pair.Value.Value)),
         bag.StrProps.ToDictionary(pair => pair.Key, pair => pair.Value));
 }
+
+/// <summary>One record as the sync check reads it: its identity and its Discussion's paragraphs as stored.</summary>
+/// <param name="Label">The abbreviation, or the title when the record has none; how a finding names it.</param>
+internal sealed record GdrStructure(Guid Guid, string Abbreviation, string Title, string Label, IReadOnlyList<IStTxtPara> Paragraphs);
 
 /// <summary>A link to a project object found by its path.</summary>
 /// <param name="Id">The canonical id of the object the link opens.</param>

@@ -8,11 +8,16 @@ examples"). Claude translates GDRs into FieldWorks rules. A GDR is a living page
 ## Sync rule
 
 The owner's decision (#178): a Proposal that changes a rule, affix process or the objects behind a GDR section
-changes that section in the same Proposal. The product does not enforce this yet: the GDR spec has Finalize
-warn on a missing section and does not require a Proposal to update a GDR, and the automated sync check is
-future work (#178). Under this skill the agent enforces it as a self-check: a rule with no GDR section, or a
-section whose examples no longer parse as stated, fails the completion criterion and the Proposal waits. Done when every rule and affix process touched maps to a GDR section and every example in it was
-re-read from the grammar as it stands after the change (live examples, not remembered ones).
+changes that section in the same Proposal. The GDR spec has Finalize warn on a missing section and does not require a
+Proposal to update a GDR. Run the check `motif gdr check --project <fwdata>` (ADR 0119) with
+`MOTIF_DEVELOPER_COMMANDS=1` after the Proposal is applied to the project and its Baseline is captured. It reports every rule or
+affix process no GDR links, every section that links a deleted object, and every example word whose stored Trial or
+Assessment row no longer parses as the section says. It parses nothing: put the example words in the Trial's words
+so the rows exist. A warning, including an unverified example, fails the completion criterion and the Proposal waits.
+Done when `gdr check` reports the GDRs in sync, which means every rule and affix process touched maps to a GDR section and
+every example in it was re-read from the grammar as it stands after the change (live examples, not remembered ones).
+Write examples under an `Examples` heading, with the cited morphemes linked in the same row, and false parses under `False
+parses`.
 
 ## Before writing or changing a GDR
 
