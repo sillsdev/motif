@@ -16,7 +16,7 @@ internal static class SupersededTrialRetention
 
     /// <summary>
     /// Runs while the caller holds the project's parse lease, after a Trial committed. Rows go in one transaction;
-    /// files go after it, so a failure leaves the store consistent and the next Trial or prune retries.
+    /// run directories go after it, so a failure leaves the store consistent and the next Trial or prune retries.
     /// </summary>
     internal static (int Assessments, int Runs) Run(MotifDatabase database, ProjectParseLease lease, string workerRoot,
         CancellationToken cancellationToken = default)
@@ -28,13 +28,19 @@ internal static class SupersededTrialRetention
         using (var connection = database.OpenConnection())
         using (var transaction = connection.BeginTransaction())
         {
-            removed = AssessmentRetention.SweepSupersededTrials(connection, transaction, lease, out invocations);
+            removed = AssessmentRetention.SweepSupersededTrials(connection, transaction, lease, out invocations,
+                cancellationToken);
             transaction.Commit();
         }
         if (removed == 0) return (0, 0);
         var cache = new StatsCacheStore(WorkspaceOwnership.Bootstrap(workerRoot), database.FullPath);
-        var reclaimed = cache.Reclaim(database, lease, invocations);
-        UserDataSweep.SweepAfterRelease(workerRoot, database.FullPath, SourceAge, cancellationToken);
-        return (removed, reclaimed.Pruned);
+        return (removed, cache.Reclaim(database, lease, invocations).Pruned);
     }
+
+    /// <summary>
+    /// Removes source copies nothing references. It reads every Known project's store, so the caller runs it after
+    /// releasing the project's parse lease.
+    /// </summary>
+    internal static void SweepSources(MotifDatabase database, string workerRoot, CancellationToken cancellationToken) =>
+        UserDataSweep.SweepAfterRelease(workerRoot, database.FullPath, SourceAge, cancellationToken);
 }

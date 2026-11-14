@@ -137,12 +137,13 @@ public static class Trials
                 !JobStateMachine.IsTerminal(candidate.Job.Status))
             .Concat(candidates.Where(candidate => candidate.Job.Status != JobStatus.Completed &&
                 JobStateMachine.IsTerminal(candidate.Job.Status)));
-        foreach (var candidate in preferred)
-        {
-            var record = TryBuildRecord(candidate, context, includeWordResults);
-            if (record is not null) return record;
-        }
-        return null;
+        // Only the first choice counts, so an older Trial's verdict never shows as current (ADR 0113).
+        var first = preferred.FirstOrDefault();
+        if (first is null) return null;
+        var record = TryBuildRecord(first, context, includeWordResults);
+        if (record is null)
+            Console.Error.WriteLine($"warning: the newest Trial '{first.Job.JobId}' of a Proposal could not be read; it reads as not tried.");
+        return record;
     }
 
     private static TrialReadContext CreateReadContext(MotifDatabase database, ProjectLocator project)

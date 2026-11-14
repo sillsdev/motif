@@ -10,17 +10,23 @@ Proposal's old Trial no longer holds its evidence once a newer one has completed
 ## Decision
 
 1. **Superseded.** A completed Trial job is superseded when a newer completed Trial job (by creation time, then job
-   id) exists for the same Proposal. Failed, cancelled and stopped Trials neither supersede nor are superseded, and a
-   running Trial supersedes nothing until it completes.
+   id) of the same Proposal covers it: the newer Trial's Assessments include every Assessment kind the older one's
+   did, and its scope words include all of the older one's words. A narrower later Trial therefore never releases an
+   older Apply-ready Correctness Assessment, which Apply and Readiness still find through the revision's earlier
+   Assessments. Both Trials must have a valid result naming Assessments that exist and a scope that lists its
+   words; otherwise neither replaces nor is replaced. Failed, cancelled and stopped Trials neither supersede nor are
+   superseded, and a running Trial supersedes nothing until it completes.
 2. **Release.** When a Trial commits, while it still holds the project's parse lease, Motif removes the Assessments
-   that a superseded Trial's result names and its Proposal owns, then their run directories, then any source copy
-   no store references (the per-user sweep with no byte budget and a one-hour minimum age). `store prune` does the
+   that a superseded Trial's result names and its Proposal owns, then their run directories. After the lease is
+   released it removes any source copy no store references (the per-user sweep with no byte budget and a one-hour
+   minimum age); that sweep reads every Known project's store and honours cancellation. `store prune` does the
    same, so it also catches up a store written before this rule.
 3. **What stays.** The latest completed Trial's Assessments and run (what `trial`, `stats --proposal`, Readiness and
    Apply read), and anything else still named by a Receipt, Revision, Draft, Anchor, Report, review report, pin,
    Before binding, retained invocation or active job. Removal is the existing one-rule deletion: an Assessment
    some surviving row needs is not removed. A superseded Trial job row stays; its record cannot be rebuilt, so it
-   drops out of the Proposal's Trial list.
+   drops out of the Proposal's Trial list. A Proposal whose newest Trial's record cannot be built reads as not tried
+   and reports the failure; `trial` never falls back to an older Trial's verdict as if it were current.
 4. **Failure is not a Trial failure.** A release that fails is reported and retried by the next Trial or `store prune`.
 5. **`stats.sqlite` format is PanGloss's.** It holds one row per word, object, direction, stratum and allomorph (about
    425 rows and 15 KB a word); Motif reads three of its counters but `pangloss stats` replay reads all of it, so Motif

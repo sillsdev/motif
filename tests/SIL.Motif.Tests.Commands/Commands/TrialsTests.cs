@@ -422,7 +422,7 @@ public sealed class TrialsTests : IDisposable
     }
 
     [Fact]
-    public void LatestForSkipsATrialWhoseAssessmentRowsWerePruned()
+    public void ANewestTrialWhoseAssessmentRowsWerePrunedReadsAsNotTriedNotAsTheOlderOne()
     {
         using var fixture = new ProjectFixture(_root);
         var proposal = fixture.SaveProposal();
@@ -430,9 +430,7 @@ public sealed class TrialsTests : IDisposable
         var validJob = fixture.CreateJob(proposal.Json, "2026-09-24T11:00:00Z", "trial/valid", ["root/valid"]);
         fixture.CreateJob(proposal.Json, "2026-09-24T12:00:00Z", "trial/pruned", ["root/pruned"]);
 
-        var latest = Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value);
-
-        Assert.Equal(validJob, latest!.JobId);
+        Assert.Null(Trials.LatestFor(fixture.Database, fixture.Project, proposal.Id.Value));
         Assert.Equal([validJob], Trials.ListFor(fixture.Database, fixture.Project, proposal.Id.Value)
             .Select(trial => trial.JobId));
     }

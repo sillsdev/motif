@@ -312,6 +312,66 @@ public sealed class StoreByteBudgetTests : IDisposable
         Assert.True(File.Exists(Path.Combine(newRun, "stats.sqlite")));
     }
 
+    [Fact]
+    public void ANarrowerLaterTrialDoesNotReleaseAWiderOlderOne()
+    {
+        var open = OpenProposal();
+        Record("before", "Correctness", 0);
+        Record("wide", "Correctness", 1, open, scopeWords: "\"a\",\"b\"");
+        Record("narrow", "Correctness", 2, open, scopeWords: "\"a\"");
+        Record("timing", "ParseTime", 3, open, scopeWords: "\"a\",\"b\"");
+        Trial("t1", open, "completed", "before", "wide", "2026-01-01T00:00:00Z");
+        Trial("t2", open, "completed", "before", "narrow", "2026-01-02T00:00:00Z");
+        Trial("t3", open, "completed", "before", "timing", "2026-01-03T00:00:00Z");
+
+        Assert.Equal(0, SweepSuperseded());
+        Assert.Equal(["before", "narrow", "timing", "wide"], Ids("SELECT AssessmentId FROM Assessments ORDER BY AssessmentId;"));
+    }
+
+    [Fact]
+    public void ANewerTrialWithAnUnusableResultOrScopeReleasesNothing()
+    {
+        var open = OpenProposal();
+        Record("before", "Correctness", 0);
+        Record("first", "Correctness", 1, open);
+        Record("second", "Correctness", 2, open);
+        Trial("t1", open, "completed", "before", "first", "2026-01-01T00:00:00Z");
+        Trial("t2", open, "completed", "before", "second", "2026-01-02T00:00:00Z");
+
+        foreach (var bad in new[] { "'not json'", "'{\"assessmentIds\":[\"missing\"]}'", "'{\"assessmentIds\":[]}'" })
+        {
+            Execute($"UPDATE Jobs SET ResultJson = {bad} WHERE JobId = 't2';");
+            Assert.Equal(0, SweepSuperseded());
+        }
+        Execute("UPDATE Jobs SET ResultJson = NULL WHERE JobId = 't2';");
+        Assert.Equal(0, SweepSuperseded());
+        Execute("UPDATE Jobs SET ResultJson = '{\"assessmentIds\":[\"second\"]}' WHERE JobId = 't2';");
+        Execute("UPDATE Assessments SET ScopeJson = '{\"words\":\"all\"}' WHERE AssessmentId = 'second';");
+        Assert.Equal(0, SweepSuperseded());
+        Assert.Equal(["before", "first", "second"], Ids("SELECT AssessmentId FROM Assessments ORDER BY AssessmentId;"));
+    }
+
+    [Fact]
+    public void ACancelledSweepRemovesNothing()
+    {
+        var open = OpenProposal();
+        Record("before", "Correctness", 0);
+        Record("first", "Correctness", 1, open);
+        Record("second", "Correctness", 2, open);
+        Trial("t1", open, "completed", "before", "first", "2026-01-01T00:00:00Z");
+        Trial("t2", open, "completed", "before", "second", "2026-01-02T00:00:00Z");
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        using (var lease = ProjectParseLease.TryAcquire(_database)!)
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+            Assert.Throws<OperationCanceledException>(() =>
+                AssessmentRetention.SweepSupersededTrials(connection, transaction, lease, out _, cancelled.Token));
+
+        Assert.Equal(["before", "first", "second"], Ids("SELECT AssessmentId FROM Assessments ORDER BY AssessmentId;"));
+    }
+
     private CanonicalId OpenProposal()
     {
         var id = CanonicalId.Mint("proposal/");
@@ -340,13 +400,14 @@ public sealed class StoreByteBudgetTests : IDisposable
         return removed;
     }
 
-    private void Record(string id, string kind, int run, CanonicalId? proposal = null, string? cachePath = null)
+    private void Record(string id, string kind, int run, CanonicalId? proposal = null, string? cachePath = null,
+        string scopeWords = "\"a\",\"b\"")
     {
         var words = Enumerable.Range(0, 60)
             .Select(index => SIL.Motif.Tests.TestFixtures.CorrectnessFixture.Word($"w{run:D2}-{index:D3}", true)).ToArray();
         _repository.Record(new NewAssessmentRecord(
             AssessmentId: id, ProposalId: proposal, ProposalIntentDigest: proposal is null ? null : "sha256:intent",
-            Assessor: "pangloss", Kind: kind, ScopeJson: "{\"words\":\"all\"}", ScopeDigest: "sha256:scope",
+            Assessor: "pangloss", Kind: kind, ScopeJson: $"{{\"words\":[{scopeWords}]}}", ScopeDigest: "sha256:scope",
             Subject: new AssessmentSubject.Words(Selection.Create("selection-1", ["bo", "za"]), "whitespace", "1"),
             BaselineToken: "{\"baseline\":true}", OutcomeDigest: "sha256:outcome", SemanticDigest: "sha256:semantic",
             GrammarSourceSha256: "sha256:grammar", ModelFingerprint: "fingerprint", Pipeline: "pipeline",
