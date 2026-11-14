@@ -1125,7 +1125,7 @@ public sealed class TrialJobHandlerTests : IDisposable
     }
 
     [Fact]
-    public void ASecondTrialOfTheSameProposalProducesASecondAssessmentSetWithoutDisturbingTheFirst()
+    public void ASecondTrialOfTheSameProposalReplacesTheFirstTrialsAssessments()
     {
         using var lanes = new ProjectLaneRegistry(_ => _token);
         var handler = BuildHandler(lanes, new FakeAssessor("pangloss", [AssessmentKind.Correctness]));
@@ -1143,15 +1143,12 @@ public sealed class TrialJobHandlerTests : IDisposable
         RunAndFinish(handler, secondJob);
         var afterSecond = _assessments.ListByProposal(proposalId);
 
-        Assert.Equal(2, afterSecond.Count);
-        Assert.Contains(afterSecond, a => a.AssessmentId == firstAssessmentId);
-        Assert.Equal(2, afterSecond.Select(a => a.AssessmentId).Distinct().Count());
+        // The newer Trial supersedes the first, so only the latest Trial's Assessments stay (ADR 0113).
+        var kept = Assert.Single(afterSecond);
+        Assert.NotEqual(firstAssessmentId, kept.AssessmentId);
+        Assert.Throws<KeyNotFoundException>(() => _assessments.Get(firstAssessmentId));
         Assert.True(Directory.Exists(TrialScratchPath.ForJob(firstJob.JobId)));
         Assert.True(Directory.Exists(TrialScratchPath.ForJob(secondJob.JobId)));
-
-        // The first is still readable, byte-for-byte the same header it was recorded with.
-        var firstStillThere = _assessments.Get(firstAssessmentId);
-        Assert.Equal(proposalId, firstStillThere.ProposalId);
     }
 
     [Fact]
