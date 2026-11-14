@@ -20,6 +20,12 @@ public sealed record RetirementProposalReviewProjection(
 
     /// <summary>Proposal operations not assigned to one of the four retirement parts.</summary>
     public IReadOnlyList<string> UnlinkedOperationIds { get; init; } = [];
+
+    /// <summary>
+    /// Whether every reading the Trial produced for the affected words, not only the approved ones, is the same
+    /// before and after; null when the review was built without a Trial pair.
+    /// </summary>
+    public ReadingIdentityResult? ReadingIdentity { get; init; }
 }
 
 /// <summary>One connected group of operations in the same atomic Proposal.</summary>

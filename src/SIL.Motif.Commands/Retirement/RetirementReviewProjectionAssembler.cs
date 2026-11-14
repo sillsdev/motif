@@ -95,9 +95,11 @@ internal static class RetirementReviewProjectionAssembler
         var observedAfter = translation.Original.Cases.Where(@case => afterSurfaces.ContainsKey(@case.Surface))
             .ToDictionary(@case => @case.CaseId, @case => afterSurfaces[@case.Surface], StringComparer.Ordinal);
         var diagnostics = CombineDiagnostics(footprint, retirement);
+        var identity = ReadingIdentityProof.Prove(RecipeVerificationTrialProjection.From(beforeAssessment), afterRun,
+            footprint.AffectedWordforms.SelectMany(item => item.Forms.Select(form => form.Text)), translation.Mappings);
         return RetirementProposalReviewProjectionBuilder.Build(proposal, dryRun, statistics, translation,
             verification, evidence, footprint, boundFinding.Finding.FindingId, attributions, observedAfter, diagnostics,
-            boundFinding.OperationIds);
+            boundFinding.OperationIds) with { ReadingIdentity = identity };
     }
 
     private static BoundFinding? FindBoundFinding(MotifDatabase database, DraftDocument draft)
