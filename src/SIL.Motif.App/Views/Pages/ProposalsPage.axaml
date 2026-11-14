@@ -57,6 +57,13 @@
                                      TextWrapping="Wrap" />
             <StackPanel IsVisible="{Binding HasSelectedProposal}"
                         Spacing="{DynamicResource Intent.Space.Related}">
+              <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.CommentsHeading}" />
+              <views:ProgressiveItemsControl x:Name="ProposalComments" FullItemsSource="{Binding Comments}">
+                <views:ProgressiveItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:RationaleEditorModel"><views:RationaleEditor /></DataTemplate>
+                </views:ProgressiveItemsControl.ItemTemplate>
+              </views:ProgressiveItemsControl>
+              <Button Content="{x:Static app:MotifAppStrings.CommentAdd}" Click="OnAddComment" IsVisible="{Binding CanAddComment}" />
               <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*">
                 <TextBlock Classes="inspectorFactLabel" Text="{x:Static app:MotifAppStrings.Status}" />
                 <views:CopyableTextBlock Grid.Column="1" Text="{Binding SelectedProposal.DetailsStatusText}"

@@ -19,6 +19,10 @@ public partial interface ICommandClient
     Task<CommandOutcome<IReadOnlyList<RationaleRevisionView>>> ListRationaleRevisionsAsync(
         RationaleRevisionsRequest request, CancellationToken cancellationToken);
 
+    Task<CommandOutcome<ProposalCommentChangedResponse>> AddCommentAsync(AddCommentRequest request, CancellationToken cancellationToken);
+    Task<CommandOutcome<ProposalCommentChangedResponse>> EditCommentAsync(EditCommentRequest request, CancellationToken cancellationToken);
+    Task<CommandOutcome<ProposalCommentChangedResponse>> DeleteCommentAsync(DeleteCommentRequest request, CancellationToken cancellationToken);
+
     /// <summary>Moves a Proposal to Deferred.</summary>
     Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(
         DeferRequest request, CancellationToken cancellationToken);

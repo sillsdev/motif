@@ -598,12 +598,24 @@ public sealed partial class ProposalsPageModel : PageModel
         }
     }
 
-    // True, and says so on the editor, when choosing proposalId would leave an unsaved Rationale edit.
+    // A refused selection leaves the unsaved field visible so the person can save or cancel.
     private bool KeepsUnsavedEdit(string? proposalId)
     {
-        if (UnsavedRationaleEditor is not { } editing || editing.ProposalId == proposalId) return false;
+        if (UnsavedEditor is not { } editing || editing.ProposalId == proposalId) return false;
         editing.MarkSwitchRefused();
         return true;
+    }
+
+    private RationaleEditorModel? UnsavedEditor => UnsavedRationaleEditor ?? UnsavedCommentEditor;
+
+    private RationaleEditorModel? UnsavedCommentEditor
+    {
+        get
+        {
+            var editors = DetailRefusal is null && (_selectedProposal is null ? _rereading :
+                _lastComments?.FirstOrDefault()?.ProposalId == _selectedProposal.ProposalId) ? _lastComments : Comments;
+            return editors?.FirstOrDefault(editor => editor.HasUnsavedChanges);
+        }
     }
 
     // The editor holding an unsaved edit, also while a re-read has cleared RationaleEditor until the detail loads.
@@ -838,6 +850,7 @@ public sealed partial class ProposalsPageModel : PageModel
         Requests.Show([], Context.Clock.GetUtcNow());
         _rereading = false;
         _lastRationaleEditor = null;
+        _lastComments = null;
         _includeSetAside = false;
         SelectedGroupFilter = null;
         SetSelectedProposal(null);
@@ -939,8 +952,8 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         ProposalListFilter? nextFilter = SelectedGroupFilter == filter ? null : filter;
         if (nextFilter is { } requested && CountFor(requested) == 0) return;
-        // A filter that would hide the Proposal whose Rationale edit is unsaved is not applied.
-        if (nextFilter is { } hiding && UnsavedRationaleEditor is { } editing &&
+        // A filter cannot hide the field holding an unsaved edit.
+        if (nextFilter is { } hiding && UnsavedEditor is { } editing &&
             _standings.Proposals.FirstOrDefault(card => card.ProposalId == editing.ProposalId) is { } edited &&
             !IsInFilter(edited.Group, hiding) && KeepsUnsavedEdit(null)) return;
         SelectedGroupFilter = nextFilter;

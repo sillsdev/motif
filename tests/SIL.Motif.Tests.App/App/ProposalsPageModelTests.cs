@@ -191,6 +191,30 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
+    public async Task AnotherProposalIsNotChosenWhileACommentEditIsUnsaved()
+    {
+        var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
+            Card("p/two", "Two", ProposalGroup.WaitingForYou)));
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [], Comments:
+                [new CommentView(1, "agent", "Agent", "", "A comment", null, "now", null, false, null)])));
+        var cards = page.Groups[0].Cards;
+        page.SelectProposalCommand.Execute(cards[1]);
+        page.SelectProposalCommand.Execute(cards[0]);
+        await page.DetailReading;
+        var editor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " Typed";
+        page.SelectProposalCommand.Execute(cards[1]);
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.True(editor.IsSwitchRefused);
+        Assert.Contains("Typed", editor.Text());
+        editor.CancelCommand.Execute(null);
+        page.SelectProposalCommand.Execute(cards[1]);
+        Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
+    }
+
+    [Fact]
     public async Task OpenEntersProposalMode()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/waiting", "Waiting one",

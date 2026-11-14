@@ -542,6 +542,43 @@ public sealed class ProposalsWorkspacePaneTests
         }, TimeSpan.FromMinutes(3));
     }
 
+    [Fact]
+    public void AddingACommentShowsItsPageWhenThereAreManyComments()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.OnProposalStandings((_, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+                new ProposalStandings([Card("p/one", "First", ProposalGroup.WaitingForYou)], 0))));
+            fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [], Comments:
+                    Enumerable.Range(1, 25).Select(id => new CommentView(id, "person", null, "", "Comment", null,
+                        "now", null, false, null)).ToArray())));
+            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            var standalone = new MotifTestWindow { Width = 1600, Height = 780 };
+            try
+            {
+                var model = workspace.PageModel<ProposalsPageModel>();
+                var page = new ProposalsPage(model);
+                standalone.Content = WorkspaceLayoutHost.ForPage(page);
+                standalone.Show();
+                model.SelectProposalCommand.Execute(model.Rows.OfType<ProposalCardViewModel>().First());
+                await model.DetailReading;
+                PageScreenshots.Settle(standalone);
+                var button = Assert.Single(page.InspectorContent.GetVisualDescendants().OfType<Button>(),
+                    item => Equals(item.Content, MotifAppStrings.CommentAdd));
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                PageScreenshots.Settle(standalone);
+                var added = model.Comments.Last();
+                Assert.True(added.IsEditing);
+                var comments = Assert.Single(page.InspectorContent.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
+                    item => item.Name == "ProposalComments");
+                Assert.Contains(added, comments.Items.Cast<object>());
+            }
+            finally { standalone.Close(); window.Close(); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
     private static ProposalCard Card(string id, string label, ProposalGroup group, bool pending = false) =>
         new(id, label, "proposed", group, pending, [new("rule", 1, "1 rule")],
             group switch

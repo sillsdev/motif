@@ -55,7 +55,7 @@ public sealed partial class RationaleEditor : UserControl
             StyleResolver = model.Styles,
             IsReadOnly = !model.IsEditing,
         };
-        field.SetValue(Avalonia.Automation.AutomationProperties.NameProperty, MotifAppStrings.ProposalRationale);
+        field.SetValue(Avalonia.Automation.AutomationProperties.NameProperty, model.IsComment ? MotifAppStrings.CommentsHeading : MotifAppStrings.ProposalRationale);
         field.ContextMenuRequested += (_, e) =>
         {
             var objData = e.Info.Run?.ObjData;

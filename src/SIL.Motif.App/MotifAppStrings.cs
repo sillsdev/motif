@@ -3301,6 +3301,12 @@ public static class MotifAppStrings
 
     public static string RefusalProposalNotFound => Text("MotifApp.RefusalProposalNotFound");
 
+    public static string CommentPlainText => Text("MotifApp.CommentPlainText");
+    public static string CommentDelete => Text("MotifApp.CommentDelete");
+    public static string CommentAdd => Text("MotifApp.CommentAdd");
+    public static string CommentsHeading => Text("MotifApp.CommentsHeading");
+    public static string CommentSaveOrCancelFirst => Text("MotifApp.CommentSaveOrCancelFirst");
+
     public static string RefusalProposalCommentInvalid => Text("MotifApp.RefusalProposalCommentInvalid");
     public static string RefusalProposalPictureInvalid => Text("MotifApp.RefusalProposalPictureInvalid");
     public static string RefusalProposalRationaleEmpty => Text("MotifApp.RefusalProposalRationaleEmpty");

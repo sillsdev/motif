@@ -22,6 +22,15 @@ public sealed partial class CommandClient
         RationaleRevisionsRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ProposalTexts.RationaleRevisions(request), cancellationToken);
 
+    public Task<CommandOutcome<ProposalCommentChangedResponse>> AddCommentAsync(AddCommentRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalComments.Add(request), cancellationToken);
+
+    public Task<CommandOutcome<ProposalCommentChangedResponse>> EditCommentAsync(EditCommentRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalComments.Edit(request), cancellationToken);
+
+    public Task<CommandOutcome<ProposalCommentChangedResponse>> DeleteCommentAsync(DeleteCommentRequest request, CancellationToken cancellationToken) =>
+        OneAtATime(() => ProposalComments.Delete(request), cancellationToken);
+
     public Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(
         DeferRequest request, CancellationToken cancellationToken) =>
         OneAtATime(() => ProposalCommands.Defer(request), cancellationToken);

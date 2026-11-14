@@ -9786,4 +9786,9 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Back to Combined View</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
+  <data name="MotifApp.CommentPlainText" xml:space="preserve"><value>This Comment does not read as formatted text, so it is shown as plain text.</value></data>
+  <data name="MotifApp.CommentDelete" xml:space="preserve"><value>Delete</value></data>
+  <data name="MotifApp.CommentAdd" xml:space="preserve"><value>Add Comment</value></data>
+  <data name="MotifApp.CommentsHeading" xml:space="preserve"><value>Comments</value></data>
+  <data name="MotifApp.CommentSaveOrCancelFirst" xml:space="preserve"><value>Save or cancel your edit of this Comment before choosing another Proposal.</value></data>
 </root>
