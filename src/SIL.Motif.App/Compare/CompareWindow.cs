@@ -33,10 +33,10 @@ public enum CompareEnd
 public sealed record CompareOutcome(CompareEnd End, IReadOnlyList<ParagraphVersion> Result);
 
 /// <summary>
-/// The popup that compares the person's version of a field with the FieldWorks version. It opens on the combined view:
+/// The popup that compares the person's version of a field with another version. It opens on the combined view:
 /// one copy of the text with both sides' changes marked, the person's in SIL Blue with a solid underline, a single
 /// strikethrough and a "You" tag, FieldWorks' in SIL Violet with a dashed underline, a double strikethrough and an "FW"
-/// tag, beside a list of changes each with its switch. The combined view is read-only. The side-by-side view, on
+/// tag by default, or the author's label, beside a list of changes each with its switch. The combined view is read-only. The side-by-side view, on
 /// request, shows FieldWorks read-only on the left and the person's version, editable, on the right as the result.
 /// </summary>
 public sealed partial class CompareWindow : Window
@@ -55,6 +55,7 @@ public sealed partial class CompareWindow : Window
         "already in. Choose where both changed the same words. Nothing is saved to FieldWorks until you apply your changes.";
 
     private readonly TextComparison _comparison;
+    private readonly CompareLabels _labels;
     private readonly WritingSystemRegistry? _writingSystems;
     private readonly IStyleResolver? _styles;
     private readonly string? _savedAt;
@@ -81,11 +82,14 @@ public sealed partial class CompareWindow : Window
     /// <paramref name="savedAt"/> says when FieldWorks saved its version, when known. <paramref name="checkResult"/> says why the
     /// field cannot hold a result, or null when it can; Done then stays in the window and shows that message.
     /// <paramref name="writingSystemName"/> names a writing system by its tag, as the project does.
+    /// <paramref name="labels"/> attributes the other version and describes what the caller does with the result.
     /// </summary>
     public CompareWindow(string title, TextComparison comparison, WritingSystemRegistry? writingSystems = null, IStyleResolver? styles = null,
         string? savedAt = null, Func<IReadOnlyList<ParagraphVersion>, string?>? checkResult = null,
-        Func<string, string>? writingSystemName = null)
+        Func<string, string>? writingSystemName = null, CompareLabels? labels = null)
     {
+        _labels = labels ?? new CompareLabels();
+        _later.Content = _labels.Cancel;
         _checkResult = checkResult;
         _writingSystemName = writingSystemName;
         _comparison = comparison ?? throw new ArgumentNullException(nameof(comparison));
@@ -105,15 +109,15 @@ public sealed partial class CompareWindow : Window
         AutomationProperties.SetName(more, "More choices");
         var mineForAll = new MenuItem { Header = ChangeWords.UseMineForAll };
         mineForAll.Click += (_, _) => _comparison.ChooseAll(Choice.Mine);
-        var fieldWorksForAll = new MenuItem { Header = ChangeWords.UseFieldWorksForAll };
+        var fieldWorksForAll = new MenuItem { Header = _labels.UseOtherForAll };
         fieldWorksForAll.Click += (_, _) => _comparison.ChooseAll(Choice.FieldWorks);
-        var startAgain = new MenuItem { Header = ChangeWords.StartAgain };
+        var startAgain = new MenuItem { Header = _labels.StartAgain };
         startAgain.Click += (_, _) => StartAgain();
         more.Flyout = new MenuFlyout { ItemsSource = new[] { mineForAll, fieldWorksForAll, startAgain } };
 
         var header = new StackPanel { Spacing = 6, Margin = new Thickness(0, 0, 0, 8) };
         header.Children.Add(new TextBlock { Text = Title, FontWeight = FontWeight.Bold, FontSize = 16, TextWrapping = TextWrapping.Wrap });
-        header.Children.Add(new TextBlock { Text = Explanation, TextWrapping = TextWrapping.Wrap });
+        header.Children.Add(new TextBlock { Text = _labels.Explanation, TextWrapping = TextWrapping.Wrap });
         header.Children.Add(_summary);
         header.Children.Add(Legend());
         var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
@@ -254,13 +258,13 @@ public sealed partial class CompareWindow : Window
         return frame;
     }
 
-    private static Control Legend()
+    private Control Legend()
     {
         var key = new WrapPanel { Orientation = Orientation.Horizontal };
         key.Children.Add(AuthorTag(ChangeWords.MineTag, MineBrush));
         key.Children.Add(new TextBlock { Text = "Yours: blue, solid underline for added words, single strikethrough for removed words", Margin = new Thickness(4, 0, 16, 0) });
-        key.Children.Add(AuthorTag(ChangeWords.FieldWorksTag, FieldWorksBrush));
-        key.Children.Add(new TextBlock { Text = "FieldWorks: violet, dashed underline, double strikethrough", Margin = new Thickness(4, 0, 16, 0) });
+        key.Children.Add(AuthorTag(_labels.OtherTag, FieldWorksBrush));
+        key.Children.Add(new TextBlock { Text = $"{_labels.OtherName}: violet, dashed underline, double strikethrough", Margin = new Thickness(4, 0, 16, 0) });
         key.Children.Add(new Border
         {
             BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1), Padding = new Thickness(3, 0),
@@ -288,8 +292,8 @@ public sealed partial class CompareWindow : Window
 
     private void UpdateFooter()
     {
-        _summary.Text = _comparison.Summary;
-        AutomationProperties.SetName(_summary, _comparison.Summary);
+        _summary.Text = _comparison.SummaryFor(_labels.OtherName);
+        AutomationProperties.SetName(_summary, _comparison.SummaryFor(_labels.OtherName));
         _waiting.Text = _comparison.Waiting is not { } waiting ? "" : IsSideBySide ? waiting + SideBySideWaiting : waiting;
         _done.IsEnabled = _comparison.IsDecided;
         if (IsSideBySide) MarkRowsThatNeedAChoice();
@@ -392,7 +396,7 @@ public sealed partial class CompareWindow : Window
             }
             content.Children.Add(words);
             content.Children.Add(AuthorTag(ChangeWords.MineTag, MineBrush));
-            content.Children.Add(AuthorTag(ChangeWords.FieldWorksTag, FieldWorksBrush));
+            content.Children.Add(AuthorTag(_labels.OtherTag, FieldWorksBrush));
         }
         else
         {
@@ -403,7 +407,7 @@ public sealed partial class CompareWindow : Window
             switch (change.Kind)
             {
                 case ChangeKind.ParagraphFormatting:
-                    words.Inlines!.Add(new Run(ChangeWords.Describe(change, _writingSystemName)) { FontStyle = FontStyle.Italic });
+                    words.Inlines!.Add(new Run(ChangeWords.Describe(change, _writingSystemName, _labels.OtherName)) { FontStyle = FontStyle.Italic });
                     break;
                 case ChangeKind.Formatting or ChangeKind.WritingSystem:
                     foreach (var run in (inUse ? after : change.Starting).SelectMany(token => token.Pieces)) words.Inlines!.Add(Styled(run));
@@ -422,7 +426,7 @@ public sealed partial class CompareWindow : Window
                     break;
             }
             content.Children.Add(words);
-            content.Children.Add(AuthorTag(mine ? ChangeWords.MineTag : ChangeWords.FieldWorksTag, inUse ? brush : Brushes.Gray));
+            content.Children.Add(AuthorTag(mine ? ChangeWords.MineTag : _labels.OtherTag, inUse ? brush : Brushes.Gray));
             if (!inUse) content.Children.Add(new TextBlock { Text = "not used", FontStyle = FontStyle.Italic, Foreground = Brushes.DimGray, VerticalAlignment = VerticalAlignment.Center });
         }
         var mark = new Button
@@ -436,7 +440,7 @@ public sealed partial class CompareWindow : Window
             BorderThickness = new Thickness(1),
             BorderBrush = MarkBorder(change),
         };
-        AutomationProperties.SetName(mark, ChangeWords.Announce(change, choice, _writingSystemName));
+        AutomationProperties.SetName(mark, ChangeWords.Announce(change, choice, _writingSystemName, _labels.OtherName));
         if (change.Author == ChangeAuthor.Both) mark.Flyout = Popover(change);
         else mark.Click += (_, _) => Select(change);
         mark.GotFocus += (_, _) =>
@@ -458,7 +462,7 @@ public sealed partial class CompareWindow : Window
         var body = new StackPanel { Spacing = 6, MaxWidth = 420 };
         body.Children.Add(new TextBlock { Text = $"{ChangeWords.BothChanged}, {change.Location}", FontWeight = FontWeight.SemiBold });
         body.Children.Add(Version(ChangeWords.MineTag, MineBrush, change.Mine));
-        body.Children.Add(Version(ChangeWords.FieldWorksTag, FieldWorksBrush, change.FieldWorks));
+        body.Children.Add(Version(_labels.OtherTag, FieldWorksBrush, change.FieldWorks));
         var flyout = new Flyout { Content = body };
         var buttons = new WrapPanel();
         foreach (var (label, choice) in Choices(change))
@@ -495,10 +499,10 @@ public sealed partial class CompareWindow : Window
         return line;
     }
 
-    private static IEnumerable<(string Label, Choice Choice)> Choices(TextChange change)
+    private IEnumerable<(string Label, Choice Choice)> Choices(TextChange change)
     {
         yield return (ChangeWords.UseMine, Choice.Mine);
-        yield return (ChangeWords.UseFieldWorks, Choice.FieldWorks);
+        yield return (_labels.UseOther, Choice.FieldWorks);
         if (change.Author == ChangeAuthor.Both && !change.IsWholeParagraph && change.Kind != ChangeKind.ParagraphFormatting)
             yield return (ChangeWords.UseBoth, Choice.Both);
     }
@@ -513,16 +517,16 @@ public sealed partial class CompareWindow : Window
             var who = change.Author switch
             {
                 ChangeAuthor.Mine => "Yours",
-                ChangeAuthor.FieldWorks => "FieldWorks",
+                ChangeAuthor.FieldWorks => _labels.OtherName,
                 _ => ChangeWords.BothChanged,
             };
             var row = new StackPanel { Spacing = 4 };
             var heading = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
             if (change.Author != ChangeAuthor.FieldWorks) heading.Children.Add(AuthorTag(ChangeWords.MineTag, MineBrush));
-            if (change.Author != ChangeAuthor.Mine) heading.Children.Add(AuthorTag(ChangeWords.FieldWorksTag, FieldWorksBrush));
+            if (change.Author != ChangeAuthor.Mine) heading.Children.Add(AuthorTag(_labels.OtherTag, FieldWorksBrush));
             heading.Children.Add(new TextBlock { Text = $"{Capital(change.Location)} · {who}", FontWeight = FontWeight.SemiBold });
             row.Children.Add(heading);
-            row.Children.Add(new TextBlock { Text = ChangeWords.Describe(change, _writingSystemName), TextWrapping = TextWrapping.Wrap });
+            row.Children.Add(new TextBlock { Text = ChangeWords.Describe(change, _writingSystemName, _labels.OtherName), TextWrapping = TextWrapping.Wrap });
             var switches = new WrapPanel();
             foreach (var (label, option) in Choices(change))
             {
@@ -550,7 +554,7 @@ public sealed partial class CompareWindow : Window
             row.Children.Add(switches);
             var border = new Border { Child = row, Padding = new Thickness(6), BorderBrush = Brushes.LightGray, BorderThickness = new Thickness(0, 0, 0, 1), Tag = change };
             border.PointerPressed += (_, _) => Select(change);
-            AutomationProperties.SetName(border, ChangeWords.Announce(change, choice, _writingSystemName));
+            AutomationProperties.SetName(border, ChangeWords.Announce(change, choice, _writingSystemName, _labels.OtherName));
             _rows[change.Id] = border;
             _list.Children.Add(border);
         }

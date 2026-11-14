@@ -1,6 +1,7 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Compare;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -61,13 +62,15 @@ public sealed partial class RationaleEditorModel : ObservableObject
 
     /// <summary>Whether the field is being edited.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCompare))]
     [NotifyPropertyChangedFor(nameof(CanStartEdit))]
     [NotifyCanExecuteChangedFor(nameof(EditCommand), nameof(SaveCommand), nameof(CancelCommand), nameof(RestoreCommand))]
     private bool _isEditing;
 
     /// <summary>Whether a save is under way.</summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(CancelCommand))]
+    [NotifyPropertyChangedFor(nameof(CanCompare))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(CancelCommand), nameof(RestoreCommand))]
     private bool _isSaving;
 
     /// <summary>What a reader would see as wrong in the last save, one per line with its line and column.</summary>
@@ -81,6 +84,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
 
     /// <summary>Whether the stored Rationale was changed elsewhere while this edit was being made.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCompare))]
     private bool _isChangedElsewhere;
 
     /// <summary>Whether choosing another Proposal was refused because this edit is not saved.</summary>
@@ -100,6 +104,9 @@ public sealed partial class RationaleEditorModel : ObservableObject
 
     /// <summary>Whether Edit is offered now.</summary>
     public bool CanStartEdit => CanEdit && !IsEditing;
+
+    /// <summary>Whether the unsaved text can be compared with the Rationale that changed elsewhere.</summary>
+    public bool CanCompare => IsEditing && IsChangedElsewhere && !IsSaving;
 
     /// <summary>Whether the last save had findings to show.</summary>
     public bool HasFindings => Findings.Count > 0;
@@ -140,6 +147,50 @@ public sealed partial class RationaleEditorModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanSaveOrCancel))]
     private Task Save() => Working = SaveAsync();
 
+    /// <summary>Compares with the latest attributed revision; Done saves with that revision as the expected text.</summary>
+    public Task CompareAsync(Func<RationaleComparison, Task<CompareOutcome?>> show) => Working = CompareCoreAsync(show);
+
+    private async Task CompareCoreAsync(Func<RationaleComparison, Task<CompareOutcome?>> show)
+    {
+        if (!CanCompare || _context.ProjectPath is not { } path) return;
+        IsSaving = true;
+        try
+        {
+            var read = await _context.Commands.ListRationaleRevisionsAsync(
+                new RationaleRevisionsRequest(path, MotifProductVersion.CurrentText, ProposalId), CancellationToken.None)
+                .ConfigureAwait(true);
+            if (!read.Succeeded)
+            {
+                Refusal = WindowRefusal.From(read.Refusal!);
+                return;
+            }
+            if (read.Value!.MaxBy(revision => revision.RevisionId) is not { } latest) return;
+            var comparison = new RationaleComparison(_markdown, Text(), latest);
+            var outcome = await show(comparison).ConfigureAwait(true);
+            if (outcome?.End is not (CompareEnd.Done or CompareEnd.StartAgain)) return;
+            _markdown = latest.Markdown;
+            OnPropertyChanged(nameof(Markdown));
+            Document = Read(_markdown, out var plain, editable: true);
+            IsPlainText = plain;
+            _began = Text();
+            if (outcome.End == CompareEnd.StartAgain)
+            {
+                IsChangedElsewhere = false;
+                Findings = [];
+                Refusal = null;
+                return;
+            }
+            var merged = RationaleComparison.Text(outcome.Result);
+            Document = Read(merged, out plain, editable: true);
+            IsPlainText = plain;
+            await SaveAsync(compared: true).ConfigureAwait(true);
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
     /// <summary>Discards the edit and shows the stored Rationale, read anew if it changed elsewhere.</summary>
     [RelayCommand(CanExecute = nameof(CanSaveOrCancel))]
     private void Cancel()
@@ -157,7 +208,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     }
 
     /// <summary>Puts an earlier version into the field; it is saved only when the person saves.</summary>
-    [RelayCommand(CanExecute = nameof(IsEditing))]
+    [RelayCommand(CanExecute = nameof(CanSaveOrCancel))]
     private void Restore(RationaleRevisionChoice? revision)
     {
         if (revision is null) return;
@@ -192,11 +243,11 @@ public sealed partial class RationaleEditorModel : ObservableObject
     public Task<bool> OpenLinkAsync(string? objData) =>
         LinkOf(objData) is { } uri && _context.UriLauncher is { } launcher ? launcher.LaunchAsync(uri) : Task.FromResult(false);
 
-    private async Task SaveAsync()
+    private async Task SaveAsync(bool compared = false)
     {
         if (_context.ProjectPath is not { } path) return;
         var text = Text();
-        if (text == _began)
+        if (!compared && text == _began)
         {
             // Nothing was changed: the stored text stays exactly as it is, and no revision is written.
             Cancel();

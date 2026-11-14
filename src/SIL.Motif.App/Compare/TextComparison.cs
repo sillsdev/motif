@@ -75,17 +75,17 @@ public sealed class TextComparison
     }
 
     /// <summary>How many changes each side made and how many need a choice, as the summary line says.</summary>
-    public string Summary
+    public string Summary => SummaryFor("FieldWorks");
+
+    /// <summary>The summary with the other version attributed to its author.</summary>
+    public string SummaryFor(string otherName)
     {
-        get
-        {
-            var changes = Sorted.Changes;
-            var mine = changes.Count(change => change.Author == ChangeAuthor.Mine);
-            var fieldWorks = changes.Count(change => change.Author == ChangeAuthor.FieldWorks);
-            var both = Undecided.Count;
-            return $"{Count(changes.Count, "change")}: {mine} yours · {fieldWorks} from FieldWorks · " +
-                   (both == 1 ? "1 needs your choice" : $"{both} need your choice");
-        }
+        var changes = Sorted.Changes;
+        var mine = changes.Count(change => change.Author == ChangeAuthor.Mine);
+        var fieldWorks = changes.Count(change => change.Author == ChangeAuthor.FieldWorks);
+        var both = Undecided.Count;
+        return $"{Count(changes.Count, "change")}: {mine} yours · {fieldWorks} from {otherName} · " +
+               (both == 1 ? "1 needs your choice" : $"{both} need your choice");
     }
 
     /// <summary>Why Done waits, or null when it does not.</summary>

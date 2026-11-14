@@ -924,6 +924,12 @@ public static class MotifAppStrings
     /// <summary>The button that makes the Rationale editable.</summary>
     public static string RationaleEdit => Text("MotifApp.RationaleEdit");
 
+    /// <summary>Opens a comparison with the Rationale changed elsewhere.</summary>
+    public static string RationaleCompare => Text("MotifApp.RationaleCompare");
+
+    /// <summary>Explains how the comparison is shown and when its result is saved.</summary>
+    public static string RationaleCompareExplanation => Text("MotifApp.RationaleCompareExplanation");
+
     /// <summary>Says the Rationale changed elsewhere during the edit.</summary>
     public static string RationaleChangedElsewhere => Text("MotifApp.RationaleChangedElsewhere");
 

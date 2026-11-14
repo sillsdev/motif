@@ -185,11 +185,12 @@ public static class TextSort
     /// <summary>
     /// Sorts <paramref name="versions"/>. <paramref name="location"/>, when given, names every change's place, for a
     /// field that is one formatted string; otherwise a change's place is its paragraph's number.
+    /// <paramref name="preserveSpelling"/> compares text as written, including the Unicode spelling of Markdown URLs.
     /// </summary>
-    public static SortedText Sort(TextVersions versions, string? location = null)
+    public static SortedText Sort(TextVersions versions, string? location = null, bool preserveSpelling = false)
     {
         ArgumentNullException.ThrowIfNull(versions);
-        var builder = new Builder(location);
+        var builder = new Builder(location, preserveSpelling);
         var starting = versions.Starting.GroupBy(paragraph => paragraph.Key, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         foreach (var (mine, fieldWorks) in Slots(versions))
@@ -206,6 +207,7 @@ public static class TextSort
             {
                 var kept = mine ?? fieldWorks!;
                 var untouched = start.Exact is { } exact ? exact.SameContent(kept) : TextVersions.Same(kept.Text, start.Text) && kept.Style == start.Style;
+                if (preserveSpelling && kept.Text != start.Text) untouched = false;
                 builder.Whole(paragraph, untouched ? (mine is null ? ChangeAuthor.Mine : ChangeAuthor.FieldWorks) : ChangeAuthor.Both,
                     ChangeKind.ParagraphRemoved);
                 continue;
@@ -238,7 +240,7 @@ public static class TextSort
         return slots;
     }
 
-    private sealed class Builder(string? location)
+    private sealed class Builder(string? location, bool preserveSpelling)
     {
         private readonly List<SortedParagraph> _paragraphs = [];
         private readonly List<TextChange> _changes = [];
@@ -263,19 +265,21 @@ public static class TextSort
             return change;
         }
 
+        private IReadOnlyList<Token> Of(IReadOnlyList<TextRun> runs) => Tokens.Of(runs, preserveSpelling);
+
         public void Whole(SortedParagraph paragraph, ChangeAuthor author, ChangeKind kind)
         {
-            var mine = paragraph.Mine is null ? [] : Tokens.Of(paragraph.Mine.Runs);
-            var fieldWorks = paragraph.FieldWorks is null ? [] : Tokens.Of(paragraph.FieldWorks.Runs);
+            var mine = paragraph.Mine is null ? [] : Of(paragraph.Mine.Runs);
+            var fieldWorks = paragraph.FieldWorks is null ? [] : Of(paragraph.FieldWorks.Runs);
             paragraph.Whole = Add(author, kind, paragraph, [], mine, fieldWorks, ParagraphWhole);
         }
 
         public void Inside(SortedParagraph paragraph, StartingParagraph start, ParagraphVersion mine, ParagraphVersion fieldWorks)
         {
             var known = start.Exact is not null;
-            var baseTokens = known ? Tokens.Of(start.Exact!.Runs) : Tokens.Of([new TextRun(start.Text, "")]);
-            var mineTokens = Tokens.Of(mine.Runs);
-            var fieldWorksTokens = Tokens.Of(fieldWorks.Runs);
+            var baseTokens = known ? Of(start.Exact!.Runs) : Of([new TextRun(start.Text, "")]);
+            var mineTokens = Of(mine.Runs);
+            var fieldWorksTokens = Of(fieldWorks.Runs);
             var toMine = Alignment.Match(baseTokens, mineTokens);
             var toFieldWorks = Alignment.Match(baseTokens, fieldWorksTokens);
             var mineHunks = Hunk.From(Side.Mine, baseTokens, mineTokens, toMine, known);

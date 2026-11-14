@@ -19,6 +19,8 @@
     </StackPanel>
     <TextBlock Classes="error" Text="{x:Static app:MotifAppStrings.RationaleChangedElsewhere}" TextWrapping="Wrap"
                IsVisible="{Binding IsChangedElsewhere}" />
+    <Button x:Name="RationaleCompareButton" Content="{x:Static app:MotifAppStrings.RationaleCompare}"
+            IsVisible="{Binding IsChangedElsewhere}" IsEnabled="{Binding CanCompare}" Click="CompareClicked" />
     <TextBlock Classes="error" Text="{x:Static app:MotifAppStrings.RationaleSaveOrCancelFirst}" TextWrapping="Wrap"
                IsVisible="{Binding IsSwitchRefused}" />
     <views:RefusalBlock DataContext="{Binding Refusal}" />

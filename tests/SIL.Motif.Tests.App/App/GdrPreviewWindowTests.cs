@@ -634,6 +634,9 @@ public sealed partial class GdrPreviewWindowTests
             var window = new GdrPreviewWindow([First, Second], id => id == First.Id ? AddedAtTheEndInFieldWorks(First) : Canned(Second), store,
                 () => Task.FromResult(true), compare: shown =>
                 {
+                    Assert.Contains("from FieldWorks", shown.SummaryText, StringComparison.Ordinal);
+                    Assert.Contains(shown.Marks.SelectMany(mark => ((StackPanel)mark.Content!).Children).OfType<Border>(),
+                        tag => tag.Child is TextBlock { Text: "FW" });
                     shown.Finish();
                     return Task.FromResult(shown.Outcome);
                 });
