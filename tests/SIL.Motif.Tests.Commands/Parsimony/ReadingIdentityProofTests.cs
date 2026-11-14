@@ -186,7 +186,11 @@ public sealed class ReadingIdentityProofTests
         var footprint = new AllomorphReferenceFootprint(digest, digest, [], [], [], 
             [new AllomorphAffectedWordform(Guid.NewGuid(), [new("qaa", "kan")], [], [])], [], [],
             new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, new Dictionary<string, int>()), digest);
-        var translation = new RetirementExpectationTranslation(null!, null!, Mappings, [], digest, digest, digest, digest);
+        // A translation names its forms by canonical id; the Trial's morphs carry GUID text.
+        static string Canonical(string guid) => SIL.Motif.Contract.Ids.CanonicalId.FromGuid(Guid.Parse(guid)).Value;
+        IReadOnlyList<RetirementExpectationMapping> canonicalMappings =
+            [new(Canonical(Retired), Canonical(Msa), null, "whole", Canonical(Survivor))];
+        var translation = new RetirementExpectationTranslation(null!, null!, canonicalMappings, [], digest, digest, digest, digest);
         var before = Run(Word("kan", Reading(Stem, Retired)), Word("unrelated", Reading(Other)));
         var after = Run(Word("kan", Reading(Stem, Survivor)), Word("unrelated", Reading(Stem)));
 

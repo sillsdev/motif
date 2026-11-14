@@ -2759,7 +2759,18 @@
     },
     "Unavailable": [],
     "UnlinkedEffects": [],
-    "UnlinkedOperationIds": []
+    "UnlinkedOperationIds": [],
+    "ReadingIdentity": {
+      "Status": "Identical",
+      "AffectedWords": 1,
+      "IdenticalWords": 1,
+      "ReadingsBefore": 2,
+      "LostReadings": 0,
+      "NewReadings": 0,
+      "Differences": [],
+      "IncompleteWords": [],
+      "Unavailable": []
+    }
   },
   "Unavailable": []
 }

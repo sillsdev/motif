@@ -102,11 +102,24 @@ internal static class RetirementReviewProjectionAssembler
             boundFinding.OperationIds) with { ReadingIdentity = identity };
     }
 
-    /// <summary>Compares every reading of the footprint's affected words across the Trial's two runs.</summary>
+    /// <summary>
+    /// Compares every reading of the footprint's affected words across the Trial's two runs. The translation names
+    /// forms by canonical id and the Trial's morphs by GUID text, so the mappings are put in GUID text first.
+    /// </summary>
     internal static ReadingIdentityResult ProveReadingIdentity(RecipeVerificationRun before, RecipeVerificationRun after,
-        AllomorphReferenceFootprint footprint, RetirementExpectationTranslation translation) =>
-        ReadingIdentityProof.Prove(before, after,
-            footprint.AffectedWordforms.SelectMany(item => item.Forms.Select(form => form.Text)), translation.Mappings);
+        AllomorphReferenceFootprint footprint, RetirementExpectationTranslation translation)
+    {
+        static string Guid(string id) => CanonicalId.Parse(id).ToGuid().ToString();
+        var mappings = translation.Mappings.Select(item => item with
+        {
+            RetiredForm = Guid(item.RetiredForm),
+            Msa = Guid(item.Msa),
+            InflType = item.InflType is null ? null : Guid(item.InflType),
+            ReplacementForm = Guid(item.ReplacementForm),
+        }).ToArray();
+        return ReadingIdentityProof.Prove(before, after,
+            footprint.AffectedWordforms.SelectMany(item => item.Forms.Select(form => form.Text)), mappings);
+    }
 
     private static BoundFinding? FindBoundFinding(MotifDatabase database, DraftDocument draft)
     {
