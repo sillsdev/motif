@@ -279,8 +279,8 @@
     {
       "measureId": "P-tag-polarity-majority",
       "recipeVersion": 1,
-      "title": "Tag on most candidate hosts",
-      "shortTitle": "tags carried by most candidate hosts",
+      "title": "Tag on most possible hosts",
+      "shortTitle": "tags carried by most possible hosts",
       "updateIntents": [],
       "sources": [
         "Black, A Conceptual Introduction to Morphological Parsing for FieldWorks Language Explorer §2.1"

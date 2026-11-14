@@ -1,8 +1,8 @@
-# Tag on most candidate hosts
+# Tag on most possible hosts
 
-This check finds a tag that at least half of a rule's candidate hosts carry. The tag is then the default, and the rule is better stated as applying everywhere with the minority tagged instead. It is computed from per-rule host counts that PanGloss already holds, in one pass over the tag and rule facts.
+This check finds a tag that at least half of a rule's possible hosts carry. The tag is then the default, and the rule is better stated as applying everywhere with the minority tagged instead. It is computed from per-rule host counts that PanGloss already holds, in one pass over the tag and rule facts.
 
-This check is partial. It counts candidate hosts by the rule's category scope and does not see its phonological context, so a rule chosen by the form of the stem is not detected. No finding does not mean the tags are fine.
+This check is partial. It counts possible hosts by the rule's category scope and does not see its phonological context, so a rule chosen by the form of the stem is not detected. No finding does not mean the tags are fine.
 
 ## Analyse
 
