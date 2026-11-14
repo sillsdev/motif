@@ -53,6 +53,22 @@ public sealed class ReadingIdentityProofTests
     }
 
     [Fact]
+    public void RemovingAFeatureProvesIdenticalWithNoMappingsAndCountsAReadingARuleNowAllowsAsNew()
+    {
+        var before = Run(Word("kan", Reading(Stem)), Word("kaun", Reading(Stem)));
+        var same = Run(Word("kan", Reading(Stem)), Word("kaun", Reading(Stem)));
+        var wider = Run(Word("kan", Reading(Stem)), Word("kaun", Reading(Stem), Reading(Other)));
+
+        var identical = FeatureRemovalReadingProof.Prove(before, same, ["kan", "kaun"]);
+        var differs = FeatureRemovalReadingProof.Prove(before, wider, ["kan", "kaun"]);
+
+        Assert.Equal(ReadingIdentityStatus.Identical, identical.Status);
+        Assert.Equal(ReadingIdentityStatus.Differs, differs.Status);
+        Assert.Equal(1, differs.NewReadings);
+        Assert.Equal(0, differs.LostReadings);
+    }
+
+    [Fact]
     public void AReadingThatDisappearsIsLostAndOneThatAppearsIsNewAndBothAreListed()
     {
         var before = Run(Word("kan", Reading(Stem, Retired), Reading(Other)));
