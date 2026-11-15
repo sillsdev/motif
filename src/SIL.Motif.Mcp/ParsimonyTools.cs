@@ -19,14 +19,17 @@ internal static class ParsimonyTools
 
     internal static IReadOnlyList<AgentTool> All { get; } =
     [
-        new("motif_query", "Reads and groups forms from available Trial evidence.", AgentClass.Read,
+        new("motif_query", "Reads and groups forms, stems, uses or objects from available Trial evidence, or runs a saved query.", AgentClass.Read,
             Schema.Object(
-                ("from", Schema.String("Query source.", "forms"), true),
+                ("saved", Schema.String("A measure id whose saved query replaces from, where and group.", SavedQueries.Ids.ToArray()), false),
+                ("from", Schema.String("Query source; required unless saved is given.", QuerySources.All.ToArray()), false),
                 ("where", Schema.Array("ANDed selectors.", Schema.Object(
                     ("col", Schema.String("Column name."), true),
                     ("op", Schema.String("Selector operator.", "is", "in", "not", "~", "has", "<", ">"), true),
-                    ("value", Schema.String("Selector value."), true))), true),
-                ("group", Schema.StringArray("Columns to group by."), true),
+                    ("value", Schema.String("Selector value."), true))), false),
+                ("group", Schema.StringArray("Columns to group by; required unless saved is given."), false),
+                ("distinct", Schema.String("A column of which a group needs two different values."), false),
+                ("fold", Schema.String("Fold set of the fold column: comma-separated nfc, case, iy~y, o~u, e~i, c~k, from>to or project; default nfc,case."), false),
                 ("minCount", Schema.Integer("Minimum group count.", 1, int.MaxValue), false),
                 ("examples", Schema.Integer("Maximum examples per group.", 0, 1000), false),
                 ("ids", Schema.Boolean("Include canonical ids."), false),
@@ -39,6 +42,21 @@ internal static class ParsimonyTools
                 {
                     var input = a.Copy();
                     input.Remove("project");
+                    var savedId = input["saved"]?.GetValue<string>();
+                    input.Remove("saved");
+                    if (savedId is not null)
+                    {
+                        if (!SavedQueries.TryGet(savedId, out var shipped))
+                            throw new ToolArgumentException("tool.invalid-argument", $"Unknown saved query '{savedId}'.");
+                        foreach (var name in new[] { "from", "where", "group" }) input.Remove(name);
+                        input["from"] = shipped.From;
+                        input["where"] = JsonSerializer.SerializeToNode(shipped.Where, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                        input["group"] = JsonSerializer.SerializeToNode(shipped.Group);
+                        foreach (var (name, value) in new (string, JsonNode?)[] { ("minCount", shipped.MinCount), ("fold", shipped.Fold), ("distinct", shipped.Distinct) })
+                            if (value is not null && !input.ContainsKey(name)) input[name] = value;
+                    }
+                    else if (input["from"] is null || input["where"] is null || input["group"] is null)
+                        throw new ToolArgumentException("tool.invalid-argument", "from, where and group are required unless saved is given.");
                     var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
                         { UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow };
                     var record = JsonSerializer.Deserialize<QueryRecord>(input, options);

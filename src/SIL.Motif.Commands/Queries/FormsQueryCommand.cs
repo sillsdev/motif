@@ -1,6 +1,8 @@
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Commands.Queries;
@@ -12,7 +14,7 @@ public sealed record FormsQueryRequest(string FwDataPath, string ProductVersion,
 public sealed record FormsQueryResponse(string TrialId, string GrammarHash, string BundleId, bool IsStale,
     int UnresolvedVariants, QueryResult Result);
 
-/// <summary>Runs a forms query over the last completed Trial's materialized facts.</summary>
+/// <summary>Runs a query over the forms, stems, uses or objects source of the last completed Trial's materialized facts.</summary>
 public static class FormsQueryCommand
 {
     /// <summary>Reads the current Trial and evaluates a closed query record.</summary>
@@ -34,12 +36,30 @@ public static class FormsQueryCommand
             {
                 try
                 {
-                    if ((request.Query.Where?.Any(condition => condition?.Col == "tokens") == true ||
-                         request.Query.Group?.Contains("tokens") == true) &&
-                        snapshot.Snapshot.Forms.All(form => form.Tokens is null))
-                        return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryInvalid,
-                            FailureReason.InvalidArgument, "Token frequency is not available in this evidence."));
-                    var result = FormQuery.Run(request.Query, snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes);
+                    var query = request.Query.Fold?.Split(',', StringSplitOptions.TrimEntries).Contains(QueryFold.ProjectToken) == true
+                        ? request.Query with { Fold = QueryFold.ResolveProject(request.Query.Fold, ProjectFold(project)) }
+                        : request.Query;
+                    QueryResult result;
+                    if (query.From == QuerySources.Forms)
+                    {
+                        if ((query.Where?.Any(condition => condition?.Col == "tokens") == true ||
+                             query.Group?.Contains("tokens") == true) &&
+                            snapshot.Snapshot.Forms.All(form => form.Tokens is null))
+                            return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryInvalid,
+                                FailureReason.InvalidArgument, "Token frequency is not available in this evidence."));
+                        result = FormQuery.Run(query, snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes);
+                    }
+                    else
+                    {
+                        var rows = query.From switch
+                        {
+                            QuerySources.Stems => snapshot.Snapshot.Stems,
+                            QuerySources.Uses => snapshot.Snapshot.Uses,
+                            QuerySources.Objects => snapshot.Snapshot.Objects,
+                            _ => throw new ArgumentException($"Unknown query source '{query.From}'."),
+                        };
+                        result = FormQuery.RunRows(query, rows ?? [], snapshot.Snapshot.Graphemes);
+                    }
                     using var latest = connection.CreateCommand();
                     latest.Transaction = transaction;
                     latest.CommandText = "SELECT JobId FROM Jobs WHERE Kind='trial' AND Status='completed' " +
@@ -64,9 +84,27 @@ public static class FormsQueryCommand
             }
             if (cache is not null)
                 return cache.Use(project.FullFwDataPath, identity.Value.TrialId + "\0" + identity.Value.BundleId,
-                    () => QuerySnapshotStore.Read(connection, transaction, includeStems: false)!, Evaluate);
-            return Evaluate(QuerySnapshotStore.Read(connection, transaction, includeStems: false)!);
+                    () => QuerySnapshotStore.Read(connection, transaction)!, Evaluate);
+            return Evaluate(QuerySnapshotStore.Read(connection, transaction, [request.Query.From], UseTargetKinds(request.Query))!);
         });
+
+    // A target-kind selector narrows the uses rows decoded; the query still applies every selector itself.
+    private static string[]? UseTargetKinds(QueryRecord query) => query.From != QuerySources.Uses ? null :
+        query.Where?.FirstOrDefault(c => c?.Col == "target-kind" && c.Op is "is" or "in" && c.Value is not null)
+            ?.Value.Split(',', StringSplitOptions.TrimEntries);
+
+    private static IReadOnlyList<FoldRule> ProjectFold(SIL.Motif.Contract.Projects.ProjectLocator project)
+    {
+        try
+        {
+            return [.. new ProjectConfigurationReader().Read(project).ParsimonyFold
+                .Select(text => FoldRule.TryParse(text, out var rule) ? rule : null).OfType<FoldRule>()];
+        }
+        catch (ProjectConfigurationException)
+        {
+            return [];
+        }
+    }
 }
 
 /// <summary>Keeps at most one decoded Trial while serializing readers that use it.</summary>

@@ -2520,7 +2520,7 @@
   },
   "query forms": {
     "title": "Query forms",
-    "description": "Filters and groups forms from available Trial evidence. Compare each form with its base and inspect the changes.",
+    "description": "Filters and groups forms, stems, uses or objects from available Trial evidence, or runs the saved query of a Parsimony Measure.",
     "source": "Hand-written from the query contract."
   }
 }

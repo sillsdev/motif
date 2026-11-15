@@ -1505,15 +1505,29 @@
   },
   {
     "name": "motif_query",
-    "description": "Query forms. Filters and groups forms from available Trial evidence. Compare each form with its base and inspect the changes.\nCommand: query forms. Agent class: Read.\n",
+    "description": "Query forms. Filters and groups forms, stems, uses or objects from available Trial evidence, or runs the saved query of a Parsimony Measure.\nCommand: query forms. Agent class: Read.\n",
     "inputSchema": {
       "type": "object",
       "properties": {
+        "saved": {
+          "type": "string",
+          "description": "A measure id whose saved query replaces from, where and group.",
+          "enum": [
+            "P-env-duplicate",
+            "P-feature-few-carriers",
+            "P-lexeme-near-duplicate",
+            "P-msa-no-category",
+            "P-statement-unused"
+          ]
+        },
         "from": {
           "type": "string",
-          "description": "Query source.",
+          "description": "Query source; required unless saved is given.",
           "enum": [
-            "forms"
+            "forms",
+            "stems",
+            "uses",
+            "objects"
           ]
         },
         "where": {
@@ -1557,7 +1571,15 @@
           "items": {
             "type": "string"
           },
-          "description": "Columns to group by."
+          "description": "Columns to group by; required unless saved is given."
+        },
+        "distinct": {
+          "type": "string",
+          "description": "A column of which a group needs two different values."
+        },
+        "fold": {
+          "type": "string",
+          "description": "Fold set of the fold column: comma-separated nfc, case, iy~y, o~u, e~i, c~k, from\u003Eto or project; default nfc,case."
         },
         "minCount": {
           "type": "integer",
@@ -1588,13 +1610,10 @@
           "description": "Known project name or recorded .fwdata path."
         }
       },
+      "additionalProperties": false,
       "required": [
-        "from",
-        "where",
-        "group",
         "project"
-      ],
-      "additionalProperties": false
+      ]
     },
     "readOnlyHint": true,
     "destructiveHint": false,
