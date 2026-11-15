@@ -98,6 +98,12 @@ public sealed class BaselineRefresh
                 source?.SidecarDigest == loaded.Digest ? source.Serialize() : null;
             _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, _now(), savedUtc,
                 textWords, summary, sourceIdentity);
+            try
+            {
+                var sources = SIL.Motif.Scripture.SourceList.Read(savedCache);
+                if (sources.Count > 0) SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(_baselines.Database, sources);
+            }
+            catch (SIL.Motif.Scripture.SourceListAmbiguousException) { }
             return publication.Token;
         }
         finally

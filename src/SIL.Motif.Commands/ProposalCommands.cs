@@ -2101,6 +2101,11 @@ public static partial class ProposalCommands
                     }
                 }
 
+                TryPostApplyStep("Source index queueing", () =>
+                {
+                    var sources = SIL.Motif.Scripture.SourceList.Read(cache);
+                    if (sources.Count > 0) SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
+                });
                 TryPostApplyStep("Progress publication", () =>
                 {
                     var pending = ProgressRepository.PendingReceipt(database, canonicalId.Value);

@@ -112,8 +112,11 @@ internal static class AgentTools
             (c, a, ct) =>
             {
                 var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(c.ProjectPath));
-                if (captured.Succeeded && BaselineBundlePrebuild.QueueAfterCapture(c.ProjectPath, c.JobParserPath))
+                if (captured.Succeeded)
+                {
+                    _ = BaselineBundlePrebuild.QueueAfterCapture(c.ProjectPath, c.JobParserPath);
                     c.StartRunner();
+                }
                 return Task.FromResult(ToolOutcome.From(captured,
                     _ => "Now read with motif_grammar, motif_lexicon or motif_overview."));
             }) { Requests = [typeof(BaselineCaptureRequest)] },

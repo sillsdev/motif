@@ -24,6 +24,7 @@ public static class SourceLocalCommand
         {
             var folder = Path.GetFullPath(request.Path);
             store.SetSourcePath(key, entry.Id, folder);
+            QueueIndex(request.ProjectPath, entry);
             return new SourceLocalResponse(entry.Id, folder, null);
         });
     }
@@ -36,6 +37,7 @@ public static class SourceLocalCommand
         return Change(request.ProjectPath, request.Source, (store, key, entry) =>
         {
             store.ClearSourcePath(key, entry.Id);
+            QueueIndex(request.ProjectPath, entry);
             return new SourceLocalResponse(entry.Id, null, null);
         });
     }
@@ -98,6 +100,13 @@ public static class SourceLocalCommand
             var entry = context.Find(source);
             if (entry is null) return SourceQuery.NotFound<SourceLocalResponse>(source);
             return change(ScriptureLocalStore.ForInstallation(), context.ProjectId, entry);
+        });
+
+    private static void QueueIndex(string path, SourceListEntry source) => ProjectStoreCommand.Run(path,
+        SIL.Motif.Host.MotifProductVersion.CurrentText, (database, _) =>
+        {
+            SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, [source]);
+            return CommandOutcome<string>.Success("queued");
         });
 
     private static CommandOutcome<SourceLocalResponse> FolderMissing(string? path) => CommandOutcome<SourceLocalResponse>.Refused(new Refusal(

@@ -42,6 +42,8 @@ public static class CliVerbCatalog
             new[] { "source list --project <fwdata> [--all] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source show",
             new[] { "source show --project <fwdata> <id> [--json]" }),
+        new CliVerbDescriptor("Project", "source", "source passage",
+            new[] { "source passage --project <fwdata> --source <id> --ref <chapter> [--limit 100] [--cursor <opaque>] [--json]" }),
         new CliVerbDescriptor("Project", "source", "source where",
             new[] { "source where --project <fwdata> <ref> [--source <id>] [--json]" }),
         new CliVerbDescriptor("Project", "current", "current get",

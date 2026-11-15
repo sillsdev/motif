@@ -73,6 +73,7 @@ public sealed record CurrentBaselineSelectionIndexRead(
 /// <summary>Reads and writes the project's single current-Baseline pointer and its recorded metadata.</summary>
 public sealed class BaselineRepository
 {
+    internal MotifDatabase Database => _database;
     private readonly MotifDatabase _database;
 
     public BaselineRepository(MotifDatabase database) =>

@@ -220,6 +220,11 @@ public static class RefusalCatalog
     [
 
         // RefusalCodes
+        Spec(RefusalCodes.SourceIndexMissing, FailureReason.NotFound),
+        Spec(RefusalCodes.SourceIndexStale, FailureReason.Refused),
+        Spec(RefusalCodes.SourcePassageLimitInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.SourcePassageCursorInvalid, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.SourceGenerationChanged, FailureReason.Refused),
         Spec(RefusalCodes.ActivityLogUnreadable, FailureReason.NotFound),
         Spec(RefusalCodes.ParseAlreadyRunningHere, FailureReason.Busy),
         Spec(RefusalCodes.ParseAlreadyRunning, FailureReason.Busy,

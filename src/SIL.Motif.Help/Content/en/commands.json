@@ -2325,6 +2325,11 @@
       "Record examples for particular allomorphs in their entry Note"
     ]
   },
+  "source passage": {
+    "title": "Read a Source Passage",
+    "description": "Reads a bounded page of word places from a published Paratext Source index. Missing or stale indexes require a refresh; reads never rebuild them and approved state is unavailable.",
+    "source": "Hand-written from the Source Passage read contract."
+  },
   "source list": {
     "title": "List Sources",
     "description": "Lists the Sources the project's Motif Sources list holds, with their Context and any reason one cannot be used. Removed Sources are hidden unless asked for.",

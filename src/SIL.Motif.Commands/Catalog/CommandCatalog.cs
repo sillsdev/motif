@@ -260,6 +260,7 @@ public static class CommandCatalog
         // SourceQuery: Motif Sources from the current Baseline and the local file, behind the developer gate
         new CommandDescriptor("source list", typeof(SourceListRequest), typeof(SourceListResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("source show", typeof(SourceShowRequest), typeof(SourceShowResponse), CommandSurface.AdvancedAi, AgentClass.Read),
+        new CommandDescriptor("source passage", typeof(SourcePassageRequest), typeof(SourcePassageResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("source where", typeof(SourceWhereRequest), typeof(SourceWhereResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("current get", typeof(CurrentGetRequest), typeof(CurrentGetResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("source set-folder", typeof(SourceSetFolderRequest), typeof(SourceLocalResponse), CommandSurface.Developer, AgentClass.HumanOnly),

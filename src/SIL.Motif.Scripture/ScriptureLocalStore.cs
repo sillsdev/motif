@@ -108,6 +108,24 @@ public sealed class ScriptureLocalStore
         return Read(projectId).SourcePaths.GetValueOrDefault(sourceId);
     }
 
+    /// <summary>Reads local settings without moving a corrupt file or creating storage.</summary>
+    public ScriptureLocalState ReadExisting(string projectId)
+    {
+        lock (Gate)
+        {
+            try
+            {
+                if (!File.Exists(_path)) return ScriptureLocalState.Empty;
+                var document = JsonSerializer.Deserialize<FileDocument>(File.ReadAllText(_path), JsonOptions);
+                return ToState(Normalize(document?.Projects).GetValueOrDefault(projectId));
+            }
+            catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
+            {
+                return ScriptureLocalState.Empty;
+            }
+        }
+    }
+
     private void Change(string projectId, string sourceId, Action<ProjectRecord> change)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectId);

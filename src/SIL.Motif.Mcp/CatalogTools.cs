@@ -126,10 +126,11 @@ internal static class CatalogTools
     // Pages an agent should get smaller by default than the command's own default.
     private static readonly Dictionary<Type, (int Minimum, int Maximum, int Default)> PageLimits = new()
     {
+        [typeof(SourcePassageRequest)] = (1, 200, 100),
         [typeof(EvidenceExportRequest)] = (1, 500, 50),
     };
 
-    private static AgentTool Create(CommandDescriptor command)
+    internal static AgentTool Create(CommandDescriptor command)
     {
         _ = Handler(command);
         var schema = Schema.Object(command.RequestType.GetProperties().Where(property => !IsContext(property.Name) && !IsInternal(property))

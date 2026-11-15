@@ -1,4 +1,9 @@
 {
+  "source.index-missing": {"why": "Set the Source folder and capture the saved project to queue indexing.", "source": "Hand-written from the Source Passage read contract."},
+  "source.index-stale": {"why": "Capture the saved project and wait for Source indexing to finish.", "source": "Hand-written from the Source Passage read contract."},
+  "source.passage-limit-invalid": {"why": "Choose a page size from 1 to 200.", "source": "Hand-written from the Source Passage read contract."},
+  "source.passage-cursor-invalid": {"why": "Start at the first page for this project, Source and Passage.", "source": "Hand-written from the Source Passage read contract."},
+  "source.generation-changed": {"why": "Start at the first page of the current generation.", "source": "Hand-written from the Source Passage read contract."},
   "baseline.missing": {
     "why": "No Baseline exists for this project, so there is nothing to compare against. Capture one first.",
     "source": "Hand-written from the Motif MCP refusal advice."

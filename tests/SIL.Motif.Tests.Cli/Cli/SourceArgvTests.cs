@@ -11,6 +11,7 @@ using SIL.Motif.Tests.Scripture;
 using SIL.Motif.Tests.Scripture.Fixtures;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -64,6 +65,34 @@ public sealed class SourceArgvTests(PristineProjectFixture pristine) : IDisposab
         Assert.True(text.ExitCode == 0, text.Error);
         Assert.Contains("WEB  World English Bible  [Active]  GEN-ROM; 1CO 13-15", text.Output);
         Assert.DoesNotContain("OLD", text.Output);
+    }
+
+    [Fact]
+    public async Task PassagePagesMatchTheSharedQueryAndRejectInvalidOptions()
+    {
+        var path = ProjectWithBaseline();
+        using var tiny = TinyProject.Create();
+        using (var database = ProjectMotifDatabase.Open(path))
+        {
+            ScriptureLocalStore.ForInstallation().SetSourcePath(ProjectWorkspaceKey.Compute(database.Project), "WEB", tiny.Folder);
+            SIL.Motif.Worker.Sources.SourceIndexRefresh.Run(database);
+        }
+        var cli = await CliProcess.RunAsync(_root, null, true, "source", "passage", "--project", path,
+            "--source", "WEB", "--ref", "MAT 1", "--limit", "1", "--json");
+        Assert.True(cli.ExitCode == 0, cli.Error + cli.Output);
+        var page = ProjectionJson.Deserialize<SourcePassageResponse>(cli.Output)!;
+        Assert.Equal("MAT 1:1#1", Assert.Single(page.Places).Anchor);
+        var next = await CliProcess.RunAsync(_root, null, true, "source", "passage", "--project", path,
+            "--source", "WEB", "--ref", "MAT 1", "--limit", "1", "--cursor", page.NextCursor!, "--json");
+        Assert.True(next.ExitCode == 0, next.Error + next.Output);
+        Assert.Equal("MAT 1:1#2", Assert.Single(ProjectionJson.Deserialize<SourcePassageResponse>(next.Output)!.Places).Anchor);
+        var text = await CliProcess.RunAsync(_root, null, true, "source", "passage", "--project", path,
+            "--source", "WEB", "--ref", "MAT 1", "--limit", "1");
+        Assert.True(text.ExitCode == 0, text.Error + text.Output);
+        Assert.Contains("Approved state: unavailable", text.Output);
+        var invalid = await CliProcess.RunAsync(_root, null, true, "source", "passage", "--project", path,
+            "--source", "WEB", "--ref", "MAT 1", "--unknown", "yes", "--json");
+        Assert.Equal(1, invalid.ExitCode);
     }
 
     [Fact]

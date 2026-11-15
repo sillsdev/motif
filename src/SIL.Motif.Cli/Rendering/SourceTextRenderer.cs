@@ -55,6 +55,16 @@ internal static class SourceTextRenderer
         string.Concat(response.Operations.Select(operation => $"  {operation.OperationId}  {operation.Kind}{Environment.NewLine}")) +
         "Apply them with: motif apply --all-pending, or add --apply to the command." + Environment.NewLine;
 
+    internal static string RenderPassage(SourcePassageResponse response)
+    {
+        var text = new StringBuilder();
+        text.AppendLine($"{response.Source}  {response.Ref}  generation {response.Generation}");
+        text.AppendLine("Approved state: unavailable");
+        foreach (var place in response.Places) text.AppendLine($"{place.Anchor}  {place.Surface}  {place.State}");
+        if (response.NextCursor is not null) text.AppendLine($"Next cursor: {response.NextCursor}");
+        return text.ToString();
+    }
+
     private static string Row(SourceSummary source) =>
         $"{source.Id}  {source.Name}  [{source.Status}]  {Or(source.Context, "no Context")}" +
         (source.Error is null ? "" : $"  ERROR: {source.Error}");

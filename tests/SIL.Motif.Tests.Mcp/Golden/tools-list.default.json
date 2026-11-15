@@ -257,6 +257,46 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_source_passage",
+    "description": "Read a Source Passage. Reads a bounded page of word places from a published Paratext Source index. Missing or stale indexes require a refresh; reads never rebuild them and approved state is unavailable.\nCommand: source passage. Agent class: Read.\nSource: The Source id, matched ignoring case.\nRef: The Passage locator, such as MAT 5.\nLimit: The number of places, from 1 to 200; defaults to 100.\nCursor: The opaque continuation for this Source, Passage and generation.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "ref": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 100
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "source",
+        "ref",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_current",
     "description": "Read the Current chapters. Reads the Current chapter of each Source from this machine\u0027s local file. An empty answer is normal.\nCommand: current get. Agent class: Read.\nsource: One Source id; null reads every Source that has a Current chapter.",
     "inputSchema": {

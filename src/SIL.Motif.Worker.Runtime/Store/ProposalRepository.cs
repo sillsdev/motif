@@ -1089,6 +1089,7 @@ public sealed class ProposalRepository : IProposalRepository
                 "THEN (SELECT ReceiptId FROM Receipts WHERE ProposalId = $id) ELSE 'multiple' END WHERE Id = 1;";
             progress.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
             progress.ExecuteNonQuery();
+            SIL.Motif.Host.Sources.SourceIndexRepository.MarkAllPending(connection, transaction);
         }
         using var command = connection.CreateCommand();
         command.Transaction = transaction;

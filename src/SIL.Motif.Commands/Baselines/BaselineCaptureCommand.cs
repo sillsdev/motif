@@ -88,9 +88,12 @@ public static class BaselineCaptureCommand
                 string semanticDigest;
                 ProjectSummarySnapshot projectSummary;
                 TextWordsProjection textWordsProjection;
+                IReadOnlyList<SIL.Motif.Scripture.SourceListEntry> sources = [];
                 try
                 {
                     using var cache = new FwDataProjectLoader().LoadScratchCache(copy.FwDataPath);
+                    try { sources = SIL.Motif.Scripture.SourceList.Read(cache); }
+                    catch (SIL.Motif.Scripture.SourceListAmbiguousException) { }
                     projectIdentity = cache.LangProject.Guid.ToString("D");
                     semanticDigest = BaselineSemanticDigest.Compute(cache, CancellationToken.None);
                     projectSummary = ProjectSummaryReader.Read(cache);
@@ -148,6 +151,7 @@ public static class BaselineCaptureCommand
                         "baseline.busy", FailureReason.Busy, ex.Message, facts));
                 }
 
+                if (sources.Count > 0) SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
                 var registrationFailure = RecordKnownProject(managedRoot, project);
 
                 var held = File.Exists(project.FullFwDataPath + ".lock");

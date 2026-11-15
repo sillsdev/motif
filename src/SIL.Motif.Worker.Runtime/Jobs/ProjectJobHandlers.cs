@@ -89,6 +89,7 @@ public static class ProjectJobHandlers
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(invoker);
         ArgumentNullException.ThrowIfNull(lanes);
+        _ = SIL.Motif.Worker.Sources.SourceIndexRefresh.Reconcile(database);
         var publish = new BaselineRefresh(baselines, options.Root);
         var refresh = new BaselineRefreshJobHandler(
             new BaselineRefreshBarrier(publish.LoadProject),
@@ -113,6 +114,8 @@ public static class ProjectJobHandlers
 
         var handlers = new Dictionary<string, JobRunnerLoop.Handler>(StringComparer.Ordinal)
         {
+            [SIL.Motif.Worker.Sources.SourceIndexRefresh.JobKind] = (_, token) =>
+                Task.FromResult<JobOutcome?>(SIL.Motif.Worker.Sources.SourceIndexRefresh.Run(database, token)),
             [BaselineRefreshKind] = WithBaselineBundlePrebuildAfter((_, token) => refresh.RunAsync(project, token),
                 enqueuePrebuild),
             [DryRunKind] = WithBaselineBundlePrebuild((job, token) => dryRun.RunAsync(job, project, token),

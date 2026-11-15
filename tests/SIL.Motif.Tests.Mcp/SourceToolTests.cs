@@ -12,6 +12,7 @@ using SIL.Motif.Tests.Scripture.Fixtures;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Projects;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Mcp;
@@ -71,7 +72,7 @@ public sealed class SourceToolTests(PristineProjectFixture pristine) : IDisposab
 
         // The reads, the four non-composer ones aside, and the five composers that only work in a named Draft.
         Assert.Equal(["motif_add_source", "motif_current", "motif_set_source_context", "motif_set_source_name",
-            "motif_set_source_status", "motif_set_source_versification", "motif_sources"], names.Where(name =>
+            "motif_set_source_status", "motif_set_source_versification", "motif_source_passage", "motif_sources"], names.Where(name =>
                 !name.Contains("validated", StringComparison.Ordinal)).ToArray());
         Assert.All(ProposalCommands.ComposerDescriptors.Where(composer => SourceAiGuard.IsSourceVerb(composer.Verb)), composer =>
         {
@@ -161,6 +162,43 @@ public sealed class SourceToolTests(PristineProjectFixture pristine) : IDisposab
         var set = await current.Run(context, Args(current, new JsonObject { ["source"] = "WEB" }), default);
         Assert.Equal("MAT 5", set.Value!["current"]![0]!["chapter"]!.GetValue<string>());
         Assert.Equal("WEB", set.Value["current"]![0]!["source"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task PassageIsACataloguedReadWithBoundedMachinePlacesAndGenerationCursor()
+    {
+        var tool = Tool("motif_source_passage");
+        Assert.True(tool.ReadOnly);
+        Assert.True(tool.Idempotent);
+        Assert.Equal(100, tool.InputSchema["properties"]!["limit"]!["default"]!.GetValue<int>());
+        Assert.Equal(200, tool.InputSchema["properties"]!["limit"]!["maximum"]!.GetValue<int>());
+        Assert.Contains(MotifMcpServer.Expose(ToolProfile.Builtin), exposed => exposed.Name == tool.Name);
+        var path = ProjectWithSources();
+        using var tiny = TinyProject.Create();
+        using (var database = ProjectMotifDatabase.Open(path))
+        {
+            ScriptureLocalStore.ForInstallation().SetSourcePath(ProjectWorkspaceKey.Compute(database.Project), "WEB", tiny.Folder);
+            SIL.Motif.Worker.Sources.SourceIndexRefresh.Run(database);
+        }
+        var first = await tool.Run(Context(path), Args(tool, new JsonObject { ["source"] = "WEB", ["ref"] = "MAT 1", ["limit"] = 1 }), default);
+        Assert.Null(first.Refusal);
+        Assert.Equal("MAT 1:1#1", first.Value!["places"]![0]!["anchor"]!.GetValue<string>());
+        Assert.Equal("unavailable", first.Value["approvedState"]!.GetValue<string>());
+        var next = await tool.Run(Context(path), Args(tool, new JsonObject { ["source"] = "WEB", ["ref"] = "MAT 1",
+            ["cursor"] = first.Value["nextCursor"]!.GetValue<string>(), ["limit"] = 1 }), default);
+        Assert.Equal("MAT 1:1#2", next.Value!["places"]![0]!["anchor"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task PassageRefusalDoesNotCreateAMissingStore()
+    {
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "absent.fwdata");
+        File.WriteAllText(path, "saved-file-placeholder");
+        var tool = Tool("motif_source_passage");
+        var outcome = await tool.Run(Context(path), Args(tool, new JsonObject { ["source"] = "WEB", ["ref"] = "MAT 1" }), default);
+        Assert.Equal(RefusalCodes.SourceIndexMissing, outcome.Refusal?.Code);
+        Assert.Equal([path], Directory.GetFiles(_root));
     }
 
     private static string[] Ids(ToolOutcome outcome) =>

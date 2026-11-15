@@ -118,6 +118,7 @@ public static class CommandTextRenderer
             GdrListResponse r => RenderGdrList(r),
             GdrShowResponse r => RenderGdrShow(r),
             GdrCheckResponse r => RenderGdrCheck(r),
+            SourcePassageResponse r => SourceTextRenderer.RenderPassage(r),
             SourceListResponse r => SourceTextRenderer.RenderList(r),
             SourceShowResponse r => SourceTextRenderer.RenderShow(r),
             SourceWhereResponse r => SourceTextRenderer.RenderWhere(r),

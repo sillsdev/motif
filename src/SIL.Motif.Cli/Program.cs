@@ -198,8 +198,10 @@ try
         var staged = stage();
         if (!staged.Succeeded) return RenderCommand(staged);
         var request = new ApplyPendingRequest(projectPath, DraftId: null, Revision: null, Attribution: attribution);
-        return RunWithConsoleCancellation(cancellationToken => RenderProposal(
+        var applied = RunWithConsoleCancellation(cancellationToken => RenderProposal(
             PendingChangesWorkflow.Apply(request, cancellationToken)));
+        if (applied.ExitCode == 0) startRunner(projectPath, error.WriteLine);
+        return applied;
     }
 
     var hasCitationFlag = flags.ContainsKey("cite-source") || flags.ContainsKey("cite-locator");
@@ -1042,6 +1044,7 @@ try
                     Attribution: applyAttribution);
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
                     PendingChangesWorkflow.Apply(pendingRequest, cancellationToken)));
+                if (result.ExitCode == 0) startRunner(pendingApplyProject, error.WriteLine);
                 break;
             }
             if (flags.ContainsKey("proposal"))
@@ -1054,6 +1057,7 @@ try
                     flags.GetValueOrDefault("revision"), applyAttribution);
                 result = RunWithConsoleCancellation(cancellationToken => RenderProposal(
                     PendingChangesWorkflow.Apply(proposalRequest, cancellationToken)));
+                if (result.ExitCode == 0) startRunner(proposalApplyProject, error.WriteLine);
                 break;
             }
             if (positionals.Count != 1 ||
@@ -1069,6 +1073,7 @@ try
                 PendingChangesWorkflow.Apply(
                     new ApplyRequest(applyProject, CliProductVersion(), positionals[0], applyForce,
                         applyAttribution)));
+            if (result.ExitCode == 0) startRunner(applyProject, error.WriteLine);
             break;
 
         case "log":
@@ -1598,10 +1603,12 @@ try
                         string.IsNullOrWhiteSpace(captureProject))
                         return Usage(BaselineUsage(), asJson);
                     result = RenderCommand(CaptureBaseline(captureProject, ResolveRoot()));
-                    // The prebuild builds while the owner composes and reads; a runner is woken only if one was queued.
-                    if (result.ExitCode == 0 && BaselineBundlePrebuild.QueueAfterCapture(
-                            captureProject, JobRunnerLaunchOptions.FromEnvironment().ParserPath))
+                    if (result.ExitCode == 0)
+                    {
+                        _ = BaselineBundlePrebuild.QueueAfterCapture(
+                            captureProject, JobRunnerLaunchOptions.FromEnvironment().ParserPath);
                         startRunner(captureProject, error.WriteLine);
+                    }
                     break;
 
                 default:
@@ -1842,15 +1849,26 @@ try
                 case "show" when positionals.Count == 2:
                     result = RenderCommand(SourceQuery.Show(new SourceShowRequest(sourceProject, positionals[1])));
                     break;
+                case "passage" when positionals.Count == 1 && flags.TryGetValue("source", out var passageSource) &&
+                    flags.TryGetValue("ref", out var passageRef):
+                    if (flags.Keys.Any(key => key is not ("project" or "source" or "ref" or "limit" or "cursor" or "json")) ||
+                        flags.TryGetValue("limit", out var passageLimitText) && !int.TryParse(passageLimitText, out _))
+                        return Usage(UsageLineFor("source passage"), asJson);
+                    result = RenderCommand(SourcePassageQuery.Query(new SourcePassageRequest(sourceProject, passageSource,
+                        passageRef, flags.TryGetValue("limit", out var passageLimit) ? int.Parse(passageLimit) : 100,
+                        flags.GetValueOrDefault("cursor"))));
+                    break;
                 case "where" when positionals.Count == 2:
                     result = RenderCommand(SourceQuery.Where(new SourceWhereRequest(
                         sourceProject, positionals[1], flags.GetValueOrDefault("source"))));
                     break;
                 case "set-folder" when positionals.Count == 3:
                     result = RenderCommand(SourceLocalCommand.SetFolder(new SourceSetFolderRequest(sourceProject, positionals[1], positionals[2])));
+                    if (result.ExitCode == 0) startRunner(sourceProject, error.WriteLine);
                     break;
                 case "clear-folder" when positionals.Count == 2:
                     result = RenderCommand(SourceLocalCommand.ClearFolder(new SourceClearFolderRequest(sourceProject, positionals[1])));
+                    if (result.ExitCode == 0) startRunner(sourceProject, error.WriteLine);
                     break;
                 case "add" when positionals.Count == 2 && flags.ContainsKey("name") && flags.ContainsKey("versification") && flags.ContainsKey("context"):
                     result = StageSource(sourceProject, () => ProposalCommands.StageSourceAdd(new SourceAddRequest(
@@ -1880,7 +1898,7 @@ try
                 default:
                     return Usage(string.Join(" OR ", new[]
                     {
-                        "source list", "source show", "source where", "source set-folder", "source clear-folder", "source add",
+                        "source list", "source show", "source passage", "source where", "source set-folder", "source clear-folder", "source add",
                         "source set-name", "source set-context", "source set-versification", "source remove", "source restore",
                     }.Select(UsageLineFor)), asJson);
             }

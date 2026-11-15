@@ -2608,6 +2608,19 @@
     },
     {
       "kind": "command",
+      "code": "source passage",
+      "slug": "source-passage",
+      "title": "Read a Source Passage",
+      "description": "Reads a bounded page of word places from a published Paratext Source index. Missing or stale indexes require a refresh; reads never rebuild them and approved state is unavailable.",
+      "helpPage": "Read one chapter of a Paratext Source as ordered word places. Each place includes its stable verse anchor, spelling, writing system, wordform key and any indexed reading. Approved state is unavailable.\n\nUse \u0060source passage --project \u003Cfwdata\u003E --source \u003Cid\u003E --ref \u0022MAT 5\u0022\u0060. Pages contain 100 places by default, at most 200. Pass the returned opaque cursor unchanged to continue within the same Source, Passage and generation. If the generation changes, start again at the first page.\n\nThis read uses an existing index and never rebuilds it. Set the Source folder and capture the saved project to queue a refresh when the index is missing or stale.\n",
+      "usage": [
+        "Usage: motif source passage --project \u003Cfwdata\u003E --source \u003Cid\u003E --ref \u003Cchapter\u003E [--limit 100] [--cursor \u003Copaque\u003E] [--json]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/source-passage/"
+    },
+    {
+      "kind": "command",
       "code": "source show",
       "slug": "source-show",
       "title": "Show one Source",

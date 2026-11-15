@@ -6,9 +6,8 @@ using SIL.Motif.Contract.Responses;
 namespace SIL.Motif.Mcp;
 
 /// <summary>
-/// The two read tools for Motif Sources. Each serves several catalogued requests, so both are written by hand;
-/// their descriptions come from Help and their argument text from the request docs. There is no tool that writes a
-/// Source, Current or a Source's folder: an AI edit of a Source is a composer step in a named Draft.
+/// The Source and Current reads, with descriptions from Help and field text from request documentation.
+/// AI edits of a Source are composer steps in a named Draft.
 /// </summary>
 internal static class SourceTools
 {
@@ -31,6 +30,8 @@ internal static class SourceTools
             true, true, false, true,
             (c, a, ct) => Task.FromResult(Sources(c.ProjectPath, a.Optional("id"), a.Optional("ref"), a.Flag("all"))))
         { Requests = [typeof(SourceListRequest), typeof(SourceShowRequest), typeof(SourceWhereRequest)], FieldNames = SourcesFields },
+
+        CatalogTools.Create(SIL.Motif.Commands.Catalog.CommandCatalog.All.Single(command => command.RequestType == typeof(SourcePassageRequest))),
 
         new("motif_current", string.Empty, SIL.Motif.Commands.Catalog.AgentClass.Read,
             Schema.Object(("source", Schema.String("One Source id. Omit for the Current chapter of every Source."), false)),

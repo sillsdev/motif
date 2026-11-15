@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 72;
+    public const int CurrentSchema = 73;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -30,7 +30,7 @@ public static class MotifSchema
         using (var command = connection.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
+            command.CommandText = SourceIndexDdl + MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
                 BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + ProgressDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
@@ -71,6 +71,7 @@ public static class MotifSchema
             "PhonologyExampleSets", "PhonologyExampleSetRevisions", "PhonologyExamples",
             "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
             "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests",
+            "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
             "query_snapshot", "query_forms", "query_stems"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
@@ -258,6 +259,9 @@ public static class MotifSchema
         }
         var requiredInvariants = table switch
         {
+            "SourceIndexState" or "SourceWordforms" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL" },
+            "SourcePassages" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL", "CHECK (TotalPlaces >= 0 AND EligiblePlaces BETWEEN 0 AND TotalPlaces)" },
+            "SourceWordPlaces" => new[] { "SourceId TEXT COLLATE NOCASE NOT NULL", "CHECK (Ordinal >= 0)", "UNIQUE (SourceId, PassageId, Anchor)" },
             "PhonologyAssessmentBindings" => new[] { "UNIQUE (AssessmentId, RevisionId)" },
             "PhonologyAssessmentRows" => new[] { "CHECK (Ordinal >= 0)", "PRIMARY KEY (AssessmentId, Ordinal)",
                 "UNIQUE (AssessmentId, ExampleId)", "FOREIGN KEY (AssessmentId, RevisionId)",
@@ -437,6 +441,8 @@ public static class MotifSchema
 
     private static IReadOnlyList<ForeignKeyShape> ForeignKeysFor(string table) => table switch
     {
+        "SourceWordPlaces" => [new("SourceWordforms", "SourceId", "SourceId", "NO ACTION", "NO ACTION", "NONE"), new("SourceWordforms", "WordformKey", "WordformKey", "NO ACTION", "NO ACTION", "NONE"),
+            new("SourcePassages", "SourceId", "SourceId", "NO ACTION", "NO ACTION", "NONE"), new("SourcePassages", "PassageId", "PassageId", "NO ACTION", "NO ACTION", "NONE")],
         "BeforeAssessmentBinding" => [new("Assessments", "AssessmentId", "AssessmentId", "NO ACTION", "NO ACTION", "NONE")],
         "CorpusDocuments" => [new("Corpora", "CorpusId", "CorpusId", "NO ACTION", "NO ACTION", "NONE")],
         "PhonologyAssessmentBindings" => [new("PhonologyExampleSetRevisions", "RevisionId", "RevisionId", "NO ACTION", "NO ACTION", "NONE"),
@@ -499,6 +505,11 @@ public static class MotifSchema
 
     private static IReadOnlyList<ColumnShape> ColumnsFor(string table) => table switch
     {
+        "SourceIndexState" => [C("SourceId", "TEXT", true, 1), C("Kind", "TEXT", true), C("Generation", "TEXT", true), C("SourceDigest", "TEXT", true), C("IdentityJson", "TEXT", true), C("Status", "TEXT", true), C("TokenizerVersion", "TEXT", true), C("AnchorVersion", "TEXT", true)],
+        "SourcePassages" => [C("SourceId", "TEXT", true, 1), C("PassageId", "TEXT", true, 2), C("Locator", "TEXT", true), C("ContentHash", "TEXT", true), C("TotalPlaces", "INTEGER", true), C("EligiblePlaces", "INTEGER", true)],
+        "SourceWordforms" => [C("SourceId", "TEXT", true, 1), C("WordformKey", "TEXT", true, 2), C("WritingSystem", "TEXT", true), C("Normalized", "TEXT", true), C("Display", "TEXT", true), C("FieldWorksId", "TEXT", false)],
+        "SourceWordPlaces" => [C("SourceId", "TEXT", true, 1), C("PassageId", "TEXT", true, 2), C("Ordinal", "INTEGER", true, 3), C("Anchor", "TEXT", true), C("Verse", "TEXT", true), C("Surface", "TEXT", true), C("WordformKey", "TEXT", true), C("ReadingKey", "TEXT", false), C("Signature", "TEXT", false), C("State", "TEXT", true)],
+
         "query_snapshot" => [C("Id", "INTEGER", false, 1), C("TrialId", "TEXT", true),
             C("GrammarHash", "TEXT", true), C("BundleId", "TEXT", true), C("WritingSystem", "TEXT", true),
             C("GraphemesJson", "TEXT", true), C("UnresolvedVariants", "INTEGER", true), C("SourceWriteTicks", "INTEGER", true),
@@ -763,6 +774,56 @@ public static class MotifSchema
         string OnUpdate,
         string OnDelete,
         string Match);
+
+    internal const string SourceIndexDdl = """
+        CREATE TABLE SourceIndexState (
+            SourceId TEXT COLLATE NOCASE NOT NULL,
+            Kind TEXT NOT NULL,
+            Generation TEXT NOT NULL,
+            SourceDigest TEXT NOT NULL,
+            IdentityJson TEXT NOT NULL,
+            Status TEXT NOT NULL,
+            TokenizerVersion TEXT NOT NULL,
+            AnchorVersion TEXT NOT NULL,
+            PRIMARY KEY (SourceId)
+        );
+        CREATE TABLE SourcePassages (
+            SourceId TEXT COLLATE NOCASE NOT NULL,
+            PassageId TEXT NOT NULL,
+            Locator TEXT NOT NULL,
+            ContentHash TEXT NOT NULL,
+            TotalPlaces INTEGER NOT NULL,
+            EligiblePlaces INTEGER NOT NULL,
+            PRIMARY KEY (SourceId, PassageId),
+            CHECK (TotalPlaces >= 0 AND EligiblePlaces BETWEEN 0 AND TotalPlaces)
+        );
+        CREATE TABLE SourceWordforms (
+            SourceId TEXT COLLATE NOCASE NOT NULL,
+            WordformKey TEXT NOT NULL,
+            WritingSystem TEXT NOT NULL,
+            Normalized TEXT NOT NULL,
+            Display TEXT NOT NULL,
+            FieldWorksId TEXT,
+            PRIMARY KEY (SourceId, WordformKey)
+        );
+        CREATE TABLE SourceWordPlaces (
+            SourceId TEXT COLLATE NOCASE NOT NULL,
+            PassageId TEXT NOT NULL,
+            Ordinal INTEGER NOT NULL,
+            Anchor TEXT NOT NULL,
+            Verse TEXT NOT NULL,
+            Surface TEXT NOT NULL,
+            WordformKey TEXT NOT NULL,
+            ReadingKey TEXT,
+            Signature TEXT,
+            State TEXT NOT NULL,
+            PRIMARY KEY (SourceId, PassageId, Ordinal),
+            CHECK (Ordinal >= 0),
+            UNIQUE (SourceId, PassageId, Anchor),
+            FOREIGN KEY (SourceId, PassageId) REFERENCES SourcePassages (SourceId, PassageId),
+            FOREIGN KEY (SourceId, WordformKey) REFERENCES SourceWordforms (SourceId, WordformKey)
+        );
+        """;
 
     private const string ParserRefusalDdl = """
         CREATE TABLE ParserRefusals (
