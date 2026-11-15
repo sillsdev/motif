@@ -28,9 +28,8 @@
   known Avalonia fault says so in its name; when it starts failing, remove the workaround, not the test.
   - Avalonia tests that create controls run inside `Headless.Run`.
   - No wall-clock assertions. Assert counted work (counters such as `RecordWork.Steps`, `TextReads`).
-  - Pandoc tests skip silently when `pandoc` is not on `PATH`, unless `CI=true` (or `GITHUB_ACTIONS`) is set; then they fail. Set `CI=true` locally
-    to be sure they ran (`CI=1` does nothing).
-  - `tests/AotCheck` needs `vswhere` on `PATH` (issue #164), and `-p:NuGetAudit=false` locally while issue #104 is open.
+  - Pandoc tests report how to install the pinned Pandoc 3.9.0.2 when it is missing; in CI (`CI=true` or `GITHUB_ACTIONS`) they fail instead. Set `CI=true` locally to be sure they ran (`CI=1` does nothing).
+  - Publish `tests/AotCheck` locally with `pwsh ./tools/Publish-AotCheck.ps1 -p:NuGetAudit=false` while issue #104 is open; the script forwards extra arguments to `dotnet publish` and adds the Visual Studio Installer folder to `PATH` on Windows when `vswhere` is missing.
 - **Local liblcm or libpalaso.** Use Motif's `LOCAL_NUGET_REPO` mechanism (Motif's `AGENTS.md` and `tools/Manage-LocalLibraries.ps1`): it
   points `SilVersions.props` at stamped versions in a local folder, and `Directory.Build.props` here adds that folder as a restore source
   (ADR 0034). The refusal sweep tests are expected to fail against a fixed liblcm.
