@@ -65,7 +65,7 @@ public sealed class BaselineRefresh
 
         // Read before publishing, so a failure here cannot leave a published bundle that nothing records.
         var summary = ProjectSummaryReader.Read(savedCache);
-        var textWords = TextWordsProjectionBuilder.Build(savedCache, cancellationToken);
+        var textWords = TextWordsProjectionBuilder.Build(savedCache, cancellationToken, includeCoverage: true);
         var staging = Path.Combine(_root, "captures");
         Directory.CreateDirectory(staging);
         var bundlePath = Path.Combine(staging, Guid.NewGuid().ToString("N") + ".zip");

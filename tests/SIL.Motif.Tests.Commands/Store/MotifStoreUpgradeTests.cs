@@ -56,6 +56,20 @@ public sealed class MotifStoreUpgradeTests : IDisposable
     }
 
     [Fact]
+    public void Schema71UpgradeCreatesEmptyProgressProjection()
+    {
+        CreateCurrentSchemaAsOld();
+        using (var old = Connect(Source))
+            Execute(old, "PRAGMA user_version = 71; DROP TABLE ProgressTexts; DROP TABLE ProgressState;");
+        var output = Path.Combine(_root, "copy.db");
+        var report = MotifStoreUpgrade.Copy(Source, output);
+        using var copy = Connect(output);
+        Assert.Equal(71, report.SourceSchema);
+        Assert.Equal(0, Count(copy, "ProgressState"));
+        Assert.Equal(0, Count(copy, "ProgressTexts"));
+    }
+
+    [Fact]
     public void Schema64UpgradeKeepsAuthoredHistoryAndDropsComputedEvidence()
     {
         CreateCurrentSchemaAsOld();

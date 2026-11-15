@@ -1,0 +1,63 @@
+{
+  "revision": "progress/0123456789abcdef0123456789abcdef",
+  "scopeDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "coverage": {
+    "anchorPolicy": "fieldworks-segments-v1",
+    "eligibilityPolicy": "ws-valid-characters-v1",
+    "typePolicy": "least-complete-place-v1",
+    "complete": false,
+    "excludedPlaces": 1,
+    "reasons": {
+      "digit-only": 1
+    }
+  },
+  "freshness": {
+    "content": "content/a",
+    "judgements": "judgement/a",
+    "judgementsCurrent": true,
+    "parserTrial": null,
+    "parserBundle": null,
+    "parserIsStale": null
+  },
+  "checked": null,
+  "limitations": [
+    "checked-unavailable",
+    "changed-since-unavailable",
+    "parser-evidence-unavailable"
+  ],
+  "changedSince": {
+    "sinceRevision": null,
+    "complete": false,
+    "passages": null,
+    "events": null
+  },
+  "schemaVersion": 1,
+  "groups": [],
+  "totals": {
+    "passages": 1,
+    "tokens": {
+      "total": 3,
+      "approved": 1,
+      "misspelled": 1,
+      "unmeasured": 1,
+      "reasons": {
+        "fieldworks-candidate-unclassified": 1
+      },
+      "parserGuess": null,
+      "noAnalysis": null
+    },
+    "types": {
+      "total": 3,
+      "approved": 1,
+      "misspelled": 1,
+      "unmeasured": 1,
+      "reasons": {
+        "fieldworks-candidate-unclassified": 1
+      },
+      "parserGuess": null,
+      "noAnalysis": null
+    }
+  },
+  "rows": [],
+  "nextCursor": null
+}

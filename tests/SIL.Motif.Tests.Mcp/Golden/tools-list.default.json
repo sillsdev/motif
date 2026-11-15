@@ -281,6 +281,74 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_progress",
+    "description": "Read Text Progress. Counts approved and misspelled places in saved Texts and reports the remainder as unmeasured. Read a summary or page through individual Texts.\nCommand: progress. Agent class: Read.\nScope: The Text population to count.\nDetail: Either summary or passages.\nLimit: Maximum Passage rows per page, from 1 to 200.\nCursor: A continuation from the same scope and Progress revision.\nSinceRevision: An optional checkpoint; changed-since evidence is currently unavailable.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": "The population kind.",
+              "enum": [
+                "texts"
+              ]
+            },
+            "texts": {
+              "type": "array",
+              "maxItems": 200,
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "description": "Text GUIDs; omit or leave empty to select every Text."
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "detail": {
+          "type": "string",
+          "description": "Return the summary or a page of Texts.",
+          "enum": [
+            "summary",
+            "passages"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum Text rows in a page; default 50.",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "cursor": {
+          "type": "string",
+          "description": "Continuation from the same Progress revision and scope."
+        },
+        "sinceRevision": {
+          "type": "string",
+          "description": "Optional changed-reading checkpoint."
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "scope",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_start_proposal",
     "description": "Start a Proposal. Research first: motif_guide topic workflow; check best practice. Start one small Proposal per grammar question, then try it before anything else (guide workflow). Starts a named Draft holding one related set of semantic changes. Set a short label and a Rationale before Finalize, then measure and revise the Draft. Only a person can Apply.\nCommand: new. Agent class: Draft.\nDraftName: The name of the Draft being authored.\nLabel: The short description a person reads while reviewing the Proposal.\nRequestId: The id of the open Request this Proposal answers, from list requests; leave out when it answers none. A Request is answered when the Proposal is finalized.",
     "inputSchema": {

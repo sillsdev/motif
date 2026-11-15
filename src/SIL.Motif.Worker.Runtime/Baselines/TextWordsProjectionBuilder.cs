@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -18,12 +19,14 @@ namespace SIL.Motif.Worker.Baselines;
 /// <summary>Builds the complete ordered Text words projection from one saved Baseline cache.</summary>
 public static class TextWordsProjectionBuilder
 {
+    internal static readonly AsyncLocal<Action?> BeforeOccurrenceRead = new();
+
     /// <summary>
     /// Reads selected Text lines, occurrences, analyses and FieldWorks link targets from a saved cache, checking
     /// <paramref name="cancellationToken"/> before each selected Text. A null id set selects all Texts.
     /// </summary>
     public static TextWordsProjection Build(LcmCache cache, CancellationToken cancellationToken,
-        IReadOnlySet<Guid>? textIds = null)
+        IReadOnlySet<Guid>? textIds = null, bool includeCoverage = false)
     {
         ArgumentNullException.ThrowIfNull(cache);
         var wordforms = new Dictionary<Guid, TextWordsProjectedWordform>();
@@ -35,7 +38,7 @@ public static class TextWordsProjectionBuilder
         {
             if (textIds is not null && !textIds.Contains(text.Guid)) continue;
             cancellationToken.ThrowIfCancellationRequested();
-            texts.Add(ReadText(cache, text, wordforms, formsByWordform));
+            texts.Add(ReadText(cache, text, wordforms, formsByWordform, includeCoverage));
         }
         return new TextWordsProjection(texts, wordforms.Values
             .OrderBy(wordform => wordform.WordformId.ToString("D"), StringComparer.Ordinal).ToArray());
@@ -43,7 +46,7 @@ public static class TextWordsProjectionBuilder
 
     private static TextWordsProjectedText ReadText(
         LcmCache cache, IText text, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
-        Dictionary<Guid, WritingSystemText[]> formsByWordform)
+        Dictionary<Guid, WritingSystemText[]> formsByWordform, bool includeCoverage)
     {
         var lines = new List<TextWordsProjectedLine>();
         var analyses = new Dictionary<string, TextWordsProjectedAnalysis>(StringComparer.Ordinal);
@@ -51,13 +54,14 @@ public static class TextWordsProjectionBuilder
         foreach (var paragraph in text.ContentsOA?.ParagraphsOS.OfType<IStTxtPara>() ?? Enumerable.Empty<IStTxtPara>())
         {
             var style = paragraph.StyleRules?.GetStrPropValue((int)FwTextPropType.ktptNamedStyle);
+            BeforeOccurrenceRead.Value?.Invoke();
             var occurrencesBySegment = SegmentServices.GetAnalysisOccurrences(paragraph).ToLookup(o => o.Segment);
             foreach (var segment in paragraph.SegmentsOS)
             {
                 lineNumber++;
                 var sentence = segment.BaselineText?.Text ?? string.Empty;
                 var tokens = occurrencesBySegment[segment]
-                    .Select(occurrence => ReadToken(cache, occurrence, wordforms, analyses, formsByWordform)).ToArray();
+                    .Select(occurrence => ReadToken(cache, occurrence, wordforms, analyses, formsByWordform, includeCoverage)).ToArray();
                 lines.Add(new TextWordsProjectedLine(lineNumber, sentence, tokens, paragraph.Guid,
                     segment.Guid, paragraph.ParseIsCurrent)
                 {
@@ -75,7 +79,8 @@ public static class TextWordsProjectionBuilder
 
     private static TextWordsProjectedToken ReadToken(
         LcmCache cache, AnalysisOccurrence occurrence, Dictionary<Guid, TextWordsProjectedWordform> wordforms,
-        Dictionary<string, TextWordsProjectedAnalysis> analyses, Dictionary<Guid, WritingSystemText[]> formsByWordform)
+        Dictionary<string, TextWordsProjectedAnalysis> analyses, Dictionary<Guid, WritingSystemText[]> formsByWordform,
+        bool includeCoverage)
     {
         var analysis = occurrence.Analysis;
         if (analysis is IPunctuationForm punctuation)
@@ -93,7 +98,7 @@ public static class TextWordsProjectionBuilder
 
         if (!wordforms.TryGetValue(wordform.Guid, out var projectedWordform))
         {
-            projectedWordform = ReadWordform(cache, wordform);
+            projectedWordform = ReadWordform(cache, wordform, includeCoverage);
             wordforms.Add(wordform.Guid, projectedWordform);
         }
         if (!formsByWordform.TryGetValue(wordform.Guid, out var forms))
@@ -126,17 +131,44 @@ public static class TextWordsProjectionBuilder
     }
 
     /// <summary>Captures all analyses and opinions of a wordform, including one absent from every Text.</summary>
-    public static TextWordsProjectedWordform ReadWordform(LcmCache cache, IWfiWordform wordform)
+    public static TextWordsProjectedWordform ReadWordform(LcmCache cache, IWfiWordform wordform, bool includeCoverage = false)
     {
         var humanApproved = wordform.HumanApprovedAnalyses.ToList();
         var humanDisapproved = wordform.HumanDisapprovedParses.ToList();
         var analyses = wordform.AnalysesOC.Select(analysis =>
             BuildProjectAnalysis(cache, wordform, analysis, OpinionOf(humanApproved, humanDisapproved, analysis))).ToArray();
+        var coverage = includeCoverage ? CoverageIdentity(cache, wordform)
+            : (Spelling: (string?)null, WritingSystem: (string?)null, Exclusion: (string?)null);
         return new TextWordsProjectedWordform(wordform.Guid,
             analyses.Where(analysis => analysis.Opinion == "approved").ToArray(),
             analyses.Where(analysis => analysis.Opinion == "disapproved").ToArray(),
             analyses.Count(analysis => analysis.Opinion == "unknown"),
-            wordform.SpellingStatus == IncorrectSpellingStatus, analyses);
+            wordform.SpellingStatus == IncorrectSpellingStatus, analyses)
+        {
+            CoverageSpelling = coverage.Spelling,
+            CoverageWritingSystem = coverage.WritingSystem,
+            CoverageExclusion = coverage.Exclusion,
+        };
+    }
+
+    private static (string? Spelling, string? WritingSystem, string? Exclusion) CoverageIdentity(
+        LcmCache cache, IWfiWordform wordform)
+    {
+        var sawVernacular = false;
+        var available = wordform.Form.AvailableWritingSystemIds.ToHashSet();
+        foreach (var ws in cache.ServiceLocator.WritingSystems.VernacularWritingSystems)
+        {
+            if (!available.Contains(ws.Handle)) continue;
+            var text = wordform.Form.get_String(ws.Handle)?.Text?.Trim();
+            if (string.IsNullOrEmpty(text)) continue;
+            sawVernacular = true;
+            if (text.All(char.IsDigit)) continue;
+            if (!text.EnumerateRunes().Any(rune => ws.get_IsWordForming(rune.Value)))
+                return (null, null, "not-a-word");
+            return (text.Normalize(System.Text.NormalizationForm.FormD),
+                cache.WritingSystemFactory.GetStrFromWs(ws.Handle), null);
+        }
+        return (null, null, sawVernacular ? "digit-only" : "other-writing-system");
     }
 
     private static TextWordsProjectedAnalysis BuildProjectAnalysis(

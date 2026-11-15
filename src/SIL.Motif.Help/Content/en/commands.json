@@ -4,6 +4,11 @@
     "description": "Reads one Grammar Design Record from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs; available in Advanced AI mode.",
     "source": "Hand-written from the GDR read command and shared Markdown view."
   },
+  "progress": {
+    "title": "Read Text Progress",
+    "description": "Counts approved and misspelled places in saved Texts and reports the remainder as unmeasured. Read a summary or page through individual Texts.",
+    "source": "Hand-written from the Text Progress counting contract."
+  },
   "open": {
     "title": "Open a project",
     "description": "Reads the saved FieldWorks language project and reports its identity and key counts. Use it to confirm a project path before measuring it.",

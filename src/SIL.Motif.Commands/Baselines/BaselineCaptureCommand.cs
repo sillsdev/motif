@@ -93,7 +93,7 @@ public static class BaselineCaptureCommand
                     projectSummary = ProjectSummaryReader.Read(cache);
                     try
                     {
-                        textWordsProjection = TextWordsProjectionBuilder.Build(cache, CancellationToken.None);
+                        textWordsProjection = TextWordsProjectionBuilder.Build(cache, CancellationToken.None, includeCoverage: true);
                     }
                     catch (Exception ex) when (ex is not (OperationCanceledException or ProjectWritingSystemsUnavailableException))
                     {

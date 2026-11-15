@@ -1666,6 +1666,7 @@ public static partial class ProposalCommands
 
     /// <summary>Lets a test give the calling flow its own loader to control the save; other flows are unaffected.</summary>
     internal static AsyncLocal<Func<FwDataProjectLoader>?> ApplyLoaderOverride { get; } = new();
+    internal static AsyncLocal<Action?> BeforeProgressPublication { get; } = new();
 
     private static FwDataProjectLoader ApplyLoaderFactory() =>
         ApplyLoaderOverride.Value?.Invoke() ?? new FwDataProjectLoader();
@@ -2094,6 +2095,25 @@ public static partial class ProposalCommands
                         NotePostApplyFailure($"Apply completed, but {action} could not be completed.", exception);
                     }
                 }
+
+                TryPostApplyStep("Progress publication", () =>
+                {
+                    var pending = ProgressRepository.PendingReceipt(database, canonicalId.Value);
+                    if (pending is null) return;
+                    BeforeProgressPublication.Value?.Invoke();
+                    var existing = ProgressRepository.ReadPending(database, pending);
+                    if (existing is null) return;
+                    var progress = ProgressDeltaBuilder.Apply(cache, existing.Value.Projection, envelope.Operations);
+                    var contentRevision = existing.Value.State.ContentRevision;
+                    if (progress is null)
+                    {
+                        var textWords = TextWordsProjectionBuilder.Build(cache, CancellationToken.None, includeCoverage: true);
+                        progress = ProgressProjectionBuilder.Build(textWords);
+                        contentRevision = "content/" + pending;
+                    }
+                    var saved = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
+                    ProgressRepository.PublishApplied(database, progress, pending, saved, contentRevision);
+                });
 
                 TryPostApplyStep("post-receipt housekeeping", () =>
                 {

@@ -53,7 +53,7 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
         var secondToken = await refresh.RefreshAsync(cache, project, CancellationToken.None);
         var current = repository.GetCurrentTextWords(projectKey, [firstText.TextId, secondText.TextId])!;
         using var fresh = new FwDataProjectLoader().LoadScratchCache(current.Baseline.FwDataPath);
-        var expected = TextWordsProjectionBuilder.Build(fresh, CancellationToken.None);
+        var expected = TextWordsProjectionBuilder.Build(fresh, CancellationToken.None, includeCoverage: true);
         var stored = repository.GetCurrentTextWords(
             projectKey, expected.Texts.Select(text => text.TextId).ToArray())!;
 

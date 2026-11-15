@@ -2230,6 +2230,19 @@
     },
     {
       "kind": "command",
+      "code": "progress",
+      "slug": "progress",
+      "title": "Read Text Progress",
+      "description": "Counts approved and misspelled places in saved Texts and reports the remainder as unmeasured. Read a summary or page through individual Texts.",
+      "helpPage": null,
+      "usage": [
+        "Usage: motif progress --project \u003Cfwdata\u003E [--texts \u003Cguid,guid\u003E] [--detail summary|passages] [--limit \u003Cn\u003E] [--cursor \u003Ccursor\u003E] [--since-revision \u003Crevision\u003E] [--json]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/progress/"
+    },
+    {
+      "kind": "command",
       "code": "project initialize",
       "slug": "project-initialize",
       "title": "Prepare a project for Motif",

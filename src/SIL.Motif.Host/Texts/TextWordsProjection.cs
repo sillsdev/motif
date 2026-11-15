@@ -78,7 +78,17 @@ public sealed record TextWordsProjectedWordform(
     IReadOnlyList<TextWordsProjectedAnalysis> Disapproved,
     int CandidateCount,
     bool IncorrectSpelling,
-    IReadOnlyList<TextWordsProjectedAnalysis> Analyses);
+    IReadOnlyList<TextWordsProjectedAnalysis> Analyses)
+{
+    /// <summary>The first eligible vernacular spelling in project order, normalized for counting.</summary>
+    public string? CoverageSpelling { get; init; }
+
+    /// <summary>The writing-system identity paired with <see cref="CoverageSpelling"/>.</summary>
+    public string? CoverageWritingSystem { get; init; }
+
+    /// <summary>Why occurrences are excluded from coverage, or null for eligible wordforms.</summary>
+    public string? CoverageExclusion { get; init; }
+}
 
 /// <summary>
 /// One stored analysis and its ordered display-ready morphology. Its key is the analysis content digest, so two

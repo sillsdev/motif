@@ -10,6 +10,7 @@
     { "tool": "motif_word" },
     { "tool": "motif_sources" },
     { "tool": "motif_current" },
+    { "tool": "motif_progress" },
     { "tool": "motif_start_proposal" },
     { "tool": "motif_guide" },
     { "tool": "motif_add_lexeme_form" },

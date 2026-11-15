@@ -190,6 +190,18 @@ internal static class AgentTools
 
         ..SourceTools.All,
 
+        new("motif_progress", string.Empty, AgentClass.Read,
+            Schema.Object(("scope", Schema.Object(
+                    ("kind", Schema.String("The population kind.", "texts"), true),
+                    ("texts", ProgressTextIds(), false)), true),
+                ("detail", Schema.String("Return the summary or a page of Texts.", "summary", "passages"), false),
+                ("limit", Schema.Integer("Maximum Text rows in a page; default 50.", 1, 200), false),
+                ("cursor", Schema.String("Continuation from the same Progress revision and scope."), false),
+                ("sinceRevision", Schema.String("Optional changed-reading checkpoint."), false)),
+            true, true, false, true,
+            (c, a, ct) => Task.FromResult(ReadProgress(c.ProjectPath, a)))
+            { Requests = [typeof(ProgressRequest)], OutputSchema = ProgressToolSchema.Output },
+
         new("motif_texts",
             string.Empty,
             AgentClass.Read,
@@ -1080,6 +1092,31 @@ internal static class AgentTools
             { Requests = [typeof(EvidenceShowRequest), typeof(EvidenceListRequest)] },
         ..ParsimonyTools.All,
     ];
+
+    private static JsonObject ProgressTextIds() => new()
+    {
+        ["type"] = "array", ["maxItems"] = 200,
+        ["items"] = new JsonObject { ["type"] = "string", ["format"] = "uuid" },
+        ["description"] = "Text GUIDs; omit or leave empty to select every Text.",
+    };
+
+    private static ToolOutcome ReadProgress(string project, ToolArgs arguments)
+    {
+        ProgressScope? scope;
+        try
+        {
+            scope = JsonSerializer.Deserialize<ProgressScope>(arguments.RequiredObject("scope").ToJsonString(),
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        }
+        catch (JsonException)
+        {
+            throw new ToolArgumentException("tool.invalid-argument", "Scope must contain Text GUIDs and no unknown fields.");
+        }
+        if (scope is null) throw new ToolArgumentException("tool.invalid-argument", "A Text scope is required.");
+        return ToolOutcome.From(ProgressQuery.Query(new ProgressRequest(project, scope,
+            arguments.Optional("detail") ?? "summary", arguments.Int("limit", 50), arguments.Optional("cursor"),
+            arguments.Optional("sinceRevision"))));
+    }
 
     private static string FeatureStructureIntent(ToolArgs a)
     {

@@ -49,6 +49,7 @@ public static class CommandCatalog
         new CommandDescriptor("query forms", typeof(FormsQueryRequest), typeof(FormsQueryResponse), CommandSurface.Released, AgentClass.Read),
         // ProposalCommands
         new CommandDescriptor("open", typeof(OpenRequest), typeof(ProjectSummaryProjection), CommandSurface.Released, AgentClass.Read),
+        new CommandDescriptor("progress", typeof(ProgressRequest), typeof(ProgressResponse), CommandSurface.AdvancedAi, AgentClass.Read),
         new CommandDescriptor("analyses", typeof(ManualAnalysesRequest), typeof(AnalysisAggregateProjection), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("new", typeof(NewDraftRequest), typeof(DraftCreatedResponse), CommandSurface.AdvancedAi, AgentClass.Draft),
         new CommandDescriptor("pending-changes", typeof(PendingChangesRequest),

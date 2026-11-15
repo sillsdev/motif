@@ -28,6 +28,8 @@ public static class CliVerbCatalog
     {
         new CliVerbDescriptor("Project", "query", "query forms", new[] { "query forms --project <fwdata> [--where <selector>] [--group <columns>] [--min-count <n>] [--examples <n>] [--ids] [--raw-letters] [--trial <id>] [--json]" }),
         new CliVerbDescriptor("Commands", "open", "open", new[] { "open <fwdata> [--json]" }),
+        new CliVerbDescriptor("Project", "progress", "progress",
+            new[] { "progress --project <fwdata> [--texts <guid,guid>] [--detail summary|passages] [--limit <n>] [--cursor <cursor>] [--since-revision <revision>] [--json]" }),
         new CliVerbDescriptor("Project", "writing-systems", "writing-systems",
             new[] { "writing-systems --project <fwdata> [--json]" }),
         new CliVerbDescriptor("Project", "gdr", "gdr list",

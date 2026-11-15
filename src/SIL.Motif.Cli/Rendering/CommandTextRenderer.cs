@@ -103,6 +103,7 @@ public static class CommandTextRenderer
                 ? "Setup skipped for this project." + Environment.NewLine
                 : "Setup remains open." + Environment.NewLine,
             TextInventoryResponse r => RenderTextInventory(r),
+            ProgressResponse r => RenderProgress(r),
             OverviewResponse r => RenderOverview(r),
             GrammarCheckResponse r => RenderGrammarCheck(r),
             WarningsResponse r => RenderWarnings(r),
@@ -854,6 +855,24 @@ public static class CommandTextRenderer
         if (response.Texts.Count == 0) return "This Baseline has no Texts." + Environment.NewLine;
         return string.Join(Environment.NewLine, response.Texts.Select(text =>
             $"{text.Title}  {text.InterlinearizationPercent:0}% interlinearized  {text.Id:D}")) + Environment.NewLine;
+    }
+
+    private static string RenderProgress(ProgressResponse response)
+    {
+        static string Counts(ProgressBuckets counts) =>
+            $"{counts.Approved:N0}/{counts.Total:N0} approved, {counts.Misspelled:N0} misspelled, {counts.Unmeasured:N0} unmeasured";
+        var lines = new List<string> { "Progress " + response.Revision };
+        if (response.Totals is { } totals)
+        {
+            lines.Add("Tokens: " + Counts(totals.Tokens));
+            lines.Add("Types:  " + Counts(totals.Types));
+        }
+        lines.AddRange(response.Rows.Select(row =>
+            $"{row.Title} ({row.Id:D}): tokens {Counts(row.Tokens)}; types {Counts(row.Types)}"));
+        if (!response.Freshness.JudgementsCurrent) lines.Add("Judgements may be stale; refresh the saved project.");
+        lines.Add("Parser evidence, Checked and changed readings are unavailable.");
+        if (response.NextCursor is { } cursor) lines.Add("Next cursor: " + cursor);
+        return string.Join(Environment.NewLine, lines) + Environment.NewLine;
     }
 
     private static string RenderOverview(OverviewResponse response)

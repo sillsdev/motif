@@ -2517,6 +2517,25 @@ try
                     ResolveRoot(), cancellationToken: cancellationToken)));
             break;
 
+        case "progress":
+            if (positionals.Count != 0 || !flags.TryGetValue("project", out var progressProject) ||
+                flags.Keys.Any(key => key is not ("project" or "texts" or "detail" or "limit" or "cursor" or "since-revision" or "json")))
+                return Usage(UsageLineFor("progress"), asJson);
+            var progressIds = new List<Guid>();
+            if (flags.TryGetValue("texts", out var progressTexts))
+                foreach (var value in progressTexts.Split(','))
+                {
+                    if (!Guid.TryParse(value, out var parsedText)) return Usage(UsageLineFor("progress"), asJson);
+                    progressIds.Add(parsedText);
+                }
+            var progressLimit = 50;
+            if (flags.TryGetValue("limit", out var progressLimitText) && !int.TryParse(progressLimitText, out progressLimit))
+                return Usage(UsageLineFor("progress"), asJson);
+            result = RenderCommand(ProgressQuery.Query(new ProgressRequest(progressProject,
+                new ProgressScope("texts", progressIds), flags.GetValueOrDefault("detail") ?? "summary", progressLimit,
+                flags.GetValueOrDefault("cursor"), flags.GetValueOrDefault("since-revision"))));
+            break;
+
         case "texts":
             if (positionals.Count != 1 || positionals[0] != "list" ||
                 !flags.TryGetValue("project", out var textsProject))

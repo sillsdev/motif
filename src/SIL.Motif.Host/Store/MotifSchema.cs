@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 71;
+    public const int CurrentSchema = 72;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -31,7 +31,7 @@ public static class MotifSchema
         {
             command.Transaction = transaction;
             command.CommandText = MetadataDdl + CorpusDdl + ProposalWorkflowDdl + SelectionDdl + AssessmentDdl + JobDdl +
-                BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
+                BaselineDdl + BaselineTextWordsDdl + BaselineTextReadIndexDdl + ProgressDdl + RetainedInvocationDdl + ParsimonyBundleDdl + ParsimonyBundleLifetimeDdl +
                 GrammarCheckDdl + PendingChangeFitDdl + ReviewMarkDdl +
                 ReadOccurrenceDdl + ActiveParseDdl + ParserRefusalDdl + ProposalDifferenceDdl + PhonologyExampleDdl +
                 PhonologyAssessmentDdl + BeforeAssessmentBindingDdl + ReviewReportDdl + RequestDdl + HypothesisDdl + QueryDdl;
@@ -63,7 +63,7 @@ public static class MotifSchema
             "ProposalRationaleRevisions", "ProposalComments", "ProposalPictures",
             "Receipts", "Reports", "AppliedIndex", "Jobs", "Baselines", "RetainedInvocations",
             "RetainedInvocationMembers", "NamedSelections", "DefaultSelection", "ParsimonySelection", "AssessmentObjectTimings",
-            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
+            "BaselineSummaries", "BaselineTextWords", "BaselineTextWordforms", "BaselineTextReadIndex", "ProgressState", "ProgressTexts", "GrammarChecks", "PendingChangeFits", "ReviewMarks",
             "ReadOccurrences", "ActiveParse", "ParserRefusals", "ParsimonyBundles", "ParsimonyBundleReferences",
             "ParsimonyFrozenViews", "ParsimonyReaderLeases", "ParsimonyBuildClaims", "CurrentParsimonyBundles",
             "ProposalDifferences", "ProposalDifferenceCases", "ProposalDifferenceOccurrences", "ProposalDifferenceBuckets",
@@ -579,6 +579,11 @@ public static class MotifSchema
             C("BundleDigest", "TEXT", true), C("WordformJson", "TEXT", true)],
         "BaselineTextReadIndex" => [C("ProjectKey", "TEXT", true, 1), C("TextId", "TEXT", true, 2),
             C("BundleDigest", "TEXT", true), C("IndexJson", "TEXT", true)],
+        "ProgressState" => [C("Id", "INTEGER", false, 1), C("Revision", "TEXT", true), C("ContentRevision", "TEXT", true),
+            C("JudgementRevision", "TEXT", true), C("SourceLastWriteUtc", "TEXT", true), C("PendingReceiptId", "TEXT"),
+            C("TotalsJson", "TEXT", true), C("ExcludedJson", "TEXT", true)],
+        "ProgressTexts" => [C("TextId", "TEXT", false, 1), C("Title", "TEXT", true), C("CountsJson", "TEXT", true),
+            C("IncidenceJson", "TEXT", true), C("ExcludedJson", "TEXT", true)],
         "ParsimonyBundles" => [C("BundleId", "TEXT", false, 1), C("BaselineTokenJson", "TEXT", true),
             C("ProjectKey", "TEXT", true), C("BaselineDigest", "TEXT", true), C("MaterialKey", "TEXT", true),
             C("EvidenceDirectory", "TEXT", true), C("GrammarFactsPath", "TEXT", true), C("EvidencePath", "TEXT", true),
@@ -1129,6 +1134,26 @@ public static class MotifSchema
             BundleDigest TEXT NOT NULL,
             IndexJson TEXT NOT NULL,
             PRIMARY KEY (ProjectKey, TextId)
+        );
+        """;
+
+    private const string ProgressDdl = """
+        CREATE TABLE ProgressState (
+            Id INTEGER PRIMARY KEY CHECK (Id = 1),
+            Revision TEXT NOT NULL,
+            ContentRevision TEXT NOT NULL,
+            JudgementRevision TEXT NOT NULL,
+            SourceLastWriteUtc TEXT NOT NULL,
+            PendingReceiptId TEXT NULL,
+            TotalsJson TEXT NOT NULL,
+            ExcludedJson TEXT NOT NULL
+        );
+        CREATE TABLE ProgressTexts (
+            TextId TEXT PRIMARY KEY,
+            Title TEXT NOT NULL,
+            CountsJson TEXT NOT NULL,
+            IncidenceJson TEXT NOT NULL,
+            ExcludedJson TEXT NOT NULL
         );
         """;
 

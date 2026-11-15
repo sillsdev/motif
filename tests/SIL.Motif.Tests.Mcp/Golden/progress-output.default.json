@@ -1,0 +1,456 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "$defs": {
+    "Scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "const": "texts"
+        },
+        "texts": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "Request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope"
+      ],
+      "properties": {
+        "projectPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "detail": {
+          "enum": [
+            "summary",
+            "passages"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sinceRevision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "Buckets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "approved",
+        "misspelled",
+        "unmeasured",
+        "reasons",
+        "parserGuess",
+        "noAnalysis"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "approved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "misspelled": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unmeasured": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasons": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "parserGuess": {
+          "type": "null"
+        },
+        "noAnalysis": {
+          "type": "null"
+        }
+      }
+    },
+    "Counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passages",
+        "tokens",
+        "types"
+      ],
+      "properties": {
+        "passages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tokens": {
+          "$ref": "#/$defs/Buckets"
+        },
+        "types": {
+          "$ref": "#/$defs/Buckets"
+        }
+      }
+    },
+    "Coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchorPolicy",
+        "eligibilityPolicy",
+        "typePolicy",
+        "complete",
+        "excludedPlaces",
+        "reasons"
+      ],
+      "properties": {
+        "anchorPolicy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "eligibilityPolicy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "typePolicy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "excludedPlaces": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reasons": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "Freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content",
+        "judgements",
+        "judgementsCurrent",
+        "parserTrial",
+        "parserBundle",
+        "parserIsStale"
+      ],
+      "properties": {
+        "content": {
+          "type": "string",
+          "minLength": 1
+        },
+        "judgements": {
+          "type": "string",
+          "minLength": 1
+        },
+        "judgementsCurrent": {
+          "type": "boolean"
+        },
+        "parserTrial": {
+          "type": "null"
+        },
+        "parserBundle": {
+          "type": "null"
+        },
+        "parserIsStale": {
+          "type": "null"
+        }
+      }
+    },
+    "ChangedSince": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sinceRevision",
+        "complete",
+        "passages",
+        "events"
+      ],
+      "properties": {
+        "sinceRevision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "complete": {
+          "const": false
+        },
+        "passages": {
+          "type": "null"
+        },
+        "events": {
+          "type": "null"
+        }
+      }
+    },
+    "Passage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "tokens",
+        "types",
+        "changedSince",
+        "checked"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "tokens": {
+          "$ref": "#/$defs/Buckets"
+        },
+        "types": {
+          "$ref": "#/$defs/Buckets"
+        },
+        "changedSince": {
+          "$ref": "#/$defs/ChangedSince"
+        },
+        "checked": {
+          "type": "null"
+        }
+      }
+    },
+    "Response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "scopeDigest",
+        "coverage",
+        "freshness",
+        "totals",
+        "rows",
+        "nextCursor",
+        "limitations",
+        "changedSince",
+        "schemaVersion",
+        "checked",
+        "groups"
+      ],
+      "properties": {
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scopeDigest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "freshness": {
+          "$ref": "#/$defs/Freshness"
+        },
+        "totals": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Counts"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/Passage"
+          }
+        },
+        "nextCursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "changedSince": {
+          "$ref": "#/$defs/ChangedSince"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "checked": {
+          "type": "null"
+        },
+        "groups": {
+          "type": "array",
+          "maxItems": 0
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "totals": {
+              "$ref": "#/$defs/Counts"
+            },
+            "rows": {
+              "maxItems": 0
+            },
+            "nextCursor": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "properties": {
+            "totals": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "Failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ok",
+        "reason",
+        "message"
+      ],
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "enum": [
+            "InvalidArgument",
+            "NotFound",
+            "Refused",
+            "Cancelled",
+            "StoppedByBudget",
+            "Busy",
+            "StoreInconsistent"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "ok",
+        "result"
+      ],
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "result": {
+          "$ref": "#/$defs/Response"
+        },
+        "next": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "ok",
+        "code",
+        "reason",
+        "message",
+        "facts",
+        "next"
+      ],
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "code": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "facts": {
+          "type": "object"
+        },
+        "next": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

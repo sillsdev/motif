@@ -302,7 +302,7 @@ public static class MotifMcpServer
         {
             if (!args.TryGetPropertyValue("detail", out var detailNode))
             {
-                if (tool.Tool.Name is not ("motif_trial" or "motif_difference") || tool.DefaultDetail != "summary")
+                if (tool.Tool.Name is not ("motif_trial" or "motif_difference" or "motif_progress") || tool.DefaultDetail != "summary")
                     args["detail"] = tool.DefaultDetail;
             }
             else

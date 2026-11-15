@@ -562,6 +562,8 @@ public sealed class BaselineRepository
         var textRows = SerializedRows(textWordsProjection.Texts, text => text.TextId);
         var wordformRows = SerializedRows(textWordsProjection.Wordforms, wordform => wordform.WordformId);
         var indexRows = SerializedRows(BaselineTextReadIndexBuilder.Build(textWordsProjection), text => text.TextId);
+        var progress = textWordsProjection.Wordforms.All(word => word.CoverageSpelling is not null || word.CoverageExclusion is not null)
+            ? ProgressProjectionBuilder.Build(textWordsProjection) : null;
         var summaryJson = JsonSerializer.Serialize(
             projectSummary ?? ProjectSummarySnapshot.Empty, MotifJson.CreateOptions());
         using var connection = _database.OpenConnection();
@@ -634,6 +636,16 @@ public sealed class BaselineRepository
             "INSERT INTO BaselineTextReadIndex (ProjectKey, TextId, BundleDigest, IndexJson) " +
             "VALUES ($project, $id, $bundle, $json);",
             projectKey, publication.Token.BundleDigest, indexRows);
+        if (progress is not null)
+            ProgressRepository.Publish(connection, transaction, progress, publication.Token.BundleDigest,
+                publication.Token.BundleDigest, sourceLastWriteUtc);
+        else
+        {
+            using var clearProgress = connection.CreateCommand();
+            clearProgress.Transaction = transaction;
+            clearProgress.CommandText = "DELETE FROM ProgressTexts; DELETE FROM ProgressState;";
+            clearProgress.ExecuteNonQuery();
+        }
         command.CommandText = SelectSql + " WHERE ProjectKey = $project;";
         using var reader = command.ExecuteReader();
         if (!reader.Read()) throw new InvalidOperationException("The Baseline publication was not recorded.");

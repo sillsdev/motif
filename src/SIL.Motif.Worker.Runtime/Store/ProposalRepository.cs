@@ -1083,6 +1083,12 @@ public sealed class ProposalRepository : IProposalRepository
             insert.Parameters.AddWithValue("$json", JsonSerializer.Serialize(receipt));
             insert.Parameters.AddWithValue("$recordedUtc", _clock.UtcNow.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
             insert.ExecuteNonQuery();
+            using var progress = connection.CreateCommand();
+            progress.Transaction = transaction;
+            progress.CommandText = "UPDATE ProgressState SET PendingReceiptId = CASE WHEN PendingReceiptId IS NULL " +
+                "THEN (SELECT ReceiptId FROM Receipts WHERE ProposalId = $id) ELSE 'multiple' END WHERE Id = 1;";
+            progress.Parameters.AddWithValue("$id", receipt.ProposalId.Value);
+            progress.ExecuteNonQuery();
         }
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
