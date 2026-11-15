@@ -279,19 +279,89 @@ namespace SIL.TextEditing.Avalonia.Tests
             r.Close();
         });
 
-        [Fact]
-        public void A_service_that_gave_up_is_asked_again_when_it_says_it_changed_and_when_the_field_is_restarted() => Headless.Run(() =>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void A_service_that_gave_up_is_asked_again_when_it_says_it_changed(bool repaintBetweenRequests) => Headless.Run(() =>
         {
-            var r = new LanguageRig("a b", new FakeLanguageService { CancelsItself = true, Analysis = FakeLanguageService.Words("word") });
-            r.Idle();
-            Assert.Equal(4, r.Service.AnalyzedTexts.Count);
+            var r = ExhaustCancelledRetries(repaintBetweenRequests);
             r.Service.CancelsItself = false;
             r.Service.RaiseChanged();
-            r.Idle();
-            Assert.Equal(5, r.Service.AnalyzedTexts.Count);
-            Assert.Equal(2, r.Field.LanguageTokens.Count);
+            AssertRecovered(r, r.Service, 5, repaintBetweenRequests);
             r.Close();
         });
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Restart_resets_the_cancelled_retry_count(bool repaintBetweenRequests) => Headless.Run(() =>
+        {
+            var r = ExhaustCancelledRetries(repaintBetweenRequests);
+            r.Service.CancelsItself = false;
+            r.Field.RestartLanguageAnalysis();
+            AssertRecovered(r, r.Service, 5, repaintBetweenRequests);
+            r.Close();
+        });
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void A_new_service_resets_the_cancelled_retry_count(bool repaintBetweenRequests) => Headless.Run(() =>
+        {
+            var r = ExhaustCancelledRetries(repaintBetweenRequests);
+            var other = new FakeLanguageService { Analysis = FakeLanguageService.Words("new") };
+            r.Field.LanguageService = other;
+            AssertRecovered(r, other, 1, repaintBetweenRequests);
+            Assert.Equal(4, r.Service.AnalyzedTexts.Count);
+            Assert.All(r.Field.LanguageTokens, t => Assert.Equal("new", t.Kind));
+            r.Close();
+        });
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Reattaching_resets_the_cancelled_retry_count(bool repaintBetweenRequests) => Headless.Run(() =>
+        {
+            var r = ExhaustCancelledRetries(repaintBetweenRequests);
+            r.Window.Content = null;
+            r.Service.CancelsItself = false;
+            r.Service.RaiseChanged();
+            Drain(r, repaintBetweenRequests);
+            Assert.Equal(4, r.Service.AnalyzedTexts.Count);
+            Assert.Equal(0, r.Service.Subscribers);
+            r.Window.Content = r.Field;
+            AssertRecovered(r, r.Service, 5, repaintBetweenRequests);
+            Assert.Equal(1, r.Service.Subscribers);
+            r.Close();
+        });
+
+        static LanguageRig ExhaustCancelledRetries(bool repaintBetweenRequests)
+        {
+            var r = new LanguageRig("a b", new FakeLanguageService { CancelsItself = true, Analysis = FakeLanguageService.Words("word") }, attach: false);
+            var timer = new ManualTimer();
+            r.Field.LanguageScheduler = timer.Schedule;
+            r.Field.LanguageDebounce = TimeSpan.FromMilliseconds(200);
+            r.Field.LanguageService = r.Service;
+            Drain(r, repaintBetweenRequests);
+            Assert.Equal(4, r.Service.AnalyzedTexts.Count);
+            timer.Advance(TimeSpan.FromDays(1));
+            Fixtures.Render(r.Field);
+            Drain(r, repaintBetweenRequests);
+            Assert.Equal(4, r.Service.AnalyzedTexts.Count);
+            Assert.False(r.Field.IsLanguageAnalysisCurrent);
+            return r;
+        }
+
+        static void AssertRecovered(LanguageRig r, FakeLanguageService service, int asks, bool repaintBetweenRequests)
+        {
+            Drain(r, repaintBetweenRequests);
+            Assert.Equal(asks, service.AnalyzedTexts.Count);
+            Assert.Equal(2, r.Field.LanguageTokens.Count);
+            Assert.True(r.Field.IsLanguageAnalysisCurrent);
+            Fixtures.Render(r.Field);
+            Drain(r, repaintBetweenRequests);
+            Assert.Equal(asks, service.AnalyzedTexts.Count);
+        }
 
         [Fact]
         public void A_trigger_character_typed_with_the_popup_open_is_asked_as_the_trigger_and_not_as_a_refresh() => Headless.Run(() =>
