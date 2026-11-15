@@ -12,8 +12,9 @@ namespace SIL.TextEditing.Markdown.Records
     {
         /// <summary>The canonical text: block style, two-space indentation, <c>\n</c> line ends; the front-matter keys in the order <c>fwmd</c>,
         /// <c>record</c>, <c>schema</c>, <c>root</c>, <c>base</c>, <c>analysis</c>, <c>vernacular</c>, <c>writingSystems</c>, <c>record-data</c>; in each
-        /// object <c>guid</c> first, then the schema's field order; every string double-quoted with only <c>\"</c> and <c>\\</c> escaped; every rich value a
-        /// <c>|-</c> block; plain text that cannot be quoted so (a control character) a <c>|-</c> block of inline FieldWorks Markdown; integers and Booleans
+        /// object <c>guid</c> first, then the schema's field order; every string double-quoted with only <c>\"</c> and <c>\\</c> escaped; rich fields of
+        /// paragraphs in <c>|</c> blocks, inline rich values in <c>|-</c> blocks; plain text that cannot be quoted so (a control character) a <c>|-</c>
+        /// block of inline FieldWorks Markdown; integers and Booleans
         /// plain; empty values left out; no anchors, aliases, tags, flow collections or comments. The body field's value, if any, is the Markdown body after
         /// one blank line.</summary>
         /// <exception cref="RecordWriteException">The document does not fit the schema, or holds a value the profile cannot spell.</exception>

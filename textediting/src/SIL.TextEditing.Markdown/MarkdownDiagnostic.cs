@@ -132,9 +132,9 @@ namespace SIL.TextEditing.Markdown
         public const string TooDeep = "fwmd.syntax.too-deep";
         public const string WsUnknown = "fwmd.ws.unknown";
         public const string LinkNotFound = "fwmd.link.not-found";
-        /// <summary>Reported by hosts (through <see cref="MarkdownProblem"/>): a link path matches more than one target.</summary>
+        /// <summary>A link path matches more than one target; an error.</summary>
         public const string LinkAmbiguous = "fwmd.link.ambiguous";
-        /// <summary>Reported by hosts (through <see cref="MarkdownProblem"/>): the link's target was deleted; a warning.</summary>
+        /// <summary>A link is marked broken or its GUID has no target in the project; a warning.</summary>
         public const string LinkBroken = "fwmd.link.broken";
         public const string StyleUnknown = "fwmd.style.unknown";
         public const string HeadingTooDeep = "fwmd.heading.too-deep";
