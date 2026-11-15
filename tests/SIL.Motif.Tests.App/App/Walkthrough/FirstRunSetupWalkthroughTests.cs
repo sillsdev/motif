@@ -102,7 +102,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
             WaitForSelectionResults(walkthrough);
-            var selectionPanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<SelectionPanel>());
+            var selectionPanel = Assert.Single(walkthrough.Window.GetLogicalDescendants().OfType<SourcesPanel>());
             var panelClear = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>
                 AutomationProperties.GetAutomationId(button) == AutomationIds.ClearTexts);
             var panelSelectAll = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>

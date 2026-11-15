@@ -8,23 +8,26 @@ using SIL.Motif.App.ViewModels;
 namespace SIL.Motif.App.Views;
 
 /// <summary>Text and word Selection editor, and the checked Texts' words, bound to their own view models.</summary>
-public sealed partial class SelectionPanel : UserControl
+public sealed partial class SourcesPanel : UserControl
 {
-    public SelectionPanel(SelectionViewModel selection, TextWordsViewModel words)
-        : this(selection, words, null)
+    public SourcesPanel(SourcesViewModel sources, TextWordsViewModel words)
+        : this(sources, sources.Selection, words, null)
     {
     }
 
-    internal SelectionPanel(SelectionViewModel selection, TextWordsViewModel words, SettingsViewModel? settings)
+    internal SourcesPanel(SourcesViewModel sources, SelectionViewModel selection, TextWordsViewModel words, SettingsViewModel? settings)
     {
         ArgumentNullException.ThrowIfNull(selection);
         ArgumentNullException.ThrowIfNull(words);
+        Sources = sources;
         Selection = selection;
         Words = words;
         Settings = settings;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
     }
+
+    public SourcesViewModel Sources { get; }
 
     public SelectionViewModel Selection { get; }
 

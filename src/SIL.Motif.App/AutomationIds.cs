@@ -312,4 +312,11 @@ public static class AutomationIds
             : "x" + Convert.ToHexString(Encoding.UTF8.GetBytes(normal)).ToLowerInvariant();
         return $"motif-word-row-{list}-{formCode}-{part}";
     }
+    #region W2
+    public const string SourcesFieldWorks = "motif-sources-fieldworks";
+    public const string SourcesCurrent = "motif-sources-current";
+    public const string SourcesContext = "motif-sources-context";
+    public const string SourcesFolder = "motif-sources-folder";
+    public const string SourcesStageContext = "motif-sources-stage-context";
+    #endregion
 }

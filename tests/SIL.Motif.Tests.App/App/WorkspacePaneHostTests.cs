@@ -221,7 +221,7 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
                 workspace.CurrentPage = WorkspacePage.Progress;
                 PageScreenshots.Settle(window);
                 var texts = window.PageView<TextsPage>();
-                var selection = Assert.IsType<SelectionPanel>(texts.SidePanel);
+                var selection = Assert.IsType<SourcesPanel>(texts.SidePanel);
                 Assert.Null(selection.Parent);
                 Assert.Same(workspace.Selection, selection.Selection);
 
@@ -232,7 +232,7 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Null(selection.Parent);
 
                 var standalonePage = new TextsPage(workspace.PageModel<TextsPageModel>());
-                var standaloneSelection = Assert.IsType<SelectionPanel>(standalonePage.SidePanel);
+                var standaloneSelection = Assert.IsType<SourcesPanel>(standalonePage.SidePanel);
                 Assert.Null(standaloneSelection.Parent);
                 Assert.Same(workspace.Selection, standaloneSelection.Selection);
                 var standaloneHost = WorkspaceLayoutHost.ForPage(standalonePage);

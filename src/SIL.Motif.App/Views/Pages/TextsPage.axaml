@@ -5,13 +5,18 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsPage"
              x:DataType="vm:TextsPageModel">
-  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+  <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
     <Border IsVisible="{Binding ShowParsePrompt}">
       <views:ParsePrompt DataContext="{Binding Context}" />
     </Border>
     <Border Grid.Row="1" IsVisible="{Binding ShowAssessRefusal}">
       <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
     </Border>
-    <ContentControl Grid.Row="2" x:Name="ReaderHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.Passage}" />
+    <StackPanel Grid.Row="2" Margin="{DynamicResource Component.TextsPage.PageInset}" Spacing="{DynamicResource Intent.Space.Compact}">
+      <views:CopyableTextBlock Text="{Binding Sources.PassageTitle}" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Section}" />
+      <views:CopyableTextBlock Text="{Binding Sources.PassageReference}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding Sources.PassageMessage}" IsVisible="{Binding !Sources.CanReadPassage}" TextWrapping="Wrap" />
+    </StackPanel>
+    <ContentControl Grid.Row="3" IsVisible="{Binding Sources.CanReadPassage}" x:Name="ReaderHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.Passage}" />
   </Grid>
 </UserControl>

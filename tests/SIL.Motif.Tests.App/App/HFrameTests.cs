@@ -206,7 +206,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 PageScreenshots.Settle(window);
                 var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 var side = host.FindControl<Border>("SidePanelBorder")!;
-                var selection = Assert.IsType<SelectionPanel>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
+                var selection = Assert.IsType<SourcesPanel>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
                 Assert.Same(workspace.Selection, selection.Selection);
                 Assert.False(side.IsVisible);
                 var item = window.GetVisualDescendants().OfType<ListBoxItem>().Single(control =>

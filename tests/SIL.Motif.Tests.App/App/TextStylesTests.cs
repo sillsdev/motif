@@ -53,7 +53,7 @@ public sealed class TextStylesTests
                 Assert.Single(notices);
                 var noticeRow = window.FindInWindowOrWorkspace<Border>("NoticeBand");
                 Assert.NotNull(noticeRow);
-                var selectionPanel = Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>());
+                var selectionPanel = Assert.Single(window.GetLogicalDescendants().OfType<SourcesPanel>());
                 var selectAll = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetAutomationId(button) == AutomationIds.SelectAllTexts);
                 var selectedText = Assert.Single(workspace.Selection.Texts, choice =>

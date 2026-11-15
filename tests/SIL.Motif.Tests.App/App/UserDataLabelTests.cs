@@ -26,7 +26,7 @@ public sealed class UserDataLabelTests
                 workspace.Selection.Texts.Add(new TextChoiceViewModel(Guid.NewGuid(), title));
                 PageScreenshots.Settle(window);
 
-                var panel = Assert.Single(window.GetVisualDescendants().OfType<SelectionPanel>());
+                var panel = Assert.Single(window.GetVisualDescendants().OfType<SourcesPanel>());
                 var box = Assert.Single(panel.GetVisualDescendants().OfType<CheckBox>(), check =>
                     check.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == title));
                 Assert.DoesNotContain(box.GetVisualDescendants(), node => node is AccessText);

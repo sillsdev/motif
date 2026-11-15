@@ -72,6 +72,16 @@ public sealed class ICommandClientCatalogParityTests
             [nameof(ICommandClient.ListRequestsAsync)] = "list requests",
             [nameof(ICommandClient.WithdrawRequestAsync)] = "request withdraw",
             [nameof(ICommandClient.AskAgainAsync)] = "request ask-again",
+            [nameof(ICommandClient.ListSourcesAsync)] = "source list",
+            [nameof(ICommandClient.ShowSourceAsync)] = "source show",
+            [nameof(ICommandClient.WhereSourceAsync)] = "source where",
+            [nameof(ICommandClient.GetSourceCurrentAsync)] = "current get",
+            [nameof(ICommandClient.SetSourceFolderAsync)] = "source set-folder",
+            [nameof(ICommandClient.ClearSourceFolderAsync)] = "source clear-folder",
+            [nameof(ICommandClient.SetSourceCurrentAsync)] = "current set",
+            [nameof(ICommandClient.ClearSourceCurrentAsync)] = "current set --clear",
+            [nameof(ICommandClient.StageSourceAddAsync)] = "source add",
+            [nameof(ICommandClient.StageSourceContextAsync)] = "source set-context",
         };
 
     // A store-writing client method must map to a catalogued CLI verb.

@@ -328,13 +328,6 @@
     "control": "ProgressiveItemsControl"
   },
   {
-    "view": "SelectionPanel",
-    "name": "SelectionPanelTextsItems",
-    "source": "Selection.Texts",
-    "mode": "rows",
-    "control": "ListBox"
-  },
-  {
     "view": "SetupDialog",
     "name": "SetupDialogIndicatorsItems",
     "source": "Indicators",
@@ -660,6 +653,20 @@
     "view": "Pages/GrammarGuidePage",
     "name": "GrammarGuideRecords",
     "source": "Records",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "Texts/SourcesPanel",
+    "name": "SourcesPanelTextsItems",
+    "source": "Selection.Texts",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "Texts/SourcesPanel",
+    "name": "SourcesPanelSourcesItems",
+    "source": "Sources.Sources",
     "mode": "rows",
     "control": "ListBox"
   }

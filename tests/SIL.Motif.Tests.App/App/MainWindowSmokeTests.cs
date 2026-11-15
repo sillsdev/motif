@@ -398,8 +398,8 @@ public sealed class MainWindowSmokeTests
                 window.PageView<DiagnosticsPage>().DataContext);
             // The frame attaches only the current page's side panel, which holds the Texts selection.
             workspace.CurrentPage = WorkspacePage.Texts;
-            Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
-            Assert.Same(workspace.PageModel<TextsPageModel>().Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
+            Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SourcesPanel>()).Selection);
+            Assert.Same(workspace.PageModel<TextsPageModel>().Words, Assert.Single(window.GetLogicalDescendants().OfType<SourcesPanel>()).Words);
             Assert.Same(workspace.PageModel<TextsPageModel>().ResultsInText,
                 Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>()).InText);
             Assert.Same(workspace.PageModel<TextsPageModel>().Words, workspace.PageModel<WordsPageModel>().Words);
@@ -1296,7 +1296,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void AnalyzeTextsSelectionPanelMeasuresItsResolvedComponentWidth()
+    public void AnalyzeTextsSourcesPanelMeasuresItsResolvedComponentWidth()
     {
         _avalonia.Invoke(() =>
         {
@@ -1308,7 +1308,7 @@ public sealed class MainWindowSmokeTests
                 window.UpdateLayout();
 
                 var page = window.PageView<TextsPage>();
-                var selectionHost = Assert.IsType<SelectionPanel>(page.SidePanel);
+                var selectionHost = Assert.IsType<SourcesPanel>(page.SidePanel);
                 var variant = window.ActualThemeVariant;
                 Assert.True(Application.Current!.TryGetResource(
                     "Component.Shell.SidePanelWidth", variant, out var resolvedWidth));

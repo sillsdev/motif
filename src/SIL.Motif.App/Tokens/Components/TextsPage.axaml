@@ -20,6 +20,7 @@
     <StaticResource x:Key="Component.TextsPage.ActionMenuWidth" ResourceKey="Primitive.Size.420" />
     <StaticResource x:Key="Component.TextsPage.SelectionListHeight" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.TextsPage.AddedWordsHeight" ResourceKey="Primitive.Size.90" />
+    <StaticResource x:Key="Component.TextsPage.SourceListHeight" ResourceKey="Primitive.Size.320" />
   </Styles.Resources>
   <!-- The last results stay readable, set back, while a newer parse runs. -->
   <Style Selector=":is(Panel).waiting, ContentControl.waiting">

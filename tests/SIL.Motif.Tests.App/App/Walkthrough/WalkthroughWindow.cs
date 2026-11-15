@@ -296,14 +296,14 @@ public sealed class WalkthroughWindow : IDisposable
         ?? throw new InvalidOperationException($"The File menu has no item named '{name}'.");
 
     /// <summary>The Selection pane owned by the Texts page.</summary>
-    public SelectionPanel SelectionPane
+    public SourcesPanel SelectionPane
     {
         get
         {
-            var pane = AllControls().OfType<SelectionPanel>().SingleOrDefault();
+            var pane = AllControls().OfType<SourcesPanel>().SingleOrDefault();
             if (pane is not null) return pane;
             ShowPage(WorkspacePage.Texts);
-            return AllControls().OfType<SelectionPanel>().Single();
+            return AllControls().OfType<SourcesPanel>().Single();
         }
     }
 

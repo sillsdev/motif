@@ -4,12 +4,77 @@
              xmlns:conv="clr-namespace:Avalonia.Data.Converters;assembly=Avalonia.Base"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
-             x:Class="SIL.Motif.App.Views.SelectionPanel"
-             x:DataType="views:SelectionPanel">
+             x:Class="SIL.Motif.App.Views.SourcesPanel"
+             x:DataType="views:SourcesPanel"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.Sources}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/SourcesScoped.axaml" />
+  </UserControl.Styles>
   <ScrollViewer Margin="{DynamicResource Component.TextsPage.PageInset}">
     <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+      <views:CopyableTextBlock Classes="sourcesHeading" Text="{x:Static app:MotifAppStrings.BoardSources}" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SourcesLocalExplanation}" TextWrapping="Wrap" />
+      <Button Classes="sourcesAction" Content="{x:Static app:MotifAppStrings.SourcesFieldWorksTexts}" Command="{Binding Sources.ShowFieldWorksCommand}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.SourcesFieldWorks}" />
+      <Button Classes="sourcesAction" Content="{x:Static app:MotifAppStrings.SourcesRefresh}" Command="{Binding Sources.ReloadCommand}" />
+      <StackPanel IsVisible="{Binding !Sources.CanStageSource}" Spacing="{DynamicResource Intent.Space.Compact}">
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SourcesPendingExplanation}" TextWrapping="Wrap" />
+        <Button Classes="sourcesAction" Content="{x:Static app:MotifAppStrings.SourcesUsePending}"
+                Command="{Binding Sources.UsePendingProposalCommand}" />
+      </StackPanel>
+      <ListBox x:Name="SourcesPanelSourcesItems" ItemsSource="{Binding Sources.Sources}" SelectedItem="{Binding Sources.SelectedSource}"
+               MaxHeight="{DynamicResource Component.TextsPage.SourceListHeight}"
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardSources}"
+               AutomationProperties.AutomationId="{x:Static app:AutomationIds.SourcesList}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:SourceRowViewModel">
+            <StackPanel>
+              <views:CopyableTextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding Id}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding Kind}" />
+              <views:CopyableTextBlock Text="{Binding State}" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <views:CopyableTextBlock Text="{Binding Sources.Notice}" TextWrapping="Wrap" />
+      <views:RefusalBlock DataContext="{Binding Sources.ShownRefusal}" />
+      <StackPanel IsVisible="{Binding Sources.HasDetail}" Spacing="{DynamicResource Intent.Space.Compact}">
+        <views:CopyableTextBlock Text="{Binding Sources.DetailProblem}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SourcesSavedContext}" />
+        <views:CopyableTextBlock Text="{Binding Sources.ContextSummary}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SourcesFolder}" />
+        <TextBox Text="{Binding Sources.FolderText}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SourcesFolder}"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.SourcesFolder}" />
+        <Button Classes="sourcesAction" Content="{x:Static app:MotifAppStrings.SourcesSetFolder}" Command="{Binding Sources.SetFolderCommand}" />
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SourcesCurrent}" />
+        <TextBox Text="{Binding Sources.CurrentText}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SourcesCurrent}"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.SourcesCurrent}" />
+        <Button Classes="sourcesAction" Content="{x:Static app:MotifAppStrings.SourcesSetCurrent}" Command="{Binding Sources.SetCurrentCommand}" />
+        <Button Classes="sourcesAction" Content="{x:Static app:MotifAppStrings.SourcesClearCurrent}" Command="{Binding Sources.ClearCurrentCommand}" />
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SourcesContext}" />
+        <TextBox Text="{Binding Sources.ContextText}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SourcesContext}"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.SourcesContext}" />
+        <Button Classes="sourcesAction" Content="{x:Static app:MotifAppStrings.SourcesStageContext}" Command="{Binding Sources.StageContextCommand}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.SourcesStageContext}" />
+      </StackPanel>
+      <Expander AutomationProperties.AutomationId="{x:Static app:AutomationIds.SourcesAdd}">
+        <Expander.Header>
+          <TextBlock Text="{x:Static app:MotifAppStrings.SourcesAddParatext}" TextWrapping="Wrap" />
+        </Expander.Header>
+        <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+          <TextBox Text="{Binding Sources.NewId}" PlaceholderText="{x:Static app:MotifAppStrings.SourcesId}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SourcesId}" />
+          <TextBox Text="{Binding Sources.NewName}" PlaceholderText="{x:Static app:MotifAppStrings.SourcesName}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SourcesName}" />
+          <TextBox Text="{Binding Sources.NewVersification}" PlaceholderText="{x:Static app:MotifAppStrings.SourcesVersification}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SourcesVersification}" />
+          <TextBox Text="{Binding Sources.NewContext}" PlaceholderText="{x:Static app:MotifAppStrings.SourcesContext}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SourcesContext}" />
+          <TextBox Text="{Binding Sources.NewFolder}" PlaceholderText="{x:Static app:MotifAppStrings.SourcesFolder}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SourcesFolder}" />
+          <Button Classes="sourcesAction" Content="{x:Static app:MotifAppStrings.SourcesStageAdd}" Command="{Binding Sources.AddParatextCommand}" />
+        </StackPanel>
+      </Expander>
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SourcesFieldWorksExplanation}" TextWrapping="Wrap" />
+
       <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.Texts}" FontSize="{DynamicResource Intent.Type.Section}"
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.SourcesFieldWorksSelection}" FontSize="{DynamicResource Intent.Type.Section}"
                                  FontWeight="{DynamicResource Intent.Weight.Section}" />
         <views:CopyableTextBlock Classes="muted" Text="{Binding Selection.SummaryText}" TextWrapping="Wrap" />
       </StackPanel>
@@ -28,7 +93,7 @@
 
       <TextBox PlaceholderText="{x:Static app:MotifAppStrings.SearchTextsPlaceholder}" Text="{Binding Selection.SearchText}"
                AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchTextsAccessibleName}" />
-      <ListBox x:Name="SelectionPanelTextsItems" ItemsSource="{Binding Selection.Texts}"
+      <ListBox x:Name="SourcesPanelTextsItems" ItemsSource="{Binding Selection.Texts}"
                MaxHeight="{DynamicResource Component.TextsPage.SelectionListHeight}"
                AutomationProperties.Name="{x:Static app:MotifAppStrings.TextsToAnalyzeAccessibleName}">
         <ListBox.ItemTemplate>

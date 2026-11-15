@@ -42,7 +42,8 @@ public sealed class SidePanelRevealTests
                 Assert.NotNull(reveal);
                 Assert.False(side.IsVisible);
                 Assert.True(reveal.IsEffectivelyVisible);
-                Assert.Contains(reveal.GetVisualDescendants().OfType<TextBlock>(), label => label.Text == "TEXTS");
+                Assert.Contains(reveal.GetVisualDescendants().OfType<TextBlock>(),
+                    label => label.Text == MotifAppStrings.BoardSources.ToUpperInvariant());
                 AssertInside(window, reveal);
                 Activate(window, reveal, keyboard);
                 KeyPresses.SettleUntil(window, () => side.IsEffectivelyVisible && !reveal.IsVisible,
@@ -50,7 +51,7 @@ public sealed class SidePanelRevealTests
                     () => $"side visible={side.IsEffectivelyVisible}, reveal visible={reveal.IsVisible}");
                 Assert.True(side.IsEffectivelyVisible);
                 Assert.False(reveal.IsVisible);
-                var selector = Assert.IsType<SelectionPanel>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
+                var selector = Assert.IsType<SourcesPanel>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
                 Assert.True(selector.IsEffectivelyVisible);
                 var close = host.FindControl<Button>("SidePanelCollapseButton")!;
                 AssertInside(window, close);

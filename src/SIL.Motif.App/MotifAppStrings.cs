@@ -3891,4 +3891,42 @@ public static class MotifAppStrings
     public static string CompareUseYourOrder => Text("MotifApp.CompareUseYourOrder");
     public static string CompareUseOtherOrderFormat => Text("MotifApp.CompareUseOtherOrderFormat");
     public static string CompareParagraphRemovedUnavailableAccessibleFormat => Text("MotifApp.CompareParagraphRemovedUnavailableAccessibleFormat");
+
+    #region W2
+    public static string SourcesFieldWorksTexts => Text("MotifApp.SourcesFieldWorksTexts");
+    public static string SourcesNone => Text("MotifApp.SourcesNone");
+    public static string SourcesExternalPassageUnavailable => Text("MotifApp.SourcesExternalPassageUnavailable");
+    public static string SourcesUnavailable => Text("MotifApp.SourcesUnavailable");
+    public static string SourcesRemoved => Text("MotifApp.SourcesRemoved");
+    public static string SourcesActive => Text("MotifApp.SourcesActive");
+    public static string SourcesOutdated => Text("MotifApp.SourcesOutdated");
+    public static string SourcesNoLongerAvailable => Text("MotifApp.SourcesNoLongerAvailable");
+    public static string SourcesContext => Text("MotifApp.SourcesContext");
+    public static string SourcesCurrent => Text("MotifApp.SourcesCurrent");
+    public static string SourcesFolder => Text("MotifApp.SourcesFolder");
+    public static string SourcesSetFolder => Text("MotifApp.SourcesSetFolder");
+    public static string SourcesSetCurrent => Text("MotifApp.SourcesSetCurrent");
+    public static string SourcesClearCurrent => Text("MotifApp.SourcesClearCurrent");
+    public static string SourcesStageContext => Text("MotifApp.SourcesStageContext");
+    public static string SourcesAddParatext => Text("MotifApp.SourcesAddParatext");
+    public static string SourcesId => Text("MotifApp.SourcesId");
+    public static string SourcesName => Text("MotifApp.SourcesName");
+    public static string SourcesVersification => Text("MotifApp.SourcesVersification");
+    public static string SourcesStageAdd => Text("MotifApp.SourcesStageAdd");
+    public static string SourcesStaged => Text("MotifApp.SourcesStaged");
+    public static string SourcesLocalSaved => Text("MotifApp.SourcesLocalSaved");
+    public static string SourcesLocalExplanation => Text("MotifApp.SourcesLocalExplanation");
+    public static string SourcesFieldWorksExplanation => Text("MotifApp.SourcesFieldWorksExplanation");
+    public static string SourcesRefresh => Text("MotifApp.SourcesRefresh");
+    public static string SourcesSavedContext => Text("MotifApp.SourcesSavedContext");
+    public static string SourcesFieldWorksSelection => Text("MotifApp.SourcesFieldWorksSelection");
+    public static string SourcesPassageUnavailable => Text("MotifApp.SourcesPassageUnavailable");
+    public static string SourcesInvalidChapter => Text("MotifApp.SourcesInvalidChapter");
+    public static string SourcesInvalidContext => Text("MotifApp.SourcesInvalidContext");
+    public static string SourcesFolderUnavailable => Text("MotifApp.SourcesFolderUnavailable");
+    public static string SourcesChapterUnavailable => Text("MotifApp.SourcesChapterUnavailable");
+    public static string SourcesActionUnavailable => Text("MotifApp.SourcesActionUnavailable");
+    public static string SourcesPendingExplanation => Text("MotifApp.SourcesPendingExplanation");
+    public static string SourcesUsePending => Text("MotifApp.SourcesUsePending");
+    #endregion
 }

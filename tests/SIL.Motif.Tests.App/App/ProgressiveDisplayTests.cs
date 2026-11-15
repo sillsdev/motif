@@ -61,7 +61,7 @@ public sealed class ProgressiveDisplayTests
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage",
         "ProposalDifferencePanel", "ProposalParsimonyPanel", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
-        "RetirementProposalReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel",
+        "RetirementProposalReviewPanel", "Texts/SourcesPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel",
         "TraceAnalysesView", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
     ];
 
@@ -1029,7 +1029,7 @@ public sealed class ProgressiveDisplayTests
             {
                 DataContext = new RetirementProposalReviewViewModel(EmptyRetirementReview()),
             },
-            "SelectionPanel" => new SelectionPanel(workspace.Selection, texts.Words),
+            "Texts/SourcesPanel" => new SourcesPanel(texts.Sources, texts.Words),
             "SetupDialog" => new SetupDialog { DataContext = workspace.Context.Setup },
             "StatisticsPanel" => new StatisticsPanel(new StatisticsViewModel(workspace.Context.Commands)),
             "TextWordsPanel" => BuildTextWordsPanel(texts.Words),

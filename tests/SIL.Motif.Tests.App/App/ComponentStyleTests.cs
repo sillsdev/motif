@@ -494,6 +494,12 @@ public sealed partial class ComponentStyleTests
 
     private static IEnumerable<Case> Cases()
     {
+        yield return new("SourcesScoped", "a source heading", host => Add(host,
+                new CopyableTextBlock { Text = "Source", Classes = { "sourcesHeading" } }),
+            TextBlock.FontSizeProperty, "Intent.Type.Section");
+        yield return new("SourcesScoped", "a source heading", host => Add(host,
+                new CopyableTextBlock { Text = "Source", Classes = { "sourcesHeading" } }),
+            TextBlock.ForegroundProperty, "Intent.Accent");
         yield return new("Text", "a muted line", host => Add(host, Text("muted")), TextBlock.ForegroundProperty, "Intent.TextMuted");
         yield return new("Text", "an error", host => Add(host, Text("error")), TextBlock.ForegroundProperty, "Intent.Danger.Text");
 

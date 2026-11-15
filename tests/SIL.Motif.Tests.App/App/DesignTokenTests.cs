@@ -498,7 +498,7 @@ public sealed class DesignTokenTests
     }
 
     [Theory]
-    [InlineData("SelectionPanel.axaml")]
+    [InlineData("Texts/SourcesPanel.axaml")]
     [InlineData("SetupDialog.axaml")]
     public void SelectionAndSetupViewsUseTokensForTheirStyleValues(string viewName)
     {
@@ -619,8 +619,6 @@ public sealed class DesignTokenTests
         value.StartsWith("{DynamicResource Intent.", StringComparison.Ordinal)
         || value.StartsWith("{DynamicResource Component.", StringComparison.Ordinal)
         || value.StartsWith("{Binding", StringComparison.Ordinal)
-        || value.StartsWith("{Binding Source={StaticResource Component.Selection.", StringComparison.Ordinal)
-            && value.EndsWith("Converter={x:Static views:SelectionPanel.SizeToGridLength}}", StringComparison.Ordinal)
         || value is "Auto" or "*"
         || value.Split(',').All(part => part == "Auto" || part.Contains('*') || string.IsNullOrWhiteSpace(part));
 

@@ -297,7 +297,7 @@ public sealed class ProjectSwitchTests
                 parts.Workspace.CurrentPage = WorkspacePage.Texts;
                 window.UpdateLayout();
                 var layout = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
-                var selectionHost = Assert.IsType<SelectionPanel>(layout.FindControl<ContentControl>("SidePanelContent")!.Content);
+                var selectionHost = Assert.IsType<SourcesPanel>(layout.FindControl<ContentControl>("SidePanelContent")!.Content);
                 var search = Assert.Single(selectionHost.GetLogicalDescendants().OfType<TextBox>(), control =>
                     AutomationProperties.GetName(control) == "Search texts");
 

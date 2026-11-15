@@ -22,7 +22,7 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         ArgumentNullException.ThrowIfNull(page);
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        _sourcePane = new SelectionPanel(page.Selection, page.Words, settings);
+        _sourcePane = new SourcesPanel(page.Sources, page.Selection, page.Words, settings);
         _sourcePane.Bind(IsEnabledProperty, new Binding(nameof(WorkspaceContext.ProjectAndSelectionEnabled))
         {
             Source = page.Context,
@@ -31,7 +31,7 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
     }
 
     /// <summary>The source pane's title.</summary>
-    public string SidePanelTitle => MotifAppStrings.Texts;
+    public string SidePanelTitle => MotifAppStrings.BoardSources;
 
     /// <summary>The Selection control hosted beside the reader.</summary>
     public Control SidePanel => _sourcePane;

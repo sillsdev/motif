@@ -124,3 +124,9 @@ The `SIL.Motif.Help` project supplies shared Help data to the CLI, App and site.
 - [Proposal lifecycle](proposal-lifecycle.md) — current workflow semantics.
 - [ADR 0042](adr/0042-a-job-produces-assessments-an-assessor-makes-them.md) — Assessment kinds, Assessors and compatible scopes.
 - [FieldWorks integration contract](../AGENTS.md#compatibility-targets) — the save-boundary command and response fields.
+
+### Texts Sources and Passage
+
+The Texts page owns a Sources pane and a Passage reader. `SourcesViewModel` calls typed Source adapters for the applied Baseline's metadata. Folder and Current changes use the local Source commands; adding a Paratext Source or changing its Context stages through `ProposalCommands` and reloads the shared pending Proposal owner. Metadata reads are bound to the listed Baseline and cancelled or ignored after a project, Source or Context reload.
+
+FieldWorks Text choices keep using `SelectionViewModel` and the shared Selection reader. Their GUID occurrence anchors remain separate from external Source/chapter locators. External Passage text and unified FieldWorks/.txt/JSONL Source identities are unavailable through the current Source contract, so choosing external metadata hides the FieldWorks reader instead of presenting unrelated text. No Paratext content is copied into FieldWorks.

@@ -16,6 +16,18 @@ public sealed class TextsPageModel : PageModel
 {
     public TextsPageModel(WorkspaceContext context) : base(context)
     {
+        Sources = new SourcesViewModel(context.Commands, context.Selection, context.Changes.ReloadAsync,
+            () => context.Changes.TargetProposalId is null, context.LeaveProposalAsync);
+        Sources.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName != nameof(SourcesViewModel.CanReadPassage)) return;
+            OnPropertyChanged(nameof(ShowParsePrompt));
+            OnPropertyChanged(nameof(ShowAssessRefusal));
+        };
+        context.Changes.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ChangesViewModel.TargetProposalId)) Sources.RefreshStagingTarget();
+        };
         Words = context.GetOrCreateTextWords();
         ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.Changes,
             context.Commands, context.SelectionReads)
@@ -30,6 +42,7 @@ public sealed class TextsPageModel : PageModel
         context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);
         context.RegisterOccurrenceNavigator(anchor =>
         {
+            Sources.Navigate(new(null));
             ResultsInText.ShowReader();
             if (!ResultsInText.SelectOccurrenceText(anchor)) return false;
             ResultsInText.NavigateOccurrence(anchor);
@@ -44,6 +57,8 @@ public sealed class TextsPageModel : PageModel
         };
     }
 
+    public SourcesViewModel Sources { get; }
+
     public AssessViewModel Assess => Context.Assess;
     public SelectionViewModel Selection => Context.Selection;
 
@@ -54,22 +69,26 @@ public sealed class TextsPageModel : PageModel
     public ResultsInTextViewModel ResultsInText { get; }
 
     /// <summary>Whether a parse can be started before results exist.</summary>
-    public bool ShowParsePrompt => Context.NeedsAssessment &&
+    public bool ShowParsePrompt => Sources.CanReadPassage && Context.NeedsAssessment &&
         (Assess.Refusal is null or { Reason: FailureReason.Cancelled });
 
-    public bool ShowAssessRefusal => Assess.Refusal is not null;
+    public bool ShowAssessRefusal => Sources.CanReadPassage && Assess.Refusal is not null;
 
     protected override void OnProjectCleared()
     {
+        Sources.Clear();
         ResultsInText.ClearProject();
         Words.ClearProject();
         Words.ShowAssessment(null);
     }
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
-        Words.SetProjectAsync(projectPath, cancellationToken);
+        Task.WhenAll(Words.SetProjectAsync(projectPath, cancellationToken), Sources.LoadAsync(projectPath, cancellationToken));
 
-    protected override Task OnStopWorkAsync() => Task.WhenAll(Words.StopAsync(), ResultsInText.StopAsync());
+    protected override Task OnBaselineCapturedAsync(CancellationToken cancellationToken) =>
+        Context.ProjectPath is { } project ? Sources.LoadAsync(project, cancellationToken) : Task.CompletedTask;
+
+    protected override Task OnStopWorkAsync() => Task.WhenAll(Words.StopAsync(), ResultsInText.StopAsync(), Sources.StopAsync());
 
     protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
@@ -86,7 +105,23 @@ public sealed class TextsPageModel : PageModel
 
     protected override void OnRequested(PageRequest request)
     {
+        if (request is OpenPassageRequest passage)
+        {
+            Sources.Navigate(passage.Choice);
+            if (passage.Choice.SourceId is not null)
+            {
+                if (Sources.SelectedSource is null) Sources.Notice = MotifAppStrings.SourcesNoLongerAvailable;
+                return;
+            }
+            ResultsInText.ShowReader();
+            if (passage.Choice.Occurrence is { } anchor && ResultsInText.SelectOccurrenceText(anchor))
+                ResultsInText.NavigateOccurrence(anchor);
+            else if (passage.Choice.Occurrence is not null) Sources.RejectFieldWorksPassage();
+            return;
+        }
+        if (request is OpenTextsRequest) { Sources.Navigate(new(null)); return; }
         if (request is not OpenWordRequest word) return;
+        Sources.Navigate(new(null));
         ResultsInText.ShowReader();
         Assess.SelectWord(word.Word);
         ResultsInText.SelectWord(word.Word, word.WordformId);

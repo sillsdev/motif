@@ -7470,4 +7470,40 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalsClosed" xml:space="preserve"><value>Closed</value><comment>Proposal group no longer open.</comment></data>
   <data name="MotifApp.ProposalsHideClosed" xml:space="preserve"><value>Hide Closed</value><comment>Action to hide closed Proposals.</comment></data>
   <data name="MotifApp.ProposalsShowClosedFormat" xml:space="preserve"><value>Show Closed ({0})</value><comment>Action to show closed Proposals; {0} is their count.</comment></data>
+  <!-- W2 -->
+  <data name="MotifApp.SourcesFieldWorksTexts" xml:space="preserve"><value>FieldWorks Texts</value></data>
+  <data name="MotifApp.SourcesNone" xml:space="preserve"><value>No Paratext Sources Are Recorded in This Baseline.</value></data>
+  <data name="MotifApp.SourcesExternalPassageUnavailable" xml:space="preserve"><value>Passage text is unavailable for this Source. Its Context and Current chapter are metadata only. Choose FieldWorks Texts to read available Texts.</value></data>
+  <data name="MotifApp.SourcesUnavailable" xml:space="preserve"><value>Source Unavailable</value></data>
+  <data name="MotifApp.SourcesRemoved" xml:space="preserve"><value>Removed</value></data>
+  <data name="MotifApp.SourcesActive" xml:space="preserve"><value>Active</value></data>
+  <data name="MotifApp.SourcesOutdated" xml:space="preserve"><value>These Sources are from an older Baseline. Refresh the project before changing them.</value></data>
+  <data name="MotifApp.SourcesNoLongerAvailable" xml:space="preserve"><value>The selected Source is no longer available.</value></data>
+  <data name="MotifApp.SourcesContext" xml:space="preserve"><value>Context</value></data>
+  <data name="MotifApp.SourcesCurrent" xml:space="preserve"><value>Current Chapter</value></data>
+  <data name="MotifApp.SourcesFolder" xml:space="preserve"><value>Folder on This Machine</value></data>
+  <data name="MotifApp.SourcesSetFolder" xml:space="preserve"><value>Save Local Folder</value></data>
+  <data name="MotifApp.SourcesSetCurrent" xml:space="preserve"><value>Save Current Chapter</value></data>
+  <data name="MotifApp.SourcesClearCurrent" xml:space="preserve"><value>Clear Current Chapter</value></data>
+  <data name="MotifApp.SourcesStageContext" xml:space="preserve"><value>Stage Context in Proposal</value></data>
+  <data name="MotifApp.SourcesAddParatext" xml:space="preserve"><value>Add Paratext Source</value></data>
+  <data name="MotifApp.SourcesId" xml:space="preserve"><value>Source ID</value></data>
+  <data name="MotifApp.SourcesName" xml:space="preserve"><value>Source Name</value></data>
+  <data name="MotifApp.SourcesVersification" xml:space="preserve"><value>Versification</value></data>
+  <data name="MotifApp.SourcesStageAdd" xml:space="preserve"><value>Stage Source in Proposal</value></data>
+  <data name="MotifApp.SourcesStaged" xml:space="preserve"><value>Staged in the Proposal. The saved Source Context is unchanged until Apply.</value></data>
+  <data name="MotifApp.SourcesLocalSaved" xml:space="preserve"><value>Saved on this machine.</value></data>
+  <data name="MotifApp.SourcesLocalExplanation" xml:space="preserve"><value>Folder and Current are local to this machine. Context changes are staged in a Proposal.</value></data>
+  <data name="MotifApp.SourcesFieldWorksExplanation" xml:space="preserve"><value>Choose FieldWorks Texts for the Selection, then choose a Text in Passage. These Texts are not unified Motif Sources.</value></data>
+  <data name="MotifApp.SourcesRefresh" xml:space="preserve"><value>Reload Sources</value></data>
+  <data name="MotifApp.SourcesSavedContext" xml:space="preserve"><value>Saved Context</value></data>
+  <data name="MotifApp.SourcesFieldWorksSelection" xml:space="preserve"><value>Texts in This Selection</value></data>
+  <data name="MotifApp.SourcesPassageUnavailable" xml:space="preserve"><value>The requested passage is unavailable in the current Selection.</value></data>
+  <data name="MotifApp.SourcesInvalidChapter" xml:space="preserve"><value>Enter a book code and chapter number for Current Chapter.</value></data>
+  <data name="MotifApp.SourcesInvalidContext" xml:space="preserve"><value>The Context range is invalid. Check the books and chapters.</value></data>
+  <data name="MotifApp.SourcesFolderUnavailable" xml:space="preserve"><value>The Source folder is unavailable on this machine. Choose an existing folder.</value></data>
+  <data name="MotifApp.SourcesChapterUnavailable" xml:space="preserve"><value>That chapter is unavailable in this Source.</value></data>
+  <data name="MotifApp.SourcesActionUnavailable" xml:space="preserve"><value>The Source action could not be completed. Review the details and try again.</value></data>
+  <data name="MotifApp.SourcesPendingExplanation" xml:space="preserve"><value>Source changes belong to the pending Proposal. Return to the current project before staging them.</value></data>
+  <data name="MotifApp.SourcesUsePending" xml:space="preserve"><value>Return to Current Project</value></data>
 </root>

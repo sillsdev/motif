@@ -1,0 +1,14 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Button.sourcesAction">
+    <Setter Property="ContentTemplate">
+      <DataTemplate x:DataType="x:String">
+        <TextBlock Text="{Binding .}" TextWrapping="Wrap" />
+      </DataTemplate>
+    </Setter>
+  </Style>
+  <Style Selector=":is(TextBlock).sourcesHeading">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+</Styles>

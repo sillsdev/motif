@@ -817,7 +817,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     workspace.Context.OpenPage(WorkspacePage.Texts);
 
                     PageScreenshots.Settle(window);
-                    var panel = Assert.Single(window.GetVisualDescendants().OfType<SelectionPanel>());
+                    var panel = Assert.Single(window.GetVisualDescendants().OfType<SourcesPanel>());
                     Assert.True(panel.Settings is { HasProject: true, HasSavedSelection: true },
                         $"Inline Settings={panel.Settings is not null}; project={panel.Settings?.HasProject}; " +
                         $"saved={panel.Settings?.HasSavedSelection}; setup={workspace.Context.Setup?.CanRunDefaultSelection}; " +
