@@ -65,8 +65,10 @@ jobs:
         shell: pwsh
         run: |
           $selections = @(
-            # The six slow-scale App tests, the three 688,000-word memory tests, and the full layout grid.
+            # App scale tests, 688,000-word memory tests, query scale tests, and the full layout grid.
             @{ Project = 'SIL.Motif.Tests.App'; Filter = 'Category=SlowScale|FullyQualifiedName~LayoutInvariantSystemTests.EveryPageAndApplicableStateSatisfiesTheFullLightGrid' }
+            @{ Project = 'SIL.Motif.Tests.Worker'; Filter = 'Category=SlowScale' }
+            @{ Project = 'SIL.Motif.Tests.Contract'; Filter = 'Category=SlowScale' }
           )
           $kept = 'bin/slow-results'
           $failed = $false

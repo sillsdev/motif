@@ -1,4 +1,5 @@
 using SIL.Motif.Contract.Query;
+using SIL.Motif.Tests.QueryScale;
 using Xunit;
 
 namespace SIL.Motif.Tests.Contract.Parsimony;
@@ -115,7 +116,8 @@ public sealed class FormQueryTests
         Assert.Throws<ArgumentException>(() => FormQuery.Run(Query("form", "~", new string('a', 257)), Rows, []));
         Assert.Throws<ArgumentException>(() => FormQuery.Run(Query("form", "~", "(a)\\1"), Rows, []));
     }
-    [Fact]
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public void ThirtyOneThousandFormsGroupWithinOneSecond()
     {
         var rows = Enumerable.Range(0, 31000).Select(i => new QueryForm(i.ToString(), "sarang", "sadang",

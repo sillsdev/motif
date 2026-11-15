@@ -11,7 +11,8 @@ using Xunit.Abstractions;
 namespace SIL.Motif.Tests.Commands.Queries;
 public sealed class QueryCebPerformanceTests(ITestOutputHelper output)
 {
-    [CopiedFactsFact]
+    [SlowScaleCopiedFactsFact]
+    [Trait("Category", "SlowScale")]
     public void MeasureCommand()
     {
         var root = Environment.GetEnvironmentVariable("MOTIF_QUERY_CEB_COPY")!;
@@ -50,10 +51,15 @@ public sealed class QueryCebPerformanceTests(ITestOutputHelper output)
             Assert.True(watch.ElapsedMilliseconds < 1000, $"Command took {watch.ElapsedMilliseconds} ms");
         }
     }
-    private sealed class CopiedFactsFactAttribute : FactAttribute
+    private sealed class SlowScaleCopiedFactsFactAttribute : FactAttribute
     {
-        public CopiedFactsFactAttribute()
+        public SlowScaleCopiedFactsFactAttribute()
         {
+            if (Environment.GetEnvironmentVariable("MOTIF_SLOW_SCALE") != "1")
+            {
+                Skip = "Set MOTIF_SLOW_SCALE=1 to run representative-scale measurements.";
+                return;
+            }
             var root = Environment.GetEnvironmentVariable("MOTIF_QUERY_CEB_COPY");
             if (string.IsNullOrWhiteSpace(root) || !File.Exists(Path.Combine(root, "facts.sqlite")))
                 Skip = "Set MOTIF_QUERY_CEB_COPY to a private copy of the CEB facts artifact.";

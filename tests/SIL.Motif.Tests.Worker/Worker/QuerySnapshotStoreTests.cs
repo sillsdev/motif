@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Query;
 using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Tests.QueryScale;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -102,43 +103,73 @@ public sealed class QuerySnapshotStoreTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void OpensReadsAndQueriesThirtyOneThousandFormsCorrectly()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".sqlite");
+        try
+        {
+            WriteThirtyOneThousandForms(path);
+            var result = OpenReadAndQuery(path);
+            Assert.Equal(31000, result.SnapshotFormCount);
+            Assert.Equal(31000, result.MatchCount);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public void OpensReadsAndQueriesThirtyOneThousandFormsWithinOneSecond()
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".sqlite");
         try
         {
-            using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
-            {
-                connection.Open();
-                using var command = connection.CreateCommand();
-                command.CommandText = """
-                    CREATE TABLE query_snapshot(Id INTEGER PRIMARY KEY, TrialId TEXT, GrammarHash TEXT, BundleId TEXT,
-                        WritingSystem TEXT, GraphemesJson TEXT, UnresolvedVariants INTEGER, SourceWriteTicks INTEGER,
-                        TrialCreatedUtc TEXT, TrialQueueOrder REAL);
-                    CREATE TABLE query_forms(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
-                    CREATE TABLE query_stems(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
-                    """;
-                command.ExecuteNonQuery();
-                var forms = Enumerable.Range(0, 31000).Select(i => new QueryForm(i.ToString(), "sarang", "sadang",
-                    "alternate", i.ToString(), "stem", "", [], [], i)).ToArray();
-                using var write = connection.BeginTransaction();
-                QuerySnapshotStore.Replace(connection, write, new("trial", "hash", "bundle", "ws",
-                    new QueryFactsReader.Snapshot(forms, ["ng"], 0)));
-                write.Commit();
-            }
+            WriteThirtyOneThousandForms(path);
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            using var readConnection = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False");
-            readConnection.Open();
-            using var read = readConnection.BeginTransaction();
-            var snapshot = QuerySnapshotStore.Read(readConnection, read, includeStems: false)!;
-            var result = FormQuery.Run(new QueryRecord("forms", [new("change", "is", "d>r")],
-                ["change.right"]), snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes);
+            var result = OpenReadAndQuery(path);
             watch.Stop();
             output.WriteLine($"synthetic_store_open_read_query_ms={watch.ElapsedMilliseconds}");
-            Assert.Equal(31000, Assert.Single(result.Groups).Count);
+            Assert.Equal(31000, result.SnapshotFormCount);
+            Assert.Equal(31000, result.MatchCount);
             Assert.True(watch.ElapsedMilliseconds < 1000, $"Store read and query took {watch.ElapsedMilliseconds} ms");
         }
         finally { File.Delete(path); }
+    }
+
+    private static void WriteThirtyOneThousandForms(string path)
+    {
+        using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+        connection.Open();
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE query_snapshot(Id INTEGER PRIMARY KEY, TrialId TEXT, GrammarHash TEXT, BundleId TEXT,
+                    WritingSystem TEXT, GraphemesJson TEXT, UnresolvedVariants INTEGER, SourceWriteTicks INTEGER,
+                    TrialCreatedUtc TEXT, TrialQueueOrder REAL);
+                CREATE TABLE query_forms(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
+                CREATE TABLE query_stems(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
+                """;
+            command.ExecuteNonQuery();
+        }
+        var forms = Enumerable.Range(0, 31000).Select(i => new QueryForm(i.ToString(), "sarang", "sadang",
+            "alternate", i.ToString(), "stem", "", [], [], i)).ToArray();
+        using var write = connection.BeginTransaction();
+        QuerySnapshotStore.Replace(connection, write, new("trial", "hash", "bundle", "ws",
+            new QueryFactsReader.Snapshot(forms, ["ng"], 0)));
+        write.Commit();
+    }
+
+    private static (int SnapshotFormCount, int MatchCount) OpenReadAndQuery(string path)
+    {
+        QuerySnapshotStore.Stored snapshot;
+        using (var connection = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False"))
+        {
+            connection.Open();
+            using var read = connection.BeginTransaction();
+            snapshot = QuerySnapshotStore.Read(connection, read, includeStems: false)!;
+        }
+        var result = FormQuery.Run(new QueryRecord("forms", [new("change", "is", "d>r")], ["change.right"]),
+            snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes);
+        return (snapshot.Snapshot.Forms.Count, Assert.Single(result.Groups).Count);
     }
 
 }
