@@ -396,14 +396,18 @@ public static class ParsimonyCommands
         if (!waited.Succeeded) return CommandOutcome<ParsimonyCandidateEvidenceResponse>.Refused(waited.Refusal!);
         if (waited.Value!.Status != JobStatus.Completed)
         {
-            var detail = ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+            var detail = ProjectStoreCommand.ReadExisting(request.FwDataPath,
+                CommandOutcome<string>.Success("The candidate Parsimony job did not complete."),
+                (database, _) =>
                 CommandOutcome<string>.Success(ReadJobFailure(database, request.JobId)));
             return CommandOutcome<ParsimonyCandidateEvidenceResponse>.Refused(new Refusal(
                 ParsimonyRefusalCodes.CandidateFailed, FailureReason.Refused,
                 detail.Succeeded ? detail.Value! : "The candidate Parsimony job did not complete."));
         }
 
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ParsimonyCandidateEvidenceResponse>.Refused(new Refusal(ParsimonyRefusalCodes.CandidateResultMissing, FailureReason.StoreInconsistent, "The completed candidate job has no stored evidence response.")),
+            (database, _) =>
         {
             var resultJson = new JobRepository(database).Get(request.JobId)?.ResultJson;
             if (resultJson is null)
@@ -448,7 +452,9 @@ public static class ParsimonyCommands
             return CommandOutcome<ParsimonyReportResponse>.Refused(JobFailed(request.FwDataPath,
                 request.ProductVersion, request.JobId, waited.Value));
 
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(ParsimonyRefusalCodes.ResultMissing, FailureReason.StoreInconsistent, "The completed Parsimony job has no stored Report identity.")),
+            (database, _) =>
         {
             var identity = ReadResultIdentity(database, request.JobId);
             if (identity.Refusal is not null) return CommandOutcome<ParsimonyReportResponse>.Refused(identity.Refusal);
@@ -477,7 +483,9 @@ public static class ParsimonyCommands
             return CommandOutcome<ParsimonyReportSetResponse>.Refused(JobFailed(request.FwDataPath,
                 request.ProductVersion, request.JobId, waited.Value));
 
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ParsimonyReportSetResponse>.Refused(new Refusal(ParsimonyRefusalCodes.ResultMissing, FailureReason.StoreInconsistent, "The completed Parsimony job has no stored Report identity.")),
+            (database, _) =>
         {
             var identity = ReadResultIdentity(database, request.JobId);
             if (identity.Refusal is not null) return CommandOutcome<ParsimonyReportSetResponse>.Refused(identity.Refusal);
@@ -512,7 +520,9 @@ public static class ParsimonyCommands
 
     private static Refusal JobFailed(string fwDataPath, string productVersion, string jobId, JobStatusResponse job)
     {
-        var detail = ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        var detail = ProjectStoreCommand.ReadExisting(fwDataPath,
+            CommandOutcome<string>.Success($"Parsimony job '{jobId}' was not found."),
+            (database, _) =>
             CommandOutcome<string>.Success(ReadJobFailure(database, jobId)));
         var message = detail.Succeeded ? detail.Value! :
             $"Parsimony job '{jobId}' finished as {JobStatusJson.ToWire(job.Status!.Value)}.";
@@ -551,7 +561,8 @@ public static class ParsimonyCommands
             return CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(
                 ParsimonyRefusalCodes.ReportIdRequired, FailureReason.InvalidArgument,
                 "A Report id is required."));
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion,
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ParsimonyReportResponse>.Refused(new Refusal(ParsimonyRefusalCodes.ReportNotFound, FailureReason.NotFound, $"Parsimony Report '{request.ReportId}' was not found.")),
             (database, _) => ReadReport(database, request.ReportId));
     }
 
@@ -562,7 +573,9 @@ public static class ParsimonyCommands
         if (string.IsNullOrWhiteSpace(request.FwDataPath) || string.IsNullOrWhiteSpace(request.ProductVersion))
             return Refused<ParsimonyLatestReportResponse>(ParsimonyRefusalCodes.InvalidLatestRequest, FailureReason.InvalidArgument,
                 "A FieldWorks project path and a Motif product version are required.");
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ParsimonyLatestReportResponse>.Refused(new Refusal(ParsimonyRefusalCodes.NoReport, FailureReason.NotFound, "No Parsimony Report yet.")),
+            (database, _) =>
         {
             var latest = new ReportRepository(database).GetLatest("parsimony");
             if (latest is null)

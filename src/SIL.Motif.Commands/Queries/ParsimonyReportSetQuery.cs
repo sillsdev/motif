@@ -45,7 +45,8 @@ public static class ParsimonyReportSetQuery
             }
             var set = read.Value!;
             if (!MatchesReports(set, candidates.Value.Token, candidates.Value.SelectionSha256)) continue;
-            var descriptor = await Task.Run(() => ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion,
+            var descriptor = await Task.Run(() => ProjectStoreCommand.ReadExisting(request.FwDataPath,
+                CommandOutcome<ParsimonyBundleRecord?>.Success(null),
                 (database, project) =>
                 {
                     var bundle = new EvidenceArtifactRepository(database).Get(ProjectWorkspaceKey.Compute(project), set.BundleId);
@@ -87,7 +88,9 @@ public static class ParsimonyReportSetQuery
 
     private static CommandOutcome<ParsimonyCandidates> ReadParsimonyCandidates(
         ReadLatestParsimonyReportRequest request, string? parserPath) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ParsimonyCandidates>.Success(new(null, null, [])),
+            (database, project) =>
         {
             var key = ProjectWorkspaceKey.Compute(project);
             var current = new BaselineRepository(database).GetCurrentEvidence(key);

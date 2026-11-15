@@ -85,14 +85,16 @@ public static class RequestCommands
     public static CommandOutcome<RequestListResponse> List(ListRequestsRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        if (request.Status is not (null or RequestStatuses.Open or RequestStatuses.Answered))
+            return Refused<RequestListResponse>(RefusalCodes.RequestInvalid, FailureReason.InvalidArgument,
+                "The status must be 'open' or 'answered'; leave it out for both.");
+        if (request.Offset < 0 || request.Limit is < 1 or > 200)
+            return Refused<RequestListResponse>(RefusalCodes.RequestInvalid, FailureReason.InvalidArgument,
+                "The offset cannot be negative and the limit must be from 1 to 200.");
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<RequestListResponse>.Success(new([], 0, request.Offset, 0, NoteNotice)),
+            (database, _) =>
         {
-            if (request.Status is not (null or RequestStatuses.Open or RequestStatuses.Answered))
-                return Refused<RequestListResponse>(RefusalCodes.RequestInvalid, FailureReason.InvalidArgument,
-                    "The status must be 'open' or 'answered'; leave it out for both.");
-            if (request.Offset < 0 || request.Limit is < 1 or > 200)
-                return Refused<RequestListResponse>(RefusalCodes.RequestInvalid, FailureReason.InvalidArgument,
-                    "The offset cannot be negative and the limit must be from 1 to 200.");
             var repository = new RequestRepository(database);
             var (page, total) = repository.List(request.Status, request.Offset, request.Limit);
             return CommandOutcome<RequestListResponse>.Success(new RequestListResponse(

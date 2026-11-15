@@ -17,8 +17,11 @@ public static class ConfigCommands
 {
     /// <summary>The resolved project configuration.</summary>
     public static CommandOutcome<ProjectConfigurationProjection> Show(ShowConfigRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (_, project) =>
+        ProjectStoreCommand.RunOperation(request.FwDataPath, () =>
         {
+            var located = ProjectStoreCommand.LocateProject(request.FwDataPath);
+            if (!located.Succeeded) return CommandOutcome<ProjectConfigurationProjection>.Refused(located.Refusal!);
+            var project = located.Value!;
             try
             {
                 var configuration = new ProjectConfigurationReader().Read(project);

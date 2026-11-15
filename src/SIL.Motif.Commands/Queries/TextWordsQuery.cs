@@ -42,7 +42,9 @@ public static class TextWordsQuery
         TextWordsRequest request, CancellationToken cancellationToken = default)
     {
         if (cancellationToken.IsCancellationRequested) return Cancelled();
-        return ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<TextWordsResponse>.Success(new([], [], false)),
+            (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             CurrentBaselineTextWords? current;

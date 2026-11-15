@@ -45,13 +45,15 @@ public static class PendingChanges
     };
 
     public static CommandOutcome<PendingChangesSnapshot> Load(PendingChangesRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            request.ProposalId is null ? CommandOutcome<PendingChangesSnapshot>.Success(new(null, "none", [], [])) : CommandOutcome<PendingChangesSnapshot>.Refused(ProposalCommands.ProposalLoadRefusal(new KeyNotFoundException($"Proposal '{request.ProposalId}' was not found."))),
+            (database, project) =>
         {
             var repository = new ProposalRepository(database);
             if (!TryResolve(repository, request.ProposalId, out _, out var targetRefusal))
                 return CommandOutcome<PendingChangesSnapshot>.Refused(targetRefusal);
             return CommandOutcome<PendingChangesSnapshot>.Success(
-                Snapshot(database, project, repository, proposalId: request.ProposalId));
+                Snapshot(database, project, repository, persistFitState: false, proposalId: request.ProposalId));
         });
 
     internal static PendingChangesSnapshot ReadForSelection(MotifDatabase database, ProjectLocator project) =>
@@ -1017,7 +1019,7 @@ public static class PendingChanges
 
     /// <summary>Reads the pending Draft's changes with their cached fit, as the Review list shows them.</summary>
     internal static PendingChangesSnapshot ReadSnapshot(MotifDatabase database, ProjectLocator project) =>
-        Snapshot(database, project, new ProposalRepository(database));
+        Snapshot(database, project, new ProposalRepository(database), persistFitState: false);
 
     /// <summary>Groups any Draft's operations into the authored word changes they came from.</summary>
     internal static PendingChange[] ReadChanges(DraftDocument draft) =>

@@ -29,7 +29,12 @@ public static class TimingCommand
                 "timing.invalid-request", FailureReason.InvalidArgument,
                 "Timing requires --by kind|rule and a positive --top value."));
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            request.ProposalId is not null
+                ? CommandOutcome<TimingResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
+                    "No Trial is recorded for this Proposal."))
+                : RefusedTiming("timing.no-assessment", "No matching stored ParseTime Assessment is available."),
+            (database, project) =>
         {
             var assessments = new AssessmentRepository(database);
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(

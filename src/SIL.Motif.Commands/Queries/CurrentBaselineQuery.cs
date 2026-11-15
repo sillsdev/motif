@@ -35,7 +35,9 @@ public sealed record CurrentBaselineResponse(
 public static class CurrentBaselineQuery
 {
     public static CommandOutcome<CurrentBaselineResponse> Query(CurrentBaselineRequest request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<CurrentBaselineResponse>.Success(new(null, null, File.Exists(request.ProjectPath + ".lock")) { ProjectLastWriteUtc = File.Exists(request.ProjectPath) ? new DateTimeOffset(File.GetLastWriteTimeUtc(request.ProjectPath), TimeSpan.Zero) : null }),
+            (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var baseline = new BaselineRepository(database).GetCurrentPublished(workspaceKey);

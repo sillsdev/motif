@@ -538,7 +538,9 @@ public static class JobCommands
         if (string.IsNullOrWhiteSpace(request.JobId))
             return CommandOutcome<JobStatusResponse>.Refused(JobIdRequired());
 
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId)),
+            (database, project) =>
         {
             var entry = new JobRepository(database).GetWithQueueOrder(request.JobId);
             if (entry is null) return CommandOutcome<JobStatusResponse>.Refused(JobNotFound(request.JobId));
@@ -806,7 +808,9 @@ public static class JobCommands
         if (string.IsNullOrWhiteSpace(request.JobId))
             return CommandOutcome<JobAssessmentsResponse>.Refused(JobIdRequired());
 
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<JobAssessmentsResponse>.Refused(JobNotFound(request.JobId)),
+            (database, project) =>
         {
             var job = new JobRepository(database).Get(request.JobId);
             if (job is null) return CommandOutcome<JobAssessmentsResponse>.Refused(JobNotFound(request.JobId));
@@ -1033,7 +1037,6 @@ public static class JobCommands
     private static IReadOnlyList<GlobalQueueEntry> ReadGlobalActiveQueue(string productVersion)
     {
         using var machine = MachineDatabase.Open(RunnerOptions.ResolveRoot());
-        var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, ParseProductVersion(productVersion));
         var entries = new List<GlobalQueueEntry>();
         foreach (var known in new KnownProjectRegistry(machine).List())
         {
@@ -1041,11 +1044,13 @@ public static class JobCommands
             var locator = new ProjectLocator(known.FullFwDataPath, Path.GetFileNameWithoutExtension(known.FullFwDataPath));
             try
             {
-                using var database = catalog.OpenOwned(locator);
+                var path = ProjectDatabaseCatalog.DatabasePathFor(locator);
+                if (!File.Exists(path)) continue;
+                using var database = MotifDatabase.OpenExistingReadOnly(path, locator);
                 foreach (var entry in new JobRepository(database).ListActiveByQueueOrder(known.WorkspaceKey))
                     entries.Add(new GlobalQueueEntry(known, entry.Job, entry.QueueOrder));
             }
-            catch (Exception exception) when (exception is IOException or InvalidDataException or NotSupportedException)
+            catch (Exception exception) when (exception is IOException or InvalidDataException or NotSupportedException or UnauthorizedAccessException or Microsoft.Data.Sqlite.SqliteException)
             {
                 // Skipped, not thrown: one unreadable project must not hide every other project's queue.
             }

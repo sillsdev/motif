@@ -32,7 +32,7 @@ public static class ProposalStandingsCommand
     public static CommandOutcome<ProposalStandings> Read(ProposalStandingsRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText,
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath, CommandOutcome<ProposalStandings>.Success(new([], 0)),
             (database, project) => Read(database, project, request.IncludeSetAside));
     }
 

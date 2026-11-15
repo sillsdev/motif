@@ -54,7 +54,9 @@ public static class ProposalTexts
     public static CommandOutcome<IReadOnlyList<RationaleRevisionView>> RationaleRevisions(RationaleRevisionsRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<IReadOnlyList<RationaleRevisionView>>.Success([]),
+            (database, _) =>
         {
             if (!CanonicalId.TryParse(request.ProposalId, out var id))
                 return CommandOutcome<IReadOnlyList<RationaleRevisionView>>.Refused(Refuse("proposal.not-found",

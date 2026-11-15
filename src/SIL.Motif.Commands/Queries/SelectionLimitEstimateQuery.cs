@@ -10,7 +10,9 @@ public static class SelectionLimitEstimateQuery
 {
     /// <summary>Returns the latest ParseTime rate, or the typical-machine fallback without usable statistics.</summary>
     public static CommandOutcome<ParserAttemptRate> ReadParserAttemptRate(string projectPath) =>
-        ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, _) =>
+        ProjectStoreCommand.ReadExisting(projectPath,
+            CommandOutcome<ParserAttemptRate>.Success(ParserWorkLimitEstimator.FromAssessment(null)),
+            (database, _) =>
         {
             var repository = new AssessmentRepository(database);
             var latest = repository.ListByKind(AssessmentKind.ParseTime.ToStoredKind()).LastOrDefault();

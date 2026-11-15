@@ -1665,7 +1665,9 @@ internal static class AgentTools
             if (named.Value!.Count > 0)
                 throw new ToolArgumentException("tool.invalid-argument",
                     "Give either an assessment id to page or words to measure, not both.");
-            return ToolOutcome.From(ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, _) =>
+            var absent = CommandOutcome<JsonObject>.Refused(new Refusal("tool.not-found", FailureReason.NotFound,
+                $"There is no Assessment '{stored}'. Use an id motif_assess returned."));
+            return ToolOutcome.From(ProjectStoreCommand.ReadExisting(context.ProjectPath, absent, (database, _) =>
             {
                 AssessmentRecord record;
                 try { record = new AssessmentRepository(database).Get(stored); }
@@ -1683,13 +1685,17 @@ internal static class AgentTools
         var outcome = TrialResults.Assess(context, named.Value!, cancellation);
         if (!outcome.Succeeded) return ToolOutcome.Refused(outcome.Refusal!);
         if (outcome.Value!.InvocationId.Length == 0 && outcome.Value.AssessmentIds.FirstOrDefault() is { } reused)
-            return ToolOutcome.From(ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, _) =>
+        {
+            var absent = CommandOutcome<JsonObject>.Refused(new Refusal("tool.not-found", FailureReason.NotFound,
+                $"There is no Assessment '{reused}'. Use an id motif_assess returned."));
+            return ToolOutcome.From(ProjectStoreCommand.ReadExisting(context.ProjectPath, absent, (database, _) =>
             {
                 var record = new AssessmentRepository(database).Get(reused);
                 var reusedPage = AssessSummary.PageStored(reused, record.Words ?? [], offset, limit, detailed);
                 if (record.Invocation is { } invocation) reusedPage["invocation"] = invocation.InvocationId;
                 return CommandOutcome<JsonObject>.Success(reusedPage);
             }), AssessNext(reused, offset, limit));
+        }
         var page = AssessSummary.Page(outcome.Value!, offset, limit, detailed);
         return ToolOutcome.Ok(page, AssessNext(page["assessment"]?.GetValue<string>(), offset, limit));
     }
@@ -1703,7 +1709,8 @@ internal static class AgentTools
     {
         var proposal = args.Required("proposal");
         var action = args.Optional("action") ?? "run";
-        if (action is "read" or "refresh-report") return TrialReviewTools.Read(context, proposal, args, action == "refresh-report");
+        if (action == "read") return TrialReviewTools.Read(context, proposal, args);
+        if (action == "refresh-report") return TrialReviewTools.Refresh(context, proposal, args);
         if (action != "run") return ToolOutcome.Refused("tool.invalid-argument", FailureReason.InvalidArgument, "Unknown Trial action.");
         if (args.Has("report") || args.Has("section") || args.Has("set") || args.Has("cursor") || args.Has("limit") ||
             args.Optional("detail") is not (null or "summary"))

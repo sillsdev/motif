@@ -94,7 +94,9 @@ public static class TryWordSessions
 
     private static (string Token, string GrammarPath)? Resolve(string projectPath)
     {
-        var outcome = ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
+        var outcome = ProjectStoreCommand.ReadExisting(projectPath,
+            CommandOutcome<string>.Success(string.Empty),
+            (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrentPublished(ProjectWorkspaceKey.Compute(project));
             return baseline is null

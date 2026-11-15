@@ -60,7 +60,7 @@ public sealed class TrialReviewToolTests
     {
         var tool = AgentTools.All.Single(item => item.Name == "motif_trial");
         var args = new ToolArgs(new JsonObject { ["proposal"] = "proposal/one" }, tool.ArgumentNames);
-        var outcome = TrialReviewTools.Read(null!, "proposal/one", args, refresh: true);
+        var outcome = TrialReviewTools.Refresh(null!, "proposal/one", args);
         Assert.Equal("tool.invalid-argument", outcome.Refusal!.Code);
     }
 

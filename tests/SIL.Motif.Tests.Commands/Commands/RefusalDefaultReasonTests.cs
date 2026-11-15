@@ -61,7 +61,6 @@ public sealed class RefusalDefaultReasonTests
         ["parsimony.automatic-failed"] = "retained public code has no current refusal construction",
         ["preferences.refused"] = "reason not determinable statically: a window preference problem, which carries no FailureReason",
         ["preferences.unavailable"] = "reason not determinable statically: a window preference problem, which carries no FailureReason",
-        ["phonology-examples.assessment-not-found"] = "reason not determinable statically: the code is chosen by a conditional; both arms use NotFound",
         ["phonology-examples.example-not-found"] = "reason not determinable statically: the code is chosen by a conditional; both arms use NotFound",
         ["project.tag-invalid"] = "reason not determinable statically: code and reason are selected from ProjectTagProblem",
         ["project.tag-taken"] = "reason not determinable statically: code and reason are selected from ProjectTagProblem",

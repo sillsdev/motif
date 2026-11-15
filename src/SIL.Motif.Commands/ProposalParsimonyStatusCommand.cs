@@ -41,9 +41,20 @@ public static class ProposalParsimonyStatusCommand
         if (!CanonicalId.TryParse(request.ProposalId, out var proposalId))
             return CommandOutcome<ProposalParsimonyStatus>.Refused(new Refusal(RefusalCodes.ProposalNotFound,
                 FailureReason.Refused, $"'{request.ProposalId}' is not a Proposal id."));
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        var parserKey = ParserIdentity.Read(parserPath)?.Key;
+        var absent = new ProposalParsimonyStatus(ProposalParsimonyStatus.CurrentSchemaVersion,
+            proposalId.Value, null, null,
+            parserKey is null ? ProposalParsimonyState.NotSetUp : ProposalParsimonyState.NotYetRun,
+            parserKey is null
+                ? new ProposalParsimonyReason(ParserMissingCode, "PanGloss is not set up, so Parsimony cannot run.")
+                : new ProposalParsimonyReason("status-no-trial",
+                    "Parsimony runs after the Proposal's Trial finishes, and no Trial has finished."),
+            null, null, null, [UnrunGrammar(), TextGroup(false)]);
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ProposalParsimonyStatus>.Success(absent),
+            (database, project) =>
             CommandOutcome<ProposalParsimonyStatus>.Success(Build(database, project, proposalId.Value,
-                ParserIdentity.Read(parserPath)?.Key)));
+                parserKey)));
     }
 
     private static ProposalParsimonyStatus Build(MotifDatabase database, ProjectLocator project,

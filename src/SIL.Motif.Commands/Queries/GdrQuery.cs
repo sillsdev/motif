@@ -19,7 +19,9 @@ public static class GdrQuery
     public static CommandOutcome<GdrListResponse> List(GdrListRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            request.ExpectedBaseline is not null ? BaselineChanged<GdrListResponse>() : CommandOutcome<GdrListResponse>.Success(new(false, [])),
+            (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (request.ExpectedBaseline is { } expected && expected != baseline?.Token) return BaselineChanged<GdrListResponse>();
@@ -49,7 +51,9 @@ public static class GdrQuery
     public static CommandOutcome<GdrCheckResponse> Check(GdrCheckRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            request.ExpectedBaseline is not null ? BaselineChanged<GdrCheckResponse>() : CommandOutcome<GdrCheckResponse>.Success(new(false, true, [], [], new GdrSyncCounts(0, 0, 0, 0, 0, []))),
+            (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (request.ExpectedBaseline is { } expected && expected != baseline?.Token) return BaselineChanged<GdrCheckResponse>();
@@ -116,7 +120,9 @@ public static class GdrQuery
     public static CommandOutcome<GdrPathLink> LinkToPath(GdrLinkToPathRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            request.ExpectedBaseline is not null ? BaselineChanged<GdrPathLink>() : NoBaseline<GdrPathLink>(),
+            (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (request.ExpectedBaseline is { } expected && expected != baseline?.Token) return BaselineChanged<GdrPathLink>();

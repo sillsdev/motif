@@ -41,6 +41,15 @@ public static class ReadStateCommands
              occurrences.Distinct().Count() != occurrences.Count))
             return Invalid("Read-state occurrences must be unique and belong to the requested Text.");
 
+        return request.IsRead is null
+            ? ProjectStoreCommand.ReadExisting(request.ProjectPath,
+                request.ExpectedContext is not null ? ContextChanged() : Success([], hasBaseline: false),
+                (database, project) => ReadOrChange(database, project, request, pruneInvalidReads: false))
+            : Change(request);
+    }
+
+    private static CommandOutcome<WordReadStateResponse> Change(WordReadStateRequest request)
+    {
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText,
             (database, project) => ReadOrChange(database, project, request));
     }
@@ -55,7 +64,8 @@ public static class ReadStateCommands
                 "word.read-state-cancelled", FailureReason.Cancelled, "Reading word state was cancelled."));
         if (request.TextId == Guid.Empty || request.IsRead is not null || request.Occurrences is not null)
             return Invalid("A Text identity and read-only request are required.");
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText,
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            request.ExpectedContext is not null ? ContextChanged() : Success([], hasBaseline: false),
             (database, project) => ReadOrChange(database, project, request, pruneInvalidReads: false,
                 onProjectionRead));
     }
@@ -65,7 +75,7 @@ public static class ReadStateCommands
         bool pruneInvalidReads = true, Action<TextWordsProjection>? onProjectionRead = null)
     {
         var repository = new ReadStateRepository(database);
-        using var write = request.ExpectedContext is null ? null : repository.BeginTransaction();
+        using var write = request.ExpectedContext is null ? null : repository.BeginTransaction(deferred: !pruneInvalidReads);
         CommandOutcome<WordReadStateResponse> Complete(CommandOutcome<WordReadStateResponse> outcome)
         {
             if (outcome.Succeeded) write?.Commit();

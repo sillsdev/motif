@@ -112,11 +112,38 @@ public static partial class ProposalCommands
     public static CommandOutcome<AnalysisAggregateProjection> Analyses(ManualAnalysesRequest request) =>
         BuildManualAnalysisProjection(request.FwDataPath);
 
-    public static CommandOutcome<AnalysisAggregateProjection> Analyses(AssessmentAnalysesRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
-            BuildAssessmentAnalysisProjection(
-                database, project, request.AssessmentId, request.CurrentSelectionSha256,
-                request.CurrentGrammarSourceSha256));
+    public static CommandOutcome<AnalysisAggregateProjection> Analyses(AssessmentAnalysesRequest request)
+    {
+        var invalid = ValidateAssessmentAnalysisIds(request.AssessmentId, request.CurrentSelectionSha256,
+            request.CurrentGrammarSourceSha256);
+        if (invalid is not null) return CommandOutcome<AnalysisAggregateProjection>.Refused(invalid);
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<AnalysisAggregateProjection>.Refused(AssessmentNotFound(request.AssessmentId)),
+            (database, project) => BuildAssessmentAnalysisProjection(database, project, request.AssessmentId,
+                request.CurrentSelectionSha256, request.CurrentGrammarSourceSha256));
+    }
+
+    private static Refusal? ValidateAssessmentAnalysisIds(string assessmentId, string currentSelectionSha256,
+        string currentGrammarSourceSha256)
+    {
+        try
+        {
+            if (!CanonicalId.TryParse(assessmentId, out _))
+                throw new ArgumentException("A canonical assessment id is required.", nameof(assessmentId));
+            Sha256Value.RequireCanonical(currentSelectionSha256, nameof(currentSelectionSha256));
+            Sha256Value.RequireCanonical(currentGrammarSourceSha256, nameof(currentGrammarSourceSha256));
+            return null;
+        }
+        catch (ArgumentException exception)
+        {
+            return new Refusal("assessment.invalid-id", FailureReason.InvalidArgument, exception.Message,
+                Fact(("assessmentId", assessmentId)));
+        }
+    }
+
+    private static Refusal AssessmentNotFound(string assessmentId) => new(
+        "assessment.not-found", FailureReason.NotFound,
+        $"Assessment '{assessmentId}' was not found in the Motif store.", Fact(("assessmentId", assessmentId)));
 
     private static CommandOutcome<AnalysisAggregateProjection> BuildAssessmentAnalysisProjection(
         MotifDatabase database,
@@ -127,10 +154,8 @@ public static partial class ProposalCommands
     {
         try
         {
-            if (!CanonicalId.TryParse(assessmentId, out _))
-                throw new ArgumentException("A canonical assessment id is required.", nameof(assessmentId));
-            Sha256Value.RequireCanonical(currentSelectionSha256, nameof(currentSelectionSha256));
-            Sha256Value.RequireCanonical(currentGrammarSourceSha256, nameof(currentGrammarSourceSha256));
+            var invalid = ValidateAssessmentAnalysisIds(assessmentId, currentSelectionSha256, currentGrammarSourceSha256);
+            if (invalid is not null) return CommandOutcome<AnalysisAggregateProjection>.Refused(invalid);
 
             AssessmentRecord record;
             try
@@ -139,10 +164,7 @@ public static partial class ProposalCommands
             }
             catch (KeyNotFoundException)
             {
-                return CommandOutcome<AnalysisAggregateProjection>.Refused(new Refusal(
-                    "assessment.not-found", FailureReason.NotFound,
-                    $"Assessment '{assessmentId}' was not found in the Motif store.",
-                    Fact(("assessmentId", assessmentId))));
+                return CommandOutcome<AnalysisAggregateProjection>.Refused(AssessmentNotFound(assessmentId));
             }
             catch (Exception ex) when (ex is InvalidDataException or JsonException)
             {
@@ -1532,9 +1554,18 @@ public static partial class ProposalCommands
         });
     }
 
-    public static CommandOutcome<ProposalListProjection> List(ListProposalsRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+    public static CommandOutcome<ProposalListProjection> List(ListProposalsRequest request)
+    {
+        if (request.Status is not null && !ListedStatuses.Contains(request.Status, StringComparer.Ordinal))
+            return CommandOutcome<ProposalListProjection>.Refused(new Refusal("proposal.unknown-status",
+                FailureReason.InvalidArgument,
+                $"'{request.Status}' is not a Proposal status. Use one of: {string.Join(", ", ListedStatuses)}.",
+                Fact(("status", request.Status))));
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ProposalListProjection>.Success(new([])),
+            (database, _) =>
             BuildProposalList(database, request.All, request.Status));
+    }
 
     private static readonly string[] ListedStatuses =
     [
@@ -1565,7 +1596,9 @@ public static partial class ProposalCommands
     }
 
     public static CommandOutcome<ProposalDetailProjection> Show(ShowProposalRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ProposalDetailProjection>.Refused(ProposalLoadRefusal(new KeyNotFoundException($"Proposal '{request.ProposalId}' was not found."))),
+            (database, project) =>
         {
             var result = BuildProposalDetail(new ProposalRepository(database), request.ProposalId, database);
             if (!result.Succeeded) return result;

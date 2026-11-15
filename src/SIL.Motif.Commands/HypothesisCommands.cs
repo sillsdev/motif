@@ -249,22 +249,24 @@ public static class HypothesisCommands
     public static CommandOutcome<HypothesisNeighboursResponse> Neighbours(HypothesisNeighboursRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        var change = Squash(request.Change);
+        var environment = Squash(request.Environment);
+        var hostClass = Squash(request.HostClass);
+        var slot = Squash(request.Slot);
+        if (change.Length == 0)
+            return Invalid<HypothesisNeighboursResponse>("Give the change, such as --change d>r; the shape index is keyed on it.");
+        var query = string.Join(", ", new[]
         {
-            var change = Squash(request.Change);
-            var environment = Squash(request.Environment);
-            var hostClass = Squash(request.HostClass);
-            var slot = Squash(request.Slot);
-            if (change.Length == 0)
-                return Invalid<HypothesisNeighboursResponse>("Give the change, such as --change d>r; the shape index is keyed on it.");
+            $"change={change}", environment.Length > 0 ? $"environment={environment}" : null,
+            hostClass.Length > 0 ? $"host class={hostClass}" : null, slot.Length > 0 ? $"slot={slot}" : null,
+        }.Where(part => part is not null));
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<HypothesisNeighboursResponse>.Success(new(query, [], false, false)),
+            (database, _) =>
+        {
             var ledger = new HypothesisRepository(database);
             var found = ledger.Neighbours(change, environment, hostClass, slot);
             var items = found.Select(h => Brief(ledger, h)).ToList();
-            var query = string.Join(", ", new[]
-            {
-                $"change={change}", environment.Length > 0 ? $"environment={environment}" : null,
-                hostClass.Length > 0 ? $"host class={hostClass}" : null, slot.Length > 0 ? $"slot={slot}" : null,
-            }.Where(part => part is not null));
             return CommandOutcome<HypothesisNeighboursResponse>.Success(new HypothesisNeighboursResponse(query, items,
                 found.Any(h => h.Status == HypothesisStatuses.Passed),
                 found.Any(h => h.Status == HypothesisStatuses.Failed ||
@@ -276,18 +278,20 @@ public static class HypothesisCommands
     public static CommandOutcome<HypothesisListResponse> List(ListHypothesesRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        var status = request.Status?.Trim().ToLowerInvariant();
+        if (request.HypothesisId is null && status is not null && !HypothesisStatuses.All.Contains(status))
+            return Invalid<HypothesisListResponse>("The status must be proposed, passed, failed or superseded; leave it out for all.");
+        if (request.HypothesisId is null && (request.Offset < 0 || request.Limit is < 1 or > 200))
+            return Invalid<HypothesisListResponse>("The offset cannot be negative and the limit must be from 1 to 200.");
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            request.HypothesisId is not null ? NotFound<HypothesisListResponse>(request.HypothesisId) : CommandOutcome<HypothesisListResponse>.Success(new([], 0, request.Offset)),
+            (database, _) =>
         {
             var ledger = new HypothesisRepository(database);
             if (request.HypothesisId is not null)
                 return ledger.Get(request.HypothesisId) is { } one
                     ? CommandOutcome<HypothesisListResponse>.Success(new HypothesisListResponse([Item(ledger, one)], 1, 0))
                     : NotFound<HypothesisListResponse>(request.HypothesisId);
-            var status = request.Status?.Trim().ToLowerInvariant();
-            if (status is not null && !HypothesisStatuses.All.Contains(status))
-                return Invalid<HypothesisListResponse>("The status must be proposed, passed, failed or superseded; leave it out for all.");
-            if (request.Offset < 0 || request.Limit is < 1 or > 200)
-                return Invalid<HypothesisListResponse>("The offset cannot be negative and the limit must be from 1 to 200.");
             var (page, total) = ledger.List(status, request.Offset, request.Limit);
             return CommandOutcome<HypothesisListResponse>.Success(
                 new HypothesisListResponse(page.Select(h => Item(ledger, h)).ToList(), total, request.Offset));
@@ -301,11 +305,13 @@ public static class HypothesisCommands
     public static CommandOutcome<HypothesisReportResponse> Report(HypothesisReportRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        var kind = request.Kind?.Trim().ToLowerInvariant();
+        if (kind is not ("decisions" or "questions"))
+            return Invalid<HypothesisReportResponse>("The report kind is 'decisions' or 'questions'.");
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            kind == "decisions" ? CommandOutcome<HypothesisReportResponse>.Success(new("decisions", "# Hypothesis decisions\n\nNo hypothesis has been decided.\n", 0)) : CommandOutcome<HypothesisReportResponse>.Success(QuestionLog([])),
+            (database, _) =>
         {
-            var kind = request.Kind?.Trim().ToLowerInvariant();
-            if (kind is not ("decisions" or "questions"))
-                return Invalid<HypothesisReportResponse>("The report kind is 'decisions' or 'questions'.");
             var ledger = new HypothesisRepository(database);
             var all = ledger.List(null, 0, int.MaxValue).Page;
             return CommandOutcome<HypothesisReportResponse>.Success(kind == "decisions"

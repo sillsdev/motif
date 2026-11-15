@@ -27,7 +27,9 @@ namespace SIL.Motif.Commands.Queries;
 public static class ProjectHistoryQuery
 {
     public static CommandOutcome<ProjectHistoryResponse> Query(ProjectHistoryRequest request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, ResolveProductVersion(), (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<ProjectHistoryResponse>.Success(new([])),
+            (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var entries = new List<ProjectHistoryEntry>();

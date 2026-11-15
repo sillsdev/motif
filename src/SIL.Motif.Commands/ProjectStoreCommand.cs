@@ -57,6 +57,15 @@ public static class ProjectStoreCommand
     /// <remarks>Connections use SQLite read-only mode, and the boundary holds an existing-use lease.</remarks>
     public static CommandOutcome<T> ReadExisting<T>(string fwDataPath, CommandOutcome<T> absent,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> read) where T : class?
+        => ReadExistingCore(fwDataPath, absent, read, retainDatabase: false);
+
+    /// <summary>A successful read session owns its existing-store lease until the session is disposed.</summary>
+    internal static CommandOutcome<T> OpenExistingReadOnlySession<T>(string fwDataPath, CommandOutcome<T> absent,
+        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> read) where T : class?
+        => ReadExistingCore(fwDataPath, absent, read, retainDatabase: true);
+
+    private static CommandOutcome<T> ReadExistingCore<T>(string fwDataPath, CommandOutcome<T> absent,
+        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> read, bool retainDatabase) where T : class?
     {
         ArgumentNullException.ThrowIfNull(absent);
         ArgumentNullException.ThrowIfNull(read);
@@ -67,8 +76,18 @@ public static class ProjectStoreCommand
         return RunOperation(fwDataPath, () =>
         {
             if (!File.Exists(path)) return absent;
-            using var database = MotifDatabase.OpenExistingReadOnly(path, project);
-            return read(database, project);
+            var database = MotifDatabase.OpenExistingReadOnly(path, project);
+            var transferred = false;
+            try
+            {
+                var outcome = read(database, project);
+                transferred = retainDatabase && outcome.Succeeded;
+                return outcome;
+            }
+            finally
+            {
+                if (!transferred) database.Dispose();
+            }
         });
     }
 
@@ -328,7 +347,7 @@ public static class ProjectStoreCommand
     public static Refusal BusyBeforeSave(string fwDataPath) => new("project.busy", FailureReason.Busy,
         "Another Motif task is writing to this project's data. Try again in a moment.", Fact(fwDataPath));
 
-    private static CommandOutcome<ProjectLocator> LocateProject(string fwDataPath)
+    internal static CommandOutcome<ProjectLocator> LocateProject(string fwDataPath)
     {
         try
         {

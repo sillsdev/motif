@@ -43,8 +43,11 @@ public static class CorpusCommands
 
     /// <summary>Reads a range only when its Document still matches the supplied hash.</summary>
     public static CommandOutcome<CorpusRangeResponse> ReadRange(CorpusRangeRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (_, project) =>
+        ProjectStoreCommand.RunOperation(request.FwDataPath, () =>
         {
+            var located = ProjectStoreCommand.LocateProject(request.FwDataPath);
+            if (!located.Succeeded) return CommandOutcome<CorpusRangeResponse>.Refused(located.Refusal!);
+            var project = located.Value!;
             var files = new CorpusFileService(Path.GetDirectoryName(project.FullFwDataPath)!);
             var bytes = files.ReadRange(request.CorpusId, request.DocumentId, request.Sha256, request.Offset, request.Length);
             return CommandOutcome<CorpusRangeResponse>.Success(new CorpusRangeResponse(request.Sha256, request.Offset, bytes));
@@ -164,7 +167,9 @@ public static class CorpusCommands
 
     /// <summary>Every stored Corpus, with its size and what may be done with it.</summary>
     public static CommandOutcome<CorpusListProjection> ListCorpora(ListCorporaRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<CorpusListProjection>.Success(new([])),
+            (database, _) =>
             CommandOutcome<CorpusListProjection>.Success(BuildCorpusList(database)));
 
     private static CorpusListProjection BuildCorpusList(MotifDatabase database)
@@ -172,7 +177,9 @@ public static class CorpusCommands
 
     /// <summary>One Corpus in full: provenance, every Document, and what each is licensed for.</summary>
     public static CommandOutcome<CorpusDetailProjection> ShowCorpus(ShowCorpusRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<CorpusDetailProjection>.Refused(new Refusal("corpus.not-found", FailureReason.NotFound, $"Corpus '{request.CorpusId}' not found. Run 'corpora' to see what is there.")),
+            (database, _) =>
         {
             var projection = CorpusProjectionQuery.Detail(StoreFor(database), request.CorpusId);
             return projection is not null

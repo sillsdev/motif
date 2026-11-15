@@ -18,7 +18,9 @@ public static class SelectionCommands
 {
     /// <summary>Reads the default Selection saved in the paired project database.</summary>
     public static CommandOutcome<DefaultSelectionResponse> ReadDefault(ReadDefaultSelectionRequest request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<DefaultSelectionResponse>.Success(new(null, false, null)),
+            (database, _) =>
         {
             var saved = new NamedSelectionRepository(database).GetDefault();
             var setupSkipped = new ProjectSetupRepository(database).IsSkipped();

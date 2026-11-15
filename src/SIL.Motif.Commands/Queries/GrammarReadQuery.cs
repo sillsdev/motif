@@ -32,7 +32,9 @@ public static class GrammarReadQuery
         if (request.Limit is < 1 or > MaximumPageSize)
             return Invalid($"The limit must be between 1 and {MaximumPageSize}.");
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<GrammarReadResponse>.Refused(new Refusal("grammar-read.baseline-missing", FailureReason.NotFound, "Capture a Baseline before reading project grammar objects.")),
+            (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)

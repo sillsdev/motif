@@ -16,7 +16,9 @@ public static class ReviewNumbersCommand
 
     /// <summary>Reads both recorded Assessments and returns one comparison.</summary>
     public static CommandOutcome<ReviewNumbersResponse> Read(Request request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<ReviewNumbersResponse>.Refused(new Refusal("review.assessment-not-found", FailureReason.NotFound, "The Assessment was not found.")),
+            (database, _) =>
         {
             var repository = new AssessmentRepository(database);
             AssessmentRecord trial;

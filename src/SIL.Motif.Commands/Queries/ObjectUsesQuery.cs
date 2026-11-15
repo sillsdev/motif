@@ -33,15 +33,17 @@ public static class ObjectUsesQuery
                 "uses.invalid-request", FailureReason.InvalidArgument,
                 "Name an allomorph, a grammatical info or a timing kind and key, or some words."));
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        var noAssessment = CommandOutcome<ObjectUsesResponse>.Refused(new Refusal(
+            "uses.no-assessment", FailureReason.NotFound,
+            "No stored Assessment matches the current Baseline and default Selection."));
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath, noAssessment,
+            (database, project) =>
         {
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project);
             if (!current.Succeeded) return CommandOutcome<ObjectUsesResponse>.Refused(current.Refusal!);
             var snapshot = current.Value!;
             if (snapshot.Assessment is not { } assessment || snapshot.MatchingAssessment is not { } record)
-                return CommandOutcome<ObjectUsesResponse>.Refused(new Refusal(
-                    "uses.no-assessment", FailureReason.NotFound,
-                    "No stored Assessment matches the current Baseline and default Selection."));
+                return noAssessment;
             var timings = snapshot.EffectiveObjectTimings;
             var facts = request.Ref is { } asked && snapshot.Baseline is { } baseline
                 ? FactsOf(asked, baseline, snapshot.Navigation!) : null;

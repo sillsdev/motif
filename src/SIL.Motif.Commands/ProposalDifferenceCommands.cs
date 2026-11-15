@@ -258,7 +258,9 @@ public static class ProposalDifferenceCommands
                 return Refuse("difference.invalid-state", FailureReason.InvalidArgument,
                     "Choose a state such as approved-unique, approved-with-alternatives, no-approved-match or no-parse.");
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            Refuse("difference.none", FailureReason.NotFound, "No saved Difference was found. Run: motif difference produce --project <fwdata> --proposal <id> --text <guid>"),
+            (database, _) =>
         {
             var repository = new ProposalDifferenceRepository(database);
             var id = request.DifferenceId ?? (request.ProposalId is null ? null

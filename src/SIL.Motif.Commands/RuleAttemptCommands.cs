@@ -21,7 +21,9 @@ public static class RuleAttemptCommands
     /// one object lookup per variant link in the project's current Baseline; no parse runs.
     /// </summary>
     public static CommandOutcome<RuleAttemptSummary> Check(CheckRuleAttemptsRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            Refuse(RefusalCodes.RuleAttemptsNoBaseline, "A published Baseline is required to read the main entries' forms."),
+            (database, project) =>
         {
             try
             {

@@ -15,7 +15,9 @@ public static class RichStringQuery
     public static CommandOutcome<SenseDefinitionsResponse> SenseDefinitions(string projectPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
-        return ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(projectPath,
+            CommandOutcome<SenseDefinitionsResponse>.Refused(new Refusal(RefusalCodes.ChangeBaselineMissing, FailureReason.Refused, "This project has no Baseline yet. Capture one to read its senses.")),
+            (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (baseline is null)

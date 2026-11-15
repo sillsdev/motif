@@ -106,11 +106,14 @@ public static class JobWait
         }
     }
 
+    private static Task<CommandOutcome<JobStatusResponse>> CancelJobAsync(
+        string projectPath, string jobId, string productVersion) => Task.Run(() =>
+            JobCommands.Cancel(new CancelJobRequest(projectPath, jobId, productVersion)));
+
     private static async Task<CommandOutcome<JobStatusResponse>> CancelAndRefuseAsync(
         string projectPath, string jobId, string productVersion, IProgress<JobStatusResponse>? progress)
     {
-        var cancelled = await Task.Run(() => JobCommands.Cancel(
-            new CancelJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
+        var cancelled = await CancelJobAsync(projectPath, jobId, productVersion).ConfigureAwait(false);
         if (cancelled.Succeeded) progress?.Report(cancelled.Value!);
         if (await FinishedInsteadAsync(cancelled, projectPath, jobId, productVersion, progress)
             .ConfigureAwait(false) is { } finished)
@@ -177,8 +180,7 @@ public static class JobWait
         }
         else
         {
-            var cancellation = await Task.Run(() => JobCommands.Cancel(
-                new CancelJobRequest(projectPath, jobId, productVersion))).ConfigureAwait(false);
+            var cancellation = await CancelJobAsync(projectPath, jobId, productVersion).ConfigureAwait(false);
             if (await FinishedInsteadAsync(cancellation, projectPath, jobId, productVersion, progress)
                 .ConfigureAwait(false) is { } finished)
                 return CommandOutcome<JobStatusResponse>.Success(finished);

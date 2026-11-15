@@ -40,7 +40,9 @@ public sealed record TextInventoryResponse(IReadOnlyList<TextChoiceSummary> Text
 public static class TextInventoryQuery
 {
     public static CommandOutcome<TextInventoryResponse> Query(TextInventoryRequest request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<TextInventoryResponse>.Success(new([], false)),
+            (database, project) =>
         {
             var current = new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
             if (current is null)

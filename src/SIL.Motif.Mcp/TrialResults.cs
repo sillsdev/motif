@@ -192,10 +192,12 @@ internal static class TrialResults
         var offset = args.Int("offset", 0);
         var limit = args.Int("limit", 25);
         if (offset < 0 || limit is < 1 or > 200) throw new ToolArgumentException("tool.invalid-page", "Use a nonnegative offset and a limit from 1 to 200.");
-        return ToolOutcome.From(ProjectStoreCommand.Run(context.ProjectPath, context.ProductVersion, (database, _) =>
+        var differenceId = args.Required("difference");
+        var absent = CommandOutcome<JsonObject>.Refused(new Refusal("tool.not-found", FailureReason.NotFound,
+            $"There is no Difference '{differenceId}'. Use the difference id a Trial returned."));
+        return ToolOutcome.From(ProjectStoreCommand.ReadExisting(context.ProjectPath, absent, (database, _) =>
         {
             var assessments = new AssessmentRepository(database);
-            var differenceId = args.Required("difference");
             AssessmentRecord difference;
             try { difference = assessments.Get(differenceId); }
             catch (KeyNotFoundException)

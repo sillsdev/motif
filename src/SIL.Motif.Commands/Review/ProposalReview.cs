@@ -36,7 +36,8 @@ public static class ProposalReview
     public static CommandOutcome<ProposalReviewResponse> Read(ProposalReviewRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText,
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            request.ProposalId is null ? CommandOutcome<ProposalReviewResponse>.Success(Empty) : CommandOutcome<ProposalReviewResponse>.Refused(ProposalCommands.ProposalLoadRefusal(new KeyNotFoundException($"Proposal '{request.ProposalId}' was not found."))),
             (database, project) => Read(database, project, request.ProposalId));
     }
 
@@ -44,7 +45,8 @@ public static class ProposalReview
     public static CommandOutcome<ProposalReviewEntryCountResponse> ReadEntryCount(ProposalReviewRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText,
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            request.ProposalId is null ? CommandOutcome<ProposalReviewEntryCountResponse>.Success(new(0)) : CommandOutcome<ProposalReviewEntryCountResponse>.Refused(ProposalCommands.ProposalLoadRefusal(new KeyNotFoundException($"Proposal '{request.ProposalId}' was not found."))),
             (database, project) => ReadEntryCount(database, project, request.ProposalId));
     }
 

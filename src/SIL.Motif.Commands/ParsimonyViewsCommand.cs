@@ -42,7 +42,12 @@ public static class ParsimonyViewsCommand
         if (request.Query is null)
             return Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.InvalidViewRequest,
                 FailureReason.InvalidArgument, "A named-view query is required.");
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        return ReadWithArtifactLease(request, leaseLoss);
+    }
+
+    private static CommandOutcome<ParsimonyNamedViewResponse> ReadWithArtifactLease(
+        ReadParsimonyViewRequest request, CancellationToken leaseLoss) =>
+        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {
             var workspaceKey = ProjectWorkspaceKey.Compute(project);
             var artifacts = new EvidenceArtifactRepository(database);
@@ -127,7 +132,6 @@ public static class ParsimonyViewsCommand
                     FailureReason.StoreInconsistent, exception.Message);
             }
         });
-    }
 
     private static bool CanListSavedDecisions(ParsimonyNamedViewRequest query) =>
         query.View is "parsimony-suppressed" or "parsimony-suppression-history";

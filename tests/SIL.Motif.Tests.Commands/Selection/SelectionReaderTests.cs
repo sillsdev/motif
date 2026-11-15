@@ -240,7 +240,7 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         var refused = await SelectionReader.OpenAsync(new OpenSelectionReaderRequest(projectPath, [], []));
         Assert.False(refused.Succeeded);
         Assert.Equal("selection-reader.no-baseline", refused.Refusal?.Code);
-        using var exclusive = new FileStream(lockPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        Assert.False(File.Exists(lockPath));
     }
 
     [Fact]
@@ -945,12 +945,12 @@ public sealed class SelectionReaderTests(PristineProjectFixture pristine) : IDis
         Assert.Equal("presentation-transition", joinedPending.Change.ChangeId);
         Assert.NotNull(joinedPending.Fit);
         Assert.Equal("{}", readRepository.Get(staleAnchor)!.FingerprintJson);
-        var prune = ReadStateCommands.Execute(new WordReadStateRequest(projectPath, text.TextId)
+        var readState = ReadStateCommands.Execute(new WordReadStateRequest(projectPath, text.TextId)
         {
             ExpectedContext = reader.Context.ExpectedWriteContext(),
         });
-        Assert.True(prune.Succeeded, prune.Refusal?.Message);
-        Assert.Null(readRepository.Get(staleAnchor));
+        Assert.True(readState.Succeeded, readState.Refusal?.Message);
+        Assert.Equal("{}", readRepository.Get(staleAnchor)!.FingerprintJson);
         Assert.True(refreshedRead.PresentationStamp > first.PresentationStamp);
         Assert.Equal(refreshedRead.PresentationStamp, reader.Diagnostics.PresentationStamp);
         Assert.True(summary.PresentationStamp < refreshedRead.PresentationStamp);

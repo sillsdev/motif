@@ -17,13 +17,13 @@ public sealed class ReadStateRepository
     public ReadStateRepository(MotifDatabase database) =>
         _database = database ?? throw new ArgumentNullException(nameof(database));
 
-    public ReadStateWriteTransaction BeginTransaction()
+    public ReadStateWriteTransaction BeginTransaction(bool deferred = false)
     {
         if (_transaction is not null) throw new InvalidOperationException("A Read-state transaction is already open.");
         var connection = _database.OpenConnection();
         try
         {
-            _transaction = connection.BeginTransaction();
+            _transaction = connection.BeginTransaction(deferred: deferred);
         }
         catch
         {

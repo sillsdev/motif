@@ -17,7 +17,9 @@ public static class FormsQueryCommand
 {
     /// <summary>Reads the current Trial and evaluates a closed query record.</summary>
     public static CommandOutcome<FormsQueryResponse> Run(FormsQueryRequest request, FormsQuerySnapshotCache? cache = null) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound, "Query rows are built by the Parsimony evidence job; run a Trial and wait for evidence.")),
+            (database, project) =>
         {
             using var connection = database.OpenConnection();
             using var transaction = connection.BeginTransaction(deferred: true);

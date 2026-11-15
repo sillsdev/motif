@@ -93,7 +93,9 @@ public static class SourceQuery
 
     internal static CommandOutcome<T> Read<T>(string projectPath, SIL.Motif.Contract.Baselines.BaselineToken? expected,
         Func<SourceReadContext, SIL.Motif.Contract.Baselines.BaselineToken, bool, CommandOutcome<T>> body) where T : class =>
-        ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
+        ProjectStoreCommand.ReadExisting(projectPath,
+            NoStoredBaseline<T>(expected),
+            (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (expected is { } wanted && wanted != baseline?.Token)
@@ -120,6 +122,16 @@ public static class SourceQuery
                 new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero) > baseline.SourceLastWriteUtc;
             return body(context, baseline.Token, stale);
         });
+
+    private static CommandOutcome<T> NoStoredBaseline<T>(SIL.Motif.Contract.Baselines.BaselineToken? expected)
+        where T : class
+    {
+        if (expected is not null)
+            return CommandOutcome<T>.Refused(new Refusal(RefusalCodes.GdrBaselineChanged, FailureReason.Refused,
+                "The Baseline changed before the Sources were read. Refresh and try again."));
+        return CommandOutcome<T>.Refused(new Refusal(RefusalCodes.BaselineMissing, FailureReason.NotFound,
+            "This project has no Baseline yet. Capture one to read its Sources."));
+    }
 
     internal static bool TryParseChapter(string? text, out ChapterRef chapter)
     {

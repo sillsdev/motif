@@ -49,7 +49,10 @@ public static class ReportCommands
     /// the Assessment was not collected in a way the kind can report from (pinned by
     /// `ACorrectnessReportOverAParseTimeAssessment_RefusesNamingTheReason`).
     /// </summary>
-    public static CommandOutcome<ReportResponse> Produce(ProduceReportRequest request)
+    public static CommandOutcome<ReportResponse> Produce(ProduceReportRequest request) =>
+        ProduceStored(request);
+
+    private static CommandOutcome<ReportResponse> ProduceStored(ProduceReportRequest request)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {

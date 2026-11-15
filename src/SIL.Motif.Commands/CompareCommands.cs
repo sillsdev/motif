@@ -35,7 +35,10 @@ public static class CompareCommands
     /// a difference cannot be produced from inputs that disagree, because there would be no single Assessor
     /// left to attribute it to.
     /// </remarks>
-    public static CommandOutcome<CompareResponse> Produce(ProduceComparisonRequest request)
+    public static CommandOutcome<CompareResponse> Produce(ProduceComparisonRequest request) =>
+        ProduceStored(request);
+
+    private static CommandOutcome<CompareResponse> ProduceStored(ProduceComparisonRequest request)
     {
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {

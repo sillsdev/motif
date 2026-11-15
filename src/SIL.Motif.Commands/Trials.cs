@@ -44,7 +44,7 @@ public static class Trials
     public static CommandOutcome<TrialRecord?> Read(ReadTrialRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run<TrialRecord?>(request.ProjectPath, MotifProductVersion.CurrentText,
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath, CommandOutcome<TrialRecord?>.Success(null),
             (database, project) =>
             CommandOutcome<TrialRecord?>.Success(ReadLatest(database, project, request.ProposalId,
                 request.IncludeWordResults)));

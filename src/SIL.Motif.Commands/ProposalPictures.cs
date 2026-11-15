@@ -80,7 +80,9 @@ public static class ProposalPictures
     public static CommandOutcome<ProposalPicturesResponse> Show(ShowPicturesRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<ProposalPicturesResponse>.Refused(ProposalTexts.Refuse("proposal.not-found", FailureReason.NotFound, $"Proposal '{request.ProposalId}' was not found.", request.ProposalId)),
+            (database, _) =>
         {
             if (!CanonicalId.TryParse(request.ProposalId, out var id) || !Exists(database, id))
                 return CommandOutcome<ProposalPicturesResponse>.Refused(ProposalTexts.Refuse("proposal.not-found",

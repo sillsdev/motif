@@ -21,7 +21,11 @@ public static class OverviewCommand
 {
     /// <summary>Returns the latest Assessment matching the exact current Baseline and resolved default Selection.</summary>
     public static CommandOutcome<OverviewResponse> Overview(OverviewRequest request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<OverviewResponse>.Refused(request.ProposalId is not null
+                ? new Refusal("trial.none", FailureReason.NotFound, "No Trial is recorded for this Proposal.")
+                : SIL.Motif.Commands.Queries.BaselineMissingRefusal.ForProject(request.ProjectPath)),
+            (database, project) =>
         {
             if (request.ProposalId is null)
                 return OverviewCurrent(database, project);

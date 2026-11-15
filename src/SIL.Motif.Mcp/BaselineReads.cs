@@ -42,7 +42,9 @@ internal static class BaselineReads
 
     private static CommandOutcome<JsonObject> Read(
         string projectPath, Func<LcmCache, BaselineRecord, JsonObject> read, BaselineReadSession readers) =>
-        ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText, (database, project) =>
+        ProjectStoreCommand.ReadExisting(projectPath,
+            Refused("baseline.missing", FailureReason.NotFound,
+                "Motif has no saved copy of this project to read yet."), (database, project) =>
         {
             var projectKey = ProjectWorkspaceKey.Compute(project);
             var baseline = new BaselineRepository(database).GetCurrent(projectKey);

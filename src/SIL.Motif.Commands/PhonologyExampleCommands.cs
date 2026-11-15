@@ -102,7 +102,9 @@ public static class PhonologyExampleCommands
             return Invalid<PhonologyExamplesListResponse>(exception.Message);
         }
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<PhonologyExamplesListResponse>.Success(new([], null)),
+            (database, _) =>
         {
             try
             {
@@ -132,7 +134,9 @@ public static class PhonologyExampleCommands
             return Invalid<PhonologyExamplesPageResponse>(exception.Message);
         }
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<PhonologyExamplesPageResponse>.Refused(new Refusal("phonology-examples.revision-not-found", FailureReason.NotFound, $"Example Set revision '{request.RevisionId}' was not found.")),
+            (database, _) =>
         {
             try
             {
@@ -222,7 +226,9 @@ public static class PhonologyExampleCommands
             }
         }
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, _) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<PhonologyResultsResponse>.Refused(new Refusal("phonology-examples.assessment-not-found", FailureReason.NotFound, $"Assessment '{request.AssessmentId}' was not found.")),
+            (database, _) =>
         {
             var results = new PhonologyAssessmentRepository(database);
             try

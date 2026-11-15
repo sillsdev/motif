@@ -1173,8 +1173,8 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
         var useLock = store + ".use.lock";
         Assert.True(File.Exists(useLock));
-        File.Delete(useLock);
         var files = CaptureStoreFiles(store);
+        Assert.True(files.Remove(useLock));
         var projectBytes = File.ReadAllBytes(project.FwDataPath);
         var intercepted = false;
         var prior = CommentsNotice.BeforeReadForTests;
@@ -1196,6 +1196,7 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         }
 
         Assert.True(intercepted);
+        Assert.False(File.Exists(useLock));
         AssertStoreFilesUnchanged(store, files);
         Assert.Equal(projectBytes, File.ReadAllBytes(project.FwDataPath));
     }

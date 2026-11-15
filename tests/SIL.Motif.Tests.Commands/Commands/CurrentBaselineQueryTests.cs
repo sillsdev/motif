@@ -139,7 +139,7 @@ public sealed class CurrentBaselineQueryTests : IDisposable
     }
 
     [Fact]
-    public void StorageThatIsUnavailableWhenTheStoreIsOpenedRefusesAsStoreIoNeverAsAnInconsistentStore()
+    public void StorageThatIsUnavailableWhenTheStoreIsReadRefusesAsOperationIoNeverAsAnInconsistentStore()
     {
         var fwDataPath = _pristine.CopyProjectFile();
         Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(fwDataPath), NewManagedRoot()).Succeeded);
@@ -150,7 +150,7 @@ public sealed class CurrentBaselineQueryTests : IDisposable
             var outcome = CurrentBaselineQuery.Query(new CurrentBaselineRequest(fwDataPath));
 
             Assert.False(outcome.Succeeded);
-            Assert.Equal("project.store-io", outcome.Refusal!.Code);
+            Assert.Equal("project.operation-io", outcome.Refusal!.Code);
             Assert.Equal(FailureReason.Busy, outcome.Refusal.Reason);
             Assert.DoesNotContain("corrupt", outcome.Refusal.Message, StringComparison.OrdinalIgnoreCase);
         }

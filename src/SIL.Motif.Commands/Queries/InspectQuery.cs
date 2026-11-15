@@ -39,7 +39,8 @@ public static class InspectQuery
                 "inspect.invalid-request", FailureReason.InvalidArgument, "Name a subject to inspect."));
         var subject = request.Subject;
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath, WithoutStore(request),
+            (database, project) =>
         {
             var current = CurrentEvidenceQuery.ReadCurrentEvidence(database, project, includeResolvedReadings: true);
             if (!current.Succeeded) return CommandOutcome<InspectResponse>.Refused(current.Refusal!);
@@ -95,6 +96,27 @@ public static class InspectQuery
                 Uses = UsesSection(subject, assessment.Words),
                 RanIn = RanInSection(subject, timingKey, assessment.Words, timings),
             });
+        });
+    }
+
+    private static CommandOutcome<InspectResponse> WithoutStore(InspectRequest request)
+    {
+        if (request.ProposalId is not null)
+            return CommandOutcome<InspectResponse>.Refused(new Refusal("trial.none", FailureReason.NotFound,
+                "No Trial is recorded for this Proposal."));
+        var subject = request.Subject;
+        var timingKey = subject.Kind == InspectorSubjectKind.Rule ? subject.TimingKey : null;
+        return CommandOutcome<InspectResponse>.Success(new InspectResponse(subject, InspectorResolution.NoBaseline)
+        {
+            ObjectTimingDetail = new ObjectTimingDetail(false, "Object timing is unavailable."),
+            TimingKey = timingKey,
+            Facts = InspectorSection<ObjectFacts>.Not(InspectorSectionStatus.Absent,
+                FactsReason(InspectorResolution.NoBaseline)),
+            Uses = UsesSection(subject, null),
+            RanIn = RanInSection(subject, timingKey, null, null),
+            Warnings = InspectorSection<IReadOnlyList<GrammarWarning>>.Not(InspectorSectionStatus.Absent,
+                subject.Kind == InspectorSubjectKind.Morpheme && subject.IdentityQuality != "authored"
+                    ? FactsReason(InspectorResolution.NotAuthored) : "No Baseline yet, so no grammar check."),
         });
     }
 

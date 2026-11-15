@@ -33,7 +33,9 @@ public static class StoredGrammarCheckQuery
     public static CommandOutcome<StoredGrammarCheckResponse> Query(GrammarCheckRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<StoredGrammarCheckResponse>.Refused(SIL.Motif.Commands.Queries.BaselineMissingRefusal.ForProject(request.ProjectPath)),
+            (database, project) =>
         {
             // The project's own check needs only the current Baseline; resolving a set would re-read its summary.
             if (request.ProposalId is null) return QueryCurrentWithoutAssessment(database, project);

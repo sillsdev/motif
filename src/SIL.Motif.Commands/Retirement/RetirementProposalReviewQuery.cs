@@ -34,7 +34,9 @@ public static class RetirementProposalReviewQuery
             return Refused("retirement-review.invalid-draft", FailureReason.InvalidArgument,
                 $"'{request.DraftId}' is not a valid Draft Proposal id: {error}");
 
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<RetirementReviewQueryResponse>.Refused(new Refusal("retirement-review.draft-not-found", FailureReason.NotFound, $"Draft Proposal '{request.DraftId}' was not found.")),
+            (database, project) =>
             ReadFrom(database, project, request, requestedId));
     }
 

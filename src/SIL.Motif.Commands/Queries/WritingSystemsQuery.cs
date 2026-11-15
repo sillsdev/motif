@@ -10,7 +10,9 @@ namespace SIL.Motif.Commands.Queries;
 public static class WritingSystemsQuery
 {
     public static CommandOutcome<WritingSystemsResponse> Query(WritingSystemsRequest request) =>
-        ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            CommandOutcome<WritingSystemsResponse>.Success(new(false, [])),
+            (database, project) =>
         {
             var evidence = new BaselineRepository(database).GetCurrentEvidence(ProjectWorkspaceKey.Compute(project));
             return CommandOutcome<WritingSystemsResponse>.Success(new(evidence is not null,

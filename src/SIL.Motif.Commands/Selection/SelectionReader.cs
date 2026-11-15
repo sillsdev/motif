@@ -297,7 +297,9 @@ public sealed class SelectionReader : IDisposable, IAsyncDisposable
         if (cancellationToken.IsCancellationRequested)
             return CommandOutcome<SelectionReader>.Refused(new Refusal(
                 "selection-reader.cancelled", FailureReason.Cancelled, "Opening the Selection reader was cancelled."));
-        return ProjectStoreCommand.OpenSession(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.OpenExistingReadOnlySession(request.ProjectPath, CommandOutcome<SelectionReader>.Refused(new Refusal(
+                "selection-reader.no-baseline", FailureReason.Refused,
+                "Capture a Baseline before opening its Selection reader.")), (database, project) =>
         {
             var result = Open(database, new SelectionReadRequest(ProjectWorkspaceKey.Compute(project),
                 request.TextIds, request.AddedWords)

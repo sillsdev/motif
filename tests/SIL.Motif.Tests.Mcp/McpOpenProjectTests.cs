@@ -138,9 +138,13 @@ public sealed class McpOpenProjectTests
             await using var client = await StartClient(workerRoot, preference);
             var opened = await client.CallToolAsync("motif_open", new Dictionary<string, object?> { ["path"] = project });
             Assert.True(opened.IsError != true, ErrorText(opened));
+            var storeBytes = File.ReadAllBytes(store);
+            var projectBytes = File.ReadAllBytes(project);
             var result = await client.CallToolAsync("motif_proposals", new Dictionary<string, object?> { ["project"] = project });
             Assert.True(result.IsError, ErrorText(result));
-            Assert.Equal("store.other-version", result.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal("store.unsupported", result.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal(storeBytes, File.ReadAllBytes(store));
+            Assert.Equal(projectBytes, File.ReadAllBytes(project));
             Assert.False(File.Exists(store + $".schema{MotifSchema.CurrentSchema - 1}.bak"));
             using var check = new SqliteConnection($"Data Source={store};Mode=ReadOnly;Pooling=False");
             check.Open();

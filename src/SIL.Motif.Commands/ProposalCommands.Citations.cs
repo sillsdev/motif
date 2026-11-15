@@ -17,7 +17,9 @@ public static partial class ProposalCommands
     /// FieldWorks project is not opened.
     /// </summary>
     public static CommandOutcome<CitationTraceResponse> Citations(CitationsRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<CitationTraceResponse>.Success(new(0, 0, 0, [])),
+            (database, _) =>
         {
             try
             {

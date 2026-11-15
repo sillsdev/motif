@@ -21,7 +21,9 @@ public static class WordContextQuery
         if (string.IsNullOrWhiteSpace(request.Word))
             return Refused("word-context.empty-word", FailureReason.InvalidArgument, "Enter a word to read its analyses.");
         var word = request.Word.Trim().Normalize(System.Text.NormalizationForm.FormD);
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath,
+            request.ExpectedBaseline is not null ? Refused("word-context.baseline-changed", FailureReason.Refused, "The Baseline changed before this word was read. Refresh the evidence and try again.") : CommandOutcome<WordContextResponse>.Success(new(word, false)),
+            (database, project) =>
         {
             var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
             if (request.ExpectedBaseline is { } expected && expected != baseline?.Token)

@@ -140,7 +140,8 @@ public static class CurrentEvidenceQuery
 {
     /// <summary>Reads a project's saved summary, default Selection, matching Assessment, and freshness.</summary>
     public static CommandOutcome<CurrentEvidenceSnapshot> ReadCurrentEvidence(string projectPath) =>
-        ProjectStoreCommand.Run(projectPath, MotifProductVersion.CurrentText,
+        ProjectStoreCommand.ReadExisting(projectPath,
+            CommandOutcome<CurrentEvidenceSnapshot>.Refused(SIL.Motif.Commands.Queries.BaselineMissingRefusal.ForProject(projectPath)),
             (database, project) => ReadCurrentEvidence(database, project));
 
     internal static CommandOutcome<CurrentEvidenceSnapshot> ReadCurrentEvidence(

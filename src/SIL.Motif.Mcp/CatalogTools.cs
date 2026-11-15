@@ -167,6 +167,20 @@ internal static class CatalogTools
     private static JsonObject FieldSchema(Type type)
     {
         type = Nullable.GetUnderlyingType(type) ?? type;
+        var variants = type.GetCustomAttributes<JsonDerivedTypeAttribute>().ToArray();
+        if (variants.Length > 0)
+        {
+            var discriminator = type.GetCustomAttribute<JsonPolymorphicAttribute>()?.TypeDiscriminatorPropertyName ?? "$type";
+            return new JsonObject { ["oneOf"] = new JsonArray(variants.Select(variant =>
+            {
+                var schema = FieldSchema(variant.DerivedType);
+                schema["properties"]![discriminator] = new JsonObject
+                    { ["const"] = JsonSerializer.SerializeToNode(variant.TypeDiscriminator) };
+                schema["required"] ??= new JsonArray();
+                schema["required"]!.AsArray().Add(discriminator);
+                return (JsonNode)schema;
+            }).ToArray()) };
+        }
         if (type == typeof(TimeSpan) || type == typeof(DateTimeOffset) || type == typeof(DateTime) || type == typeof(Guid))
             return Schema.String("Text in the request field format.");
         if (type == typeof(string)) return Schema.String("Value for the request field.");

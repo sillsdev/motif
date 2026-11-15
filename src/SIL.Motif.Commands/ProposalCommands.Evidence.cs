@@ -21,7 +21,9 @@ public static partial class ProposalCommands
     /// project is not opened.
     /// </summary>
     public static CommandOutcome<DecisionEvidenceShowResponse> EvidenceShow(EvidenceShowRequest request) =>
-        ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, locator) =>
+        ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<DecisionEvidenceShowResponse>.Success(new(request.Subject, [])),
+            (database, locator) =>
         {
             try
             {
@@ -47,7 +49,9 @@ public static partial class ProposalCommands
             return CommandOutcome<DecisionEvidenceListResponse>.Refused(new Refusal(
                 "evidence.invalid-page", FailureReason.InvalidArgument,
                 "The offset must be at least 0 and the limit between 1 and 500."));
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, locator) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            CommandOutcome<DecisionEvidenceListResponse>.Success(new(0, 0, new Dictionary<string, int>(), request.Offset, request.Limit, [])),
+            (database, locator) =>
         {
             try
             {
@@ -91,7 +95,14 @@ public static partial class ProposalCommands
             return CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
                 RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
                 "'after' came from an export with a different tier filter. Start the export again with the same tier."));
-        return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, locator) =>
+        return ProjectStoreCommand.ReadExisting(request.FwDataPath,
+            cursor is not null && cursor.Applied != 0
+                ? CommandOutcome<DecisionEvidenceExportResponse>.Refused(new Refusal(
+                    RefusalCodes.EvidenceInvalidCursor, FailureReason.InvalidArgument,
+                    "Applied Proposals changed since this export began, so its later pages could miss records. " +
+                    "Start the export again."))
+                : CommandOutcome<DecisionEvidenceExportResponse>.Success(new(DecisionEvidenceExport.Format, [], null)),
+            (database, locator) =>
         {
             string? reading = null;
             try
