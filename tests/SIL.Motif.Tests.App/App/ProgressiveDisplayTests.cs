@@ -69,6 +69,8 @@ public sealed class ProgressiveDisplayTests
         "Diagnostics/ProposalDiagnosticsRow",
         // W9-progress
         "Pages/ProgressPage",
+        // Word panel
+        "Words/WordOccurrencesPanel",
     ];
 
     [Fact]
@@ -1061,6 +1063,8 @@ public sealed class ProgressiveDisplayTests
             },
 
             // W9-progress
+            "Words/WordOccurrencesPanel" => new SIL.Motif.App.Views.Words.WordOccurrencesPanel(
+                workspace.PageModel<TextsPageModel>().ResultsInText.OccurrencePanel!),
             "Pages/ProgressPage" => new ProgressPage(workspace.PageModel<ProgressPageModel>()),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
         };

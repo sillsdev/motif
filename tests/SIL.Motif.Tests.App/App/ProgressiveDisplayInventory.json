@@ -629,5 +629,21 @@
     "source": "OperationDescriptions",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Words/WordOccurrencesPanel",
+    "name": "OccurrencePlaces",
+    "source": "Page",
+    "mode": "rows",
+    "control": "ProgressiveItemsControl",
+    "reason": "W3: one page of at most 20 places of the selected word."
+  },
+  {
+    "view": "Words/WordOccurrencesPanel",
+    "name": "OccurrenceReadings",
+    "source": "Readings",
+    "mode": "finite",
+    "control": "ComboBox",
+    "reason": "W3: the stored and parser readings of one word."
   }
 ]

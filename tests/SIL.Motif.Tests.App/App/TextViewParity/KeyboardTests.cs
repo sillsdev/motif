@@ -103,13 +103,15 @@ public sealed class KeyboardTests(LineScenes lines, CardScenes cards) : IClassFi
     });
 
     [Fact]
-    public void EnterOpensTheWordCardLikeSpace() => Run(() =>
+    public void EnterKeepsTheChosenAnalysisAndSpaceOpensTheWordCard() => Run(() =>
     {
         var scene = lines.Get("ltr");
         scene.Word(1).FocusWord();
         scene.Press(Key.Enter);
-        var request = Assert.Single(scene.Host.Requests);
-        Assert.Equal(WordAction.OpenCard, request.Action);
+        Assert.Equal(WordAction.KeepAnalysis, Assert.Single(scene.Host.Requests).Action);
+        scene.Host.Requests.Clear();
+        scene.Press(Key.Space);
+        Assert.Equal(WordAction.OpenCard, Assert.Single(scene.Host.Requests).Action);
     });
 
     [Theory]

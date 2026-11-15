@@ -1,0 +1,28 @@
+<!--
+  The Passage page: where a word stands (approved, guessed, needs an analysis, or staged and waiting for Apply)
+  and how the reader and the word panel share the page. Included by the views that use it.
+  Colours come from Intent keys only; sizes and gaps come from Intent or Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector=":is(Border).wordStrip.passageApproved">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />
+  </Style>
+  <Style Selector=":is(Border).wordStrip.passageGuessed">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.TextSecondary}" />
+  </Style>
+  <Style Selector=":is(Border).wordStrip.passageGap">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Warning.Text}" />
+  </Style>
+  <Style Selector=":is(Border).wordStrip.passageStaged">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource Intent.Change.Text}" />
+  </Style>
+  <Style Selector="Border.passageWordPane.beside">
+    <Setter Property="Width" Value="{DynamicResource Component.WordOccurrences.Width}" />
+  </Style>
+  <Style Selector="Border.passageWordPane">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordOccurrences.PaneMinHeight}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerEnd}" />
+  </Style>
+</Styles>

@@ -1,0 +1,100 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:app="clr-namespace:SIL.Motif.App" xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+ xmlns:views="clr-namespace:SIL.Motif.App.Views" xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+ x:Class="SIL.Motif.App.Views.Words.WordOccurrencesPanel" x:DataType="vm:WordOccurrencesViewModel" Classes="wordOccurrences"
+ AutomationProperties.Name="{x:Static app:MotifAppStrings.OccurrencesPanelName}"
+ AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesPanel}">
+ <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+  <StackPanel Classes="occurrencesBody">
+   <TextBlock Classes="occurrenceState" Classes.noAnalysis="{Binding HasNoReadings}" Text="{Binding StateCaption}" />
+   <views:CopyableTextBlock Classes="occurrenceWord" Text="{Binding Form}"
+     controls:WritingSystemText.Id="{Binding FormWritingSystem}" controls:WritingSystemText.StyleName="Normal"
+     AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesWord}" />
+   <TextBlock Text="{Binding PlacesText}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
+   <Border Classes="occurrenceList">
+    <StackPanel>
+     <Border Classes="occurrenceListNote">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+       <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesPlacesHint}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
+       <TextBlock Text="{Binding SelectedText}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+         AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesSelected}" />
+       <Button Classes="occurrenceAction" Content="{x:Static app:MotifAppStrings.OccurrencesCheckGaps}" Command="{Binding CheckGapsCommand}"
+         AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesCheckGaps}" />
+      </StackPanel>
+     </Border>
+     <views:ProgressiveItemsControl x:Name="OccurrencePlaces" FullItemsSource="{Binding Page}"
+       AutomationProperties.Name="{x:Static app:MotifAppStrings.OccurrencesPlacesName}"
+       AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesPlaces}">
+      <views:ProgressiveItemsControl.ItemTemplate>
+       <DataTemplate x:DataType="vm:OccurrenceChoiceViewModel">
+        <Grid Classes="occurrencePlace" ColumnDefinitions="Auto,Auto,*,Auto"
+          controls:WritingSystemText.FlowId="{Binding SentenceWritingSystem}" controls:WritingSystemText.FlowEnabled="True">
+         <CheckBox IsChecked="{Binding IsChecked}" IsEnabled="{Binding CanCheck}"
+           AutomationProperties.Name="{x:Static app:MotifAppStrings.OccurrencesIncludePlace}"
+           AutomationProperties.AutomationId="{Binding PlaceAutomationId}" />
+         <TextBlock Grid.Column="1" Classes="occurrencePlaceLabel" Text="{Binding PlaceLabel}" VerticalAlignment="Center" />
+         <views:CopyableTextBlock Grid.Column="2" Text="{Binding Sentence}" TextWrapping="Wrap" VerticalAlignment="Center"
+           controls:WritingSystemText.Id="{Binding SentenceWritingSystem}" controls:WritingSystemText.StyleName="{Binding SentenceStyle}" />
+         <Border Grid.Column="3" Classes="occurrenceBadge" Classes.staged="{Binding IsStaged}" IsVisible="{Binding HasStateLabel}" VerticalAlignment="Center">
+          <TextBlock Text="{Binding StateLabel}" />
+         </Border>
+        </Grid>
+       </DataTemplate>
+      </views:ProgressiveItemsControl.ItemTemplate>
+     </views:ProgressiveItemsControl>
+     <Border Classes="occurrenceListNote" IsVisible="{Binding HasPages}">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+       <TextBlock Text="{Binding RangeText}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
+       <WrapPanel Classes="occurrenceActions">
+        <Button Classes="occurrenceAction" Content="{x:Static app:MotifAppStrings.OccurrencesPreviousPage}" Command="{Binding PreviousPageCommand}"
+          AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesPrevious}" />
+        <Button Classes="occurrenceAction" Content="{x:Static app:MotifAppStrings.OccurrencesNextPage}" Command="{Binding NextPageCommand}"
+          AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesNext}" />
+       </WrapPanel>
+      </StackPanel>
+     </Border>
+    </StackPanel>
+   </Border>
+   <StackPanel IsVisible="{Binding HasReadings}" Spacing="{DynamicResource Intent.Space.Compact}">
+    <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesAnalysis}" FontWeight="{DynamicResource Intent.Weight.Section}" />
+    <ComboBox x:Name="OccurrenceReadings" ItemsSource="{Binding Readings}" SelectedItem="{Binding ChosenReading, Mode=TwoWay}"
+      HorizontalAlignment="Stretch" PlaceholderText="{x:Static app:MotifAppStrings.OccurrencesChoose}"
+      AutomationProperties.Name="{x:Static app:MotifAppStrings.OccurrencesAnalysis}"
+      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesReading}">
+     <ComboBox.ItemTemplate>
+      <DataTemplate x:DataType="vm:WordReadingOption">
+       <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+      </DataTemplate>
+     </ComboBox.ItemTemplate>
+    </ComboBox>
+    <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesChooseNote}" IsVisible="{Binding NeedsReadingChoice}" TextWrapping="Wrap"
+      Foreground="{DynamicResource Intent.TextMuted}" />
+   </StackPanel>
+   <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesNoReadingsNote}" IsVisible="{Binding HasNoReadings}" TextWrapping="Wrap"
+     Foreground="{DynamicResource Intent.TextMuted}" />
+   <WrapPanel Classes="occurrenceActions">
+    <Button Classes="occurrenceAction" Command="{Binding ApproveCommand}"
+      AutomationProperties.Name="{Binding ApproveLabel}"
+      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesApprove}">
+      <TextBlock Text="{Binding ApproveLabel}" TextWrapping="Wrap" />
+    </Button>
+    <Button Classes="occurrenceAction" Content="{x:Static app:MotifAppStrings.OccurrencesAskClaude}" Command="{Binding AskClaudeCommand}"
+      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesAsk}" />
+    <Button Classes="occurrenceAction" Content="{x:Static app:MotifAppStrings.OccurrencesNotAWord}" Command="{Binding NotAWordCommand}"
+      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesNotAWord}" />
+   </WrapPanel>
+   <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesApproveNote}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
+   <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesAskNote}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
+   <TextBlock Text="{Binding NotAWordScope}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}" />
+   <TextBlock Text="{Binding StatusSentence}" IsVisible="{Binding HasStatus}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+     AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesStatus}" />
+   <ContentControl x:Name="DiagnosticSlot"
+     IsVisible="{Binding DiagnosticContent, Converter={x:Static ObjectConverters.IsNotNull}}"
+     AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesDiagnostics}">
+    <ContentControl.Content>
+     <Binding Path="DiagnosticContent" />
+    </ContentControl.Content>
+   </ContentControl>
+  </StackPanel>
+ </ScrollViewer>
+</UserControl>

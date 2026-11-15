@@ -1,0 +1,83 @@
+<!--
+  The shared word panel: every place a word occurs, with a check box for each, the reading to keep and the
+  Approve, Ask Claude and Not a Word actions. Passage, Words and the Why This Analysis fold all use it.
+  Colours, sizes and gaps come from Intent or Component keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.WordOccurrences.Width" ResourceKey="Primitive.Size.360" />
+    <StaticResource x:Key="Component.WordOccurrences.RowHeight" ResourceKey="Primitive.Size.40" />
+    <StaticResource x:Key="Component.WordOccurrences.ListRadius" ResourceKey="Primitive.Radius.3" />
+    <!-- Below this width the word panel sits under the reader instead of beside it. -->
+    <StaticResource x:Key="Component.WordOccurrences.PanelBreakpoint" ResourceKey="Primitive.Size.760" />
+    <StaticResource x:Key="Component.WordOccurrences.PaneMinHeight" ResourceKey="Primitive.Size.280" />
+  </Styles.Resources>
+  <Style Selector="UserControl.wordOccurrences">
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.WordOccurrences.Width}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+  <Style Selector="StackPanel.occurrencesBody">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Panel}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector=":is(TextBlock).occurrenceState">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Strong}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).occurrenceState.noAnalysis">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
+  </Style>
+  <Style Selector=":is(TextBlock).occurrenceWord">
+    <Setter Property="FontFamily" Value="{DynamicResource Intent.Font.Display}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Display}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="Border.occurrenceList">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WordOccurrences.ListRadius}" />
+  </Style>
+  <Style Selector="Border.occurrenceListNote">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Row}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Grid.occurrencePlace">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordOccurrences.RowHeight}" />
+    <Setter Property="ColumnSpacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector=":is(TextBlock).occurrencePlaceLabel">
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="Border.occurrenceBadge">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Opinion.Approved.Fill}" />
+  </Style>
+  <Style Selector="Border.occurrenceBadge :is(TextBlock)">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Opinion.Approved.Text}" />
+  </Style>
+  <Style Selector="Border.occurrenceBadge.staged">
+    <Setter Property="Background" Value="{DynamicResource Intent.Change.Fill}" />
+  </Style>
+  <Style Selector="Border.occurrenceBadge.staged :is(TextBlock)">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Change.Text}" />
+  </Style>
+  <Style Selector="WrapPanel.occurrenceActions">
+    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Related}" />
+    <Setter Property="LineSpacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="Button.occurrenceAction">
+    <Setter Property="ContentTemplate">
+      <DataTemplate x:DataType="x:String">
+        <TextBlock Text="{Binding .}" TextWrapping="Wrap" />
+      </DataTemplate>
+    </Setter>
+  </Style>
+</Styles>

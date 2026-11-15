@@ -459,6 +459,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         StagePrimaryMarkingActionCommand.NotifyCanExecuteChanged();
         StageMarkingChoiceCommand.NotifyCanExecuteChanged();
         ReleasePreviousPin(value);
+        RefreshOccurrencePanel(value);
         foreach (var line in _linePages?.RealizedLines ?? [])
             {
                 foreach (var token in line.Tokens)

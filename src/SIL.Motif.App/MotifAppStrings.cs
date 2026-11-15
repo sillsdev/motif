@@ -198,11 +198,8 @@ public static class MotifAppStrings
 
     public static string ShortcutStageUnknown => Text("MotifApp.ShortcutStageUnknown");
 
-    public static string ShortcutStageRemoveAnalysis => Text("MotifApp.ShortcutStageRemoveAnalysis");
 
-    public static string ShortcutStageIncorrectSpelling => Text("MotifApp.ShortcutStageIncorrectSpelling");
 
-    public static string ShortcutOpenAddList => Text("MotifApp.ShortcutOpenAddList");
 
     public static string ShortcutOpenDispositionMenu => Text("MotifApp.ShortcutOpenDispositionMenu");
 
@@ -4031,5 +4028,52 @@ public static class MotifAppStrings
     public static string ProposalCompareApplyNote => Text("MotifApp.ProposalCompareApplyNote");
     public static string ProposalCompareSideNameFormat => Text("MotifApp.ProposalCompareSideNameFormat");
     public static string ProposalCompareDifferentResult => Text("MotifApp.ProposalCompareDifferentResult");
+    #endregion
+
+    #region W3
+    public static string OccurrencesNotAWordScopeFormat => Text("MotifApp.OccurrencesNotAWordScopeFormat");
+    public static string OccurrencesStagedStatusFormat => Text("MotifApp.OccurrencesStagedStatusFormat");
+    public static string OccurrencesPartlyStagedStatusFormat => Text("MotifApp.OccurrencesPartlyStagedStatusFormat");
+    public static string OccurrencesNotAWordStagedFormat => Text("MotifApp.OccurrencesNotAWordStagedFormat");
+    public static string OccurrencesNotStaged => Text("MotifApp.OccurrencesNotStaged");
+    public static string OccurrencesChoose => Text("MotifApp.OccurrencesChoose");
+    public static string OccurrencesSelectedFormat => Text("MotifApp.OccurrencesSelectedFormat");
+    public static string OccurrencesCheckGaps => Text("MotifApp.OccurrencesCheckGaps");
+    public static string OccurrencesNoReadingsReason => Text("MotifApp.OccurrencesNoReadingsReason");
+    public static string OccurrencesUnsupportedKeepReason => Text("MotifApp.OccurrencesUnsupportedKeepReason");
+    public static string OccurrencesChangedStatus => Text("MotifApp.OccurrencesChangedStatus");
+    public static string OccurrencesAlreadyApprovedStatus => Text("MotifApp.OccurrencesAlreadyApprovedStatus");
+    public static string OccurrencesAlreadyStagedStatus => Text("MotifApp.OccurrencesAlreadyStagedStatus");
+    public static string OccurrencesNothingToKeepStatus => Text("MotifApp.OccurrencesNothingToKeepStatus");
+    public static string ShortcutKeepAnalysis => Text("MotifApp.ShortcutKeepAnalysis");
+    public static string ShortcutNextGap => Text("MotifApp.ShortcutNextGap");
+    public static string ShortcutKeepAllLikeThis => Text("MotifApp.ShortcutKeepAllLikeThis");
+    public static string OccurrencesStateNoAnalysis => Text("MotifApp.OccurrencesStateNoAnalysis");
+    public static string OccurrencesStateGuessed => Text("MotifApp.OccurrencesStateGuessed");
+    public static string OccurrencesStateStored => Text("MotifApp.OccurrencesStateStored");
+    public static string OccurrencesPlacesFormat => Text("MotifApp.OccurrencesPlacesFormat");
+    public static string OccurrencesPlacesHint => Text("MotifApp.OccurrencesPlacesHint");
+    public static string OccurrencesPlaceFormat => Text("MotifApp.OccurrencesPlaceFormat");
+    public static string OccurrencesPlaceStaged => Text("MotifApp.OccurrencesPlaceStaged");
+    public static string OccurrencesPlaceApproved => Text("MotifApp.OccurrencesPlaceApproved");
+    public static string OccurrencesIncludePlace => Text("MotifApp.OccurrencesIncludePlace");
+    public static string OccurrencesAnalysis => Text("MotifApp.OccurrencesAnalysis");
+    public static string OccurrencesApproveFormat => Text("MotifApp.OccurrencesApproveFormat");
+    public static string OccurrencesApproveOne => Text("MotifApp.OccurrencesApproveOne");
+    public static string OccurrencesAskClaude => Text("MotifApp.OccurrencesAskClaude");
+    public static string OccurrencesNotAWord => Text("MotifApp.OccurrencesNotAWord");
+    public static string OccurrencesAskNote => Text("MotifApp.OccurrencesAskNote");
+    public static string OccurrencesRangeFormat => Text("MotifApp.OccurrencesRangeFormat");
+    public static string OccurrencesPreviousPage => Text("MotifApp.OccurrencesPreviousPage");
+    public static string OccurrencesNextPage => Text("MotifApp.OccurrencesNextPage");
+    public static string OccurrencesPanelName => Text("MotifApp.OccurrencesPanelName");
+    public static string OccurrencesPlacesName => Text("MotifApp.OccurrencesPlacesName");
+    public static string OccurrencesChooseNote => Text("MotifApp.OccurrencesChooseNote");
+    public static string OccurrencesNoReadingsNote => Text("MotifApp.OccurrencesNoReadingsNote");
+    public static string OccurrencesApproveNote => Text("MotifApp.OccurrencesApproveNote");
+    public static string PassageStateNeedsAnalysis => Text("MotifApp.PassageStateNeedsAnalysis");
+    public static string PassageNoPlaceStatus => Text("MotifApp.PassageNoPlaceStatus");
+    public static string PassageSeveralReadingsStatus => Text("MotifApp.PassageSeveralReadingsStatus");
+    public static string PassageKeyFailedFormat => Text("MotifApp.PassageKeyFailedFormat");
     #endregion
 }

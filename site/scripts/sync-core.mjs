@@ -16,7 +16,7 @@ const guideSections = [
 	},
 	{
 		title: 'Pages of the window',
-		pages: ['the-window', 'overview', 'proposals', 'texts', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
+		pages: ['the-window', 'overview', 'proposals', 'texts', 'passage', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	},
 	{
 		title: 'Everyday tasks',

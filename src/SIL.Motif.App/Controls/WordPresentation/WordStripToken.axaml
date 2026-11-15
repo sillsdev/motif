@@ -10,7 +10,10 @@
           IsVisible="{Binding IsWord}" Classes="wordStrip hoverReveal"
           Classes.open="{Binding #WordStrip.State.IsOpen}"
           Classes.uncertainChanged="{Binding IsUncertainChanged}"
-          Classes.dimmed="{Binding IsDimmed}" Focusable="True" IsTabStop="True"
+          Classes.dimmed="{Binding IsDimmed}"
+          Classes.passageApproved="{Binding IsPassageApproved}" Classes.passageGuessed="{Binding IsPassageGuessed}"
+          Classes.passageGap="{Binding IsPassageGap}" Classes.passageStaged="{Binding IsPassageStaged}"
+          AutomationProperties.HelpText="{Binding PassageStateLabel}" Focusable="True" IsTabStop="True"
           AutomationProperties.AutomationId="{Binding StripAutomationId}"
           ToolTip.Tip="{Binding TooltipSummary}" views:ClearTipPlacement.IsEnabled="True">
   <Grid x:Name="StripContent" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Related}">

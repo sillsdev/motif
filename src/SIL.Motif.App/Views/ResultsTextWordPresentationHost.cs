@@ -29,7 +29,7 @@ internal sealed class ResultsTextWordPresentationHost(
         cancellationToken.ThrowIfCancellationRequested();
         var token = Find(request.Key);
         if (token is null || token.EvidenceRevision != request.EvidenceRevision)
-            return new WordActionResult(false, "This occurrence has changed. Move to it again to use that action.");
+            return new WordActionResult(false, MotifAppStrings.OccurrencesChangedStatus);
 
         switch (request.Action)
         {
@@ -67,10 +67,24 @@ internal sealed class ResultsTextWordPresentationHost(
                 return new WordActionResult(true);
             case WordAction.SetOpinion when request.Opinion is { } opinion:
                 return await SetOpinionAsync(token, opinion).ConfigureAwait(true);
+            case WordAction.KeepAnalysis or WordAction.KeepAllLikeThis when token.Occurrence is null:
+                // A key that cannot act always says why; it is never a silent no-op.
+                return new WordActionResult(false, MotifAppStrings.PassageNoPlaceStatus);
+            case WordAction.KeepAnalysis when token.Occurrence is { } place:
+                return Describe(await inText.KeepAnalysisAsync(place, cancellationToken, token).ConfigureAwait(true));
+            case WordAction.KeepAllLikeThis when token.Occurrence is { } place:
+                return Describe(await inText.KeepAllLikeThisAsync(place, cancellationToken, token).ConfigureAwait(true));
+            case WordAction.NextGap when token.Occurrence is { } place:
+                // Tab with no gap after this word is not handled, so focus moves on as usual.
+                return inText.NextGapAfter(place) is { } gap
+                    ? new WordActionResult(await panel.FocusOccurrenceAsync(gap).ConfigureAwait(true))
+                    : new WordActionResult(false);
             default:
                 return new WordActionResult(false);
         }
     }
+
+    private static WordActionResult Describe(PassageKeepResult result) => new(result.Handled, result.Message);
 
     private ResultsTokenViewModel? Find(WordPresentationKey key) =>
         inText.SelectedToken is { } selected && selected.PresentationKey == key

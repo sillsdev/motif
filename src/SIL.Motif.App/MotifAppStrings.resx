@@ -5199,18 +5199,6 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Stage Unknown</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
-  <data name="MotifApp.ShortcutStageRemoveAnalysis" xml:space="preserve">
-    <value>Stage Removing the Analysis</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
-  <data name="MotifApp.ShortcutStageIncorrectSpelling" xml:space="preserve">
-    <value>Stage Incorrect Spelling</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
-  <data name="MotifApp.ShortcutOpenAddList" xml:space="preserve">
-    <value>Add Analysis from PanGloss</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
   <data name="MotifApp.ShortcutOpenDispositionMenu" xml:space="preserve">
     <value>Set Analysis</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
@@ -7606,4 +7594,49 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalCompareApplyNote" xml:space="preserve"><value>Applying One Marks the Other Out of Date Until Its Evidence Is Refreshed.</value></data>
   <data name="MotifApp.ProposalCompareSideNameFormat" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="MotifApp.ProposalCompareDifferentResult" xml:space="preserve"><value>{0}, With a Different Result</value></data>
+  <!-- W3 -->
+  <data name="MotifApp.OccurrencesNotAWordScopeFormat" xml:space="preserve"><value>Not a Word marks the spelling {0} as incorrect for the whole project, not only at the checked places.</value></data>
+  <data name="MotifApp.OccurrencesStagedStatusFormat" xml:space="preserve"><value>{0} places staged. They are approved when you Apply.</value></data>
+  <data name="MotifApp.OccurrencesPartlyStagedStatusFormat" xml:space="preserve"><value>{0} of {1} places staged before the keep stopped. The rest are unchanged.</value></data>
+  <data name="MotifApp.OccurrencesNotAWordStagedFormat" xml:space="preserve"><value>Not a Word staged for {0}. It changes the project when you Apply.</value></data>
+  <data name="MotifApp.OccurrencesNotStaged" xml:space="preserve"><value>The change could not be staged. Nothing was changed.</value></data>
+  <data name="MotifApp.OccurrencesChoose" xml:space="preserve"><value>Choose a Reading to Keep</value></data>
+  <data name="MotifApp.OccurrencesSelectedFormat" xml:space="preserve"><value>{0} Places Checked</value></data>
+  <data name="MotifApp.OccurrencesCheckGaps" xml:space="preserve"><value>Check Places Without an Approved Analysis</value></data>
+  <data name="MotifApp.OccurrencesNoReadingsReason" xml:space="preserve"><value>No analysis exists for this word yet, so there is nothing to keep.</value></data>
+  <data name="MotifApp.OccurrencesUnsupportedKeepReason" xml:space="preserve"><value>This place cannot be kept from the window yet: the project does not store an approval for it.</value></data>
+  <data name="MotifApp.OccurrencesChangedStatus" xml:space="preserve"><value>This place has changed. Move to it again to keep its analysis.</value></data>
+  <data name="MotifApp.OccurrencesAlreadyApprovedStatus" xml:space="preserve"><value>This place already has an approved analysis.</value></data>
+  <data name="MotifApp.OccurrencesAlreadyStagedStatus" xml:space="preserve"><value>A keep for this place is already staged. It is approved when you Apply.</value></data>
+  <data name="MotifApp.OccurrencesNothingToKeepStatus" xml:space="preserve"><value>No other place with this analysis needs one.</value></data>
+  <data name="MotifApp.ShortcutKeepAnalysis" xml:space="preserve"><value>Keep the Chosen Analysis at This Word</value></data>
+  <data name="MotifApp.ShortcutNextGap" xml:space="preserve"><value>Move to the Next Word Without an Approved Analysis</value></data>
+  <data name="MotifApp.ShortcutKeepAllLikeThis" xml:space="preserve"><value>Keep This Analysis at Every Eligible Place</value></data>
+  <data name="MotifApp.OccurrencesStateNoAnalysis" xml:space="preserve"><value>No Analysis Yet</value></data>
+  <data name="MotifApp.OccurrencesStateGuessed" xml:space="preserve"><value>Guessed</value></data>
+  <data name="MotifApp.OccurrencesStateStored" xml:space="preserve"><value>Stored Analysis</value></data>
+  <data name="MotifApp.OccurrencesPlacesFormat" xml:space="preserve"><value>{0} Places in Your Texts</value></data>
+  <data name="MotifApp.OccurrencesPlacesHint" xml:space="preserve"><value>Every place is listed. Untick any that mean something else.</value></data>
+  <data name="MotifApp.OccurrencesPlaceFormat" xml:space="preserve"><value>{0}, Line {1}</value></data>
+  <data name="MotifApp.OccurrencesPlaceStaged" xml:space="preserve"><value>Staged</value></data>
+  <data name="MotifApp.OccurrencesPlaceApproved" xml:space="preserve"><value>Approved</value></data>
+  <data name="MotifApp.OccurrencesIncludePlace" xml:space="preserve"><value>Include This Place</value></data>
+  <data name="MotifApp.OccurrencesAnalysis" xml:space="preserve"><value>Analysis</value></data>
+  <data name="MotifApp.OccurrencesApproveFormat" xml:space="preserve"><value>Approve {0} Places</value></data>
+  <data name="MotifApp.OccurrencesApproveOne" xml:space="preserve"><value>Approve 1 Place</value></data>
+  <data name="MotifApp.OccurrencesAskClaude" xml:space="preserve"><value>Ask Claude</value></data>
+  <data name="MotifApp.OccurrencesNotAWord" xml:space="preserve"><value>Not a Word</value></data>
+  <data name="MotifApp.OccurrencesAskNote" xml:space="preserve"><value>Ask Claude makes a Request about this word. Claude drafts a Proposal; it never applies.</value></data>
+  <data name="MotifApp.OccurrencesRangeFormat" xml:space="preserve"><value>Places {0} to {1} of {2}</value></data>
+  <data name="MotifApp.OccurrencesPreviousPage" xml:space="preserve"><value>Previous Places</value></data>
+  <data name="MotifApp.OccurrencesNextPage" xml:space="preserve"><value>Next Places</value></data>
+  <data name="MotifApp.OccurrencesPanelName" xml:space="preserve"><value>Places of This Word</value></data>
+  <data name="MotifApp.OccurrencesPlacesName" xml:space="preserve"><value>Places Where This Word Occurs</value></data>
+  <data name="MotifApp.OccurrencesChooseNote" xml:space="preserve"><value>This word has several readings. Choose one before you approve.</value></data>
+  <data name="MotifApp.OccurrencesNoReadingsNote" xml:space="preserve"><value>There is no analysis to keep yet, so Approve is unavailable.</value></data>
+  <data name="MotifApp.OccurrencesApproveNote" xml:space="preserve"><value>Approve stages the chosen reading at the checked places. Apply makes it approved.</value></data>
+  <data name="MotifApp.PassageStateNeedsAnalysis" xml:space="preserve"><value>Needs an Analysis</value></data>
+  <data name="MotifApp.PassageNoPlaceStatus" xml:space="preserve"><value>This word is not at a place in a Text, so there is nothing to keep.</value></data>
+  <data name="MotifApp.PassageSeveralReadingsStatus" xml:space="preserve"><value>This word has several readings. Choose one in the word panel and use Approve.</value></data>
+  <data name="MotifApp.PassageKeyFailedFormat" xml:space="preserve"><value>That key could not finish, so nothing more was staged. {0}</value></data>
 </root>

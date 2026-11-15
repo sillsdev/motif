@@ -1,6 +1,6 @@
 # Keyboard Shortcuts
 
-Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, paste, undo and redo. Elsewhere, Ctrl+C copies selected text or the focused word, Ctrl+V does nothing, Ctrl+Z undoes the last staging action, and Ctrl+Y redoes it; on macOS use ⌘, with ⌘+Shift+Z also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for the focused analysis. In Texts, Delete stages removing the word's FieldWorks analysis, S stages Incorrect spelling, P opens the PanGloss analyses to add, and Shift+F10 opens the word's opinion tiles. In Texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).
+Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, paste, undo and redo. Elsewhere, Ctrl+C copies selected text or the focused word, Ctrl+V does nothing, Ctrl+Z undoes the last staging action, and Ctrl+Y redoes it; on macOS use ⌘, with ⌘+Shift+Z also redoing. Letter shortcuts work when focus is outside text entry. In Words, A, D and U stage an opinion for the focused analysis. In Texts, Enter keeps the focused word's analysis, Shift+Enter keeps it at all the places like this one, Tab moves to the next word without an approved analysis, and Shift+F10 opens the word's opinion tiles. See [Passage](guide:passage). In Texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).
 
 ## Texts
 
@@ -9,18 +9,15 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | ← or → | ← or → | ← or → | Texts | Move Between Words |
 | ↑ | ↑ | ↑ | Texts | Move Focus to the First Word on the Previous Line |
 | ↓ | ↓ | ↓ | Texts | Move Focus to the First Word on the Next Line |
-| Enter or Space | Enter or Space | Enter or Space | Texts | Open the Word Card |
+| Space | Space | Space | Texts | Open the Word Card |
+| Enter | Enter | Enter | Texts | Keep the Chosen Analysis at This Word |
+| Tab | Tab | Tab | Texts | Move to the Next Word Without an Approved Analysis |
+| Enter | Shift+Enter | Shift+Enter | Texts | Keep This Analysis at Every Eligible Place |
 | Escape | Esc | Esc | Texts | Close the Word Card |
 | Page Up | Page Up | Page Up | Texts | Move Up One Screen of Lines |
 | Page Down | Page Down | Page Down | Texts | Move Down One Screen of Lines |
 | Home | Home | Home | Texts | Go to the First Line of the Text |
 | End | End | End | Texts | Go to the Last Line of the Text |
-| A | A | A | Texts | Stage Approve |
-| D | D | D | Texts | Stage Disapprove |
-| U | U | U | Texts | Stage Unknown |
-| Delete | Delete | Delete | Texts | Stage Removing the Analysis |
-| S | S | S | Texts | Stage Incorrect Spelling |
-| P | P | P | Texts | Add Analysis from PanGloss |
 | F10 | Shift+F10 | Shift+F10 | Texts | Set Analysis |
 | F | Ctrl+F | ⌘+F | Texts | Focus the Word Search |
 | Enter | Enter | Enter | Texts | Save Parsing Limits |

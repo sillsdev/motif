@@ -88,6 +88,9 @@ public enum WordAction
     UndoChange,
     ReconfirmChange,
     KeepChange,
+    KeepAnalysis,
+    NextGap,
+    KeepAllLikeThis,
 }
 
 /// <summary>A typed action request carrying the word identity and evidence revision.</summary>

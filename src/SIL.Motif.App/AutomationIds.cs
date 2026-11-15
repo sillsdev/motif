@@ -330,6 +330,25 @@ public static class AutomationIds
     public const string ProgressNextProposals = "motif-progress-next-proposals";
     public const string ProgressNextRequests = "motif-progress-next-requests";
     public const string ProgressNextRetry = "motif-progress-next-retry";
+    #region W3
+    public const string WordOccurrencesPanel = "motif-word-occurrences-panel";
+    public const string WordOccurrencesWord = "motif-word-occurrences-word";
+    public const string WordOccurrencesSelected = "motif-word-occurrences-selected";
+    public const string WordOccurrencesCheckGaps = "motif-word-occurrences-check-gaps";
+    public const string WordOccurrencesPlaces = "motif-word-occurrences-places";
+    public const string WordOccurrencesPrevious = "motif-word-occurrences-previous";
+    public const string WordOccurrencesNext = "motif-word-occurrences-next";
+    public const string WordOccurrencesReading = "motif-word-occurrences-reading";
+    public const string WordOccurrencesApprove = "motif-word-occurrences-approve";
+    public const string WordOccurrencesAsk = "motif-word-occurrences-ask";
+    public const string WordOccurrencesNotAWord = "motif-word-occurrences-not-a-word";
+    public const string WordOccurrencesStatus = "motif-word-occurrences-status";
+    public const string WordOccurrencesDiagnostics = "motif-word-occurrences-diagnostics";
+
+    /// <summary>The check box of one place of the open word, from its segment position.</summary>
+    public static string ForOccurrencePlace(SIL.Motif.Contract.Requests.OccurrenceAnchor anchor) =>
+        $"motif-word-occurrence-place-{anchor.SegmentId:N}-{anchor.Index}";
+    #endregion
 
     #region W5
     public const string ProposalComparePair = "motif-proposal-compare-pair";

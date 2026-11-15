@@ -52,7 +52,7 @@ internal sealed class RecordingHost : IWordPresentationHost
     public ValueTask<WordActionResult> HandleAsync(WordRequest request, CancellationToken cancellationToken)
     {
         Requests.Add(request);
-        return ValueTask.FromResult(new WordActionResult(true));
+        return ValueTask.FromResult(new WordActionResult(request.Action != WordAction.NextGap));
     }
 }
 

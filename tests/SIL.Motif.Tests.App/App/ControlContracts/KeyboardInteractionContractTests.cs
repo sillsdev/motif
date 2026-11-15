@@ -89,8 +89,9 @@ public sealed class KeyboardInteractionContractTests
         Assert.Contains(new KeyboardShortcutEntry("↓", "↓", "Texts",
             "Move Focus to the First Word on the Next Line"), rows);
         foreach (var (key, action) in new[] { ("A", "Stage Approve"), ("D", "Stage Disapprove"), ("U", "Stage Unknown") })
-        foreach (var scope in new[] { "Texts", "Words" })
-            Assert.Contains(new KeyboardShortcutEntry(key, key, scope, action), rows);
+            Assert.Contains(new KeyboardShortcutEntry(key, key, "Words", action), rows);
+        foreach (var key in new[] { "A", "D", "U", "Delete", "S", "P" })
+            Assert.DoesNotContain(rows, row => row.Scope == "Texts" && row.Key == key);
 
         var expectedSettingsKeys = new List<(string Key, string Gesture, string Scope)>
         {
@@ -100,10 +101,11 @@ public sealed class KeyboardInteractionContractTests
             ("Menu key or ↓", "Menu key or Alt+↓", "Tables"), ("Enter", "Enter", "Tables"),
             ("← or →", "← or →", "Texts"),
             ("↑", "↑", "Texts"), ("↓", "↓", "Texts"),
-            ("Enter or Space", "Enter or Space", "Texts"),
+            ("Space", "Space", "Texts"),
             ("Page Up", "Page Up", "Texts"), ("Page Down", "Page Down", "Texts"),
             ("Home", "Home", "Texts"), ("End", "End", "Texts"),
-            ("Enter", "Enter", "Texts"), ("Escape", "Esc", "Texts"),
+            ("Enter", "Enter", "Texts"), ("Enter", "Enter", "Texts"), ("Enter", "Shift+Enter", "Texts"),
+            ("Tab", "Tab", "Texts"), ("Escape", "Esc", "Texts"),
         };
         var primarySearchGesture = PrimarySearchGesture;
         foreach (var scope in new[] { "Words" })
@@ -120,8 +122,6 @@ public sealed class KeyboardInteractionContractTests
         expectedSettingsKeys.AddRange(new[]
         {
             ("Escape", "Esc", "Texts"), ("F", primarySearchGesture, "Texts"),
-            ("A", "A", "Texts"), ("D", "D", "Texts"), ("U", "U", "Texts"),
-            ("Delete", "Delete", "Texts"), ("S", "S", "Texts"), ("P", "P", "Texts"),
             ("F10", "Shift+F10", "Texts"),
             ("↑", "↑", "Diagnostic Tree"), ("↓", "↓", "Diagnostic Tree"),
             ("Space", "Space", "Menus"),
@@ -548,7 +548,8 @@ public sealed class KeyboardInteractionContractTests
         Assert.All(KeyboardShortcutRegistry.Bindings, binding =>
             Assert.Contains(binding.ActionId, Enum.GetNames<KeyboardShortcutBehavior>()));
         var approve = Assert.Single(KeyboardShortcutRegistry.Bindings,
-            binding => binding.Scope == KeyboardShortcutScope.TextReader && binding.Key == Key.A);
+            binding => binding.Scope == KeyboardShortcutScope.TextReader && binding.Key == Key.Enter &&
+                binding.Behavior == KeyboardShortcutBehavior.KeepAnalysis);
         Assert.False(KeyboardShortcutRegistry.Allows(approve, isTextInput: true, hasFocusedItem: true));
         Assert.True(KeyboardShortcutRegistry.Allows(approve, isTextInput: false, hasFocusedItem: true));
         Assert.True(KeyboardShortcutRegistry.IsTextInput(new NumericUpDown()));
@@ -675,11 +676,11 @@ public sealed class KeyboardInteractionContractTests
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 inText.SearchText = string.Empty;
                 Assert.True(AnalyzeTextsLayoutTests.StripOf(panel, "Sungura").Focus());
-                window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
                 PageScreenshots.Settle(window);
                 var status = Assert.IsType<TextBlock>(window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine"));
                 Assert.True(status.IsVisible);
-                Assert.Equal("Sungura is already Approved.", status.Text);
+                Assert.Equal(SIL.Motif.App.MotifAppStrings.OccurrencesAlreadyApprovedStatus, status.Text);
                 Assert.Empty(workspace.Context.Changes.Items);
 
                 window.KeyPress(Key.OemQuestion, RawInputModifiers.Shift, PhysicalKey.None, null);

@@ -8,6 +8,9 @@
              xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation"
              x:Class="SIL.Motif.App.Views.ResultsInTextPanel"
              x:DataType="views:ResultsInTextPanel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/PassageScoped.axaml" />
+  </UserControl.Styles>
   <Grid ColumnDefinitions="*"
         Margin="{DynamicResource Component.TextsPage.ReaderInset}">
     <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">

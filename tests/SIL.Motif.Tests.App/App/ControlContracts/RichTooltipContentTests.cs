@@ -459,9 +459,9 @@ internal sealed class TooltipScenes
                 inText.SearchText = string.Empty;
                 var sungura = AnalyzeTextsLayoutTests.StripOf(AnalyzeTextsLayoutTests.Panel(Window), "Sungura");
                 Assert.True(sungura.Focus());
-                Window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
+                Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
                 var status = Window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")!;
-                await Until(() => status.IsEffectivelyVisible && status.Text == "Sungura is already Approved." &&
+                await Until(() => status.IsEffectivelyVisible && status.Text == SIL.Motif.App.MotifAppStrings.OccurrencesAlreadyApprovedStatus &&
                     ToolTip.GetTip(status) as string == status.Text,
                     "the keyboard shortcut status message");
                 break;

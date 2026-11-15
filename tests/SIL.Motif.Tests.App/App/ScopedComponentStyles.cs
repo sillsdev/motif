@@ -12,7 +12,9 @@ internal static class ScopedComponentStyles
     private static readonly string[] All =
         ["Settings", "Setup", "TryWord", "Warnings", "Proposals", "Handoff", "Diagnostics", "Sources",
         // W9-progress
-        "Progress"];
+        "Progress",
+        // Word panel
+        "Passage"];
 
     /// <summary>Includes the named component's scoped styles, such as <c>SettingsScoped</c>, in <paramref name="host"/>.</summary>
     internal static void Include(StyledElement host, params string[] components)

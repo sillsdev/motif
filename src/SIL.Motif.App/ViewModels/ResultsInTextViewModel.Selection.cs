@@ -528,6 +528,7 @@ public sealed partial class ResultsInTextViewModel
         try { token.IsSelectedForActions = token.Occurrence is { } occurrence && NativeIsChecked(occurrence); }
         finally { _applyingChecks = false; }
         var relevant = _changes.Items.Where(change => change.Addresses(token)).ToArray();
+        token.PassageState = token.Occurrence is { } placed ? PassageStateOf(placed) : PassageWordState.NeedsAnalysis;
         token.PendingState = PendingChangeStates.FromChanges(relevant);
         token.IsPending = relevant.Length > 0;
         token.SetStagedMarkings(relevant);

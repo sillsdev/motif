@@ -307,90 +307,93 @@ public sealed partial class WordStripToken : Border
     [KeyboardShortcutHandler(
         "TextReader:CloseWordCard", "TextReader:PreviousWord", "TextReader:NextWord", "TextReader:PreviousLine",
         "TextReader:NextLine", "TextReader:OpenWordCard", "TextReader:PreviousScreen", "TextReader:NextScreen",
-        "TextReader:FirstItem", "TextReader:LastItem", "TextReader:Approve", "TextReader:Disapprove", "TextReader:Unknown",
-        "TextReader:RemoveAnalysis", "TextReader:IncorrectSpelling", "TextReader:OpenAddList",
-        "TextReader:OpenDispositionMenu")]
+        "TextReader:FirstItem", "TextReader:LastItem",
+        "TextReader:OpenDispositionMenu", "TextReader:KeepAnalysis", "TextReader:NextGap",
+        "TextReader:KeepAllLikeThis")]
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (Data is not { IsWord: true } token || KeyboardShortcutRegistry.IsTextInput(e.Source)) return;
-        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers,
-            targetBehaviors: [KeyboardShortcutBehavior.CloseWordCard, KeyboardShortcutBehavior.OpenWordCard]) ??
-            KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers);
-        if (entry is null || !KeyboardShortcutRegistry.Allows(entry, isTextInput: false, hasFocusedItem: true)) return;
-        switch (entry.Behavior)
+        // An async void handler loses its exceptions, so every failure is caught here and announced.
+        var window = this.FindAncestorOfType<MainWindow>();
+        try
         {
-            case KeyboardShortcutBehavior.CloseWordCard:
-                e.Handled = true;
-                await SendAsync(new WordRequest(token.PresentationKey, token.EvidenceRevision, WordAction.CloseCard));
-                break;
-            case KeyboardShortcutBehavior.PreviousWord:
-            case KeyboardShortcutBehavior.NextWord:
-                e.Handled = true;
-                var previous = entry.Behavior == KeyboardShortcutBehavior.PreviousWord;
-                var direction = _drawnWord?.Runs.FirstOrDefault()?.Direction ?? _wordText.FlowDirection;
-                if (direction == Avalonia.Media.FlowDirection.RightToLeft) previous = !previous;
-                await NavigateAsync(token, previous ? WordAction.NavigatePrevious : WordAction.NavigateNext);
-                break;
-            case KeyboardShortcutBehavior.PreviousLine:
-            case KeyboardShortcutBehavior.NextLine:
-                e.Handled = true;
-                await NavigateAsync(token, entry.Behavior == KeyboardShortcutBehavior.PreviousLine
-                    ? WordAction.NavigatePreviousLine : WordAction.NavigateNextLine);
-                break;
-            case KeyboardShortcutBehavior.OpenWordCard:
-                e.Handled = await OpenCardOnKeyboardAsync(e.Key, token, async word =>
-                    await SendAsync(new WordRequest(word.PresentationKey, word.EvidenceRevision, WordAction.OpenCard)));
-                break;
-            case KeyboardShortcutBehavior.PreviousScreen:
-            case KeyboardShortcutBehavior.NextScreen:
-                e.Handled = true;
-                await NavigateAsync(token, entry.Behavior == KeyboardShortcutBehavior.PreviousScreen
-                    ? WordAction.NavigatePreviousPage : WordAction.NavigateNextPage);
-                break;
-            case KeyboardShortcutBehavior.FirstItem:
-            case KeyboardShortcutBehavior.LastItem:
-                e.Handled = true;
-                await NavigateAsync(token, entry.Behavior == KeyboardShortcutBehavior.FirstItem
-                    ? WordAction.NavigateFirst : WordAction.NavigateLast);
-                break;
-            case KeyboardShortcutBehavior.Approve:
-            case KeyboardShortcutBehavior.Disapprove:
-            case KeyboardShortcutBehavior.Unknown:
-                e.Handled = true;
-                var opinion = entry.Behavior switch
-                {
-                    KeyboardShortcutBehavior.Approve => OpinionMarkKind.Approved,
-                    KeyboardShortcutBehavior.Disapprove => OpinionMarkKind.Disapproved,
-                    _ => OpinionMarkKind.Unknown,
-                };
-                await SendAsync(new WordRequest(token.PresentationKey, token.EvidenceRevision,
-                    WordAction.SetOpinion, opinion));
-                break;
-            case KeyboardShortcutBehavior.RemoveAnalysis:
-                if (token.Disposition.StoredRows.FirstOrDefault()?.Tiles
-                        .FirstOrDefault(tile => tile.Kind == WordDispositionKind.Absent)?.Action is not { } removal)
+            if (Data is not { IsWord: true } token || KeyboardShortcutRegistry.IsTextInput(e.Source)) return;
+            var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers,
+                targetBehaviors: [KeyboardShortcutBehavior.CloseWordCard, KeyboardShortcutBehavior.OpenWordCard,
+                    KeyboardShortcutBehavior.KeepAnalysis]) ??
+                KeyboardShortcutRegistry.Find(KeyboardShortcutScope.TextReader, e.Key, e.KeyModifiers);
+            if (entry is null || !KeyboardShortcutRegistry.Allows(entry, isTextInput: false, hasFocusedItem: true)) return;
+            switch (entry.Behavior)
+            {
+                case KeyboardShortcutBehavior.CloseWordCard:
+                    e.Handled = true;
+                    await SendAsync(new WordRequest(token.PresentationKey, token.EvidenceRevision, WordAction.CloseCard));
                     break;
-                e.Handled = true;
-                if (token.StageMarkingChoiceForTokenCommand?.CanExecute(removal) == true)
-                    await token.StageMarkingChoiceForTokenCommand.ExecuteAsync(removal);
-                break;
-            case KeyboardShortcutBehavior.IncorrectSpelling:
-                e.Handled = true;
-                var spelling = token.IncorrectSpellingAction;
-                if (token.AddChangeForTokenCommand?.CanExecute(spelling) == true)
-                    await token.AddChangeForTokenCommand.ExecuteAsync(spelling);
-                break;
-            case KeyboardShortcutBehavior.OpenAddList:
-            case KeyboardShortcutBehavior.OpenDispositionMenu:
-                var name = entry.Behavior == KeyboardShortcutBehavior.OpenAddList
-                    ? WordDispositionButtons.AddButtonName : WordDispositionButtons.MarkButtonName;
-                Overlay.Claim(this);
-                if (Overlay.Buttons.Children.OfType<Button>().FirstOrDefault(button =>
-                        button.IsEffectivelyVisible && AutomationProperties.GetName(button) == name) is not { } opener)
+                case KeyboardShortcutBehavior.PreviousWord:
+                case KeyboardShortcutBehavior.NextWord:
+                    e.Handled = true;
+                    var previous = entry.Behavior == KeyboardShortcutBehavior.PreviousWord;
+                    var direction = _drawnWord?.Runs.FirstOrDefault()?.Direction ?? _wordText.FlowDirection;
+                    if (direction == Avalonia.Media.FlowDirection.RightToLeft) previous = !previous;
+                    await NavigateAsync(token, previous ? WordAction.NavigatePrevious : WordAction.NavigateNext);
                     break;
-                e.Handled = true;
-                opener.Flyout?.ShowAt(opener);
-                break;
+                case KeyboardShortcutBehavior.PreviousLine:
+                case KeyboardShortcutBehavior.NextLine:
+                    e.Handled = true;
+                    await NavigateAsync(token, entry.Behavior == KeyboardShortcutBehavior.PreviousLine
+                        ? WordAction.NavigatePreviousLine : WordAction.NavigateNextLine);
+                    break;
+                case KeyboardShortcutBehavior.OpenWordCard:
+                    e.Handled = await OpenCardOnKeyboardAsync(e.Key, token, async word =>
+                        await SendAsync(new WordRequest(word.PresentationKey, word.EvidenceRevision, WordAction.OpenCard)));
+                    break;
+                case KeyboardShortcutBehavior.KeepAnalysis:
+                case KeyboardShortcutBehavior.KeepAllLikeThis:
+                    e.Handled = true;
+                    await SendAsync(new WordRequest(token.PresentationKey, token.EvidenceRevision,
+                        entry.Behavior == KeyboardShortcutBehavior.KeepAnalysis
+                            ? WordAction.KeepAnalysis : WordAction.KeepAllLikeThis));
+                    break;
+                case KeyboardShortcutBehavior.NextGap:
+                    if (Host is not { } gapHost) break;
+                    var gapWindow = this.FindAncestorOfType<MainWindow>();
+                    var pendingMove = gapHost.HandleAsync(new WordRequest(token.PresentationKey, token.EvidenceRevision,
+                        WordAction.NextGap), CancellationToken.None);
+                    // A move that must wait is a gap being brought into view: claim the key now or Tab also moves focus.
+                    if (!pendingMove.IsCompleted) e.Handled = true;
+                    var moved = await pendingMove;
+                    e.Handled |= moved.Handled;
+                    if (moved.StatusMessage is { Length: > 0 } gapMessage)
+                        KeyboardShortcutStatus.Announce(gapWindow ?? this.FindAncestorOfType<MainWindow>(), gapMessage);
+                    break;
+                case KeyboardShortcutBehavior.PreviousScreen:
+                case KeyboardShortcutBehavior.NextScreen:
+                    e.Handled = true;
+                    await NavigateAsync(token, entry.Behavior == KeyboardShortcutBehavior.PreviousScreen
+                        ? WordAction.NavigatePreviousPage : WordAction.NavigateNextPage);
+                    break;
+                case KeyboardShortcutBehavior.FirstItem:
+                case KeyboardShortcutBehavior.LastItem:
+                    e.Handled = true;
+                    await NavigateAsync(token, entry.Behavior == KeyboardShortcutBehavior.FirstItem
+                        ? WordAction.NavigateFirst : WordAction.NavigateLast);
+                    break;
+                case KeyboardShortcutBehavior.OpenDispositionMenu:
+                    var name = WordDispositionButtons.MarkButtonName;
+                    Overlay.Claim(this);
+                    if (Overlay.Buttons.Children.OfType<Button>().FirstOrDefault(button =>
+                            button.IsEffectivelyVisible && AutomationProperties.GetName(button) == name) is not { } opener)
+                        break;
+                    e.Handled = true;
+                    opener.Flyout?.ShowAt(opener);
+                    break;
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception)
+        {
+            KeyboardShortcutStatus.Announce(window ?? this.FindAncestorOfType<MainWindow>(),
+                string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.PassageKeyFailedFormat,
+                    exception.Message));
         }
     }
 
@@ -411,10 +414,12 @@ public sealed partial class WordStripToken : Border
     private async Task SendAsync(WordRequest request)
     {
         if (Host is not { } host) return;
+        // The window is found before the await: the line can be re-realized meanwhile and detach this strip.
+        var window = this.FindAncestorOfType<MainWindow>();
         var result = await host.HandleAsync(request, CancellationToken.None);
         if (result.StatusMessage is { Length: > 0 } message)
-            KeyboardShortcutStatus.Announce(this, message);
+            KeyboardShortcutStatus.Announce(window ?? this.FindAncestorOfType<MainWindow>(), message);
         else if (request.Action == WordAction.SetOpinion)
-            KeyboardShortcutStatus.Announce(this, null);
+            KeyboardShortcutStatus.Announce(window ?? this.FindAncestorOfType<MainWindow>(), null);
     }
 }

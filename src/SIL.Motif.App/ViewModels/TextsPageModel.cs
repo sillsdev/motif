@@ -38,6 +38,8 @@ public sealed class TextsPageModel : PageModel
             },
             OpenWarnings = () => context.OpenDiagnostics(DiagnosticsTab.Warnings),
         };
+        ResultsInText.AskAboutWord = (form, _) =>
+            AskAssistantAction.RunAsync(context, new AskAssistantTarget("word", form, form, null));
         Words.WordCardActions = ResultsInText;
         context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);
         context.RegisterOccurrenceNavigator(anchor =>

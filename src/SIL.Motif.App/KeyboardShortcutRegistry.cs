@@ -43,9 +43,6 @@ internal enum KeyboardShortcutBehavior
     Approve,
     Disapprove,
     Unknown,
-    RemoveAnalysis,
-    IncorrectSpelling,
-    OpenAddList,
     OpenDispositionMenu,
     Copy,
     Undo,
@@ -86,6 +83,9 @@ internal enum KeyboardShortcutBehavior
     DecideLater,
     UseThis,
     SwitchSide,
+    KeepAnalysis,
+    NextGap,
+    KeepAllLikeThis,
 }
 
 public sealed record KeyboardShortcutEntry(string Key, string Gesture, string Scope, string Action);

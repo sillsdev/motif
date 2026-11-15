@@ -680,7 +680,38 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     private ResultsReadingViewModel? _selectedReading;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPassageStaged))]
+    [NotifyPropertyChangedFor(nameof(IsPassageApproved))]
+    [NotifyPropertyChangedFor(nameof(IsPassageGuessed))]
+    [NotifyPropertyChangedFor(nameof(IsPassageGap))]
+    [NotifyPropertyChangedFor(nameof(PassageStateLabel))]
     private bool _isPending;
+
+    /// <summary>The Passage state of this place from the project's stored occurrence status.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPassageApproved))]
+    [NotifyPropertyChangedFor(nameof(IsPassageGuessed))]
+    [NotifyPropertyChangedFor(nameof(IsPassageGap))]
+    [NotifyPropertyChangedFor(nameof(PassageStateLabel))]
+    private PassageWordState _passageState = PassageWordState.NeedsAnalysis;
+
+    /// <summary>The state in words, for people who cannot tell it by colour.</summary>
+    public string PassageStateLabel => IsPassageStaged ? MotifAppStrings.OccurrencesPlaceStaged :
+        IsPassageApproved ? MotifAppStrings.OccurrencesPlaceApproved :
+        IsPassageGuessed ? MotifAppStrings.OccurrencesStateGuessed :
+        IsPassageGap ? MotifAppStrings.PassageStateNeedsAnalysis : string.Empty;
+
+    /// <summary>Whether a change at this place is written and waiting for Apply; it is not yet approved.</summary>
+    public bool IsPassageStaged => IsWord && IsPending;
+
+    /// <summary>Whether a person approved the analysis chosen here and nothing is staged over it.</summary>
+    public bool IsPassageApproved => IsWord && !IsPending && PassageState == PassageWordState.Approved;
+
+    /// <summary>Whether the grammar or project only guessed an analysis here.</summary>
+    public bool IsPassageGuessed => IsWord && !IsPending && PassageState == PassageWordState.Guessed;
+
+    /// <summary>Whether this place still needs an analysis.</summary>
+    public bool IsPassageGap => IsWord && !IsPending && PassageState == PassageWordState.NeedsAnalysis;
 
     [ObservableProperty]
     private bool _isUncertainChanged;

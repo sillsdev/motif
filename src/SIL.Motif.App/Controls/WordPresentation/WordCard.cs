@@ -260,7 +260,7 @@ public sealed partial class WordCard : UserControl
     [KeyboardShortcutHandler(
         "TextReader:CloseWordCard", "TextReader:PreviousWord", "TextReader:NextWord", "TextReader:PreviousLine",
         "TextReader:NextLine", "TextReader:PreviousScreen", "TextReader:NextScreen", "TextReader:FirstItem",
-        "TextReader:LastItem", "TextReader:Approve", "TextReader:Disapprove", "TextReader:Unknown")]
+        "TextReader:LastItem")]
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (!HandlesTextReaderShortcuts || Host is not { } host || Key is not { } key ||
@@ -286,9 +286,6 @@ public sealed partial class WordCard : UserControl
             KeyboardShortcutBehavior.NextScreen => WordAction.NavigateNextPage,
             KeyboardShortcutBehavior.FirstItem => WordAction.NavigateFirst,
             KeyboardShortcutBehavior.LastItem => WordAction.NavigateLast,
-            KeyboardShortcutBehavior.Approve => WordAction.SetOpinion,
-            KeyboardShortcutBehavior.Disapprove => WordAction.SetOpinion,
-            KeyboardShortcutBehavior.Unknown => WordAction.SetOpinion,
             _ => (WordAction?)null,
         };
         if (action is not { } requestAction) return;
@@ -303,15 +300,8 @@ public sealed partial class WordCard : UserControl
                     ? WordAction.NavigateCardNext : WordAction.NavigateCardPrevious;
         }
         e.Handled = true;
-        var opinion = entry.Behavior switch
-        {
-            KeyboardShortcutBehavior.Approve => OpinionMarkKind.Approved,
-            KeyboardShortcutBehavior.Disapprove => OpinionMarkKind.Disapproved,
-            KeyboardShortcutBehavior.Unknown => OpinionMarkKind.Unknown,
-            _ => (OpinionMarkKind?)null,
-        };
-            var result = await host.HandleAsync(
-                new WordRequest(key, EvidenceRevision, requestAction, opinion), CancellationToken.None);
+        var result = await host.HandleAsync(
+            new WordRequest(key, EvidenceRevision, requestAction), CancellationToken.None);
         if (result.StatusMessage is { Length: > 0 } message) KeyboardShortcutStatus.Announce(this, message);
     }
 

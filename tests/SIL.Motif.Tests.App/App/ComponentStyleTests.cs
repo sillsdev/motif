@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
@@ -515,6 +516,23 @@ public sealed partial class ComponentStyleTests
             host.Children.Add(panel);
             return panel;
         }, Layoutable.MarginProperty, "Intent.Inset.Panel");
+        // Passage and word panel.
+        yield return new("WordOccurrences", "panel width", host =>
+        {
+            var panel = new UserControl { Classes = { "wordOccurrences" } };
+            host.Children.Add(panel);
+            return panel;
+        }, Control.MaxWidthProperty, "Component.WordOccurrences.Width");
+        yield return new("WordOccurrences", "a place row", host => Add(host, With(new Grid(), ["occurrencePlace"])),
+            Layoutable.MinHeightProperty, "Component.WordOccurrences.RowHeight");
+        yield return new("WordOccurrences", "a staged badge", host => Add(host, Box("occurrenceBadge", "staged")),
+            Border.BackgroundProperty, "Intent.Change.Fill");
+        yield return new("PassageScoped", "an approved word", host => Add(host, Box("wordStrip", "passageApproved")),
+            TextElement.ForegroundProperty, "Intent.Opinion.Approved.Text");
+        yield return new("PassageScoped", "a word that needs an analysis", host => Add(host, Box("wordStrip", "passageGap")),
+            TextElement.ForegroundProperty, "Intent.Warning.Text");
+        yield return new("PassageScoped", "a staged word", host => Add(host, Box("wordStrip", "passageStaged")),
+            TextElement.ForegroundProperty, "Intent.Change.Text");
 
         yield return new("Text", "a muted line", host => Add(host, Text("muted")), TextBlock.ForegroundProperty, "Intent.TextMuted");
         yield return new("Text", "an error", host => Add(host, Text("error")), TextBlock.ForegroundProperty, "Intent.Danger.Text");

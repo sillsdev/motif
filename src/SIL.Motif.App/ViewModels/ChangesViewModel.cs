@@ -417,6 +417,38 @@ public sealed partial class ChangesViewModel : ObservableObject, IProjectStatePa
             Occurrence: occurrence) { GroupId = groupId }, path, generation, CancellationToken.None, target.ExpectedContext).ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Stages an Approve with the occurrence anchor of each place, one change per place, in one undo step.
+    /// It stops at the first failure or at cancellation and returns only the anchors whose changes were written.
+    /// </summary>
+    internal async Task<IReadOnlyList<OccurrenceAnchor>> StageOccurrenceApprovalsAsync(
+        IReadOnlyList<WordActionTarget> places, WordActionReading reading, string? storedAnalysisId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(places);
+        if (ProjectPath is not { } path)
+            throw new InvalidOperationException("Open a project before collecting changes.");
+        var generation = _projectGeneration;
+        var written = new List<OccurrenceAnchor>();
+        var groupId = places.Count > 1 ? CanonicalId.Mint().Value : null;
+        using var usageAction = _client.BeginUsageAction("put-pending-change", UsageArgumentShape.Text("fwDataPath"),
+            UsageArgumentShape.List("changes", places.Count));
+        using var historyAction = BeginStagingAction();
+        foreach (var place in places)
+        {
+            if (cancellationToken.IsCancellationRequested || place.Occurrence is null) break;
+            var wordformId = place.WordformId is { } id ? CanonicalId.FromGuid(id).Value : string.Empty;
+            var staged = await PutAsync(new ChangeIntent(CanonicalId.Mint().Value, ChangeKinds.Approve, wordformId,
+                place.Form, place.AssessmentId, reading.Analysis, StoredAnalysisId: storedAnalysisId,
+                DisplayReading: reading.Text, ReadingIndex: reading.Index, OriginPage: WorkspacePage.Texts.ToString(),
+                Occurrence: place.Occurrence) { GroupId = groupId }, path, generation, cancellationToken,
+                place.ExpectedContext).ConfigureAwait(true);
+            if (!staged) break;
+            written.Add(place.Occurrence);
+        }
+        return written;
+    }
+
     public Task<bool> AddFromMarkingAsync(AnalysisMarkingAction action, ResultsTokenViewModel token)
     {
         ArgumentNullException.ThrowIfNull(token);

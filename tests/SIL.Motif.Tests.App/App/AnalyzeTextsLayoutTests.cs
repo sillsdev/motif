@@ -83,7 +83,7 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
-    public void KeyboardReaderWalkthroughStagesOpinionsThenShowsThemInReview()
+    public void KeyboardReaderWalkthroughMovesAndKeepsNothingAtAnApprovedWord()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -110,35 +110,16 @@ public sealed class AnalyzeTextsLayoutTests
                 await PressUntilFocusedAsync(workspace, window, panel, Key.Down, watoto);
                 await PressUntilFocusedAsync(workspace, window, panel, Key.Right, hawajafika);
 
-                await inText.OpenTokenCardAsync(hawajafika);
-                PageScreenshots.Settle(window);
-                Assert.True(OpenCard(window).Focus());
-                window.KeyPress(Key.U, RawInputModifiers.None, PhysicalKey.None, null);
-                await WaitForPendingChanges(workspace, window, 1);
-                Assert.Equal(ChangeKinds.Candidate, Assert.Single(workspace.Context.Changes.Items).Kind);
-
-                inText.CloseTokenCard();
-                PageScreenshots.Settle(window);
-                Assert.True(StripOf(panel, "mwalimu").Focus());
-                window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.None, null);
-                await WaitForPendingChanges(workspace, window, 2);
-                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "mwalimu" && change.Kind == ChangeKinds.Approve);
-
-                await SettleReaderAsync(workspace, window);
-                await PressUntilFocusedAsync(workspace, window, panel, Key.End, watoto);
-                await PressUntilFocusedAsync(workspace, window, panel, Key.Home, sungura);
-                window.KeyPress(Key.D, RawInputModifiers.None, PhysicalKey.None, null);
-                await WaitForPendingChanges(workspace, window, 3);
-
-                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "Sungura" && change.Kind == ChangeKinds.Reject);
-                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "hawajafika" &&
-                    change.Kind == ChangeKinds.Candidate &&
-                    change.AfterOpinionMark == SIL.Motif.App.Controls.OpinionMarkKind.Unknown);
+                Assert.True(StripOf(panel, "Sungura").Focus());
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+                await Wait.ForAsync(() => window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")?.Text ==
+                    MotifAppStrings.OccurrencesAlreadyApprovedStatus, Wait.Default, () => PageScreenshots.Settle(window));
+                Assert.Empty(workspace.Context.Changes.Items);
                 Assert.Empty(Assert.IsType<FakeCommandClient>(workspace.Context.Commands).ApplyPendingRequests);
 
                 workspace.CurrentPage = WorkspacePage.Proposals;
                 PageScreenshots.Settle(window);
-                Assert.Equal(3, workspace.Context.Changes.Count);
+                Assert.Equal(0, workspace.Context.Changes.Count);
             }
             finally
             {

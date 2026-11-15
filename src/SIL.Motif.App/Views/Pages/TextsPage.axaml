@@ -5,6 +5,9 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.TextsPage"
              x:DataType="vm:TextsPageModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/PassageScoped.axaml" />
+  </UserControl.Styles>
   <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
     <Border IsVisible="{Binding ShowParsePrompt}">
       <views:ParsePrompt DataContext="{Binding Context}" />
@@ -17,6 +20,11 @@
       <views:CopyableTextBlock Text="{Binding Sources.PassageReference}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{Binding Sources.PassageMessage}" IsVisible="{Binding !Sources.CanReadPassage}" TextWrapping="Wrap" />
     </StackPanel>
-    <ContentControl Grid.Row="3" IsVisible="{Binding Sources.CanReadPassage}" x:Name="ReaderHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.Passage}" />
+    <Grid Grid.Row="3" x:Name="PassageBody" IsVisible="{Binding Sources.CanReadPassage}" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+      <ContentControl x:Name="ReaderHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.Passage}" />
+      <Border x:Name="WordPane" Classes="passageWordPane" IsVisible="False" Grid.Column="1">
+        <ContentControl x:Name="WordPaneHost" />
+      </Border>
+    </Grid>
   </Grid>
 </UserControl>
