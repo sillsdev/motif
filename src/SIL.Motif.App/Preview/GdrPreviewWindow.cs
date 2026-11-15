@@ -155,15 +155,18 @@ public sealed partial class GdrPreviewWindow : Window
         panel.Children.Add(_records);
         panel.Children.Add(right);
         Content = panel;
-        AddHandler(KeyDownEvent, async (_, e) =>
+        AddHandler(KeyDownEvent, OnUndoMarkdownKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    [TextEditingKeyHandler]
+    private async void OnUndoMarkdownKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_markdownDocument is null && _markdownUndo is not null && Session?.UndoSteps == 0 &&
+            e.Key == Key.Z && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
-            if (_markdownDocument is null && _markdownUndo is not null && Session?.UndoSteps == 0 &&
-                e.Key == Key.Z && e.KeyModifiers.HasFlag(KeyModifiers.Control))
-            {
-                e.Handled = true;
-                await UndoMarkdownAsync();
-            }
-        }, RoutingStrategies.Tunnel);
+            e.Handled = true;
+            await UndoMarkdownAsync();
+        }
     }
 
     /// <summary>The records listed.</summary>

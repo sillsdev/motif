@@ -42,8 +42,8 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
                 BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
             .Where(method => method.IsDefined(typeof(TextEditingKeyHandlerAttribute), inherit: false))
-            .Select(method => $"{method.DeclaringType!.Name}.{method.Name}").ToArray();
-        Assert.Equal(["InterlinearWord.OnKeyDown"], editingHandlers);
+            .Select(method => $"{method.DeclaringType!.Name}.{method.Name}").Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(["GdrPreviewWindow.OnUndoMarkdownKeyDown", "InterlinearWord.OnKeyDown"], editingHandlers);
         var handlers = assembly.GetTypes()
             .SelectMany(type => type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
                 BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
