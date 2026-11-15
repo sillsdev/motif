@@ -128,7 +128,7 @@ public sealed class RationaleCompareTests
     [InlineData(Original, Original)]
     [InlineData(Mine, Mine)]
     [InlineData(null, Theirs)]
-    public void CompareAsksToReloadWhenTheRevisionCannotIdentifyAnotherCurrentVersion(string? revision, string stored)
+    public void CompareExplainsHowToKeepTextWhenTheRevisionCannotIdentifyAnotherCurrentVersion(string? revision, string stored)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -149,7 +149,8 @@ public sealed class RationaleCompareTests
             await editor.Working;
 
             Assert.Empty(opened);
-            Assert.Contains("Reload", Assert.IsType<WindowRefusal>(editor.Refusal).Sentence, StringComparison.Ordinal);
+            Assert.Equal("Motif can't tell which version is current. Your text is kept; copy it, then Cancel to see the latest Rationale.", MotifAppStrings.RationaleCompareReload);
+            Assert.Equal(MotifAppStrings.RationaleCompareReload, Assert.IsType<WindowRefusal>(editor.Refusal).Sentence);
             Assert.Single(fake.SetRationaleRequests);
             Assert.Equal(stored, fake.StoredRationale);
             Assert.Equal(Mine, editor.Text());

@@ -512,7 +512,8 @@ public sealed class CompareWindowTests(AvaloniaHeadlessFixture avalonia)
             Assert.False(window.Finish());
             Assert.Null(window.Outcome);
             Assert.Null(window.Comparison.ChoiceFor(BothChange(window)));
-            Assert.Equal("1 change still needs a choice (paragraph 2): type on the right, use Use this →, or go back to choose", window.WaitingText);
+            Assert.Equal(": type on the right, use Use this →, or go back to choose", MotifAppStrings.SideBySideWaiting);
+            Assert.Equal("1 change still needs a choice (paragraph 2)" + MotifAppStrings.SideBySideWaiting, window.WaitingText);
             Assert.EndsWith("needs a choice", AutomationProperties.GetName(window.ResultFields[1]), StringComparison.Ordinal);
             Assert.DoesNotContain("needs a choice", AutomationProperties.GetName(window.ResultFields[0]), StringComparison.Ordinal);
         });
