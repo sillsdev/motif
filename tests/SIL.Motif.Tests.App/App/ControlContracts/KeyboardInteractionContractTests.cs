@@ -207,6 +207,34 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             [ShortcutKey.OemPlus, ShortcutKey.OemPlus, ShortcutKey.Add], CultureInfo.GetCultureInfo("en")));
     }
 
+    [Theory]
+    [InlineData(ShortcutPlatform.Windows, KeyModifiers.Control, "Ctrl+O", "Ctrl+,")]
+    [InlineData(ShortcutPlatform.Linux, KeyModifiers.Control, "Ctrl+O", "Ctrl+,")]
+    [InlineData(ShortcutPlatform.MacOS, KeyModifiers.Meta, "⌘+O", "⌘+,")]
+    public void OpenProjectAndSettingsUseTheSamePlatformPrimary(
+        ShortcutPlatform platform, KeyModifiers primary, string openGesture, string settingsGesture)
+    {
+        var culture = CultureInfo.GetCultureInfo("en");
+        foreach (var (key, behavior, display) in new[]
+                 {
+                     (Key.O, KeyboardShortcutBehavior.OpenProject, openGesture),
+                     (Key.OemComma, KeyboardShortcutBehavior.OpenSettings, settingsGesture),
+                 })
+        {
+            var binding = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, key, primary, platform);
+            Assert.NotNull(binding);
+            Assert.Equal(behavior, binding.Behavior);
+            Assert.Equal(ShortcutModifiers.Primary, binding.Gesture.Modifiers);
+            Assert.Equal(display, KeyboardShortcutCatalog.FormatGesture(binding.Gesture, platform, culture));
+            Assert.Null(KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, key,
+                primary == KeyModifiers.Meta ? KeyModifiers.Control : KeyModifiers.Meta, platform));
+            Assert.Null(KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, key,
+                primary | KeyModifiers.Shift, platform));
+        }
+        Assert.Contains("| O | Ctrl+O | ⌘+O | Window | Open a Project |",
+            KeyboardShortcutCatalog.RenderHelpPage(culture), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void EditingShortcutsAreRegisteredOutsideTextEntry()
     {

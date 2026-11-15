@@ -149,11 +149,13 @@ public sealed class MenuBarTests
             "OptionsMenuItem", "HelpTopicsMenuItem", "KeyboardShortcutsMenuItem", "SelectNewMenuItem",
         }.ToDictionary(name => name, name => window.FindInWindowOrWorkspace<MenuItem>(name)!.InputGesture));
         Assert.All(gestures, pair => Assert.True(pair.Value is not null, pair.Key + " shows no shortcut"));
+        var primary = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
         Assert.Equal(Key.O, gestures["SelectNewMenuItem"]!.Key);
-        Assert.Equal(KeyModifiers.Control, gestures["SelectNewMenuItem"]!.KeyModifiers);
+        Assert.Equal(primary, gestures["SelectNewMenuItem"]!.KeyModifiers);
         Assert.Equal(Key.F1, gestures["HelpTopicsMenuItem"]!.Key);
         Assert.Equal(Key.Z, gestures["UndoMenuItem"]!.Key);
         Assert.Equal(Key.OemComma, gestures["OptionsMenuItem"]!.Key);
+        Assert.Equal(primary, gestures["OptionsMenuItem"]!.KeyModifiers);
     }
 
     [Fact]
@@ -163,8 +165,8 @@ public sealed class MenuBarTests
             .Select(b => b.DefinitionId).ToHashSet();
         foreach (var id in new[]
                  {
-                     "window-help", "window-shortcuts", "window-settings", "window-zoom-in", "window-zoom-out",
-                     "window-zoom-reset", "window-copy", "window-undo", "window-redo",
+                     "window-help", "window-shortcuts", "window-open-project", "window-settings", "window-zoom-in",
+                     "window-zoom-out", "window-zoom-reset", "window-copy", "window-undo", "window-redo",
                  })
             Assert.Contains(id, ids);
     }
