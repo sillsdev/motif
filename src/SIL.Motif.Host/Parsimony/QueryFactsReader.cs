@@ -10,7 +10,7 @@ public static class QueryFactsReader
     /// <summary>One decoded snapshot, including unresolved variant links omitted from the rows.</summary>
     public sealed record Snapshot(IReadOnlyList<QueryForm> Forms, IReadOnlyList<string> Graphemes,
         int UnresolvedVariants, IReadOnlyList<QueryRow>? Stems = null, IReadOnlyList<QueryRow>? Uses = null,
-        IReadOnlyList<QueryRow>? Objects = null);
+        IReadOnlyList<QueryRow>? Objects = null, QueryCoverage? Coverage = null);
 
     /// <summary>Returns the first vernacular writing system recorded in the artifact.</summary>
     public static string DefaultWritingSystem(string factsPath)
@@ -58,7 +58,8 @@ public static class QueryFactsReader
             while (reader.Read()) Add(categories, reader.GetString(0), reader.GetString(1));
         var stems = QuerySourceRows.ReadStems(connection, forms, lexemes.ToDictionary(l => l.Key, l => l.Value.Id, StringComparer.Ordinal),
             allomorphs.GroupBy(a => a.Entry, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal));
-        var uses = QuerySourceRows.ReadUses(connection);
+        var (uses, cappedKinds) = QuerySourceRows.ReadUses(connection);
+        var coverage = QuerySourceRows.Coverage(connection, cappedKinds);
         var objects = QuerySourceRows.ReadObjects(connection);
         var rows = new List<QueryForm>(allomorphs.Count);
         foreach (var item in allomorphs)
@@ -93,7 +94,7 @@ public static class QueryFactsReader
         command.Parameters.AddWithValue("$ws", writingSystem);
         var graphemes = new List<string>();
         using (var reader = command.ExecuteReader()) while (reader.Read()) graphemes.Add(reader.GetString(0));
-        return new Snapshot(rows, graphemes, unresolved, stems, uses, objects);
+        return new Snapshot(rows, graphemes, unresolved, stems, uses, objects, coverage);
     }
 
     private static string Id(string value) => Guid.TryParse(value, out var guid) ? CanonicalId.FromGuid(guid).Value : value;

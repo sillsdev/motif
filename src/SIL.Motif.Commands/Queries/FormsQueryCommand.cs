@@ -3,6 +3,7 @@ using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Host.Config;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
 
 namespace SIL.Motif.Commands.Queries;
@@ -12,7 +13,11 @@ public sealed record FormsQueryRequest(string FwDataPath, string ProductVersion,
 
 /// <summary>A query result and the identity and freshness of its source.</summary>
 public sealed record FormsQueryResponse(string TrialId, string GrammarHash, string BundleId, bool IsStale,
-    int UnresolvedVariants, QueryResult Result);
+    int UnresolvedVariants, QueryResult Result)
+{
+    /// <summary>What the facts did not measure that this query's source would otherwise present as complete.</summary>
+    public IReadOnlyList<string> NotMeasured { get; init; } = [];
+}
 
 /// <summary>Runs a query over the forms, stems, uses or objects source of the last completed Trial's materialized facts.</summary>
 public static class FormsQueryCommand
@@ -39,6 +44,9 @@ public static class FormsQueryCommand
                     var query = request.Query.Fold?.Split(',', StringSplitOptions.TrimEntries).Contains(QueryFold.ProjectToken) == true
                         ? request.Query with { Fold = QueryFold.ResolveProject(request.Query.Fold, ProjectFold(project)) }
                         : request.Query;
+                    var coverage = snapshot.Snapshot.Coverage ?? QueryCoverage.Complete;
+                    if (NotMeasuredRefusal(query, coverage) is { } notMeasured)
+                        return CommandOutcome<FormsQueryResponse>.Refused(notMeasured);
                     QueryResult result;
                     if (query.From == QuerySources.Forms)
                     {
@@ -69,7 +77,7 @@ public static class FormsQueryCommand
                         (File.Exists(project.FullFwDataPath) &&
                          File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks > snapshot.SourceWriteTicks);
                     return CommandOutcome<FormsQueryResponse>.Success(new(snapshot.TrialId, snapshot.GrammarHash,
-                        snapshot.BundleId, stale, snapshot.Snapshot.UnresolvedVariants, result));
+                        snapshot.BundleId, stale, snapshot.Snapshot.UnresolvedVariants, result) { NotMeasured = NotMeasuredNotes(query.From, coverage) });
                 }
                 catch (QueryTooManyGroupsException error)
                 {
@@ -87,6 +95,57 @@ public static class FormsQueryCommand
                     () => QuerySnapshotStore.Read(connection, transaction)!, Evaluate);
             return Evaluate(QuerySnapshotStore.Read(connection, transaction, [request.Query.From], UseTargetKinds(request.Query))!);
         });
+
+    private static readonly string[] AllKinds = ["environment", "natural-class", "exception-feature", "category", "slot", "inflection-class"];
+
+    // The values of a column the selectors can still select, from its is, in and not selectors; other operators select all.
+    private static HashSet<string> Selected(QueryRecord query, string column)
+    {
+        var selected = new HashSet<string>(AllKinds, StringComparer.Ordinal);
+        foreach (var condition in query.Where ?? [])
+        {
+            if (condition?.Col != column || condition.Value is null) continue;
+            var values = condition.Value.Split(',', StringSplitOptions.TrimEntries);
+            if (condition.Op == "is") selected.IntersectWith([condition.Value]);
+            else if (condition.Op == "in") selected.IntersectWith(values);
+            else if (condition.Op == "not") selected.Remove(condition.Value);
+        }
+        return selected;
+    }
+
+    private static Refusal? NotMeasuredRefusal(QueryRecord query, QueryCoverage coverage)
+    {
+        if (query.From == QuerySources.Uses && coverage.MissingUseKinds.Count > 0 &&
+            (query.Where ?? []).Any(c => c?.Col == "target-kind" && c.Op is "is" or "in" or "not"))
+        {
+            var missing = Selected(query, "target-kind").Intersect(coverage.MissingUseKinds).Order(StringComparer.Ordinal).ToArray();
+            if (missing.Length > 0)
+                return new Refusal(RefusalCodes.QueryNotMeasured, FailureReason.InvalidArgument,
+                    $"These facts did not measure uses of target kind {string.Join(", ", missing)}; a result would read as none. " +
+                    "Run a Trial on full facts, or select only environment or natural-class targets.");
+        }
+        if (query.From == QuerySources.Objects && coverage.MissingObjectClasses.Count > 0 &&
+            ((query.Where ?? []).Any(c => c?.Col is "uses" or "applied") || (query.Group ?? []).Any(g => g is "uses" or "applied") ||
+             query.Distinct is "uses" or "applied"))
+        {
+            var missing = Selected(query, "class").Intersect(coverage.MissingObjectClasses).Order(StringComparer.Ordinal).ToArray();
+            if (missing.Length > 0)
+                return new Refusal(RefusalCodes.QueryNotMeasured, FailureReason.InvalidArgument,
+                    $"These facts did not measure uses or applied of {string.Join(", ", missing)} objects; a result would read as zero. " +
+                    "Select class environment or natural-class, or run a Trial on full facts.");
+        }
+        return null;
+    }
+
+    private static string[] NotMeasuredNotes(string source, QueryCoverage coverage) => source switch
+    {
+        QuerySources.Uses when coverage.MissingUseKinds.Count > 0 =>
+            [$"Not measured: no uses rows for target kinds {string.Join(", ", coverage.MissingUseKinds)}."],
+        QuerySources.Objects when coverage.MissingObjectClasses.Count > 0 =>
+            [$"Not measured: uses and applied of {string.Join(", ", coverage.MissingObjectClasses)} objects (shown empty, not zero)."],
+        QuerySources.Stems when coverage.Light => ["Not measured: a gloss that exists only as a definition reads none."],
+        _ => [],
+    };
 
     // A target-kind selector narrows the uses rows decoded; the query still applies every selector itself.
     private static string[]? UseTargetKinds(QueryRecord query) => query.From != QuerySources.Uses ? null :

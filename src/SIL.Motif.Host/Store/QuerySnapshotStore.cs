@@ -109,7 +109,7 @@ public static class QuerySnapshotStore
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         Clear(connection, transaction);
-        command.CommandText = "INSERT INTO query_snapshot VALUES (1,$trial,$grammar,$bundle,$ws,$graphemes,$unresolved,$ticks,$created,$order)";
+        command.CommandText = "INSERT INTO query_snapshot VALUES (1,$trial,$grammar,$bundle,$ws,$graphemes,$unresolved,$ticks,$created,$order,$coverage)";
         command.Parameters.AddWithValue("$trial", snapshot.TrialId);
         command.Parameters.AddWithValue("$grammar", snapshot.GrammarHash);
         command.Parameters.AddWithValue("$bundle", snapshot.BundleId);
@@ -119,6 +119,7 @@ public static class QuerySnapshotStore
         command.Parameters.AddWithValue("$ticks", snapshot.SourceWriteTicks);
         command.Parameters.AddWithValue("$created", snapshot.TrialCreatedUtc);
         command.Parameters.AddWithValue("$order", snapshot.TrialQueueOrder);
+        command.Parameters.AddWithValue("$coverage", (snapshot.Snapshot.Coverage ?? QueryCoverage.Complete).ToJson());
         command.ExecuteNonQuery();
         command.Parameters.Clear();
         command.CommandText = "INSERT INTO query_forms VALUES ($ordinal,$row)";
@@ -206,13 +207,14 @@ public static class QuerySnapshotStore
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = "SELECT TrialId,GrammarHash,BundleId,WritingSystem,GraphemesJson,UnresolvedVariants,SourceWriteTicks,TrialCreatedUtc,TrialQueueOrder FROM query_snapshot WHERE Id=1";
+        command.CommandText = "SELECT TrialId,GrammarHash,BundleId,WritingSystem,GraphemesJson,UnresolvedVariants,SourceWriteTicks,TrialCreatedUtc,TrialQueueOrder,CoverageJson FROM query_snapshot WHERE Id=1";
         string trial, hash, bundle, ws;
         string[] graphemes;
         int unresolved;
         long sourceTicks;
         string trialCreated;
         double trialOrder;
+        QueryCoverage coverage;
         long bytes;
         using (var reader = command.ExecuteReader())
         {
@@ -224,6 +226,7 @@ public static class QuerySnapshotStore
             sourceTicks = reader.GetInt64(6);
             trialCreated = reader.GetString(7);
             trialOrder = reader.GetDouble(8);
+            coverage = QueryCoverage.FromJson(reader.GetString(9));
         }
         bool Wants(string source) => sources is null || sources.Contains(source);
         var rows = new List<QueryForm>();
@@ -262,6 +265,6 @@ public static class QuerySnapshotStore
         var stems = ReadRows(QuerySources.Stems, "query_stems");
         var uses = ReadRows(QuerySources.Uses, "query_uses");
         var objects = ReadRows(QuerySources.Objects, "query_objects");
-        return new Stored(trial, hash, bundle, ws, new QueryFactsReader.Snapshot(rows, graphemes, unresolved, stems, uses, objects), sourceTicks, trialCreated, trialOrder);
+        return new Stored(trial, hash, bundle, ws, new QueryFactsReader.Snapshot(rows, graphemes, unresolved, stems, uses, objects, coverage), sourceTicks, trialCreated, trialOrder);
     }
 }

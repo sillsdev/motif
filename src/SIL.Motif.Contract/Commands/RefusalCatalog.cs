@@ -392,6 +392,7 @@ public static class RefusalCatalog
         Spec(RefusalCodes.PhonologyExamplesRevisionNotFound, FailureReason.NotFound),
         Spec(RefusalCodes.QueryInvalid, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryTooManyGroups, FailureReason.InvalidArgument),
+        Spec(RefusalCodes.QueryNotMeasured, FailureReason.InvalidArgument),
         Spec(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound),
         Spec(RefusalCodes.ProjectBackupUnreadable, FailureReason.InvalidArgument),
         Spec(RefusalCodes.ProjectBusy, FailureReason.Busy,

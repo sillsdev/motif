@@ -243,6 +243,8 @@ public static class RefusalCodes
     public const string QueryInvalid = "query.invalid";
     /// <summary>The requested grouping exceeds the bounded result size.</summary>
     public const string QueryTooManyGroups = "query.too-many-groups";
+    /// <summary>The query asks about a value the Trial facts did not measure.</summary>
+    public const string QueryNotMeasured = "query.not-measured";
     public const string QueryNoTrialRows = "query.no-trial-rows";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";

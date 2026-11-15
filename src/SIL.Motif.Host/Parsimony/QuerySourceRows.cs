@@ -8,8 +8,11 @@ namespace SIL.Motif.Host.Parsimony;
 /// <summary>Reads the stems, uses and objects sources from a closed grammar-facts artifact in whole-table passes.</summary>
 internal static class QuerySourceRows
 {
-    /// <summary>The most uses rows kept; a project with more keeps the first of them in target order.</summary>
+    /// <summary>The most uses rows kept; target kinds that would pass it are left out whole and named as not measured.</summary>
     internal const int MaximumUses = 250_000;
+
+    // A light facts file keeps only the environment and natural-class statement references.
+    private static readonly string[] LightMissingKinds = ["exception-feature", "category", "slot", "inflection-class"];
 
     private const string None = "none";
     private const string KeySeparator = "‖";
@@ -61,15 +64,33 @@ internal static class QuerySourceRows
         return rows;
     }
 
-    /// <summary>One row per reference to an environment, natural class, exception feature, category, slot or inflection class.</summary>
-    public static IReadOnlyList<QueryRow> ReadUses(SqliteConnection connection)
+    /// <summary>Whether the artifact was written with <c>--facts-light</c>.</summary>
+    public static bool IsLight(SqliteConnection connection) => HasColumn(connection, "artifact_meta", "light_omissions");
+
+    /// <summary>
+    /// One row per reference to an environment, natural class, exception feature, category, slot or inflection class.
+    /// Target kinds are kept whole in target order while they fit <paramref name="maximum"/>; the rest are returned as missing.
+    /// </summary>
+    public static (IReadOnlyList<QueryRow> Rows, IReadOnlyList<string> CappedKinds) ReadUses(SqliteConnection connection,
+        int maximum = MaximumUses)
     {
-        if (!Has(connection, "statement_reference")) return [];
+        if (!Has(connection, "statement_reference")) return ([], []);
+        var kept = new List<string>();
+        var capped = new List<string>();
+        var total = 0L;
+        foreach (var (kind, count) in Pairs(connection, "SELECT target_kind, COUNT(*) FROM statement_reference " +
+                     "WHERE target_kind IN ('environment','naturalClass','exceptionFeature','category','slot','inflectionClass') " +
+                     "GROUP BY target_kind ORDER BY target_kind"))
+        {
+            total += long.Parse(count, CultureInfo.InvariantCulture);
+            if (total <= maximum) kept.Add(kind); else capped.Add(SourceKind(kind));
+        }
         var rows = new List<QueryRow>();
+        if (kept.Count == 0) return (rows, capped);
         using var command = connection.CreateCommand();
         command.CommandText = "SELECT target_kind, target_guid, referrer_kind, referrer_guid, role, parser_effect, ordinal FROM statement_reference " +
-            "WHERE target_kind IN ('environment','naturalClass','exceptionFeature','category','slot','inflectionClass') " +
-            "ORDER BY target_kind, target_guid, referrer_kind, referrer_guid, role, ordinal LIMIT " + MaximumUses;
+            $"WHERE target_kind IN ({string.Join(",", kept.Select(kind => "'" + kind + "'"))}) " +
+            "ORDER BY target_kind, target_guid, referrer_kind, referrer_guid, role, ordinal";
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
@@ -80,12 +101,30 @@ internal static class QuerySourceRows
                     reader.GetInt32(6).ToString(CultureInfo.InvariantCulture),
                 [[kind], [target], [reader.GetString(2)], [user], [reader.GetString(4)], [reader.GetString(5)]]));
         }
-        return rows;
+        return (rows, capped);
     }
+
+    /// <summary>Names what the facts did not measure, given the uses target kinds the row cap left out.</summary>
+    public static QueryCoverage Coverage(SqliteConnection connection, IReadOnlyList<string> cappedKinds)
+    {
+        var light = IsLight(connection);
+        var kinds = new List<string>();
+        var classes = new List<string>();
+        if (light)
+        {
+            kinds.AddRange(LightMissingKinds);
+            classes.AddRange(LightMissingObjectClasses);
+        }
+        kinds.AddRange(cappedKinds.Where(kind => !kinds.Contains(kind)));
+        return new QueryCoverage(light, kinds, classes);
+    }
+
+    private static readonly string[] LightMissingObjectClasses = LightMissingKinds;
 
     /// <summary>One row per statement-like grammar object with its reference counts.</summary>
     public static IReadOnlyList<QueryRow> ReadObjects(SqliteConnection connection)
     {
+        var light = IsLight(connection);
         var references = new Dictionary<(string Kind, string Guid), (long Uses, long Applied)>();
         if (Has(connection, "statement_reference"))
         {
@@ -135,13 +174,14 @@ internal static class QuerySourceRows
             while (reader.Read())
             {
                 var guid = reader.GetString(0);
+                var unmeasured = light && LightMissingObjectClasses.Contains(source);
                 var (uses, applied) = references.GetValueOrDefault((kind, guid));
                 var feature = kind == "exceptionFeature";
                 var key = hasStatus && reader.GetString(2) == "valid" && keys.TryGetValue(guid, out var sides) &&
-                    sides is { Left: { } left, Right: { } right } ? left + KeySeparator + right : null;
+                    sides is { Left: { } left, Right: { } right } ? SideKey(left, right) : null;
                 rows.Add(new QueryRow(Id(guid),
                 [
-                    [source], [reader.IsDBNull(1) ? "" : reader.GetString(1)], [Number(uses)], [Number(applied)],
+                    [source], [reader.IsDBNull(1) ? "" : reader.GetString(1)], unmeasured ? [] : [Number(uses)], unmeasured ? [] : [Number(applied)],
                     feature ? [Number(carriers.TryGetValue(guid, out var set) ? set.Count : 0)] : [],
                     feature ? [Number(users.GetValueOrDefault(guid))] : [], key is null ? [] : [key],
                 ]));
@@ -149,6 +189,12 @@ internal static class QuerySourceRows
         }
         return rows;
     }
+
+    // The Measure groups on the pair of side keys; the joined key must separate pairs exactly as the pair does.
+    private static string SideKey(string left, string right) => left.Contains(KeySeparator, StringComparison.Ordinal) ||
+        right.Contains(KeySeparator, StringComparison.Ordinal)
+        ? "\0" + left.Length.ToString(CultureInfo.InvariantCulture) + KeySeparator + left + KeySeparator + right
+        : left + KeySeparator + right;
 
     private static string SourceKind(string kind) => Targets.First(t => t.Kind == kind).Source;
     private static string Number(long value) => value.ToString(CultureInfo.InvariantCulture);

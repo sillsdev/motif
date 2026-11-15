@@ -51,6 +51,13 @@ public sealed class SavedQueryEquivalenceTests(PristineProjectFixture pristine) 
             Insert(connection, "INSERT INTO environment_side(environment_guid, side, canonical_key, shape) VALUES ($p0, 'left', $p1, 'empty');", G(number), left);
             Insert(connection, "INSERT INTO environment_side(environment_guid, side, canonical_key, shape) VALUES ($p0, 'right', $p1, 'complex');", G(number), right);
         }
+        // Two environments whose side keys join to the same text but form different pairs are not duplicates.
+        foreach (var (number, left, right) in new[] { (24, "x\u2016y", "z"), (25, "x", "y\u2016z") })
+        {
+            Env(number, "/ _ " + number, left, right);
+            Insert(connection, "INSERT INTO environment_side(environment_guid, side, canonical_key, shape) VALUES ($p0, 'left', $p1, 'empty');", G(number), left);
+            Insert(connection, "INSERT INTO environment_side(environment_guid, side, canonical_key, shape) VALUES ($p0, 'right', $p1, 'complex');", G(number), right);
+        }
         Insert(connection, "INSERT INTO natural_class(guid, kind, name) VALUES ($p0, 'segments', 'V');", G(30));
         Insert(connection, "INSERT INTO natural_class(guid, kind, name) VALUES ($p0, 'segments', 'C');", G(31));
         Reference(connection, "environment", G(20), "applied", 1);
@@ -78,6 +85,20 @@ public sealed class SavedQueryEquivalenceTests(PristineProjectFixture pristine) 
             Entry(connection, G(entry), entry);
             Allomorph(connection, G(entry + 1000), G(entry), 0, "stem", form);
         }
+        // Where the saved query differs from the Measure: a form outside the project's writing system, an entry whose
+        // only variant link is unresolved, and an entry that is a variant of two bases.
+        WritingSystem(connection, "qab");
+        Entry(connection, G(87), 87);
+        Insert(connection, "INSERT INTO allomorph(guid, entry_guid, ordinal, morph_type, form_class, is_abstract) VALUES ($p0, $p1, 0, 'stem', 'stem', 0);", G(1087), G(87));
+        Insert(connection, "INSERT INTO allomorph_form(allomorph_guid, ordinal, writing_system, form) VALUES ($p0, 0, 'qab', 'Mira');", G(1087));
+        foreach (var (entry, form) in new[] { (88, "mira"), (89, "Zeta"), (90, "zeta"), (91, "Boro"), (92, "baba"), (93, "bebe"), (94, "boro") })
+        {
+            Entry(connection, G(entry), entry);
+            Allomorph(connection, G(entry + 1000), G(entry), 0, "stem", form);
+        }
+        Insert(connection, "INSERT INTO entry_variant(variant_entry_guid, ref_guid, ordinal, component_guid, component_kind) VALUES ($p0, $p1, 0, 'missing', 'unresolved');", G(90), G(9090));
+        Insert(connection, "INSERT INTO entry_variant(variant_entry_guid, ref_guid, ordinal, component_guid, component_kind) VALUES ($p0, $p1, 0, $p2, 'entry');", G(91), G(9091), G(92));
+        Insert(connection, "INSERT INTO entry_variant(variant_entry_guid, ref_guid, ordinal, component_guid, component_kind) VALUES ($p0, $p1, 0, $p2, 'entry');", G(91), G(9092), G(93));
     }
 
     private static IReadOnlySet<string> Identities(ParsimonyMeasureResult result) =>
@@ -115,7 +136,7 @@ public sealed class SavedQueryEquivalenceTests(PristineProjectFixture pristine) 
             var unused = MeasureRunner.Execute("P-statement-unused", session, bundle).Findings
                 .Select(f => Canonical(f.FindingId.Split(':')[^1])).Order().ToArray();
             Assert.Equal(unused, Run("P-statement-unused").Items!.Select(item => item.Id).Order().ToArray());
-            Assert.Equal(4, unused.Length);
+            Assert.Equal(6, unused.Length);
 
             // P-env-duplicate: one group of the two spellings that share both side keys.
             var duplicates = Identities(MeasureRunner.Execute("P-env-duplicate", session, bundle));
@@ -133,11 +154,20 @@ public sealed class SavedQueryEquivalenceTests(PristineProjectFixture pristine) 
 
             // P-lexeme-near-duplicate, with the project's fold rule resolved as the command resolves it.
             var near = Identities(MeasureRunner.Execute("P-lexeme-near-duplicate", session, bundle));
-            var expected = Run("P-lexeme-near-duplicate", q => q with { Fold = QueryFold.ResolveProject(q.Fold, [new FoldRule("iy", "y")]) })
-                .Groups.Select(g => ParsimonyFindingIdentity.NearDuplicateLexemesIdentity(
-                    g.Examples.Select(e => e.Entry).Order(StringComparer.Ordinal).ToArray())).ToHashSet(StringComparer.Ordinal);
-            Assert.Equal(near, expected);
-            Assert.Equal(2, expected.Count);
+            var nearGroups = Run("P-lexeme-near-duplicate", q => q with { Fold = QueryFold.ResolveProject(q.Fold, [new FoldRule("iy", "y")]) }).Groups;
+            var expected = nearGroups.Select(g => ParsimonyFindingIdentity.NearDuplicateLexemesIdentity(
+                g.Examples.Select(e => e.Entry).Distinct().Order(StringComparer.Ordinal).ToArray())).ToHashSet(StringComparer.Ordinal);
+            string Group(params int[] entries) => ParsimonyFindingIdentity.NearDuplicateLexemesIdentity(
+                entries.Select(G).Order(StringComparer.Ordinal).ToArray());
+            // Pinned differences: the Measure reads each entry's first form in any writing system and sees an entry whose
+            // variant link is unresolved; the query reads the project's writing system and drops that entry.
+            Assert.Equal(near.Except(expected).Order(), new[] { Group(87, 88), Group(89, 90) }.Order());
+            Assert.Empty(expected.Except(near));
+            Assert.Equal(3, expected.Count);
+            // An entry that is a variant of two bases is two rows of the query, so its group counts three where the Measure counts two.
+            var boro = Group(91, 94);
+            Assert.Contains(boro, near);
+            Assert.Equal(3, nearGroups.Single(g => g.Examples.Any(e => e.Entry == G(94))).Count);
             return 0;
         });
     }

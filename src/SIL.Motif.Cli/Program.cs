@@ -1969,6 +1969,7 @@ try
                 if (response.IsStale && record.Ids) Console.Error.WriteLine("This evidence is stale: a newer Trial or project save exists.");
                 if (!record.Ids) lines.Add($"Trial {response.TrialId} | grammar {response.GrammarHash}");
                 if (response.IsStale && !record.Ids) lines.Add("This evidence is stale: a newer Trial or project save exists.");
+                foreach (var note in response.NotMeasured) (record.Ids ? (Action<string>)Console.Error.WriteLine : lines.Add)(note);
                 var columns = QuerySources.StoredColumns(record.From == "forms" ? "stems" : record.From);
                 string Item(QueryItem item) => item.Id + "\t" + string.Join("\t", columns.Select(c => string.Join(",", item.Values[c])));
                 if (record.Ids)

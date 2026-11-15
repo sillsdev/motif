@@ -62,8 +62,8 @@ public sealed class GrammarHealthSingleImportTests(PristineProjectFixture pristi
             Assert.Equal(fullWs, lightWs);
             var fullRows = QueryFactsReader.Read(full.Facts.Path, fullWs);
             var lightRows = QueryFactsReader.Read(combined.Facts.Path, lightWs);
-            Assert.Equal(JsonSerializer.Serialize(fullRows with { Uses = null, Objects = null }),
-                JsonSerializer.Serialize(lightRows with { Uses = null, Objects = null }));
+            Assert.Equal(JsonSerializer.Serialize(fullRows with { Uses = null, Objects = null, Coverage = null }),
+                JsonSerializer.Serialize(lightRows with { Uses = null, Objects = null, Coverage = null }));
             // A light file keeps only environment and natural-class statement references.
             static IEnumerable<QueryRow> Kept(IReadOnlyList<QueryRow>? rows) =>
                 (rows ?? []).Where(row => row.Values[0][0] is "environment" or "natural-class");

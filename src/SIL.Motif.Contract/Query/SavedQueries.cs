@@ -3,6 +3,10 @@ namespace SIL.Motif.Contract.Query;
 /// <summary>
 /// Queries a build ships under the id of the Parsimony Measure whose detection they express. Each returns the same
 /// items as its Measure over the same facts; the Measure adds its findings, evidence and wording.
+/// Known differences, pinned by SavedQueryEquivalenceTests: P-lexeme-near-duplicate reads the forms of the project's first
+/// vernacular writing system, where the Measure reads each entry's first form in any writing system; it omits an entry whose
+/// only variant link is unresolved (the Measure keeps it as a lexeme); and an entry that is a variant of several bases is one
+/// row per base, so a group counts it once for each. The other four match the Measures exactly.
 /// </summary>
 public static class SavedQueries
 {

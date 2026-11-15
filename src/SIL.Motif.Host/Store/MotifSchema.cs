@@ -513,7 +513,7 @@ public static class MotifSchema
         "query_snapshot" => [C("Id", "INTEGER", false, 1), C("TrialId", "TEXT", true),
             C("GrammarHash", "TEXT", true), C("BundleId", "TEXT", true), C("WritingSystem", "TEXT", true),
             C("GraphemesJson", "TEXT", true), C("UnresolvedVariants", "INTEGER", true), C("SourceWriteTicks", "INTEGER", true),
-            C("TrialCreatedUtc", "TEXT", true), C("TrialQueueOrder", "REAL", true)],
+            C("TrialCreatedUtc", "TEXT", true), C("TrialQueueOrder", "REAL", true), C("CoverageJson", "TEXT", true)],
         "query_uses" => [C("Ordinal", "INTEGER", false, 1), C("TargetKind", "TEXT", true), C("RowJson", "TEXT", true)],
         "query_forms" or "query_stems" or "query_objects" => [C("Ordinal", "INTEGER", false, 1), C("RowJson", "TEXT", true)],
         "MotifMetadata" =>
@@ -1679,7 +1679,8 @@ public static class MotifSchema
             UnresolvedVariants INTEGER NOT NULL,
             SourceWriteTicks INTEGER NOT NULL,
             TrialCreatedUtc TEXT NOT NULL,
-            TrialQueueOrder REAL NOT NULL
+            TrialQueueOrder REAL NOT NULL,
+            CoverageJson TEXT NOT NULL
         );
         CREATE TABLE query_forms (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
         CREATE TABLE query_stems (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);

@@ -21,6 +21,8 @@ motif query forms --project "project.fwdata" --where kind=alternate --group lett
 
 `stems` and `forms` also have `shape` (the consonant and vowel skeleton), `syllables`, `initial:n` and `final:n` (the first or last n segments) and `fold`. `<` and `>` compare `tokens`, `syllables`, `msa-count`, `alternates`, `uses`, `applied`, `carriers` and `users`. `fold` uses `--fold`, comma-separated from `nfc`, `case`, `iy~y`, `o~u`, `e~i`, `c~k`, a raw `from>to` and `project` (the project's `[parsimony] fold` rules); the default is `nfc,case`. `--distinct <column>` keeps only groups that hold two different values of that column.
 
+A Trial built on light facts has no `uses` rows for exception features, categories, slots or inflection classes, and no measured `uses` or `applied` for objects of those classes (their columns are empty, not 0). A `uses` query that selects such a target kind, or an `objects` query that compares `uses` or `applied` for such a class, is refused with `query.not-measured`; otherwise the result lists what was not measured under `NotMeasured`. The same applies to target kinds left out by the 250,000-row `uses` cap.
+
 ```powershell
 motif query stems --project "project.fwdata" --where 'final:2~[aiu]d' --group shape
 motif query objects --project "project.fwdata" --where class=environment --where applied=0

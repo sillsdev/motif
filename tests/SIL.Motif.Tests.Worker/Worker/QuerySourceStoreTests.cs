@@ -13,7 +13,7 @@ public sealed class QuerySourceStoreTests(ITestOutputHelper output)
     private const string Schema = """
         CREATE TABLE query_snapshot(Id INTEGER PRIMARY KEY, TrialId TEXT, GrammarHash TEXT, BundleId TEXT,
             WritingSystem TEXT, GraphemesJson TEXT, UnresolvedVariants INTEGER, SourceWriteTicks INTEGER,
-            TrialCreatedUtc TEXT, TrialQueueOrder REAL);
+            TrialCreatedUtc TEXT, TrialQueueOrder REAL, CoverageJson TEXT);
         CREATE TABLE query_forms(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
         CREATE TABLE query_stems(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
         CREATE TABLE query_uses(Ordinal INTEGER PRIMARY KEY, TargetKind TEXT, RowJson TEXT);
