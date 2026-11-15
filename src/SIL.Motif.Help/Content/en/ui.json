@@ -1,7 +1,7 @@
 {
   "ProgressPage": {"titleResource":"MotifApp.Progress","description":"Progress shows supported next actions for the current project.","source":"Motif interface text"},
   "TextsPage": {"titleResource":"MotifApp.Texts","description":"Texts shows the reader and the current Selection.","source":"Motif interface text"},
-  "WordsPage": {"titleResource":"MotifApp.Words","description":"Words shows the word rows for the current Selection.","source":"Motif interface text"},
+  "WordsPage": {"titleResource":"MotifApp.Words","description":"Words lists every written shape in the whole Context.","source":"Motif interface text"},
   "GrammarGuidePage": {"titleResource":"MotifApp.GrammarGuide","description":"Grammar Guide lists the saved Grammar Design Records for the open project.","source":"Motif interface text"},
   "ProposalsPage": {"titleResource":"MotifApp.Proposals","description":"Proposals lists every set of changes you can review.","source":"Motif interface text"},
   "DiagnosticsPage": {"titleResource":"MotifApp.DiagnosticsGroup","description":"Turn on Diagnostics in the health details or the View menu to add this page to the rail.","source":"Motif interface text"},

@@ -4033,6 +4033,10 @@ public static class MotifAppStrings
     public static string OccurrencesNotAWordScopeFormat => Text("MotifApp.OccurrencesNotAWordScopeFormat");
     public static string OccurrencesStagedStatusFormat => Text("MotifApp.OccurrencesStagedStatusFormat");
     public static string OccurrencesPartlyStagedStatusFormat => Text("MotifApp.OccurrencesPartlyStagedStatusFormat");
+    public static string OccurrencesHomographsUnreadStatus => Text("MotifApp.OccurrencesHomographsUnreadStatus");
+    public static string OccurrencesHomographReadingFormat => Text("MotifApp.OccurrencesHomographReadingFormat");
+    public static string OccurrencesOtherHomographStatusFormat => Text("MotifApp.OccurrencesOtherHomographStatusFormat");
+    public static string OccurrencesNotAWordPartlyStagedFormat => Text("MotifApp.OccurrencesNotAWordPartlyStagedFormat");
     public static string OccurrencesNotAWordStagedFormat => Text("MotifApp.OccurrencesNotAWordStagedFormat");
     public static string OccurrencesNotStaged => Text("MotifApp.OccurrencesNotStaged");
     public static string OccurrencesChoose => Text("MotifApp.OccurrencesChoose");

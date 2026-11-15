@@ -3,8 +3,16 @@
              xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              x:Class="SIL.Motif.App.Views.WordsPage">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordsScoped.axaml" />
+  </UserControl.Styles>
   <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
     <views:CopyableTextBlock Classes="displayTitle" Margin="{DynamicResource Intent.Inset.Page}" Text="{x:Static app:MotifAppStrings.BoardWords}" />
-    <ContentControl Grid.Row="1" x:Name="WordsHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrences}" />
+    <Grid Grid.Row="1" x:Name="WordsBody" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+      <ContentControl x:Name="WordsHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrences}" />
+      <Border x:Name="WordPane" Classes="wordsWordPane" IsVisible="False" Grid.Column="1">
+        <ContentControl x:Name="WordPaneHost" />
+      </Border>
+    </Grid>
   </Grid>
 </UserControl>

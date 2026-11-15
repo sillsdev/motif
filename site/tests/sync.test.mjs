@@ -13,7 +13,7 @@ const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const guideSections = [
 	['what-is-motif', 'install', 'open-a-project', 'first-run-setup', 'reading-the-overview', 'building-a-grammar'],
-	['the-window', 'overview', 'proposals', 'texts', 'passage', 'keyboard-shortcuts', 'settings', 'why-this-analysis', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
+	['the-window', 'overview', 'proposals', 'texts', 'passage', 'words', 'keyboard-shortcuts', 'settings', 'why-this-analysis', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	['refresh-numbers', 'change-an-analysis', 'replace-a-pending-change', 'apply-to-fieldworks', 'review-a-proposal', 'when-a-change-no-longer-fits', 'switch-projects', 'cancel-a-long-run', 'when-something-goes-wrong'],
 	['baseline', 'assessment', 'pangloss', 'text-coverage', 'default-selection', 'drift', 'pending-changes', 'writing-systems'],
 	['agents/start-here', 'agents/output-and-exit-codes', 'agents/measure-a-grammar', 'agents/work-with-jobs', 'agents/handoff'],

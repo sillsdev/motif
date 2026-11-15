@@ -7594,6 +7594,10 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.OccurrencesNotAWordScopeFormat" xml:space="preserve"><value>Not a Word marks the spelling {0} as incorrect for the whole project, not only at the checked places.</value></data>
   <data name="MotifApp.OccurrencesStagedStatusFormat" xml:space="preserve"><value>{0} places staged. They are approved when you Apply.</value></data>
   <data name="MotifApp.OccurrencesPartlyStagedStatusFormat" xml:space="preserve"><value>{0} of {1} places staged before the keep stopped. The rest are unchanged.</value></data>
+  <data name="MotifApp.OccurrencesHomographsUnreadStatus" xml:space="preserve"><value>The analyses of every homograph could not be read, so no stored reading is offered. Close this word and open it again to try once more.</value></data>
+  <data name="MotifApp.OccurrencesHomographReadingFormat" xml:space="preserve"><value>Homograph {0}: {1}</value></data>
+  <data name="MotifApp.OccurrencesOtherHomographStatusFormat" xml:space="preserve"><value>{0} places staged. {1} places belong to other homographs than the chosen reading and were left unchanged.</value></data>
+  <data name="MotifApp.OccurrencesNotAWordPartlyStagedFormat" xml:space="preserve"><value>Not a Word was staged for {0} of {1} homographs before it stopped. The rest are unchanged.</value></data>
   <data name="MotifApp.OccurrencesNotAWordStagedFormat" xml:space="preserve"><value>Not a Word staged for {0}. It changes the project when you Apply.</value></data>
   <data name="MotifApp.OccurrencesNotStaged" xml:space="preserve"><value>The change could not be staged. Nothing was changed.</value></data>
   <data name="MotifApp.OccurrencesChoose" xml:space="preserve"><value>Choose a Reading to Keep</value></data>

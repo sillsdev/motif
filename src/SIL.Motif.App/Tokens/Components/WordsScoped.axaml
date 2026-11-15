@@ -1,0 +1,15 @@
+<!--
+  The Words page: how the whole Context's word list and the shared places panel share the page.
+  Included by the Words page. Colours come from Intent keys only; sizes and gaps come from Intent or Component keys.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.wordsWordPane.beside">
+    <Setter Property="Width" Value="{DynamicResource Component.WordOccurrences.Width}" />
+  </Style>
+  <Style Selector="Border.wordsWordPane">
+    <Setter Property="MinHeight" Value="{DynamicResource Component.WordOccurrences.PaneMinHeight}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerEnd}" />
+  </Style>
+</Styles>

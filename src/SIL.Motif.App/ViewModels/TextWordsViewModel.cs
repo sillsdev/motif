@@ -265,16 +265,15 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     private int _hiddenByFilter;
 
-    public int AllCount => _selectionReads.Summary?.WordRowCount ?? 0;
+    public int AllCount => _shapes.Count;
     public int ApprovedFilterCount => CountStanding(ProjectStanding.Approved);
     public int CandidateFilterCount => CountStanding(ProjectStanding.Candidate);
     public int RejectedFilterCount => CountStanding(ProjectStanding.Rejected);
     public int NotPresentFilterCount => CountStanding(ProjectStanding.NotPresent);
     public int IncorrectSpellingFilterCount => CountStanding(ProjectStanding.IncorrectSpelling);
-    public int SeveralFilterCount => _selectionReads.Summary?.SeveralAnalysisRowCount ?? 0;
+    public int SeveralFilterCount => _shapes.Count(shape => shape.Row.ChosenAnalysisCount > 1);
 
-    private int CountStanding(string standing) =>
-        _selectionReads.Summary?.WordRowsByProjectStanding.GetValueOrDefault(standing) ?? 0;
+    private int CountStanding(string standing) => _shapes.Count(shape => shape.Row.ProjectStanding == standing);
 
     private static string Normalize(string form) => form.Trim().Normalize(System.Text.NormalizationForm.FormD);
 
@@ -423,6 +422,8 @@ public sealed partial class TextWordsViewModel : ObservableObject
         Rows = [];
         DisplayRows = [];
         _checkedKeys.Clear();
+        _shapes = [];
+        _shapeByKey = [];
         OccurrenceCount = 0;
         ApprovedCount = 0;
         SearchText = string.Empty;
@@ -526,7 +527,11 @@ public sealed partial class TextWordsViewModel : ObservableObject
     }
 }
 
+/// <summary>One wordform's stored analyses among the wordforms that share a written shape.</summary>
+internal sealed record HomographAnalyses(Guid? WordformId, int Ordinal, IReadOnlyList<ProjectAnalysis> Analyses);
+
 /// <summary>One wordform spelling as the Words table shows it: its occurrences and its own project analyses.</summary>
+
 public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
 {
     private Func<AssessmentWordResult, ResultsTokenViewModel?>? _wordCardTokenFactory;
@@ -652,6 +657,18 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
     /// The word as the Word list shows it: its row and card from the latest parse, or, before one reaches it, what
     /// FieldWorks holds and Not parsed.
     /// </summary>
+    /// <summary>The project's stored analyses of this spelling, once its detail is read.</summary>
+    internal IReadOnlyList<ProjectAnalysis> StoredAnalyses => _word.Analyses;
+
+    /// <summary>
+    /// For a row several wordforms share, each wordform's own stored analyses and its place among them; empty for any
+    /// other row, whose analyses are <see cref="StoredAnalyses"/>.
+    /// </summary>
+    internal IReadOnlyList<HomographAnalyses> Homographs { get; private set; } = [];
+
+    private IReadOnlyList<HomographAnalyses>? _otherHomographs;
+    private int _primaryOrdinal;
+
     public ListedWordViewModel Listed
     {
         get
@@ -741,14 +758,16 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
     internal event Action<TextWordRowViewModel, bool>? CardChanged;
 
     internal TextWordRowViewModel(SelectionWordSummary summary, IDisposable registration,
-        WordRowRoutes? routes, string? projectName, ExpectedContext expectedContext) : this(new TextWord(summary.Key.Form,
+        WordRowRoutes? routes, string? projectName, ExpectedContext expectedContext, bool severalWordforms = false) : this(new TextWord(summary.Key.Form,
             summary.Key.WordformId?.ToString("D"), [], [], [], summary.CandidateCount, summary.IncorrectSpelling)
             { FormWritingSystem = summary.Key.WritingSystem }, routes, projectName)
     {
         Summary = summary;
+        SharesWordforms = severalWordforms;
         _expectedContext = expectedContext;
         _registration = registration;
-        WordformId = summary.Key.WordformId ?? (summary.Actions.CandidateWordformIds.Count == 1
+        // A spelling recorded under several wordforms has no one wordform to act on.
+        WordformId = severalWordforms ? null : summary.Key.WordformId ?? (summary.Actions.CandidateWordformIds.Count == 1
             ? summary.Actions.CandidateWordformIds[0] : null);
         OccurrenceCount = summary.OccurrenceCount;
         Places = summary.PlaceCount;
@@ -759,6 +778,46 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
         ProjectSummary = StatusLabel;
     }
 
+    /// <summary>Whether a row several wordforms share has its stored analyses but not yet every wordform's own.</summary>
+    internal bool HomographsUnread => SharesWordforms && HasStoredDetail && Homographs.Count == 0;
+
+    /// <summary>Whether several wordforms are recorded under this row's written shape.</summary>
+    internal bool SharesWordforms { get; }
+
+    internal void SetHomographDetails(int primaryOrdinal, IReadOnlyList<HomographAnalyses> others)
+    {
+        _primaryOrdinal = primaryOrdinal;
+        _otherHomographs = others;
+        if (!HasStoredDetail) return;
+        ApplyStoredAnalyses(_storedWordform);
+        _approvedAnalyses = null;
+        ResetListed();
+        UpdateStagedText();
+    }
+
+    // A shared row holds only readings it can attribute to a wordform.
+    private void ApplyStoredAnalyses(TextWordsProjectedWordform? wordform)
+    {
+        if (wordform is null && !SharesWordforms) return;
+        var stored = wordform is not null ? SelectionDisplayProjection.StoredAnalyses(wordform, _projectName) : [];
+        if (SharesWordforms)
+        {
+            if (_otherHomographs is { } others)
+            {
+                Homographs = [new HomographAnalyses(Summary!.Key.WordformId, _primaryOrdinal, stored), .. others];
+                stored = Homographs.SelectMany(homograph => homograph.Analyses).ToArray();
+            }
+            else
+            {
+                Homographs = [];
+                stored = [];
+            }
+        }
+        _word = _word with { Analyses = stored,
+            Approved = stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved).ToArray(),
+            Disapproved = stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Disapproved).ToArray() };
+    }
+
     internal void SetStoredDetail(TextWordsProjectedWordform? wordform, IDisposable ownership)
     {
         var unchanged = HasStoredDetail && ReferenceEquals(_storedWordform, wordform);
@@ -766,13 +825,7 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
         _detailOwnership = ownership;
         if (unchanged) return;
         _storedWordform = wordform;
-        if (wordform is not null)
-        {
-            var stored = SelectionDisplayProjection.StoredAnalyses(wordform, _projectName);
-            _word = _word with { Analyses = stored,
-                Approved = stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Approved).ToArray(),
-                Disapproved = stored.Where(analysis => analysis.StoredAnalysisOpinion == ReadingGrade.Disapproved).ToArray() };
-        }
+        ApplyStoredAnalyses(wordform);
         var chosen = _word.Analyses.Where(analysis => CanonicalId.TryParse(analysis.StoredAnalysisId, out var id) &&
             Summary!.ChosenAnalysisIds.Contains(id.ToGuid()));
         ProjectSummary = HasSeveralAnalyses
@@ -925,11 +978,19 @@ public sealed partial class TextWordRowViewModel : ObservableObject, IDisposable
     public IReadOnlyList<ProjectAnalysisViewModel> ApprovedAnalyses => _approvedAnalyses ??=
         _word.Approved.Select(analysis => new ProjectAnalysisViewModel(analysis)).ToArray();
 
+    // A shared row names no wordform, so only a lone stored analysis can be acted on, and then at its own owner.
     internal Task<KeyboardOpinionShortcutResult> StageOpinionShortcutAsync(KeyboardShortcutBehavior behavior) =>
-        KeyboardOpinionShortcuts.StageAsync(Form, WordformId, _word.Analyses.Select(analysis =>
+        HomographsUnread
+            ? Task.FromResult(new KeyboardOpinionShortcutResult(true,
+                $"The analyses of every homograph of {Form} could not be read. Open the word again to try once more."))
+            : KeyboardOpinionShortcuts.StageAsync(Form, WordformId ?? OnlyOwnerOfStoredAnalyses(),
+            _word.Analyses.Select(analysis =>
             new KeyboardStoredAnalysis(analysis.StoredAnalysisId ?? string.Empty,
                 analysis.StoredAnalysisOpinion ?? ReadingGrade.Candidate, analysis.Morphs)).ToArray(),
             _routes, behavior, _expectedContext);
+
+    private Guid? OnlyOwnerOfStoredAnalyses() =>
+        Homographs.Where(homograph => homograph.Analyses.Count > 0).ToArray() is [{ } only] ? only.WordformId : null;
 
     private void UpdateStagedText()
     {

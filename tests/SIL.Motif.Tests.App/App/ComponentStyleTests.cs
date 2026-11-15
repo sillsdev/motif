@@ -533,6 +533,9 @@ public sealed partial class ComponentStyleTests
             TextElement.ForegroundProperty, "Intent.Warning.Text");
         yield return new("PassageScoped", "a staged word", host => Add(host, Box("wordStrip", "passageStaged")),
             TextElement.ForegroundProperty, "Intent.Change.Text");
+        // The Words page's places pane.
+        yield return new("WordsScoped", "the places pane", host => Add(host, Box("wordsWordPane")),
+            Layoutable.MinHeightProperty, "Component.WordOccurrences.PaneMinHeight");
 
         yield return new("Text", "a muted line", host => Add(host, Text("muted")), TextBlock.ForegroundProperty, "Intent.TextMuted");
         yield return new("Text", "an error", host => Add(host, Text("error")), TextBlock.ForegroundProperty, "Intent.Danger.Text");

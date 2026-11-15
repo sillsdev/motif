@@ -161,7 +161,7 @@ public sealed class TextWordsViewModelTests : IAsyncLifetime
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void RestoredAssessmentKeepsEachVisibleHomographsOwnProjectFacts(bool reverse)
+    public void HomographsOfOneSpellingShareOneRowAndKeepBothReadings(bool reverse)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -180,10 +180,11 @@ public sealed class TextWordsViewModelTests : IAsyncLifetime
             var (fake, _, words) = NewViewModel();
             await words.SetProjectAsync(ProjectPath);
             await PublishAsync(fake, new TextWordsResponse(reverse ? [other, first] : [first, other], [], true));
-            var own = words.Rows.Single(row => row.WordformId == firstId);
-            var homograph = words.Rows.Single(row => row.WordformId == otherId);
-            Assert.Equal("book", own.Listed.Row.Gloss);
-            Assert.Equal("love", homograph.Listed.Row.Gloss);
+            var row = Assert.Single(words.Rows);
+            Assert.Null(row.WordformId);
+            Assert.Equal(2, row.OccurrenceCount);
+            Assert.Equal(2, row.Summary!.ChosenAnalysisCount);
+            Assert.True(row.HasSeveralAnalyses);
             var assessed = new AssessWordsViewModel();
             assessed.Load([new AssessmentWordResult("kitabu", "analysed", false, "Complete", 4, null)
             {
@@ -196,27 +197,19 @@ public sealed class TextWordsViewModelTests : IAsyncLifetime
                 ReadingGrades = [ReadingGrade.Approved],
                 Readings = [new ParserReading(approved.Morphs)],
             }]);
-
             await ShowAssessmentAsync(fake, assessed);
-
-            own = words.Rows.Single(row => row.WordformId == firstId);
-            homograph = words.Rows.Single(row => row.WordformId == otherId);
-            Assert.Equal(Mark.Approved, own.Listed.Row.OpinionMark);
-            Assert.Equal(Mark.Disapproved, homograph.Listed.Row.OpinionMark);
-            Assert.Equal("book", own.Listed.Row.Gloss);
-            Assert.Equal("love", homograph.Listed.Row.Gloss);
-            Assert.Null(homograph.Listed.Card);
-            homograph.Listed.IsOpen = true;
-            Assert.Equal(rejected.StoredAnalysisId, Assert.Single(homograph.Listed.Card!.Marking.FieldWorksAnalyses).StoredAnalysisId);
-            Assert.Equal(ReadingGrade.Disapproved,
-                Assert.Single(homograph.Listed.Card.Marking.FieldWorksAnalyses).Opinion);
-            Assert.NotEqual(ParserOutcome.Same, homograph.Listed.Row.Outcome);
-            Assert.Equal("×1", homograph.Listed.Row.PlacesText);
-            Assert.Equal(Mark.Disapproved, homograph.Listed.Card!.WordRow.OpinionMark);
-            Assert.Equal("love", homograph.Listed.Card.WordRow.Gloss);
-            Assert.NotEqual(assessed.Find("kitabu")!.Comparison, homograph.Listed.Card.Source.Comparison);
-            words.ShowAssessment(null);
-            Assert.Equal("love", homograph.Listed.Row.Gloss);
+            row = Assert.Single(words.Rows);
+            words.RealizeRow(row);
+            row.Listed.IsOpen = true;
+            await words.CardPending;
+            await words.SettleVisibleDetailsAsync();
+            var ownReadings = Assert.Single(row.Homographs, homograph => homograph.WordformId == firstId);
+            var otherReadings = Assert.Single(row.Homographs, homograph => homograph.WordformId == otherId);
+            Assert.Equal("book", Assert.Single(ownReadings.Analyses).Morphs[0].Gloss);
+            Assert.Equal(ReadingGrade.Approved, ownReadings.Analyses[0].StoredAnalysisOpinion);
+            Assert.Equal("love", Assert.Single(otherReadings.Analyses).Morphs[0].Gloss);
+            Assert.Equal(ReadingGrade.Disapproved, otherReadings.Analyses[0].StoredAnalysisOpinion);
+            Assert.Equal(2, row.Listed.Card!.Marking.FieldWorksAnalyses.Count);
         }, TimeSpan.FromSeconds(180));
     }
 
@@ -572,7 +565,7 @@ public sealed class TextWordsViewModelTests : IAsyncLifetime
             pending.SetResult(await store.OpenAsync(new(store.ProjectPath, [TextId], [])));
             await load;
 
-            Assert.Equal(2, words.Rows.Count);
+            Assert.Single(words.Rows);
             Assert.Equal(1, words.WordCount);
             Assert.Equal("1 word · 2 places", words.SummaryText);
         }, TimeSpan.FromSeconds(180));

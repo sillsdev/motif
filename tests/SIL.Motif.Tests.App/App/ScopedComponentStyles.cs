@@ -14,7 +14,9 @@ internal static class ScopedComponentStyles
         // W9-progress
         "Progress",
         // Word panel
-        "Passage"];
+        "Passage",
+        // Words page
+        "Words"];
 
     /// <summary>Includes the named component's scoped styles, such as <c>SettingsScoped</c>, in <paramref name="host"/>.</summary>
     internal static void Include(StyledElement host, params string[] components)

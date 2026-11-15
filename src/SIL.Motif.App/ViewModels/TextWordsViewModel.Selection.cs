@@ -29,11 +29,28 @@ public sealed partial class TextWordsViewModel
         foreach (var entry in _summaryRows.Values) entry.Row.ApplyReadState(readState(entry.Row.Form));
     }
 
+    private IReadOnlyList<ContextWordShape> _shapes = [];
+    private Dictionary<TextWordKey, ContextWordShape> _shapeByKey = [];
+
+    /// <summary>The whole Context's rows, one for each written shape in its writing system.</summary>
+    internal IReadOnlyList<SelectionWordSummary> ShapeRows => _shapes.Select(shape => shape.Row).ToArray();
+
+    /// <summary>The shape a row stands for, so its places can be read from every wordform recorded under it.</summary>
+    internal ContextWordShape? ShapeOf(TextWordKey key) => _shapeByKey.GetValueOrDefault(key);
+
+    /// <summary>The row that is open in the list, or null.</summary>
+    internal TextWordRowViewModel? OpenRow => _openRow;
+
+    /// <summary>Raised after the open row changes or closes, so the page can show or drop its places panel.</summary>
+    internal event Action? OpenRowChanged;
+
     private sealed record SummaryRow(TextWordRowViewModel Row, LinkedListNode<TextWordKey> Position);
 
     private void PublishSummaryRows()
     {
-        var words = _selectionReads.Summary?.Words ?? [];
+        _shapes = ContextWordShape.Group(_selectionReads.Summary?.Words ?? []);
+        _shapeByKey = _shapes.ToDictionary(shape => shape.Row.Key);
+        var words = _shapes.Select(shape => shape.Row).ToArray();
         var currentKeys = words.Select(word => word.Key).ToHashSet();
         if (_selectionReads.Summary is not null) _checkedKeys.IntersectWith(currentKeys);
         var generation = _rowsGeneration;
@@ -51,14 +68,14 @@ public sealed partial class TextWordsViewModel
 
     private void ApplySummaryFilter()
     {
-        var matches = (_selectionReads.Summary?.Words ?? []).AsEnumerable();
+        var matches = ShapeRows.AsEnumerable();
         if (StatusFilter is { } status)
             matches = matches.Where(word => WordProjectStatuses.FromStanding(word.ProjectStanding) == status);
         if (SeveralOnly) matches = matches.Where(word => word.ChosenAnalysisCount > 1);
         if (!string.IsNullOrWhiteSpace(SearchText))
             matches = matches.Where(word => word.Key.Form.Contains(SearchText.Trim(), StringComparison.CurrentCultureIgnoreCase));
         var ordered = matches.OrderByDescending(word => word.PlaceCount ?? ListCountOf(word) ?? -1).ToArray();
-        _hiddenByFilter = (_selectionReads.Summary?.Words.Count ?? 0) - ordered.Length;
+        _hiddenByFilter = ShapeRows.Count - ordered.Length;
         OnPropertyChanged(nameof(FilterHidesText));
         var generation = _rowsGeneration;
         Rows = new LazyProjectionList<SelectionWordSummary, TextWordRowViewModel>(ordered,
@@ -81,7 +98,8 @@ public sealed partial class TextWordsViewModel
         }
         MakeSummaryRowRoom();
         var row = new TextWordRowViewModel(summary, _selectionReads!.RegisterRow(), WordRowRoutes,
-            Path.GetFileNameWithoutExtension(_projectPath), _selectionReads.Reader!.Context.ExpectedWriteContext()) { IsChecked = _checkedKeys.Contains(summary.Key) };
+            Path.GetFileNameWithoutExtension(_projectPath), _selectionReads.Reader!.Context.ExpectedWriteContext(),
+            ShapeOf(summary.Key)?.HasSeveralWordforms == true) { IsChecked = _checkedKeys.Contains(summary.Key) };
         row.ApplyListCount(ListCountOf(summary));
         row.WordCardTokenFactory = result => row.CreateCardToken(result, WordCardActions,
             _selectionReads.RegisterCardToken());
@@ -177,10 +195,23 @@ public sealed partial class TextWordsViewModel
                 return;
             }
             if (live.Length == 0) return;
+            var homographs = await ReadHomographAnalysesAsync(reader, live).ConfigureAwait(true);
+            if (generation != _rowsGeneration) return;
+            // A row may have been released while the other wordforms were read; those rows ask again when shown.
+            live = live.Where(_summaryRows.ContainsKey).ToArray();
+            if (live.Length != keys.Length)
+            {
+                _detailQueue.UnionWith(live);
+                return;
+            }
             var cohort = new WordDetailCohort(read!, live.Length);
             read = null;
             foreach (var key in live)
+            {
+                if (homographs.TryGetValue(key, out var others))
+                    _summaryRows[key].Row.SetHomographDetails(others.PrimaryOrdinal, others.Others);
                 _summaryRows[key].Row.SetStoredDetail(cohort.Value.Wordforms.GetValueOrDefault(key), cohort.TakeOwnership());
+            }
         }
         catch (OperationCanceledException)
         {
@@ -189,6 +220,45 @@ public sealed partial class TextWordsViewModel
         {
             read?.Dispose();
         }
+    }
+
+    /// <summary>Makes the read of the other wordforms' analyses fail as a refused read would.</summary>
+    internal bool HomographReadsRefused { get; set; }
+
+    /// <summary>Reads the other wordforms' analyses for a shared row again; false while any is still unread.</summary>
+    internal async Task<bool> ReadHomographsAsync(TextWordRowViewModel row)
+    {
+        if (row.Summary is not { } summary || _selectionReads.Reader is not { } reader) return false;
+        _detailCancellation ??= new CancellationTokenSource();
+        var read = await ReadHomographAnalysesAsync(reader, [summary.Key]).ConfigureAwait(true);
+        if (read.TryGetValue(summary.Key, out var found) && _summaryRows.TryGetValue(summary.Key, out var cached) &&
+            ReferenceEquals(cached.Row, row)) row.SetHomographDetails(found.PrimaryOrdinal, found.Others);
+        return !row.HomographsUnread;
+    }
+
+    // A row that several wordforms share also needs each other wordform's stored analyses, read once for the batch.
+    private async Task<Dictionary<TextWordKey, (int PrimaryOrdinal, IReadOnlyList<HomographAnalyses> Others)>>
+        ReadHomographAnalysesAsync(SelectionReader reader, IReadOnlyList<TextWordKey> keys)
+    {
+        var result = new Dictionary<TextWordKey, (int, IReadOnlyList<HomographAnalyses>)>();
+        var wanted = keys.Where(key => ShapeOf(key)?.HasSeveralWordforms == true).ToArray();
+        if (wanted.Length == 0 || HomographReadsRefused) return result;
+        var members = wanted.SelectMany(key => ShapeOf(key)!.Members.Select(member => member.Key)
+            .Where(member => member != key)).Distinct().ToArray();
+        var outcome = await reader.ReadWordDetailsAsync(members, _detailCancellation!.Token).ConfigureAwait(true);
+        using var read = outcome.Value;
+        if (!outcome.Succeeded) return result;
+        var projectName = Path.GetFileNameWithoutExtension(_projectPath);
+        foreach (var key in wanted)
+        {
+            var shape = ShapeOf(key)!;
+            var ordinals = shape.Members.Select((member, index) => (member.Key, Ordinal: index + 1)).ToArray();
+            var others = ordinals.Where(item => item.Key != key).Select(item => new HomographAnalyses(
+                item.Key.WordformId, item.Ordinal, read!.Value.Wordforms.GetValueOrDefault(item.Key) is { } wordform
+                    ? SelectionDisplayProjection.StoredAnalyses(wordform, projectName) : [])).ToArray();
+            result[key] = (ordinals.Single(item => item.Key == key).Ordinal, others);
+        }
+        return result;
     }
 
     private void MakeSummaryRowRoom()
@@ -246,6 +316,7 @@ public sealed partial class TextWordsViewModel
         _cardRegistration = _selectionReads!.RegisterCard(this, ReleaseSummaryCard);
         var current = OpenSummaryCardAsync(row, ++_cardGeneration);
         CardPending = previous.IsCompleted ? current : Task.WhenAll(previous, current);
+        OpenRowChanged?.Invoke();
     }
 
     private async Task OpenSummaryCardAsync(TextWordRowViewModel row, long generation)
@@ -272,6 +343,7 @@ public sealed partial class TextWordsViewModel
         if (_cardOccurrences is { } source)
             CardPending = Task.WhenAll(CardPending, source.StopAsync());
         _cardOccurrences = null;
+        if (previous is not null) OpenRowChanged?.Invoke();
     }
 
     private sealed class WordDetailCohort(SelectionRead<SelectionWordDetails> read, int references)

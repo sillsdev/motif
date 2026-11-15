@@ -35,8 +35,8 @@ public sealed class SelectionSummaryCountsTests
             var reader = reads.Reader!;
             var before = reader.Diagnostics;
             Assert.Equal(3, words.WordCount);
-            Assert.Equal(5, words.AllCount);
-            Assert.Equal(5, words.NotPresentFilterCount);
+            Assert.Equal(4, words.AllCount);
+            Assert.Equal(4, words.NotPresentFilterCount);
             Assert.Equal(0, words.ApprovedFilterCount);
             Assert.Equal(3, words.OccurrenceCount);
             Assert.Equal(2, words.OccurrenceCountOf("same"));
@@ -49,7 +49,7 @@ public sealed class SelectionSummaryCountsTests
             words.SearchText = "absent";
             words.StatusFilter = WordProjectStatus.Approved;
             Assert.Equal(2, words.OccurrenceCountOf("same"));
-            Assert.Equal(5, words.NotPresentFilterCount);
+            Assert.Equal(4, words.NotPresentFilterCount);
             Assert.Equal(before.QueriesIssued, reader.Diagnostics.QueriesIssued);
             Assert.Equal(0, reader.Diagnostics.TextRowsDeserialized);
             Assert.Equal(0, reader.Diagnostics.WordformRowsDeserialized);
