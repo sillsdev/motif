@@ -14,6 +14,7 @@ using SIL.Motif.App.Preview;
 using SIL.Motif.Contract.Ids;
 using System.Text;
 using System.Diagnostics;
+using SIL.TextEditing.Markdown;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -23,13 +24,14 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-gdr-argv-" + Guid.NewGuid().ToString("N"));
 
-    private string ProjectWithBaseline(bool unicode = false)
+    private string ProjectWithBaseline(bool unicode = false, bool links = false)
     {
         Directory.CreateDirectory(_root);
         string path;
         using (var cache = pristine.NewScratch())
         {
             SeededGdrs.Seed(cache);
+            if (links) SeededGdrs.SeedLinks(cache);
             if (unicode)
                 NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
                     SeededGdrs.Records(cache).PossibilitiesOS[0].Description.set_String(cache.DefaultAnalWs, "abstract-α"));
@@ -45,9 +47,10 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
     [InlineData("GDR-1")]
     [InlineData("GDR-1a")]
     [InlineData("GDR-2")]
+    [InlineData(SeededGdrs.LinksRecord)]
     public async Task MarkdownIsByteForByteTheAppDocumentAndReadsWithoutChangingTheProject(string id)
     {
-        var path = ProjectWithBaseline(unicode: id == "GDR-1");
+        var path = ProjectWithBaseline(unicode: id == "GDR-1", links: id == SeededGdrs.LinksRecord);
         var shown = GdrQuery.Show(new GdrShowRequest(path, id)).Value!;
         var before = File.ReadAllBytes(path);
         var pendingRequest = new PendingChangesRequest(path, MotifProductVersion.CurrentText);
@@ -76,13 +79,30 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
         Assert.Equal(before, File.ReadAllBytes(path));
         Assert.Equal(pending, ProjectionJson.Serialize(PendingChanges.Load(pendingRequest).Value));
         Assert.Equal(ProjectionJson.Serialize(shown), ProjectionJson.Serialize(GdrQuery.Show(new GdrShowRequest(path, id)).Value));
-        if (id == "GDR-2")
+        if (id is "GDR-2" or SeededGdrs.LinksRecord)
         {
             var normalized = markdown.Replace(CanonicalId.Parse(shown.Record.Id).ToGuid().ToString("D"),
                 "00000000-0000-0000-0000-000000000000", StringComparison.Ordinal);
+            if (id == SeededGdrs.LinksRecord)
+            {
+                var runs = shown.Discussion.SelectMany(paragraph => paragraph.Runs).ToArray();
+                var resolved = runs.First(run => run.Target?.State == GdrLinkState.Resolved);
+                var broken = Assert.Single(runs, run => run.Target?.State == GdrLinkState.Broken);
+                var resolvedGuid = DefaultObjectMapper.Instance.Describe(resolved.ObjData!)!.Guid!.Value;
+                var brokenGuid = DefaultObjectMapper.Instance.Describe(broken.ObjData!)!.Guid!.Value;
+                normalized = normalized.Replace(resolvedGuid.ToString("D"), "11111111-1111-1111-1111-111111111111",
+                    StringComparison.Ordinal).Replace(brokenGuid.ToString("D"), "22222222-2222-2222-2222-222222222222",
+                    StringComparison.Ordinal);
+                var discussion = GdrDiscussion.From(shown);
+                Assert.Contains(discussion.Document.Paragraphs.SelectMany(paragraph => paragraph.Runs), GdrDiscussion.IsMarker);
+                Assert.Equal(app.Text, new GdrMarkdownDocument(shown, Path.GetFileNameWithoutExtension(path),
+                    discussion.Document.Paragraphs).Text);
+                Assert.DoesNotContain(GdrDiscussion.BrokenMarker, markdown, StringComparison.Ordinal);
+            }
             var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
             var golden = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli",
-                "Golden", "gdr-show-fw-md.txt");
+                "Golden", id == "GDR-2" ? "gdr-show-fw-md.txt" : "gdr-show-links-fw-md.txt");
+            if (Environment.GetEnvironmentVariable("MOTIF_UPDATE_GOLDEN") == "1") File.WriteAllText(golden, normalized);
             Assert.Equal(File.ReadAllText(golden).Replace("\r\n", "\n", StringComparison.Ordinal), normalized);
         }
     }

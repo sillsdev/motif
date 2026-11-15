@@ -1,7 +1,7 @@
 {
   "gdr show": {
     "title": "Read a Grammar Design Record",
-    "description": "Reads one Grammar Design Record from the current Baseline. Use --format fw-md for the whole record as FieldWorks Markdown, or --json for its rich text runs; available in Advanced AI mode.",
+    "description": "Reads one Grammar Design Record from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs; available in Advanced AI mode.",
     "source": "Hand-written from the GDR read command and shared Markdown view."
   },
   "open": {

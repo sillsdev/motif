@@ -10007,7 +10007,7 @@
   },
   {
     "name": "motif_gdr_show",
-    "description": "Read a Grammar Design Record. Reads one Grammar Design Record from the current Baseline. Use --format fw-md for the whole record as FieldWorks Markdown, or --json for its rich text runs; available in Advanced AI mode.\nCommand: gdr show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.",
+    "description": "Read a Grammar Design Record. Reads one Grammar Design Record from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs; available in Advanced AI mode.\nCommand: gdr show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.",
     "inputSchema": {
       "type": "object",
       "properties": {

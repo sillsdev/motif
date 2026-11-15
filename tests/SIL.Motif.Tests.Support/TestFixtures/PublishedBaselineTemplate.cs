@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// The folder is made from the pristine master by <c>prepare</c>, saved, published with
 /// <see cref="PublishedBaselineFixture"/>, and never opened for writing again. A copy is a plain file copy of about 100 KB
 /// on disk; the resident cost is one <see cref="TextWordsProjection"/> and <see cref="ProjectSummarySnapshot"/> per
-/// template, read once from a private copy of the published project and shared as read-only values.
+/// template, read once from the published project and shared as read-only values.
 /// </para>
 /// <para>
 /// The cache folder is keyed by the assembly that holds <c>prepare</c> as well as by <see cref="FixtureDiskCache"/>'s own
