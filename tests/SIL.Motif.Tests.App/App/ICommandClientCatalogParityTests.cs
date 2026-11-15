@@ -102,6 +102,8 @@ public sealed class ICommandClientCatalogParityTests
         nameof(ICommandClient.ReadLatestParsimonyReportSetAsync),
         nameof(ICommandClient.ReadParsimonyReportAsync),
         nameof(ICommandClient.ReadProposalParsimonyStatusAsync),
+        // W9-progress
+        nameof(ICommandClient.ReadProgressOpenRequestCountAsync),
     };
 
     private static readonly IReadOnlyDictionary<string, string> ReadsViaCataloguedCommand =

@@ -1,0 +1,34 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Border.progressNextList">
+    <Setter Property="MaxWidth" Value="{DynamicResource Primitive.Size.800}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+  </Style>
+  <Style Selector=":is(TextBlock).progressNextHeading">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Panel}" />
+  </Style>
+  <Style Selector="StackPanel.progressNextNotice">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Panel}" />
+  </Style>
+  <Style Selector="Button.progressNextRow">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="MinHeight" Value="{DynamicResource Primitive.Size.44}" />
+    <Setter Property="Padding" Value="{DynamicResource Primitive.Inset.12_4_12_4}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerTop}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
+  </Style>
+  <Style Selector="Button.progressNextRow:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.progressNextRow:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Hover}" />
+  </Style>
+  <Style Selector="TextBlock.progressNextCategory">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+  </Style>
+</Styles>

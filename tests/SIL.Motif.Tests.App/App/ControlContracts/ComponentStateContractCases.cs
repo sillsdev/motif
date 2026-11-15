@@ -308,6 +308,12 @@ internal static class ComponentStateContractCases
             StateStimulus.Disabled, StatePart.Self, Button.ForegroundProperty, "Intent.TextFaint");
 
         foreach (var item in SettingsStates()) yield return item;
+
+        // W9-progress
+        foreach (var (how, stimulus) in Hovers)
+            yield return new($"Button.progressNextRow:{how} /template/ ContentPresenter#PART_ContentPresenter", how,
+                () => Alone(Press("progressNextRow")), stimulus, StatePart.Face,
+                ContentPresenter.BackgroundProperty, "Intent.Surface.Hover");
     }
 
     private static IEnumerable<ComponentStateCase> SettingsStates()

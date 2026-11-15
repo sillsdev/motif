@@ -7539,4 +7539,9 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.DiagnosticsParsimonyMeasuring" xml:space="preserve"><value>Parsimony is measuring this Proposal.</value></data>
   <data name="MotifApp.DiagnosticsParsimonyMeasuringStepFormat" xml:space="preserve"><value>Parsimony is measuring this Proposal: stage {0} of {1}.</value></data>
   <data name="MotifApp.DiagnosticsParsimonyMeasuringStageFormat" xml:space="preserve"><value>Parsimony is measuring this Proposal: {0}, stage {1} of {2}.</value></data>
+  <!-- W9 -->
+  <data name="MotifApp.ProgressRequestsLabel" xml:space="preserve"><value>Requests</value></data>
+  <data name="MotifApp.ProgressOpenRequestsPattern" xml:space="preserve"><value>{0, plural, one {# open Request awaiting an answer} other {# open Requests awaiting an answer}}</value></data>
+  <data name="MotifApp.ProgressReadingNext" xml:space="preserve"><value>Reading next actions…</value></data>
+  <data name="MotifApp.ProgressNextUnavailable" xml:space="preserve"><value>Some next actions are unavailable. Refresh the project or try again.</value></data>
 </root>

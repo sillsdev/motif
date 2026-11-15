@@ -3,8 +3,11 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewPageWordsTests
 {
+    public OverviewPageWordsTests() => AvaloniaHeadlessPlatform.Initialize();
+
     [Fact]
     public void HealthShowsTheRecordedWarningCountIncludingZero()
     {

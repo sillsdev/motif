@@ -66,6 +66,8 @@ public sealed class ProgressiveDisplayTests
         "TraceAnalysesView", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
         // w8 proposal diagnostic row.
         "Diagnostics/ProposalDiagnosticsRow",
+        // W9-progress
+        "Pages/ProgressPage",
     ];
 
     [Fact]
@@ -1054,6 +1056,8 @@ public sealed class ProgressiveDisplayTests
                     .FirstOrDefault(token => token.IsWord),
             },
 
+            // W9-progress
+            "Pages/ProgressPage" => new ProgressPage(workspace.PageModel<ProgressPageModel>()),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
         };
     }

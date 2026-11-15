@@ -326,4 +326,9 @@ public static class AutomationIds
     // w8 proposal diagnostic rows.
     public static string ForProposalDiagnostics(string proposalId) =>
         "motif-proposal-diagnostics-" + Uri.EscapeDataString(proposalId);
+    // W9-automation
+    public const string ProgressNextProposals = "motif-progress-next-proposals";
+    public const string ProgressNextRequests = "motif-progress-next-requests";
+    public const string ProgressNextRetry = "motif-progress-next-retry";
+
 }

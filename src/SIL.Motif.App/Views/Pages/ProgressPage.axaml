@@ -5,18 +5,42 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ProgressPage"
              x:DataType="vm:ProgressPageModel">
-  <StackPanel Margin="{DynamicResource Intent.Inset.Page}" Spacing="{DynamicResource Intent.Space.Group}">
-    <views:CopyableTextBlock Classes="displayTitle" Text="{x:Static app:MotifAppStrings.Progress}"
-               AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressHeading}" />
-    <views:CopyableTextBlock Text="{Binding Context.ProjectName}" IsVisible="{Binding Context.HasProject}" />
-    <views:CopyableTextBlock Text="{Binding Health.SelectionSummary}" IsVisible="{Binding Health.HasSelectionSummary}" TextWrapping="Wrap" />
-    <StackPanel IsVisible="{Binding HasWaitingProposals}" Spacing="{DynamicResource Intent.Space.Related}"
-                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNext}">
-      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProgressNext}" />
-      <Button Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Proposals}"
-              AutomationProperties.Name="{Binding WaitingProposalsText}">
-        <TextBlock Text="{Binding WaitingProposalsText}" />
-      </Button>
+  <UserControl.Styles>
+    <StyleInclude Source="/Tokens/Components/ProgressScoped.axaml" />
+  </UserControl.Styles>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="{DynamicResource Intent.Inset.Page}" Spacing="{DynamicResource Intent.Space.Section}">
+      <views:CopyableTextBlock Classes="displayTitle" Text="{x:Static app:MotifAppStrings.Progress}" TextWrapping="Wrap"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressHeading}" />
+      <views:CopyableTextBlock Text="{Binding Context.ProjectName}" IsVisible="{Binding Context.HasProject}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding Health.SelectionSummary}" IsVisible="{Binding Health.HasSelectionSummary}" TextWrapping="Wrap" />
+      <Border Classes="progressNextList" IsVisible="{Binding HasNextSection}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNext}">
+        <StackPanel>
+          <views:CopyableTextBlock Classes="section-title progressNextHeading" Text="{x:Static app:MotifAppStrings.ProgressNext}" />
+          <views:CopyableTextBlock Classes="muted progressNextHeading" Text="{x:Static app:MotifAppStrings.ProgressReadingNext}"
+                                  IsVisible="{Binding IsReading}" TextWrapping="Wrap" />
+          <ItemsControl x:Name="ProgressNextRows" ItemsSource="{Binding NextRows}" IsVisible="{Binding HasNextRows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProgressNextRow">
+                <Button Classes="progressNextRow" Command="{Binding OpenCommand}" AutomationProperties.Name="{Binding Text}"
+                        AutomationProperties.AutomationId="{Binding AutomationId}">
+                  <Grid ColumnDefinitions="*,3*" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                    <TextBlock Classes="progressNextCategory" Text="{Binding Category}" TextWrapping="Wrap" />
+                    <TextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" />
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Classes="progressNextNotice" IsVisible="{Binding HasUnavailableNext}"
+                      Spacing="{DynamicResource Intent.Space.Related}">
+            <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProgressNextUnavailable}" TextWrapping="Wrap" />
+            <Button Command="{Binding TryAgainCommand}" Content="{x:Static app:MotifAppStrings.TryAgain}"
+                    HorizontalAlignment="Left" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNextRetry}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
     </StackPanel>
-  </StackPanel>
+  </ScrollViewer>
 </UserControl>

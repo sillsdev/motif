@@ -635,5 +635,13 @@
     "mode": "rows",
     "control": "ProgressiveItemsControl",
     "reason": "w8: Exact Proposal grammar operations."
+  },
+  {
+    "view": "Pages/ProgressPage",
+    "name": "ProgressNextRows",
+    "source": "NextRows",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "W9: one aggregate row for waiting Proposals and one for open Requests, at most two rows."
   }
 ]

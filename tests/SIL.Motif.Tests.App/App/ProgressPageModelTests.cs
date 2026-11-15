@@ -5,8 +5,11 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
+[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class ProgressPageModelTests
 {
+    public ProgressPageModelTests() => AvaloniaHeadlessPlatform.Initialize();
+
     [Fact]
     public void SelectionSummaryRequiresAResolvedCurrentOverview()
     {

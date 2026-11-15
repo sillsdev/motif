@@ -16,6 +16,12 @@ public sealed class OverviewGuideTests
 
         Assert.Contains("waiting for a decision", progress);
         Assert.Contains("does not start a parse", progress);
+        Assert.Contains("unanswered Requests", progress);
+        Assert.Contains("Chapter approval totals", progress);
+        Assert.Contains("parse completion", progress);
+        var coverage = Assert.IsType<string>(catalog.GetHelpPage(HelpEntryKind.Guide, "text-coverage"));
+        Assert.Contains("Parse completion is not human approval", coverage);
+        Assert.DoesNotContain("The Overview reports", coverage);
         Assert.Contains("[Progress and project health](guide:overview)", progress);
         Assert.Contains("recorded median parser-work", overview);
         Assert.Contains("[Reading project health](guide:reading-the-overview)", overview);

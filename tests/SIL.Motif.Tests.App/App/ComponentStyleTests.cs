@@ -1096,6 +1096,14 @@ public sealed partial class ComponentStyleTests
             Button.WidthProperty, "Component.Menu.ButtonHeight");
         yield return new("SettingsScoped", "a shortcut key cap radius", host => Add(host, Box("settingsKeyCap")),
             Border.CornerRadiusProperty, "Component.Settings.KeyRadius");
+
+        // W9-progress
+        yield return new("ProgressScoped", "the Next row padding", host => Add(host, Press("progressNextRow")),
+            Button.PaddingProperty, "Primitive.Inset.12_4_12_4");
+        yield return new("ProgressScoped", "the Next row foreground", host => Add(host, Press("progressNextRow")),
+            Button.ForegroundProperty, "Intent.Text");
+        yield return new("ProgressScoped", "the Next list width", host => Add(host, Box("progressNextList")),
+            Border.MaxWidthProperty, "Primitive.Size.800");
     }
 
     private static Control MorphPart(Panel host, int index)

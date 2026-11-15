@@ -3962,5 +3962,10 @@ public static class MotifAppStrings
     public static string DiagnosticsParsimonyMeasuring => Text("MotifApp.DiagnosticsParsimonyMeasuring");
     public static string DiagnosticsParsimonyMeasuringStepFormat => Text("MotifApp.DiagnosticsParsimonyMeasuringStepFormat");
     public static string DiagnosticsParsimonyMeasuringStageFormat => Text("MotifApp.DiagnosticsParsimonyMeasuringStageFormat");
+    // W9-resources
+    public static string ProgressRequestsLabel => Text("MotifApp.ProgressRequestsLabel");
+    public static string ProgressOpenRequestsPattern => Text("MotifApp.ProgressOpenRequestsPattern");
+    public static string ProgressReadingNext => Text("MotifApp.ProgressReadingNext");
+    public static string ProgressNextUnavailable => Text("MotifApp.ProgressNextUnavailable");
 
 }
