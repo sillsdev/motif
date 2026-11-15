@@ -57,6 +57,8 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/DenseTable.axaml" />
     <!-- W7 -->
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ClaudePanel.axaml" />
+    <!-- w8 proposal diagnostic row. -->
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ProposalDiagnostics.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>

@@ -1,38 +1,11 @@
-# Parsimony
+# Proposal Parsimony
 
-The **Parsimony** page is available when **View → Diagnostics** is on.
+Parsimony is advisory evidence about a Proposal. Turn on **View → Diagnostics** to make diagnostic content available. There is no separate Parsimony page.
 
-The **Parsimony** page lists grammar-tidiness findings from the latest stored check of the grammar. Each finding names what was counted and how strong the evidence is. The page reads what the check stored. Opening it, or coming back to it, never starts a check, and it writes nothing to the project.
+A Proposal's Diagnostics can read its stored Parsimony status and the named findings the Proposal adds or changes. Each side of a Proposal comparison owns its own reads. A result must match the Proposal identity, content and Trial being displayed. Choosing a Proposal or opening diagnostic evidence never queues Parsimony or starts a parse.
 
-Without a stored check, ask an AI assistant with Motif tools to run every Parsimony measure for this project, or run `motif parsimony --project "<project.fwdata>" --measure all --wait` in the CLI after replacing `<project.fwdata>` with the project file path. [Run every Parsimony measure](cmd:parsimony%20--measure%20all%20--wait) describes the command. Then come back here. Opening or returning to this page never starts a check.
+A status may be not set up, not yet run, queued, running, ready, out of date or did not finish. Individual measures can be unavailable or inconclusive. These states do not mean no change. Findings keep their measure, recorded explanation and evidence. Counts from different measures are never added into a quality score.
 
-The page has two tabs. **Active** lists the findings still to review. **Suppressed** lists the findings you kept or deferred, each with its reason, or with "No reason given" when you gave none. Each tab shows its count.
+The stored contract does not supply complete signed grammar-size changes. Motif leaves that comparison unavailable rather than turning added-object counts into a claim such as “one fewer rule.” Warnings and parser steps use their own compatible Trial evidence.
 
-Findings are grouped by check. Each group names its grammar side: **Restrictiveness**, **Parsimony**, or both. A line under the tabs says once what each side means, and the page gives no combined score. A finding you have decided shows "staged, not yet applied" beside its decision until Apply writes it.
-
-Select a finding to read its evidence in the detail column: what was counted, the items it names, why it was reported, the strength of the evidence, whether a paired parser check has run, and the limits of the count. A finding is a suggestion to look at, not a verdict on the grammar.
-
-## Deciding a finding
-
-Select an active finding. Its detail column has **Keep**, **Defer** and **Ask** buttons, and a note about **Fix**:
-
-- **Keep** records that the finding is intended. You may write a reason. A kept finding moves to Suppressed once Apply and Refresh have run.
-- **Defer** records that you will come back to the finding later. Like Keep, it takes an optional reason and moves to Suppressed once applied.
-- **Ask** records a question about the finding. It needs the question you write. It stays active, because a question is not a decision to suppress.
-- **Fix** is not a button. A note under the buttons names the Guide page that describes the update Motif supports for the check, and says you make the fix itself in FieldWorks. It records nothing. Where a check has no supported update yet, the note says so, and you can ask or defer instead.
-
-When there are several Notebook record types, choose the one the decision goes under. The page never picks one by its English name.
-
-Each action is staged in pending changes. The Parsimony page links to [Review Changes](guide:review-changes), where you can inspect the staged decision and use Apply. Nothing is written to FieldWorks until Apply. A staged decision shows as staged, not as suppressed. Refresh after Apply to see the decision in Suppressed.
-
-## Suppressed decisions
-
-A Suppressed decision stays in its own tab with its reason, its judgment ID (such as `MJ-7K3Q-9XDF`) and the title of its Notebook record, so you can match the row to the record in FieldWorks. Select it to read its details; that only shows them. **Return to Active** stages the withdrawal of the decision, so the finding comes back to the Active tab once Apply and Refresh have run.
-
-A decision returns to Active on its own when the evidence it was made on changes. It then shows "Changed since it was kept" or "Changed since it was deferred" with the reason you gave before, so you can decide again. A Motif update that changes how a check reads its evidence can bring a kept or deferred finding back once in the same way, even though nothing in the grammar changed; the release notes say when an update does this.
-
-A decision that conflicts with another, or that no longer matches any finding, stays visible and is not hidden. A conflict stays in Active and says what conflicts. A stale decision in Suppressed says that no current finding matches it.
-
-Edit the reason in FieldWorks, in the Description of the judgment's record after the first sentence. Leave the sentence, the ID and the field named "Motif data (do not edit)" alone. If the data field is edited, the page lists that record as "hash failed on this record entry", and its decision stops suppressing the finding until it is recorded again. A changed ID or sentence only produces a warning, and the decision still applies.
-
-If the stored check could not measure some of its checks, the page names them under **Not measured** and explains why. Those checks' findings are not listed. If the check was made from an earlier [Baseline](term:baseline), the page says so. Measure the grammar again to see current findings.
+Parsimony never adds a condition to Apply. Turning Diagnostics off cancels diagnostic reads and removes their content. The [Parsimony commands](cmd:parsimony%20--measure%20all%20--wait) remain available for explicit measurement outside the window.

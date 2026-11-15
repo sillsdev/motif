@@ -43,7 +43,7 @@ public sealed class ProposalParsimonyPanelTests
             var model = new ProposalParsimonyViewModel(fake.ReadProposalParsimonyStatusAsync,
                 (_, _) => Task.FromCanceled(new CancellationToken(canceled: true)), fake.ReadParsimonyReportAsync,
                 fake.ReadParsimonyViewAsync);
-            var panel = new ProposalParsimonyPanel { DataContext = model };
+            var panel = new ProposalParsimonyDetails { DataContext = model };
             var window = new MotifTestWindow { Width = 500, Height = 720, Content = panel };
             try
             {

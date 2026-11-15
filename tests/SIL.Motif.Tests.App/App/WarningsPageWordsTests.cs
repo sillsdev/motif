@@ -22,7 +22,7 @@ using PresentationWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>Pins the Warnings page's quiet rows, opened finding details and named FieldWorks links.</summary>
+/// <summary>Pins warning evidence, producer advice and named FieldWorks links.</summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class WarningsPageWordsTests
 {
@@ -63,7 +63,7 @@ public sealed class WarningsPageWordsTests
             }).ToArray();
             var grammar = new GrammarViewModel(new FakeCommandClient());
             grammar.LoadStored("/tmp/warnings-scroll.fwdata", new GrammarCheckResponse(findings, HasBaseline: true));
-            var panel = new GrammarPanel(grammar);
+            var panel = new WarningsInspectorPanel(grammar);
             var window = new MotifTestWindow { Content = panel, Width = 700, Height = 780 };
             try
             {
@@ -74,7 +74,7 @@ public sealed class WarningsPageWordsTests
                 PageScreenshots.Settle(window);
 
                 var items = Assert.Single(panel.GetVisualDescendants().OfType<ItemsControl>(),
-                    control => control.Name == "GrammarPanelSelectionDetailsItems");
+                    control => control.Name == "WarningsInspectorSelectedDetails");
                 var scroll = items.GetVisualAncestors().OfType<ScrollViewer>().First();
                 var descriptions = findings.Select(finding => finding.Description).ToHashSet(StringComparer.Ordinal);
                 var readable = new HashSet<string>(StringComparer.Ordinal);
@@ -155,7 +155,7 @@ public sealed class WarningsPageWordsTests
             await grammar.SetProjectAsync("/tmp/warnings-advice.fwdata");
             _avalonia.Invoke(() =>
             {
-                var panel = new GrammarPanel(grammar);
+                var panel = new WarningsInspectorPanel(grammar);
                 var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 900 };
                 try
                 {
@@ -246,7 +246,7 @@ public sealed class WarningsPageWordsTests
 
         _avalonia.Invoke(() =>
         {
-            var panel = new GrammarPanel(grammar);
+            var panel = new WarningsInspectorPanel(grammar);
             var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 900 };
             try
             {
@@ -254,25 +254,6 @@ public sealed class WarningsPageWordsTests
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-
-                var controls = Assert.Single(panel.GetVisualDescendants().OfType<WrapPanel>(),
-                    item => item.Classes.Contains("warningControls"));
-                Assert.NotEmpty(controls.Children);
-                Assert.Equal(Avalonia.Layout.Orientation.Horizontal, controls.Orientation);
-                Assert.Contains(panel.GetVisualDescendants().OfType<ToggleButton>(), toggle =>
-                    toggle.Content is TextBlock { Text: "Show warnings that name my words · 1 word" });
-                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Severity");
-                Assert.Contains(panel.GetVisualDescendants().OfType<Button>(), button =>
-                    Equals(button.Content, grammar.Warnings.SortLabel) && grammar.Warnings.SortLabel.EndsWith("▾"));
-                Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "1 word");
-                Assert.Contains(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "The environment description is distinct from the producer's explanation.");
-                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "In FieldWorks, check the named environment and the allomorphs that use it.");
-                Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "PanGloss explains that this environment cannot be read by the parser.");
 
                 var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammar.Warnings.Rows));
                 grammar.Warnings.OpenDetailsCommand.Execute(row);
@@ -282,9 +263,8 @@ public sealed class WarningsPageWordsTests
                 var wordRow = Assert.Single(panel.GetVisualDescendants().OfType<PresentationWordRow>(),
                     candidate => candidate.Data?.Facts.Word == "walikata");
                 Assert.Equal(SIL.Motif.App.Controls.WordPresentation.WordListOwner.Warnings, wordRow.Data!.Owner);
-                var handoff = Assert.Single(panel.GetVisualDescendants().OfType<Button>(),
-                    button => ReferenceEquals(button.Command, grammar.Warnings.HandOffCommand));
-                Assert.Equal(MotifAppStrings.AIHandoffForThisWarning, handoff.Content);
+                Assert.Contains(panel.GetVisualDescendants().OfType<AskAssistantButton>(),
+                    button => button.TargetId == row.AskTargetId);
                 window.MouseMove(new Avalonia.Point(-100, -100));
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
@@ -306,13 +286,6 @@ public sealed class WarningsPageWordsTests
                     text.IsEffectivelyVisible && text.Text is "PanGloss description" or "PanGloss explanation" or
                         "PanGloss guidance" or "FieldWorks places" or "Motif workflow");
 
-                var rowBorder = Assert.Single(panel.GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("warningRow"));
-                Assert.False(rowBorder.IsPointerOver);
-                Assert.False(rowBorder.IsKeyboardFocusWithin);
-                var rowHeading = Assert.Single(rowBorder.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    text => text.Classes.Contains("warningMessage"));
-                Assert.Equal("Environment cannot be read · 1 finding", rowHeading.Text);
                 var link = Assert.Single(panel.GetVisualDescendants().OfType<HyperlinkButton>(),
                     button => button.Classes.Contains("warningObjectLink"));
                 Assert.True(link.IsEffectivelyVisible);
@@ -357,7 +330,7 @@ public sealed class WarningsPageWordsTests
 
         _avalonia.Invoke(() =>
         {
-            var panel = new GrammarPanel(grammar);
+            var panel = new WarningsInspectorPanel(grammar);
             var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 900 };
             try
             {
@@ -423,7 +396,7 @@ public sealed class WarningsPageWordsTests
 
         _avalonia.Invoke(() =>
         {
-            var panel = new GrammarPanel(grammar);
+            var panel = new WarningsInspectorPanel(grammar);
             var window = new MotifTestWindow { Content = panel, Width = 1040, Height = 600 };
             try
             {

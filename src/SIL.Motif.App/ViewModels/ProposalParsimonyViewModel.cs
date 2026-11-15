@@ -47,6 +47,8 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
     private string? _projectPath;
     private bool _hasTrial;
     private int _generation;
+    private string? _expectedDigest;
+    private string? _expectedTrial;
 
     /// <summary>Creates the model.</summary>
     /// <param name="read">Reads one Proposal's Parsimony status; it must not queue or start anything.</param>
@@ -64,6 +66,21 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
         _delay = delay ?? ((span, cancellation) => Task.Delay(span, cancellation));
         if (readReport is not null && readView is not null) _findings = new ProposalParsimonyFindings(readReport, readView);
     }
+
+    /// <summary>The owning Proposal's identity, used to distinguish parallel diagnostic rows.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PanelAutomationId))]
+    [NotifyPropertyChangedFor(nameof(StateAutomationId))]
+    [NotifyPropertyChangedFor(nameof(ReadAutomationId))]
+    [NotifyPropertyChangedFor(nameof(GroupsAutomationId))]
+    private string _automationScope = string.Empty;
+
+    internal string ScopedId(string id) => AutomationScope.Length == 0 ? id : id + ":" + Uri.EscapeDataString(AutomationScope);
+
+    public string PanelAutomationId => ScopedId(AutomationIds.ProposalParsimonyPanel);
+    public string StateAutomationId => ScopedId(AutomationIds.ProposalParsimonyState);
+    public string ReadAutomationId => ScopedId(AutomationIds.ProposalParsimonyRead);
+    public string GroupsAutomationId => ScopedId(AutomationIds.ProposalParsimonyGroups);
 
     /// <summary>The Proposal the section is about, or null when none is watched.</summary>
     [ObservableProperty]
@@ -151,6 +168,12 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
     /// <returns>A task that completes when the watch ends.</returns>
     public Task Watch(string projectPath, string proposalId)
     {
+        _expectedDigest = _expectedTrial = null;
+        return WatchCore(projectPath, proposalId);
+    }
+
+    private Task WatchCore(string projectPath, string proposalId)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(proposalId);
         var same = _projectPath == projectPath && ProposalId == proposalId;
@@ -164,6 +187,16 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
         var cancellation = _cancellation = new CancellationTokenSource();
         _watching = WatchAsync(projectPath, proposalId, ++_generation, cancellation.Token);
         return _watching;
+    }
+
+    /// <summary>Watches only the exact content and Trial shown in the owning Proposal document.</summary>
+    public Task WatchPinned(string projectPath, string proposalId, string intentDigest, string trialJobId)
+    {
+        Stop();
+        _hasTrial = true;
+        _expectedDigest = intentDigest;
+        _expectedTrial = trialJobId;
+        return WatchCore(projectPath, proposalId);
     }
 
     /// <summary>Sets the parser work line from the selected Proposal's Trial; null clears it.</summary>
@@ -184,6 +217,7 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
         EndWatch();
         DiscardFindings();
         _projectPath = null;
+        _expectedDigest = _expectedTrial = null;
         _hasTrial = false;
         ProposalId = null;
         Status = null;
@@ -228,6 +262,21 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
                 }
                 else
                 {
+                    if (outcome.Value!.ProposalId != proposalId ||
+                        _expectedDigest is not null &&
+                        (outcome.Value.IntentDigest is { } actualDigest && actualDigest != _expectedDigest ||
+                            outcome.Value.TrialJobId is { } actualTrial && actualTrial != _expectedTrial ||
+                            outcome.Value.State == ProposalParsimonyState.Ready &&
+                            (outcome.Value.IntentDigest != _expectedDigest || outcome.Value.TrialJobId != _expectedTrial)))
+                    {
+                        Status = null;
+                        Groups = [];
+                        ReadText = string.Empty;
+                        StateLabel = MotifAppStrings.ProposalParsimonyStateStale;
+                        Sentence = MotifAppStrings.DiagnosticsTrialUnavailable;
+                        IsLoading = false;
+                        return;
+                    }
                     Show(outcome.Value!);
                     if (!IsUnfinished(outcome.Value!, ref unqueued))
                     {
@@ -273,7 +322,7 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
         Note = ProposalParsimonyText.Note(status);
         ReadText = ReadOf(status);
         WallTime = ProposalParsimonyText.WallTime(status);
-        Groups = [.. status.Groups.Select(group => ProposalParsimonyText.Group(group, status.State))];
+        Groups = [.. status.Groups.Select(group => ProposalParsimonyText.Group(group, status.State) with { AutomationScope = AutomationScope })];
         // The same candidate read again keeps its Findings, so a refresh never blanks them.
         if (_findingsKey is not null && _findingsKey == FindingsKey(status)) ApplyFindings(status);
         IsVisible = true;
@@ -310,6 +359,8 @@ public sealed partial class ProposalParsimonyViewModel : ObservableObject
         _findingsRead = read;
         _findingsKey = key;
         ReadText = ReadOf(status);
+        foreach (var finding in _findingsRead.SelectMany(group => group.Findings))
+            finding.AutomationScope = AutomationScope;
         ApplyFindings(status);
     }
 

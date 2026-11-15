@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.WarningsTab" x:DataType="vm:DiagnosticsPageModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/DiagnosticsScoped.axaml" />
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+    <views:CopyableTextBlock Text="{Binding Warnings.StatusText}" TextWrapping="Wrap" />
+    <Grid x:Name="WarningBody" Grid.Row="1" RowDefinitions="*,*"
+          ColumnSpacing="{DynamicResource Intent.Space.Group}" RowSpacing="{DynamicResource Intent.Space.Related}">
+      <ContentControl x:Name="RowsHost" />
+      <ContentControl x:Name="WarningEvidence" Grid.Row="1"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsWarningDetails}" />
+    </Grid>
+  </Grid>
+</UserControl>

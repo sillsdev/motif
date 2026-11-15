@@ -7,10 +7,10 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed class GrammarPanelLayoutTests
+public sealed class WarningEvidenceLayoutTests
 {
     [Fact]
-    public void WarningFiltersSortAndRecheckFitTheAvailablePageWidth()
+    public void SelectedWarningEvidenceFitsTheAvailablePageWidth()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -22,7 +22,8 @@ public sealed class GrammarPanelLayoutTests
                 new(GrammarDiagnosticLevel.Information, "Example information", [], [], "Example information")
                     { Code = "example.info", Group = "Example information" },
             ], true));
-            var window = new MotifTestWindow { Content = new GrammarPanel(grammar), Width = 520, Height = 780 };
+            grammar.Warnings.OpenDetailsCommand.Execute(grammar.Warnings.Rows.Cast<GrammarWarningRowViewModel>().First());
+            var window = new MotifTestWindow { Content = new WarningsInspectorPanel(grammar), Width = 520, Height = 780 };
             try
             {
                 window.Show();

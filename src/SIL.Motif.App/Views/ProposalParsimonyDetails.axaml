@@ -3,11 +3,11 @@
              xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
-             x:Class="SIL.Motif.App.Views.ProposalParsimonyPanel"
+             x:Class="SIL.Motif.App.Views.ProposalParsimonyDetails"
              x:DataType="vm:ProposalParsimonyViewModel"
              IsVisible="{Binding IsVisible}"
              AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalParsimonyAccessibleName}"
-             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyPanel}">
+             AutomationProperties.AutomationId="{Binding PanelAutomationId}">
   <Border Classes="inspectorSection">
     <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
       <TextBlock Classes="inspectorSectionTitle" Text="{x:Static app:MotifAppStrings.ProposalParsimonyTitle}" />
@@ -15,7 +15,7 @@
                                Text="{Binding ReadingText}" />
       <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*" IsVisible="{Binding ShowsStatus}">
         <TextBlock x:Name="ParsimonyState" Classes="inspectorFactLabel" Text="{Binding StateLabel}"
-                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyState}" />
+                   AutomationProperties.AutomationId="{Binding StateAutomationId}" />
         <views:CopyableTextBlock x:Name="ParsimonySentence" Grid.Column="1" TextWrapping="Wrap"
                                  Text="{Binding Sentence}" />
       </Grid>
@@ -25,20 +25,12 @@
         <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}" IsVisible="{Binding HasReadText}">
           <TextBlock Classes="muted" Text="{Binding ReadTitle}" />
           <views:CopyableTextBlock x:Name="ParsimonyRead" TextWrapping="Wrap" Text="{Binding ReadText}"
-                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyRead}" />
+                                   AutomationProperties.AutomationId="{Binding ReadAutomationId}" />
         </StackPanel>
-        <Grid Classes="inspectorFact" ColumnDefinitions="Auto,*" IsVisible="{Binding HasParserWork}">
-          <TextBlock Classes="inspectorFactLabel" Text="{Binding ParserWorkLabel}" />
-          <views:CopyableTextBlock x:Name="ParsimonyParserWork" Grid.Column="1" TextWrapping="Wrap" Text="{Binding ParserWork}"
-                                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyParserWork}" />
-        </Grid>
-        <views:CopyableTextBlock x:Name="ParsimonyWallTime" Classes="muted" TextWrapping="Wrap"
-                                 Text="{Binding WallTime}" IsVisible="{Binding HasWallTime}"
-                                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyWallTime}" />
       </StackPanel>
       <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
       <ItemsControl x:Name="ParsimonyGroups" ItemsSource="{Binding Groups}" IsVisible="{Binding ShowsStatus}"
-                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalParsimonyGroups}">
+                    AutomationProperties.AutomationId="{Binding GroupsAutomationId}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate><StackPanel Spacing="{DynamicResource Intent.Space.Compact}" /></ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>

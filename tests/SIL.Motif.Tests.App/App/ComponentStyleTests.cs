@@ -507,6 +507,14 @@ public sealed partial class ComponentStyleTests
             host.Children.Add(panel);
             return panel;
         }, Control.MaxWidthProperty, "Component.ClaudePanel.Width");
+        // w8 proposal diagnostic row.
+        yield return new Case("ProposalDiagnostics", "row inset", host =>
+        {
+            var panel = new StackPanel();
+            panel.Classes.Add("proposalDiagnostics");
+            host.Children.Add(panel);
+            return panel;
+        }, Layoutable.MarginProperty, "Intent.Inset.Panel");
 
         yield return new("Text", "a muted line", host => Add(host, Text("muted")), TextBlock.ForegroundProperty, "Intent.TextMuted");
         yield return new("Text", "an error", host => Add(host, Text("error")), TextBlock.ForegroundProperty, "Intent.Danger.Text");

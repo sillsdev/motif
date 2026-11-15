@@ -7518,4 +7518,25 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ClaudeUnsupportedTarget" xml:space="preserve"><value>Requests are unavailable for this kind of item.</value></data>
   <data name="MotifApp.ClaudeRequestsLoading" xml:space="preserve"><value>Reading Requests…</value></data>
   <data name="MotifApp.ClaudeRequestKindUnknown" xml:space="preserve"><value>Item</value></data>
+  <!-- w8 diagnostics resources. -->
+  <data name="MotifApp.DiagnosticsIntro" xml:space="preserve"><value>Diagnostics Are Advice Only. Read and Edit Rules in FieldWorks.</value></data>
+  <data name="MotifApp.DiagnosticsUnavailable" xml:space="preserve"><value>Recorded Diagnostics Are Unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsNoWarnings" xml:space="preserve"><value>No Warnings Were Reported in the Stored Check.</value></data>
+  <data name="MotifApp.DiagnosticsWarningCountFormat" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="MotifApp.DiagnosticsMeasuredFormat" xml:space="preserve"><value>Steps per measured word · {0} of {1} words recorded parser work.</value></data>
+  <data name="MotifApp.DiagnosticsNoWork" xml:space="preserve"><value>Recorded Parser Steps Are Unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsPartial" xml:space="preserve"><value>Some Per-Word Rule Detail Is Unavailable. Recorded Aggregate Totals Are Shown.</value></data>
+  <data name="MotifApp.DiagnosticsWarningsFormat" xml:space="preserve"><value>Warnings: {0} → {1} ({2})</value></data>
+  <data name="MotifApp.DiagnosticsTrialUnavailable" xml:space="preserve"><value>Current Trial Diagnostics Are Unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsSignedUnavailable" xml:space="preserve"><value>Signed Grammar Size Changes Are Unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsOperations" xml:space="preserve"><value>Changes to the Grammar</value></data>
+  <data name="MotifApp.DiagnosticsStepsFormat" xml:space="preserve"><value>Parser Steps per Word: {0} → {1} ({2} measured words)</value></data>
+  <data name="MotifApp.DiagnosticsWorkUnavailable" xml:space="preserve"><value>Comparable Parser Steps Are Unavailable.</value></data>
+  <data name="MotifApp.DiagnosticsOutOfDate" xml:space="preserve"><value>Recorded Diagnostics Are Out of Date.</value></data>
+  <data name="MotifApp.DiagnosticsReading" xml:space="preserve"><value>Reading Recorded Diagnostics…</value></data>
+  <data name="MotifApp.DiagnosticsUnreadable" xml:space="preserve"><value>Recorded Diagnostics Could Not Be Read.</value></data>
+  <data name="MotifApp.DiagnosticsMismatched" xml:space="preserve"><value>Recorded Diagnostics Do Not Match This Evidence.</value></data>
+  <data name="MotifApp.DiagnosticsParsimonyMeasuring" xml:space="preserve"><value>Parsimony is measuring this Proposal.</value></data>
+  <data name="MotifApp.DiagnosticsParsimonyMeasuringStepFormat" xml:space="preserve"><value>Parsimony is measuring this Proposal: stage {0} of {1}.</value></data>
+  <data name="MotifApp.DiagnosticsParsimonyMeasuringStageFormat" xml:space="preserve"><value>Parsimony is measuring this Proposal: {0}, stage {1} of {2}.</value></data>
 </root>

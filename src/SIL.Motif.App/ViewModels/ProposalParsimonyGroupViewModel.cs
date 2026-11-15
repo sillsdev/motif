@@ -11,6 +11,9 @@ namespace SIL.Motif.App.ViewModels;
 public sealed record ProposalParsimonyGroupViewModel(
     string Title, string StateLabel, string Note, IReadOnlyList<string> Measures)
 {
+    public string AutomationScope { get; init; } = string.Empty;
+    private string ScopedId(string id) => AutomationScope.Length == 0 ? id : id + ":" + Uri.EscapeDataString(AutomationScope);
+
     /// <summary>Whether the group has a note to show.</summary>
     public bool HasNote => Note.Length > 0;
 
@@ -51,19 +54,19 @@ public sealed record ProposalParsimonyGroupViewModel(
     public string Key { get; init; } = string.Empty;
 
     /// <summary>The Findings fold's automation identifier.</summary>
-    public string FindingsAutomationId => AutomationIds.ForProposalParsimonyFindings(Key);
+    public string FindingsAutomationId => ScopedId(AutomationIds.ForProposalParsimonyFindings(Key));
 
     /// <summary>The list of Findings' automation identifier.</summary>
-    public string FindingsListAutomationId => AutomationIds.ForProposalParsimonyFindingsList(Key);
+    public string FindingsListAutomationId => ScopedId(AutomationIds.ForProposalParsimonyFindingsList(Key));
 
     /// <summary>The Findings note's automation identifier.</summary>
-    public string FindingsNoteAutomationId => AutomationIds.ForProposalParsimonyFindingsNote(Key);
+    public string FindingsNoteAutomationId => ScopedId(AutomationIds.ForProposalParsimonyFindingsNote(Key));
 
     /// <summary>The automation identifier of the lines for Findings the list leaves out.</summary>
-    public string FindingsMoreAutomationId => AutomationIds.ForProposalParsimonyFindingsMore(Key);
+    public string FindingsMoreAutomationId => ScopedId(AutomationIds.ForProposalParsimonyFindingsMore(Key));
 
     /// <summary>The decision lines' automation identifier.</summary>
-    public string JudgmentsAutomationId => AutomationIds.ForProposalParsimonyJudgments(Key);
+    public string JudgmentsAutomationId => ScopedId(AutomationIds.ForProposalParsimonyJudgments(Key));
 
     /// <summary>Whether the group's stored Reports have been read, so the Findings fold has something to say.</summary>
     public bool HasFindingsRead { get; init; }

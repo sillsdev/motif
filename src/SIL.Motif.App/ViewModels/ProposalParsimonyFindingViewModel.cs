@@ -29,6 +29,9 @@ public sealed partial class ProposalParsimonyFindingViewModel : ObservableObject
         ShowEvidenceCommand = new AsyncRelayCommand(ShowEvidenceAsync, () => CanShowEvidence);
     }
 
+    public string AutomationScope { get; set; } = string.Empty;
+    private string ScopedId(string id) => AutomationScope.Length == 0 ? id : id + ":" + Uri.EscapeDataString(AutomationScope);
+
     /// <summary>The Finding's stable identity in its Report.</summary>
     public string FindingId { get; }
 
@@ -39,10 +42,10 @@ public sealed partial class ProposalParsimonyFindingViewModel : ObservableObject
     public string Line { get; }
 
     /// <summary>The Finding line's automation identifier.</summary>
-    public string AutomationId => AutomationIds.ForProposalParsimonyFinding(FindingId);
+    public string AutomationId => ScopedId(AutomationIds.ForProposalParsimonyFinding(FindingId));
 
     /// <summary>The Show Evidence button's automation identifier.</summary>
-    public string EvidenceAutomationId => AutomationIds.ForProposalParsimonyEvidence(FindingId);
+    public string EvidenceAutomationId => ScopedId(AutomationIds.ForProposalParsimonyEvidence(FindingId));
 
     /// <summary>The Show Evidence button's words.</summary>
     public string ShowEvidenceText => MotifAppStrings.ProposalParsimonyShowEvidence;
@@ -52,7 +55,7 @@ public sealed partial class ProposalParsimonyFindingViewModel : ObservableObject
         string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalParsimonyShowEvidenceAccessibleName, Line);
 
     /// <summary>The evidence text's automation identifier.</summary>
-    public string EvidenceTextAutomationId => AutomationIds.ForProposalParsimonyEvidenceText(FindingId);
+    public string EvidenceTextAutomationId => ScopedId(AutomationIds.ForProposalParsimonyEvidenceText(FindingId));
 
     /// <summary>Reads the evidence views once; asking again after they were read shows the same lines.</summary>
     public IAsyncRelayCommand ShowEvidenceCommand { get; }

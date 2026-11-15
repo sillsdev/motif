@@ -57,13 +57,15 @@ public sealed class ProgressiveDisplayTests
 
     private static readonly string[] ViewNames =
     [
-        "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
+        "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "HandoffPanel",
         "Assistant/ClaudePanel", "Settings/AssistantConnectionsPanel",
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage",
-        "ProposalDifferencePanel", "ProposalParsimonyPanel", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
+        "ProposalDifferencePanel", "ProposalParsimonyDetails", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "Texts/SourcesPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel",
         "TraceAnalysesView", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
+        // w8 proposal diagnostic row.
+        "Diagnostics/ProposalDiagnosticsRow",
     ];
 
     [Fact]
@@ -994,10 +996,14 @@ public sealed class ProgressiveDisplayTests
             {
                 DataContext = workspace.PageModel<SettingsPageModel>().Connections,
             },
+            // w8 proposal diagnostic row.
+            "Diagnostics/ProposalDiagnosticsRow" => new ProposalDiagnosticsRow
+            {
+                DataContext = new ProposalDiagnosticsViewModel(workspace.Context) { IsVisible = true },
+            },
             "DiagnosticPanel" => new DiagnosticPanel(trace.Diagnostics),
             "DifferencePanel" => new DifferencePanel(workspace.Assess.Difference),
             "ExpertTracePanel" => new ExpertTracePanel { DataContext = trace.Trace },
-            "GrammarPanel" => new GrammarPanel(workspace.Context.GrammarCheck),
             "HandoffPanel" => new HandoffPanel(workspace.PageModel<SettingsPageModel>().Handoff.Handoff),
             "SettingsPage" => BuildSettingsPage(workspace),
             "SettingsNavigation" => BuildSettingsPage(workspace).Navigation,
@@ -1020,7 +1026,7 @@ public sealed class ProgressiveDisplayTests
                     (_, _) => Task.FromResult(CommandOutcome<ProposalDifferenceResponse>.Refused(
                         new Refusal("difference.none", FailureReason.NotFound, "None."))), _ => { }),
             },
-            "ProposalParsimonyPanel" => new ProposalParsimonyPanel { DataContext = new ProposalParsimonyViewModel(
+            "ProposalParsimonyDetails" => new ProposalParsimonyDetails { DataContext = new ProposalParsimonyViewModel(
                 (_, _) => Task.FromResult(CommandOutcome<SIL.Motif.Contract.Parsimony.ProposalParsimonyStatus>.Success(
                     ProposalParsimonyStatusFixtures.Ready("proposal/scale")))) },
             "ProposalPicturesPanel" => new ProposalPicturesPanel { DataContext = ManyPictures() },

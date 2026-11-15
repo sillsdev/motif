@@ -323,4 +323,7 @@ public static class AutomationIds
     public const string ClaudeToggle = "motif-claude-toggle";
     public const string ClaudeClose = "motif-claude-close";
     public const string ClaudeSetup = "motif-claude-setup";
+    // w8 proposal diagnostic rows.
+    public static string ForProposalDiagnostics(string proposalId) =>
+        "motif-proposal-diagnostics-" + Uri.EscapeDataString(proposalId);
 }

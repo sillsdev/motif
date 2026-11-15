@@ -28,7 +28,6 @@ public sealed class MenuBarTests
         ["Controls/WordPresentation/WordCard.axaml"] = 3,
         ["Tokens/Components/WordStripParts.axaml"] = 1,
         ["Views/DiagnosticPanel.axaml"] = 2,
-        ["Views/GrammarPanel.axaml"] = 3,
         ["Views/HandoffPanel.axaml"] = 1,
         ["Views/HandoffSection.axaml"] = 1,
         ["Views/Pages/ProposalsPage.axaml"] = 4,

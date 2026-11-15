@@ -1,11 +1,12 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The selected Warnings finding and its linked evidence, hosted in the Inspector.</summary>
+/// <summary>The selected warning's readable evidence, named objects and recorded words.</summary>
 public sealed partial class WarningsInspectorPanel : UserControl
 {
     /// <summary>Creates the warning details for <paramref name="grammar"/>.</summary>
@@ -32,7 +33,35 @@ public sealed partial class WarningsInspectorPanel : UserControl
     /// <summary>The host for spelling candidate words in the selected finding.</summary>
     public IWordPresentationHost SpellingCandidatePresentationHost { get; }
 
+    private void OnRequestAttached(object? sender, Avalonia.VisualTreeAttachmentEventArgs args)
+    {
+        if (sender is AskAssistantButton request && request.FindControl<Button>("AskButton") is { } button)
+            button.Content = MotifAppStrings.BoardAskClaude;
+    }
+
+    private void OnShowWords(object? sender, Avalonia.Interactivity.RoutedEventArgs args)
+    {
+        var list = this.GetVisualDescendants().OfType<ItemsControl>().FirstOrDefault(items =>
+            items.Name is "WarningsInspectorWordRows" or "WarningsInspectorMembershipRows" or "WarningsInspectorSpellingRows" &&
+            items.ItemCount > 0);
+        list?.BringIntoView();
+    }
+
     private IWordPresentationHost CreateHost(string listName) =>
-        new WordListPresentationHost<WordRowViewModel>(
-            this.FindControl<ItemsControl>(listName)!, row => row.Presentation, WordListCardSections.Warning);
+        new WarningWordHost(this, listName);
+
+    private sealed class WarningWordHost(WarningsInspectorPanel panel, string listName) : IWordPresentationHost
+    {
+        private IWordPresentationHost? Current() => panel.GetVisualDescendants().OfType<ItemsControl>()
+            .FirstOrDefault(items => items.Name == listName) is { } list
+                ? new WordListPresentationHost<WordRowViewModel>(list, row => row.Presentation, WordListCardSections.Warning)
+                : null;
+
+        public Task<WordCardReadResult> ReadCardAsync(WordPresentationKey key, long revision, CancellationToken token) =>
+            Current()?.ReadCardAsync(key, revision, token) ?? Task.FromResult(WordCardReadResult.Failed(
+                MotifAppStrings.DiagnosticsUnavailable, false));
+
+        public ValueTask<WordActionResult> HandleAsync(WordRequest request, CancellationToken token) =>
+            Current()?.HandleAsync(request, token) ?? ValueTask.FromResult(new WordActionResult(false));
+    }
 }

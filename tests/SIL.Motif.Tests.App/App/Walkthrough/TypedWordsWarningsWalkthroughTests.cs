@@ -36,13 +36,16 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             walkthrough.WaitUntilProjectIsQuiet(TimeSpan.FromMinutes(1), "parse results did not finish publishing");
             walkthrough.Workspace.Context.Diagnostics = true;
             walkthrough.ShowPage(WorkspacePage.Diagnostics);
-            var warnings = walkthrough.Workspace.Context.GrammarCheck.Warnings;
+            var diagnostics = walkthrough.Workspace.PageModel<DiagnosticsPageModel>();
+            var warnings = diagnostics.Warnings.Grammar.Warnings;
+            walkthrough.WaitUntil(() => diagnostics.Warnings.Rows.Count > 0, TimeSpan.FromSeconds(30),
+                "the stored warnings did not finish loading");
             Assert.DoesNotContain(warnings.Findings, finding => finding.Code == GrammarFindingCodes.ParseAllomorphUnsegmentable);
             var letterFindings = warnings.Findings.Where(finding => finding.Code == ProvisionalLetter).ToArray();
             Assert.All(letterFindings, finding => Assert.Equal(GrammarDiagnosticLevel.Information, finding.Severity));
             Assert.Equal(NoTextsWarningProject.UndeclaredLetters.Order(StringComparer.Ordinal),
                 letterFindings.Select(Letter).Order(StringComparer.Ordinal));
-            var row = Assert.Single(warnings.Rows.Cast<GrammarWarningRowViewModel>(),
+            var row = Assert.Single(diagnostics.Warnings.Rows,
                 item => item.GroupCode == ProvisionalLetter);
             Assert.Equal(letterFindings.Length, row.RepeatCount);
             Assert.Equal(row.RepeatCount, row.Details.Count);

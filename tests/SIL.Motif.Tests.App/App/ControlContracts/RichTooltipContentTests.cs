@@ -405,9 +405,6 @@ internal sealed class TooltipScenes
             case TooltipScene.StatisticsObjects:
                 Show(WorkspacePage.Diagnostics);
                 break;
-            case TooltipScene.WarningsTable:
-                Show(WorkspacePage.Progress);
-                break;
             case TooltipScene.Warnings:
                 Workspace.Context.Diagnostics = true;
                 Show(WorkspacePage.Diagnostics);

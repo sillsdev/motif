@@ -113,55 +113,6 @@
     "control": "ItemsControl"
   },
   {
-    "view": "GrammarPanel",
-    "name": "GrammarPanelRowsItems",
-    "source": "TableEntries",
-    "mode": "rows",
-    "control": "ListBox"
-  },
-  {
-    "view": "GrammarPanel",
-    "name": "GrammarPanelSelectionDetailsItems",
-    "source": "InlineSelectionDetails",
-    "mode": "inline",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "GrammarPanel",
-    "name": "GrammarPanelDetailsItems",
-    "source": "Details",
-    "mode": "inline",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "GrammarPanel",
-    "name": "GrammarPanelEntryLinksItems",
-    "source": "EntryLinks",
-    "mode": "rows",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "GrammarPanel",
-    "name": "GrammarPanelWordRowsItems",
-    "source": "WordRows",
-    "mode": "rows",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "GrammarPanel",
-    "name": "GrammarPanelMembershipCandidateRowsItems",
-    "source": "MembershipCandidateRows",
-    "mode": "rows",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "GrammarPanel",
-    "name": "GrammarPanelSpellingCandidateRowsItems",
-    "source": "SpellingCandidateRows",
-    "mode": "rows",
-    "control": "ItemsControl"
-  },
-  {
     "view": "HandoffPanel",
     "name": "HandoffPanelPlannedFilesItems",
     "source": "PlannedFiles",
@@ -517,14 +468,14 @@
     "control": "ItemsControl"
   },
   {
-    "view": "ProposalParsimonyPanel",
+    "view": "ProposalParsimonyDetails",
     "name": "ParsimonyGroups",
     "source": "Groups",
     "mode": "finite",
     "control": "ItemsControl"
   },
   {
-    "view": "ProposalParsimonyPanel",
+    "view": "ProposalParsimonyDetails",
     "name": "ParsimonyFindings",
     "source": "Findings",
     "mode": "finite",
@@ -676,5 +627,13 @@
     "source": "Requests.Rows",
     "mode": "paged",
     "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Diagnostics/ProposalDiagnosticsRow",
+    "name": "ProposalDiagnosticOperations",
+    "source": "Operations",
+    "mode": "rows",
+    "control": "ProgressiveItemsControl",
+    "reason": "w8: Exact Proposal grammar operations."
   }
 ]

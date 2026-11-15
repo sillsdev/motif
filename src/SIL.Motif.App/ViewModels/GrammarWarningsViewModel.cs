@@ -725,6 +725,11 @@ public sealed partial class GrammarWarningRowViewModel : ObservableObject
 
     private static string CountWord(int count, string singular, string plural) => count == 1 ? singular : plural;
 
+    /// <summary>The recorded kind and its actual number of findings.</summary>
+    public string DiagnosticGroupText => string.Format(System.Globalization.CultureInfo.CurrentCulture,
+        MotifAppStrings.DiagnosticsWarningCountFormat, GroupCode is { Length: > 0 } ? GroupCode : PanGlossTitle,
+        PluralText.Format(MotifAppStrings.WarningsFindingsPattern, RepeatCount));
+
     public string GroupName { get; }
     public string GroupCode { get; }
     public int SourceOrder { get; init; }

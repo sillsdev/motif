@@ -146,6 +146,8 @@ public sealed class AutomationIdsTests
             nameof(AutomationIds.ProposalApply), nameof(AutomationIds.ProposalDecline), nameof(AutomationIds.ProposalCompareFirst),
             nameof(AutomationIds.ProposalCompareSecond), nameof(AutomationIds.ClaudeRequests),
             nameof(AutomationIds.DiagnosticsWarningDetails), nameof(AutomationIds.ProgressChapters),
+            // w8 diagnostic identifiers.
+            nameof(AutomationIds.ProposalParsimonyParserWork), nameof(AutomationIds.ProposalParsimonyWallTime),
         };
         Assert.All(reserved, name => Assert.Contains(name, constants.Keys));
         Assert.All(constants.Keys.Except(reserved), name => Assert.Contains(name, references));

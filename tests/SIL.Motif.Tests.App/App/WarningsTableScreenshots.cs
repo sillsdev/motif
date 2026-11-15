@@ -17,9 +17,9 @@ public sealed class WarningsTableScreenshots
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
 
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var grammar = new GrammarViewModel(new FakeCommandClient());
+            var fake = new FakeCommandClient();
             var warnings = new[]
             {
                 new GrammarWarning(GrammarDiagnosticLevel.Error, "Unreadable environment",
@@ -50,15 +50,19 @@ public sealed class WarningsTableScreenshots
                     Description = "PanGloss did not use this affix.",
                 },
             };
-            grammar.LoadStored("warnings-capture.fwdata", new GrammarCheckResponse(warnings, HasBaseline: true));
-            grammar.Warnings.MostYourWordsFirst = false;
-            var panel = new GrammarPanel(grammar);
+            fake.StoredGrammarCheckIs(new GrammarCheckResponse(warnings, HasBaseline: true));
+            var context = WorkspaceContextTests.NewContext(fake);
+            context.Diagnostics = true;
+            var model = new DiagnosticsPageModel(context);
+            await context.OpenProjectAsync("warnings-capture.fwdata");
+            var grammar = model.Warnings.Grammar;
+            var panel = new DiagnosticsPage(model);
             var window = new MotifTestWindow { Content = panel, Width = 640, Height = 780 };
             try
             {
                 window.Show();
                 PageScreenshots.Settle(window);
-                var selected = grammar.Warnings.Rows.Cast<GrammarWarningRowViewModel>().First();
+                var selected = model.Warnings.Rows.First();
                 grammar.Warnings.OpenDetailsCommand.Execute(selected);
                 PageScreenshots.Settle(window);
 
@@ -76,9 +80,10 @@ public sealed class WarningsTableScreenshots
             finally
             {
                 window.Close();
+                await context.StopProjectWorkAsync();
             }
 
-            return Task.CompletedTask;
+
         }, TimeSpan.FromMinutes(2));
     }
 }

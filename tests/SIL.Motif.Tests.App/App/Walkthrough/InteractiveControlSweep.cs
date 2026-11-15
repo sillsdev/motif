@@ -267,6 +267,8 @@ internal static class InteractiveControlSweep
             InteractiveControlFamily.ContentSurface,
         ContentControl content when AutomationProperties.GetAutomationId(content) == AutomationIds.WordOccurrences =>
             InteractiveControlFamily.Container,
+        ContentControl content when AutomationProperties.GetAutomationId(content) == AutomationIds.DiagnosticsWarningDetails =>
+            InteractiveControlFamily.Container,
         UserControl panel when AutomationProperties.GetAutomationId(panel) == AutomationIds.Sources =>
             InteractiveControlFamily.Container,
         Border { Classes: var classes } when classes.Contains("handoffFile") => InteractiveControlFamily.FocusableSurface,

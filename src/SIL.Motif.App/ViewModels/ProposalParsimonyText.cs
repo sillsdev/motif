@@ -203,10 +203,10 @@ internal static class ProposalParsimonyText
 
     private static string Running(ProposalParsimonyStatus status)
     {
-        if (status.Job?.Stage is not { } stage) return MotifAppStrings.ProposalParsimonyRunning;
+        if (status.Job?.Stage is not { } stage) return MotifAppStrings.DiagnosticsParsimonyMeasuring;
         return StageName(stage.Stage) is { } name
-            ? Format(MotifAppStrings.ProposalParsimonyRunningStageFormat, name, stage.Step, stage.Steps)
-            : Format(MotifAppStrings.ProposalParsimonyRunningStepFormat, stage.Step, stage.Steps);
+            ? Format(MotifAppStrings.DiagnosticsParsimonyMeasuringStageFormat, name, stage.Step, stage.Steps)
+            : Format(MotifAppStrings.DiagnosticsParsimonyMeasuringStepFormat, stage.Step, stage.Steps);
     }
 
     private static string? StageName(string stage) => stage switch

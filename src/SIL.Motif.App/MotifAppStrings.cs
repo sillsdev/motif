@@ -3941,4 +3941,26 @@ public static class MotifAppStrings
     public static string ClaudeUnsupportedTarget => Text("MotifApp.ClaudeUnsupportedTarget");
     public static string ClaudeRequestsLoading => Text("MotifApp.ClaudeRequestsLoading");
     public static string ClaudeRequestKindUnknown => Text("MotifApp.ClaudeRequestKindUnknown");
+    // w8 diagnostics resources.
+    public static string DiagnosticsIntro => Text("MotifApp.DiagnosticsIntro");
+    public static string DiagnosticsUnavailable => Text("MotifApp.DiagnosticsUnavailable");
+    public static string DiagnosticsNoWarnings => Text("MotifApp.DiagnosticsNoWarnings");
+    public static string DiagnosticsWarningCountFormat => Text("MotifApp.DiagnosticsWarningCountFormat");
+    public static string DiagnosticsMeasuredFormat => Text("MotifApp.DiagnosticsMeasuredFormat");
+    public static string DiagnosticsNoWork => Text("MotifApp.DiagnosticsNoWork");
+    public static string DiagnosticsPartial => Text("MotifApp.DiagnosticsPartial");
+    public static string DiagnosticsWarningsFormat => Text("MotifApp.DiagnosticsWarningsFormat");
+    public static string DiagnosticsTrialUnavailable => Text("MotifApp.DiagnosticsTrialUnavailable");
+    public static string DiagnosticsSignedUnavailable => Text("MotifApp.DiagnosticsSignedUnavailable");
+    public static string DiagnosticsOperations => Text("MotifApp.DiagnosticsOperations");
+    public static string DiagnosticsStepsFormat => Text("MotifApp.DiagnosticsStepsFormat");
+    public static string DiagnosticsWorkUnavailable => Text("MotifApp.DiagnosticsWorkUnavailable");
+    public static string DiagnosticsOutOfDate => Text("MotifApp.DiagnosticsOutOfDate");
+    public static string DiagnosticsReading => Text("MotifApp.DiagnosticsReading");
+    public static string DiagnosticsUnreadable => Text("MotifApp.DiagnosticsUnreadable");
+    public static string DiagnosticsMismatched => Text("MotifApp.DiagnosticsMismatched");
+    public static string DiagnosticsParsimonyMeasuring => Text("MotifApp.DiagnosticsParsimonyMeasuring");
+    public static string DiagnosticsParsimonyMeasuringStepFormat => Text("MotifApp.DiagnosticsParsimonyMeasuringStepFormat");
+    public static string DiagnosticsParsimonyMeasuringStageFormat => Text("MotifApp.DiagnosticsParsimonyMeasuringStageFormat");
+
 }

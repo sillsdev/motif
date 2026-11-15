@@ -544,7 +544,6 @@ internal enum TooltipScene
     Timing,
     Statistics,
     StatisticsObjects,
-    WarningsTable,
     Warnings,
     Handoff,
     ReaderStaged,
@@ -864,12 +863,6 @@ internal static class TooltipOwners
         new("FieldWorks link in a finding", "Views/GrammarWarningPartsBlock.cs",
             "$\"Open this item in {tool}\"", TooltipScene.Warnings,
             control => control is HyperlinkButton && control.Classes.Contains("warningObjectLink")),
-        new("Warnings table named words unavailable", "Views/GrammarPanel.axaml", "{Binding TableNamedWordsNote}", TooltipScene.WarningsTable,
-            control => control is CopyableTextBlock && control.FindAncestorOfType<GrammarPanel>() is not null &&
-                ToolTip.GetTip(control) as string == MotifAppStrings.WarningsReachUnavailable)
-        {
-            Pending = "the Diagnostics page shows recorded warning rows without the retired Warnings table",
-        },
         new("drag all files", "Views/HandoffPanel.axaml", "Drag into a chat. From the keyboard, press Enter to copy the folder path.",
             TooltipScene.Handoff, control => control is Button { Name: "AllFilesButton" }),
         new("question to copy", "Views/HandoffPanel.axaml", "Copy this question", TooltipScene.Handoff,

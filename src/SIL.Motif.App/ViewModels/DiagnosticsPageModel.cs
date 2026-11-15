@@ -13,6 +13,12 @@ public sealed record OpenDiagnosticsRequest(DiagnosticsTab Tab) : PageRequest(Wo
 /// <summary>The recorded warnings and timing detail shown on Diagnostics.</summary>
 public sealed class DiagnosticsPageModel : PageModel
 {
+    private readonly List<ProposalDiagnosticsViewModel> _documents = [];
+
+    internal void Register(ProposalDiagnosticsViewModel document) => _documents.Add(document);
+
+    internal void Unregister(ProposalDiagnosticsViewModel document) => _documents.Remove(document);
+
     private CancellationTokenSource _stop = new();
     private readonly List<Task> _reads = [];
     private int _selectedTabIndex;
@@ -58,24 +64,29 @@ public sealed class DiagnosticsPageModel : PageModel
     {
         Warnings.Clear();
         SpeedByRule.Clear();
+        foreach (var document in _documents.ToArray()) document.ClearProject();
     }
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
         RefreshAsync(projectPath, cancellationToken);
 
     protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken) =>
-        RefreshCurrentAsync(cancellationToken);
+        RefreshEvidenceAsync(cancellationToken);
 
     protected override Task OnGrammarCheckedAsync(CancellationToken cancellationToken) => RefreshCurrentAsync(cancellationToken);
 
-    protected override Task OnBaselineCapturedAsync(CancellationToken cancellationToken) => RefreshCurrentAsync(cancellationToken);
+    protected override Task OnBaselineCapturedAsync(CancellationToken cancellationToken) => RefreshEvidenceAsync(cancellationToken);
+
+    private Task RefreshEvidenceAsync(CancellationToken token) => Task.WhenAll(
+        _documents.ToArray().Select(document => document.RefreshEvidenceAsync(token)).Append(RefreshCurrentAsync(token)));
 
     protected override async Task OnStopWorkAsync()
     {
         Warnings.Clear();
         SpeedByRule.Clear();
         _stop.Cancel();
-        await Task.WhenAll(_reads).ConfigureAwait(true);
+        await Task.WhenAll(_reads.Append(SpeedByRule.StopLinksAsync())
+            .Concat(_documents.ToArray().Select(document => document.StopWorkAsync()))).ConfigureAwait(true);
         _reads.Clear();
         _stop.Dispose();
         _stop = new CancellationTokenSource();

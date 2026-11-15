@@ -1,0 +1,5 @@
+<Styles xmlns="https://github.com/avaloniaui">
+  <Style Selector="StackPanel.proposalDiagnostics">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Panel}" />
+  </Style>
+</Styles>

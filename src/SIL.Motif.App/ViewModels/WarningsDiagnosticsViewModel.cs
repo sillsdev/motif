@@ -14,11 +14,19 @@ public sealed partial class WarningsDiagnosticsViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(context);
         _context = context;
+        Grammar = new GrammarViewModel(context.Commands);
         context.Evidence.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(ProjectEvidence.IsStale) && context.Evidence.IsStale) Clear();
         };
     }
+
+    /// <summary>Availability of the stored check, distinct from a measured empty check.</summary>
+    [ObservableProperty]
+    private string _statusText = MotifAppStrings.DiagnosticsUnavailable;
+
+    /// <summary>The stored check and its attributed evidence.</summary>
+    public GrammarViewModel Grammar { get; }
 
     /// <summary>Findings in the most recently read stored check.</summary>
     [ObservableProperty]
@@ -29,7 +37,11 @@ public sealed partial class WarningsDiagnosticsViewModel : ObservableObject
 
     partial void OnFindingsChanged(IReadOnlyList<GrammarWarning> value)
     {
-        Rows = value.Select(finding => new GrammarWarningRowViewModel(finding)).ToArray();
+        Rows = value.Select((finding, index) => (finding, index))
+            .GroupBy(item => string.IsNullOrWhiteSpace(item.finding.Code)
+                ? (Code: (string?)null, Index: item.index) : (Code: item.finding.Code, Index: -1))
+            .Select(group => new GrammarWarningRowViewModel(group.Select(item => item.finding).ToArray(),
+                new WordRowRoutes { OpenInText = _context.OpenWord })).ToArray();
         OnPropertyChanged(nameof(Rows));
     }
 
@@ -37,19 +49,33 @@ public sealed partial class WarningsDiagnosticsViewModel : ObservableObject
     {
         _generation++;
         Findings = [];
+        Grammar.Clear();
+        StatusText = _context.Evidence.IsStale ? MotifAppStrings.DiagnosticsOutOfDate : MotifAppStrings.DiagnosticsUnavailable;
     }
 
     internal async Task ReadAsync(string projectPath, CancellationToken cancellationToken)
     {
         var generation = ++_generation;
         Findings = [];
+        Grammar.Clear();
+        StatusText = _context.Evidence.IsStale ? MotifAppStrings.DiagnosticsOutOfDate : MotifAppStrings.DiagnosticsUnavailable;
         if (_context.Evidence.IsStale) return;
+        StatusText = MotifAppStrings.DiagnosticsReading;
         var baseline = _context.Baseline?.Token;
         var result = await _context.Commands.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(projectPath), cancellationToken)
             .ConfigureAwait(true);
         if (generation != _generation || cancellationToken.IsCancellationRequested || _context.ProjectPath != projectPath ||
             _context.Evidence.IsStale || _context.Baseline?.Token != baseline) return;
+        StatusText = result.Succeeded ? MotifAppStrings.DiagnosticsUnavailable : MotifAppStrings.DiagnosticsUnreadable;
+        if (result.Succeeded && result.Value is { } stored)
+        {
+            Grammar.LoadStored(projectPath, stored.Check, stored.LastParserRefusal);
+            if (stored.LastParserRefusal is { } refusal) StatusText = WindowRefusal.From(refusal).Sentence;
+            else if (stored.Check is { HasBaseline: false }) StatusText = MotifAppStrings.GrammarBaselineRequired;
+        }
         Findings = result.Succeeded && result.Value is { LastParserRefusal: null, Check: { HasBaseline: true } check }
             ? check.Findings : [];
+        if (result.Succeeded && result.Value is { LastParserRefusal: null, Check.HasBaseline: true })
+            StatusText = Findings.Count == 0 ? MotifAppStrings.DiagnosticsNoWarnings : MotifAppStrings.DiagnosticsIntro;
     }
 }

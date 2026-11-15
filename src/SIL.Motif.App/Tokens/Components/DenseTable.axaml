@@ -5,7 +5,6 @@
     <StaticResource x:Key="Component.DenseTable.GroupHeaderHeight" ResourceKey="Primitive.Size.26" />
     <StaticResource x:Key="Component.DenseTable.ColumnHeaderHeight" ResourceKey="Primitive.Size.26" />
     <StaticResource x:Key="Component.DenseTable.RowHeight" ResourceKey="Primitive.Size.36" />
-    <StaticResource x:Key="Component.DenseTable.DetailMaxHeight" ResourceKey="Primitive.Size.320" />
     <StaticResource x:Key="Component.DenseTable.Column.NarrowWidth" ResourceKey="Primitive.Size.110" />
     <StaticResource x:Key="Component.DenseTable.Column.ActionsWidth" ResourceKey="Primitive.Size.92" />
     <StaticResource x:Key="Component.DenseTable.CompactThreshold" ResourceKey="Primitive.Size.600" />

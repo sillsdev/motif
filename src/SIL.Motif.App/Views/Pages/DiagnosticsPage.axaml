@@ -15,13 +15,17 @@
                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsTabs}">
       <TabItem Header="{x:Static app:MotifAppStrings.BoardWarnings}"
                AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardWarnings}">
+        <views:WarningsTab>
+          <views:WarningsTab.RowsContent>
         <ListBox x:Name="DiagnosticWarningRows" Classes="diagnosticRows" ItemsSource="{Binding Warnings.Rows}"
+                 SelectedItem="{Binding Warnings.Grammar.Warnings.SelectedTableEntry, Mode=TwoWay}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardWarnings}"
                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsWarnings}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
                 <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+                  <views:CopyableTextBlock Classes="muted" Text="{Binding DiagnosticGroupText}" TextWrapping="Wrap" />
                   <views:CopyableTextBlock Text="{Binding PanGlossTitle}" TextWrapping="Wrap" />
                   <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
                   <views:CopyableTextBlock Text="{Binding Message}" TextWrapping="Wrap"
@@ -32,13 +36,15 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+          </views:WarningsTab.RowsContent>
+        </views:WarningsTab>
       </TabItem>
       <TabItem Header="{x:Static app:MotifAppStrings.BoardSpeedByRule}"
                AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardSpeedByRule}">
-        <Grid RowDefinitions="Auto,*" IsVisible="{Binding SpeedByRule.HasRows}"
-              AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsSpeedByRule}">
-          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TimingTimeColumnHeading}" />
-          <ListBox Grid.Row="1" x:Name="DiagnosticRuleRows" Classes="diagnosticRows" ItemsSource="{Binding SpeedByRule.Rows}"
+        <views:SpeedByRuleTab>
+          <views:SpeedByRuleTab.RowsContent>
+          <ListBox x:Name="DiagnosticRuleRows" Classes="diagnosticRows" ItemsSource="{Binding SpeedByRule.Rows}"
+                   SelectedItem="{Binding SpeedByRule.SelectedWork, Mode=TwoWay}"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                    AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardSpeedByRule}"
                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsRuleRows}">
@@ -46,12 +52,20 @@
               <DataTemplate x:DataType="response:TimingWorkAggregate">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
                   <views:CopyableTextBlock Text="{Binding Name}" TextWrapping="Wrap" />
-                  <views:CopyableTextBlock Grid.Column="1" Text="{Binding ParserWork}" />
+                  <views:CopyableTextBlock Grid.Column="1">
+                    <views:CopyableTextBlock.Text>
+                      <MultiBinding Converter="{x:Static vm:DiagnosticStepsConverter.Instance}">
+                        <Binding Path="ParserWork" />
+                        <ReflectionBinding Path="DataContext.SpeedByRule.MeasuredWordCount" RelativeSource="{RelativeSource AncestorType=views:DiagnosticsPage}" />
+                      </MultiBinding>
+                    </views:CopyableTextBlock.Text>
+                  </views:CopyableTextBlock>
                 </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
-        </Grid>
+          </views:SpeedByRuleTab.RowsContent>
+        </views:SpeedByRuleTab>
       </TabItem>
     </TabControl>
   </Grid>

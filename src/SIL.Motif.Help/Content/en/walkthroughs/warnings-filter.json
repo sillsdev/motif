@@ -3,11 +3,11 @@
   "title": "Read grammar findings",
   "description": "Open Diagnostics to read the findings PanGloss recorded for a project's current Baseline.",
   "steps": {
-    "findings": "Diagnostics shows grammar findings saved for the current Baseline."
+    "findings": "The Warnings tab on Diagnostics shows findings saved for the current Baseline."
   },
   "callouts": {
     "findings": {
-      "motif-page-diagnostics": "Diagnostics for this Baseline"
+      "motif-page-diagnostics": "Warnings for this Baseline"
     }
   }
 }

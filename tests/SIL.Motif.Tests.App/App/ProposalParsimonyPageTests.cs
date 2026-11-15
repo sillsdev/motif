@@ -188,7 +188,7 @@ public sealed class ProposalParsimonyPageTests
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "Motif.sln"))) root = root.Parent;
         Assert.NotNull(root);
-        var allowed = new[] { "ProposalParsimony", "ProposalsPageModel", "ICommandClient", "CommandClient", "MotifAppStrings", "AutomationIds" };
+        var allowed = new[] { "ProposalParsimony", "ProposalDiagnostics", "ProposalsPageModel", "ICommandClient", "CommandClient", "MotifAppStrings", "AutomationIds" };
         var users = Directory.EnumerateFiles(Path.Combine(root.FullName, "src", "SIL.Motif.App"), "*.cs", SearchOption.AllDirectories)
             .Where(path => File.ReadAllText(path).Contains("ProposalParsimony", StringComparison.Ordinal))
             .Select(Path.GetFileName)

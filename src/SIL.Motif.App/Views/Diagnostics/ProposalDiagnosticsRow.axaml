@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalDiagnosticsRow" x:DataType="vm:ProposalDiagnosticsViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ProposalDiagnostics.axaml" />
+  </UserControl.Styles>
+  <UserControl.Resources>
+    <DataTemplate x:Key="DiagnosticContent" x:DataType="vm:ProposalDiagnosticsViewModel">
+      <StackPanel Classes="proposalDiagnostics" Spacing="{DynamicResource Intent.Space.Related}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardDiagnostics}"
+                  AutomationProperties.AutomationId="{Binding AutomationId}">
+        <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardDiagnostics}" />
+        <views:CopyableTextBlock Text="{Binding AvailabilityText}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Text="{Binding WarningsText}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Text="{Binding StepsText}" TextWrapping="Wrap" />
+        <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.DiagnosticsSignedUnavailable}" TextWrapping="Wrap" />
+        <Expander Header="{x:Static app:MotifAppStrings.ProposalParsimonyTitle}"
+                  AutomationProperties.AutomationId="{Binding ParsimonyFoldAutomationId}">
+          <views:ProposalParsimonyDetails DataContext="{Binding Parsimony}" />
+        </Expander>
+        <Expander Header="{x:Static app:MotifAppStrings.DiagnosticsOperations}">
+          <views:ProgressiveItemsControl x:Name="ProposalDiagnosticOperations" FullItemsSource="{Binding Operations}">
+            <views:ProgressiveItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+            </views:ProgressiveItemsControl.ItemTemplate>
+          </views:ProgressiveItemsControl>
+        </Expander>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+  <ContentControl x:Name="DiagnosticSurface" />
+</UserControl>
