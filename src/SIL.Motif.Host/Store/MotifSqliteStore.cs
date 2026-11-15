@@ -87,16 +87,18 @@ internal sealed class MotifSqliteStore : IDisposable
     private readonly object _stateGate = new();
     private readonly HashSet<SqliteConnection> _connections = [];
     private readonly bool _pooled;
+    private readonly bool _readOnly;
     private readonly string? _poolConnectionString;
     private bool _disposed;
 
-    private MotifSqliteStore(string path, string name, FileStream useLease, bool pooled)
+    private MotifSqliteStore(string path, string name, FileStream useLease, bool pooled, bool readOnly = false)
     {
         _path = path;
         _name = name;
         _useLease = useLease;
         _pooled = pooled;
-        _poolConnectionString = pooled ? ConnectionString(path, pooled: true) : null;
+        _readOnly = readOnly;
+        _poolConnectionString = pooled ? ConnectionString(path, pooled: true, readOnly: readOnly) : null;
         if (_poolConnectionString is not null) RegisterPoolOwner(_poolConnectionString);
     }
 
@@ -170,6 +172,41 @@ internal sealed class MotifSqliteStore : IDisposable
         catch
         {
             ownership?.Dispose();
+            useLease?.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>Opens a validated existing store for reads without creating or upgrading it.</summary>
+    public static MotifSqliteStore OpenExistingReadOnly(string path, MotifSqliteStoreDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        var fullPath = Path.GetFullPath(path);
+        FileStream? useLease = null;
+        try
+        {
+            useLease = new FileStream(fullPath + ".use.lock", FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete, 1, FileOptions.None);
+            using var connection = OpenReadOnlyConfiguredConnection(fullPath);
+            if (Inspect(connection, descriptor, fullPath) == 0)
+                throw new InvalidDataException($"The {descriptor.Name} has not been initialized.");
+            ValidateExisting(connection, descriptor);
+            var store = new MotifSqliteStore(fullPath, descriptor.Name, useLease, pooled: false, readOnly: true);
+            useLease = null;
+            return store;
+        }
+        catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
+        {
+            useLease?.Dispose();
+            throw new InvalidDataException($"The {descriptor.Name} is corrupt or is not a database.", exception);
+        }
+        catch (SqliteException exception)
+        {
+            useLease?.Dispose();
+            throw new IOException($"The {descriptor.Name} is unavailable.", exception);
+        }
+        catch
+        {
             useLease?.Dispose();
             throw;
         }
@@ -309,7 +346,7 @@ internal sealed class MotifSqliteStore : IDisposable
             SqliteConnection connection;
             try
             {
-                connection = OpenConfiguredConnection(_path, _pooled, RemoveConnection);
+                connection = OpenConfiguredConnection(_path, _pooled, RemoveConnection, _readOnly);
             }
             catch (SqliteException exception) when (SqliteConnections.IsCorruption(exception))
             {
@@ -374,19 +411,25 @@ internal sealed class MotifSqliteStore : IDisposable
     private static SqliteConnection OpenInspectionConnection(string path)
         => OpenConnectionCore(path, SqliteConnections.ConfigureSession);
 
+    private static SqliteConnection OpenReadOnlyConfiguredConnection(string path)
+        => OpenConnectionCore(path, SqliteConnections.ConfigureSession, readOnly: true);
+
     private static SqliteConnection OpenConfiguredConnection(
         string path,
         bool pooled,
-        Action<SqliteConnection>? onDisposed = null)
-        => OpenConnectionCore(path, SqliteConnections.ConfigureConnection, onDisposed, pooled);
+        Action<SqliteConnection>? onDisposed = null,
+        bool readOnly = false)
+        => OpenConnectionCore(path, readOnly ? SqliteConnections.ConfigureSession : SqliteConnections.ConfigureConnection,
+            onDisposed, pooled, readOnly);
 
     private static SqliteConnection OpenConnectionCore(
         string path,
         Action<SqliteConnection> configure,
         Action<SqliteConnection>? onDisposed = null,
-        bool pooled = false)
+        bool pooled = false,
+        bool readOnly = false)
     {
-        var connectionString = ConnectionString(path, pooled);
+        var connectionString = ConnectionString(path, pooled, readOnly);
         var connection = onDisposed is null
             ? new SqliteConnection(connectionString)
             : new OwnedSqliteConnection(connectionString, onDisposed);
@@ -421,12 +464,12 @@ internal sealed class MotifSqliteStore : IDisposable
         command.ExecuteNonQuery();
     }
 
-    private static string ConnectionString(string path, bool pooled) => new SqliteConnectionStringBuilder
+    private static string ConnectionString(string path, bool pooled, bool readOnly = false) => new SqliteConnectionStringBuilder
     {
         // Opening the main file through a URI enables read-only URI ATTACH elsewhere in this process.
         DataSource = new Uri(path).AbsoluteUri,
         Pooling = pooled,
-        Mode = SqliteOpenMode.ReadWriteCreate
+        Mode = readOnly ? SqliteOpenMode.ReadOnly : SqliteOpenMode.ReadWriteCreate
     }.ToString();
 
     private static bool HasShortTestTimeout(string path)

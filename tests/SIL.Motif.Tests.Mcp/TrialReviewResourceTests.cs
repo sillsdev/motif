@@ -68,6 +68,15 @@ public sealed class TrialReviewResourceTests
             });
             Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
             var prefix = $"motif://projects/{Uri.EscapeDataString(key)}/trial-reports/{Uri.EscapeDataString(outcome.Value!)}";
+            var store = ProjectDatabaseCatalog.DatabasePathFor(project);
+            var useLock = store + ".use.lock";
+            Assert.True(File.Exists(useLock));
+            File.Delete(useLock);
+            var storeBytes = File.ReadAllBytes(store);
+            Assert.Throws<McpProtocolException>(() => ReviewReportResources.Read(prefix, "1.0", root));
+            Assert.False(File.Exists(useLock));
+            Assert.Equal(storeBytes, File.ReadAllBytes(store));
+            File.WriteAllBytes(useLock, []);
             var summary = Read(prefix, root);
             Assert.Equal("report", summary.GetProperty("state").GetString());
             var page = Read(prefix + "/sections/wordforms?limit=1", root);

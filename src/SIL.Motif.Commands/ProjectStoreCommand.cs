@@ -48,6 +48,30 @@ public static class ProjectStoreCommand
         TimeSpan? ownershipPatience = null, TimeProvider? timeProvider = null) where T : class? =>
         RunCore(fwDataPath, productVersion, act, ownershipPatience, timeProvider, retainDatabase: false);
 
+    /// <summary>Reads a validated existing project store without creating or upgrading it.</summary>
+    /// <typeparam name="T">The successful result type.</typeparam>
+    /// <param name="fwDataPath">The path to the FieldWorks project data file.</param>
+    /// <param name="absent">The outcome returned when the paired Motif store does not exist.</param>
+    /// <param name="read">The read operation against a read-only database boundary.</param>
+    /// <returns>The read operation's outcome, or <paramref name="absent"/> when the store is missing.</returns>
+    /// <remarks>Connections use SQLite read-only mode, and the boundary holds an existing-use lease.</remarks>
+    public static CommandOutcome<T> ReadExisting<T>(string fwDataPath, CommandOutcome<T> absent,
+        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> read) where T : class?
+    {
+        ArgumentNullException.ThrowIfNull(absent);
+        ArgumentNullException.ThrowIfNull(read);
+        var located = LocateProject(fwDataPath);
+        if (!located.Succeeded) return CommandOutcome<T>.Refused(located.Refusal!);
+        var project = located.Value!;
+        var path = ProjectDatabaseCatalog.DatabasePathFor(project);
+        return RunOperation(fwDataPath, () =>
+        {
+            if (!File.Exists(path)) return absent;
+            using var database = MotifDatabase.OpenExistingReadOnly(path, project);
+            return read(database, project);
+        });
+    }
+
     /// <summary>A successful result owns the database lease and must release it when its session is disposed.</summary>
     internal static CommandOutcome<T> OpenSession<T>(string fwDataPath, string productVersion,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act) where T : class? =>

@@ -49,6 +49,20 @@ public sealed class MotifDatabase : IDisposable
         return new MotifDatabase(MotifSqliteStore.Open(path, descriptor, ownershipPatience), project);
     }
 
+    /// <summary>Opens a validated existing project store for read-only access without creating or upgrading it.</summary>
+    /// <param name="path">The existing sibling Motif database path.</param>
+    /// <param name="project">The project locator that must match persisted metadata.</param>
+    /// <returns>A database boundary whose connections cannot write to the store.</returns>
+    /// <exception cref="FileNotFoundException">The store's active-use lease does not exist.</exception>
+    /// <exception cref="InvalidDataException">The file identity, metadata, or project binding is invalid.</exception>
+    /// <exception cref="NotSupportedException">The store schema or worker compatibility is unsupported.</exception>
+    /// <exception cref="IOException">The existing store is unavailable.</exception>
+    public static MotifDatabase OpenExistingReadOnly(string path, ProjectLocator project)
+    {
+        var descriptor = Describe(path, project, MotifSchema.CurrentSchema, MotifProductVersion.Current);
+        return new MotifDatabase(MotifSqliteStore.OpenExistingReadOnly(path, descriptor), project);
+    }
+
     /// <summary>
     /// Deletes a project database that <see cref="OpenOwned"/> would refuse with a
     /// <see cref="MotifStoreVersionException"/>, because another version of Motif made it. Any other refusal is

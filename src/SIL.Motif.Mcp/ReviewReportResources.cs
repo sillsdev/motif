@@ -53,7 +53,9 @@ internal static class ReviewReportResources
         var cursor = query.GetValueOrDefault("cursor");
         var parent = query.GetValueOrDefault("parent");
         if (parent is not null && (parts.Length != 5 || parts[3] != "traces")) throw Invalid("Only traces have node children.");
-        var outcome = ProjectStoreCommand.Run<object>(path, productVersion, (database, project) =>
+        var absent = CommandOutcome<object>.Refused(new Refusal("difference.no-trial", FailureReason.NotFound,
+            "The report was not found."));
+        var outcome = ProjectStoreCommand.ReadExisting<object>(path, absent, (database, project) =>
         {
             var repository = new ReviewReportRepository(database);
             var stored = repository.ReadManifest(reportId);
