@@ -319,4 +319,8 @@ public static class AutomationIds
     public const string SourcesFolder = "motif-sources-folder";
     public const string SourcesStageContext = "motif-sources-stage-context";
     #endregion
+    // W7_shared
+    public const string ClaudeToggle = "motif-claude-toggle";
+    public const string ClaudeClose = "motif-claude-close";
+    public const string ClaudeSetup = "motif-claude-setup";
 }

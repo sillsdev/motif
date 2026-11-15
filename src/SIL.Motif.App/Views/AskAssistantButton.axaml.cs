@@ -7,12 +7,12 @@ using SIL.Motif.App.ViewModels;
 namespace SIL.Motif.App.Views;
 
 /// <summary>
-/// "Ask an Assistant to Fix This": a button with a small flyout for an optional note. It raises
+/// "Ask Claude": a button with a small flyout for an optional note. It raises
 /// <see cref="AskedEvent"/>, which bubbles to the window, so the card, row or cell never needs the shell.
 /// </summary>
 public sealed partial class AskAssistantButton : UserControl
 {
-    /// <summary>Raised, bubbling, when the person sends the Request.</summary>
+    /// <summary>Raised, bubbling, when the person records the Request.</summary>
     public static readonly RoutedEvent<AskAssistantEventArgs> AskedEvent =
         RoutedEvent.Register<AskAssistantButton, AskAssistantEventArgs>("Asked", RoutingStrategies.Bubble);
 
@@ -28,11 +28,20 @@ public sealed partial class AskAssistantButton : UserControl
     public static readonly StyledProperty<bool> CardStyleProperty =
         AvaloniaProperty.Register<AskAssistantButton, bool>(nameof(CardStyle));
 
-    public AskAssistantButton() => AvaloniaXamlLoader.Load(this);
+    public AskAssistantButton()
+    {
+        AvaloniaXamlLoader.Load(this);
+        UpdateTargetVisibility();
+    }
+
+    private void UpdateTargetVisibility() =>
+        this.FindControl<Button>("AskButton")?.SetCurrentValue(IsVisibleProperty,
+            AskAssistantAction.Supports(TargetKind));
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        if (change.Property == TargetKindProperty) UpdateTargetVisibility();
         if (change.Property == CardStyleProperty)
             this.FindControl<Button>("AskButton")?.Classes.Set("wordPresentationCardAction", CardStyle);
     }
@@ -44,14 +53,14 @@ public sealed partial class AskAssistantButton : UserControl
         set => SetValue(CardStyleProperty, value);
     }
 
-    /// <summary><c>word</c>, <c>warning</c> or <c>matrix-cell</c>.</summary>
+    /// <summary><c>word</c> or <c>warning</c>.</summary>
     public string TargetKind
     {
         get => GetValue(TargetKindProperty);
         set => SetValue(TargetKindProperty, value);
     }
 
-    /// <summary>The word, Warning or cell the Request is about.</summary>
+    /// <summary>The word or Warning the Request is about.</summary>
     public string? TargetId
     {
         get => GetValue(TargetIdProperty);
@@ -68,7 +77,7 @@ public sealed partial class AskAssistantButton : UserControl
     private void OnAskClick(object? sender, RoutedEventArgs e)
     {
         var note = this.FindControl<TextBox>("NoteBox");
-        if (!string.IsNullOrWhiteSpace(TargetId))
+        if (AskAssistantAction.Supports(TargetKind) && !string.IsNullOrWhiteSpace(TargetId))
             RaiseEvent(new AskAssistantEventArgs(new AskAssistantTarget(TargetKind, TargetId,
                 string.IsNullOrWhiteSpace(TargetLabel) ? TargetId : TargetLabel, note?.Text), this));
         if (note is not null) note.Text = string.Empty;
@@ -80,7 +89,7 @@ public sealed partial class AskAssistantButton : UserControl
     private void CloseFlyout() => this.FindControl<Button>("AskButton")?.Flyout?.Hide();
 }
 
-/// <summary>A Request the person sent from an <see cref="AskAssistantButton"/>.</summary>
+/// <summary>A Request the person recorded from an <see cref="AskAssistantButton"/>.</summary>
 public sealed class AskAssistantEventArgs : RoutedEventArgs
 {
     public AskAssistantEventArgs(AskAssistantTarget target, object source) : base(AskAssistantButton.AskedEvent, source) =>

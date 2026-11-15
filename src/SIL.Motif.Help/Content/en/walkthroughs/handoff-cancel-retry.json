@@ -1,9 +1,9 @@
 {
   "id": "handoff-cancel-retry",
   "title": "Cancel and retry a Handoff",
-  "description": "Cancel a running AI Handoff from Settings, then retry and inspect the completed files.",
+  "description": "Open the optional file Handoff in Settings, cancel a running write, then retry and inspect the completed files.",
   "steps": {
-    "completed-files": "The retry writes the completed AI Handoff files."
+    "completed-files": "The retry writes the completed Handoff files in the Settings utility."
   },
   "callouts": {
     "completed-files": {

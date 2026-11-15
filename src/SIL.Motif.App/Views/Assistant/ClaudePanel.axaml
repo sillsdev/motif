@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:views="clr-namespace:SIL.Motif.App.Views" xmlns:app="clr-namespace:SIL.Motif.App" xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+ x:Class="SIL.Motif.App.Views.Assistant.ClaudePanel" x:DataType="vm:ClaudePanelViewModel" Classes="claudePanel">
+ <Border Classes="claudePanelBody">
+  <Grid RowDefinitions="Auto,*">
+   <DockPanel>
+    <Button x:Name="CloseButton" DockPanel.Dock="Right" Content="{x:Static app:MotifAppStrings.ClaudeClose}"
+      Click="OnClose" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ClaudeClose}" />
+    <TextBlock Text="{x:Static app:MotifAppStrings.BoardClaude}" VerticalAlignment="Center" />
+   </DockPanel>
+   <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+     <TextBlock Text="{x:Static app:MotifAppStrings.ClaudePanelExplanation}" TextWrapping="Wrap" />
+     <Button Content="{x:Static app:MotifAppStrings.ClaudeSetup}" Click="OnSetup"
+       AutomationProperties.AutomationId="{x:Static app:AutomationIds.ClaudeSetup}" />
+     <TextBlock Text="{x:Static app:MotifAppStrings.ClaudeOpenProject}" IsVisible="{Binding !HasProject}" TextWrapping="Wrap" />
+     <StackPanel IsVisible="{Binding HasProject}" Spacing="{DynamicResource Intent.Space.Related}">
+      <TextBlock Text="{Binding Requests.Title}" TextWrapping="Wrap" />
+      <Button Content="{x:Static app:MotifAppStrings.ClaudeRefresh}" Command="{Binding RefreshCommand}" />
+      <TextBlock Text="{x:Static app:MotifAppStrings.ClaudeRequestsLoading}" IsVisible="{Binding IsLoading}" />
+      <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+      <TextBlock Text="{x:Static app:MotifAppStrings.ClaudeRequestsEmpty}" IsVisible="{Binding ShowsEmpty}" />
+      <views:ProgressiveItemsControl x:Name="ClaudeRequestsItems" FullItemsSource="{Binding Requests.Rows}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ClaudeRequests}">
+       <views:ProgressiveItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:OpenRequestRowViewModel">
+         <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+          <TextBlock Text="{Binding TargetText}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding NoteText}" IsVisible="{Binding HasNote}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding AgeText}" />
+          <Button Content="{x:Static app:MotifAppStrings.WithdrawRequest}" Command="{Binding $parent[UserControl].((vm:ClaudePanelViewModel)DataContext).WithdrawCommand}"
+            CommandParameter="{Binding}" AutomationProperties.AutomationId="{Binding WithdrawAutomationId}" />
+         </StackPanel>
+        </DataTemplate>
+       </views:ProgressiveItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+      <Button Content="{x:Static app:MotifAppStrings.ClaudeLoadMore}" Command="{Binding ShowMoreCommand}" IsVisible="{Binding Requests.HasMore}" />
+     </StackPanel>
+    </StackPanel>
+   </ScrollViewer>
+  </Grid>
+ </Border>
+</UserControl>

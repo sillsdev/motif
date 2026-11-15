@@ -55,6 +55,8 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ToolTip.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/Proposals.axaml" />
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/DenseTable.axaml" />
+    <!-- W7 -->
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ClaudePanel.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>

@@ -3,7 +3,7 @@
              xmlns:app="clr-namespace:SIL.Motif.App"
              x:Class="SIL.Motif.App.Views.AskAssistantButton">
   <Button x:Name="AskButton"
-          Content="{x:Static app:MotifAppStrings.AskAnAssistantToFixThis}"
+          Content="{x:Static app:MotifAppStrings.BoardAskClaude}"
           AutomationProperties.AutomationId="{x:Static app:AutomationIds.AskAssistantButton}">
     <Button.Flyout>
       <Flyout Placement="BottomEdgeAlignedLeft">

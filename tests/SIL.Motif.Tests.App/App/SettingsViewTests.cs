@@ -56,23 +56,18 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     foreach (var text in workspace.Selection.Texts)
                         text.IsChecked = allBoxesAlreadyChecked || text.Id == SampleTextId;
                     var popup = OpenSettings(window);
-                    SettingsTestAccess.Select(popup, SettingsGroup.Texts);
+                    SettingsTestAccess.Select(popup, SettingsGroup.AssistantConnections);
                     PageScreenshots.Settle(window);
                     var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
-                    var useAllTexts = popup.FindControl<Button>("UseAllTextsButton")!;
-                    Assert.Single(popup.GetVisualDescendants().OfType<Button>(),
-                        button => AutomationProperties.GetName(button) == "Use all texts");
-                    Assert.Single(popup.GetVisualDescendants().OfType<TextBlock>(),
-                        text => text.IsEffectivelyVisible && text.Text == SIL.Motif.App.MotifAppStrings.TextsToParseLabel);
+                    Assert.Null(popup.FindControl<Button>("UseAllTextsButton"));
                     workspace.Selection.SearchText = "Hadithi";
                     Assert.Equal(allBoxesAlreadyChecked ? "2 of 2 Texts selected" : "1 of 2 Texts selected",
                         settings.TextSelectionSummary);
                     workspace.Selection.SearchText = string.Empty;
-                    Assert.True(useAllTexts.IsEnabled);
+                    Assert.True(settings.CanUseAllTexts);
                     if (!string.IsNullOrWhiteSpace(folder)) SavePageState(window, popup, folder, "settings-text-selection-all-before.png");
 
-                    HeadlessClick.Click(window, useAllTexts, "Use all texts");
-                    await settings.UseAllTextsCommand.ExecutionTask!;
+                    await settings.UseAllTextsCommand.ExecuteAsync(null);
 
                     var expectedTextIds = workspace.Selection.Texts.Select(text => text.Id).Order().ToArray();
                     Assert.Equal(expectedTextIds, workspace.Selection.ChosenTextIds.Order());
@@ -80,7 +75,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     Assert.False(settings.UseAllTextsCommand.CanExecute(null));
                     Assert.False(settings.CanUseAllTexts);
                     PageScreenshots.Settle(window);
-                    Assert.False(useAllTexts.IsEnabled);
+                    Assert.False(settings.CanUseAllTexts);
                     var saved = await fake!.ReadDefaultSelectionAsync(
                         new ReadDefaultSelectionRequest(workspace.Context.ProjectPath!), CancellationToken.None);
                     Assert.True(saved.Succeeded, saved.Refusal?.Message);
@@ -89,7 +84,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
 
                     await workspace.Context.Setup!.ProjectOpenedAsync(workspace.Context.ProjectPath!);
                     Assert.Equal(expectedTextIds, workspace.Selection.ChosenTextIds.Order());
-                    Assert.False(useAllTexts.IsEnabled);
+                    Assert.False(settings.CanUseAllTexts);
                     if (!string.IsNullOrWhiteSpace(folder)) SavePageState(window, popup, folder, "settings-text-selection-all-after.png");
                 }
                 finally
@@ -127,7 +122,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 {
                     workspace.Selection.SelectAllTexts();
                     var popup = OpenSettings(window);
-                    SettingsTestAccess.Select(popup, SettingsGroup.Texts);
+                    SettingsTestAccess.Select(popup, SettingsGroup.AssistantConnections);
                     PageScreenshots.Settle(window);
                     var settings = Assert.IsType<SettingsViewModel>(popup.DataContext);
                     Assert.Equal("1 of 1 Text selected", settings.TextSelectionSummary);
@@ -1456,7 +1451,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
     [
         (SettingsGroup.Display, "display"), (SettingsGroup.KeyboardShortcuts, "keyboard"),
         (SettingsGroup.Parsing, "parsing"), (SettingsGroup.ProposalChecks, "proposal-checks"),
-        (SettingsGroup.WritingSystems, "writing-systems"), (SettingsGroup.Texts, "texts"),
+        (SettingsGroup.WritingSystems, "writing-systems"), (SettingsGroup.AssistantConnections, "texts"),
         (SettingsGroup.HelpAndReports, "help"), (SettingsGroup.About, "about"),
     ];
     internal static readonly Guid SampleTextId = Guid.Parse("11111111-0000-0000-0000-000000000001");

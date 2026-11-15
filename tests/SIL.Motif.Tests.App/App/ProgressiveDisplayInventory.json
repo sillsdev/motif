@@ -1,6 +1,6 @@
 [
   {
-    "view": "SettingsPage",
+    "view": "Settings/AssistantConnectionsPanel",
     "name": "AssistantConnectionsItems",
     "source": "Assistants",
     "mode": "finite",
@@ -669,5 +669,12 @@
     "source": "Sources.Sources",
     "mode": "rows",
     "control": "ListBox"
+  },
+  {
+    "view": "Assistant/ClaudePanel",
+    "name": "ClaudeRequestsItems",
+    "source": "Requests.Rows",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   }
 ]

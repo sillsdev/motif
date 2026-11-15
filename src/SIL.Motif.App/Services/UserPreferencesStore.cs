@@ -26,6 +26,8 @@ public enum SettingsGroup
     Help,
     About,
     Texts,
+    // W7_shared
+    AssistantConnections,
 }
 
 /// <summary>The trace detail choice stored for this Motif installation.</summary>

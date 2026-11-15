@@ -3929,4 +3929,16 @@ public static class MotifAppStrings
     public static string SourcesPendingExplanation => Text("MotifApp.SourcesPendingExplanation");
     public static string SourcesUsePending => Text("MotifApp.SourcesUsePending");
     #endregion
+    // W7_shared
+    public static string ClaudePanelExplanation => Text("MotifApp.ClaudePanelExplanation");
+    public static string ClaudeRequestsEmpty => Text("MotifApp.ClaudeRequestsEmpty");
+    public static string ClaudeOpenProject => Text("MotifApp.ClaudeOpenProject");
+    public static string ClaudeSetup => Text("MotifApp.ClaudeSetup");
+    public static string ClaudeClose => Text("MotifApp.ClaudeClose");
+    public static string ClaudeRefresh => Text("MotifApp.ClaudeRefresh");
+    public static string ClaudeLoadMore => Text("MotifApp.ClaudeLoadMore");
+    public static string AssistantConnectionsHeading => Text("MotifApp.AssistantConnectionsHeading");
+    public static string ClaudeUnsupportedTarget => Text("MotifApp.ClaudeUnsupportedTarget");
+    public static string ClaudeRequestsLoading => Text("MotifApp.ClaudeRequestsLoading");
+    public static string ClaudeRequestKindUnknown => Text("MotifApp.ClaudeRequestKindUnknown");
 }

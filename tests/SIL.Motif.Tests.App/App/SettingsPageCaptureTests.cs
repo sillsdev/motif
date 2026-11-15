@@ -62,7 +62,7 @@ public sealed class SettingsPageCaptureTests
                     PageScreenshots.Settle(window);
                     Assert.Equal(width, window.ClientSize.Width);
                     Assert.Equal(height, window.ClientSize.Height);
-                    foreach (var group in new[] { Group.Display, Group.KeyboardShortcuts, Group.Parsing, Group.ProposalChecks, Group.WritingSystems, Group.Texts, Group.HelpAndReports, Group.About })
+                    foreach (var group in new[] { Group.Display, Group.KeyboardShortcuts, Group.Parsing, Group.ProposalChecks, Group.WritingSystems, Group.AssistantConnections, Group.HelpAndReports, Group.About })
                     {
                         SettingsTestAccess.Select(page, group);
                         PageScreenshots.Settle(window);

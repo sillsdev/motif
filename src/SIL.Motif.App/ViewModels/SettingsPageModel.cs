@@ -12,11 +12,15 @@ public sealed class SettingsPageModel : PageModel, IDisposable
     public SettingsPageModel(WorkspaceContext context) : base(context)
     {
         Connections = new AssistantConnectionsViewModel(context);
+        Claude = new ClaudePanelViewModel(context);
         Handoff = context.HandoffSession;
     }
 
     /// <summary>The assistant connection controls hosted in Settings.</summary>
     public AssistantConnectionsViewModel Connections { get; }
+
+    /// <summary>The shell-owned Claude panel's project state.</summary>
+    public ClaudePanelViewModel Claude { get; }
 
     /// <summary>The file Handoff action hosted in Settings.</summary>
     public HandoffSessionViewModel Handoff { get; }
@@ -39,12 +43,20 @@ public sealed class SettingsPageModel : PageModel, IDisposable
         }
     }
 
-    protected override void OnProjectCleared() => Handoff.OnProjectCleared();
+    protected override void OnProjectCleared()
+    {
+        Claude.ProjectCleared();
+        Handoff.OnProjectCleared();
+    }
 
-    protected override Task OnStopWorkAsync() => Handoff.OnStopWorkAsync();
+    protected override Task OnStopWorkAsync() => Task.WhenAll(Handoff.OnStopWorkAsync(), Claude.StopWorkAsync());
+
+    protected override Task OnRequestsChangedAsync(CancellationToken cancellationToken) =>
+        Claude.RequestsChangedAsync(cancellationToken);
 
     protected override Task OnProjectOpenedAsync(string projectPath, CancellationToken cancellationToken) =>
-        Handoff.OnProjectOpenedAsync(projectPath, cancellationToken);
+        Task.WhenAll(Handoff.OnProjectOpenedAsync(projectPath, cancellationToken),
+            Claude.ProjectOpenedAsync(projectPath, cancellationToken));
 
     protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken) =>
         Handoff.OnEvidencePublishedAsync(lens, cancellationToken);

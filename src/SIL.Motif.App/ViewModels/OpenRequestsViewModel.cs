@@ -38,7 +38,8 @@ public sealed class OpenRequestRowViewModel
     {
         "word" => MotifAppStrings.RequestKindWord,
         "warning" => MotifAppStrings.RequestKindWarning,
-        _ => MotifAppStrings.RequestKindMatrixCell,
+        "matrix-cell" => MotifAppStrings.RequestKindMatrixCell,
+        _ => MotifAppStrings.ClaudeRequestKindUnknown,
     };
 
     private static string AgeOf(string createdUtc, DateTimeOffset now)

@@ -1,9 +1,11 @@
 # Working with an AI consultant
 
-You bring knowledge of the language. An AI consultant can help connect that knowledge to parser rules and FieldWorks settings. Motif adds evidence: **AI Handoff** writes a folder you can choose to share with a chat model. It contains selected project material and, when available, the results of [Parse all words](term:parse-all-words) with a starter question. The folder can contain real grammar rules, lexicon entries, and sentences, so read the notice and share it only with a service you trust.
+You bring knowledge of the language. An assistant can suggest a Proposal for you to review. Motif supplies recorded evidence, and you decide whether a proposed change fits.
 
-Ask a focused question. For example: “This word should be stem plus plural. The trace stops at this affix. Which slot or environment would you check first? What evidence supports that, and what other words would distinguish your suggestion from an alternative?” Ask for one small proposed change and examples that should still fail. You can ask the AI to explain parser terminology, but check every claim about your language against what speakers say and use.
+Use **Ask Claude** on a word or warning to record a Request with your optional note. **Claude** in the top bar shows Requests waiting for a Proposal and links to setup in Settings. It has no embedded conversation or live Claude connection indicator. Use Claude in its own application. See [Ask Claude](guide:ask-claude) and [Connect an assistant](guide:ai-assistants).
 
-Treat the answer as a hypothesis, not an instruction. Check that it accounts for the failing word without breaking a known-good word. If you decide to change the grammar or lexicon, make the edit in FieldWorks, save, choose **Refresh**, then **Parse all words** before checking whether the expected words now parse.
+Ask a focused question about the word, the recorded evidence and examples that should still fail. Treat the answer as a hypothesis and check it against what speakers say and use. Edit rule definitions in FieldWorks; Motif shows names and available **Open in FieldWorks** links.
 
-**Review Changes** has a narrower role: it reviews pending analysis choices made in Motif. If the AI suggests choosing or changing an analysis for a word, make that choice through **Texts**, then open **Review Changes**. Inspect the word and action, choose **Check these changes** to measure their effect, and apply only if the changes still fit and the evidence is current. Review Changes does not import an AI answer or apply grammar edits; your judgement remains in charge.
+Review a returned Proposal on **Proposals**. A Request never Applies it. You review the evidence and choose whether to Apply a Proposal yourself.
+
+For a file-based exchange, turn on **Show Hand Off by Copying Files** in Settings. Read the data-sensitivity notice, choose the write action, then review the files before sharing them. Motif does not upload them for you. See [AI Handoff](guide:ai-handoff).

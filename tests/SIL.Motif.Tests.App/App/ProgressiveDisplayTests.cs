@@ -58,6 +58,7 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
+        "Assistant/ClaudePanel", "Settings/AssistantConnectionsPanel",
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage",
         "ProposalDifferencePanel", "ProposalParsimonyPanel", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
@@ -988,6 +989,11 @@ public sealed class ProgressiveDisplayTests
         }
         return name switch
         {
+            "Assistant/ClaudePanel" => new SIL.Motif.App.Views.Assistant.ClaudePanel(workspace.PageModel<SettingsPageModel>().Claude),
+            "Settings/AssistantConnectionsPanel" => new SIL.Motif.App.Views.Settings.AssistantConnectionsPanel
+            {
+                DataContext = workspace.PageModel<SettingsPageModel>().Connections,
+            },
             "DiagnosticPanel" => new DiagnosticPanel(trace.Diagnostics),
             "DifferencePanel" => new DifferencePanel(workspace.Assess.Difference),
             "ExpertTracePanel" => new ExpertTracePanel { DataContext = trace.Trace },

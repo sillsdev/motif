@@ -1,0 +1,14 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.ClaudePanel.Width" ResourceKey="Primitive.Size.360" />
+    <StaticResource x:Key="Component.ClaudePanel.Breakpoint" ResourceKey="Primitive.Size.1000" />
+  </Styles.Resources>
+  <Style Selector="UserControl.claudePanel">
+    <Setter Property="MaxWidth" Value="{DynamicResource Component.ClaudePanel.Width}" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+  </Style>
+  <Style Selector="Border.claudePanelBody">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Panel}" />
+  </Style>
+</Styles>

@@ -500,6 +500,14 @@ public sealed partial class ComponentStyleTests
         yield return new("SourcesScoped", "a source heading", host => Add(host,
                 new CopyableTextBlock { Text = "Source", Classes = { "sourcesHeading" } }),
             TextBlock.ForegroundProperty, "Intent.Accent");
+        // W7_shared
+        yield return new Case("ClaudePanel", "panel width", host =>
+        {
+            var panel = new UserControl { Classes = { "claudePanel" } };
+            host.Children.Add(panel);
+            return panel;
+        }, Control.MaxWidthProperty, "Component.ClaudePanel.Width");
+
         yield return new("Text", "a muted line", host => Add(host, Text("muted")), TextBlock.ForegroundProperty, "Intent.TextMuted");
         yield return new("Text", "an error", host => Add(host, Text("error")), TextBlock.ForegroundProperty, "Intent.Danger.Text");
 

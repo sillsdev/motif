@@ -10,13 +10,15 @@ Zoom changes the Motif window's layout and text together. At higher zoom the usa
 
 **Reset to 100%** is always visible and is disabled when zoom is already 100%.
 
+The **Diagnostics** switch shows or hides the optional Diagnostics page and is remembered for this person. It starts off for a new preference store.
+
 Theme can follow the operating system or use Light or Dark. The change applies while Settings is open.
 
 ## Parsing
 
 The Parsing group edits the current project's Default Selection. Setup, Settings, and **Analysis options** edit that same saved limit policy; the next parse uses it, while earlier results keep the limits from their own run. See [Default Selection](guide:default-selection) and [first-run setup](guide:first-run-setup) for choosing what to parse.
 
-**Texts to Parse** shows the selected Text count; **Use All Texts** saves every project Text in the Default Selection while keeping its added words and parsing limits.
+Choose Sources and Texts on **Texts**. Settings does not provide a second Source or Text-selection editor.
 
 When the parser work limit is finite, the time limit can follow Motif's estimate or use an explicit value. An explicit value remains in force when the parser work limit changes until you choose the estimate again. When it follows the estimate, a parse gives each word ten times the estimated time as a safety net, so a slow computer reaches the parser work limit first; Setup, Settings and the command line all work this way. With no parser work limit there is no time limit, and an explicit override is cleared. Enter commits a number; leaving the field also commits it. If Motif refuses the value because it is not a positive whole number or the time is out of range, it says why beside the field and keeps what you typed there; nothing is saved and the Selection a run uses stays as it was. Escape, leaving the Parsing group, or leaving Settings puts the last saved value back in the field. If the value is fine but Motif cannot save it, for example because the Selection was changed elsewhere first, Motif restores the saved limits and says why.
 
@@ -32,17 +34,13 @@ The choice is remembered for this user on this computer and applies to the next 
 
 ## Assistant connections and file Handoff
 
-Settings contains assistant connection choices and their actual connection status. Select the assistants you want to connect and follow the instructions shown for the selected client.
+Choose **Assistant Connections** in the section navigator for client setup and connection actions. Only the ChatGPT tunnel has a measured connection status; configuring Claude does not prove that a Claude session is connected. Select the assistants you want to connect and follow the instructions shown for the selected client.
 
 Turn on **Show Hand Off by Copying Files** to use the file Handoff controls in Settings. When you request a Handoff for selected words, Motif opens those controls with the words selected. Choose the write action yourself and review the data-sensitivity notice before sharing the files.
 
 ## Writing Systems
 
 For the project's writing-system settings and how to change them in FieldWorks, see [Writing systems in the window](guide:writing-systems).
-
-## Texts
-
-**Use All Texts** saves every Text in the current project as its Default Selection. Parsing limits and added words keep their saved values.
 
 ## Help and reports
 

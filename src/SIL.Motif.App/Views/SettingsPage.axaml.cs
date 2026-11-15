@@ -20,7 +20,7 @@ public sealed partial class SettingsPage : UserControl, IWorkspacePaneProvider
     private readonly SettingsPageModel? _pageModel;
 
     /// <summary>The title of Settings’ section navigation.</summary>
-    public string SidePanelTitle => "Settings";
+    public string SidePanelTitle => MotifAppStrings.Settings;
 
     /// <summary>The section list attached beside the Settings page.</summary>
     public Control SidePanel => Navigation;
@@ -134,7 +134,7 @@ public sealed partial class SettingsPage : UserControl, IWorkspacePaneProvider
                 SettingsGroup.Parsing => "SettingsParsingSection",
                 SettingsGroup.ProposalChecks => "SettingsProposalChecksSection",
                 SettingsGroup.WritingSystems => "SettingsWritingSystemsSection",
-                SettingsGroup.Texts => "SettingsTextsSection",
+                SettingsGroup.AssistantConnections => "SettingsAssistantConnectionsSection",
                 SettingsGroup.HelpAndReports => "SettingsHelpAndReportsSection",
                 SettingsGroup.About => "SettingsAboutSection",
                 _ => "SettingsDisplaySection",
