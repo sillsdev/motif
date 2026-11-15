@@ -9,6 +9,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Host.Gdr;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Jobs;
@@ -122,10 +123,13 @@ internal static class ApplyAuthorization
 
         var boundDryRun = ProposalCommands.FindCurrentBoundDryRun(database, project, record.ProposalJson!, manifest,
                 content) ?? ProposalCommands.FindTrialBoundDryRun(database, project, record.ProposalId, manifest);
+        var gdrTitles = new Lazy<HashSet<string>>(() => ProjectReadCache.ReadSaved(project, (_, cache) =>
+            GdrReader.List(cache).Select(item => item.Id).ToHashSet(StringComparer.Ordinal)));
         var exemptionReason = boundDryRun is null
             ? null
             : JudgmentOnlyProposalReadiness.ExemptionFor(content, boundDryRun.ExpectedEffects) ??
-                ProseOnlyProposalReadiness.ExemptionFor(content, boundDryRun.ExpectedEffects) ??
+                ProseOnlyProposalReadiness.ExemptionFor(content, boundDryRun.ExpectedEffects, operation =>
+                    operation.Target is { } target && gdrTitles.Value.Contains(target.Value)) ??
                 SourceOnlyProposalReadiness.ExemptionFor(content, boundDryRun.ExpectedEffects);
         var changedWords = ProposalCommands.ChangedWords(content);
 

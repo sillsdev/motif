@@ -6,22 +6,24 @@
              x:Class="SIL.Motif.App.Views.RationaleEditor"
              x:DataType="vm:RationaleEditorModel">
   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
+    <TextBlock Text="{Binding Author}" IsVisible="{Binding IsComment}" />
     <ContentControl x:Name="FieldHost" />
-    <TextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.RationalePlainText}" TextWrapping="Wrap"
+    <TextBlock Classes="muted" Text="{Binding PlainTextNotice}" TextWrapping="Wrap"
                IsVisible="{Binding IsPlainText}" />
     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
       <Button x:Name="RationaleEditButton" Content="{x:Static app:MotifAppStrings.RationaleEdit}"
               Command="{Binding EditCommand}" IsVisible="{Binding CanStartEdit}" />
       <Button x:Name="RationaleSaveButton" Content="{x:Static app:MotifAppStrings.RationaleSave}"
               Command="{Binding SaveCommand}" IsVisible="{Binding IsEditing}" />
+      <Button Content="{x:Static app:MotifAppStrings.CommentDelete}" Command="{Binding DeleteCommentCommand}" IsVisible="{Binding CanDeleteComment}" />
       <Button x:Name="RationaleCancelButton" Content="{x:Static app:MotifAppStrings.Cancel}"
               Command="{Binding CancelCommand}" IsVisible="{Binding IsEditing}" />
     </StackPanel>
-    <TextBlock Classes="error" Text="{x:Static app:MotifAppStrings.RationaleChangedElsewhere}" TextWrapping="Wrap"
+    <TextBlock Classes="error" Text="{Binding ChangedElsewhereWarning}" TextWrapping="Wrap"
                IsVisible="{Binding IsChangedElsewhere}" />
     <Button x:Name="RationaleCompareButton" Content="{x:Static app:MotifAppStrings.RationaleCompare}"
-            IsVisible="{Binding IsChangedElsewhere}" IsEnabled="{Binding CanCompare}" Click="CompareClicked" />
-    <TextBlock Classes="error" Text="{x:Static app:MotifAppStrings.RationaleSaveOrCancelFirst}" TextWrapping="Wrap"
+            IsVisible="{Binding IsRationaleChangedElsewhere}" IsEnabled="{Binding CanCompare}" Click="CompareClicked" />
+    <TextBlock Classes="error" Text="{Binding SwitchWarning}" TextWrapping="Wrap"
                IsVisible="{Binding IsSwitchRefused}" />
     <views:RefusalBlock DataContext="{Binding Refusal}" />
     <StackPanel IsVisible="{Binding HasFindings}">

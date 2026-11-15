@@ -6,7 +6,7 @@ namespace SIL.Motif.Contract.Responses;
 /// <summary>The wire version of the Grammar Design Record responses, raised when their shape changes.</summary>
 public static class GdrWire
 {
-    public const int SchemaVersion = 5;
+    public const int SchemaVersion = 6;
 }
 
 /// <summary>One Grammar Design Record as the list shows it.</summary>
@@ -115,4 +115,10 @@ public sealed record GdrShowResponse(GdrSummary Record, IReadOnlyList<GdrParagra
     public string DefaultAnalysis { get; init; } = "";
     public IReadOnlyList<GdrStyle> Styles { get; init; } = [];
     public IReadOnlyList<GdrWritingSystem> WritingSystems { get; init; } = [];
+    /// <summary>The title's stored alternatives, including their writing systems.</summary>
+    public IReadOnlyList<RichStringAlternative> TitleAlternatives { get; init; } = [];
+    /// <summary>The abstract's stored alternatives, with their rich runs.</summary>
+    public IReadOnlyList<RichStringAlternative> DescriptionAlternatives { get; init; } = [];
+    /// <summary>The record's position in the list's depth-first order.</summary>
+    public int Position { get; init; }
 }

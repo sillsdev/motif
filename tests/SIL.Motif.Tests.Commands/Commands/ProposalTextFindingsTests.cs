@@ -181,6 +181,7 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
         var added = ProposalComments.Add(new AddCommentRequest(path, Version, id, MissingLink, "person-1", "agent-1"));
         Assert.True(added.Succeeded, added.Refusal?.Message);
         Assert.Equal("fwmd.link.not-found", Assert.Single(added.Value!.Findings).Id);
+        Assert.Equal("fwmd.link.not-found", Assert.Single(Assert.Single(Show(path, id).Comments!).Findings!).Id);
         var edited = ProposalComments.Edit(new EditCommentRequest(path, Version, id, added.Value.CommentId, "An <b>unread</b> tag."));
         Assert.True(edited.Succeeded, edited.Refusal?.Message);
         Assert.NotEmpty(edited.Value!.Findings);
@@ -190,9 +191,15 @@ public sealed class ProposalTextFindingsTests(PristineProjectFixture pristine) :
 
         Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
         Assert.Equal("An <b>unread</b> tag.", Assert.Single(Show(path, id).Comments!).Markdown);
+        Assert.NotEmpty(Assert.Single(Show(path, id).Comments!).Findings!);
         var onReady = ProposalComments.Add(new AddCommentRequest(path, Version, id, MissingLink, "person-1"));
         Assert.True(onReady.Succeeded, onReady.Refusal?.Message);
         Assert.NotEmpty(onReady.Value!.Findings);
+        Assert.True(ProposalLifecycleCommand.Decline(new DeclineProposalRequest(path, id)).Succeeded);
+        var decided = Show(path, id);
+        Assert.NotEmpty(decided.Comments![0].Findings!);
+        Assert.Equal("fwmd.link.not-found", Assert.Single(decided.Comments[1].Findings!).Id);
+        Assert.Equal(decided.Comments.Select(c => c.Findings!.Count), Show(path, id).Comments!.Select(c => c.Findings!.Count));
     }
 
     [Fact]

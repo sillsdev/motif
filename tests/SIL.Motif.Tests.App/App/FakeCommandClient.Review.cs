@@ -59,6 +59,29 @@ public sealed partial class FakeCommandClient
         RationaleRevisionsRequest request, CancellationToken cancellationToken) =>
         Completed(RationaleRevisions);
 
+    public List<AddCommentRequest> AddCommentRequests { get; } = [];
+    public List<EditCommentRequest> EditCommentRequests { get; } = [];
+    public List<DeleteCommentRequest> DeleteCommentRequests { get; } = [];
+    public IReadOnlyList<TextFinding> CommentFindings { get; set; } = [];
+
+    public Task<CommandOutcome<ProposalCommentChangedResponse>> AddCommentAsync(AddCommentRequest request, CancellationToken cancellationToken)
+    {
+        AddCommentRequests.Add(request);
+        return Completed(new ProposalCommentChangedResponse(request.ProposalId, AddCommentRequests.Count, "added", false) { Findings = CommentFindings });
+    }
+
+    public Task<CommandOutcome<ProposalCommentChangedResponse>> EditCommentAsync(EditCommentRequest request, CancellationToken cancellationToken)
+    {
+        EditCommentRequests.Add(request);
+        return Completed(new ProposalCommentChangedResponse(request.ProposalId, request.CommentId, "edited", false) { Findings = CommentFindings });
+    }
+
+    public Task<CommandOutcome<ProposalCommentChangedResponse>> DeleteCommentAsync(DeleteCommentRequest request, CancellationToken cancellationToken)
+    {
+        DeleteCommentRequests.Add(request);
+        return Completed(new ProposalCommentChangedResponse(request.ProposalId, request.CommentId, "deleted", false));
+    }
+
     public List<DeferRequest> DeferProposalRequests { get; } = [];
 
     public Task<CommandOutcome<ProposalStatusChangedResponse>> DeferProposalAsync(

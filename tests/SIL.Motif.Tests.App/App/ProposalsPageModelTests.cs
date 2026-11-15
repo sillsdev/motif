@@ -1,5 +1,6 @@
 using System.Globalization;
 using SIL.Motif.App;
+using SIL.Motif.App.Compare;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract;
@@ -185,6 +186,30 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
         Assert.Same(editor, page.RationaleEditor);
         Assert.True(editor.IsSwitchRefused);
+        editor.CancelCommand.Execute(null);
+        page.SelectProposalCommand.Execute(cards[1]);
+        Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
+    }
+
+    [Fact]
+    public async Task AnotherProposalIsNotChosenWhileACommentEditIsUnsaved()
+    {
+        var (fake, _, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
+            Card("p/two", "Two", ProposalGroup.WaitingForYou)));
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [], Comments:
+                [new CommentView(1, "agent", "Agent", "", "A comment", null, "now", null, false, null)])));
+        var cards = page.Groups[0].Cards;
+        page.SelectProposalCommand.Execute(cards[1]);
+        page.SelectProposalCommand.Execute(cards[0]);
+        await page.DetailReading;
+        var editor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " Typed";
+        page.SelectProposalCommand.Execute(cards[1]);
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.True(editor.IsSwitchRefused);
+        Assert.Contains("Typed", editor.Text());
         editor.CancelCommand.Execute(null);
         page.SelectProposalCommand.Execute(cards[1]);
         Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
@@ -1088,6 +1113,425 @@ public sealed class ProposalsPageModelTests
 
         Assert.Null(page.SelectedGroupFilter);
         Assert.Single(fake.ProposalStandingsRequests);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnsavedCommentsVetoProjectSwitchAndClear(bool existing)
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou)));
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [], Comments:
+                existing ? [new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null)] : [])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        if (!existing) page.AddCommentCommand.Execute(null);
+        var editor = Assert.Single(page.Comments);
+        if (existing) editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        context.ClearProject();
+        Assert.Equal(ProjectPath, context.ProjectPath);
+        await context.OpenProjectAsync(@"C:\projects\two.fwdata");
+        Assert.Equal(ProjectPath, context.ProjectPath);
+        Assert.True(editor.IsSwitchRefused);
+        editor.CancelCommand.Execute(null);
+        context.ClearProject();
+        Assert.Null(context.ProjectPath);
+    }
+
+    [Fact]
+    public async Task RationaleCompareKeepsTheWorkspaceGuardUntilTheCommentEditIsFinished()
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou)));
+        var rationale = new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false);
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label", rationale, null, [], Comments: [comment])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        var commentEditor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " mine";
+        commentEditor.EditCommand.Execute(null);
+        commentEditor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        fake.StoredRationale = "Why elsewhere.";
+        fake.RationaleRevisions = [new RationaleRevisionView(2, fake.StoredRationale, "Agent", "", "now")];
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        await editor.CompareAsync(comparison =>
+        {
+            context.ClearProject();
+            Assert.Equal(ProjectPath, context.ProjectPath);
+            Assert.True(editor.IsSwitchRefused);
+            comparison.Comparison.ChooseAll(Choice.Mine);
+            return Task.FromResult<CompareOutcome?>(new(CompareEnd.Done, comparison.Comparison.Result()));
+        });
+
+        Assert.False(editor.IsEditing);
+        Assert.Equal("Why. mine", fake.StoredRationale);
+        context.ClearProject();
+        Assert.Equal(ProjectPath, context.ProjectPath);
+        Assert.True(commentEditor.IsSwitchRefused);
+        commentEditor.CancelCommand.Execute(null);
+        context.ClearProject();
+        Assert.Null(context.ProjectPath);
+    }
+
+    [Fact]
+    public async Task RereadKeepsTheEditedCommentAndRefreshesTheRest()
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou)));
+        CommentView Comment(long id, string text) => new(id, "agent", "Agent", "", text, null, "now", null, false, null);
+        var comments = new[] { Comment(1, "One"), Comment(2, "Old"), Comment(3, "Gone") };
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [], Comments: comments)));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        var editor = page.Comments[0];
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        comments = [Comment(1, "One"), Comment(2, "Updated"), Comment(4, "Added")];
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.Same(editor, page.Comments[0]);
+        Assert.Equal("One typed", editor.Text());
+        Assert.Equal(["One", "Updated", "Added"], page.Comments.Select(c => c.Markdown));
+        await editor.SaveCommand.ExecuteAsync(null);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " later";
+        editor.CancelCommand.Execute(null);
+        Assert.Same(editor, page.Comments[0]);
+        Assert.Equal("One typed", editor.Text());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnsavedCommentSurvivesDelayedReadAndRefusesRowAndFilter(bool existing)
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
+            Card("p/mine", "Mine", ProposalGroup.NotAppliedYet)));
+        ProposalDetailProjection Detail(string id) => new(id, "proposed", "Label", null, null, [], Comments:
+            existing ? [new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null)] : []);
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(Detail(request.ProposalId)));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/one");
+        await page.DetailReading;
+        if (!existing) page.AddCommentCommand.Execute(null);
+        var editor = Assert.Single(page.Comments);
+        if (existing) editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        var typed = editor.Text();
+        var pending = new TaskCompletionSource<CommandOutcome<ProposalDetailProjection>>();
+        fake.ShowProposalHandler = (_, _) => pending.Task;
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        context.ClearProject();
+        Assert.Equal(ProjectPath, context.ProjectPath);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/mine");
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.YourChangesNotAppliedYet);
+        Assert.Null(page.SelectedGroupFilter);
+        pending.SetResult(CommandOutcome<ProposalDetailProjection>.Success(Detail("p/one")));
+        await page.DetailReading;
+        Assert.Contains(editor, page.Comments);
+        Assert.Equal(typed, editor.Text());
+        Assert.False(editor.IsChangedElsewhere);
+        editor.CancelCommand.Execute(null);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/mine");
+        Assert.Equal("p/mine", page.SelectedProposal?.ProposalId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EditedCommentRemainsReachableWhenDeletedOrDecided(bool deleted)
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou)));
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        var detail = new ProposalDetailProjection("p/one", "proposed", "Label", null, null, [], Comments: [comment]);
+        fake.ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(detail));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        var editor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        detail = detail with { Status = deleted ? "proposed" : "rejected", Comments = deleted ? [] : [comment] };
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.Same(editor, Assert.Single(page.Comments));
+        Assert.Equal("Old typed", editor.Text());
+        Assert.False(editor.SaveCommand.CanExecute(null));
+        editor.CancelCommand.Execute(null);
+        if (deleted) Assert.Empty(page.Comments);
+        else Assert.False(Assert.Single(page.Comments).CanStartEdit);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RefusedCommentRereadAllowsLeavingTheUnavailableDetail(bool existing)
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou),
+            Card("p/two", "Two", ProposalGroup.WaitingForYou)));
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [], Comments:
+                existing ? [new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null)] : [])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        if (!existing) page.AddCommentCommand.Execute(null);
+        var editor = Assert.Single(page.Comments);
+        if (existing) editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        fake.ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Refused(
+            new Refusal("project.busy", FailureReason.Busy, "Busy.")));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.NotNull(page.DetailRefusal);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/two");
+        Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task DecidingAProposalKeepsItsUnsavedCommentWhenItLeavesTheStandings(bool existing, bool anotherOpen)
+    {
+        var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+        var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+        var (fake, context, page) = await OpenAsync(Standings(one, two));
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        var status = "proposed";
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [],
+                Comments: existing ? [comment] : [])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/one");
+        await page.DetailReading;
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+        if (!existing) page.AddCommentCommand.Execute(null);
+        var editor = Assert.Single(page.Comments);
+        if (existing) editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        var typed = editor.Text();
+        status = "rejected";
+        fake.ProposalStandingsCompleteWith(new ProposalStandings(anotherOpen ? [two] : [], 1));
+
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.True(page.HasSelectedProposal);
+        Assert.Null(page.SelectedGroupFilter);
+        Assert.True(page.IsGroupFilterPaused);
+        Assert.Equal(anotherOpen ? "2 proposals" : "1 proposal", page.TotalProposalCountText);
+        Assert.Contains(page.Rows, row => row is ProposalCardViewModel card && card.ProposalId == "p/one");
+        Assert.Same(editor, Assert.Single(page.Comments));
+        Assert.Equal(typed, editor.Text());
+        Assert.False(editor.SaveCommand.CanExecute(null));
+        Assert.True(editor.IsChangedElsewhere);
+        context.ClearProject();
+        Assert.Equal(ProjectPath, context.ProjectPath);
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.True(page.IsGroupFilterPaused);
+        Assert.Null(page.SelectedGroupFilter);
+        Assert.Same(editor, Assert.Single(page.Comments));
+        editor.CancelCommand.Execute(null);
+        Assert.False(page.IsGroupFilterPaused);
+        Assert.Equal(ProposalListFilter.WaitingForYou, page.SelectedGroupFilter);
+        Assert.DoesNotContain(page.Rows, row => row is ProposalCardViewModel card && card.ProposalId == "p/one");
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.Equal(ProposalListFilter.WaitingForYou, page.SelectedGroupFilter);
+        Assert.Equal(anotherOpen ? "p/two" : null, page.SelectedProposal?.ProposalId);
+        context.ClearProject();
+        Assert.Null(context.ProjectPath);
+    }
+
+    [Fact]
+    public async Task DecidedCommentStaysVisibleWhenClosedProposalsAreAlreadyLoaded()
+    {
+        var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+        var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+        var (fake, context, page) = await OpenAsync(Standings(one, two));
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        var status = "proposed";
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [], Comments: [comment])));
+        await page.ShowSetAsideCommand.ExecuteAsync(null);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/one");
+        await page.DetailReading;
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+        var editor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        status = "rejected";
+        var closed = one with { Status = "rejected", Group = ProposalGroup.SetAside };
+        fake.ProposalStandingsCompleteWith(new ProposalStandings([two, closed], 1));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.True(page.IsGroupFilterPaused);
+        Assert.Same(editor, Assert.Single(page.Comments));
+        Assert.False(editor.SaveCommand.CanExecute(null));
+        editor.CancelCommand.Execute(null);
+        Assert.Equal(ProposalListFilter.WaitingForYou, page.SelectedGroupFilter);
+        Assert.False(page.IsGroupFilterPaused);
+        Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
+        Assert.DoesNotContain(page.Rows, row => row is ProposalCardViewModel card && card.ProposalId == "p/one");
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        Assert.Equal(ProposalListFilter.WaitingForYou, page.SelectedGroupFilter);
+    }
+
+    [Fact]
+    public async Task FilterStaysPausedUntilEveryRetainedEditIsFinished()
+    {
+        var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+        var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+        var (fake, context, page) = await OpenAsync(Standings(one, two));
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        var rationale = new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false);
+        var status = "proposed";
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, status, "Label", rationale, null, [], Comments: [comment])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/one");
+        await page.DetailReading;
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+        var commentEditor = Assert.Single(page.Comments);
+        var rationaleEditor = page.RationaleEditor!;
+        commentEditor.EditCommand.Execute(null);
+        commentEditor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        rationaleEditor.EditCommand.Execute(null);
+        rationaleEditor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        status = "rejected";
+        fake.ProposalStandingsCompleteWith(new ProposalStandings([two], 1));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        commentEditor.CancelCommand.Execute(null);
+        Assert.True(page.IsGroupFilterPaused);
+        Assert.Null(page.SelectedGroupFilter);
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.Equal("Why. typed", rationaleEditor.Text());
+        rationaleEditor.CancelCommand.Execute(null);
+        Assert.False(page.IsGroupFilterPaused);
+        Assert.Equal(ProposalListFilter.WaitingForYou, page.SelectedGroupFilter);
+        Assert.Equal("p/two", page.SelectedProposal?.ProposalId);
+    }
+
+    [Fact]
+    public async Task SavingAReopenedCommentRestoresThePausedFilter()
+    {
+        var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+        var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+        var (fake, context, page) = await OpenAsync(Standings(one, two));
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        var status = "proposed";
+        var reopened = false;
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [],
+                DraftName: reopened ? "reopened" : null, Comments: [comment])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/one");
+        await page.DetailReading;
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+        var editor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        status = "rejected";
+        fake.ProposalStandingsCompleteWith(new ProposalStandings([two], 1));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.True(page.IsGroupFilterPaused);
+        Assert.False(editor.SaveCommand.CanExecute(null));
+        status = "proposed";
+        reopened = true;
+        fake.ProposalStandingsCompleteWith(Standings(one, two));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.True(page.IsGroupFilterPaused);
+        Assert.True(editor.SaveCommand.CanExecute(null));
+        await editor.SaveCommand.ExecuteAsync(null);
+        Assert.False(page.IsGroupFilterPaused);
+        Assert.Equal(ProposalListFilter.WaitingForYou, page.SelectedGroupFilter);
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.Equal("Old typed", Assert.Single(fake.EditCommentRequests).Text);
+    }
+
+    [Fact]
+    public async Task ANewFilterChoiceWhilePausedIsNotOverwrittenAfterCancel()
+    {
+        var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+        var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+        var (fake, context, page) = await OpenAsync(Standings(one, two));
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        var status = "proposed";
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [], Comments: [comment])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/one");
+        await page.DetailReading;
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
+        var editor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        status = "rejected";
+        var closed = one with { Status = "rejected", Group = ProposalGroup.SetAside };
+        fake.OnProposalStandings((request, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+            new ProposalStandings(request.IncludeSetAside ? [two, closed] : [two], 1))));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        Assert.True(page.IsGroupFilterPaused);
+        await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.Closed);
+        await page.DetailReading;
+        Assert.False(page.IsGroupFilterPaused);
+        Assert.Equal(ProposalListFilter.Closed, page.SelectedGroupFilter);
+        Assert.Same(editor, Assert.Single(page.Comments));
+        editor.CancelCommand.Execute(null);
+        Assert.Equal(ProposalListFilter.Closed, page.SelectedGroupFilter);
+    }
+
+    [Fact]
+    public async Task OverlappingRefreshesKeepTheEditedProposalAfterItIsDecided()
+    {
+        var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
+        var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
+        var (fake, context, page) = await OpenAsync(Standings(one, two));
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        var status = "proposed";
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [], Comments: [comment])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        page.SelectedProposal = page.Groups.SelectMany(g => g.Cards).Single(c => c.ProposalId == "p/one");
+        await page.DetailReading;
+        var editor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        status = "rejected";
+        var pending = new TaskCompletionSource<CommandOutcome<ProposalStandings>>();
+        var entered = new TaskCompletionSource();
+        var reads = 0;
+        fake.OnProposalStandings((_, _) =>
+        {
+            if (++reads != 1)
+                return Task.FromResult(CommandOutcome<ProposalStandings>.Success(new ProposalStandings([two], 1)));
+            entered.SetResult();
+            return pending.Task;
+        });
+        var first = context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        pending.SetResult(CommandOutcome<ProposalStandings>.Success(new ProposalStandings([two], 1)));
+        await first;
+        Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+        Assert.Same(editor, Assert.Single(page.Comments));
+        Assert.Equal("Old typed", editor.Text());
+        Assert.False(editor.SaveCommand.CanExecute(null));
     }
 
     private static readonly TrialStanding Stale = TrialStanding.NeedsAnotherTry(TrialStaleReason.BaselineMoved);

@@ -11,7 +11,7 @@ namespace SIL.Motif.Tests.Integration;
 
 [Collection(global::SIL.Motif.Tests.TestFixtures.LcmCacheParallelCollections.Group0)]
 [Trait("MotifTestLevel", "System")]
-public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
+public sealed partial class PortableWorkerPackageTests(PristineProjectFixture projects)
 {
     private static readonly TimeSpan CliBound = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ProcessCleanupBound = Wait.Scaled(TimeSpan.FromMinutes(2));
@@ -48,13 +48,11 @@ public sealed class PortableWorkerPackageTests(PristineProjectFixture projects)
             var rid = RuntimeIdentifier();
             AssertIcuPayload(package, ReadIcuPayload(repoRoot, rid));
 
-            var appHost = Path.Combine(package, "SIL.Motif.App" + suffix);
             var cliHost = Path.Combine(package, "motif" + suffix);
-            Assert.True(File.Exists(appHost), "The portable package is missing the App apphost.");
+            AssertAppHost(package, suffix);
             Assert.True(File.Exists(cliHost), "The portable package is missing the CLI apphost.");
             Assert.True(File.Exists(workerHost), "The portable package is missing the Worker apphost.");
             Assert.Equal(Path.GetDirectoryName(cliHost), Path.GetDirectoryName(workerHost));
-            AssertSelfContained(package, "SIL.Motif.App.runtimeconfig.json");
             AssertSelfContained(package, "motif.runtimeconfig.json");
             AssertSelfContained(package, "SIL.Motif.Worker.runtimeconfig.json");
 

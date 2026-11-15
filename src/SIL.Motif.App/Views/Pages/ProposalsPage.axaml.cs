@@ -4,6 +4,7 @@ using Avalonia.Data.Converters;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views.Shell;
@@ -58,6 +59,14 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
         var pane = ((IDataTemplate)Resources[key]!).Build(Page)!;
         pane.DataContext = Page;
         return pane;
+    }
+
+    private void OnAddComment(object? sender, RoutedEventArgs e)
+    {
+        Page.AddCommentCommand.Execute(null);
+        if (Page.Comments.LastOrDefault() is { } added)
+            _inspectorContent.GetVisualDescendants().OfType<ProgressiveItemsControl>()
+                .FirstOrDefault(control => control.Name == "ProposalComments")?.ShowItem(added);
     }
 
     private void OnRequestPageInspector(object? sender, RoutedEventArgs e) =>

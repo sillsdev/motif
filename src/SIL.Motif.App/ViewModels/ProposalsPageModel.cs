@@ -2,9 +2,11 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Windows.Input;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host;
 
 namespace SIL.Motif.App.ViewModels;
 
@@ -495,9 +497,14 @@ public sealed partial class ProposalsPageModel : PageModel
 {
     private int _readGeneration;
     private bool _rereading;
+    private ProposalCard? _rereadCard;
     private string? _differenceProposalId;
     private string? _differenceProject;
     private bool _includeSetAside;
+    private bool _retainedClosedCard;
+    private string? _retainedRowId;
+    private ProposalListFilter? _pausedGroupFilter;
+    private readonly HashSet<RationaleEditorModel> _pausedEditors = [];
     private ProposalStandings _standings = new([], 0);
 
     public ProposalsPageModel(WorkspaceContext context) : this(context, null)
@@ -598,12 +605,31 @@ public sealed partial class ProposalsPageModel : PageModel
         }
     }
 
-    // True, and says so on the editor, when choosing proposalId would leave an unsaved Rationale edit.
+    // A refused selection leaves the unsaved field visible so the person can save or cancel.
     private bool KeepsUnsavedEdit(string? proposalId)
     {
-        if (UnsavedRationaleEditor is not { } editing || editing.ProposalId == proposalId) return false;
+        if (UnsavedEditor is not { } editing || editing.ProposalId == proposalId) return false;
         editing.MarkSwitchRefused();
         return true;
+    }
+
+    internal bool RefuseLeavingWithUnsavedEdit()
+    {
+        if (UnsavedEditor is not { } editor) return false;
+        editor.MarkSwitchRefused();
+        return true;
+    }
+
+    private RationaleEditorModel? UnsavedEditor => UnsavedRationaleEditor ?? UnsavedCommentEditor;
+
+    private RationaleEditorModel? UnsavedCommentEditor
+    {
+        get
+        {
+            var editors = DetailRefusal is null && (_selectedProposal is null ? _rereading :
+                _lastComments?.FirstOrDefault()?.ProposalId == _selectedProposal.ProposalId) ? _lastComments : Comments;
+            return editors?.FirstOrDefault(editor => editor.HasUnsavedChanges);
+        }
     }
 
     // The editor holding an unsaved edit, also while a re-read has cleared RationaleEditor until the detail loads.
@@ -758,6 +784,9 @@ public sealed partial class ProposalsPageModel : PageModel
     /// <summary>Opens a declined or withdrawn Proposal again as a Draft and reads the list again.</summary>
     public IAsyncRelayCommand<ProposalCardViewModel> ReopenCommand { get; }
 
+    /// <summary>Whether a group filter is temporarily paused to keep an edited Proposal visible.</summary>
+    public bool IsGroupFilterPaused => _pausedGroupFilter is not null;
+
     /// <summary>The three filter groups and their current counts.</summary>
     public IReadOnlyList<ProposalGroupFilterViewModel> GroupFilters =>
     [
@@ -794,7 +823,8 @@ public sealed partial class ProposalsPageModel : PageModel
         get
         {
             if (!IsListed) return string.Empty;
-            var count = Groups.Sum(group => group.Cards.Count) + (_includeSetAside ? 0 : _standings.SetAsideCount);
+            var count = Groups.Sum(group => group.Cards.Count) + (_includeSetAside ? 0 : _standings.SetAsideCount) -
+                (_retainedClosedCard && !_includeSetAside ? 1 : 0);
             return PluralText.Format(MotifAppStrings.ProposalCountPattern, count);
         }
     }
@@ -837,8 +867,13 @@ public sealed partial class ProposalsPageModel : PageModel
         _requestGeneration++;
         Requests.Show([], Context.Clock.GetUtcNow());
         _rereading = false;
+        _rereadCard = null;
         _lastRationaleEditor = null;
+        _lastComments = null;
         _includeSetAside = false;
+        _retainedClosedCard = false;
+        _retainedRowId = null;
+        ClearPausedFilter();
         SelectedGroupFilter = null;
         SetSelectedProposal(null);
         ClearDifference();
@@ -862,7 +897,9 @@ public sealed partial class ProposalsPageModel : PageModel
         var generation = ++_readGeneration;
         State = ProposalsPageState.Loading;
         ShownRefusal = null;
-        var keepSelected = SelectedProposal?.ProposalId;
+        var selectedCard = SelectedProposal?.Card ?? (_rereading ? _rereadCard : null);
+        _rereadCard = selectedCard;
+        var keepSelected = selectedCard?.ProposalId;
         _rereading = true;
         SetSelectedProposal(null);
         Rows = [];
@@ -874,6 +911,8 @@ public sealed partial class ProposalsPageModel : PageModel
             if (!read.Succeeded)
             {
                 _includeSetAside = false;
+                _retainedRowId = null;
+                ClearPausedFilter();
                 SelectedGroupFilter = null;
                 Apply(new ProposalStandings([], 0));
                 ShownRefusal = WindowRefusal.From(read.Refusal!, "The Proposals could not be read.");
@@ -881,7 +920,42 @@ public sealed partial class ProposalsPageModel : PageModel
                 return;
             }
             ShownRefusal = null;
-            Apply(read.Value!, keepSelected);
+            var standings = read.Value!;
+            _retainedClosedCard = false;
+            _retainedRowId = null;
+            if (selectedCard is not null && UnsavedEditor is { } editing &&
+                editing.ProposalId == selectedCard.ProposalId &&
+                standings.Proposals.All(card => card.ProposalId != selectedCard.ProposalId))
+            {
+                var detail = await Context.Commands.ShowProposalAsync(
+                    new ShowProposalRequest(projectPath, MotifProductVersion.CurrentText, selectedCard.ProposalId),
+                    cancellationToken).ConfigureAwait(true);
+                if (generation != _readGeneration || projectPath != Context.ProjectPath) return;
+                if (detail.Succeeded)
+                {
+                    var decided = PicturesFrozen(detail.Value!.Status) && detail.Value.DraftName is null;
+                    var retained = selectedCard with
+                    {
+                        Status = detail.Value.Status,
+                        Group = decided ? ProposalGroup.SetAside : selectedCard.Group,
+                        IsDraft = detail.Value.DraftName is not null,
+                        IsPendingDraft = decided ? false : selectedCard.IsPendingDraft,
+                    };
+                    _retainedRowId = retained.ProposalId;
+                    _retainedClosedCard = decided && standings.SetAsideCount > 0;
+                    standings = standings with { Proposals = [.. standings.Proposals, retained] };
+                }
+            }
+            if (UnsavedEditor is { } unsaved &&
+                standings.Proposals.FirstOrDefault(card => card.ProposalId == unsaved.ProposalId) is { } edited &&
+                SelectedGroupFilter is { } filter && !IsInFilter(edited.Group, filter))
+            {
+                _pausedGroupFilter = filter;
+                OnPropertyChanged(nameof(IsGroupFilterPaused));
+                TrackPausedEditors();
+                SelectedGroupFilter = null;
+            }
+            Apply(standings, keepSelected);
             await LoadRequestsAsync(projectPath, cancellationToken).ConfigureAwait(true);
         }
         finally
@@ -939,10 +1013,11 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         ProposalListFilter? nextFilter = SelectedGroupFilter == filter ? null : filter;
         if (nextFilter is { } requested && CountFor(requested) == 0) return;
-        // A filter that would hide the Proposal whose Rationale edit is unsaved is not applied.
-        if (nextFilter is { } hiding && UnsavedRationaleEditor is { } editing &&
+        // A filter cannot hide the field holding an unsaved edit.
+        if (nextFilter is { } hiding && UnsavedEditor is { } editing &&
             _standings.Proposals.FirstOrDefault(card => card.ProposalId == editing.ProposalId) is { } edited &&
             !IsInFilter(edited.Group, hiding) && KeepsUnsavedEdit(null)) return;
+        ClearPausedFilter();
         SelectedGroupFilter = nextFilter;
         if (SelectedGroupFilter == ProposalListFilter.Closed && !_includeSetAside)
         {
@@ -957,6 +1032,7 @@ public sealed partial class ProposalsPageModel : PageModel
 
     private void ClearGroupFilter()
     {
+        ClearPausedFilter();
         SelectedGroupFilter = null;
         UpdateRows(SelectedProposal?.ProposalId);
     }
@@ -1068,12 +1144,49 @@ public sealed partial class ProposalsPageModel : PageModel
     private void EndReread()
     {
         _rereading = false;
+        _rereadCard = null;
+        ResumePausedFilter();
         if (SelectedProposal is null)
         {
             ClearDifference();
             Parsimony.Stop();
             Pictures.Clear();
         }
+    }
+
+    private void TrackPausedEditors()
+    {
+        if (_pausedGroupFilter is null) return;
+        if (_lastRationaleEditor is { } rationale) TrackPausedEditor(rationale);
+        if (_lastComments is { } comments)
+            foreach (var editor in comments) TrackPausedEditor(editor);
+    }
+
+    private void TrackPausedEditor(RationaleEditorModel editor)
+    {
+        if (_pausedGroupFilter is not null && _pausedEditors.Add(editor))
+            editor.EditFinished += ResumePausedFilter;
+    }
+
+    private void ClearPausedFilter()
+    {
+        if (_pausedGroupFilter is null) return;
+        _pausedGroupFilter = null;
+        foreach (var editor in _pausedEditors) editor.EditFinished -= ResumePausedFilter;
+        _pausedEditors.Clear();
+        OnPropertyChanged(nameof(IsGroupFilterPaused));
+    }
+
+    private void ResumePausedFilter()
+    {
+        if (_rereading || _pausedGroupFilter is not { } filter || _pausedEditors.Any(editor => editor.IsEditing)) return;
+        var retained = _retainedRowId;
+        _retainedRowId = null;
+        _retainedClosedCard = false;
+        ClearPausedFilter();
+        SelectedGroupFilter = filter;
+        if (retained is null) UpdateRows(SelectedProposal?.ProposalId);
+        else Apply(_standings with { Proposals = _standings.Proposals.Where(card => card.ProposalId != retained).ToArray() });
     }
 
     // A decided Proposal keeps its pictures as they were; Deferred is still open.
@@ -1129,6 +1242,7 @@ public sealed partial class ProposalsPageModel : PageModel
     private async Task ShowSetAsideAsync()
     {
         _includeSetAside = !_includeSetAside;
+        ClearPausedFilter();
         SelectedGroupFilter = null;
         if (Context.ProjectPath is { } path) await LoadAsync(path, CancellationToken.None).ConfigureAwait(true);
     }

@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Text.Json.Nodes;
+using Json.Schema;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Responses;
 using Xunit;
@@ -28,6 +30,9 @@ public sealed class GdrContractTests
             Styles = [new GdrStyle("Emphasis", GdrStyleKind.Character,
                 new Dictionary<string, GdrTextProperties> { ["en"] = italic })],
             WritingSystems = [new GdrWritingSystem("ar", "rtl", "Scheherazade"), new GdrWritingSystem("en", "ltr", "Charis SIL")],
+            TitleAlternatives = [new RichStringAlternative("en", [new GdrRun("title", "en", null, plain)])],
+            DescriptionAlternatives = [new RichStringAlternative("en", [new GdrRun("abstract", "en", null, plain)])],
+            Position = 1,
         };
     }
 
@@ -82,6 +87,24 @@ public sealed class GdrContractTests
     {
         var json = ProjectionJson.Serialize(Sample()).Replace("\"abbreviation\"", "\"unknown\": true, \"abbreviation\"");
 
+        Assert.Throws<JsonException>(() => ProjectionJson.Deserialize<GdrShowResponse>(json));
+    }
+
+    [Theory]
+    [InlineData("titleAlternatives")]
+    [InlineData("descriptionAlternatives")]
+    public void AlternativeObjectsRejectUnknownMembersInSchemaAndRuntime(string field)
+    {
+        using var schema = Schema();
+        var source = JsonNode.Parse(schema.RootElement.GetRawText())!;
+        source["$id"] = "https://example.invalid/gdr-schema/" + Guid.NewGuid();
+        var validator = JsonSchema.FromText(source.ToJsonString());
+        var sample = JsonNode.Parse(ProjectionJson.Serialize(Sample()))!;
+        Assert.True(validator.Evaluate(JsonSerializer.SerializeToElement(sample)).IsValid);
+        sample[field]![0]!["unknown"] = true;
+        var json = sample.ToJsonString();
+
+        Assert.False(validator.Evaluate(JsonSerializer.SerializeToElement(sample)).IsValid);
         Assert.Throws<JsonException>(() => ProjectionJson.Deserialize<GdrShowResponse>(json));
     }
 

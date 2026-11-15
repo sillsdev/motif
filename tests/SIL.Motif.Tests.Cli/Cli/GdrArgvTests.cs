@@ -1,9 +1,14 @@
+using SIL.LCModel.Infrastructure;
+using SIL.Motif.Commands;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
@@ -27,6 +32,60 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), _root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
         return path;
+    }
+
+    [Fact]
+    public async Task ApplyOfFinalizedStaleTitleMatchesTheAppRefusalAndWritesNothing()
+    {
+        var path = ProjectWithBaseline();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var description = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        TextRichStringPayload Edit(string field, RichStringAlternative before, string text) =>
+            new(field, "en", [new TextRun(text, "en")], new(before.Text, before.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id,
+            [Edit("CmPossibility.Name", title, "mine"), Edit("CmPossibility.Description", description, "other")], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var version = MotifProductVersion.CurrentText;
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, version, PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var record = SeededGdrs.Records(cache).PossibilitiesOS[0];
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => record.Name.set_String(cache.DefaultAnalWs, "outside"));
+            new FwDataProjectLoader().Save(cache);
+        }
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), _root).Succeeded);
+        var proposalId = finalized.Value!.ProposalId;
+        var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(path, version, proposalId));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        await using (var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(_root)))
+        {
+            runner.Start(path);
+            await runner.WhenIdleAsync();
+            var bound = JobCommands.WaitForDryRun(new WaitForDryRunRequest(path, version, proposalId,
+                queued.Value!.JobId, TimeSpan.FromMinutes(2)));
+            Assert.True(bound.Succeeded, bound.Refusal?.Message);
+        }
+        var before = File.ReadAllBytes(path);
+        var app = PendingChangesWorkflow.Apply(new ApplyRequest(path, version, proposalId));
+        Assert.False(app.Succeeded);
+        Assert.Equal(RefusalCodes.TextFieldStale, app.Refusal!.Code);
+        Assert.Contains("CmPossibility.Name", app.Refusal.Message, StringComparison.Ordinal);
+
+        var cli = await CliProcess.RunAsync(_root, null, false, "apply", proposalId, "--project", path, "--json");
+
+        Assert.True(cli.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.Refused), cli.Error + cli.Output);
+        Assert.Empty(cli.Output);
+        var failure = ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!;
+        Assert.Equal(app.Refusal.Code, failure.Code);
+        Assert.Equal(app.Refusal.Message, failure.Message);
+        Assert.Equal("CmPossibility.Name", failure.Detail!["field"]);
+        Assert.Equal(before, File.ReadAllBytes(path));
+        Assert.True(BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), _root).Succeeded);
+        var after = GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!;
+        Assert.Equal("outside", after.Record.Title);
+        Assert.Equal(shown.Record.Description, after.Record.Description);
     }
 
     [Fact]

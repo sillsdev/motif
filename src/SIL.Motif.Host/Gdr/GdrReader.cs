@@ -48,7 +48,8 @@ public static class GdrReader
     public static GdrShowResponse? Show(LcmCache cache, string id, string? projectName = null)
     {
         var wanted = id.Normalize(NormalizationForm.FormD);
-        var matches = Records(cache).Where(item => Matches(cache, item.Record, wanted)).ToArray();
+        var entries = Records(cache).ToArray();
+        var matches = entries.Where(item => Matches(cache, item.Record, wanted)).ToArray();
         if (matches.Length == 0) return null;
         if (matches.Length > 1)
             throw new GdrRefusalException(new Refusal(RefusalCodes.GdrAmbiguous, FailureReason.Refused,
@@ -83,9 +84,31 @@ public static class GdrReader
                 }).ToArray(), paragraph.Key is Guid key ? CanonicalId.FromGuid(key).Value : null);
         }).ToArray();
 
+        RichStringAlternative[] Alternatives(IMultiAccessorBase field) => field.AvailableWritingSystemIds
+            .Append(cache.DefaultAnalWs).Where(ws => ws != 0).Distinct().Select(ws =>
+            {
+                var tag = writingSystems.GetId(ws);
+                wsTags.Add(tag);
+                var value = field.get_String(ws);
+                var runs = value is null || value.Length == 0 ? [] : TsStringConversion.ToRuns(value, writingSystems)
+                    .Where(run => run.Text.Length > 0).Select(run =>
+                    {
+                        wsTags.Add(run.Ws);
+                        var style = run.Props.TryGetStr(TextPropertyNumbers.NamedStyle, out var named) && named.Length > 0 ? named : null;
+                        if (style is not null) NoteStyle(styles, styleKinds, style);
+                        return new GdrRun(run.Text, run.Ws, style, Properties(run.Props), run.ObjData,
+                            Target(resolver, run.ObjData, cache.ProjectId.Name, projectName));
+                    }).ToArray();
+                return new RichStringAlternative(tag, runs);
+            }).ToArray();
+        var titles = Alternatives(record.Name);
+        var descriptions = Alternatives(record.Description);
         var resolved = ResolveAll(styles, styleKinds.Keys, wsTags);
         return new GdrShowResponse(Summary(cache, entry), converted)
         {
+            TitleAlternatives = titles,
+            DescriptionAlternatives = descriptions,
+            Position = Array.IndexOf(entries, entry) + 1,
             DefaultVernacular = writingSystems.DefaultVernacular,
             DefaultAnalysis = writingSystems.DefaultAnalysis,
             Styles = styleKinds.Select(pair => new GdrStyle(pair.Key, pair.Value, wsTags.ToDictionary(tag => tag,

@@ -20,6 +20,7 @@ using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
@@ -799,6 +800,64 @@ public sealed class MainWindowSmokeTests
                 window.Close();
             }
         });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void WindowCloseKeepsAnUnsavedComment(bool existing)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, _) = NewComposedWindow();
+            var fake = (FakeCommandClient)workspace.Context.Commands;
+            var card = new ProposalCard("p/one", "One", "proposed", ProposalGroup.WaitingForYou, false, [],
+                TrialStanding.NotTried, null, []);
+            fake.ProposalStandingsCompleteWith(new ProposalStandings([card], 0));
+            var token = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
+                "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64));
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
+            fake.StoredGrammarCheckIs(new GrammarCheckResponse([], HasBaseline: true));
+            fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(null, SetupSkipped: true));
+            fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
+            var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+            fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [],
+                    Comments: existing ? [comment] : [])));
+            await workspace.SetProjectAsync(@"C:\projects\one.fwdata", captureFreshProject: false);
+            var page = workspace.PageModel<ProposalsPageModel>();
+            await page.DetailReading;
+            if (!existing) page.AddCommentCommand.Execute(null);
+            var editor = Assert.Single(page.Comments);
+            if (existing) editor.EditCommand.Execute(null);
+            editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+            var pending = new TaskCompletionSource<CommandOutcome<ProposalDetailProjection>>();
+            fake.ShowProposalHandler = (_, _) => pending.Task;
+            await workspace.Context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+            window.Show();
+            window.Close();
+            Assert.True(window.IsVisible);
+            Assert.True(editor.IsSwitchRefused);
+            pending.SetResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection("p/one", "proposed", "Label", null, null, [],
+                    Comments: existing ? [comment] : [])));
+            await page.DetailReading;
+            Assert.Contains(editor, page.Comments);
+            fake.ProposalStandingsCompleteWith(new ProposalStandings([], 1));
+            fake.ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+                new ProposalDetailProjection("p/one", "rejected", "Label", null, null, [],
+                    Comments: existing ? [comment] : [])));
+            await workspace.Context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+            await page.DetailReading;
+            Assert.Equal("p/one", page.SelectedProposal?.ProposalId);
+            Assert.Contains(editor, page.Comments);
+            Assert.False(editor.SaveCommand.CanExecute(null));
+            window.Close();
+            Assert.True(window.IsVisible);
+            editor.CancelCommand.Execute(null);
+            window.Close();
+            Assert.False(window.IsVisible);
+        }, TimeSpan.FromSeconds(20));
     }
 
     [Fact]

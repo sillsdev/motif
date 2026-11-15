@@ -161,9 +161,9 @@ public sealed class GdrDiscussion
             foreach (var run in source.Runs)
             {
                 var props = Bag(run.Properties);
+                if (run.ObjData is { } objData) linkLooks.TryAdd(objData, LinkLook.Of(props));
                 if (run.Target is { } target)
                 {
-                    if (run.ObjData is { } objData) linkLooks.TryAdd(objData, LinkLook.Of(props));
                     targets[(document.Paragraphs.Count, offset)] = target;
                     props.SetInt(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle, 0);
                     props.SetInt(TextPropertyNumbers.ForeColor, target.State == GdrLinkState.Broken ? BrokenColor : LinkColor, 0);
@@ -280,7 +280,9 @@ public sealed class GdrDiscussion
         // The view shows links with variation 0, so a value set any other way, as the toolbar sets it, is the person's.
         private static void Put(PropertyBag props, int number, IntPropValue? original, Func<int, bool> isShown)
         {
-            if (!props.IntProps.TryGetValue(number, out var value) || value.Variation != 0 || !isShown(value.Value)) return;
+            if (!props.IntProps.TryGetValue(number, out var value)) return;
+            if (original is { } same && value.Value == same.Value) { props.IntProps[number] = same; return; }
+            if (value.Variation != 0 || !isShown(value.Value)) return;
             if (original is { } kept) props.IntProps[number] = kept;
             else props.IntProps.Remove(number);
         }

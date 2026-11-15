@@ -12,6 +12,7 @@ using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.TextEditing;
 using SIL.TextEditing.Avalonia;
@@ -27,6 +28,84 @@ namespace SIL.Motif.Tests.App.RealClient;
 [Collection(LcmCacheTestCollection.Name)]
 public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
 {
+    [Fact]
+    public void ReopeningAndUndoingAPendingTitleRestoresItsPreviousDraftValue()
+    {
+        var path = ProjectWithGdrs();
+        var root = RootFor(path);
+        var shown = Show(path, "GDR-1");
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            await using var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(root));
+            var store = new GdrEditStore(path, root, runner);
+            var window = new GdrPreviewWindow([shown.Record], id => Show(path, id), store,
+                () => Task.FromResult(true), projectName: Path.GetFileNameWithoutExtension(path));
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(shown.Record.Id);
+            await window.Loading;
+            Assert.True(await window.OpenMarkdownAsync(), window.StatusText);
+            window.MarkdownText = window.MarkdownText.Replace("title-1", "first title", StringComparison.Ordinal);
+            Assert.True(await window.SaveMarkdownAsync(), window.StatusText);
+            await window.Loading;
+            Assert.True(await window.OpenMarkdownAsync(), window.StatusText);
+            Assert.Contains("first title", window.MarkdownText, StringComparison.Ordinal);
+            window.MarkdownText = window.MarkdownText.Replace("first title", "second title", StringComparison.Ordinal);
+            Assert.True(await window.SaveMarkdownAsync(), window.StatusText);
+            await window.Loading;
+            Assert.True(await window.UndoMarkdownAsync(), window.StatusText);
+            await window.Loading;
+            Assert.True(await window.ApplyAsync(), window.StatusText);
+        }, TimeSpan.FromMinutes(4));
+        Assert.Equal("first title", Show(path, "GDR-1").Record.Title);
+    }
+
+    [Fact]
+    public void ReopeningAPendingDescriptionPreservesLinkPropertiesWhenSavedAndApplied()
+    {
+        var path = ProjectWithGdrs();
+        var root = RootFor(path);
+        var shown = Show(path, "GDR-1");
+        var before = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        var properties = new TextProps(new Dictionary<int, (int, int)> { [TextPropertyNumbers.Underline] = (0, 3) },
+            new Dictionary<int, string>());
+        var initial = new TextRichStringPayload("CmPossibility.Description", "en",
+            [new TextRun("link", "en", "Emphasis", properties, SeededGdrs.HyperlinkData)], new(before.Text, before.Digest));
+
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            await using var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(root));
+            var store = new GdrEditStore(path, root, runner);
+            var staged = await store.StageMarkdownAsync(new GdrMarkdownEdits(shown.Record.Id, [initial], null));
+            Assert.Null(staged.Refusal);
+            var window = new GdrPreviewWindow([shown.Record], id => Show(path, id), store,
+                () => Task.FromResult(true), projectName: Path.GetFileNameWithoutExtension(path));
+            using var closer = window.CloseOnExit();
+            window.Show();
+            window.Show(shown.Record.Id);
+            await window.Loading;
+            Assert.True(await window.OpenMarkdownAsync(), window.StatusText);
+            window.MarkdownText = window.MarkdownText.Replace("[link]", "[linked]", StringComparison.Ordinal);
+            Assert.True(await window.SaveMarkdownAsync(), window.StatusText);
+            var pending = ProposalCommands.PendingTextRichString(new TextRichStringFieldRequest(path, shown.Record.Id,
+                "CmPossibility.Description", "en"));
+            Assert.True(pending.Succeeded, pending.Refusal?.Message);
+            Assert.Equal((0, 3), Assert.Single(pending.Value!.RichString!.Runs).Props!.Ints[TextPropertyNumbers.Underline]);
+            await window.Loading;
+            Assert.True(await window.ApplyAsync(), window.StatusText);
+        }, TimeSpan.FromMinutes(4));
+
+        var run = Assert.Single(Show(path, "GDR-1").DescriptionAlternatives.Single(item => item.WritingSystem == "en").Runs);
+        Assert.Equal("linked", run.Text);
+        Assert.Equal("en", run.WritingSystem);
+        Assert.Equal("Emphasis", run.Style);
+        Assert.Equal(SeededGdrs.HyperlinkData, run.ObjData);
+        // LibLCM writes underline with its enum variation; the pending assertion checks the authored variation.
+        Assert.Equal(new GdrIntProperty(3, 3), run.Properties.Ints[TextPropertyNumbers.Underline]);
+        Assert.Single(run.Properties.Ints);
+        Assert.Equal("Emphasis", Assert.Single(run.Properties.Strings).Value);
+    }
+
     [Fact]
     public void ADiscussionEditedAsMarkdownStagesAppliesAndReadsBackWithItsFormattingAndLinks()
     {

@@ -19,6 +19,8 @@ using SIL.Motif.Generator.Manifest;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Model.Effects;
+using SIL.Motif.Model.Snapshot;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Projects;
@@ -60,6 +62,274 @@ public sealed class TextRichStringApplyTests(PristineProjectFixture pristine)
         Assert.Equal(new GdrIntProperty((int)FwTextPropVar.ktpvEnum, 1), en.Runs.Single(run => run.Text == "bold").Properties.Ints[(int)FwTextPropType.ktptBold]);
         var ar = Alternative(after, SeededProject.RightToLeftTag);
         Assert.Equal(("ar-x", "Emphasis"), (ar.Text, Assert.Single(ar.Runs).Style));
+    }
+
+    [Fact]
+    public void AGdrTitleIsNotAnEditableRichStringField()
+    {
+        var payload = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("title", "en")],
+            new("", TextRunsDigest.Of([])));
+
+        Assert.Throws<ContractParseException>(() => TextRichStringPayload.Parse(payload.ToJson()));
+    }
+
+    [Fact]
+    public void ATitleEditCannotRenameAnUnrelatedPossibility()
+    {
+        var path = Project();
+        string id;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+            id = CanonicalId.FromGuid(cache.LangProject.PartsOfSpeechOA.PossibilitiesOS[0].Guid).Value;
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("other", "en")],
+            new("", TextRunsDigest.Of([])));
+
+        var result = ProposalCommands.StageGdrMarkdown(path, new(id, [edit], null));
+
+        Assert.False(result.Succeeded);
+        Assert.NotNull(result.Refusal);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void GeneratedPossibilityNamesNeedProofOfGdrOwnershipForTheProseExemption()
+    {
+        var target = CanonicalId.FromGuid(Guid.NewGuid());
+        var operation = new OperationEnvelope(CanonicalId.Mint(), CmPossibilityNameOperationKinds.SetName,
+            target: target, after: JsonSerializer.SerializeToElement(new { ws = "en", text = "name" }));
+        var proposal = new Proposal(new Dictionary<string, string> { ["lists"] = "1.0" }, CanonicalId.Mint(), [], [operation]);
+        var effect = new ExpectedEffect(target, SnapshotFields.CmPossibilityName,
+            new Dictionary<string, string>(), new Dictionary<string, string> { ["en"] = "name" });
+        Assert.Null(ProseOnlyProposalReadiness.ExemptionFor(proposal, [effect], _ => false));
+        Assert.NotNull(ProseOnlyProposalReadiness.ExemptionFor(proposal, [effect], _ => true));
+    }
+
+    [Fact]
+    public void WholeRecordTitleAbstractAndDiscussionApplyThroughThePendingChangesDraft()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var description = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        TextRichStringPayload Edit(string field, RichStringAlternative before, string text) =>
+            new(field, "en", [new TextRun(text, "en")], new(before.Text, before.Digest));
+        var paragraph = shown.Discussion[1];
+        var paragraphRuns = paragraph.Runs.Select(Carried).ToArray();
+        paragraphRuns[0] = paragraphRuns[0] with { Text = "discussion-new" };
+        var paragraphs = new TextParagraphsPayload("CmPossibility.Discussion",
+            shown.Discussion.Select(item => item.Key).ToArray(),
+            [new TextParagraphChange(1, paragraph.Key, paragraph.Style, paragraphRuns, new TextProps(
+                paragraph.Properties.Ints.ToDictionary(item => item.Key, item => (item.Value.Variation, item.Value.Value)),
+                paragraph.Properties.Strings.Where(item => item.Key != 133).ToDictionary(item => item.Key, item => item.Value)))],
+            [], new Dictionary<string, TextParagraphExpected>
+            {
+                [paragraph.Key!] = new(string.Concat(paragraph.Runs.Select(run => run.Text)), paragraph.Style ?? "", TextRunsDigest.Of(paragraph))
+            });
+        var changes = new GdrMarkdownEdits(shown.Record.Id,
+            [Edit("CmPossibility.Name", title, "title-new"), Edit("CmPossibility.Description", description, "abstract-new")], paragraphs);
+        var staged = ProposalCommands.StageGdrMarkdown(path, changes);
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(3, PendingOperations(path));
+        Assert.Contains(ReadDraft(path).Operations, operation => operation.Kind == CmPossibilityNameOperationKinds.SetName);
+
+        var restored = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id,
+            [new("CmPossibility.Name", "en", title.Runs.Select(Carried).ToArray(), new(title.Text, title.Digest)),
+             new("CmPossibility.Description", "en", description.Runs.Select(Carried).ToArray(), new(description.Text, description.Digest))],
+            new TextParagraphsPayload("CmPossibility.Discussion", shown.Discussion.Select(item => item.Key).ToArray(), [], [],
+                new Dictionary<string, TextParagraphExpected>())));
+        Assert.True(restored.Succeeded, restored.Refusal?.Message);
+        Assert.Equal(0, PendingOperations(path));
+        staged = ProposalCommands.StageGdrMarkdown(path, changes);
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+
+        Applied(path);
+
+        var after = GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!;
+        Assert.Equal("title-new", after.Record.Title);
+        Assert.Equal("abstract-new", after.Record.Description);
+        Assert.StartsWith("discussion-new", string.Concat(after.Discussion[1].Runs.Select(run => run.Text)));
+    }
+
+    [Fact]
+    public void ATitleChangedInFieldWorksRefusesTheWholeRecordSaveByField()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var description = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var record = SeededGdrs.Records(cache).PossibilitiesOS[0];
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => record.Name.set_String(cache.DefaultAnalWs, "outside"));
+            new FwDataProjectLoader().Save(cache);
+        }
+        TextRichStringPayload Edit(string field, RichStringAlternative before, string text) =>
+            new(field, "en", [new TextRun(text, "en")], new(before.Text, before.Digest));
+
+        var refused = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id,
+            [Edit("CmPossibility.Name", title, "mine"), Edit("CmPossibility.Description", description, "other")], null));
+
+        Assert.False(refused.Succeeded);
+        Assert.Contains("Name", refused.Refusal!.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void TitleRunsAreCombinedAndNormalizedBeforeTheGeneratedOperationApplies()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en",
+            [new TextRun("caf", "en"), new TextRun("é", "en")], new(title.Text, title.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var operation = Assert.Single(ReadDraft(path).Operations);
+        Assert.Equal(CmPossibilityNameOperationKinds.SetName, operation.Kind);
+        Assert.Equal("cafe\u0301", operation.After!["text"].GetString());
+        Applied(path);
+        Assert.Equal("café", GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!.Record.Title.Normalize());
+    }
+
+    [Fact]
+    public void ClearingATitleUsesTheGeneratedClearOperation()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [], new(title.Text, title.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        Assert.Equal(CmPossibilityNameOperationKinds.ClearName, Assert.Single(ReadDraft(path).Operations).Kind);
+        Applied(path);
+        Assert.Equal("", GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!.Record.Title);
+    }
+
+    [Fact]
+    public void AChangedRecordLocationHasARegisteredRefusalCode()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("new", "en")], new(title.Text, title.Digest));
+        var result = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null,
+            new GdrMarkdownIdentity(shown.Record.Abbreviation, shown.Record.ParentId, shown.Position + 1)));
+        Assert.False(result.Succeeded);
+        Assert.Equal(RefusalCodes.GdrRecordMoved, result.Refusal!.Code);
+        Assert.Equal(0, PendingOperations(path));
+    }
+
+    [Fact]
+    public void ATitleChangedAfterStagingIsRefusedAtApplyAfterRefresh()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("mine", "en")], new(title.Text, title.Digest));
+        Assert.True(ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null)).Succeeded);
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            var record = SeededGdrs.Records(cache).PossibilitiesOS[0];
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => record.Name.set_String(cache.DefaultAnalWs, "outside"));
+            new FwDataProjectLoader().Save(cache);
+        }
+
+        var refused = Apply(path);
+
+        Assert.False(refused.Succeeded);
+        Assert.Equal(RefusalCodes.TextFieldStale, refused.Refusal!.Code);
+        Assert.Contains("Name", refused.Refusal.Message, StringComparison.Ordinal);
+        Recaptured(path);
+        Assert.Equal(RefusalCodes.TextFieldStale, Apply(path).Refusal?.Code);
+        Assert.Equal("outside", GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!.Record.Title);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task FinalizedTitleApplyChecksTheOriginalTitleBeforeWritingAnyField(bool changedOutside)
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var description = shown.DescriptionAlternatives.Single(item => item.WritingSystem == "en");
+        TextRichStringPayload Edit(string field, RichStringAlternative before, string text) =>
+            new(field, "en", [new TextRun(text, "en")], new(before.Text, before.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id,
+            [Edit("CmPossibility.Name", title, "mine"), Edit("CmPossibility.Description", description, "other")], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var version = MotifProductVersion.CurrentText;
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, version, PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        if (changedOutside)
+        {
+            using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+            var record = SeededGdrs.Records(cache).PossibilitiesOS[0];
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => record.Name.set_String(cache.DefaultAnalWs, "outside"));
+            new FwDataProjectLoader().Save(cache);
+        }
+        if (changedOutside) Recaptured(path);
+        var proposalId = finalized.Value!.ProposalId;
+        var queued = JobCommands.EnqueueDryRun(new EnqueueDryRunRequest(path, version, proposalId));
+        Assert.True(queued.Succeeded, queued.Refusal?.Message);
+        var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(RootFor(path)));
+        try
+        {
+            runner.Start(path);
+            await runner.WhenIdleAsync();
+            var bound = JobCommands.WaitForDryRun(new WaitForDryRunRequest(path, version, proposalId,
+                queued.Value!.JobId, TimeSpan.FromMinutes(2)));
+            Assert.True(bound.Succeeded, bound.Refusal?.Message);
+            var applied = PendingChangesWorkflow.Apply(new ApplyRequest(path, version, proposalId));
+            if (changedOutside)
+            {
+                Assert.False(applied.Succeeded);
+                Assert.Equal(RefusalCodes.TextFieldStale, applied.Refusal!.Code);
+                Assert.Contains("Name", applied.Refusal.Message, StringComparison.Ordinal);
+            }
+            else
+                Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        }
+        finally
+        {
+            await runner.DisposeAsync();
+        }
+        Recaptured(path);
+        var after = GdrQuery.Show(new GdrShowRequest(path, shown.Record.Id)).Value!;
+        Assert.Equal(changedOutside ? "outside" : "mine", after.Record.Title);
+        Assert.Equal(changedOutside ? shown.Record.Description : "other", after.Record.Description);
+    }
+
+    [Fact]
+    public void RetryingAnAppliedTitleReturnsAlreadyAppliedWithoutWritingAgain()
+    {
+        var path = Project();
+        var shown = GdrQuery.Show(new GdrShowRequest(path, "GDR-1")).Value!;
+        var title = shown.TitleAlternatives.Single(item => item.WritingSystem == "en");
+        var edit = new TextRichStringPayload("CmPossibility.Name", "en", [new TextRun("mine", "en")],
+            new(title.Text, title.Digest));
+        var staged = ProposalCommands.StageGdrMarkdown(path, new(shown.Record.Id, [edit], null));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        var first = Apply(path);
+        Assert.True(first.Succeeded, first.Refusal?.Message);
+        var id = first.Value!.Receipt!.ProposalId;
+        var before = File.ReadAllBytes(path);
+        long ReceiptCount()
+        {
+            using var database = ProjectMotifDatabase.Open(path);
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM Receipts WHERE ProposalId = $id;";
+            command.Parameters.AddWithValue("$id", id);
+            return (long)command.ExecuteScalar()!;
+        }
+        Assert.Equal(1, ReceiptCount());
+
+        var retry = PendingChangesWorkflow.Apply(new ApplyRequest(path, MotifProductVersion.CurrentText, id, true));
+
+        Assert.True(retry.Succeeded, retry.Refusal?.Code + ": " + retry.Refusal?.Message);
+        Assert.True(retry.Value!.Receipt!.AlreadyApplied);
+        Assert.Equal(before, File.ReadAllBytes(path));
+        Assert.Equal(1, ReceiptCount());
     }
 
     [Fact]
