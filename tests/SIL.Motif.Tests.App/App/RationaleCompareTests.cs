@@ -98,6 +98,61 @@ public sealed class RationaleCompareTests
     }
 
     [Theory]
+    [InlineData(Theirs, "A reason saved without a revision.")]
+    [InlineData(Original, Theirs)]
+    [InlineData(Original, Original)]
+    [InlineData(Mine, Mine)]
+    [InlineData(null, Theirs)]
+    public void CompareAsksToReloadWhenTheRevisionCannotIdentifyAnotherCurrentVersion(string? revision, string stored)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, editor) = await EditingAsync();
+            Revise(fake, Theirs, "agent-1");
+            await editor.SaveCommand.ExecuteAsync(null);
+            fake.StoredRationale = stored;
+            fake.RationaleRevisions = revision is null ? [] :
+                [new RationaleRevisionView(2, revision, "agent-1", "", "2026-11-12T00:00:00Z")];
+            var view = new RationaleEditor { DataContext = editor };
+            var owner = new Window { Content = view };
+            using var closer = owner.CloseOnExit();
+            owner.Show();
+
+            view.FindControl<Button>("RationaleCompareButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var opened = owner.OwnedWindows.OfType<CompareWindow>().ToArray();
+            foreach (var window in opened) window.Close();
+            await editor.Working;
+
+            Assert.Empty(opened);
+            Assert.Contains("Reload", Assert.IsType<WindowRefusal>(editor.Refusal).Sentence, StringComparison.Ordinal);
+            Assert.Single(fake.SetRationaleRequests);
+            Assert.Equal(stored, fake.StoredRationale);
+            Assert.Equal(Mine, editor.Text());
+            Assert.Equal(Original, editor.Markdown);
+            Assert.True(editor.IsEditing);
+            Assert.True(editor.HasUnsavedChanges);
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task ARefusedCurrentProposalReadKeepsTheDraftAndDoesNotOpenCompare()
+    {
+        var (fake, editor) = await EditingAsync();
+        Revise(fake, Theirs, "agent-1");
+        await editor.SaveCommand.ExecuteAsync(null);
+        fake.ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Refused(
+            new Refusal(RefusalCodes.ProposalNotFound, FailureReason.Refused, "The Proposal could not be read.")));
+
+        await editor.CompareAsync(_ => throw new InvalidOperationException("The current Rationale was not read."));
+
+        Assert.Equal(RefusalCodes.ProposalNotFound, editor.Refusal?.Code);
+        Assert.Equal(Mine, editor.Text());
+        Assert.Equal(Original, editor.Markdown);
+        Assert.True(editor.HasUnsavedChanges);
+        Assert.Single(fake.SetRationaleRequests);
+    }
+
+    [Theory]
     [InlineData("agent-1", "Person 1", "agent-1")]
     [InlineData(null, "Person 1", "Person 1")]
     [InlineData(null, "", "a person")]
@@ -189,6 +244,96 @@ public sealed class RationaleCompareTests
     }
 
     [Theory]
+    [InlineData(Original, false)]
+    [InlineData(Original, true)]
+    [InlineData("Some <b>raw</b> text.\nSecond line.", false)]
+    [InlineData("Some <b>raw</b> text.\nSecond line.", true)]
+    public void StartingAgainKeepsTheUnsavedDraftInTheRestoreChoices(string original, bool twice)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, editor) = await EditingAsync(original);
+            var draft = editor.Text();
+            Revise(fake, Theirs, "agent-1");
+            await editor.SaveCommand.ExecuteAsync(null);
+            var view = new RationaleEditor { DataContext = editor };
+            var owner = new Window { Content = view };
+            using var closer = owner.CloseOnExit();
+            owner.Show();
+
+            view.FindControl<Button>("RationaleCompareButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Single(owner.OwnedWindows.OfType<CompareWindow>()).StartAgain();
+            await editor.Working;
+
+            Assert.Equal(Theirs, editor.Text());
+            Assert.Single(fake.SetRationaleRequests);
+            Assert.True(editor.HasUnsavedChanges);
+            var stored = Theirs;
+            if (twice)
+            {
+                editor.Document.Paragraphs[0].Runs[0].Text += " Another edit.";
+                var secondDraft = editor.Text();
+                stored += " Another revision.";
+                Revise(fake, stored, "agent-2", revision: 3);
+                await editor.SaveCommand.ExecuteAsync(null);
+                view.FindControl<Button>("RationaleCompareButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Single(owner.OwnedWindows.OfType<CompareWindow>()).StartAgain();
+                await editor.Working;
+                Assert.Contains(editor.Revisions, choice => choice.Markdown == secondDraft);
+                Assert.Equal(2, editor.Revisions.Select(choice => choice.Label).Distinct().Count());
+            }
+            var kept = Assert.Single(editor.Revisions, choice => choice.Markdown == draft);
+            Assert.Contains("unsaved", kept.Label, StringComparison.Ordinal);
+            PageScreenshots.SettleLayout(owner);
+            var restore = Assert.Single(view.GetVisualDescendants().OfType<Button>(),
+                button => ReferenceEquals(button.CommandParameter, kept));
+            Assert.True(restore.IsEffectivelyVisible);
+            restore.Command!.Execute(restore.CommandParameter);
+            Assert.Equal(draft, editor.Text());
+            Assert.True(editor.HasUnsavedChanges);
+            await editor.SaveCommand.ExecuteAsync(null);
+
+            Assert.Equal(draft, fake.StoredRationale);
+            Assert.Equal(stored, fake.SetRationaleRequests[^1].ExpectedRationale);
+            Assert.False(editor.IsEditing);
+            Assert.Empty(editor.Revisions);
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void DoneWithTheOtherSidesTextEndsTheEditWithoutWritingAnIdenticalRevision()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (fake, editor) = await EditingAsync();
+            var finished = 0;
+            editor.EditFinished += () => finished++;
+            Revise(fake, Theirs, "agent-1");
+            await editor.SaveCommand.ExecuteAsync(null);
+            var view = new RationaleEditor { DataContext = editor };
+            var owner = new Window { Content = view };
+            using var closer = owner.CloseOnExit();
+            owner.Show();
+
+            view.FindControl<Button>("RationaleCompareButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var window = Assert.Single(owner.OwnedWindows.OfType<CompareWindow>());
+            window.Comparison.ChooseAll(Choice.FieldWorks);
+            Assert.True(window.Finish());
+            await editor.Working;
+
+            Assert.Single(fake.SetRationaleRequests);
+            Assert.Equal(Theirs, editor.Markdown);
+            Assert.Equal(Theirs, editor.Text());
+            Assert.Equal(Theirs, fake.StoredRationale);
+            Assert.False(editor.IsEditing);
+            Assert.False(editor.IsChangedElsewhere);
+            Assert.False(editor.HasUnsavedChanges);
+            Assert.True(view.Field!.IsReadOnly);
+            Assert.Equal(1, finished);
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Theory]
     [InlineData("The first reason has **bold** text.\n\nAnother [link](https://example.org).")]
     [InlineData("Some <b>raw</b> text.\nSecond line.")]
     [InlineData("The first reason mentions café and [a link](https://example.org/café).")]
@@ -213,8 +358,11 @@ public sealed class RationaleCompareTests
         var fake = new FakeCommandClient { StoredRationale = original };
         var context = WorkspaceContextTests.NewContext(fake);
         await context.OpenProjectAsync(@"C:\projects\one.fwdata");
-        var editor = new RationaleEditorModel(context, new ProposalDetailProjection("proposal/one", "proposed", "Label",
-            new RationaleView(original, null, "2026-11-11T00:00:00Z", false, null, false), null, []));
+        var detail = new ProposalDetailProjection("proposal/one", "proposed", "Label",
+            new RationaleView(original, null, "2026-11-11T00:00:00Z", false, null, false), null, []);
+        fake.ShowProposalHandler = (_, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            detail with { Rationale = detail.Rationale! with { Markdown = fake.StoredRationale ?? string.Empty } }));
+        var editor = new RationaleEditorModel(context, detail);
         editor.EditCommand.Execute(null);
         var run = editor.Document.Paragraphs[0].Runs[0];
         run.Text = run.Text.Contains("first", StringComparison.Ordinal)

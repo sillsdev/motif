@@ -1147,7 +1147,8 @@ public sealed class ProposalsPageModelTests
         var rationale = new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false);
         var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
         fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
-            new ProposalDetailProjection(request.ProposalId, "proposed", "Label", rationale, null, [], Comments: [comment])));
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label",
+                rationale with { Markdown = fake.StoredRationale ?? rationale.Markdown }, null, [], Comments: [comment])));
         await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
         await page.DetailReading;
         var editor = page.RationaleEditor!;
