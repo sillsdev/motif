@@ -131,6 +131,7 @@ namespace SIL.TextEditing.Playground
         void UpdateSelectionBar()
         {
             var field = _active?.Field;
+            if (!SelectionBarHasFocus()) { HideSelectionBar(); return; }
             bool show = _selectionBarEnabled && field != null && field.Editor.HasSelection && !field.IsReadOnly && TopLevel.GetTopLevel(this) != null;
             if (!show)
             {
@@ -144,7 +145,7 @@ namespace SIL.TextEditing.Playground
             int generation = ++_selectionBarGeneration;
             Dispatcher.UIThread.Post(() =>
             {
-                if (generation != _selectionBarGeneration || !_selectionBarEnabled || _active?.Field != field || !field!.Editor.HasSelection) return;
+                if (generation != _selectionBarGeneration || !_selectionBarEnabled || _active?.Field != field || !field!.Editor.HasSelection || !SelectionBarHasFocus()) return;
                 var caret = field.CaretRect();
                 if (!field.VisibleBounds.Intersects(caret)) { _selectionBar.IsOpen = false; return; }   // the selection's end is scrolled out of sight
                 _selectionBar.PlacementTarget = field;
@@ -154,14 +155,20 @@ namespace SIL.TextEditing.Playground
             }, DispatcherPriority.Background);
         }
 
+        // Overlay popups report their focused controls through the top-level focus manager.
+        bool SelectionBarHasFocus()
+        {
+            var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as ILogical;
+            return _active?.Field.IsFocused == true ||
+                (focused != null && (focused == _selectionBar || focused.GetLogicalAncestors().Contains(_selectionBar)));
+        }
+
         /// <summary>Focus moved: the bar stays while focus is in the field or in the bar itself (a box's drop-down), and goes otherwise.</summary>
         void SelectionBarFocusMoved()
         {
             Dispatcher.UIThread.Post(() =>
             {
-                var focused = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as global::Avalonia.LogicalTree.ILogical;
-                bool inBar = focused != null && (focused == _selectionBar || focused.GetLogicalAncestors().Contains(_selectionBar));
-                if (_active?.Field.IsFocused == true || inBar) return;
+                if (SelectionBarHasFocus()) return;
                 HideSelectionBar();
             }, DispatcherPriority.Background);
         }

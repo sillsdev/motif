@@ -1,5 +1,7 @@
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using Avalonia.Controls.Primitives;
 using Xunit;
 
@@ -121,6 +123,41 @@ namespace SIL.TextEditing.Playground.Tests
 
                 s.Find<TextBox>(PlaygroundView.Names.MarkdownSource).Focus();
                 Headless.Pump();
+                Assert.False(s.View.SelectionBarOpen);
+            }
+        });
+
+        [Fact]
+        public void Applying_markdown_while_it_has_focus_keeps_the_selection_bar_closed() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.MixedBidi))
+            {
+                s.Select(0, 0, 8);
+                Headless.Pump();
+                s.Find<TextBox>(PlaygroundView.Names.MarkdownSource).Focus();
+                Headless.Pump();
+                s.View.MarkdownText += "\nAnother paragraph.\n";
+                Assert.True(s.View.ApplyMarkdown());
+                Assert.True(s.Find<TextBox>(PlaygroundView.Names.MarkdownSource).IsFocused);
+                s.Select(0, 0, 8);
+                Assert.True(s.Editor.HasSelection);
+                Assert.False(s.View.SelectionBarOpen);
+            }
+        });
+
+        [Fact]
+        public void Scrolling_the_unfocused_field_keeps_the_selection_bar_closed() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.Long, height: 350))
+            {
+                s.Select(0, 0, 8);
+                Headless.Pump();
+                s.Find<TextBox>(PlaygroundView.Names.MarkdownSource).Focus();
+                Headless.Pump();
+                var scroll = s.Field.GetVisualAncestors().OfType<ScrollViewer>().First();
+                scroll.Offset = new Vector(0, 20);
+                s.Settle();
+                Assert.True(scroll.Offset.Y > 0);
                 Assert.False(s.View.SelectionBarOpen);
             }
         });

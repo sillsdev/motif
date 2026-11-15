@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -537,6 +538,10 @@ namespace SIL.TextEditing.Playground
 
             var old = editor.Document.Paragraphs;
             var paragraphs = result.Document.Paragraphs.ToList();
+            if (editor.Document.Normalization is System.Text.NormalizationForm form)
+                foreach (var p in paragraphs)
+                    foreach (var r in p.Runs)
+                        if (!r.IsObject) r.Text = TextNormalizer.Normalize(r.Text, form);
             var fresh = paragraphs.Where(n => !old.Any(o => MarkdownConverter.AreEquivalent(o, n))).ToList();
             var flattening = BlockFlattener.Flatten(fresh, editor.BlockFeatures, editor.BlockRecognizer);
             if (MarkdownConverter.AreEquivalent(old, paragraphs))
@@ -557,10 +562,6 @@ namespace SIL.TextEditing.Playground
             // What the field does to anything inserted: new text cannot bring read-only marks in, and takes the field's normalisation form.
             foreach (var p in fresh)
                 foreach (var r in p.Runs) r.Props.IntProps.Remove(TextPropertyNumbers.Editable);
-            if (editor.Document.Normalization is System.Text.NormalizationForm form)
-                foreach (var p in paragraphs)
-                    foreach (var r in p.Runs)
-                        if (!r.IsObject) r.Text = TextNormalizer.Normalize(r.Text, form);
             CarryKeys(old, paragraphs);
             var delta = new EditDelta
             {
@@ -581,29 +582,108 @@ namespace SIL.TextEditing.Playground
             return true;
         }
 
-        /// <summary>Keys go with paragraphs: a new paragraph equivalent to an old one, matched in order, takes its key; a changed paragraph between two
-        /// matches takes the key of the old paragraph at the same place between them when there is one; any other paragraph has none for the host to assign.</summary>
+        /// <summary>Equivalent paragraphs keep their keys, including moved ones. Changed paragraphs reuse available keys between ordered matches;
+        /// other paragraphs have none for the host to assign.</summary>
         static void CarryKeys(IReadOnlyList<Paragraph> old, List<Paragraph> paragraphs)
         {
             var taken = new bool[old.Count];
-            var match = new int[paragraphs.Count];
-            int from = 0;
-            for (int i = 0; i < paragraphs.Count; i++)
+            var match = Enumerable.Repeat(-1, paragraphs.Count).ToArray();
+            var oldKeys = old.Select(ParagraphMatchKey).ToArray();
+            var newKeys = paragraphs.Select(ParagraphMatchKey).ToArray();
+            int start = 0;
+            while (start < old.Count && start < paragraphs.Count && oldKeys[start] == newKeys[start])
             {
-                match[i] = -1;
-                for (int j = from; j < old.Count; j++)
-                    if (MarkdownConverter.AreEquivalent(old[j], paragraphs[i])) { match[i] = j; taken[j] = true; from = j + 1; break; }
+                match[start] = start; taken[start] = true; start++;
             }
+            int oldEnd = old.Count, newEnd = paragraphs.Count;
+            var oldCounts = oldKeys.Skip(start).GroupBy(k => k).ToDictionary(g => g.Key, g => g.Count());
+            var newCounts = newKeys.Skip(start).GroupBy(k => k).ToDictionary(g => g.Key, g => g.Count());
+            while (oldEnd > start && newEnd > start && oldKeys[oldEnd - 1] == newKeys[newEnd - 1] &&
+                oldCounts[oldKeys[oldEnd - 1]] == 1 && newCounts[newKeys[newEnd - 1]] == 1)
+            {
+                oldEnd--; newEnd--;
+                match[newEnd] = oldEnd; taken[oldEnd] = true;
+                oldCounts[oldKeys[oldEnd]]--; newCounts[newKeys[newEnd]]--;
+            }
+            int oldLength = oldEnd - start, newLength = newEnd - start;
+            var lengths = new int[oldLength + 1, newLength + 1];
+            for (int j = oldLength - 1; j >= 0; j--)
+                for (int i = newLength - 1; i >= 0; i--)
+                    lengths[j, i] = oldKeys[start + j] == newKeys[start + i]
+                        ? 1 + lengths[j + 1, i + 1] : Math.Max(lengths[j + 1, i], lengths[j, i + 1]);
+            int x = 0, y = 0;
+            while (x < oldLength && y < newLength)
+            {
+                if (oldKeys[start + x] == newKeys[start + y])
+                {
+                    match[start + y] = start + x; taken[start + x] = true; x++; y++;
+                }
+                else if (lengths[x + 1, y] >= lengths[x, y + 1]) x++;
+                else y++;
+            }
+            var anchors = (int[])match.Clone();
+            for (int i = 0; i < paragraphs.Count; i++)
+                if (match[i] < 0)
+                    for (int j = 0; j < old.Count; j++)
+                        if (!taken[j] && oldKeys[j] == newKeys[i])
+                        { match[i] = j; taken[j] = true; break; }
             int prev = -1;
             for (int i = 0; i < paragraphs.Count; i++)
             {
-                if (match[i] >= 0) { paragraphs[i].Key = old[match[i]].Key; prev = match[i]; continue; }
+                if (anchors[i] >= 0) prev = anchors[i];
+                if (match[i] >= 0) { paragraphs[i].Key = old[match[i]].Key; continue; }
                 int next = old.Count;
-                for (int k = i + 1; k < paragraphs.Count; k++) if (match[k] >= 0) { next = match[k]; break; }
+                for (int k = i + 1; k < paragraphs.Count; k++) if (anchors[k] >= 0) { next = anchors[k]; break; }
                 int candidate = prev + 1;
-                if (candidate < next && candidate < old.Count && !taken[candidate]) { paragraphs[i].Key = old[candidate].Key; taken[candidate] = true; prev = candidate; }
+                while (candidate < next && taken[candidate]) candidate++;
+                if (candidate < next && candidate < old.Count) { paragraphs[i].Key = old[candidate].Key; taken[candidate] = true; prev = candidate; }
                 else paragraphs[i].Key = null;
             }
+        }
+
+        // This key follows Markdown equivalence, including effective paragraph properties and normalized runs.
+        static string ParagraphMatchKey(Paragraph paragraph)
+        {
+            var result = new StringBuilder();
+            void Add(string? value)
+            {
+                if (value == null) result.Append("-1:");
+                else result.Append(value.Length.ToString(CultureInfo.InvariantCulture)).Append(':').Append(value);
+            }
+            void AddBag(PropertyBag bag)
+            {
+                Add(bag.IntProps.Count.ToString(CultureInfo.InvariantCulture));
+                foreach (var pair in bag.IntProps)
+                {
+                    Add(pair.Key.ToString(CultureInfo.InvariantCulture));
+                    Add(pair.Value.Variation.ToString(CultureInfo.InvariantCulture));
+                    Add(pair.Value.Value.ToString(CultureInfo.InvariantCulture));
+                }
+                Add(bag.StrProps.Count.ToString(CultureInfo.InvariantCulture));
+                foreach (var pair in bag.StrProps)
+                {
+                    Add(pair.Key.ToString(CultureInfo.InvariantCulture));
+                    Add(pair.Value);
+                }
+            }
+            Add(paragraph.Style);
+            var props = paragraph.Props.Clone();
+            props.StrProps.Remove(TextPropertyNumbers.NamedStyle);
+            bool hadRtl = props.TryGetInt(128, out int rtl);
+            if (paragraph.Rtl != (hadRtl && rtl != 0)) props.IntProps[128] = new IntPropValue(0, paragraph.Rtl ? 1 : 0);
+            AddBag(props);
+            var normalized = paragraph.Clone(false);
+            normalized.Normalize();
+            Add(normalized.Runs.Count.ToString(CultureInfo.InvariantCulture));
+            if (normalized.Runs.Count == 0) Add(paragraph.DefaultWs);
+            foreach (var run in normalized.Runs)
+            {
+                Add(run.Ws);
+                Add(TextNormalizer.Normalize(run.Text, NormalizationForm.FormD));
+                Add(run.ObjData);
+                AddBag(run.Props);
+            }
+            return result.ToString();
         }
 
         bool NotApplied(string status, string log)
