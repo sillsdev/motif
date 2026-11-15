@@ -74,6 +74,49 @@
               </Border>
 
             </StackPanel>
+<StackPanel x:Name="SettingsAssistantConnectionsSection" Classes="settingsPage"
+            Spacing="{DynamicResource Intent.Space.Related}"
+            DataContext="{ReflectionBinding AssistantConnections}" x:DataType="vm:AssistantConnectionsViewModel">
+  <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.AdvancedAiModeTitle}" />
+  <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.AdvancedAiModeExplanation}" />
+  <CheckBox Content="{x:Static app:MotifAppStrings.TurnOnAdvancedAiMode}" IsChecked="{Binding IsEnabled}" />
+  <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.ChatGptTitle}" />
+  <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.ChatGptKeyHelp}" />
+  <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ChatGptKey}" />
+  <TextBox PasswordChar="●" Text="{Binding ChatGptKey}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ChatGptKey}" />
+  <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ChatGptTunnelId}" />
+  <TextBox Text="{Binding ChatGptTunnelId}" AutomationProperties.Name="{x:Static app:MotifAppStrings.ChatGptTunnelId}" />
+  <StackPanel Orientation="Horizontal">
+    <Button Content="{x:Static app:MotifAppStrings.ChatGptConnect}" Command="{Binding ConnectChatGptCommand}" />
+    <Button Content="{x:Static app:MotifAppStrings.ChatGptDisconnect}" Command="{Binding DisconnectChatGptCommand}" />
+  </StackPanel>
+  <views:CopyableTextBlock Text="{Binding ChatGptStatus}" TextWrapping="Wrap" />
+  <views:CopyableTextBlock Text="{Binding ChatGptSaveWarning}" TextWrapping="Wrap" />
+  <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ChatGptInstructions}" TextWrapping="Wrap" />
+  <Border Classes="notice" IsVisible="{Binding HasVersionWarning}">
+    <views:CopyableTextBlock Text="{Binding VersionWarning}" TextWrapping="Wrap" />
+  </Border>
+  <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.ChooseAssistantsTitle}" />
+  <views:CopyableTextBlock TextWrapping="Wrap" Text="{x:Static app:MotifAppStrings.ChooseAssistantsExplanation}" />
+  <views:CopyableTextBlock TextWrapping="Wrap" Text="{Binding EmptyAssistantText}" IsVisible="{Binding HasNoAssistants}"
+                           AutomationProperties.AutomationId="{x:Static app:AutomationIds.AssistantsEmptyText}" />
+  <ItemsControl x:Name="AssistantConnectionsItems" ItemsSource="{Binding Assistants}" IsVisible="{Binding HasAssistants}">
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="vm:AssistantChoiceViewModel">
+        <CheckBox IsChecked="{Binding IsSelected}"><TextBlock Text="{Binding Name}" /></CheckBox>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+  <Button Content="{x:Static app:MotifAppStrings.ConnectSelectedAssistants}" Command="{Binding ConnectSelectedCommand}" />
+  <views:CopyableTextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatusMessage}" TextWrapping="Wrap" />
+  <StackPanel Orientation="Horizontal" IsVisible="{Binding ShowsDesktopUpload}">
+    <Button Content="{x:Static app:MotifAppStrings.OpenPluginFolder}" Command="{Binding OpenPluginZipCommand}" />
+    <Button Content="{x:Static app:MotifAppStrings.OpenClaudePlugins}" Command="{Binding OpenClaudePluginsCommand}" />
+  </StackPanel>
+</StackPanel>
+<StackPanel Classes="settingsPage" IsVisible="{Binding ShowHandoffByCopyingFiles}">
+  <ContentControl x:Name="SettingsHandoffHost" />
+</StackPanel>
 <StackPanel x:Name="SettingsKeyboardShortcutsSection" Classes="settingsPage">
   <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.KeyboardShortcuts}" />
   <views:CopyableTextBlock Classes="settingsCaption" Text="{x:Static app:MotifAppStrings.ShortcutsWorkWithoutTextFocusCaption}" TextWrapping="Wrap" />

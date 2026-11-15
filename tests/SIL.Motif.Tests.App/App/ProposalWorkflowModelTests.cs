@@ -258,17 +258,15 @@ public sealed class ProposalWorkflowModelTests
     }
 
     [Fact]
-    public void OnlyTheNamedButtonsCarryThePrimaryClassInTheInspector()
+    public void ProposalActionsBindToTheSelectedProposal()
     {
         var xaml = File.ReadAllText(System.IO.Path.Combine(
             RepoPaths.FindRepoRoot(), "src", "SIL.Motif.App", "Views", "Pages", "ProposalsPage.axaml"));
-        var start = xaml.IndexOf("ProposalInspectorActionsTemplate", StringComparison.Ordinal);
-        var end = xaml.IndexOf("</DataTemplate>", start, StringComparison.Ordinal);
-        var section = xaml[start..end];
-        var primaries = System.Text.RegularExpressions.Regex.Matches(section, @"Classes\.Primary=""\{Binding (\S+?)\}""|Classes=""Primary""");
-
-        Assert.Equal(new[] { "", "", "SelectedProposal.IsOpenPrimary", "SelectedProposal.IsReopenPrimary" },
-            primaries.Select(match => match.Groups[1].Value).Order().ToArray());
+        Assert.Contains("Command=\"{Binding TryAgainCommand}\" CommandParameter=\"{Binding SelectedProposal}\"", xaml,
+            StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding AskToDeleteCommand}\" CommandParameter=\"{Binding SelectedProposal}\"", xaml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("ProposalInspectorActionsTemplate", xaml, StringComparison.Ordinal);
     }
 
     [Fact]

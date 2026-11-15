@@ -344,12 +344,10 @@ public sealed class CompareViewModelTests
         var row = new AssessWordRowViewModel(result);
         var compare = new CompareViewModel();
         compare.Load([row]);
-        var lists = new TextsListsViewModel(compare);
 
         Assert.Equal(AnalysisMarkingClass.Extra, row.Marking.PanGlossClass);
         Assert.Equal((WordProjectStatus.Approved, CompareColumnKind.NoMatch), CompareViewModel.Place(row));
-        Assert.Contains("kitabu", lists.Lists.Single(list => list.Name == "Built something else")
-            .Cells.SelectMany(cell => compare.WordsInCells([cell])));
+        Assert.Contains("kitabu", compare.WordsInCells([new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.NoMatch)]));
     }
     [Fact]
     public void MatrixTreatsRebuiltDisapprovedMorphologyAsSameDespiteTheOpinionConflict()

@@ -64,7 +64,7 @@ public sealed partial class ReviewUndoRealClientTests
             var reads = new WorkspaceSelection(client);
             var words = new TextWordsViewModel(client, selection, reads);
             var assess = new AssessViewModel(client, selection);
-            var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { },
+            var owner = new ResultsInTextViewModel(words, assess, _ => { },
                 new ChangesViewModel(client), client, reads);
             var panel = new ResultsInTextPanel(owner);
             var created = new List<WeakReference<object>>();
@@ -187,7 +187,7 @@ public sealed partial class ReviewUndoRealClientTests
             var words = new TextWordsViewModel(client, selection, reads);
             var assess = new AssessViewModel(client, selection);
             var changes = new ChangesViewModel(client);
-            var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, changes, client, reads);
+            var owner = new ResultsInTextViewModel(words, assess, _ => { }, changes, client, reads);
             try
             {
                 await changes.OpenProjectAsync(project.FwDataPath);

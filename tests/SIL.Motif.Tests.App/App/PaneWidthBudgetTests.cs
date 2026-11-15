@@ -35,7 +35,7 @@ public sealed class PaneWidthBudgetTests(AvaloniaHeadlessFixture avalonia)
                 var side = host.FindControl<Border>("SidePanelBorder")!;
                 var inspector = host.FindControl<Border>("InspectorPane")!;
                 host.ToggleSidePanel();
-                if (!inspector.IsVisible) Click(window, host.FindControl<Button>("InspectorStrip")!);
+                if (!inspector.IsVisible) host.ShowInspector();
                 PageScreenshots.Settle(window);
                 Assert.True(inspector.IsVisible);
                 AssertPairBudget(side, inspector, page, width, zoom);

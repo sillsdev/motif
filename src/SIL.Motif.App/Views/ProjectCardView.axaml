@@ -36,13 +36,6 @@
           <views:CopyableTextBlock Classes="freshDetail" Text="{Binding FreshnessDetail}" TextWrapping="Wrap"
                                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.FreshnessDetail}" />
           <views:CopyableTextBlock Classes="freshDetail" Text="{Binding ProjectCardParsedText}" TextWrapping="Wrap" />
-          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}"
-                      IsVisible="{Binding ShowsSeeWhatChanged}">
-            <Button Content="{x:Static app:MotifAppStrings.ProjectCardButtonSeeWhatChanged}"
-                    Command="{Binding SeeWhatChangedCommand}"
-                    AutomationProperties.Name="{x:Static app:MotifAppStrings.SeeWhatChangedAccessibleName}"
-                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProjectCardSeeWhatChanged}" />
-          </StackPanel>
         </StackPanel>
       </Border>
 

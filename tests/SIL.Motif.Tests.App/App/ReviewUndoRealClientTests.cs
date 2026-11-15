@@ -102,7 +102,6 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
         var changes = new ChangesViewModel(client);
         var context = new WorkspaceContext(selection, new AssessViewModel(client, selection), changes, client,
             new FolderPicker(), new DragSource(), new BaselineViewModel(client));
-        var review = new ReviewPageModel(context);
         await context.OpenProjectAsync(project.FwDataPath);
 
         var words = TextWordsQuery.Query(new TextWordsRequest(project.FwDataPath, [project.Text.TextId]));
@@ -127,9 +126,7 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
 
         await changes.AddFromMarkingAsync(action, marked);
 
-        var group = Assert.Single(review.ReviewGroups);
-        Assert.Equal("Approved → Disapproved", group.Title);
-        Assert.Equal("Approved → Disapproved", Assert.Single(group.Items).TransitionText);
+        Assert.Equal("Approved → Disapproved", Assert.Single(changes.Items).TransitionText);
     }
 
     [Fact]
@@ -143,7 +140,6 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
         var changes = new ChangesViewModel(client);
         var context = new WorkspaceContext(selection, new AssessViewModel(client, selection), changes, client,
             new FolderPicker(), new DragSource(), new BaselineViewModel(client));
-        var review = new ReviewPageModel(context);
         await context.OpenProjectAsync(project.FwDataPath);
         var words = TextWordsQuery.Query(new TextWordsRequest(project.FwDataPath, [project.Text.TextId]));
         Assert.True(words.Succeeded, words.Refusal?.Message);
@@ -162,10 +158,9 @@ public sealed partial class ReviewUndoRealClientTests(PristineProjectFixture pri
         await context.PublishBaselineCapturedAsync();
 
         Assert.True(Assert.Single(changes.Items).IsUncertain);
-        Assert.False(review.CanApply);
-        Assert.False(review.ApplyCommand.CanExecute(null));
-        Assert.StartsWith("1 change needs another look because its sentence changed. Check it again or undo it.",
-            review.ApplyBlockReason);
+        var blockers = context.ProposalApply.Blockers(null, null, null, null);
+        Assert.False(context.ProposalApply.CanApply(null, null, null, null));
+        Assert.Contains(blockers, blocker => blocker.Kind == ApplyBlockerKind.Uncertain);
     }
 
     private static void CaptureBaseline(WalkthroughProject project)

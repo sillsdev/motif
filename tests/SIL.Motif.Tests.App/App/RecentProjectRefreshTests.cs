@@ -134,15 +134,11 @@ public sealed class RecentProjectRefreshTests
             };
             fake.KnownProjectsListIs([first]);
             var workspace = NewWorkspace(fake, KnownProjectsQuery.ReadProjectIdentity);
-            var overview = workspace.PageModel<OverviewPageModel>();
             var notifications = 0;
             try
             {
                 await workspace.Project.LoadKnownProjectsAsync();
-                overview.PropertyChanged += (_, e) =>
-                {
-                    if (e.PropertyName == nameof(OverviewPageModel.ChooseProjectRows)) notifications++;
-                };
+                workspace.RecentProjects.CollectionChanged += (_, _) => notifications++;
                 var updated = changedField switch
                 {
                     "identity" => first with { ProjectIdentity = files.SecondIdentity.ToString("D") },
@@ -155,7 +151,7 @@ public sealed class RecentProjectRefreshTests
                 await workspace.Project.LoadKnownProjectsAsync();
 
                 Assert.Equal(updated, Assert.Single(workspace.Project.KnownProjects));
-                var row = Assert.Single(overview.ChooseProjectRows);
+                var row = Assert.Single(workspace.RecentProjects);
                 Assert.Equal(updated.ProjectIdentity, row.ProjectIdentity);
                 Assert.Equal(updated.WordformCount, row.WordformCount);
                 Assert.Equal($"{updated.WordformCount} wordforms", row.WordformCountText);
@@ -164,7 +160,7 @@ public sealed class RecentProjectRefreshTests
                 Assert.Equal(updated.ProjectIdentity, recent.ProjectIdentity);
                 Assert.Equal(updated.WordformCount, recent.WordformCount);
                 Assert.Equal(updated.StateText, recent.StateText);
-                Assert.True(notifications > 0);
+                Assert.Equal(changedField == "lastSeen", notifications == 0);
             }
             finally { await workspace.DisposeAsync(); }
         }, TimeSpan.FromMinutes(2));

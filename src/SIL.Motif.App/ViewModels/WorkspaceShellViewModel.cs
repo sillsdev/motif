@@ -36,7 +36,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     public const string ConfigureNeedsBaselineText = "Refresh first to choose Texts";
 
     /// <summary>Below this window width the sidebar shows icons alone, with each label as a tooltip.</summary>
-    public const double SidebarCollapseWidth = 1280;
+    public const double SidebarCollapseWidth = 1000;
 
     private readonly ICommandClient _commandClient;
     private readonly ReplacingObservableCollection<RecentProjectViewModel> _recentProjects = [];
@@ -115,8 +115,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             })
             .ToArray();
         _visiblePages = ComputeVisiblePages();
-        Inspector = new InspectorViewModel(Context, page => PageOf(page).Title);
-        ProposalBar = new ProposalBarViewModel(Context);
         var setup = new SetupViewModel(Context, PageModel<TextsPageModel>().Words);
         PageModel<TextsPageModel>().Words.PropertyChanged += (_, e) =>
         {
@@ -154,7 +152,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
 
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasProject && !_isRefreshing && !Assess.IsActive);
         Context.RefreshProjectCommand = RefreshCommand;
-        SeeWhatChangedCommand = new RelayCommand(() => Context.OpenTexts(TextsTab.WhatChanged), () => ShowsSeeWhatChanged);
         DeleteRefusedStoreCommand = new RelayCommand<WindowRefusal>(AskToDeleteRefusedStore, CanAskToDeleteRefusedStore);
         ConfirmStoreDeletionCommand = new AsyncRelayCommand(DeleteRefusedStoreAndReopenAsync,
             () => IsConfirmingStoreDeletion);
@@ -176,21 +173,21 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         {
             if (e.PropertyName == nameof(ParseProgressViewModel.IsActive)) RaiseParseDisplay();
         };
-        var review = PageModel<ReviewPageModel>();
-        review.ParseProgress.PropertyChanged += (_, e) =>
+        var measurement = Context.PendingMeasurement;
+        measurement.ParseProgress.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(ParseProgressViewModel.IsActive)) RaiseParseDisplay();
         };
         CancelParsingCommand = new RelayCommand(() =>
         {
             if (Assess.Trace.IsLoading) Assess.Trace.CancelCommand.Execute(null);
-            else if (review.IsMeasuring) review.CancelMeasureCommand.Execute(null);
+            else if (measurement.IsMeasuring) measurement.CancelCommand.Execute(null);
             else Assess.CancelCommand.Execute(null);
         }, () => Assess.CancelCommand.CanExecute(null) || Assess.Trace.CancelCommand.CanExecute(null) ||
-            review.CancelMeasureCommand.CanExecute(null));
-        review.PropertyChanged += (_, e) =>
+            measurement.CancelCommand.CanExecute(null));
+        measurement.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName != nameof(ReviewPageModel.IsMeasuring)) return;
+            if (e.PropertyName != nameof(PendingChangesMeasurement.IsMeasuring)) return;
             CancelParsingCommand.NotifyCanExecuteChanged();
             ParseAllWordsCommand.NotifyCanExecuteChanged();
         };
@@ -208,12 +205,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         RefreshPages();
         _ = RefreshKnownProjectsAsync();
     }
-
-    /// <summary>The inspector beside the page, which any page opens through <see cref="WorkspaceContext.OpenInspector"/>.</summary>
-    public InspectorViewModel Inspector { get; }
-
-    /// <summary>The bar across the window that names the open Proposal and leaves Proposal mode.</summary>
-    public ProposalBarViewModel ProposalBar { get; }
 
     /// <summary>The tech demo notice shown until the person acknowledges it, or <see langword="null"/> when disabled.</summary>
     public TechDemoNoticeViewModel? TechDemoNotice { get; }
@@ -237,9 +228,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     {
         var visible = Pages.Where(page => page.IsAvailable && _pageEntries.Single(entry => entry.Page == page.Page).ShowInRail)
             .OrderBy(page => _pageEntries.Single(entry => entry.Page == page.Page).IsDiagnostic).ToArray();
-        foreach (var page in Pages) page.IsDiagnosticsGroupStart = false;
-        var first = visible.FirstOrDefault(page => _pageEntries.Single(entry => entry.Page == page.Page).IsDiagnostic);
-        if (first is not null) first.IsDiagnosticsGroupStart = true;
         return visible;
     }
 
@@ -339,8 +327,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>Whether a project is opening, including its first-open Baseline capture.</summary>
     public bool IsProjectOpening => Context.IsOpeningProject || _isSettingProject;
 
-    /// <summary>The Texts page's "filter hides N words" note for the status bar; empty elsewhere or with no filter.</summary>
-    public string FilterHidesText => CurrentPage == WorkspacePage.Texts ? PageModel<TextsPageModel>().Words.FilterHidesText : string.Empty;
+    /// <summary>The Words page's filter count for the status bar; empty elsewhere or with no filter.</summary>
+    public string FilterHidesText => CurrentPage == WorkspacePage.Words ? PageModel<WordsPageModel>().Words.FilterHidesText : string.Empty;
 
     /// <summary>The sidebar's Selection summary, with a brief message while its project is still loading.</summary>
     public string SelectionSummaryText => Context.IsOpeningProject ? MotifAppStrings.LoadingProject :
@@ -476,21 +464,22 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         (!Context.NeedsAssessment || FreshnessIsStale || ShowsPageRefreshAction);
 
     /// <summary>Whether the top row offers the saved Default Selection against the current Baseline.</summary>
-    public bool ShowsParseAllWordsAction => ShowsParseAction && Context.Setup?.CanRunDefaultSelection == true;
+    public bool ShowsParseAllWordsAction => !FreshnessIsBusy && !IsParsingAllWords && !FreshnessIsStale &&
+        !Assess.IsActive && Baseline.HasBaseline && Context.Setup is { IsOpen: false, CanRunDefaultSelection: true };
 
     /// <summary>Whether the top row offers to open Configure when there is no saved Selection to parse.</summary>
     public bool ShowsChooseWhatToParseAction => ShowsParseAction && Context.Setup?.CanRunDefaultSelection == false &&
         !ShowsPageRefreshAction;
 
     private bool ShowsPageRefreshAction => Context.Setup?.CanRunDefaultSelection == false &&
-        CurrentPage is WorkspacePage.Overview or WorkspacePage.Texts or WorkspacePage.Review;
+        CurrentPage is WorkspacePage.Progress or WorkspacePage.Texts or WorkspacePage.Proposals;
 
     /// <summary>Whether the top row is showing progress for an Assessment.</summary>
     public bool ShowsParseAllWordsProgress => Assess.IsActive || Assess.Trace.ParseProgress.IsActive ||
-        PageModel<ReviewPageModel>().ParseProgress.IsActive;
+        Context.PendingMeasurement.ParseProgress.IsActive;
     public ParseProgressViewModel ActiveParseProgress => Assess.Trace.ParseProgress.IsActive
-        ? Assess.Trace.ParseProgress : PageModel<ReviewPageModel>().ParseProgress.IsActive
-            ? PageModel<ReviewPageModel>().ParseProgress : Assess.ParseProgress;
+        ? Assess.Trace.ParseProgress : Context.PendingMeasurement.ParseProgress.IsActive
+            ? Context.PendingMeasurement.ParseProgress : Assess.ParseProgress;
     public IRelayCommand CancelParsingCommand { get; }
 
     private void RaiseParseDisplay()
@@ -513,14 +502,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     /// <summary>The fraction of the parser's reported word count that is complete.</summary>
     public double ParseAllWordsProgressFraction => Assess.ProgressFraction;
 
-    /// <summary>Whether a finished Refresh moved some words, so there is something to see.</summary>
-    public bool ShowsSeeWhatChanged => Freshness == ProjectFreshness.Refreshed && Assess.Difference.HasDifference;
-
     /// <summary>Captures a new Baseline from FieldWorks' last save.</summary>
     public IAsyncRelayCommand RefreshCommand { get; }
-
-    /// <summary>Opens what a finished Refresh changed.</summary>
-    public IRelayCommand SeeWhatChangedCommand { get; }
 
     /// <summary>Measures the saved Default Selection against the current Baseline.</summary>
     public IAsyncRelayCommand ParseAllWordsCommand { get; }
@@ -555,7 +538,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         await Baseline.CheckAsync(cancellationToken).ConfigureAwait(true);
         await Context.Changes.ReloadAsync(cancellationToken).ConfigureAwait(true);
         if (Context.ProjectPath is { } projectPath && ProjectReconciliationMarker.Exists(projectPath))
-            PageModel<ReviewPageModel>().ShowReconciliationNeeded();
+            Context.ProposalApply.ShowReconciliationNeeded();
         // A run under way publishes its own result, which a stored read must not replace.
         if (!Assess.IsActive) await Context.ReadStoredEvidenceAsync(cancellationToken).ConfigureAwait(true);
         RaiseFreshness();
@@ -625,8 +608,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
                 !Baseline.HasBaseline && Baseline.ShownRefusal is null)
                 await RefreshAsync().ConfigureAwait(true);
             if (openedProjectIsCurrent && openGeneration == Volatile.Read(ref _projectOpenGeneration))
-                Context.OpenPage(PageModel<ProposalsPageModel>().BadgeCount > 0
-                    ? WorkspacePage.Proposals : WorkspacePage.Texts);
+                Context.OpenPage(WorkspacePage.Progress);
         }
         finally
         {
@@ -771,7 +753,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             await _reloadAfterRefresh.ConfigureAwait(true);
             if (!IsCurrentRefresh(generation, projectPath) || projectPath is null) return;
             if (!ProjectReconciliationMarker.Exists(projectPath) || ProjectReconciliationMarker.Clear(projectPath))
-                PageModel<ReviewPageModel>().ClearReconciliationNeeded();
+                Context.ProposalApply.ClearReconciliationNeeded();
             _refreshed = true;
             publishSetupAfterRefresh = true;
         }
@@ -805,8 +787,8 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
     private bool ShowsParseAction => !FreshnessIsBusy && !IsParsingAllWords && Context.NeedsAssessment &&
         !FreshnessIsStale && !Assess.IsActive && Context.Setup is { IsOpen: false };
 
-    private bool CanParseAllWords() => Context.NeedsAssessment && !FreshnessIsStale && !_isRefreshing &&
-        !Assess.IsActive && !PageModel<ReviewPageModel>().IsMeasuring &&
+    private bool CanParseAllWords() => Baseline.HasBaseline && !FreshnessIsStale && !_isRefreshing &&
+        !Assess.IsActive && !Context.PendingMeasurement.IsMeasuring &&
         Context.Setup is { IsOpen: false, CanRunDefaultSelection: true };
 
     private async Task ParseAllWordsAsync()
@@ -851,7 +833,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         OnPropertyChanged(nameof(HasRefreshRefusal));
         OnPropertyChanged(nameof(ShowsTechDemoNotice));
         OnPropertyChanged(nameof(ProjectSwitchEnabled));
-        OnPropertyChanged(nameof(ShowsSeeWhatChanged));
         OnPropertyChanged(nameof(ShowsRefreshAction));
         OnPropertyChanged(nameof(ShowsParseAllWordsAction));
         OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
@@ -863,7 +844,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         RefreshCommand.NotifyCanExecuteChanged();
         ParseAllWordsCommand.NotifyCanExecuteChanged();
         DeleteRefusedStoreCommand.NotifyCanExecuteChanged();
-        SeeWhatChangedCommand.NotifyCanExecuteChanged();
     }
 
     private void OnKnownProjectsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RefreshRecentProjects();
@@ -982,10 +962,6 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
             OnPropertyChanged(nameof(ShowsParseAllWordsAction));
             OnPropertyChanged(nameof(ShowsChooseWhatToParseAction));
             OnPropertyChanged(nameof(ShowsParseAllWordsProgress));
-            // Shell-started parsing keeps the current page open while manual runs open Texts.
-            if (Assess.IsActive && !_isRefreshing && !IsParsingAllWords &&
-                !(Assess.LastRunWasRerun && Context.CurrentPage == WorkspacePage.Timing))
-                Context.OpenPage(WorkspacePage.Texts);
             ParseAllWordsCommand.NotifyCanExecuteChanged();
         }
 
@@ -1014,5 +990,7 @@ public sealed partial class WorkspaceShellViewModel : ObservableObject, IAsyncDi
         await Context.StopProjectWorkAsync().ConfigureAwait(true);
         if (_knownProjectsRefreshTask is { } refresh) await refresh.ConfigureAwait(true);
         await Task.WhenAll(_projectIdentityReads).ConfigureAwait(true);
+        Pages.Select(page => page.Model).OfType<SettingsPageModel>().FirstOrDefault()?.Dispose();
+        Context.DisposeHandoffSession();
     }
 }

@@ -5,6 +5,7 @@ using Avalonia.LogicalTree;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.App.Views.Shell;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Baselines;
@@ -60,14 +61,14 @@ public sealed class ProjectSwitchTests
         var parts = NewWorkspace();
         parts.Fake.PendingChangesIs(PendingWithChange("apply-in-a"));
         await OpenProjectAsync(parts.Workspace, ProjectA);
-        var review = parts.Workspace.PageModel<ReviewPageModel>();
+        var measurement = parts.Workspace.Context.PendingMeasurement;
         parts.Fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         parts.Fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
             "Applied pending changes.");
-        await review.MeasureCommand.ExecuteAsync(null);
-        await review.ApplyCommand.ExecuteAsync(null);
+        await measurement.MeasureCommand.ExecuteAsync(null);
+        await parts.Workspace.Context.ProposalApply.ApplyCurrentAsync(null);
         Assert.True(parts.Workspace.Context.Evidence.AppliedSinceRefresh);
 
         await OpenProjectAsync(parts.Workspace, ProjectB);
@@ -82,18 +83,18 @@ public sealed class ProjectSwitchTests
         var parts = NewWorkspace();
         parts.Fake.PendingChangesIs(PendingWithChange("apply-then-try"));
         await OpenProjectAsync(parts.Workspace, ProjectA);
-        var review = parts.Workspace.PageModel<ReviewPageModel>();
+        var measurement = parts.Workspace.Context.PendingMeasurement;
         parts.Fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         parts.Fake.ApplyPendingCompletesWith(new ApplyProjection("draft/one", false, "Applied", [], "sha256:effect",
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
             "Applied pending changes.");
-        await review.MeasureCommand.ExecuteAsync(null);
+        await measurement.MeasureCommand.ExecuteAsync(null);
         // Without a Refresh to run, Apply's own Refresh stops and the Baseline stays stale for the check to settle.
         parts.Workspace.Context.RefreshProjectCommand = null;
         try
         {
-            await review.ApplyCommand.ExecuteAsync(null);
+            await parts.Workspace.Context.ProposalApply.ApplyCurrentAsync(null);
         }
         finally
         {
@@ -270,7 +271,6 @@ public sealed class ProjectSwitchTests
             var window = new MainWindow();
             window.Compose(parts.Workspace);
             parts.Workspace.CurrentPage = WorkspacePage.Texts;
-            parts.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
             window.Show();
             window.ApplyTemplate();
             window.UpdateLayout();
@@ -294,8 +294,10 @@ public sealed class ProjectSwitchTests
                 window.UpdateLayout();
                 window.OpenFileMenu();
                 var projectMenu = Assert.IsType<MenuItem>(window.FindInWindowOrWorkspace<MenuItem>("SelectNewMenuItem"));
-                var page = window.PageView<TextsPage>();
-                var selectionHost = Assert.IsType<ContentControl>(page.FindControl<ContentControl>("SelectionHost"));
+                parts.Workspace.CurrentPage = WorkspacePage.Texts;
+                window.UpdateLayout();
+                var layout = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                var selectionHost = Assert.IsType<SelectionPanel>(layout.FindControl<ContentControl>("SidePanelContent")!.Content);
                 var search = Assert.Single(selectionHost.GetLogicalDescendants().OfType<TextBox>(), control =>
                     AutomationProperties.GetName(control) == "Search texts");
 
@@ -307,7 +309,6 @@ public sealed class ProjectSwitchTests
                 Assert.False(projectMenu.IsEffectivelyEnabled);
                 Assert.False(parts.Workspace.Context.ProjectAndSelectionEnabled);
                 Assert.False(selectionHost.IsEffectivelyEnabled);
-                var selectionPanel = Assert.IsType<SelectionPanel>(selectionHost.Content);
                 Assert.False(search.IsEffectivelyEnabled, "Search texts stayed usable during an Assessment.");
 
                 releaseAssessment.SetResult(CommandOutcome<AssessCommandResponse>.Success(response));
@@ -444,12 +445,12 @@ public sealed class ProjectSwitchTests
     {
         var parts = NewWorkspace();
         await OpenProjectAsync(parts.Workspace, ProjectA);
-        var handoff = parts.Workspace.PageModel<AiHandoffPageModel>().Handoff;
+        var handoff = parts.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
         handoff.UseWords(["from-a"]);
         handoff.CoverageText = "Covers A";
         handoff.LatestAssessmentAt = DateTimeOffset.UtcNow;
         handoff.WrittenAt = DateTimeOffset.UtcNow;
-        var tryWord = parts.Workspace.PageModel<TryWordPageModel>();
+        var tryWord = parts.Workspace.Context.WordTraceSession;
         tryWord.Trace.WordToTry = "from-a";
         var texts = parts.Workspace.PageModel<TextsPageModel>();
         texts.Words.SearchText = "from-a";
@@ -457,8 +458,6 @@ public sealed class ProjectSwitchTests
         texts.Words.SeveralOnly = true;
         texts.ResultsInText.SelectedText = new ResultsTextViewModel(
             new SIL.Motif.Commands.SelectionReading.SelectionTextSummary(TextGuid, "Alpha", null, 0, 0, 0, 0));
-        texts.Tab = TextsTab.Lists;
-        texts.AnalyzeView = AnalyzeTextsView.WordList;
         texts.ResultsInText.Filter = ResultsInTextFilter.New;
 
         await OpenProjectAsync(parts.Workspace, ProjectB);
@@ -472,8 +471,6 @@ public sealed class ProjectSwitchTests
         Assert.Null(texts.Words.StatusFilter);
         Assert.False(texts.Words.SeveralOnly);
         Assert.Null(texts.ResultsInText.SelectedText);
-        Assert.Equal(TextsTab.Lists, texts.Tab);
-        Assert.Equal(AnalyzeTextsView.WordList, texts.AnalyzeView);
         Assert.Equal(ResultsInTextFilter.New, texts.ResultsInText.Filter);
     }
 
@@ -506,32 +503,33 @@ public sealed class ProjectSwitchTests
     }
 
     [Fact]
-    public async Task AReviewErrorDoesNotFollowTheNextProject()
+    public async Task AMeasurementOrApplyErrorDoesNotFollowTheNextProject()
     {
         var parts = NewWorkspace();
-        var review = parts.Workspace.PageModel<ReviewPageModel>();
+        var measurement = parts.Workspace.Context.PendingMeasurement;
+        var apply = parts.Workspace.Context.ProposalApply;
         parts.Fake.PendingChangesIs(PendingWithChange("first"));
         await OpenProjectAsync(parts.Workspace, ProjectA);
 
         parts.Fake.MeasurePendingRefusal = new Refusal("job.wait-cancelled", FailureReason.Cancelled, "cancelled");
-        await review.MeasureCommand.ExecuteAsync(null);
-        Assert.NotNull(review.MeasurementRefusal);
+        await measurement.MeasureCommand.ExecuteAsync(null);
+        Assert.NotNull(measurement.Refusal);
 
         await OpenProjectAsync(parts.Workspace, ProjectB);
 
-        Assert.Null(review.MeasurementRefusal);
+        Assert.Null(measurement.Refusal);
         parts.Fake.PendingChangesIs(PendingWithChange("second"));
         await parts.Workspace.Context.Changes.ReloadAsync();
         parts.Fake.MeasurePendingRefusal = null;
         parts.Fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/two", "revision/one", FakeCommandClient.CompleteNumbers));
         parts.Fake.ApplyPendingRefusal = new Refusal("apply.regression", FailureReason.Refused, "regression");
-        await review.MeasureCommand.ExecuteAsync(null);
-        await review.ApplyCommand.ExecuteAsync(null);
-        Assert.NotNull(review.ApplyRefusal);
+        await measurement.MeasureCommand.ExecuteAsync(null);
+        await apply.ApplyCurrentAsync(null);
+        Assert.NotNull(apply.ApplyRefusal);
 
         await OpenProjectAsync(parts.Workspace, ProjectA);
 
-        Assert.Null(review.ApplyRefusal);
+        Assert.Null(apply.ApplyRefusal);
     }
 
     [Fact]
@@ -578,17 +576,18 @@ public sealed class ProjectSwitchTests
     public async Task EveryParticipantIsClearedBeforeAnyLoads()
     {
         var parts = NewWorkspace();
-        var review = parts.Workspace.PageModel<ReviewPageModel>();
+        var measurement = parts.Workspace.Context.PendingMeasurement;
         var calls = new List<string>();
         var probe = new ProbePageModel(parts.Workspace.Context, calls);
         parts.Fake.PendingChangesIs(PendingWithChange("first"));
         await OpenProjectAsync(parts.Workspace, ProjectA);
         parts.Workspace.Context.RecordApplied();
         parts.Workspace.Context.GrammarSummary = new GrammarSummary("1 warning", true, "warning");
-        parts.Workspace.Context.OpenPage(WorkspacePage.Timing);
+        parts.Workspace.Context.Diagnostics = true;
+        parts.Workspace.Context.OpenPage(WorkspacePage.Diagnostics);
         parts.Workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.IncorrectSpelling, "old", ""));
         parts.Fake.MeasurePendingRefusal = new Refusal("job.wait-cancelled", FailureReason.Cancelled, "cancelled");
-        await review.MeasureCommand.ExecuteAsync(null);
+        await measurement.MeasureCommand.ExecuteAsync(null);
         calls.Clear();
         var clearedBeforeBaselineLoad = false;
         parts.Fake.OnGetCurrentBaseline((request, _) =>
@@ -598,14 +597,14 @@ public sealed class ProjectSwitchTests
                 calls.Add("baseline-load");
                 clearedBeforeBaselineLoad = !parts.Workspace.Context.Evidence.AppliedSinceRefresh &&
                     parts.Workspace.Context.GrammarSummary?.SummaryText != "1 warning" &&
-                    parts.Workspace.Context.CurrentPage == WorkspacePage.Overview &&
+                    parts.Workspace.Context.CurrentPage == WorkspacePage.Progress &&
                     parts.Workspace.Context.Changes.ProjectPath is null &&
                     parts.Workspace.Context.Changes.Items.Count == 0 &&
                     parts.Workspace.Selection.Texts.Count == 0 &&
                     parts.Workspace.Context.Setup?.ProjectPath is null &&
                     parts.Workspace.Baseline.Token is null &&
                     parts.Workspace.Context.Baseline is null &&
-                    review.MeasurementRefusal is null && calls.Contains("probe-clear");
+                    measurement.Refusal is null && calls.Contains("probe-clear");
             }
             return Task.FromResult(CommandOutcome<CurrentBaselineResponse>.Success(
                 new CurrentBaselineResponse(NewToken(), DateTimeOffset.UtcNow, false)));

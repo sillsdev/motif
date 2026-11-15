@@ -47,7 +47,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                 },
             });
             walkthrough.TypePastedWords(SeededProject.FirstForm);
-            walkthrough.Click("Parse all words in the Selection");
+            walkthrough.Workspace.Assess.RunCommand.Execute(null);
             walkthrough.WaitUntil(() => assess.State == RunState.Refused &&
                     assess.RunCommand.ExecutionTask is { IsCompleted: true } &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
@@ -62,7 +62,7 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
 
             var childrenBeforeRetry = PanglossProcesses.Snapshot(parserPath);
             FakeParser.BehaveBesideExecutable(parserPath, new { });
-            walkthrough.Click("Parse all words in the Selection");
+            walkthrough.Workspace.Assess.RunCommand.Execute(null);
             walkthrough.WaitUntil(() => assess.State == RunState.Completed &&
                     assess.Result is { } result && result.InvocationId != priorInvocation.InvocationId &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted,
@@ -236,7 +236,6 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                 InteractiveControlFamily.Mark,
                 InteractiveControlFamily.Progress,
                 InteractiveControlFamily.FocusableSurface,
-                InteractiveControlFamily.Container,
                 InteractiveControlFamily.Collection);
             Assert.True(PanglossProcesses.TryReadProcessId(batchProcessIdPath, out var processId));
             Assert.True(PanglossProcesses.AnyAlive(parserPath, [processId]), PanglossProcesses.Describe(parserPath));
@@ -262,14 +261,13 @@ public sealed class CancelAssessmentWalkthroughTests(PristineProjectFixture pris
                     InteractiveControlFamily.SelectableText,
                     InteractiveControlFamily.Mark,
                     InteractiveControlFamily.FocusableSurface,
-                    InteractiveControlFamily.Container,
                     InteractiveControlFamily.Collection);
                 Assert.False(PanglossProcesses.AnyAlive(parserPath, [processId]),
                     "the cancelled Assessment left its PanGloss process alive");
 
                 Assert.Equal("assessment.cancelled", walkthrough.Workspace.Assess.Refusal?.Code);
                 Assert.True(walkthrough.ProjectSwitchEnabled);
-                Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
+                Assert.True(walkthrough.SelectionPane.IsEffectivelyEnabled);
                 var afterCancellation = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
                 Assert.Equal(beforeCancellation.Select(invocation => invocation.InvocationId),
                     afterCancellation.Select(invocation => invocation.InvocationId));

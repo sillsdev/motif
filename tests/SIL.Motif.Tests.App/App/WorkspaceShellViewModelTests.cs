@@ -18,8 +18,8 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins <see cref="WorkspaceShellViewModel"/>'s composition: choosing a project loads Baseline and Text
-/// state and propagates the project to every child; a completed Assessment feeds
-/// <see cref="WorkspaceContext.NeedsAssessment"/> and <see cref="StatisticsViewModel.SummaryMarkdown"/>; a
+/// state and propagates the project to its participants; a completed Assessment feeds
+/// <see cref="WorkspaceContext.NeedsAssessment"/> and the current evidence; a
 /// Refresh leaves a Parse all words action, and the saved Default Selection runs with its stored limits;
 /// and choosing another project clears what the previous one displayed. The last test exercises the whole
 /// agreed workflow end to end.
@@ -105,6 +105,7 @@ public sealed class WorkspaceShellViewModelTests
             await Task.Delay(Timeout.Infinite, token);
             return CommandOutcome<WordContextResponse>.Success(new("motifa", false));
         };
+        _ = workspace.Context.WordTraceSession;
         var trace = workspace.Assess.Trace;
         trace.Result = WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(AppContext.BaseDirectory,
             "TestFixtures", "trace-details-v3-hawajafika.json"))).Value!;
@@ -198,35 +199,36 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
-    public async Task RerunningFromTimingKeepsTimingOpen()
+    public async Task RerunningFromDiagnosticsKeepsDiagnosticsOpen()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         workspace.Context.Diagnostics = true;
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
-        workspace.Context.OpenPage(WorkspacePage.Timing);
+        workspace.Context.OpenPage(WorkspacePage.Diagnostics);
         fake.AssessCompletesWith(NewAssessResponse("rerun"));
 
         await workspace.Assess.RerunAsync(["word"], 1000);
 
-        Assert.Equal(WorkspacePage.Timing, workspace.Context.CurrentPage);
+        Assert.Equal(WorkspacePage.Diagnostics, workspace.Context.CurrentPage);
     }
 
-    // Rows are only a view over the fetched set; clearing the view alone leaves the old project's words.
     [Fact]
-    public async Task SortingAfterASwitchOfProjectsCannotResurrectTheOldProjectsStatistics()
+    public async Task SwitchingProjectsClearsTheOldProjectsDiagnosticRows()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         await ChooseSettledProjectAsync(fake, projectPicker, workspace, @"C:\projects\one.fwdata", NewToken());
-        fake.StatsCompletesWith(new StatsCommandResponse(
-            "assessment/one", "grammar.json", "cache.sqlite", null,
-            [JsonDocument.Parse("""{"kind":"word","form":"from-project-one"}""").RootElement.Clone()]));
-        await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
-        Assert.Single(workspace.PageModel<TimingPageModel>().Statistics.Rows);
+        workspace.Context.Diagnostics = true;
+        fake.TimingCompletesWith(new TimingResponse("assessment-parse", "all", "rule", 1, null, null, [], [], [])
+        {
+            ParserWorkAggregates = [new TimingWorkAggregate("rule", "Recorded rule", "morph_rule", 4, false)],
+        });
+        workspace.Context.PublishEvidence(new WorkspaceEvidence(WorkspaceContextTests.Assessment(), DateTimeOffset.Now, false));
+        var speed = workspace.PageModel<DiagnosticsPageModel>().SpeedByRule;
+        await speed.ReadAsync(@"C:\projects\one.fwdata", CancellationToken.None);
+        Assert.Single(speed.Rows);
 
         await ChooseSettledProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata", NewToken());
-        workspace.PageModel<TimingPageModel>().Statistics.SortBy("word");
-
-        Assert.Empty(workspace.PageModel<TimingPageModel>().Statistics.Rows);
+        Assert.Empty(speed.Rows);
     }
 
     [Fact]
@@ -242,8 +244,7 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(workspace.Baseline.HasBaseline);
         Assert.Single(workspace.Selection.Texts);
         Assert.Equal(ProjectPath, workspace.Assess.ProjectPath);
-        Assert.Equal(ProjectPath, workspace.PageModel<TimingPageModel>().Statistics.ProjectPath);
-        Assert.Equal(ProjectPath, workspace.PageModel<AiHandoffPageModel>().Handoff.ProjectPath);
+        Assert.Equal(ProjectPath, workspace.PageModel<SettingsPageModel>().Handoff.Handoff.ProjectPath);
         var usage = Assert.Single(fake.UsageEntries);
         Assert.Equal("project browse", usage.Command);
         Assert.Equal(["fwDataPath:text"], usage.ArgumentShape);
@@ -261,11 +262,11 @@ public sealed class WorkspaceShellViewModelTests
                 [new AssessmentScopeProjection("default", "all words", "pangloss", [], 750, new ParserWorkLimit(321))]))));
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         Assert.False(workspace.Context.Setup!.IsOpen);
-        workspace.CurrentPage = WorkspacePage.Overview;
+        workspace.CurrentPage = WorkspacePage.Progress;
 
         workspace.ConfigureCommand.Execute(null);
 
-        Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
         Assert.True(workspace.Context.Setup!.IsOpen);
         Assert.Equal(0, workspace.Context.Setup.Step);
         Assert.True(Assert.Single(workspace.Selection.Texts).IsChecked);
@@ -977,7 +978,7 @@ public sealed class WorkspaceShellViewModelTests
     }
 
     [Fact]
-    public async Task ACompletedAssessmentFeedsCurrentEvidenceAndTheStatisticsSummary()
+    public async Task ACompletedAssessmentFeedsCurrentEvidenceAndHandoff()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
@@ -987,9 +988,9 @@ public sealed class WorkspaceShellViewModelTests
         await workspace.Assess.RunCommand.ExecuteAsync(null);
 
         Assert.False(workspace.Context.NeedsAssessment);
-        Assert.Equal("(summary)", workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
-        Assert.Equal("assessment/one", workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
-        Assert.Equal("invocation/one", workspace.PageModel<AiHandoffPageModel>().Handoff.InvocationId);
+        Assert.Equal("(summary)", workspace.Context.Evidence.Assessment!.Assessment.SummaryMarkdown);
+        Assert.Equal("assessment/one", workspace.Context.Evidence.ObjectTimingAssessmentId);
+        Assert.Equal("invocation/one", workspace.PageModel<SettingsPageModel>().Handoff.Handoff.InvocationId);
         Assert.True(workspace.Context.HasEvidence);
         Assert.False(workspace.Context.HasNoEvidence);
     }
@@ -1020,12 +1021,12 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.False(workspace.Context.NeedsAssessment);
         Assert.True(workspace.ShowsRefreshAction);
-        Assert.False(workspace.ShowsParseAllWordsAction);
+        Assert.True(workspace.ShowsParseAllWordsAction);
         Assert.Equal(2, fake.AssessRequests.Count);
         Assert.Null(fake.AssessRequests[1].Selection);
         Assert.Equal(1500, fake.AssessRequests[1].PerWordLimitMs);
         Assert.Equal(new ParserWorkLimit(6600), fake.AssessRequests[1].PerWordParserWorkLimit);
-        Assert.Equal("(second)", workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
+        Assert.Equal("(second)", workspace.Context.Evidence.Assessment!.Assessment.SummaryMarkdown);
     }
 
     [Fact]
@@ -1061,8 +1062,8 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(workspace.Context.NeedsAssessment);
         Assert.True(workspace.ShowsParseAllWordsAction);
         var texts = workspace.PageModel<TextsPageModel>();
-        texts.Tab = TextsTab.AnalyzeTexts;
-        Assert.True(texts.ShowAnalyzeParsePrompt);
+
+        Assert.True(texts.ShowParsePrompt);
         Assert.Single(fake.AssessRequests);
     }
 
@@ -1086,9 +1087,8 @@ public sealed class WorkspaceShellViewModelTests
         var texts = workspace.PageModel<TextsPageModel>();
         Assert.True(texts.ShowAssessRefusal);
         Assert.False(texts.ShowParsePrompt);
-        texts.Tab = TextsTab.AnalyzeTexts;
-        Assert.False(texts.ShowAnalyzeParsePrompt);
-        Assert.True(texts.ShowAnalyzeTextsContent);
+
+        Assert.False(texts.ShowParsePrompt);
 
         await workspace.RefreshCommand.ExecuteAsync(null);
 
@@ -1105,7 +1105,7 @@ public sealed class WorkspaceShellViewModelTests
 
         Assert.False(texts.ShowAssessRefusal);
         Assert.True(texts.ShowParsePrompt);
-        Assert.True(texts.ShowAnalyzeParsePrompt);
+        Assert.True(texts.ShowParsePrompt);
     }
 
     [Fact]
@@ -1142,60 +1142,37 @@ public sealed class WorkspaceShellViewModelTests
         Assert.True(texts.ShowParsePrompt);
         Assert.Same(workspace.ParseAllWordsCommand, workspace.Context.ParseAllWordsCommand);
 
-        texts.Tab = TextsTab.AnalyzeTexts;
         Assert.True(texts.ShowParsePrompt);
-        Assert.True(texts.ShowAnalyzeParsePrompt);
-        Assert.True(texts.ShowAnalyzeTextsContent);
-        texts.AnalyzeView = AnalyzeTextsView.WordList;
-        Assert.False(texts.ShowAnalyzeParsePrompt);
-        texts.AnalyzeView = AnalyzeTextsView.TextReader;
-        Assert.True(texts.ShowAnalyzeParsePrompt);
-        texts.Tab = TextsTab.Lists;
-        Assert.True(texts.ShowLists);
-        Assert.False(texts.ShowParsePrompt);
-        texts.Tab = TextsTab.WhatChanged;
-        Assert.True(texts.ShowWhatChanged);
-        Assert.False(texts.ShowParsePrompt);
-
-        Assert.True(workspace.PageModel<TimingPageModel>().ShowNoEvidence);
-        Assert.False(workspace.PageModel<TimingPageModel>().ShowStatistics);
-        Assert.True(workspace.PageModel<OverviewPageModel>().ShowNoAssessment);
-        Assert.False(workspace.PageModel<OverviewPageModel>().ShowTiles);
-        Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.HasChecked);
-        Assert.False(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
-
-        workspace.CurrentPage = WorkspacePage.TryAWord;
-        Assert.Equal(WorkspacePage.TryAWord, workspace.CurrentPage);
-        workspace.CurrentPage = WorkspacePage.AiHandoff;
-        Assert.Equal(WorkspacePage.AiAssistants, workspace.CurrentPage);
-        workspace.CurrentPage = WorkspacePage.Review;
-        Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);
+        Assert.True(workspace.Context.GrammarCheck.HasChecked);
+        workspace.Context.Diagnostics = true;
+        workspace.CurrentPage = WorkspacePage.Diagnostics;
+        Assert.Empty(workspace.PageModel<DiagnosticsPageModel>().SpeedByRule.Rows);
+        workspace.CurrentPage = WorkspacePage.Settings;
+        Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
+        workspace.CurrentPage = WorkspacePage.Proposals;
+        Assert.Equal(WorkspacePage.Proposals, workspace.CurrentPage);
     }
 
     [Fact]
-    public async Task ChoosingAnotherProjectClearsThePreviousProjectsAssessmentAndStatisticsState()
+    public async Task ChoosingAnotherProjectClearsThePreviousProjectsAssessmentAndDiagnosticState()
     {
         var (fake, projectPicker, _, _, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace, ProjectPath, NewToken());
         workspace.Selection.AllWordforms = true;
         fake.AssessCompletesWith(NewAssessResponse("(summary)"));
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        fake.StatsCompletesWith(new StatsCommandResponse(
-            "assessment/one", "grammar.json", "cache.sqlite", null,
-            [JsonDocument.Parse("""{"kind":"word"}""").RootElement.Clone()]));
-        await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
+        workspace.Context.Diagnostics = true;
+        var diagnostics = workspace.PageModel<DiagnosticsPageModel>();
 
         await ChooseProjectAsync(fake, projectPicker, workspace, @"C:\projects\two.fwdata");
 
         Assert.False(workspace.Context.HasEvidence);
         Assert.True(workspace.Context.HasNoEvidence);
-        Assert.Null(workspace.PageModel<TimingPageModel>().Statistics.SummaryMarkdown);
-        Assert.Null(workspace.PageModel<TimingPageModel>().Statistics.AssessmentId);
-        Assert.Null(workspace.PageModel<AiHandoffPageModel>().Handoff.InvocationId);
-        Assert.Empty(workspace.PageModel<TimingPageModel>().Statistics.Rows);
+        Assert.Empty(diagnostics.SpeedByRule.Rows);
+        Assert.Null(workspace.PageModel<SettingsPageModel>().Handoff.Handoff.InvocationId);
         Assert.Equal(RunState.Idle, workspace.Assess.State);
         Assert.Null(workspace.Assess.Result);
-        Assert.Empty(workspace.PageModel<AiHandoffPageModel>().Handoff.Files);
+        Assert.Empty(workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files);
     }
 
     [Fact]
@@ -1220,12 +1197,13 @@ public sealed class WorkspaceShellViewModelTests
         fake.StatsCompletesWith(new StatsCommandResponse(
             "assessment/one", "grammar.json", "cache.sqlite", null,
             [JsonDocument.Parse("""{"kind":"word","attempts":1}""").RootElement.Clone()]));
-        workspace.PageModel<TimingPageModel>().Statistics.SelectedGroup = workspace.PageModel<TimingPageModel>().Statistics.Groups[1];
-        await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
-        workspace.PageModel<TimingPageModel>().Statistics.FilterText = "word";
-        workspace.PageModel<TimingPageModel>().Statistics.SortBy("attempts");
-        Assert.Single(workspace.PageModel<TimingPageModel>().Statistics.Rows);
-        Assert.Equal(workspace.PageModel<TimingPageModel>().Statistics.Groups[1], Assert.Single(fake.StatsRequests).ForwardedArguments[1]);
+        var statistics = new StatisticsViewModel(fake) { ProjectPath = ProjectPath, AssessmentId = "assessment/one" };
+        statistics.SelectedGroup = statistics.Groups[1];
+        await statistics.LoadCommand.ExecuteAsync(null);
+        statistics.FilterText = "word";
+        statistics.SortBy("attempts");
+        Assert.Single(statistics.Rows);
+        Assert.Equal(statistics.Groups[1], Assert.Single(fake.StatsRequests).ForwardedArguments[1]);
         Assert.Equal("assessment/one", Assert.Single(fake.StatsRequests).AssessmentId);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(
@@ -1244,11 +1222,11 @@ public sealed class WorkspaceShellViewModelTests
         {
             InvocationId = "invocation/one",
         });
-        await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
+        await workspace.PageModel<SettingsPageModel>().Handoff.Handoff.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(RunState.Completed, workspace.PageModel<AiHandoffPageModel>().Handoff.State);
-        var file = Assert.Single(workspace.PageModel<AiHandoffPageModel>().Handoff.Files);
-        await workspace.PageModel<AiHandoffPageModel>().Handoff.DragFileAsync(null!, file);
+        Assert.Equal(RunState.Completed, workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State);
+        var file = Assert.Single(workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files);
+        await workspace.PageModel<SettingsPageModel>().Handoff.Handoff.DragFileAsync(null!, file);
         Assert.Equal([file.FullPath], dragSource.LastPaths);
     }
 
@@ -1286,10 +1264,10 @@ public sealed class WorkspaceShellViewModelTests
 
     private static string KeyOf(string? id, string path) => ProjectPreferenceKey.For(id, path);
 
-    private static CountingPreferencesStore SeedStatistics(string key, string filter)
+    private static CountingPreferencesStore SeedWarnings(string key)
     {
         var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
-        store.SetViewState(key, "Statistics", new ViewState(null, false, filter));
+        store.SetViewState(key, "Warnings", new ViewState("ReportOrder", false, null));
         return store;
     }
 
@@ -1297,29 +1275,29 @@ public sealed class WorkspaceShellViewModelTests
     public async Task TheViewKeyResolvesAfterTheOpenAndOnlyThenDoTheViewsRestore()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
-        var store = SeedStatistics(KeyOf(IdentityA, PathOne), "remembered");
+        var store = SeedWarnings(KeyOf(IdentityA, PathOne));
         var identity = new TaskCompletionSource<string?>();
         workspace.Context.ViewMemory.UseStore(store);
         workspace.Context.ViewIdentityReader = _ => identity.Task;
 
         await ChooseProjectAsync(fake, picker, workspace, PathOne);
-        var statistics = workspace.PageModel<TimingPageModel>().Statistics;
+        var warnings = workspace.Context.GrammarCheck.Warnings;
 
         Assert.True(workspace.Context.ViewMemory.IsPending);
         Assert.Null(workspace.Context.ViewMemory.ProjectKey);
-        Assert.Equal(string.Empty, statistics.FilterText);
+        Assert.True(warnings.MostYourWordsFirst);
 
         identity.SetResult(IdentityA);
 
         Assert.Equal(KeyOf(IdentityA, PathOne), workspace.Context.ViewMemory.ProjectKey);
-        Assert.Equal("remembered", statistics.FilterText);
+        Assert.False(warnings.MostYourWordsFirst);
     }
 
     [Fact]
     public async Task AProjectSwitchBeforeTheIdentityResolvesNeverRestoresIntoTheNewProject()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
-        var store = SeedStatistics(KeyOf(IdentityA, PathOne), "one's filter");
+        var store = SeedWarnings(KeyOf(IdentityA, PathOne));
         var readers = new Dictionary<string, TaskCompletionSource<string?>>
         {
             [PathOne] = new(),
@@ -1330,60 +1308,59 @@ public sealed class WorkspaceShellViewModelTests
 
         await ChooseProjectAsync(fake, picker, workspace, PathOne);
         await ChooseProjectAsync(fake, picker, workspace, PathTwo);
-        var statistics = workspace.PageModel<TimingPageModel>().Statistics;
+        var warnings = workspace.Context.GrammarCheck.Warnings;
 
         readers[PathOne].SetResult(IdentityA);
 
         Assert.Null(workspace.Context.ViewMemory.ProjectKey);
-        Assert.Equal(string.Empty, statistics.FilterText);
+        Assert.True(warnings.MostYourWordsFirst);
 
         readers[PathTwo].SetResult(null);
 
         Assert.Equal(KeyOf(null, PathTwo), workspace.Context.ViewMemory.ProjectKey);
-        Assert.Equal(string.Empty, statistics.FilterText);
+        Assert.True(warnings.MostYourWordsFirst);
     }
 
     [Fact]
     public async Task AFailedIdentityReadKeysTheProjectByItsPath()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
-        var store = SeedStatistics(KeyOf(null, PathOne), "by path");
+        var store = SeedWarnings(KeyOf(null, PathOne));
         workspace.Context.ViewMemory.UseStore(store);
         workspace.Context.ViewIdentityReader = _ => Task.FromException<string?>(new IOException("unreadable"));
 
         await ChooseProjectAsync(fake, picker, workspace, PathOne);
 
         Assert.Equal(KeyOf(null, PathOne), workspace.Context.ViewMemory.ProjectKey);
-        Assert.Equal("by path", workspace.PageModel<TimingPageModel>().Statistics.FilterText);
+        Assert.False(workspace.Context.GrammarCheck.Warnings.MostYourWordsFirst);
     }
 
     [Fact]
     public async Task AChangeMadeBeforeTheKeyResolvesIsHeldAndSavedUnderTheFinalKey()
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
-        var store = SeedStatistics(KeyOf(IdentityA, PathOne), "older");
+        var store = new CountingPreferencesStore(new MemoryUserPreferencesStore());
         var identity = new TaskCompletionSource<string?>();
         workspace.Context.ViewMemory.UseStore(store);
         workspace.Context.ViewIdentityReader = _ => identity.Task;
         await ChooseProjectAsync(fake, picker, workspace, PathOne);
-        var statistics = workspace.PageModel<TimingPageModel>().Statistics;
+        var warnings = workspace.Context.GrammarCheck.Warnings;
         var seeded = store.Updates;
 
-        statistics.FilterText = "typed early";
+        warnings.MostYourWordsFirst = false;
         Assert.Equal(seeded, store.Updates);
 
         identity.SetResult(IdentityA);
 
-        Assert.Equal("typed early", statistics.FilterText);
+        Assert.False(warnings.MostYourWordsFirst);
         Assert.Equal(seeded + 1, store.Updates);
-        Assert.Equal("typed early", store.GetViewState(KeyOf(IdentityA, PathOne), "Statistics")!.Filter);
-        Assert.Null(store.GetViewState(KeyOf(null, PathOne), "Statistics"));
+        Assert.Equal("ReportOrder", store.GetViewState(KeyOf(IdentityA, PathOne), "Warnings")!.SortColumn);
+        Assert.Null(store.GetViewState(KeyOf(null, PathOne), "Warnings"));
     }
 
     private static string FilterOf(WorkspaceShellViewModel workspace, string view) => view switch
     {
         "AssessWords" => workspace.Assess.Words.SelectedFilter.ToString(),
-        "Review" => workspace.PageModel<ReviewPageModel>().SelectedFilterIndex.ToString(),
         "Trace" => workspace.Assess.Trace.RuleFilter,
         _ => throw new ArgumentException(view),
     };
@@ -1393,14 +1370,12 @@ public sealed class WorkspaceShellViewModelTests
         switch (view)
         {
             case "AssessWords": workspace.Assess.Words.SelectedFilter = ResultsWordFilter.Missed; break;
-            case "Review": workspace.PageModel<ReviewPageModel>().SelectedFilterIndex = 2; break;
             case "Trace": workspace.Assess.Trace.RuleFilter = "rule"; break;
         }
     }
 
     [Theory]
     [InlineData("AssessWords", "Missed", "All")]
-    [InlineData("Review", "2", "0")]
     [InlineData("Trace", "rule", "")]
     public async Task ViewFiltersFollowProjectsAndRestoreInFreshWorkspace(string view, string chosen, string fallback)
     {
@@ -1411,8 +1386,6 @@ public sealed class WorkspaceShellViewModelTests
         await ChooseProjectAsync(fake, picker, workspace, PathOne);
         ChooseViewFilter(workspace, view);
         Assert.Equal(chosen, FilterOf(workspace, view));
-        var saved = store.GetViewState(KeyOf(null, PathOne), view)!.Filter;
-        if (view == "Review") Assert.Equal("StillFits", saved);
         var writes = store.Updates;
         await ChooseProjectAsync(fake, picker, workspace, PathTwo);
         Assert.Equal(fallback, FilterOf(workspace, view));
@@ -1430,7 +1403,7 @@ public sealed class WorkspaceShellViewModelTests
     private static string SortOf(WorkspaceShellViewModel workspace, string view) => view switch
     {
         "Compare" => workspace.Assess.Compare.Sort.ToString(),
-        "Warnings" => workspace.PageModel<WarningsPageModel>().Grammar.Warnings.MostYourWordsFirst ? "MostWords" : "ReportOrder",
+        "Warnings" => workspace.Context.GrammarCheck.Warnings.MostYourWordsFirst ? "MostWords" : "ReportOrder",
         _ => throw new ArgumentException(view),
     };
 
@@ -1439,7 +1412,7 @@ public sealed class WorkspaceShellViewModelTests
         switch (view)
         {
             case "Compare": workspace.Assess.Compare.Sort = CompareSort.Slowest; break;
-            case "Warnings": workspace.PageModel<WarningsPageModel>().Grammar.Warnings.MostYourWordsFirst = false; break;
+            case "Warnings": workspace.Context.GrammarCheck.Warnings.MostYourWordsFirst = false; break;
         }
     }
 
@@ -1460,7 +1433,7 @@ public sealed class WorkspaceShellViewModelTests
         var writes = store.Updates;
 
         workspace.CurrentPage = WorkspacePage.Settings;
-        workspace.CurrentPage = WorkspacePage.Overview;
+        workspace.CurrentPage = WorkspacePage.Progress;
         Assert.Equal(chosen, SortOf(workspace, view));
 
         await ChooseProjectAsync(fake, picker, workspace, PathTwo);
@@ -1514,7 +1487,6 @@ public sealed class WorkspaceShellViewModelTests
 
     [Theory]
     [InlineData("AssessWords", "All")]
-    [InlineData("Review", "0")]
     public async Task UnknownSavedViewFilterFallsBack(string view, string fallback)
     {
         var (fake, picker, _, _, workspace) = NewWorkspace();
@@ -1530,7 +1502,6 @@ public sealed class WorkspaceShellViewModelTests
 
     [Theory]
     [InlineData("AssessWords", "Missed")]
-    [InlineData("Review", "2")]
     [InlineData("Trace", "rule")]
     public async Task ViewFilterChangedBeforeIdentityIsHeld(string view, string chosen)
     {

@@ -87,7 +87,7 @@ public sealed class AnalysisOperationScopesTests(PristineProjectFixture pristine
             var assess = new AssessViewModel(fake, selection) { ProjectPath = project.FwDataPath };
             var changes = new ChangesViewModel(client);
             await changes.OpenProjectAsync(project.FwDataPath);
-            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, fake, reads);
+            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, changes, fake, reads);
             await texts.SetProjectAsync(project.FwDataPath);
             await SelectionModelFixture.RealizeAsync(inText);
             return new ScopeProject(project, inText, texts, reads);

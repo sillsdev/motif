@@ -79,10 +79,9 @@ public sealed class ContrastScreenshots
     /// <summary>A capture of setup must show the sample's numbers, not a refused read or zero occurrences.</summary>
     private static void RequireTheSampleBehindSetup(WorkspaceShellViewModel workspace)
     {
-        var overview = workspace.PageModel<OverviewPageModel>();
-        OverviewPageWordsTests.AssertCaptureStopCounts(overview.Overview!, "setup wizard");
-        Assert.False(overview.HasOverviewRefusal, overview.OverviewRefusalLine);
-        Assert.True(overview.ShowNumbers);
+        var overview = Assert.IsType<SIL.Motif.Contract.Responses.OverviewResponse>(workspace.Context.Health.Overview);
+        SampleOverview.AssertCaptureStopCounts(overview, "setup wizard");
+        Assert.False(overview.IsStale);
         var words = workspace.PageModel<TextsPageModel>().Words;
         Assert.True(words.OccurrenceCount > 0, words.SummaryText);
         Assert.Equal(words.SummaryText, workspace.Context.Setup!.RunSummary);
@@ -91,7 +90,7 @@ public sealed class ContrastScreenshots
     // The sample's own counts, read before anything is parsed, so the page behind setup matches the wizard's line.
     private static OverviewResponse BeforeTheFirstParse()
     {
-        var populated = OverviewPageWordsTests.Populated();
+        var populated = SampleOverview.Populated();
         return populated with
         {
             SelectionWordCount = 9,

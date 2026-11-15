@@ -22,9 +22,6 @@ public sealed class WordRowRoutes : ObservableObject
     /// <summary>Opens a word in the Texts page, where its places in the chosen Texts are.</summary>
     public Action<string>? OpenInText { get; set; }
 
-    /// <summary>Opens Try a Word on a word.</summary>
-    public Action<string>? TryWord { get; set; }
-
     internal Func<PendingStoredOpinionChange, Task<bool>>? StageOpinion { get; set; }
 
     internal ChangesViewModel? Changes { get; set; }
@@ -94,7 +91,6 @@ public sealed partial class WordRowViewModel : ObservableObject
         Tone = row.MeaningCode == "refused" ? MeaningTone.Neutral : WindowWords.MeaningOf(row.Opinion, Outcome).Tone;
         WordAnalysesLink = row.WordAnalysesLink is { } link ? new Uri(link) : null;
         OpenInTextCommand = new RelayCommand(() => _routes?.OpenInText?.Invoke(Word));
-        TryWordCommand = new RelayCommand(() => _routes?.TryWord?.Invoke(Word));
     }
 
     /// <summary>
@@ -386,10 +382,6 @@ public sealed partial class WordRowViewModel : ObservableObject
         _routes?.OpenInTextAutomationNameFormat ?? MotifAppStrings.WordRowOpenInTextAccessibleNameFormat, Word);
 
     public IRelayCommand OpenInTextCommand { get; }
-
-    public string TryWordLabel => MotifAppStrings.TryAWord;
-
-    public IRelayCommand TryWordCommand { get; }
 
     internal void RoutesChanged()
     {

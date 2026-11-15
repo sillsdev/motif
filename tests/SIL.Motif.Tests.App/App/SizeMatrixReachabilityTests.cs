@@ -8,9 +8,11 @@ using SIL.Motif.App;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Commands.Queries;
 using AssessmentProgress = SIL.Motif.Contract.Responses.AssessmentProgress;
 using AssessmentStage = SIL.Motif.Contract.Responses.AssessmentStage;
 using SIL.Motif.Tests.App.Walkthrough;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -31,7 +33,7 @@ public sealed class SizeMatrixReachabilityTests(ITestOutputHelper output)
                 var findings = new List<LayoutFinding>();
                 foreach (var (scene, page, tab) in PageScreenshots.Views().Where(view => view.Page == WorkspacePage.Texts))
                 {
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
+
                     workspace.CurrentPage = page;
                     if (tab == TextsTab.AnalyzeTexts) await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                     SizeMatrixScreenshots.ApplySize(window, MatrixSizes.Read().Single(size => size.Name == "thin"), 100);
@@ -51,15 +53,14 @@ public sealed class SizeMatrixReachabilityTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void ListsWordRowsAreReachableInAShortScaledWindow()
+    public void WordsRowsAreReachableInAShortScaledWindow()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await PageScreenshots.OpenOverSampleData();
             try
             {
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
-                workspace.CurrentPage = WorkspacePage.Texts;
+                workspace.CurrentPage = WorkspacePage.Words;
                 var size = MatrixSizes.Read().Single(item => item.Name == "short");
                 SizeMatrixScreenshots.ApplySize(window, size, 150);
                 PageScreenshots.Settle(window);
@@ -78,33 +79,34 @@ public sealed class SizeMatrixReachabilityTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void LargeListsKeepRowsVirtualizedAndTheLastRowReachable()
+    public void LargeWordListsKeepRowsVirtualizedAndTheLastRowReachable()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData();
+            var textId = Guid.NewGuid();
+            var ids = Enumerable.Range(0, 200).Select(_ => Guid.NewGuid()).ToArray();
+            var tokens = ids.Select((id, index) => new TextToken($"word-{index:000}", $"word-{index:000}", null,
+                "unanalysed") { WordformId = id, OccurrenceIndex = index }).ToArray();
+            var words = tokens.Select((token, index) => new TextWord(token.Form!, ids[index].ToString(),
+                [new WordOccurrence(textId, "Words", 1, token.Text, "unanalysed", null)], [], [])).ToArray();
+            var captured = new TextWordsResponse(words,
+                [new TextLines(textId, "Words", [new TextLine(1, tokens)])], HasBaseline: true);
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, capturedWords: captured);
             try
             {
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
-                workspace.CurrentPage = WorkspacePage.Texts;
+                workspace.CurrentPage = WorkspacePage.Words;
                 SizeMatrixScreenshots.ApplySize(window, MatrixSizes.Read().Single(item => item.Name == "short"), 150);
+                await workspace.Context.EvidencePublication;
+                await Wait.UntilAsync(() => workspace.PageModel<WordsPageModel>().Words.Rows.Count == 200);
+                await workspace.PageModel<WordsPageModel>().Words.SettleVisibleDetailsAsync();
                 PageScreenshots.Settle(window);
-                var panel = Assert.Single(window.GetVisualDescendants().OfType<TextsListsPanel>());
-                var list = panel.FindControl<ListBox>("TextsListsPanelWordsItems")!;
-                var sample = Assert.IsType<CompareWordViewModel>(list.Items[0]);
-                var lists = workspace.PageModel<TextsPageModel>().TextsLists;
-                lists.Compare.LoadSources(Enumerable.Range(0, 200)
-                    .Select(index => sample.Source with { Word = $"word-{index:000}" }).ToArray());
-                lists.SelectListCommand.Execute(lists.Lists.First(item => item.HasWords));
-                PageScreenshots.Settle(window);
+                var panel = Assert.Single(window.GetVisualDescendants().OfType<TextWordsPanel>());
+                var list = panel.FindControl<ListBox>("TextWordsPanelRowsItems")!;
                 Assert.Equal(200, list.ItemCount);
-                var outer = Assert.Single(list.GetVisualAncestors().OfType<ScrollViewer>(),
-                    scroll => scroll is not WordListSlot);
-                Assert.True(list.Bounds.Height <= outer.Bounds.Height,
-                    $"List height {list.Bounds.Height} exceeds viewport {outer.Bounds.Height}; realized {list.GetRealizedContainers().Count()}.");
                 Assert.InRange(list.GetRealizedContainers().Count(), 1, 40);
-                outer.ScrollToEnd();
                 list.ScrollIntoView(list.ItemCount - 1);
+                PageScreenshots.Settle(window);
+                await workspace.PageModel<WordsPageModel>().Words.SettleVisibleDetailsAsync();
                 PageScreenshots.Settle(window);
                 var last = Assert.IsAssignableFrom<Control>(list.ContainerFromIndex(list.ItemCount - 1));
                 var bounds = new Rect(last.Bounds.Size).TransformToAABB(last.TransformToVisual(window)!.Value);
@@ -115,6 +117,7 @@ public sealed class SizeMatrixReachabilityTests(ITestOutputHelper output)
             {
                 WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
                 window.Close();
+                await workspace.DisposeAsync();
             }
         }, TimeSpan.FromMinutes(2));
     }
@@ -187,10 +190,10 @@ public sealed class SizeMatrixReachabilityTests(ITestOutputHelper output)
                     sizesToInspect.Select(point => new MatrixSelectionPoint(point.Item1, point.Item2, "light")).ToArray(),
                     LayoutCheckNames.ReachabilityAndTitleBar);
                 var allFindings = new List<LayoutFinding>();
+                workspace.Context.Diagnostics = true;
                 foreach (var (scene, page, tab) in PageScreenshots.Views())
                 {
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
-                    if (page == WorkspacePage.TryAWord) await PageScreenshots.TryTheSampleWord(workspace);
+
                     workspace.CurrentPage = page;
                     if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
                         await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);

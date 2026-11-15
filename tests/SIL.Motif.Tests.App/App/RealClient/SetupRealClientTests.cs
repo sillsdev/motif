@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using System.Diagnostics;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
@@ -29,7 +30,9 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
                 await SelectProjectAndFinishFirstRun(
                     first, project.FwDataPath, SeededProject.TextTitle, 310000, deadline);
                 selectedTextId = Assert.Single(first.Workspace.Selection.ChosenTextIds);
-                Assert.True(first.Find<Avalonia.Controls.Button>("Parse all words in the Selection").IsEffectivelyEnabled);
+                var firstCard = ProjectCardAccess.Open(first.Window);
+                Assert.True(firstCard.FindControl<Avalonia.Controls.Button>("CardParseAllWordsButton")!.IsEffectivelyEnabled);
+                ProjectCardAccess.Close(first.Window);
             }
 
             using var reopened = NewWindow(project);
@@ -50,7 +53,9 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             var savedTimeLimit = SelectionLimitPolicy.Resolve(selection.Limits, rate.Value!).PerWordTimeLimitMs;
             Assert.Equal(savedTimeLimit is { } milliseconds ? milliseconds / 1000m : null,
                 reopened.Workspace.Selection.PerWordTimeLimitSeconds);
-            Assert.True(reopened.Find<Avalonia.Controls.Button>("Parse all words in the Selection").IsEffectivelyEnabled);
+            var reopenedCard = ProjectCardAccess.Open(reopened.Window);
+            Assert.True(reopenedCard.FindControl<Avalonia.Controls.Button>("CardParseAllWordsButton")!.IsEffectivelyEnabled);
+            ProjectCardAccess.Close(reopened.Window);
         }, WalkthroughSteps.Remaining(deadline));
     }
 
@@ -158,7 +163,11 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.Null(changed.Value.Selection.PerWordLimitMs);
 
             var previousInvocation = walkthrough.Workspace.Assess.Result!.InvocationId;
-            walkthrough.Click("Parse all words in the Selection");
+            var card = ProjectCardAccess.Open(walkthrough.Window);
+            var parse = card.FindControl<Button>("CardParseAllWordsButton")!;
+            Assert.True(parse.IsEffectivelyEnabled);
+            parse.Command!.Execute(parse.CommandParameter);
+            ProjectCardAccess.Close(walkthrough.Window);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Assess.Result?.InvocationId is { } invocationId &&

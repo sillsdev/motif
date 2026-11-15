@@ -23,28 +23,20 @@ internal static class InteractiveControlSweep
             ["first project setup"] = [AutomationIds.SetupNext, AutomationIds.SkipSetup],
             ["setup text selection"] = [AutomationIds.SetupSelectAllTexts, AutomationIds.SetupClearTexts],
             ["completed Overview"] = [AutomationIds.RefreshProject],
-            ["completed Lists"] = [AutomationIds.RunAssessment],
-            ["pending changes in Review"] = [AutomationIds.MeasureChanges, AutomationIds.ApplyChanges],
-            ["pending change in Review"] = [AutomationIds.MeasureChanges, AutomationIds.ApplyChanges],
-            ["Review receipt"] = [AutomationIds.ApplyReceipt],
-            ["Apply receipt"] = [AutomationIds.ApplyReceipt],
-            ["stale Review values"] = [AutomationIds.RefreshProject],
-            ["completed Timing"] = [AutomationIds.RefreshProject],
             ["completed Warnings"] = [AutomationIds.RefreshProject],
-            ["completed Analyze texts"] = [AutomationIds.AnalyzeTextsTab, AutomationIds.RunAssessment],
+            ["completed Analyze texts"] = [AutomationIds.ReaderReadMenu],
             ["Analyze texts with many Texts"] =
-                [AutomationIds.SelectAllTexts, AutomationIds.ClearTexts, AutomationIds.RunAssessment],
-            ["completed Word list with opinion counts"] = [AutomationIds.AnalyzeTextsTab, AutomationIds.RunAssessment],
-            ["word card with a reading"] = [AutomationIds.AnalyzeTextsTab],
-            ["opened diagnostic window"] = [AutomationIds.TryWordInput, AutomationIds.TryWordRun],
+                [AutomationIds.SelectAllTexts, AutomationIds.ClearTexts, AutomationIds.ReaderReadMenu],
+            ["completed Word list with opinion counts"] = [AutomationIds.RefreshProject],
+            ["word card with a reading"] = [AutomationIds.ReaderReadMenu],
             ["completed Handoff"] = [AutomationIds.WriteHandoff],
             ["newer store refused"] = [AutomationIds.ProjectMenu],
-            ["ready to assess pasted words"] = [AutomationIds.RunAssessment],
+            ["ready to assess pasted words"] = [AutomationIds.ReaderReadMenu],
             ["parse progress with stopped words"] = [AutomationIds.ParseProgressDetails, AutomationIds.ParseStoppedWords, AutomationIds.CancelAssessment],
             ["parse with no progress"] = [AutomationIds.ParseProgressDetails, AutomationIds.ParseNoProgress, AutomationIds.ParseReportProblem, AutomationIds.CancelAssessment],
             ["worker parse progress"] = [AutomationIds.ParseProgressDetails, AutomationIds.ParseAllWordsProgress, AutomationIds.CancelAssessment],
             ["Assessment running"] = [AutomationIds.CancelAssessment],
-            ["Assessment cancelled"] = [AutomationIds.RunAssessment],
+            ["Assessment cancelled"] = [AutomationIds.ReaderReadMenu],
         };
 
     public static void AssertScene(
@@ -105,7 +97,9 @@ internal static class InteractiveControlSweep
         var criticalActions = CriticalActions.TryGetValue(scene, out var requiredActions)
             ? requiredActions
             : throw new Xunit.Sdk.XunitException($"Scene '{scene}' has no authored critical AutomationId contract.");
-        var currentPageId = AutomationIds.ForPage(walkthrough.Workspace.CurrentPage);
+        var currentPageId = walkthrough.Workspace.CurrentPage == WorkspacePage.Settings
+            ? AutomationIds.SettingsButton
+            : AutomationIds.ForPage(walkthrough.Workspace.CurrentPage);
         var observedAutomationIds = controls.Select(entry => AutomationProperties.GetAutomationId(entry.Control))
             .Where(id => !string.IsNullOrWhiteSpace(id)).Cast<string>().ToArray();
         var missingAutomationIds = MissingCriticalAutomationIds(
@@ -158,6 +152,7 @@ internal static class InteractiveControlSweep
         var explicitName = AutomationProperties.GetName(control);
         if (!string.IsNullOrWhiteSpace(explicitName)) return explicitName;
         if (control is ContentControl { Content: string text }) return text;
+        if (control is TabItem { Header: string headerText }) return headerText;
         if (control is Expander { Header: { } header }) return VisibleText(header);
         return control is ListBoxItem ? VisibleText(control) : null;
     }
@@ -222,12 +217,6 @@ internal static class InteractiveControlSweep
             .Where(page => names.Contains($"{page}Page"))
             .ToArray();
         if (pageOwners.Any(page => page != walkthrough.Workspace.CurrentPage)) return false;
-        if (walkthrough.Workspace.CurrentPage != WorkspacePage.Texts) return true;
-
-        var tab = walkthrough.Workspace.PageModel<TextsPageModel>().Tab;
-        if (names.Contains("ListsHost") && tab != TextsTab.Lists) return false;
-        if ((names.Contains("SelectionHost") || names.Contains("ResultsInTextHost")) &&
-            tab != TextsTab.AnalyzeTexts) return false;
         return true;
     }
 
@@ -249,7 +238,7 @@ internal static class InteractiveControlSweep
         Button => InteractiveControlFamily.Action,
         TextBox => InteractiveControlFamily.TextEntry,
         NumericUpDown => InteractiveControlFamily.TextEntry,
-        ComboBox => InteractiveControlFamily.Choice,
+        ComboBox or TabItem => InteractiveControlFamily.Choice,
         Expander => InteractiveControlFamily.Disclosure,
         ListBox or ListBoxItem => InteractiveControlFamily.List,
         MenuItem => InteractiveControlFamily.Action,
@@ -262,7 +251,6 @@ internal static class InteractiveControlSweep
         ScrollViewer { Classes: var classes } when classes.Contains("refusalViewport") =>
             InteractiveControlFamily.ScrollViewport,
         ScrollViewer { Name: "TextsParseStatusScroll" or "PageActionFooterViewport" or "InspectorFooterViewport" } => InteractiveControlFamily.ScrollViewport,
-        TimingKindBar => InteractiveControlFamily.Summary,
         OutcomeBar => InteractiveControlFamily.Summary,
         ProgressBar => InteractiveControlFamily.Progress,
         Ellipse mark when AutomationProperties.GetName(mark) == "Unread" => InteractiveControlFamily.Mark,
@@ -275,6 +263,10 @@ internal static class InteractiveControlSweep
             when !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(part)) => InteractiveControlFamily.Occurrence,
         Border { } border when !string.IsNullOrWhiteSpace(AutomationProperties.GetName(border)) =>
             InteractiveControlFamily.ContentSurface,
+        ContentControl content when AutomationProperties.GetAutomationId(content) == AutomationIds.Passage =>
+            InteractiveControlFamily.ContentSurface,
+        ContentControl content when AutomationProperties.GetAutomationId(content) == AutomationIds.WordOccurrences =>
+            InteractiveControlFamily.Container,
         Border { Classes: var classes } when classes.Contains("handoffFile") => InteractiveControlFamily.FocusableSurface,
         TextBlock text when !string.IsNullOrWhiteSpace(AutomationProperties.GetName(text)) ||
             !string.IsNullOrWhiteSpace(AutomationProperties.GetAutomationId(text)) => InteractiveControlFamily.StaticText,

@@ -162,6 +162,29 @@ public sealed class ReachabilityAssertionsTests(AvaloniaHeadlessFixture avalonia
     }
 
     [Fact]
+    public void AnOversizedScrollableControlHasAReachableVisiblePart()
+    {
+        avalonia.Invoke(() =>
+        {
+            var action = new Button { Content = "Continue", Width = 72, Height = 220 };
+            var scroll = new ScrollViewer
+            {
+                Width = 110, Height = 110, Content = action,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            };
+            var window = new MotifTestWindow { Content = scroll, Width = 140, Height = 140 };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Assert.True(scroll.Extent.Height > scroll.Viewport.Height);
+                Assert.True(ReachabilityAssertions.IsReachable(action, window));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void AControlAtTheBottomOfScrolledContentWithAMarginIsReachable()
     {
         avalonia.Invoke(() =>

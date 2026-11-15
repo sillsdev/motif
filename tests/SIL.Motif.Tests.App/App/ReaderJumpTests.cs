@@ -28,7 +28,7 @@ public sealed class ReaderJumpTests
             var reads = new WorkspaceSelection(client);
             var words = new TextWordsViewModel(client, selection, reads);
             var assess = new AssessViewModel(client, selection);
-            var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, new ChangesViewModel(client), client, reads);
+            var owner = new ResultsInTextViewModel(words, assess, _ => { }, new ChangesViewModel(client), client, reads);
             var panel = new ResultsInTextPanel(owner);
             var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new Border { Child = panel } };
             try

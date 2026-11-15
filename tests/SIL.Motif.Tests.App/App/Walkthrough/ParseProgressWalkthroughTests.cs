@@ -155,7 +155,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
     }
 
     [Fact]
-    public void TryAWordShowsMeasuredProgressAndDoesNotReplaceARunningTrace()
+    public void ATraceShowsMeasuredProgressAndDoesNotReplaceARunningTrace()
     {
         using var project = new WalkthroughProject(pristine);
         var parser = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
@@ -171,7 +171,7 @@ public sealed class ParseProgressWalkthroughTests(PristineProjectFixture pristin
             {
                 subcommands = new Dictionary<string, object> { ["parse"] = new { heartbeatPath = heartbeat } },
             });
-            window.ShowPage(WorkspacePage.TryAWord);
+            window.ShowPage(WorkspacePage.Progress);
             var trace = window.Workspace.Assess.Trace;
             trace.WordToTry = "held";
             var running = trace.TryCommand.ExecuteAsync(null);

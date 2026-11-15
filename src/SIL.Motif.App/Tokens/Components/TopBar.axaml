@@ -8,7 +8,7 @@
     <StaticResource x:Key="Component.TopBar.Padding" ResourceKey="Primitive.Inset.12_0_8_0" />
     <StaticResource x:Key="Component.TopBar.WindowsChromePadding" ResourceKey="Primitive.Inset.18_0_138_0" />
     <StaticResource x:Key="Component.TopBar.MacChromePadding" ResourceKey="Primitive.Inset.76_0_18_0" />
-    <StaticResource x:Key="Component.TopBar.Height" ResourceKey="Primitive.Size.34" />
+    <StaticResource x:Key="Component.TopBar.Height" ResourceKey="Primitive.Size.56" />
     <StaticResource x:Key="Component.TopBar.CompactWidth" ResourceKey="Primitive.Size.1100" />
     <StaticResource x:Key="Component.TopBar.MenuItemPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.TopBar.NarrowWidth" ResourceKey="Primitive.Size.760" />
@@ -16,7 +16,7 @@
     <StaticResource x:Key="Component.TopBar.ChipPadding" ResourceKey="Primitive.Inset.6_2_6_2" />
     <StaticResource x:Key="Component.TopBar.ChipDotMargin" ResourceKey="Primitive.Inset.0_0_6_0" />
     <StaticResource x:Key="Component.TopBar.ChipCaretMargin" ResourceKey="Primitive.Inset.6_0_0_0" />
-    <StaticResource x:Key="Component.TopBar.ChipHeight" ResourceKey="Primitive.Size.24" />
+    <StaticResource x:Key="Component.TopBar.ChipHeight" ResourceKey="Primitive.Size.34" />
     <StaticResource x:Key="Component.TopBar.ChipDetailMaxWidth" ResourceKey="Primitive.Size.170" />
     <StaticResource x:Key="Component.TopBar.SeparatorWidth" ResourceKey="Primitive.Size.1" />
     <StaticResource x:Key="Component.TopBar.CardFooterPadding" ResourceKey="Primitive.Inset.0_8_0_0" />

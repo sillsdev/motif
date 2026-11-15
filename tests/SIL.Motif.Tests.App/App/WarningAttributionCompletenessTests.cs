@@ -91,21 +91,22 @@ public sealed class WarningAttributionCompletenessTests
     }
 
     [Fact]
-    public void TheInspectorWordCountRowGivesTheSameReasonWhenItsCountIsBlank()
+    public void TheSelectedWarningGivesTheSameReasonWhenItsCountIsBlank()
     {
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
             new ChangesViewModel(fake), fake, new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(fake));
-        var page = new WarningsPageModel(context);
+        var warnings = context.GrammarCheck.Warnings;
         var finding = MixedFinding("no-selected-analysis");
         finding = finding with { YourWords = WarningWordsQuery.YourWordsOf(finding, [Word("other", "other-allomorph")], []) };
-        page.Grammar.Warnings.Load([finding]);
+        warnings.Load([finding]);
 
-        page.Grammar.Warnings.SelectedTableEntry = Assert.Single(page.Grammar.Warnings.Rows);
+        warnings.SelectedTableEntry = Assert.Single(warnings.Rows);
 
-        Assert.Equal(string.Empty, page.SelectedWarningWordCount);
-        Assert.Equal(MotifAppStrings.WarningsReachUnavailable, page.SelectedWarningWordCountNote);
+        var selected = Assert.IsType<GrammarWarningRowViewModel>(warnings.SelectedTableEntry);
+        Assert.Equal(string.Empty, selected.TableNamedWordsText);
+        Assert.Equal(MotifAppStrings.WarningsReachUnavailable, selected.TableNamedWordsNote);
     }
 
     [Theory]

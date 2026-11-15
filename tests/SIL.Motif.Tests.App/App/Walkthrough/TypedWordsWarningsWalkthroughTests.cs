@@ -34,8 +34,9 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
             Assert.Contains("0 refused", walkthrough.Workspace.Assess.Result!.CompletionSummary);
             walkthrough.WaitUntilProjectIsQuiet(TimeSpan.FromMinutes(1), "parse results did not finish publishing");
-            walkthrough.ShowPage(WorkspacePage.Warnings);
-            var warnings = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar.Warnings;
+            walkthrough.Workspace.Context.Diagnostics = true;
+            walkthrough.ShowPage(WorkspacePage.Diagnostics);
+            var warnings = walkthrough.Workspace.Context.GrammarCheck.Warnings;
             Assert.DoesNotContain(warnings.Findings, finding => finding.Code == GrammarFindingCodes.ParseAllomorphUnsegmentable);
             var letterFindings = warnings.Findings.Where(finding => finding.Code == ProvisionalLetter).ToArray();
             Assert.All(letterFindings, finding => Assert.Equal(GrammarDiagnosticLevel.Information, finding.Severity));
@@ -52,61 +53,6 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             Assert.Equal(["chat", "chats", "fenêtre", "fenêtres", "très"],
                 row.SpellingCandidateRows.Select(word => word.Word).Order(StringComparer.Ordinal));
             warnings.OpenDetailsCommand.Execute(row);
-            PageScreenshots.Settle(walkthrough.Window);
-            var visibleText = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
-                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text).ToArray();
-            Assert.Contains(row.SpellingCandidatesText, visibleText);
-            Assert.Contains(row.ReachStateText, visibleText);
-            // Opened details show in the Inspector, or inline under the table where the Inspector cannot fit.
-            var groups = Assert.Single(walkthrough.Window.GetVisualDescendants().OfType<ItemsControl>(),
-                control => control.Name is "WarningsInspectorSelectedDetails" or "GrammarPanelSelectionDetailsItems" &&
-                    control.IsEffectivelyVisible);
-            var scroll = groups.GetVisualAncestors().OfType<ScrollViewer>().First();
-            var descriptions = letterFindings.Select(finding => finding.Description).ToHashSet(StringComparer.Ordinal);
-            var expectedLetters = NoTextsWarningProject.UndeclaredLetters.ToHashSet(StringComparer.Ordinal);
-            foreach (var height in new[] { walkthrough.Window.Height, walkthrough.Window.MinHeight })
-            {
-                walkthrough.Window.Height = height;
-                scroll.Offset = default;
-                PageScreenshots.Settle(walkthrough.Window);
-                var readableDescriptions = new HashSet<string>(StringComparer.Ordinal);
-                var reachedLetters = new HashSet<string>(StringComparer.Ordinal);
-                var direction = 1;
-                walkthrough.WaitUntil(() =>
-                {
-                    foreach (var text in groups.GetVisualDescendants().OfType<TextBlock>()
-                        .Where(text => text.IsEffectivelyVisible && text.Classes.Contains("warningRawMessage") &&
-                            text.Text is not null && descriptions.Contains(text.Text)))
-                    {
-                        var origin = text.TranslatePoint(default, scroll)!.Value;
-                        if (origin.Y < 0 || origin.Y + text.Bounds.Height > scroll.Viewport.Height) continue;
-                        Assert.True(text.Bounds.Width > 0 && text.Bounds.Height > 0);
-                        Assert.True(origin.X >= 0 && origin.X + text.Bounds.Width <= scroll.Viewport.Width + 1,
-                            $"Warning description extends past the viewport: {text.Text}");
-                        var detail = Assert.IsType<GrammarWarningDetailViewModel>(text.DataContext);
-                        var letter = Letter(detail.Warning);
-                        Assert.Contains(letter, expectedLetters);
-                        reachedLetters.Add(letter);
-                        readableDescriptions.Add(text.Text!);
-                    }
-                    if (reachedLetters.SetEquals(expectedLetters) &&
-                        readableDescriptions.SetEquals(descriptions)) return true;
-                    if (scroll.Offset.Y >= scroll.Extent.Height - scroll.Viewport.Height) direction = -1;
-                    if (scroll.Offset.Y <= 0) direction = 1;
-                    scroll.Offset = scroll.Offset.WithY(scroll.Offset.Y + direction * scroll.Viewport.Height / 4);
-                    PageScreenshots.Settle(walkthrough.Window);
-                    return false;
-                }, TimeSpan.FromMinutes(1), "not every provisional letter became readable by scrolling",
-                    () => $"Reached {reachedLetters.Count}/{row.RepeatCount} at height {height}; " +
-                        $"missing '{string.Join("; ", descriptions.Except(readableDescriptions))}'; " +
-                        $"scroll offset={scroll.Offset.Y}, extent={scroll.Extent.Height}, viewport={scroll.Viewport.Height}");
-                Assert.Equal(row.RepeatCount, reachedLetters.Count);
-                foreach (var finding in letterFindings)
-                {
-                    Assert.Contains(finding.Description, readableDescriptions);
-                    Assert.Contains($"The letter '{finding.Subject[0].Title}' isn't defined", finding.Description);
-                }
-            }
             foreach (var (letter, spelled) in new[]
                 { ("c", "chat chats"), ("h", "chat chats"), ("è", "très"), ("ê", "fenêtre fenêtres") })
             {
@@ -124,12 +70,9 @@ public sealed class TypedWordsWarningsWalkthroughTests(PristineProjectFixture pr
             Assert.Equal(WarningAttributionState.ExactUses, trois.AttributionState);
             Assert.Equal("trois", Assert.Single(trois.YourWords!.Words).Row.Word);
 
-            walkthrough.ShowPage(WorkspacePage.Overview);
-            var overview = walkthrough.Workspace.PageModel<OverviewPageModel>();
-            Assert.Contains(overview.WarningKindRows, row => row.WarningCount.EndsWith("error", StringComparison.Ordinal) ||
-                row.WarningCount.EndsWith("errors", StringComparison.Ordinal));
-            Assert.DoesNotContain("None of your words", overview.WarningsYourWordsText);
-            Assert.Equal(0, overview.Overview!.SelectionTextCount);
+            walkthrough.ShowPage(WorkspacePage.Progress);
+            Assert.Contains(warnings.Findings, finding => finding.Severity == GrammarDiagnosticLevel.Error);
+            Assert.Equal(0, walkthrough.Workspace.Context.Health.Overview!.SelectionTextCount);
 
             var commands = walkthrough.Workspace.Context.Commands;
             var stored = await commands.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(project.FwDataPath), CancellationToken.None);

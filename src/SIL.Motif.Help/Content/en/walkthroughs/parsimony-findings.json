@@ -1,13 +1,13 @@
 {
   "id": "parsimony-findings",
   "title": "Read Parsimony findings",
-  "description": "Read the findings from the latest stored Parsimony check and the evidence for one of them.",
+  "description": "Open Diagnostics to read a project's recorded grammar evidence.",
   "steps": {
-    "evidence": "Parsimony lists the findings from the stored check. Select one to read its evidence."
+    "evidence": "Diagnostics shows the recorded warnings and speed by rule for the current grammar."
   },
   "callouts": {
     "evidence": {
-      "motif-parsimony-evidence": "Evidence for the selected finding"
+      "motif-diagnostics-tabs": "Diagnostics tabs"
     }
   }
 }

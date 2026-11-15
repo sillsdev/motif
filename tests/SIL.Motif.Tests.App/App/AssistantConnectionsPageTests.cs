@@ -13,7 +13,7 @@ public sealed class AssistantConnectionsPageTests
     {
         var preferences = new FakeAdvancedAiPreferences();
         var connections = new FakeAssistantConnections();
-        var page = new AssistantConnectionsPageModel(
+        using var page = new AssistantConnectionsViewModel(
             WorkspaceContextTests.NewContext(new FakeCommandClient(), preferences, connections));
 
         Assert.False(page.IsEnabled);
@@ -40,7 +40,7 @@ public sealed class AssistantConnectionsPageTests
         var connections = new FakeAssistantConnections();
         if (throws) connections.Failure = new IOException(text);
         else connections.ResultMessage = text;
-        var page = new AssistantConnectionsPageModel(
+        using var page = new AssistantConnectionsViewModel(
             WorkspaceContextTests.NewContext(new FakeCommandClient(), new FakeAdvancedAiPreferences(), connections));
         page.IsEnabled = true;
         page.Assistants[1].IsSelected = true;

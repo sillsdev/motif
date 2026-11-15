@@ -168,7 +168,7 @@ public sealed class DesignTokenTests
     }
 
     [Fact]
-    public void CompactScaleUsesTheSpecifiedSpacingInsetsRadiiAndTypeSizes()
+    public void InterfaceScaleUsesTheSpecifiedSpacingInsetsRadiiAndTypeSizes()
     {
         _avalonia.Invoke(() =>
         {
@@ -178,12 +178,13 @@ public sealed class DesignTokenTests
                 ("Intent.Space.Compact", 4d),
                 ("Intent.Space.Snug", 4d),
                 ("Intent.Space.Related", 6d),
-                ("Intent.Space.Group", 8d),
-                ("Intent.Space.Section", 12d),
+                ("Intent.Space.Group", 12d),
+                ("Intent.Space.Section", 16d),
                 ("Intent.Type.Title", 16d),
                 ("Intent.Type.Section", 13d),
-                ("Intent.Type.Body", 13d),
-                ("Intent.Type.Navigation", 13d),
+                ("Intent.Type.Body", 15d),
+                ("Intent.Type.Navigation", 14d),
+                ("Intent.Type.Display", 28d),
                 ("Intent.Type.Status", 12d),
                 ("Intent.Type.Small", 12d),
                 ("Intent.Type.Caption", 11d),
@@ -197,9 +198,9 @@ public sealed class DesignTokenTests
             }
 
             Assert.True(Application.Current!.TryGetResource("Intent.Inset.Page", null, out var page));
-            Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(page));
+            Assert.Equal(new Thickness(16), Assert.IsType<Thickness>(page));
             Assert.True(Application.Current.TryGetResource("Intent.Inset.Panel", null, out var panel));
-            Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(panel));
+            Assert.Equal(new Thickness(16), Assert.IsType<Thickness>(panel));
             Assert.True(Application.Current.TryGetResource("Intent.Inset.Row", null, out var row));
             Assert.Equal(new Thickness(6, 4, 6, 4), Assert.IsType<Thickness>(row));
             Assert.True(Application.Current.TryGetResource("Intent.Inset.Chip", null, out var chip));
@@ -217,11 +218,9 @@ public sealed class DesignTokenTests
             Assert.Equal(FontWeight.SemiBold, Assert.IsType<FontWeight>(sectionWeight));
 
             Assert.True(Application.Current.TryGetResource("Component.Card.Padding", null, out var cardPadding));
-            Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(cardPadding));
+            Assert.Equal(new Thickness(16), Assert.IsType<Thickness>(cardPadding));
             Assert.True(Application.Current.TryGetResource("Component.MarkChip.Padding", null, out var markChipPadding));
             Assert.Equal(new Thickness(7, 1, 7, 1), Assert.IsType<Thickness>(markChipPadding));
-            Assert.True(Application.Current.TryGetResource("Component.Overview.PageMargin", null, out var pageMargin));
-            Assert.Equal(new Thickness(8), Assert.IsType<Thickness>(pageMargin));
         });
     }
 
@@ -385,7 +384,7 @@ public sealed class DesignTokenTests
     public void UiFallbacksAreSelectedFromTheInterfaceLanguage(string language, string expected, int codepoint)
     {
         var options = TextStyles.InterfaceFontOptionsForLanguage(language);
-        Assert.Equal("fonts:Motif#Andika", options.DefaultFamilyName);
+        Assert.Equal("fonts:Motif#Source Sans 3", options.DefaultFamilyName);
         Assert.Contains(options.FontFallbacks!, fallback =>
             fallback.FontFamily.ToString() == expected && fallback.UnicodeRange.IsInRange(codepoint));
     }
@@ -394,7 +393,7 @@ public sealed class DesignTokenTests
     public void UiFallbackMapLeavesUnknownLanguagesForTheSystem()
     {
         var options = TextStyles.InterfaceFontOptionsForLanguage("en-GB");
-        Assert.Equal("fonts:Motif#Andika", options.DefaultFamilyName);
+        Assert.Equal("fonts:Motif#Source Sans 3", options.DefaultFamilyName);
         Assert.Empty(options.FontFallbacks!);
     }
 
@@ -608,7 +607,6 @@ public sealed class DesignTokenTests
         ("Intent.Link", "SemiColorLink"),
         ("Intent.Success", "SemiColorSuccess"),
         ("Intent.Success.Fill", "SemiColorSuccessLight"),
-        ("Intent.Warning", "SemiColorWarning"),
         ("Intent.Warning.Fill", "SemiColorWarningLight"),
         ("Intent.Danger", "SemiColorDanger"),
         ("Intent.Danger.Fill", "SemiColorDangerLight"),

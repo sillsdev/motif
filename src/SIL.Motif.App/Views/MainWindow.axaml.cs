@@ -83,7 +83,6 @@ public sealed partial class MainWindow : Window
         _problemReportServices = ProblemReportWindowServices.ForWindow(this, _uriLauncher);
         ConfigureWindowChrome();
         AddHandler(InputElement.KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
-        AddHandler(InputElement.KeyDownEvent, OnProposalEscape, RoutingStrategies.Bubble);
         if (this.FindControl<Menu>("MainMenu") is { } mainMenu) MenuShortcutDisplay.Apply(mainMenu);
         AddHandler(GotFocusEvent, RememberFocusOutsideMenu, RoutingStrategies.Bubble);
         // A command handles Click, so the close needs handledEventsToo.
@@ -166,9 +165,6 @@ public sealed partial class MainWindow : Window
         var view = _workspaceView
             ?? throw new InvalidOperationException("MainWindow.axaml has no element named 'WorkspaceView'.");
         DataContext = workspace;
-        // Left is raised once the Lens is cleared; the Background post runs after the bar has collapsed.
-        workspace.ProposalBar.Left += (_, _) =>
-            Dispatcher.UIThread.Post(() => _workspaceView?.FocusCurrentPage(), DispatcherPriority.Background);
         workspace.Context.ViewMemory.UseStore(_preferences);
         workspace.Context.UseDiagnosticsPreferences(_preferences);
         _host = new MotifWorkspaceHost(workspace, this, _preferences, _applicationFacts, _uriLauncher,
@@ -330,16 +326,13 @@ public sealed partial class MainWindow : Window
     [KeyboardShortcutHandler(
         "Window:ShowHelp", "Window:Back", "Window:ShowShortcuts", "Window:OpenSettings", "Window:OpenProject",
         "Window:ZoomIn", "Window:ZoomOut", "Window:ResetZoom", "Window:Copy", "Window:Undo", "Window:Redo",
-        "TextReader:FocusWordSearch", "WordList:FocusWordSearch", "Lists:FocusWordSearch")]
+        "TextReader:FocusWordSearch", "WordList:FocusWordSearch")]
     private async void OnKeyDown(object? sender, KeyEventArgs e)
     {
         var modifiers = e.KeyModifiers;
         var scope = _workspaceView?.SearchScope() ?? KeyboardShortcutScope.Window;
         var windowEntry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, e.Key, modifiers);
-        var inspectorIsOpen = DataContext is WorkspaceShellViewModel { Inspector.IsOpen: true };
-        var entry = inspectorIsOpen && windowEntry?.Behavior == KeyboardShortcutBehavior.Back
-            ? windowEntry
-            : KeyboardShortcutRegistry.Find(scope, e.Key, modifiers) ?? windowEntry;
+        var entry = KeyboardShortcutRegistry.Find(scope, e.Key, modifiers) ?? windowEntry;
         if (entry is not null && (entry.Behavior is KeyboardShortcutBehavior.Copy or KeyboardShortcutBehavior.Undo or
             KeyboardShortcutBehavior.Redo) && KeyboardShortcutRegistry.Allows(entry,
                 KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true))
@@ -398,7 +391,7 @@ public sealed partial class MainWindow : Window
                 return;
             }
         }
-        // An open project card is the topmost step, so Esc closes it before the Inspector or the page.
+        // An open project card takes precedence over the page's Escape action.
         if (entry?.Behavior == KeyboardShortcutBehavior.Back &&
             this.FindControl<Button>("ProjectChip")?.Flyout is Flyout { IsOpen: true } card)
         {
@@ -406,30 +399,10 @@ public sealed partial class MainWindow : Window
             card.Hide();
             return;
         }
-        // The inspector is the deepest step of the drill-down, so Esc steps it back before anything on the page.
-        if (entry?.Behavior == KeyboardShortcutBehavior.Back && _workspaceView?.TryStepInspectorBack() == true)
-        {
-            e.Handled = true;
-            return;
-        }
         if (entry?.Behavior != KeyboardShortcutBehavior.ShowHelp) return;
         e.Handled = true;
         _workspaceView?.ShowHelp(e.Source);
     }
-
-    // Esc leaves Proposal mode only when nothing nearer used it: a page, a menu or a text box takes it first.
-    [KeyboardShortcutHandler("Window:Back")]
-    private void OnProposalEscape(object? sender, KeyEventArgs e)
-    {
-        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Window, e.Key, e.KeyModifiers);
-        if (e.Handled || entry?.Behavior != KeyboardShortcutBehavior.Back) return;
-        if (DataContext is not WorkspaceShellViewModel { ProposalBar: { IsVisible: true } bar }) return;
-        if (KeyboardShortcutRegistry.IsTextInput(e.Source) || AnyMenuOpen()) return;
-        e.Handled = true;
-        bar.LeaveCommand.Execute(null);
-    }
-
-    private bool AnyMenuOpen() => TopLevelMenus().Append(_menuButton).OfType<MenuItem>().Any(item => item.IsSubMenuOpen);
 
     /// <summary>Builds <paramref name="page"/>'s view if it has none yet, so a test can reach it without visiting it.</summary>
     internal Control EnsurePageView(WorkspacePage page) => _workspaceView!.EnsurePageView(page);
@@ -627,11 +600,11 @@ public sealed partial class MainWindow : Window
                     await _problemReportServices.CopyTextAsync(text, this).ConfigureAwait(true);
                 break;
             case KeyboardShortcutBehavior.Undo when DataContext is WorkspaceShellViewModel workspace:
-                ShowKeyboardStatus(await workspace.PageModel<ReviewPageModel>().Changes
+                ShowKeyboardStatus(await workspace.Context.Changes
                     .UndoStagingActionAsync().ConfigureAwait(true));
                 break;
             case KeyboardShortcutBehavior.Redo when DataContext is WorkspaceShellViewModel workspace:
-                ShowKeyboardStatus(await workspace.PageModel<ReviewPageModel>().Changes
+                ShowKeyboardStatus(await workspace.Context.Changes
                     .RedoStagingActionAsync().ConfigureAwait(true));
                 break;
         }

@@ -25,7 +25,7 @@ public sealed class HelpPopupViewModelTests
             var launcher = new RecordingUriLauncher();
             var catalog = HelpCatalog.Load();
             var viewModel = new HelpPopupViewModel(launcher, catalog);
-            viewModel.ShowForPage(WorkspacePage.Timing);
+            viewModel.ShowForPage(WorkspacePage.Diagnostics);
             var link = new Link();
             var args = new LinkClickedEventArgs(TestLinkClickEvent, link, new Uri("cmd:assess"));
 
@@ -70,24 +70,22 @@ public sealed class HelpPopupViewModelTests
         {
             var launcher = new RecordingUriLauncher();
             var viewModel = new HelpPopupViewModel(launcher, HelpCatalog.Load());
-            viewModel.ShowForPage(WorkspacePage.Timing);
+            viewModel.ShowForPage(WorkspacePage.Diagnostics);
 
             viewModel.OpenOnlineCommand.Execute(null);
 
-            Assert.Equal(new Uri("https://motif-docs.pages.dev/guide/timing/"), Assert.Single(launcher.Launches));
+            Assert.Equal(new Uri("https://motif-docs.pages.dev/guide/diagnostics/"), Assert.Single(launcher.Launches));
         });
     }
 
     [Theory]
-    [InlineData(WorkspacePage.Overview)]
+    [InlineData(WorkspacePage.Progress)]
+    [InlineData(WorkspacePage.Words)]
+    [InlineData(WorkspacePage.GrammarGuide)]
+    [InlineData(WorkspacePage.Diagnostics)]
     [InlineData(WorkspacePage.Proposals)]
     [InlineData(WorkspacePage.Texts)]
-    [InlineData(WorkspacePage.TryAWord)]
-    [InlineData(WorkspacePage.Timing)]
-    [InlineData(WorkspacePage.Warnings)]
-    [InlineData(WorkspacePage.Review)]
-    [InlineData(WorkspacePage.AiHandoff)]
-    [InlineData(WorkspacePage.AiAssistants)]
+    [InlineData(WorkspacePage.Settings)]
     public void PageHelpSaysItsTitleAndOpeningOnce(WorkspacePage page)
     {
         _avalonia.Invoke(() =>
@@ -138,17 +136,17 @@ public sealed class HelpPopupViewModelTests
     }
 
     [Fact]
-    public void TimingGuideExplainsWhereToReadIndividualWordTimes()
+    public void DiagnosticsGuideExplainsTheRecordedEvidenceAndHowToHideIt()
     {
         _avalonia.Invoke(() =>
         {
             var viewModel = new HelpPopupViewModel(new RecordingUriLauncher(), HelpCatalog.Load());
-            viewModel.ShowForPage(WorkspacePage.Timing);
+            viewModel.ShowForPage(WorkspacePage.Diagnostics);
 
-            Assert.Contains("Saved parse timings on the Timing page", viewModel.Markdown);
-            Assert.Contains("choose **By word**", viewModel.Markdown);
-            Assert.Contains("does not repeat those words in a separate list", viewModel.Markdown);
-            Assert.DoesNotContain("shot:timing-slow-words/slowest-words", viewModel.Markdown);
+            Assert.Contains("stored grammar check", viewModel.Markdown);
+            Assert.Contains("recorded parser work", viewModel.Markdown);
+            Assert.Contains("does not start a parse or a grammar check", viewModel.Markdown);
+            Assert.Contains("Turning Diagnostics off", viewModel.Markdown);
         });
     }
 

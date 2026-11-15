@@ -38,32 +38,6 @@ public sealed class AnalyzeTextsLayoutTests
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(60);
 
     [Fact]
-    public void TextsTabsShowTheSelectedTabWithAnUnderline()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var (workspace, window) = await OpenAnalyzeTexts(seedReaderToken: false);
-            try
-            {
-                var model = workspace.PageModel<TextsPageModel>();
-                var tabs = window.PageView<TextsPage>().FindControl<WrapPanel>("TextsHeaderTabs")!;
-                foreach (var tab in Enum.GetValues<TextsTab>())
-                {
-                    model.ShowTabCommand.Execute(tab);
-                    PageScreenshots.Settle(window);
-                    var selected = Assert.Single(tabs.Children.OfType<Button>(), button => button.Classes.Contains("active"));
-                    Assert.Equal(tab, selected.CommandParameter);
-                    var face = Assert.Single(selected.GetVisualDescendants().OfType<ContentPresenter>(),
-                        presenter => presenter.Name == "PART_ContentPresenter");
-                    Assert.True(face.BorderThickness.Bottom > 0);
-                    Assert.True(face.BorderBrush is ISolidColorBrush brush && brush.Color.A > 0);
-                }
-            }
-            finally { window.Close(); await workspace.DisposeAsync(); }
-        }, Deadline);
-    }
-
-    [Fact]
     public void ChooseTextsFromParsedReaderOpensConfiguration()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -103,7 +77,6 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.Equal(0, setup.Step);
                 Assert.True(window.FindInWindowOrWorkspace<SetupDialog>("SetupDialogView")!.IsEffectivelyVisible);
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.AnalyzeTexts, page.Tab);
             }
             finally { window.Close(); await workspace.DisposeAsync(); }
         }, Deadline);
@@ -163,16 +136,9 @@ public sealed class AnalyzeTextsLayoutTests
                     change.AfterOpinionMark == SIL.Motif.App.Controls.OpinionMarkKind.Unknown);
                 Assert.Empty(Assert.IsType<FakeCommandClient>(workspace.Context.Commands).ApplyPendingRequests);
 
-                workspace.CurrentPage = WorkspacePage.Review;
+                workspace.CurrentPage = WorkspacePage.Proposals;
                 PageScreenshots.Settle(window);
-                var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
-                var reviewText = string.Join(" ", review.GetVisualDescendants().OfType<TextBlock>()
-                    .Select(text => text.Text).Where(text => !string.IsNullOrWhiteSpace(text)));
-                Assert.Contains("Sungura", reviewText, StringComparison.Ordinal);
-                Assert.Contains("mwalimu", reviewText, StringComparison.Ordinal);
-                Assert.Contains("hawajafika", reviewText, StringComparison.Ordinal);
-                Assert.Contains("Approved", reviewText, StringComparison.Ordinal);
-                Assert.Contains("Unknown", reviewText, StringComparison.Ordinal);
+                Assert.Equal(3, workspace.Context.Changes.Count);
             }
             finally
             {
@@ -182,7 +148,7 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
-    public void WordListAndListsRowsStageOpinionsFromTheKeyboard()
+    public void WordRowsStageOpinionsFromTheKeyboard()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -191,7 +157,7 @@ public sealed class AnalyzeTextsLayoutTests
             {
                 var page = workspace.PageModel<TextsPageModel>();
                 page.Words.SearchText = "mwalimu";
-                page.AnalyzeView = AnalyzeTextsView.WordList;
+                workspace.CurrentPage = WorkspacePage.Words;
                 PageScreenshots.Settle(window);
                 var wordList = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(), list =>
                     list.IsEffectivelyVisible && ReferenceEquals(list.ItemsSource, page.Words.DisplayRows));
@@ -214,18 +180,6 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "mwalimu" &&
                     change.Kind == ChangeKinds.Approve);
 
-                page.Tab = TextsTab.Lists;
-                var (approvedRow, approvedColumn) = CompareViewModel.Place(page.Assess.Words.Find("hawajafika")!);
-                page.TextsLists.SelectListCommand.Execute(page.TextsLists.Lists.First(list =>
-                    list.Cells.Contains(new TextsListCell(approvedRow, approvedColumn))));
-                PageScreenshots.Settle(window);
-                var approvedWord = Assert.Single(window.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>(), row =>
-                    row.Data?.Owner == WordListOwner.Lists && row.Data.Facts.Word == "hawajafika");
-                approvedWord.FocusWord();
-                window.KeyPress(Key.U, RawInputModifiers.None, PhysicalKey.None, null);
-                await WaitForPendingChanges(workspace, window, 2);
-                Assert.Contains(workspace.Context.Changes.Items, change => change.Word == "hawajafika" &&
-                    change.Kind == ChangeKinds.Candidate);
             }
             finally
             {
@@ -306,10 +260,7 @@ public sealed class AnalyzeTextsLayoutTests
                 var open = Assert.IsType<ResultsTokenViewModel>(card.DataContext);
                 var header = Assert.Single(card.GetVisualDescendants().OfType<Border>(),
                     border => border.Classes.Contains("wordPresentationCardHeader"));
-                Assert.Contains(header.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Try a Word"));
                 Assert.Contains(header.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Mark as Unread"));
-                Assert.Single(card.GetVisualDescendants().OfType<Button>(), button =>
-                    button.IsEffectivelyVisible && Equals(button.Content, "Try a Word"));
                 Assert.Single(card.GetVisualDescendants().OfType<Button>(), button =>
                     button.IsEffectivelyVisible && Equals(button.Content, "Mark as Unread"));
                 Assert.Contains(card.GetVisualDescendants().OfType<TextBlock>(), text =>
@@ -346,7 +297,6 @@ public sealed class AnalyzeTextsLayoutTests
                 configure: (fake, assessment) => ConfigureStoredExplanation(fake, assessment));
             try
             {
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 window.Height = 1500;
                 await SettleReaderAsync(workspace, window);
@@ -362,12 +312,10 @@ public sealed class AnalyzeTextsLayoutTests
                     Assert.Single(token.SpellingCandidateWarnings).WordsLabel);
                 await inText.OpenTokenCardAsync(token);
                 PageScreenshots.Settle(window);
-                Assert.Contains(OpenCard(window).GetVisualDescendants().OfType<Button>(), button =>
-                    Equals(button.Content, "Try a Word"));
 
                 var panel = Panel(window);
                 var warningFilter = Assert.Single(panel.GetVisualDescendants().OfType<FilterChip>(),
-                    chip => chip.Label == "Named in a warning");
+                    chip => chip.Label == "Named in a Warning");
                 Assert.Equal(3, warningFilter.Count);
                 var warningStrip = Assert.Single(Strips(panel), strip =>
                     ResultsInTextPanel.TokenOf(strip) is ResultsTokenViewModel { Form: "alikula" });
@@ -379,37 +327,12 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.Contains(warningStatus.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "1");
                 var card = OpenCard(window);
                 var cardLines = card.GetVisualDescendants().OfType<CopyableTextBlock>().ToArray();
-                Assert.Contains(cardLines, line => line.Text == "What a warning names in this word");
-                Assert.Contains(cardLines, line => line.Text == "A grammar warning names -a.");
-                Assert.Contains(cardLines, line => line.Text == "Other words that use -a");
-                Assert.DoesNotContain(cardLines, line => line.Text == "PanGloss exact warning message");
-                Assert.DoesNotContain(cardLines, line => line.Text == "Named exactly");
-                Assert.DoesNotContain(cardLines, line => line.Text == "exact");
-                Assert.DoesNotContain(cardLines, line => line.Text == "Words that use members of the named resource");
-                Assert.DoesNotContain(cardLines, line => line.Text == "Matched by spelling only");
-                Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · membership") == true);
-                Assert.DoesNotContain(cardLines, line => line.Text?.EndsWith(" · spelling") == true);
-                var cardText = string.Join(" ", cardLines.Select(line => line.Text)
-                    .Where(text => !string.IsNullOrWhiteSpace(text)));
-                Assert.Contains(MotifAppStrings.WorkByRule, cardText);
-                Assert.Contains("Subject agreement", cardText);
-                Assert.Contains("Not attributed", cardText);
-                Assert.Contains("parser work", cardText);
-                Assert.Contains(inText.SelectedToken!.TimingShares[0].ShareLabel, cardText);
-                Assert.DoesNotContain(" ms", cardText);
-                var whySection = Assert.Single(card.GetVisualDescendants().OfType<Border>(), border =>
-                    border.Classes.Contains("wordPresentationCardSection") &&
-                    border.GetVisualDescendants().OfType<CopyableTextBlock>()
-                        .Any(line => line.Text == "What a warning names in this word"));
-                var whyText = whySection.GetVisualDescendants().OfType<CopyableTextBlock>().Select(line => line.Text);
-                Assert.DoesNotContain(MotifAppStrings.WorkByRule, whyText);
-                Assert.DoesNotContain("Subject agreement", whyText);
-                Assert.Contains("anapenda", cardText);
+                Assert.DoesNotContain(cardLines, line => line.Text == MotifAppStrings.WorkByRule);
                 Assert.Contains("anapenda", token.OtherWordsUsingMorpheme);
                 Assert.Contains(token.WarningMarkedFieldWorksMorphs,
                     morph => morph.Form == "-a" && morph.IsNamedInWarning);
-                Assert.InRange(inText.SelectedToken!.TimingShares.Sum(row => row.Share) + inText.SelectedToken!.NotAttributedShare!.Value,
-                    0.999, 1.001);
+                Assert.Empty(inText.SelectedToken!.TimingShares);
+                Assert.Null(inText.SelectedToken.NotAttributedShare);
 
                 warningFilter.Command!.Execute(warningFilter.CommandParameter);
                 PageScreenshots.Settle(window);
@@ -417,11 +340,7 @@ public sealed class AnalyzeTextsLayoutTests
                 Assert.False(token.IsDimmed);
                 Assert.All(RealizedLines(inText).SelectMany(line => line.Tokens)
                     .Where(item => item.IsWord), item => Assert.Equal(!item.HasNamedWarning, item.IsDimmed));
-                var openWarning = Assert.Single(OpenCard(window).GetVisualDescendants().OfType<Button>(),
-                    button => button.Content?.ToString() == MotifAppStrings.OpenTheWarning);
-                Assert.NotNull(openWarning.Command);
-                openWarning.Command.Execute(openWarning.CommandParameter);
-                Assert.Equal(WorkspacePage.Warnings, workspace.CurrentPage);
+
             }
             finally
             {
@@ -439,7 +358,6 @@ public sealed class AnalyzeTextsLayoutTests
                 configure: (fake, assessment) => ConfigureStoredExplanation(fake, assessment));
             try
             {
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 window.Height = 1500;
                 await SettleReaderAsync(workspace, window);
@@ -450,9 +368,8 @@ public sealed class AnalyzeTextsLayoutTests
                 await inText.OpenTokenCardAsync(token);
                 PageScreenshots.Settle(window);
 
-                Assert.InRange(inText.SelectedToken!.TimingShares.Sum(row => row.Share) + inText.SelectedToken!.NotAttributedShare!.Value,
-                    0.999, 1.001);
-                Assert.Contains(inText.SelectedToken!.TimingShares, row => row.Name == "Other rules");
+                Assert.Empty(inText.SelectedToken!.TimingShares);
+                Assert.Null(inText.SelectedToken.NotAttributedShare);
             }
             finally
             {
@@ -620,7 +537,7 @@ public sealed class AnalyzeTextsLayoutTests
                     };
                     var chips = panel.GetVisualDescendants().OfType<FilterChip>()
                         .Where(chip => chip.IsEffectivelyVisible).ToArray();
-                    Assert.Equal(["All", "Unread", "Different", "Not in FieldWorks", "No parse", "Stopped", "Named in a warning"],
+                    Assert.Equal(["All", "Unread", "Different", "Not in FieldWorks", "No Parse", "Stopped", "Named in a Warning"],
                         chips.Select(chip => chip.Label));
                     var chipRow = panel.FindControl<WrapPanel>("ResultsInTextFilterChips")!;
                     var rowBounds = BoundsIn(chipRow, panel);
@@ -1000,33 +917,6 @@ public sealed class AnalyzeTextsLayoutTests
     }
 
     [Fact]
-    public void OpeningTheInspectorFoldsTheTextSelectionListButLeavesTheTextPickerVisible()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var (workspace, window) = await OpenAnalyzeTexts(seedReaderToken: false);
-            try
-            {
-                var selection = Assert.Single(window.GetVisualDescendants().OfType<SelectionPanel>());
-                var picker = Assert.Single(window.GetVisualDescendants().OfType<ComboBox>(), combo =>
-                    AutomationProperties.GetName(combo) == "Text to read");
-                Assert.True(selection.IsEffectivelyVisible);
-                Assert.True(picker.IsEffectivelyVisible);
-
-                workspace.Context.OpenInspector(InspectorSubject.Morpheme("allomorph", "grammatical-info")!);
-                PageScreenshots.Settle(window);
-
-                Assert.False(selection.IsEffectivelyVisible);
-                Assert.True(picker.IsEffectivelyVisible);
-            }
-            finally
-            {
-                window.Close();
-            }
-        }, Deadline);
-    }
-
-    [Fact]
     public void StripsShowOutcomeCuesAndPanGlossNotes()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -1224,8 +1114,8 @@ public sealed class AnalyzeTextsLayoutTests
             {
                 var panel = Panel(window);
                 var state = workspace.PageModel<TextsPageModel>();
-                Assert.True(state.ResultsInText.HasLines && state.ShowTextReader,
-                    $"View={state.AnalyzeView}; Lines={state.ResultsInText.HasLines}; " +
+                Assert.True(state.ResultsInText.HasLines,
+                    $"Lines={state.ResultsInText.HasLines}; " +
                     $"Texts={state.ResultsInText.Texts.Count}; Selected={state.ResultsInText.SelectedText?.Title}; " +
                     $"Message={state.ResultsInText.Message}; Refusal={workspace.Context.SelectionReads.Refusal}; " +
                     $"Summary={workspace.Context.SelectionReads.Summary?.Texts.Count}");
@@ -1339,7 +1229,7 @@ public sealed class AnalyzeTextsLayoutTests
                 PageScreenshots.Settle(window);
                 var panel = Panel(window);
                 var showing = new Dictionary<string, int>(StringComparer.Ordinal)
-                { ["All"] = 0, ["Unread"] = 0, ["Different"] = 0, ["Not in FieldWorks"] = 0, ["No parse"] = 0, ["Stopped"] = 0, ["Named in a warning"] = 0 };
+                { ["All"] = 0, ["Unread"] = 0, ["Different"] = 0, ["Not in FieldWorks"] = 0, ["No Parse"] = 0, ["Stopped"] = 0, ["Named in a Warning"] = 0 };
                 var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                 foreach (var text in inText.Texts)
                 {
@@ -1355,10 +1245,10 @@ public sealed class AnalyzeTextsLayoutTests
                         : VisibleText(Part(strip, "fieldworks")).StartsWith("Nothing in FieldWorks", StringComparison.Ordinal);
                     showing["All"] += strips.Length;
                     showing["Unread"] += strips.Count(strip => HasPart(strip, "unread"));
-                    showing["Named in a warning"] += strips.Count(strip => ResultsInTextPanel.TokenOf(strip)!.HasNamedWarning);
+                    showing["Named in a Warning"] += strips.Count(strip => ResultsInTextPanel.TokenOf(strip)!.HasNamedWarning);
                     showing["Different"] += strips.Count(strip => ShowsReading(strip) && !HoldsNothing(strip));
                     showing["Not in FieldWorks"] += strips.Count(strip => ShowsReading(strip) && HoldsNothing(strip));
-                    showing["No parse"] += strips.Count(strip =>
+                    showing["No Parse"] += strips.Count(strip =>
                         ResultsInTextPanel.TokenOf(strip)!.Verdict == OccurrenceVerdict.NoParse);
                     showing["Stopped"] += strips.Count(strip =>
                         ResultsInTextPanel.TokenOf(strip)!.Verdict == OccurrenceVerdict.Limit);
@@ -1450,7 +1340,6 @@ public sealed class AnalyzeTextsLayoutTests
             seedReaderToken: seedReaderToken, windowFirst: windowFirst);
         window.Width = width;
         window.Height = 780;
-        workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
         workspace.CurrentPage = WorkspacePage.Texts;
         await SettleReaderAsync(workspace, window);
         return (workspace, window);

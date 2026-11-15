@@ -20,7 +20,7 @@ public sealed class FrameBandsTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ThePageKeepsItsMinimumHeightBesideTheNoticeAndTheApplyFooterAtTheSmallestWindowAndZoom(bool withProjectNotice)
+    public void ThePageKeepsItsMinimumHeightBesideTheNoticeAtTheSmallestWindowAndZoom(bool withProjectNotice)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -28,7 +28,7 @@ public sealed class FrameBandsTests
             try
             {
                 window.Show();
-                workspace.CurrentPage = WorkspacePage.Review;
+                workspace.CurrentPage = WorkspacePage.Proposals;
                 LayoutInvariantFixtures.Apply(window, new LayoutCell(640, 600, 150));
                 if (withProjectNotice)
                 {
@@ -59,30 +59,20 @@ public sealed class FrameBandsTests
         }, TimeSpan.FromSeconds(60));
     }
 
-    // Each page's one primary action in its first-run state, by the name a person hears.
-    public static TheoryData<WorkspacePage, int, int, string> PrimaryActionCases()
+    public static TheoryData<WorkspacePage, int, int> PageCases()
     {
-        var data = new TheoryData<WorkspacePage, int, int, string>();
-        foreach (var (page, action) in PrimaryActions)
+        var data = new TheoryData<WorkspacePage, int, int>();
+        foreach (var page in new[] { WorkspacePage.Progress, WorkspacePage.Texts, WorkspacePage.Words,
+                     WorkspacePage.GrammarGuide, WorkspacePage.Proposals, WorkspacePage.Settings })
             foreach (var (width, height) in new[] { (640, 600), (960, 780) })
-                data.Add(page, width, height, action);
+                data.Add(page, width, height);
         return data;
     }
 
-    // Proposals, Timing, Warnings and Parsimony offer only reading in that state, so they have no action here.
-    private static readonly (WorkspacePage Page, string Action)[] PrimaryActions =
-    [
-        (WorkspacePage.Overview, "Select a new project"),
-        (WorkspacePage.Texts, "Parse all words in the Selection"),
-        (WorkspacePage.TryAWord, "Try the word"),
-        (WorkspacePage.Review, MotifAppStrings.GoToAnalyzeTexts),
-        (WorkspacePage.AiAssistants, "Let Assistants Use Motif's Tools"),
-    ];
-
     [Theory]
-    [MemberData(nameof(PrimaryActionCases))]
-    public void EveryPageShowsItsPrimaryActionWithoutScrollingBesideTheFirstRunNotice(
-        WorkspacePage page, int width, int height, string action)
+    [MemberData(nameof(PageCases))]
+    public void EveryPageKeepsTheProjectActionVisibleBesideTheFirstRunNotice(
+        WorkspacePage page, int width, int height)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -97,11 +87,9 @@ public sealed class FrameBandsTests
                 var host = window.FindInWindowOrWorkspace<Panel>("PageHost")!;
                 Assert.True(host.Bounds.Height >= minimum - 0.5,
                     $"{page}: the page is {host.Bounds.Height} tall; the minimum is {minimum}.");
-                var button = window.GetVisualDescendants().OfType<Button>().Where(candidate =>
-                    AutomationProperties.GetName(candidate) == action || candidate.Content as string == action)
-                    .FirstOrDefault(candidate => candidate.IsEffectivelyVisible);
-                Assert.True(button is not null, $"{page}: '{action}' is not on screen.");
-                AssertShownWithoutScrolling(button!, window, page);
+                var button = window.FindInWindowOrWorkspace<Button>("ProjectChip")!;
+                Assert.True(button.IsEffectivelyVisible, $"{page}: the project action is not on screen.");
+                AssertShownWithoutScrolling(button, window, page);
             }
             finally
             {
@@ -178,7 +166,7 @@ public sealed class FrameBandsTests
             try
             {
                 window.Show();
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 LayoutInvariantFixtures.Apply(window, new LayoutCell(width, 600, zoom));
                 var actions = window.FindInWindowOrWorkspace<StackPanel>("TechDemoNoticeActions")!;
                 var text = window.FindInWindowOrWorkspace<Border>("TechDemoNotice")!.GetVisualDescendants()

@@ -11,8 +11,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins ADR 0072 for the Overview speed sentences and the Try a Word trace summaries: the English lives in
-/// MotifAppStrings.resx, count sentences are ICU plural patterns, and the two view models build no English of their own.
+/// Pins localized resource text and count patterns for health and trace summaries.
 /// </summary>
 public sealed class OverviewTraceSentenceResourceTests
 {
@@ -338,7 +337,7 @@ public sealed class OverviewTraceSentenceResourceTests
     }
 
     [Theory]
-    [InlineData("OverviewPageModel.cs")]
+    [InlineData("HealthStripViewModel.cs")]
     [InlineData("TraceWordViewModel.cs")]
     public void TheViewModelBuildsNoEnglishSpeedOrTraceSentenceOfItsOwn(string file)
     {
@@ -462,21 +461,11 @@ public sealed class OverviewTraceSentenceResourceTests
     }
 
     [Fact]
-    public void OverviewPageModelBuildsNoEnglishLookFirstCaptionOrWarningSentenceOfItsOwn()
+    public void ProgressBuildsNoEnglishWaitingSentenceOfItsOwn()
     {
-        var path = Path.Combine(RepoPaths.FindRepoRoot(), "src", "SIL.Motif.App", "ViewModels", "OverviewPageModel.cs");
-        var code = string.Join('\n', File.ReadAllLines(path).Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
-        string[] fragments =
-        [
-            "are Lost", "is Lost", "different entry", "differ \"", "Shared morpheme", "No shared morphemes",
-            "Parse your texts", "No approved word", "no longer builds", "No recent projects", "\"not resolved\"",
-            "\"not set up\"", "\"Not measured\"", "\"Not attributed\"", "\"Not parsed yet\"", "\"not recorded\"",
-            "words parse", "rebuilt exactly", "built something else", "built differently", "nothing to rebuild",
-            "PanGloss confirms", "still built", "Open {", "your words use", "Parse to see", "spelling-only",
-            "\"Not checked yet\"", "\"Warnings\"", "could not read this project", "\"Same outcome\"", "\"Kept\"",
-            "\"can't read\"", "of the words in your Selection", "No places in",
-        ];
-        Assert.DoesNotContain(fragments, fragment => code.Contains(fragment, StringComparison.Ordinal));
+        var code = CodeOf("ProgressPageModel.cs");
+        Assert.DoesNotContain("Proposal waiting for your decision", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("Proposals waiting for your decision", code, StringComparison.Ordinal);
     }
 
     private static WordTraceResponse TraceWith(params TraceStep[] children) => new(

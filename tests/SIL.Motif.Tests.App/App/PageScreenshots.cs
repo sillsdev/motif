@@ -93,19 +93,13 @@ public sealed class PageScreenshots
             var (workspace, window) = await OpenOverSampleData();
             try
             {
-                var overview = workspace.PageModel<OverviewPageModel>().Overview;
-                Assert.NotNull(overview);
-                OverviewPageWordsTests.AssertCaptureStopCounts(overview, "every page");
-                Assert.Equal(9, overview.SelectionWordCount);
+                workspace.Context.Diagnostics = true;
 
                 Application.Current!.RequestedThemeVariant = variant;
                 window.Width = width;
                 window.Height = 780;
                 foreach (var (name, page, tab) in Views())
                 {
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
-                    // Choosing a word on Texts primes Try a Word afresh, so the trace is run again here.
-                    if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
                     workspace.CurrentPage = page;
                     if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
                         await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
@@ -113,22 +107,7 @@ public sealed class PageScreenshots
                     SavePageFrame(window, workspace, expectedPage: page,
                         expectedTab: page == WorkspacePage.Texts ? tab : null,
                         path: Path.Combine(folder, $"{name}-{width}-{theme}.png"));
-                    if (page != WorkspacePage.TryAWord) continue;
-                    window.Height = 1500;
-                    AssertSceneHasExpectedErrorState(window, workspace, $"{name} tall");
-                    SavePageFrame(window, workspace, expectedPage: page,
-                        expectedTab: page == WorkspacePage.Texts ? tab : null,
-                        path: Path.Combine(folder, $"{name}-{width}-{theme}-tall.png"));
-                    foreach (var height in new[] { 780, 1500 })
-                    {
-                        workspace.Assess.Trace.IsExpert = true;
-                        window.Height = height;
-                        SavePageFrame(window, workspace, expectedPage: page,
-                            expectedTab: page == WorkspacePage.Texts ? tab : null,
-                            path: Path.Combine(folder, $"{name}-expert-{width}-{theme}-{height}.png"));
-                    }
-                    workspace.Assess.Trace.IsExpert = false;
-                    window.Height = 780;
+
                 }
             }
             finally
@@ -140,7 +119,7 @@ public sealed class PageScreenshots
     }
 
     [ScreenshotFact]
-    public void CaptureRecentProjectChooser()
+    public void CaptureRecentProjectMenu()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
@@ -172,33 +151,12 @@ public sealed class PageScreenshots
             {
                 await workspace.Project.LoadKnownProjectsAsync();
                 workspace.TechDemoNotice?.GotItCommand.Execute(null);
-                workspace.CurrentPage = WorkspacePage.Overview;
-                var recent = Assert.Single(workspace.PageModel<OverviewPageModel>().ChooseProjectRows);
+                workspace.CurrentPage = WorkspacePage.Progress;
+                var recent = Assert.Single(workspace.RecentProjects);
                 Assert.Equal("MotifSyntheticTurkic", recent.Name);
                 Assert.Equal("Changes not applied yet", recent.StateText);
                 Assert.Equal("104 wordforms", recent.WordformCountText);
                 Assert.True(recent.CanOpenFolder);
-                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    text => text.Text == recent.StateText);
-                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                    text => text.Text == recent.WordformCountText);
-                var folderButton = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(),
-                    button => Equals(button.Content, SIL.Motif.App.MotifAppStrings.OpenFolder));
-                Assert.True(folderButton.IsEffectivelyEnabled,
-                    $"Enabled={folderButton.IsEnabled}; command={folderButton.Command}; " +
-                    $"parameter={folderButton.CommandParameter}; canExecute={folderButton.Command?.CanExecute(folderButton.CommandParameter)}; " +
-                    $"visible={folderButton.IsVisible}; page={workspace.CurrentPage}; hasLauncher={workspace.Context.UriLauncher is not null}");
-                Settle(window);
-                Save(window, Path.Combine(folder, "recent-chooser-after.png"));
-                Assert.True(folderButton.Focus(NavigationMethod.Tab));
-                Assert.True(folderButton.IsFocused);
-                Settle(window);
-                Save(window, Path.Combine(folder, "recent-chooser-folder-focus.png"));
-                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                await workspace.OpenRecentProjectFolderCommand.ExecutionTask!;
-                Assert.Equal(new Uri(projectFolder), launcher.LastUri);
-                Assert.Null(workspace.OpenRecentProjectCommand.ExecutionTask);
 
                 window.OpenFileMenu();
                 Settle(window);
@@ -259,7 +217,7 @@ public sealed class PageScreenshots
             try
             {
                 await workspace.Project.LoadKnownProjectsAsync();
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 var menu = window.FindInWindowOrWorkspace<Menu>("MainMenu")!;
                 var compactMenu = menu.Items.OfType<MenuItem>().FirstOrDefault(item =>
                     AutomationProperties.GetAutomationId(item) == SIL.Motif.App.AutomationIds.MenuButton);
@@ -298,7 +256,7 @@ public sealed class PageScreenshots
     }
 
     [ScreenshotFact]
-    public void CaptureOverviewEvidenceStatesAtBothWidthsAndThemes()
+    public void CaptureProgressEvidenceStatesAtBothWidthsAndThemes()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
@@ -312,7 +270,7 @@ public sealed class PageScreenshots
                 var (workspace, window) = await OpenOverSampleData(parse: state != "empty", configure: (fake, _) =>
                 {
                     var overview = state == "empty" ? EmptyOverview() : OverviewFor(state);
-                    OverviewPageWordsTests.AssertCaptureStopCounts(overview, $"overview {state}");
+                    SampleOverview.AssertCaptureStopCounts(overview, $"overview {state}");
                     fake.OverviewCompletesWith(overview);
                     if (state == "stale")
                     {
@@ -325,7 +283,7 @@ public sealed class PageScreenshots
                 });
                 try
                 {
-                    workspace.CurrentPage = WorkspacePage.Overview;
+                    workspace.CurrentPage = WorkspacePage.Progress;
                     foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                     {
                         Application.Current!.RequestedThemeVariant = variant;
@@ -335,12 +293,7 @@ public sealed class PageScreenshots
                             window.Height = 780;
                             AssertSceneHasExpectedErrorState(window, workspace, $"overview {state}");
                             if (state == "empty")
-                            {
-                                AssertParsePromptUsesPageAction(window);
-                                var handoff = Assert.Single(window.GetVisualDescendants().OfType<Border>(),
-                                    border => border.Classes.Contains("overviewHandoff"));
-                                Assert.False(handoff.IsEffectivelyVisible);
-                            }
+                                Assert.False(workspace.Context.Health.HasMedianWork);
                             if (state == "stale")
                             {
                                 Assert.True(workspace.FreshnessIsStale);
@@ -361,9 +314,9 @@ public sealed class PageScreenshots
                                 Assert.DoesNotContain("FieldWorks has changed since the Baseline behind these numbers", detail, StringComparison.Ordinal);
                                 ProjectCardAccess.Close(window);
                             }
-                            var file = $"overview-{state}-{width}-{theme}.png";
+                            var file = $"progress-{state}-{width}-{theme}.png";
                             Save(window, Path.Combine(folder, file));
-                            states.Add($"{file}\tOverview {state}, {width} px, {theme} theme.");
+                            states.Add($"{file}\tProgress {state}, {width} px, {theme} theme.");
                         }
                     }
                 }
@@ -375,7 +328,7 @@ public sealed class PageScreenshots
             }, TimeSpan.FromMinutes(3));
         }
 
-        File.WriteAllLines(Path.Combine(folder, "overview-states.txt"), states);
+        File.WriteAllLines(Path.Combine(folder, "progress-states.txt"), states);
     }
 
     [ScreenshotFact]
@@ -389,7 +342,6 @@ public sealed class PageScreenshots
             var (workspace, window) = await OpenOverSampleData(parse: false);
             try
             {
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                 workspace.CurrentPage = WorkspacePage.Texts;
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 {
@@ -442,18 +394,13 @@ public sealed class PageScreenshots
     /// <summary>Every page, and every tab of the Texts page, with the file name each is saved under.</summary>
     internal static IEnumerable<(string Name, WorkspacePage Page, TextsTab Tab)> Views() =>
     [
-        ("1-overview", WorkspacePage.Overview, TextsTab.Lists),
-        ("2b-texts-analyze", WorkspacePage.Texts, TextsTab.AnalyzeTexts),
-        ("2c-texts-lists", WorkspacePage.Texts, TextsTab.Lists),
-        ("2d-texts-what-changed", WorkspacePage.Texts, TextsTab.WhatChanged),
-        ("3-try-a-word", WorkspacePage.TryAWord, TextsTab.Lists),
-        ("4-timing", WorkspacePage.Timing, TextsTab.Lists),
-        ("5-warnings", WorkspacePage.Warnings, TextsTab.Lists),
-        ("5a-parsimony", WorkspacePage.Parsimony, TextsTab.Lists),
-        ("6-review", WorkspacePage.Review, TextsTab.Lists),
-        ("8-ai-assistants", WorkspacePage.AiAssistants, TextsTab.Lists),
-        ("9-proposals", WorkspacePage.Proposals, TextsTab.Lists),
-        ("10-settings", WorkspacePage.Settings, TextsTab.Lists),
+        ("1-progress", WorkspacePage.Progress, TextsTab.AnalyzeTexts),
+        ("2-texts", WorkspacePage.Texts, TextsTab.AnalyzeTexts),
+        ("3-words", WorkspacePage.Words, TextsTab.AnalyzeTexts),
+        ("4-grammar-guide", WorkspacePage.GrammarGuide, TextsTab.AnalyzeTexts),
+        ("5-proposals", WorkspacePage.Proposals, TextsTab.AnalyzeTexts),
+        ("6-diagnostics", WorkspacePage.Diagnostics, TextsTab.AnalyzeTexts),
+        ("7-settings", WorkspacePage.Settings, TextsTab.AnalyzeTexts),
     ];
 
     [Fact]
@@ -548,30 +495,18 @@ public sealed class PageScreenshots
     }
 
     [Fact]
-    public void DefaultTimingSceneShowsTheSamplesRecordedParserWork()
+    public void DiagnosticsShowsTheSamplesRecordedRuleWork()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await OpenOverSampleData(seedReaderToken: false);
             try
             {
-                foreach (var (_, page, tab) in Views())
-                {
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
-                    if (page == WorkspacePage.TryAWord) await TryTheSampleWord(workspace);
-                    workspace.CurrentPage = page;
-                    if (page == WorkspacePage.Timing) break;
-                }
-                Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
-                Settle(window);
-                var timing = workspace.PageModel<TimingPageModel>();
-                Assert.False(timing.ShowNoTimingRecorded);
-                Assert.Equal("all", timing.WordSet);
-                Assert.NotNull(timing.KindTiming);
-                Assert.Equal(9, timing.KindTiming.WordCount);
-                Assert.Equal(Assessment().Words.Select(word => word.Word).Order(),
-                    timing.KindTiming.Words.Select(word => word.Word).Order());
-                Assert.Equal("3,581 parser work", timing.HeadlineTotal);
+                workspace.Context.Diagnostics = true;
+                workspace.Context.OpenDiagnostics(DiagnosticsTab.SpeedByRule);
+                var speed = workspace.PageModel<DiagnosticsPageModel>().SpeedByRule;
+                await Wait.UntilAsync(() => speed.HasRows);
+                Assert.Equal(SampleEvidence.Timing(Assessment(), "rule").ParserWorkAggregates, speed.Rows);
             }
             finally { window.Close(); }
         }, TimeSpan.FromMinutes(1));
@@ -597,21 +532,11 @@ public sealed class PageScreenshots
     }
 
     [Fact]
-    public void SampleTraceShowsTheSameWordsEarlierAssessmentTiming()
+    public void SampleTimingKeepsTheWordsRecordedParserWork()
     {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var (workspace, window) = await OpenOverSampleData(seedReaderToken: false);
-            try
-            {
-                await TryTheSampleWord(workspace);
-                var page = workspace.PageModel<TryWordPageModel>();
-                Assert.True(page.HasEarlierTiming);
-                Assert.Contains("hawajafika took 447 parser work", page.EarlierTimingSource);
-                Assert.Equal("Share of 447 parser work", page.EarlierShareHeader);
-            }
-            finally { window.Close(); }
-        }, TimeSpan.FromSeconds(30));
+        var timing = SampleEvidence.Timing(Assessment(), "rule");
+        var word = Assert.Single(timing.Words, row => row.Word == "hawajafika");
+        Assert.Equal(447, word.ParserWork);
     }
 
     [Fact]
@@ -729,12 +654,13 @@ public sealed class PageScreenshots
             try
             {
                 await TryTheSampleWord(workspace);
-                var page = workspace.PageModel<TryWordPageModel>();
-                Assert.Equal("Approved", Assert.Single(page.FieldWorksAnalyses).OpinionLabel);
-                Assert.Contains("ha- + wa- + ja- + fik + -a", page.FieldWorksAnalyses[0].Text);
+                var session = workspace.Context.WordTraceSession;
+                var reading = Assert.Single(session.ResultWordContext!.Analyses);
+                Assert.Equal(ReadingGrade.Approved, reading.StoredAnalysisOpinion);
+                Assert.Equal(["ha-", "wa-", "ja-", "fik", "-a"], reading.Morphs.Select(morph => morph.Form));
                 Assert.Equal(workspace.Context.Evidence.Assessment!.Assessment.Baseline.Token,
-                    page.Trace.Result!.HostCapture!.Baseline!.Token);
-                Assert.Null(page.Trace.Result.ParserElapsedMs);
+                    session.Trace.Result!.HostCapture!.Baseline!.Token);
+                Assert.Null(session.Trace.Result.ParserElapsedMs);
             }
             finally { window.Close(); }
         }, TimeSpan.FromSeconds(15));
@@ -742,8 +668,11 @@ public sealed class PageScreenshots
 
     internal static async Task TryTheSampleWord(WorkspaceShellViewModel workspace)
     {
-        workspace.Context.TryWord("hawajafika");
-        await workspace.Assess.Trace.TryCommand.ExecutionTask!;
+        var session = workspace.Context.WordTraceSession;
+        session.Trace.SetWord("hawajafika");
+        await session.RefreshExpectedAsync("hawajafika");
+        await session.Trace.TryCommand.ExecuteAsync(null);
+        await session.RefreshResultAsync();
     }
 
     internal static void AssertSceneHasExpectedErrorState(MainWindow window, WorkspaceShellViewModel workspace,
@@ -754,9 +683,7 @@ public sealed class PageScreenshots
             .Where(block => block.IsEffectivelyVisible)
             .Select(block => (block.DataContext as WindowRefusal)?.Code ?? "unbound refusal")
             .ToList();
-        if (workspace.CurrentPage == WorkspacePage.Overview &&
-            workspace.PageModel<OverviewPageModel>().OverviewRefusal is { } overviewRefusal)
-            codes.Add(overviewRefusal.Code);
+
 
         if (expectedCode is null)
             Assert.True(codes.Count == 0, $"Scene '{scene}' displays error state(s): {string.Join(", ", codes)}.");
@@ -997,7 +924,7 @@ public sealed class PageScreenshots
         if (!parse)
         {
             await workspace.Context.EvidencePublication;
-            workspace.CurrentPage = WorkspacePage.Overview;
+            workspace.CurrentPage = WorkspacePage.Progress;
             return sample;
         }
         Record("select-texts");
@@ -1010,16 +937,11 @@ public sealed class PageScreenshots
         }
         await workspace.Context.EvidencePublication;
         Record("assess");
-        workspace.PageModel<TimingPageModel>().Statistics.AssessmentId = "assessment/one";
-        await workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.ExecuteAsync(null);
-        Record("statistics");
         workspace.Assess.Words.SelectedRow = workspace.Assess.Words.Rows.FirstOrDefault(row => row.Word == "hawajafika");
         var textsPage = workspace.PageModel<TextsPageModel>();
         if (activateTextsPage)
         {
             workspace.CurrentPage = WorkspacePage.Texts;
-            textsPage.Tab = TextsTab.AnalyzeTexts;
-            textsPage.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
             (settle ?? (() => Dispatcher.UIThread.RunJobs()))();
         }
         var reader = textsPage.ResultsInText;
@@ -1030,10 +952,10 @@ public sealed class PageScreenshots
             await SeedSampleReaderTokenAsync(workspace);
             Record("reader-and-token");
         }
-        await workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.ExecuteAsync(null);
+        await workspace.PageModel<SettingsPageModel>().Handoff.Handoff.RunCommand.ExecuteAsync(null);
         Record("handoff");
         clock.Advance(TimeSpan.FromDays(1).Add(TimeSpan.FromMinutes(35)));
-        workspace.PageModel<AiHandoffPageModel>().Handoff.LatestAssessmentAt = clock.GetLocalNow();
+        workspace.PageModel<SettingsPageModel>().Handoff.Handoff.LatestAssessmentAt = clock.GetLocalNow();
         return sample;
     }
 

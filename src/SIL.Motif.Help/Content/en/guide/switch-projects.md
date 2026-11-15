@@ -4,10 +4,8 @@ Use the project menu at the top of the Motif window to move between FieldWorks p
 
 1. Choose **Select new…** to browse for a `.fwdata` file, or choose **Open recent** and select a project Motif already knows.
 2. Wait for the project’s Baseline, Selection, and stored results to load.
-3. Check the project name on **Overview** before taking an action.
+3. Check the project name on **Progress** before taking an action.
 
 Each project has its own Motif workflow information. Switching away does not move its pending changes into another project; when you open it again, its changes are shown with that project. If Parse all words or AI Handoff is running, switching projects cancels that work before Motif loads the new project.
 
 Choose **Configure…** from the project menu to reopen the project’s saved Selection and parsing limits. Use **Refresh** to read the saved project and capture a new Baseline, then choose **Parse all words** to measure the saved Selection; opening the project alone only reads stored results.
-
-![The Overview after selecting a project](shot:open-project-overview/overview)

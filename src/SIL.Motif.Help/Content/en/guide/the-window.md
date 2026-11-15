@@ -1,31 +1,13 @@
 # The Motif window
 
-The Motif window is a fixed frame with the same parts on every page. Nothing in it is saved or needs resetting: the frame arranges itself from the window's width each time you open Motif.
+The window has five main pages: **Progress**, **Texts**, **Words**, **Grammar Guide**, and **Proposals**. Choose a page in the rail on the left. **Settings** stays at the bottom of the rail.
 
-- **The rail** is the narrow strip down the left edge. It lists the pages, such as **Overview**, **Texts** and **Review Changes**; choose one to open it. **Help** and **Settings** sit at the bottom of the rail.
-- **The side panel** sits beside the page and holds that page's own controls, such as the text picker on **Texts**. Not every page has one.
-- **The page** is where you do the work. A notice line above it shows project notices and the tech-demo notice. The tech-demo notice is one line with **Got It** beside its text; **Report a Problem** is in the **Help** menu and the status bar. A page's action buttons sit at the bottom of the page, or at the bottom of the Inspector while it is open. On **Review Changes** the buttons (**Check these changes** when it is offered, **Apply to FieldWorks project**, **Back** and **Decline** when they apply) stay in view; above them a **Details** area holds, in order, why Apply is unavailable, any refusal, the receipt after an Apply, the project name and count, what Apply checks, and the backup reminder. Choose Details and use the arrow keys to scroll it. In a short window the page keeps a few rows of its own and Details shrinks to its first line, so scroll it to read the rest.
-- **The Inspector** shows the facts about the word, rule, morpheme or change you selected on the page. Until you select something it says "Select an item to inspect."
-- **The status bar** runs along the bottom. It says that Motif writes nothing until you press Apply, offers **Report a problem**, summarises your selection, and shows buttons for changes not applied yet, warnings and parse progress when there are any.
+**Progress** shows available project facts and next actions. **Texts** opens the reader and the current Selection. **Words** lists the words in that Selection. **Grammar Guide** reads the project's saved Grammar Design Records. **Proposals** shows saved Proposals and their standing, rationale, and Comments.
 
-**View → Diagnostics** shows or hides **Warnings**, **Parsimony**, **Timing**, and the parser trace controls in **Try a Word**. Diagnostics is off by default.
+Each page owns its controls and any side panel it needs. In a narrow window a side panel can fold away; use its labelled reveal to open it again. The window adapts as you resize it or change zoom.
 
-## Narrow windows
+The health strip shows the project facts that are available. Open its details by hovering over it or moving keyboard focus to it. When a recorded median parser-work value is available, it appears in those details. Opening the strip does not start a parse.
 
-The side panel and the Inspector fold away when the window gets narrow. The side panel folds below 1200 wide and the Inspector below 1000 wide, measured after zoom, so a higher zoom folds them sooner. Each folded panel leaves a way back:
+Diagnostics is off by default. Turn it on from the health details or **View → Diagnostics** to add **Diagnostics** to the rail. Its two tabs show recorded grammar **Warnings** and **Speed by Rule**. Turning Diagnostics off hides the page and returns to Progress if it was open.
 
-- For the side panel, choose the button at the top left of the page that shows the panel's name and **›**, or choose the active page's icon in the rail again. **‹** at the top of the panel folds it away.
-- For the Inspector, choose the labelled **INSPECTOR** strip at the right edge. **›** at the top of the Inspector folds it away.
-- When the window is too narrow to show the Inspector beside the page, the Inspector fills the working area. Choose **Back to page** at its top to return to the same work.
-
-Opening one panel can fold the other when both would not fit. Whatever you open or fold stays that way until the window crosses a panel's width, and then the automatic arrangement returns.
-
-## Settings in the frame
-
-[Settings](guide:settings) opens as a page in the frame, with **Back** to return to the page you were using. Its section list is the page's side panel, so it folds away and returns the same way.
-
-## Sort orders
-
-The word lists and tables that can sort remember their order for each project: the **Timing** statistics table, the word list on **Lists**, and the **Warnings** table. Sort, go to another page and come back, or close the project and open it later, and the order is as you left it. Which row is selected is not remembered.
-
-For keyboard routes into these parts, see [Keyboard shortcuts](guide:keyboard-shortcuts).
+[Settings](guide:settings) contains display preferences, project options, assistant connections and the optional file Handoff. For keyboard navigation, see [Keyboard shortcuts](guide:keyboard-shortcuts).

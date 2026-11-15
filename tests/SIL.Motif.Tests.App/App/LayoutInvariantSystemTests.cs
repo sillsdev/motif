@@ -18,7 +18,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
 {
     [Fact]
-    public void ResizeAndZoomTransitionsPreserveTimingHitTargets()
+    public void ResizeAndZoomTransitionsPreserveDiagnosticsHitTargets()
     {
         using var run = new LayoutInvariantRun("resize-zoom", output);
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -35,20 +35,20 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                     assistantConnections: null,
                     configure: (client, _) =>
                     {
-                        ParsimonyStateScreenshots.Configure(client, "empty");
                         client.StoredGrammarCheckIs(new GrammarCheckResponse([], true));
                     });
                 try
                 {
-                    workspace.CurrentPage = WorkspacePage.Timing;
+                    workspace.Context.Diagnostics = true;
+                    workspace.Context.OpenDiagnostics(DiagnosticsTab.SpeedByRule);
                     PageScreenshots.SettleLayout(window);
-                    LayoutInvariantFixtures.RequirePage(window, workspace, WorkspacePage.Timing);
+                    LayoutInvariantFixtures.RequirePage(window, workspace, WorkspacePage.Diagnostics);
                     foreach (var cell in new LayoutCell[]
                     {
                         new(960, 780, 150), new(1920, 1080, 100),
                         new(1920, 1080, 150), new(1600, 480, 100),
                     })
-                        run.Inspect(window, "Timing/empty", cell, quick: false, workspace);
+                        run.Inspect(window, "Diagnostics/empty", cell, quick: false, workspace);
                 }
                 finally { window.Close(); await workspace.DisposeAsync(); }
             }
@@ -83,13 +83,13 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                             if (populated) LayoutInvariantFixtures.ConfigurePopulated(client);
                             else
                             {
-                                ParsimonyStateScreenshots.Configure(client, "empty");
                                 client.StoredGrammarCheckIs(new GrammarCheckResponse([], true));
                             }
                         });
                     try
                     {
                         if (populated) await LayoutInvariantFixtures.PreparePopulated(workspace);
+                        workspace.Context.Diagnostics = true;
                         run.Setup(populated ? "populated" : "empty", setup.Elapsed.TotalMilliseconds);
                         foreach (var page in LayoutInvariantFixtures.RegisteredPages)
                         {
@@ -101,76 +101,27 @@ public sealed class LayoutInvariantSystemTests(ITestOutputHelper output)
                         run.AssertInspected(populated ? LayoutInvariantFixtures.PopulatedPages
                             .Select(page => LayoutInvariantFixtures.Scene(page, true)) : LayoutInvariantFixtures.EmptyScenes);
                         if (!populated) continue;
-                        workspace.CurrentPage = WorkspacePage.Timing;
-                        workspace.Context.OpenInspector(InspectorSubject.Morpheme("a-form", "msa-a", "a-")!);
-                        await workspace.Inspector.Loading;
-                        InspectGrid("Timing/inspector-open", () =>
-                        {
-                            ShowObjectInspector();
-                            Assert.True(window.FindInWindowOrWorkspace<Inspector>("Inspector")!.IsEffectivelyVisible);
-                        });
-                        workspace.Inspector.Close();
-                        workspace.CurrentPage = WorkspacePage.Overview;
-                        InspectGrid("Overview/sidebar-collapsed", () =>
+                        workspace.CurrentPage = WorkspacePage.Progress;
+                        InspectGrid("Progress/sidebar-collapsed", () =>
                         {
                             workspace.IsSidebarCollapsed = true;
                             Assert.True(workspace.IsSidebarCollapsed);
                         });
                         var refusal = new Refusal(RefusalCodes.StoreOtherVersion, FailureReason.Refused,
                             "Store belongs to another version.");
-                        workspace.CurrentPage = WorkspacePage.Parsimony;
-                        ParsimonyStateScreenshots.Configure(fake, "refused");
-                        await workspace.PageModel<ParsimonyPageModel>().ReloadAsync();
-                        Assert.True(workspace.PageModel<ParsimonyPageModel>().HasMessage);
-                        InspectGrid("Parsimony/refused");
-                        var pending = new TaskCompletionSource<CommandOutcome<ParsimonyLatestReportResponse>>();
-                        fake.OnReadLatestParsimony((_, _) => pending.Task);
-                        var loading = workspace.PageModel<ParsimonyPageModel>().ReloadAsync();
-                        try
-                        {
-                            Assert.True(workspace.PageModel<ParsimonyPageModel>().IsLoading);
-                            InspectGrid("Parsimony/loading");
-                        }
-                        finally { pending.SetResult(CommandOutcome<ParsimonyLatestReportResponse>.Refused(refusal)); await loading; }
-
-                        workspace.CurrentPage = WorkspacePage.TryAWord;
-                        var tracePending = new TaskCompletionSource<CommandOutcome<WordTraceResponse>>();
-                        fake.OnTraceWord((_, _) => tracePending.Task);
-                        var tracing = workspace.Assess.Trace.TryCommand.ExecuteAsync(null);
-                        try
-                        {
-                            Assert.True(workspace.Assess.Trace.IsLoading);
-                            InspectGrid("TryAWord/loading");
-                        }
-                        finally { tracePending.SetResult(CommandOutcome<WordTraceResponse>.Refused(refusal)); await tracing; }
-                        Assert.NotNull(workspace.Assess.Trace.ShownRefusal);
-                        InspectGrid("TryAWord/refused");
                         await LayoutInvariantStateFixtures.VisitAsync(fake, workspace, SettingsTestAccess.Model(window), scene => InspectGrid(scene));
-                        workspace.CurrentPage = WorkspacePage.Overview;
+                        workspace.CurrentPage = WorkspacePage.Progress;
                         fake.CurrentBaselineRefusesWith(refusal);
                         fake.CaptureBaselineRefusesWith(refusal);
                         await workspace.RefreshCommand.ExecuteAsync(null);
                         Assert.True(workspace.HasRefreshRefusal);
-                        InspectGrid("Overview/refusal");
+                        InspectGrid("Progress/refusal");
 
                     }
                     finally { window.Close(); await workspace.DisposeAsync(); }
 
-                    // A narrow frame leaves an opened object behind the Inspector strip until a person reveals it.
-                    void ShowObjectInspector()
-                    {
-                        PageScreenshots.SettleLayout(window);
-                        Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                        PageScreenshots.SettleLayout(window);
-                        window.FindInWindowOrWorkspace<SIL.Motif.App.Views.Shell.WorkspaceLayoutHost>("WorkspaceLayout")!.ShowInspector();
-                        PageScreenshots.SettleLayout(window);
-                        Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                        PageScreenshots.SettleLayout(window);
-                    }
-
                     void InspectGrid(string scene, Action? prepare = null)
                     {
-                        prepare ??= scene.Contains("/inspector-", StringComparison.Ordinal) ? ShowObjectInspector : null;
                         foreach (var cell in LayoutInvariantFixtures.GridCells)
                         {
                             run.Inspect(window, scene, cell, quick: false, workspace, prepare);

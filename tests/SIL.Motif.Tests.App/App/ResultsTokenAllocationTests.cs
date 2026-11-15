@@ -46,7 +46,7 @@ public sealed class ResultsTokenAllocationTests(ITestOutputHelper output)
         await using var fixture = new SelectionModelFixture(client);
         var selection = new SelectionViewModel(client);
         var words = new TextWordsViewModel(client, selection, client.ReaderOwner);
-        var owner = new ResultsInTextViewModel(words, new AssessViewModel(client, selection), _ => { }, _ => { },
+        var owner = new ResultsInTextViewModel(words, new AssessViewModel(client, selection), _ => { },
             new ChangesViewModel(client), client, client.ReaderOwner);
         client.SelectionReaderHandler = store.OpenAsync;
         await client.ReaderOwner.ReloadAsync(store.ProjectPath,

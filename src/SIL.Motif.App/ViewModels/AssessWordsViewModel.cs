@@ -552,7 +552,8 @@ public sealed class ParserReadingMorphViewModel
             ? $"{morph.Category} ({inflection})"
             : morph.Category;
         Guessed = morph.Guessed;
-        Link = morph.FieldWorksLink is { } link ? new Uri(link) : null;
+        Link = Uri.TryCreate(morph.FieldWorksLink, UriKind.Absolute, out var link) &&
+            string.Equals(link.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? link : null;
         _entry = morph.Entry;
         _toolName = FieldWorksLinks.ToolNameOf(morph.FieldWorksLink);
         AllomorphId = morph.AllomorphId;

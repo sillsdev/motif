@@ -1,7 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using Avalonia.Data.Converters;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -11,14 +13,12 @@ using SIL.Motif.App.Views.Shell;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>
-/// The Proposals page: every Proposal in a shared grouped table, with the selected Proposal shown beside it.
-/// </summary>
+/// <summary>Shows Proposal standings and the selected Proposal's stored discussion.</summary>
 public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
 {
-    /// <summary>Reserves a share of the page only while a section is shown.</summary>
-    public static readonly IValueConverter VisibleRowHeight = new FuncValueConverter<bool, GridLength>(
-        hasRequests => hasRequests ? GridLength.Star : GridLength.Auto);
+    /// <summary>Creates the page over the workspace's shared page model.</summary>
+    public ProposalsPage(WorkspaceContext context) : this(
+        (context ?? throw new ArgumentNullException(nameof(context))).GetOrCreatePage(static owner => new ProposalsPageModel(owner))) { }
 
     public ProposalsPage(ProposalsPageModel page)
     {
@@ -26,53 +26,45 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
         Page = page;
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        var table = this.FindControl<ListBox>("ProposalsRowsItems")!;
-        DenseTable.Attach(table);
-        // The binding drops the model's refusal raised inside the list's own write, so the list is put back afterwards.
-        table.SelectionChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        SidePanel = ((IDataTemplate)Resources["ProposalListPane"]!).Build(page)!;
+        SidePanel.DataContext = page;
+        var list = SidePanel.GetLogicalDescendants().OfType<ListBox>()
+            .Single(control => control.Name == "ProposalsRowsItems");
+        list.AddHandler(InputElement.PointerPressedEvent, (_, args) =>
         {
-            if (Page.SelectedProposal is { } kept && table.SelectedItem is ProposalCardViewModel chosen &&
-                !ReferenceEquals(chosen, kept)) table.SelectedItem = kept;
+            if (!args.GetCurrentPoint(list).Properties.IsLeftButtonPressed || args.Source is not Visual source ||
+                source.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault()?.DataContext
+                    is not ProposalCardViewModel card) return;
+            if (!SelectRow(card)) args.Handled = true;
+        }, RoutingStrategies.Tunnel);
+        DenseTable.Attach(list, row => SelectRow(row), SelectRow);
+        list.SelectionChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+        {
+            if (Page.SelectedProposal is { } kept && list.SelectedItem is ProposalCardViewModel chosen &&
+                !ReferenceEquals(chosen, kept)) list.SelectedItem = kept;
         });
-        _sidePanel = BuildPane("ProposalGroupFilterTemplate");
-        _inspectorContent = BuildPane("ProposalInspectorTemplate");
-        _inspectorActions = BuildPane("ProposalInspectorActionsTemplate");
     }
 
-    /// <summary>The model that supplies this page's groups, filters and selected details.</summary>
+    /// <summary>The page's Proposal state.</summary>
     public ProposalsPageModel Page { get; }
 
-    /// <summary>The title displayed over the group filters.</summary>
-    public string SidePanelTitle => "Proposals";
+    /// <summary>The title of the Proposal list.</summary>
+    public string SidePanelTitle => MotifAppStrings.BoardOpenProposals;
 
-    /// <summary>The page's group filters, attached by the workspace layout host.</summary>
-    public Control SidePanel => _sidePanel;
+    /// <summary>The page-owned Proposal list.</summary>
+    public Control SidePanel { get; }
 
-    /// <summary>The selected Proposal's details and available actions.</summary>
-    public Control InspectorContent => _inspectorContent;
-
-    /// <summary>The selected Proposal's actions, pinned below the details so none is scrolled out of view.</summary>
-    public Control InspectorActions => _inspectorActions;
-
-    private Control BuildPane(string key)
+    private bool SelectRow(object row)
     {
-        var pane = ((IDataTemplate)Resources[key]!).Build(Page)!;
-        pane.DataContext = Page;
-        return pane;
+        if (row is not ProposalCardViewModel card) return false;
+        Page.SelectProposalCommand.Execute(card);
+        return ReferenceEquals(Page.SelectedProposal, card);
     }
 
     private void OnAddComment(object? sender, RoutedEventArgs e)
     {
         Page.AddCommentCommand.Execute(null);
         if (Page.Comments.LastOrDefault() is { } added)
-            _inspectorContent.GetVisualDescendants().OfType<ProgressiveItemsControl>()
-                .FirstOrDefault(control => control.Name == "ProposalComments")?.ShowItem(added);
+            this.FindControl<ProgressiveItemsControl>("ProposalComments")?.ShowItem(added);
     }
-
-    private void OnRequestPageInspector(object? sender, RoutedEventArgs e) =>
-        WorkspaceLayoutHost.RequestPageInspector(this);
-
-    private readonly Control _sidePanel;
-    private readonly Control _inspectorContent;
-    private readonly Control _inspectorActions;
 }

@@ -1,13 +1,13 @@
 {
   "id": "try-word-typing",
   "title": "Try a word",
-  "description": "Type a word to see the trace returned by PanGloss for the current Baseline.",
+  "description": "Open Diagnostics, where a project's recorded grammar evidence is read.",
   "steps": {
-    "trace": "Try a word to show the recorded result from the current grammar."
+    "trace": "Diagnostics shows the recorded warnings and speed by rule for the current grammar."
   },
   "callouts": {
     "trace": {
-      "motif-try-word-result": "Word sent to PanGloss and its trace result"
+      "motif-diagnostics-tabs": "Diagnostics tabs"
     }
   }
 }

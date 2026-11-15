@@ -34,7 +34,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
                 Assert.Equal(firstProject.Words.Count, progress.Total);
                 Assert.InRange(progress.Completed, 0, firstProject.Words.Count - 1);
                 Assert.False(walkthrough.ProjectSwitchEnabled);
-                Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
+                Assert.False(walkthrough.SelectionPane.IsEffectivelyEnabled);
                 Assert.True(walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
                 // Cancel at once: the real parser can finish this run before a wait here would return.
                 PanglossProcesses.TrackNew(parserPath, existing, appeared);
@@ -61,6 +61,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             Assert.True(walkthrough.ProjectSwitchEnabled);
 
             walkthrough.ProjectPath = secondProject.FwDataPath;
+            walkthrough.DismissParseProgressFlyout();
             walkthrough.ChooseNewProject();
             walkthrough.WaitUntil(() =>
                 walkthrough.Workspace.Assess.State == RunState.Idle &&
@@ -76,7 +77,7 @@ public sealed class SwitchProjectWalkthroughTests(PristineProjectFixture pristin
             Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.RefreshCommand.IsRunning &&
-                    walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled,
+                    walkthrough.SelectionPane.IsEffectivelyEnabled,
                 WalkthroughSteps.Remaining(deadline), "the second project's Text selection did not become ready");
             walkthrough.Check(SeededProject.TextTitle);
             WalkthroughSteps.RunAssessmentOverPastedWords(walkthrough, deadline);

@@ -77,19 +77,20 @@ public sealed class CompileRefusalWalkthroughTests(PristineProjectFixture pristi
                 Assert.Contains(explanation, ProblemReport.FromRefusal(refusal).ToText(true));
                 Assert.DoesNotContain("ConversionIssue", ProblemReport.FromRefusal(refusal).ToText(true));
 
-                window.ShowPage(WorkspacePage.Overview);
-                Assert.Contains("can't use this grammar", window.Workspace.PageModel<OverviewPageModel>().LastParseRefusal!.Sentence);
-                Capture(window, prefix + "-overview");
+                window.ShowPage(WorkspacePage.Progress);
+                Assert.Contains("can't use this grammar", refusal.Sentence);
+                Capture(window, prefix + "-progress");
                 window.ShowPage(WorkspacePage.Texts);
                 Capture(window, prefix + "-texts");
-                window.ShowPage(WorkspacePage.Warnings);
-                var grammar = window.Workspace.PageModel<WarningsPageModel>().Grammar;
+                window.Workspace.Context.Diagnostics = true;
+                window.ShowPage(WorkspacePage.Diagnostics);
+                var grammar = window.Workspace.Context.GrammarCheck;
                 Assert.Equal(refusal.Sentence, grammar.ShownRefusal!.Sentence);
                 Assert.Equal(grammar.ShownRefusal.Sentence, grammar.SummaryText);
                 Capture(window, prefix + "-warnings");
 
-                window.ShowPage(WorkspacePage.AiHandoff);
-                var handoff = window.Workspace.PageModel<AiHandoffPageModel>().Handoff;
+                window.ShowPage(WorkspacePage.Settings);
+                var handoff = window.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
                 Assert.False(handoff.RunCommand.CanExecute(null));
                 Assert.Contains("No parse results yet: PanGloss can't use this grammar", handoff.UnavailableReason);
                 Assert.DoesNotContain("This folder holds", HandoffViewModel.DataSensitivitySentence);
@@ -100,8 +101,6 @@ public sealed class CompileRefusalWalkthroughTests(PristineProjectFixture pristi
                 await trace.TryCommand.ExecuteAsync(null);
                 Assert.Contains("can't use this grammar", trace.ShownRefusal!.Sentence);
                 Assert.DoesNotContain("could not parse this word", trace.ShownRefusal.Sentence);
-                window.ShowPage(WorkspacePage.TryAWord);
-                Capture(window, prefix + "-try-word");
             }
 
             using (var reopened = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath, parserPath: parser))
@@ -109,8 +108,8 @@ public sealed class CompileRefusalWalkthroughTests(PristineProjectFixture pristi
                 reopened.Show();
                 await reopened.Workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(project.FwDataPath));
                 Assert.NotNull(reopened.Workspace.Assess.ShownRefusal);
-                Assert.NotNull(reopened.Workspace.PageModel<OverviewPageModel>().LastParseRefusal);
-                Assert.NotNull(reopened.Workspace.PageModel<WarningsPageModel>().Grammar.ShownRefusal);
+                Assert.NotNull(reopened.Workspace.Context.Evidence.Stored?.LastParserRefusal);
+                Assert.NotNull(reopened.Workspace.Context.GrammarCheck.ShownRefusal);
                 Capture(reopened, prefix + "-reopened");
                 FakeParser.BehaveBesideExecutable(parser, new { mode = "success" });
                 var result = AssessCommand.Assess(new AssessRequest(project.FwDataPath), project.ManagedRoot, parser, null,
@@ -118,8 +117,8 @@ public sealed class CompileRefusalWalkthroughTests(PristineProjectFixture pristi
                 Assert.True(result.Succeeded, result.Refusal?.Message);
                 await reopened.Workspace.Context.ReadStoredEvidenceAsync();
                 Assert.Null(reopened.Workspace.Assess.ShownRefusal);
-                Assert.Null(reopened.Workspace.PageModel<OverviewPageModel>().LastParseRefusal);
-                Assert.True(reopened.Workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.CanExecute(null));
+                Assert.Null(reopened.Workspace.Context.Evidence.Stored?.LastParserRefusal);
+                Assert.True(reopened.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.RunCommand.CanExecute(null));
                 Assert.Null(CurrentEvidenceQuery.ReadCurrentEvidence(project.FwDataPath).Value!.LastParserRefusal);
             }
         }, WalkthroughSteps.Remaining(deadline));

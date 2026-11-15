@@ -43,7 +43,7 @@ public sealed class RefusalDefaultReasonTests
         ["stats.no-assessment"] = ("InvalidArgument+NotFound", PerSite),
     };
 
-    // Codes the scan cannot resolve: the reason is computed, passed through a variable, or chosen in another layer.
+    // Codes whose reason the scan cannot resolve from a refusal construction.
     private static readonly Dictionary<string, string> NotDeterminable = new(StringComparer.Ordinal)
     {
         ["assess.unavailable"] = "reason not determinable statically: passed through the Trial admission helper and recorded by the Worker",
@@ -58,6 +58,7 @@ public sealed class RefusalDefaultReasonTests
         ["command.advanced-ai-mode-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",
         ["command.developer-commands-required"] = "reason not determinable statically: chosen by the caller of the availability facts, not where the code is spelled",
         ["machine-store.inconsistent"] = "reason not determinable statically: a window problem report, which carries no FailureReason",
+        ["parsimony.automatic-failed"] = "retained public code has no current refusal construction",
         ["preferences.refused"] = "reason not determinable statically: a window preference problem, which carries no FailureReason",
         ["preferences.unavailable"] = "reason not determinable statically: a window preference problem, which carries no FailureReason",
         ["phonology-examples.assessment-not-found"] = "reason not determinable statically: the code is chosen by a conditional; both arms use NotFound",
@@ -98,6 +99,12 @@ public sealed class RefusalDefaultReasonTests
         "\"(?<lit>[a-z][a-z-]*(?:\\.[a-z0-9-]+)+)\"|\\b(?:\\w+Codes|C)\\.(?<name>\\w+)", RegexOptions.None);
 
     private static readonly Regex Reason = new("FailureReason\\.(?<reason>\\w+)", RegexOptions.None);
+
+    [Fact]
+    public void RetainedAutomaticFailureCodeKeepsItsDefaultReason()
+    {
+        Assert.Equal(FailureReason.Refused, RefusalCatalog.Specs[ParsimonyRefusalCodes.AutomaticFailed].DefaultReason);
+    }
 
     [Fact]
     public void EverySpecsDefaultReasonIsTheOneItsCallSitesUse()

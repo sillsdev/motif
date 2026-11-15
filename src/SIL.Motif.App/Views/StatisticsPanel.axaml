@@ -111,24 +111,24 @@
         <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatsHeaderAttempts}" Tag="attempts" Width="Auto" ClipboardContentBinding="{ReflectionBinding Attempts}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding AttemptsText}" TextToolTip="{Binding AttemptsText}"
-                              Intensity="{Binding AttemptsHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:CopyableTextBlock Classes="statisticsValue" Text="{Binding AttemptsText}" ToolTip.Tip="{Binding AttemptsText}"
+                                       TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatisticsColumnAnalyses}" Tag="passes" Width="Auto" ClipboardContentBinding="{ReflectionBinding Passes}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding PassesText}" TextToolTip="{Binding PassesText}"
-                              Intensity="{Binding PassesHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:CopyableTextBlock Classes="statisticsValue" Text="{Binding PassesText}" ToolTip.Tip="{Binding PassesText}"
+                                       TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="{x:Static app:MotifAppStrings.StatsHeaderParserWork}" Tag="parserWork" Width="Auto" ClipboardContentBinding="{ReflectionBinding ParserWork}">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate x:DataType="vm:StatsRowViewModel">
-              <views:HeatCell Text="{Binding WorkText}" TextToolTip="{Binding WorkText}"
-                              Intensity="{Binding WorkHeat}" Margin="{DynamicResource Component.Statistics.CellMargin}" />
+              <views:CopyableTextBlock Classes="statisticsValue" Text="{Binding WorkText}" ToolTip.Tip="{Binding WorkText}"
+                                       TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" Margin="{DynamicResource Component.Statistics.CellMargin}" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>

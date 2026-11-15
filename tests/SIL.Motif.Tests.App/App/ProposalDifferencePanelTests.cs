@@ -33,16 +33,11 @@ public sealed class ProposalDifferencePanelTests
         var model = new ProposalsPageModel(context);
         await context.OpenProjectAsync(@"C:\projects\one.fwdata");
         await model.DifferenceReading;
-        var page = new ProposalsPage(model);
-        var host = WorkspaceLayoutHost.ForPage(page);
-        var window = new MotifTestWindow { Width = width, Height = 1000, Content = host };
+        var panel = new ProposalDifferencePanel { DataContext = model.Difference };
+        var window = new MotifTestWindow { Width = width, Height = 1000, Content = panel };
         window.Show();
         PageScreenshots.Settle(window);
-        var checks = Assert.Single(host.GetVisualDescendants().OfType<Expander>(),
-            expander => expander.Header is TextBlock { Text: var text } && text == MotifAppStrings.ProposalOptionalChecks);
-        checks.IsExpanded = true;
-        PageScreenshots.Settle(window);
-        return (model, Assert.Single(host.GetVisualDescendants().OfType<ProposalDifferencePanel>()), window);
+        return (model, panel, window);
     }
 
     private static IEnumerable<FilterChip> Chips(Control root) => root.GetVisualDescendants().OfType<FilterChip>();

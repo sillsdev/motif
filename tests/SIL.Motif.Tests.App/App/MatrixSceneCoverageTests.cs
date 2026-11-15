@@ -1,4 +1,5 @@
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -8,17 +9,17 @@ public sealed class MatrixSceneCoverageTests
     [Fact]
     public void StandardScenesCoverEveryPage()
     {
-        var expected = Enum.GetValues<WorkspacePage>().Where(page => page != WorkspacePage.AiHandoff);
+        var expected = PageRegistry.Entries.Select(entry => entry.Page);
         var actual = PageScreenshots.Views().Select(view => view.Page).Distinct();
 
         Assert.Equal(expected.Order(), actual.Order());
     }
 
     [Fact]
-    public void TextsScenesCoverEveryTab()
+    public void TextsAndWordsHaveSeparateScenes()
     {
-        var actual = PageScreenshots.Views().Where(view => view.Page == WorkspacePage.Texts).Select(view => view.Tab);
-
-        Assert.Equal(Enum.GetValues<TextsTab>().Order(), actual.Order());
+        var pages = PageScreenshots.Views().Select(view => view.Page).ToArray();
+        Assert.Single(pages, page => page == WorkspacePage.Texts);
+        Assert.Single(pages, page => page == WorkspacePage.Words);
     }
 }

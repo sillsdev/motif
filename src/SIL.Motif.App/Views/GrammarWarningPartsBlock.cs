@@ -40,7 +40,9 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
 
     private static Control ControlFor(GrammarWarningPart part)
     {
-        if (part.Status == GrammarSubjectStatus.Object && part.Role == GrammarWarningPartRole.Object && part.FieldWorksLink is { } link)
+        if (part.Status == GrammarSubjectStatus.Object && part.Role == GrammarWarningPartRole.Object &&
+            Uri.TryCreate(part.FieldWorksLink, UriKind.Absolute, out var link) &&
+            string.Equals(link.Scheme, "silfw", StringComparison.OrdinalIgnoreCase))
             return LinkFor(part, link);
 
         var text = part.Status == GrammarSubjectStatus.ProjectSettings ? $"Project setting: {part.Text}"
@@ -67,16 +69,16 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
         return block;
     }
 
-    private static HyperlinkButton LinkFor(GrammarWarningPart part, string link)
+    private static HyperlinkButton LinkFor(GrammarWarningPart part, Uri link)
     {
         // A TextBlock, not a string, so the "_" an environment is written with is not read as an access key.
         var button = new HyperlinkButton
         {
             Content = new TextBlock { Text = part.Text },
-            NavigateUri = new Uri(link),
+            NavigateUri = link,
         };
         button.Classes.Add("warningObjectLink");
-        var tool = FieldWorksLinks.ToolName(part.FieldWorksTool ?? FieldWorksLinks.ToolOf(link));
+        var tool = FieldWorksLinks.ToolName(part.FieldWorksTool ?? FieldWorksLinks.ToolOf(link.AbsoluteUri));
         ToolTip.SetTip(button, $"Open this item in {tool}");
         ClearTipPlacement.SetIsEnabled(button, true);
         return button;

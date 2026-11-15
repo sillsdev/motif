@@ -12,6 +12,7 @@ using SIL.Motif.App;
 using SIL.Motif.App.Controls.WordPresentation;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.App.Views.Shell;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract.Commands;
@@ -209,9 +210,7 @@ internal sealed class TooltipScenes
 
     private ResultsInTextViewModel InText => Workspace.PageModel<TextsPageModel>().ResultsInText;
 
-    private TextsListsViewModel Lists => Workspace.PageModel<TextsPageModel>().TextsLists;
-
-    private GrammarViewModel Grammar => Workspace.PageModel<WarningsPageModel>().Grammar;
+    private GrammarViewModel Grammar => Workspace.Context.GrammarCheck;
 
     public static async Task<TooltipScenes> Open(bool seedReaderToken = true)
     {
@@ -291,92 +290,47 @@ internal sealed class TooltipScenes
         if (scene != TooltipScene.CollapsedSidebar) Window.Width = Width;
         switch (scene)
         {
-            case TooltipScene.Overview: Show(WorkspacePage.Overview); break;
+            case TooltipScene.Overview: Show(WorkspacePage.Progress); break;
             case TooltipScene.OpenRecent:
                 _client.KnownProjectsListIs([.. new[] { "Sample", "Kiswahili" }.Select(name =>
                     new KnownProjectSummary($@"C:\Users\linguist\FieldWorks\Projects\{name}\{name}.fwdata", DateTimeOffset.UtcNow.AddDays(-2)))]);
-                Show(WorkspacePage.Overview);
+                Show(WorkspacePage.Progress);
                 await OpenMenu(Window.FindInWindowOrWorkspace<MenuItem>("FileMenu")!, "the File menu");
                 await OpenMenu(Window.FindInWindowOrWorkspace<MenuItem>("OpenRecentMenuItem")!, "Open recent");
                 break;
             case TooltipScene.CollapsedSidebar:
                 Window.Width = WorkspaceShellViewModel.SidebarCollapseWidth - 100;
-                Show(WorkspacePage.Overview);
+                Show(WorkspacePage.Progress);
                 await Until(() => Workspace.IsSidebarCollapsed, "the collapsed sidebar");
                 break;
             case TooltipScene.FrameSidePanel:
-                Show(WorkspacePage.Texts, TextsTab.Lists);
+                Show(WorkspacePage.Texts);
                 if (Window.Width >= (double)Window.FindResource("Component.Shell.SidePanelCollapseWidth")!)
                     await Until(() => Visible<Button>().Any(button => button.Name == "SidePanelCollapseButton"),
                         "the Texts side panel");
                 break;
             case TooltipScene.FrameInspectorStrip:
-                // Timing supplies no page Inspector; one an earlier scene opened stays open until it is hidden.
-                Show(WorkspacePage.Timing);
-                PageScreenshots.Settle(Window);
-                if (Visible<Button>().FirstOrDefault(button => button.Name == "InspectorHideButton") is { } hide)
-                    HeadlessClick.Click(Window, hide, "Hide Inspector");
-                await Until(() => Visible<Button>().Any(button => button.Name == "InspectorStrip"),
-                    "the Inspector strip");
-                break;
             case TooltipScene.FrameInspectorOpen:
-                Show(WorkspacePage.Timing);
-                var inspectorStrip = Visible<Button>().Single(button => button.Name == "InspectorStrip");
-                HeadlessClick.Click(Window, inspectorStrip, "the Inspector strip");
-                await Until(() => Visible<Button>().Any(button => button.Name == "InspectorHideButton"),
-                    "the open Inspector");
-                break;
-            case TooltipScene.Matrix:
-                Show(WorkspacePage.Texts, TextsTab.Lists);
-                await Until(() => Workspace.Assess.State == RunState.Completed && Workspace.Assess.Result is not null,
-                    "the Sample Assessment to finish");
-                if (Workspace.Assess.RunCommand.ExecutionTask is { } assessment)
-                    await assessment;
-                await Until(() => Workspace.Assess.State == RunState.Completed && Workspace.Assess.Result is not null,
-                    "the Sample Assessment task to return");
+                Show(WorkspacePage.Progress);
+                var host = Window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                host.SetPagePanels(new TooltipDetailsPane());
+                host.ShowInspector();
                 PageScreenshots.Settle(Window);
-                var wordRowsList = Visible<ListBox>().Single(box =>
-                    AutomationProperties.GetName(box) == "Words in the selected list");
-                var word = Workspace.Assess.Compare.Words.First();
-                var wordIndex = ((System.Collections.IList)Workspace.Assess.Compare.Words).IndexOf(word);
-                wordRowsList.ScrollIntoView(wordIndex);
-                PageScreenshots.Settle(Window);
-                var container = wordRowsList.ContainerFromIndex(wordIndex);
-                Assert.NotNull(container);
-                var row = container.GetVisualDescendants().OfType<WordRow>().Single();
-                row.GetVisualDescendants().OfType<Border>()
-                    .First(border => border.Classes.Contains("wordPresentationFrame")).BringIntoView();
-                PageScreenshots.Settle(Window);
-                MatrixTargetRow = row;
-                foreach (var panel in row.GetVisualDescendants().OfType<MorphemePanel>())
-                    panel.MaxVisibleMorphs = 2;
-                PageScreenshots.Settle(Window);
-                row.FocusWord();
+                if (scene == TooltipScene.FrameInspectorStrip)
+                    HeadlessClick.Click(Window, host.FindControl<Button>("InspectorHideButton")!, "Hide Inspector");
                 PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.WhatChanged:
-                Show(WorkspacePage.Texts, TextsTab.Lists);
-                await Until(() => Workspace.Assess.State == RunState.Completed && Workspace.Assess.Result is not null,
-                    "the Sample Assessment to finish");
-                var firstRun = Workspace.Assess.Result!;
-                // A second run that loses kitabu's analysis moves kitabu between cells, so What changed has a move.
-                _client.AssessCompletesWith(firstRun with
-                {
-                    Words = [.. firstRun.Words.Select(item => item.Word != "kitabu" ? item : item with
-                    {
-                        Outcome = "no-analysis",
-                        Morphology = null,
-                        Readings = [],
-                        ReadingGrades = [],
-                    })],
-                });
-                await Workspace.Assess.RunCommand.ExecuteAsync(null);
-                var difference = Workspace.Assess.Difference;
-                await Until(() => difference.Moves.Count > 0, "a move between the two runs");
-                difference.SelectedMove = difference.Moves.First(move => move.Words.Any(moved => moved.Word == "kitabu"));
-                Show(WorkspacePage.Texts, TextsTab.WhatChanged);
-                await Until(() => Visible<WordListSlot>().Any(slot => slot.CurrentLayout is not null),
-                    "the What changed word list");
+                Show(WorkspacePage.Progress);
+                break;
+            case TooltipScene.Matrix:
+                Show(WorkspacePage.Words);
+                var wordRows = Workspace.PageModel<WordsPageModel>().Words;
+                await wordRows.SettleVisibleDetailsAsync();
+                await Until(() => Visible<WordRow>().Any(), "the Selection word rows");
+                MatrixTargetRow = Visible<WordRow>().First();
+                MatrixTargetRow.BringIntoView();
+                PageScreenshots.Settle(Window);
                 break;
             case TooltipScene.Reader:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
@@ -391,7 +345,7 @@ internal sealed class TooltipScenes
                 await InText.MarkTextUnreadAsync();
                 await InText.ReadStateRefresh;
                 PageScreenshots.Settle(Window);
-                Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+                Show(WorkspacePage.Words);
                 await Until(() => Visible<TextWordsPanel>().Any(), "the Analyze texts word list");
                 await Workspace.PageModel<TextsPageModel>().Words.SettleVisibleDetailsAsync();
                 PageScreenshots.Settle(Window);
@@ -438,110 +392,56 @@ internal sealed class TooltipScenes
                     "the word card without a chosen-text occurrence");
                 break;
             case TooltipScene.Lists or TooltipScene.ListsStaged:
-                Show(WorkspacePage.Texts, TextsTab.Lists);
-                var list = Lists.Lists.First(candidate => candidate.HasWords);
-                if (Lists.SelectedList != list) Lists.SelectListCommand.Execute(list);
-                await Until(() => Lists.SelectedList == list && Lists.Compare.Words.Count > 0, "the chosen list's words");
+                Show(WorkspacePage.Words);
                 break;
             case TooltipScene.TryAWordEarlierTiming:
-                _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(PageScreenshots.SampleTrace()).Value!);
-                Workspace.Context.TryWord("hawajafika");
-                await Workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                Show(WorkspacePage.TryAWord);
-                break;
             case TooltipScene.TryAWordRecordedDetails:
-                _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(SIL.Motif.Tests.TestFixtures.TestTraceFixture.Read(Path.Combine(
-                    AppContext.BaseDirectory, "TestFixtures", "trace-details-v3-matinlu.json"))).Value!);
-                Workspace.Context.TryWord("matinlu");
-                await Workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                Show(WorkspacePage.TryAWord);
-                break;
             case TooltipScene.ExpertTrace:
-                Window.Height = 2400;
-                var trace = Workspace.Assess.Trace;
-                trace.Result = TraceWordViewModel.FromDiagnosticJson(ExpertTraceReadingTests.NotationDiagnostic).Result;
-                trace.SelectedCandidate = trace.Candidates.Single();
-                trace.SelectedStep = trace.SelectedCandidate.Steps[3];
-                trace.ExpertWholeTree = false;
-                trace.IsExpert = true;
-                Show(WorkspacePage.TryAWord);
-                PageScreenshots.Settle(Window);
-                foreach (var expander in Visible<ExpertTracePanel>().Single().GetVisualDescendants().OfType<Expander>())
-                    expander.IsExpanded = true;
-                PageScreenshots.Settle(Window);
-                break;
             case TooltipScene.TryAWordRepeatedRecords:
-                _client.TraceWordCompletesWith(WordTraceQuery.LoadDiagnostic(TraceEnvelope.AnalysisRecords()).Value!);
-                Workspace.Context.TryWord("word");
-                await Workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                Show(WorkspacePage.TryAWord);
+                Show(WorkspacePage.Progress);
                 break;
             case TooltipScene.Timing:
-                Show(WorkspacePage.Timing);
-                await Until(() => Visible<Button>().Any(button =>
-                    AutomationProperties.GetName(button) == "Open the grammar warning"),
-                    "a Timing rule named by a stored grammar warning");
-                break;
             case TooltipScene.Statistics:
-                await ReachStatistics("word");
-                break;
             case TooltipScene.StatisticsObjects:
-                await ReachStatistics("object");
+                Show(WorkspacePage.Diagnostics);
                 break;
             case TooltipScene.WarningsTable:
-                // At the sample's width the table is compact and hides its named-words column, so this scene widens the window.
-                Window.Width = 1800;
-                Show(WorkspacePage.Warnings);
-                await Until(() => !Workspace.IsSidebarCollapsed, "the expanded sidebar");
-                await Until(() => !Grammar.IsLoading && Grammar.HasChecked &&
-                    Visible<GrammarPanel>().Any(panel => panel.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
-                        text.IsEffectivelyVisible && ToolTip.GetTip(text) as string == MotifAppStrings.WarningsReachUnavailable)),
-                    "the Warnings table with a finding whose word count is unavailable");
+                Show(WorkspacePage.Progress);
                 break;
             case TooltipScene.Warnings:
-                Show(WorkspacePage.Warnings);
-                await Until(() => !Grammar.IsLoading && Grammar.HasChecked &&
-                    Grammar.Warnings.Rows.OfType<GrammarWarningRowViewModel>().Any(row => HasNamedEntryAction(row)), "the completed grammar check with a named entry");
-                var warningRow = Grammar.Warnings.Rows.OfType<GrammarWarningRowViewModel>().First(row => HasNamedEntryAction(row));
-                var entry = warningRow.Details.SelectMany(detail => detail.EntryLinks).Single();
-                // The row's Details action, not selection alone, reveals the finding in the page Inspector.
-                Visible<GrammarPanel>().Single().OpenFindingDetailsCommand.Execute(warningRow);
-                PageScreenshots.Settle(Window);
+                Workspace.Context.Diagnostics = true;
+                Show(WorkspacePage.Diagnostics);
                 await Until(() => Visible<HyperlinkButton>().Any(button =>
-                    button.Classes.Contains("warningEntryAction") && button.Content is string text &&
-                    text == entry.Label), $"the finding's named FieldWorks entry '{entry.Entry}'");
+                    button.Classes.Contains("warningObjectLink")), "a recorded finding's FieldWorks link");
                 break;
             case TooltipScene.Handoff:
                 SettingsTestAccess.Model(Window).ShowHandoffByCopyingFiles = true;
-                Show(WorkspacePage.AiAssistants);
+                Show(WorkspacePage.Settings);
                 break;
-            case TooltipScene.ReviewStaged: Show(WorkspacePage.Review); break;
             case TooltipScene.FrameStatus:
                 Show(WorkspacePage.Texts, TextsTab.AnalyzeTexts);
                 await AnalyzeTextsLayoutTests.SettleReaderAsync(Workspace, Window);
                 await StageChakula();
-                Show(WorkspacePage.Warnings);
-                await Until(() => !Grammar.IsLoading && Grammar.HasChecked &&
-                    Visible<Button>().Any(button => AutomationProperties.GetName(button) == "Review changes not applied yet") &&
-                    Visible<Button>().Any(button => AutomationProperties.GetName(button) == "Open Warnings") &&
-                    Visible<CopyableTextBlock>().Any(control =>
+                Workspace.Context.Diagnostics = true;
+                Show(WorkspacePage.Diagnostics);
+                await Until(() => Visible<CopyableTextBlock>().Any(control =>
                         AutomationProperties.GetAutomationId(control) == AutomationIds.SidebarSelectionSummary),
-                    "the status counts and selection summary");
+                    "the status selection summary");
                 break;
             case TooltipScene.FrameNarrowTopBar:
                 Window.Width = (double)Window.FindResource("Component.TopBar.NarrowWidth")! - 60;
-                Show(WorkspacePage.Overview);
+                Show(WorkspacePage.Progress);
                 await Until(() => Visible<MenuItem>().Any(item =>
                     AutomationProperties.GetAutomationId(item) == AutomationIds.MenuButton), "the narrow top bar's menu button");
                 break;
             case TooltipScene.FrameCompactStatus:
                 Window.Width = (double)Window.FindResource("Component.StatusBar.CompactWidth")! - 1;
-                Show(WorkspacePage.Overview);
+                Show(WorkspacePage.Progress);
                 await Until(() => Visible<Button>().Any(button => button.Classes.Contains("statusCompact") &&
                     AutomationProperties.GetName(button) == "Report a problem"), "the compact status line");
                 break;
             case TooltipScene.FrameNotice:
-                Show(WorkspacePage.Overview);
+                Show(WorkspacePage.Progress);
                 var refusal = new Refusal("baseline.capture-refused", FailureReason.Refused,
                     "FieldWorks has not saved a current Baseline.");
                 var noticeSentence = WindowRefusal.From(refusal).Sentence;
@@ -598,12 +498,10 @@ internal sealed class TooltipScenes
                 InText.SelectedText = InText.Texts.First(text => text.Title == "Hadithi ya sungura");
                 break;
             case TooltipScene.AnalyzeWordList:
-                Workspace.PageModel<TextsPageModel>().ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+                Show(WorkspacePage.Texts);
                 break;
             case TooltipScene.ExpertTrace: Workspace.Assess.Trace.IsExpert = false; Window.Height = 780; break;
-            case TooltipScene.FrameInspectorOpen:
-                HeadlessClick.Click(Window, Visible<Button>().Single(button => button.Name == "InspectorHideButton"), "Hide Inspector");
-                break;
+
             case TooltipScene.FrameKeyboardStatus:
                 Window.ShowKeyboardStatus(null);
                 break;
@@ -642,26 +540,6 @@ internal sealed class TooltipScenes
     public IEnumerable<T> Visible<T>() where T : Control =>
         Window.GetVisualDescendants().OfType<T>().Where(control => control.IsEffectivelyVisible);
 
-    private async Task ReachStatistics(string group)
-    {
-        Show(WorkspacePage.Timing);
-        var statistics = Workspace.PageModel<TimingPageModel>().Statistics;
-        var expander = Visible<Expander>().First(expander => expander.Header as string == MotifAppStrings.TimingDetailedStatisticsHeading);
-        expander.IsExpanded = true;
-        await Until(() => Visible<StatisticsPanel>().Any(), MotifAppStrings.TimingDetailedStatisticsHeading);
-        await Until(() => statistics.HasLoaded && statistics.Rows.Count > 0, "word statistics");
-        if (statistics.SelectedGroup != group)
-        {
-            statistics.SelectedGroup = group;
-            await Until(() => statistics.HasLoaded && statistics.Rows.Any(row =>
-                group == "object" ? row.Object is not null : row.Word is not null), $"{group} statistics");
-        }
-        var panel = Visible<StatisticsPanel>().Single();
-        var pageScroll = Assert.Single(panel.GetVisualAncestors().OfType<ScrollViewer>());
-        pageScroll.Offset = new Vector(0, Math.Max(0, pageScroll.Extent.Height - pageScroll.Viewport.Height));
-        PageScreenshots.Settle(Window);
-    }
-
     /// <summary>Opens <paramref name="owner"/>'s tooltip, settled and opaque, and returns every text block that shows its words.</summary>
     public static IReadOnlyList<TextBlock> OpenTipTexts(Control owner)
     {
@@ -692,7 +570,6 @@ internal sealed class TooltipScenes
 
     private void Show(WorkspacePage page, TextsTab? tab = null)
     {
-        if (tab is { } chosen) Workspace.PageModel<TextsPageModel>().Tab = chosen;
         Workspace.CurrentPage = page;
         PageScreenshots.Settle(Window);
     }
@@ -713,8 +590,10 @@ internal sealed class TooltipScenes
     private ResultsTokenViewModel Token(string form) =>
         AnalyzeTextsLayoutTests.RealizedLines(InText).SelectMany(line => line.Tokens).First(token => token.Form == form);
 
-    private static bool HasNamedEntryAction(GrammarWarningRowViewModel row) =>
-        row.Details.Any(detail => detail.EntryLinks.Count > 0);
+    private sealed class TooltipDetailsPane : IWorkspacePaneProvider
+    {
+        public Control InspectorContent { get; } = new Border();
+    }
 
     // The staged scenes, which come last, show a pending change; it is chakula's, as the state captures stage it.
     private async Task StageChakula()

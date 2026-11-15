@@ -1,25 +1,7 @@
-# Overview
+# Progress and project health
 
-**Overview** is the first page you see. It shows the results of your last run: how many of your words parse, how many words with approved analyses were rebuilt exactly, which words are slow, and what the grammar check found. Opening it doesn't parse anything. Nothing here changes your FieldWorks project.
+**Progress** shows supported next actions for the open project. A Proposal appears as a next action when its stored standing says it is waiting for a decision. If there is no supported action, the page does not invent one.
 
-The figure strip shows the project's counts: words you chose to measure, places in your texts, wordforms, rules, and lexemes. **Look first** points to recorded words or timings worth inspecting, including the unparsed words you use most and entries with a stem not tagged with an inflection class. Up to seven table sections follow; a section appears when its measurements are available:
+The health strip shows available stored project facts. Its details can include a recorded median parser-work value; the face does not show parser-step counts. Warnings and timing details are available in **Diagnostics** when it is enabled. Opening Progress or the health details reads stored information and does not start a parse.
 
-- **Speed**: how many words were measured, their total and median parser work, and the work recorded for each kind of grammar work.
-- **Slowest Words**: the measured words with the most parser work, each with its parser work. **Stopped** marks a word explicitly recorded as hitting the work limit.
-- **Text Coverage**: how many of your chosen words parse, and how many places in your texts they cover (each time a word occurs in a text). If no chosen words occur in the chosen Texts, it says there are no places to cover. A line beneath says how many places hold only digits or are written in other writing systems; those places are not in the share.
-- **Text Coverage by Frequency Band**: the chosen words ranked by how often they occur, cut into ranks 1 to 100, 101 to 1,000, 1,001 to 10,000, and the rest. Each band says how many of its words parse and how many of its places are covered; the bands add up to the Text Coverage totals. A Selection that is not made of chosen Texts is titled **By Frequency Band**: its words are ranked by the counts in the word-list file it was saved from (see [Choose a Default Selection](cmd:selection%20set-default)), and a word the file gave no count ranks after the counted words and adds nothing to a band's occurrences. If some chosen words are not in the saved parse, a note says so.
-- **Ambiguity**: the mean number of analyses per parsed word, how many parsed words have more than one analysis, and the ten with the most, each opening in Texts. Words that did not parse are not in it.
-- **Approved Analyses Kept**: how many words with an approved analysis the grammar rebuilt exactly. When no analysis is approved yet, it says there is nothing to rebuild.
-- **Grammar Warnings**: what the grammar check found, with errors counted separately.
-
-The **Grammar Warnings** section gives the warning count and any nonzero error count. Its word line counts how many different chosen words exactly use an item named by a warning. Before parsing, it says **Parse to see which of your words they touch**. The table lists the three largest warning kinds. Where the evidence is complete, each kind shows the word count; matches based only on spelling are labelled separately. Open **Warnings →** to see each kind's subjects.
-
-These are separate measures, not one overall score. The project's counts appear after you press **Refresh**, which also checks the grammar. **Speed**, **Text Coverage**, and **Approved Analyses Kept** show parse results after you choose **Parse all words**.
-
-The project chip in the top bar says whether these numbers are current: a green, orange or red dot, the project name and, in a wide window, the status in words. Choose the chip to open the project card, which says what changed and when the words were last parsed. If you have saved in FieldWorks since the last Refresh, the card says when; the ⟳ beside the chip and the card's **Refresh** button read the saved project. Times use your local clock; a save from another day includes its weekday and date. Press **Refresh** to read the saved project, then **Parse all words** to measure your [chosen words](term:default-selection) again. If Motif cannot read the numbers, the page says so in one line, with **Try again** and **Report a problem**.
-
-Choose a section's link, such as **Slowest Words →**, **Texts →**, **Lists →**, or **Warnings →**, to see more on that page. The links stay visible; links to Timing and Warnings open when **View → Diagnostics** is on. Each **Look first** row opens the words or timings it names; its word-count link stays visible. Choose a slow word to open it in Texts. The Overview Inspector shows recorded Lost words and shared morphemes; **Open in Lists** opens those Approved words in Lists. Expand **Project history** to see recorded activity. For a closer explanation of each measure and how to read its breakdowns, see [Reading the Overview](guide:reading-the-overview).
-
-![Overview showing the project's stored results](shot:open-project-overview/overview)
-
-Words marked **can’t read** were sent to PanGloss, which declined them. They are separate from completed searches that found no analysis and from words with no recorded parse. Choose that segment to read those words and their recorded reasons.
+After saving in FieldWorks, use **Refresh** to read the saved project. Run the parser when you want new results for the current Selection. See [Reading project health](guide:reading-the-overview) for how to interpret the available facts.

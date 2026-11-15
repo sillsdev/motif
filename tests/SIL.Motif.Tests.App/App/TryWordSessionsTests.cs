@@ -11,8 +11,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Try a Word warms the project's parser when the page opens, releases it before the project goes, and shows a quiet
-/// loading line only while a submitted word is waiting on the grammar.
+/// The trace session releases a project's parser when the project closes and reports grammar loading accurately.
 /// </summary>
 public sealed class TryWordSessionsTests
 {
@@ -20,37 +19,17 @@ public sealed class TryWordSessionsTests
     private const string ProjectB = @"C:\projects\two.fwdata";
 
     [Fact]
-    public async Task OpeningTheTryAWordPagePrewarmsTheOpenProjectOnly()
+    public async Task OpeningPagesDoesNotPrewarmAParser()
     {
         var (fake, context) = NewContext();
         await context.OpenProjectAsync(ProjectA);
-        context.OpenPage(WorkspacePage.Overview);
-        Assert.DoesNotContain(fake.TryWordSessionsFake.Calls, call => call.StartsWith("prewarm", StringComparison.Ordinal));
+        context.Diagnostics = true;
 
-        context.OpenPage(WorkspacePage.TryAWord);
+        foreach (var entry in context.PageEntries) context.OpenPage(entry.Page);
 
-        Assert.Equal("prewarm " + ProjectA, Assert.Single(fake.TryWordSessionsFake.Calls,
-            call => call.StartsWith("prewarm", StringComparison.Ordinal)));
-    }
-
-    [Fact]
-    public async Task PrewarmNamesTheParserThePageIsConfiguredWith()
-    {
-        var (fake, context) = NewContext();
-        fake.ParserPath = Path.Combine(Path.GetTempPath(), "substituted", "pangloss");
-        await context.OpenProjectAsync(ProjectA);
-
-        context.OpenPage(WorkspacePage.TryAWord);
-
-        Assert.Equal([fake.ParserPath], fake.TryWordSessionsFake.PrewarmParserPaths);
-    }
-
-    [Fact]
-    public void OpeningThePageWithNoProjectPrewarmsNothing()
-    {
-        var (fake, context) = NewContext();
-        context.OpenPage(WorkspacePage.TryAWord);
-        Assert.Empty(fake.TryWordSessionsFake.Calls);
+        Assert.DoesNotContain(fake.TryWordSessionsFake.Calls,
+            call => call.StartsWith("prewarm", StringComparison.Ordinal));
+        await context.StopProjectWorkAsync();
     }
 
     [Fact]
@@ -158,10 +137,6 @@ public sealed class TryWordSessionsTests
             new Refusal("test.stop", FailureReason.Cancelled, "stop")));
         await running;
     }
-
-    [Fact]
-    public void TheLoadingTextComesFromTheResx() =>
-        Assert.Equal("Loading the grammar…", MotifAppStrings.TryWordLoadingGrammar);
 
     private static (FakeCommandClient Fake, WorkspaceContext Context) NewContext()
     {

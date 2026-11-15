@@ -260,12 +260,12 @@
               <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Compact}">
               <Grid ColumnDefinitions="2*,*,*,*,*,3*,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Component.TryWord.SmallBottomInset}">
                 <views:CopyableTextBlock Classes="muted" Text="Kind" />
-                <views:CopyableTextBlock Grid.Column="1" Classes="muted number" Text="{x:Static app:MotifAppStrings.TraceSegmentsExaminedLabel}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-                <views:CopyableTextBlock Grid.Column="2" Classes="muted number" Text="Uses" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-                <views:CopyableTextBlock Grid.Column="3" Classes="muted number" Text="Tried" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
-                <views:CopyableTextBlock Grid.Column="4" Classes="muted number" Text="Produced" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <views:CopyableTextBlock Grid.Column="1" Classes="muted" HorizontalAlignment="Right" Text="{x:Static app:MotifAppStrings.TraceSegmentsExaminedLabel}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <views:CopyableTextBlock Grid.Column="2" Classes="muted" HorizontalAlignment="Right" Text="Uses" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <views:CopyableTextBlock Grid.Column="3" Classes="muted" HorizontalAlignment="Right" Text="Tried" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <views:CopyableTextBlock Grid.Column="4" Classes="muted" HorizontalAlignment="Right" Text="Produced" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
                 <views:CopyableTextBlock Grid.Column="5" Classes="muted" Text="Did not succeed" Margin="{DynamicResource Component.TryWord.SmallInset}" />
-                <views:CopyableTextBlock Grid.Column="6" Classes="muted number" Text="{x:Static app:MotifAppStrings.TraceParserWorkLabel}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
+                <views:CopyableTextBlock Grid.Column="6" Classes="muted" HorizontalAlignment="Right" Text="{x:Static app:MotifAppStrings.TraceParserWorkLabel}" Margin="{DynamicResource Intent.Gap.AfterRelated}" />
               </Grid>
               <ItemsControl x:Name="DiagnosticPanelEffortItems" Grid.Row="1" ItemsSource="{Binding Effort}" AutomationProperties.Name="Parser effort rows">
                 <ItemsControl.ItemsPanel>
@@ -275,12 +275,12 @@
                   <DataTemplate x:DataType="vm:TraceEffortViewModel">
                     <Grid ColumnDefinitions="2*,*,*,*,*,3*,*" ColumnSpacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Component.TryWord.SmallRowInset}">
                       <views:CopyableTextBlock Text="{Binding Kind}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                      <views:HeatCell Grid.Column="1" Text="{Binding Work}" Intensity="{Binding WorkHeat}" />
-                      <views:HeatCell Grid.Column="2" Text="{Binding Uses}" Intensity="{Binding UsesHeat}" />
-                      <views:HeatCell Grid.Column="3" Text="{Binding Tried}" Intensity="{Binding TriedHeat}" />
-                      <views:HeatCell Grid.Column="4" Text="{Binding Produced}" Intensity="{Binding ProducedHeat}" />
-                      <views:HeatCell Grid.Column="5" Text="{Binding Missed}" Intensity="{Binding MissedHeat}" TextAlignment="Left" />
-                      <views:HeatCell Grid.Column="6" Text="{Binding Time}" Intensity="{Binding TimeHeat}" />
+                      <views:CopyableTextBlock Grid.Column="1" Text="{Binding Work}" HorizontalAlignment="Right" />
+                      <views:CopyableTextBlock Grid.Column="2" Text="{Binding Uses}" HorizontalAlignment="Right" />
+                      <views:CopyableTextBlock Grid.Column="3" Text="{Binding Tried}" HorizontalAlignment="Right" />
+                      <views:CopyableTextBlock Grid.Column="4" Text="{Binding Produced}" HorizontalAlignment="Right" />
+                      <views:CopyableTextBlock Grid.Column="5" Text="{Binding Missed}" />
+                      <views:CopyableTextBlock Grid.Column="6" Text="{Binding Time}" HorizontalAlignment="Right" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

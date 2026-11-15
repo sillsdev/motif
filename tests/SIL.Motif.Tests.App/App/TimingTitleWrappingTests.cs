@@ -1,11 +1,13 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Headless;
-using Avalonia.Media.Imaging;
-using Avalonia.Styling;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -13,44 +15,44 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TimingTitleWrappingTests
 {
-    [Theory]
-    [InlineData(false)]
-    public void TimingScopeKeepsItsFullHeadingInsideTheNarrowPage(bool dark)
+    [Fact]
+    public void ALongRecordedRuleNameWrapsInsideTheNarrowPage()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
-            var theme = Application.Current!.RequestedThemeVariant;
+            const string name = "A very long recorded phonological rule name that must remain readable at a narrow window width";
+            var fake = new FakeCommandClient();
+            fake.TimingCompletesWith(new TimingResponse("assessment-parse", "all", "rule", 1, null, null, [], [], [])
+            {
+                ParserWorkAggregates = [new TimingWorkAggregate("rule", name, "phon_rule", 4, false)],
+            });
+            var context = WorkspaceContextTests.NewContext(fake);
+            await context.OpenProjectAsync("project.fwdata");
+            context.PublishEvidence(new WorkspaceEvidence(WorkspaceContextTests.Assessment(), DateTimeOffset.Now, false));
+            var model = new DiagnosticsPageModel(context);
+            await model.SpeedByRule.ReadAsync("project.fwdata", CancellationToken.None);
+            model.SelectedTabIndex = (int)DiagnosticsTab.SpeedByRule;
+            var page = new DiagnosticsPage(model);
+            var window = new MotifTestWindow
+            {
+                Width = 640,
+                Height = 600,
+                Content = new LayoutTransformControl { LayoutTransform = new ScaleTransform(1.5, 1.5), Child = page },
+            };
             try
             {
-                Application.Current.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
-                window.Width = 640;
-                window.Height = 600;
-                SettingsTestAccess.Model(window).ZoomPercent = 150;
-                workspace.CurrentPage = WorkspacePage.Timing;
+                window.Show();
                 PageScreenshots.Settle(window);
-                var model = workspace.PageModel<TimingPageModel>();
-                var heading = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == model.ScopeLabel);
-                if (Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable) is { } folder)
-                {
-                    Directory.CreateDirectory(folder);
-                    using var frame = window.CaptureRenderedFrame()!;
-                    frame.Save(Path.Combine(folder, $"timing-heading-640-600-150-{(dark ? "dark" : "light")}.png"),
-                        PngBitmapEncoderOptions.Default);
-                }
-                Assert.True(heading.TextLayout.TextLines.Count > 1, "The complete scope heading needs another line.");
-                Assert.All(heading.TextLayout.TextLines, line => Assert.True(
-                    line.WidthIncludingTrailingWhitespace <= heading.Bounds.Width + 0.5,
-                    $"Heading line needs {line.WidthIncludingTrailingWhitespace}, available {heading.Bounds.Width}."));
+                var heading = Assert.Single(page.GetVisualDescendants().OfType<CopyableTextBlock>(), text => text.Text == name);
+                Assert.True(heading.TextLayout.TextLines.Count > 1);
+                Assert.All(heading.TextLayout.TextLines, line =>
+                    Assert.True(line.WidthIncludingTrailingWhitespace <= heading.Bounds.Width + 0.5));
             }
             finally
             {
-                Application.Current.RequestedThemeVariant = theme;
-                WindowZoomPolicy.Apply(Application.Current, ZoomPolicy.DefaultPercent);
                 window.Close();
-                await workspace.DisposeAsync();
+                await context.StopProjectWorkAsync();
             }
-        }, TimeSpan.FromMinutes(2));
+        }, TimeSpan.FromSeconds(30));
     }
 }

@@ -60,10 +60,9 @@ public sealed class SettingsPageMatrixScreenshots
                     }
                     var themeName = theme == ThemeVariant.Dark ? "dark" : "light";
                     foreach (var (scene, route) in new[]
-                             { ("1-overview", WorkspacePage.Overview), ("3-try-a-word", WorkspacePage.TryAWord) })
+                             { ("1-progress", WorkspacePage.Progress), ("3-words", WorkspacePage.Words) })
                     {
                         workspace.CurrentPage = route;
-                        if (route == WorkspacePage.TryAWord) await PageScreenshots.TryTheSampleWord(workspace);
                         PageScreenshots.Settle(window);
                         using var capture = window.CaptureRenderedFrame() ??
                             throw new InvalidOperationException($"The {scene} frame did not render.");

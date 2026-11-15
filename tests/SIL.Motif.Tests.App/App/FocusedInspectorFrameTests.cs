@@ -36,6 +36,8 @@ public sealed class FocusedInspectorFrameTests
                 window.Show();
                 PageScreenshots.Settle(window);
                 var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                host.SetPagePanels(new DetailsPane());
+                PageScreenshots.Settle(window);
                 var working = host.FindControl<ContentControl>("WorkingPageHost")!;
                 var region = Assert.IsType<Grid>(working.GetVisualParent());
                 var content = working.Content;
@@ -53,8 +55,8 @@ public sealed class FocusedInspectorFrameTests
                 Assert.InRange(bounds.Left, railBounds.Right - 1, railBounds.Right + 1);
                 Assert.InRange(bounds.Right, window.ClientSize.Width - 1, window.ClientSize.Width + 1);
                 var back = host.FindControl<Button>("InspectorHideButton")!;
-                Assert.Equal("Back to page", back.Content);
-                HeadlessClick.Click(window, back, "Back to page");
+                Assert.Equal("Back to Page", back.Content);
+                HeadlessClick.Click(window, back, "Back to Page");
                 PageScreenshots.Settle(window);
                 Assert.True(region.IsEffectivelyVisible);
                 Assert.Same(content, working.Content);
@@ -71,43 +73,9 @@ public sealed class FocusedInspectorFrameTests
         }, TimeSpan.FromMinutes(2));
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ClosingANarrowObjectRestoresThePreviousPaneChoice(bool previouslyOpen)
+    private sealed class DetailsPane : IWorkspacePaneProvider
     {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var (workspace, window) = FakeComposedWindow.Create();
-            try
-            {
-                window.Width = 640;
-                window.Height = 600;
-                workspace.PageModel<SettingsPageModel>().Settings!.ZoomPercent = 150;
-                window.Show();
-                PageScreenshots.Settle(window);
-                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
-                var working = host.FindControl<ContentControl>("WorkingPageHost")!;
-                var region = Assert.IsType<Grid>(working.GetVisualParent());
-                var content = working.Content;
-                if (previouslyOpen)
-                    HeadlessClick.Click(window, host.FindControl<Button>("InspectorStrip")!, "Show Inspector");
-                host.SetObjectInspectorOpen(true);
-                host.ShowInspector();
-                PageScreenshots.Settle(window);
-                Assert.False(region.IsVisible);
-                host.SetObjectInspectorOpen(false);
-                PageScreenshots.Settle(window);
-                Assert.Equal(previouslyOpen, host.FindControl<Border>("InspectorPane")!.IsVisible);
-                Assert.Equal(!previouslyOpen, region.IsVisible);
-                Assert.Same(content, working.Content);
-            }
-            finally
-            {
-                window.Close();
-                await workspace.DisposeAsync();
-            }
-        }, TimeSpan.FromMinutes(2));
+        public Control InspectorContent { get; } = new Border();
     }
 
     private static void Capture(Window window, int width, int zoom, bool dark)

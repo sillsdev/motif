@@ -148,6 +148,10 @@ internal sealed class WritingSystemSettingsRow : ObservableObject
 
 internal sealed partial class SettingsViewModel : ObservableObject
 {
+    /// <summary>The assistant connection controls, when a desktop workspace supplies them.</summary>
+    [ObservableProperty]
+    private AssistantConnectionsViewModel? _assistantConnections;
+
     private readonly IUserPreferencesStore _preferences;
     private readonly IDefaultProposalChecksStore _defaultChecks;
     private StoredAnalysisComparison _storedAnalyses;
@@ -156,7 +160,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
     private readonly ShortcutEntry[] _shortcutCatalog;
     private readonly ProblemReport _windowReport;
     private readonly bool _panGlossExecutableFound;
-    private readonly OverviewPageModel _overview;
+    private readonly HealthStripViewModel _overview;
     private string? _writingSystemTargetId;
     private SetupViewModel? _observedSetup;
     private bool _updatingEstimate;
@@ -180,7 +184,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
         ApplicationFacts? applicationFacts = null)
     {
         _workspace = workspace;
-        _overview = workspace.PageModel<OverviewPageModel>();
+        _overview = workspace.Context.Health;
         _preferences = preferences ?? new MemoryUserPreferencesStore();
         _defaultChecks = workspace.Context.DefaultProposalChecks;
         _storedAnalyses = _defaultChecks.StoredAnalyses;
@@ -989,7 +993,7 @@ internal sealed partial class SettingsViewModel : ObservableObject
 
     private void OnOverviewChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName != nameof(OverviewPageModel.Overview)) return;
+        if (args.PropertyName != nameof(HealthStripViewModel.Overview)) return;
         OnPropertyChanged(nameof(ProjectName));
         OnPropertyChanged(nameof(GroupParsingLabel));
         OnPropertyChanged(nameof(ParsingLead));

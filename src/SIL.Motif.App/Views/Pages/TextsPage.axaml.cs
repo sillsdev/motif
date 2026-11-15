@@ -1,108 +1,38 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
+using Avalonia.Data;
 using Avalonia.Markup.Xaml;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views.Shell;
 
 namespace SIL.Motif.App.Views;
 
-/// <summary>The Texts page: Analyze texts and fixed word lists, with shared pending changes above them.</summary>
+/// <summary>The current Selection's text reader and source pane.</summary>
 public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
 {
-    private readonly ContentControl _selectionHost;
+    private readonly Control _sourcePane;
 
-    public TextsPage(TextsPageModel page) : this(page, null)
-    {
-    }
+    /// <summary>Creates the page over the workspace's shared page model.</summary>
+    public TextsPage(WorkspaceContext context) : this(
+        (context ?? throw new ArgumentNullException(nameof(context))).GetOrCreatePage(static owner => new TextsPageModel(owner))) { }
+
+    public TextsPage(TextsPageModel page) : this(page, null) { }
 
     internal TextsPage(TextsPageModel page, SettingsViewModel? settings)
     {
         ArgumentNullException.ThrowIfNull(page);
         DataContext = page;
         AvaloniaXamlLoader.Load(this);
-        _selectionHost = Host("SelectionHost");
-
-        var header = this.FindControl<Grid>("TextsPageHeader")!;
-        var tabs = this.FindControl<WrapPanel>("TextsHeaderTabs")!;
-        var actions = this.FindControl<StackPanel>("TextsHeaderActions")!;
-        bool? actionsOnOwnRow = null;
-        void ArrangeHeader(double width)
+        _sourcePane = new SelectionPanel(page.Selection, page.Words, settings);
+        _sourcePane.Bind(IsEnabledProperty, new Binding(nameof(WorkspaceContext.ProjectAndSelectionEnabled))
         {
-            tabs.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var infinite = new Size(double.PositiveInfinity, double.PositiveInfinity);
-            var visibleActions = actions.Children.OfType<Control>().Where(control => control.IsVisible).ToArray();
-            foreach (var action in visibleActions) action.Measure(infinite);
-            var actionWidth = visibleActions.Sum(action => action.DesiredSize.Width) +
-                Math.Max(0, visibleActions.Length - 1) * actions.Spacing;
-            var onOwnRow = width + 0.5 < tabs.DesiredSize.Width + actionWidth + header.ColumnSpacing;
-            if (actionsOnOwnRow == onOwnRow) return;
-
-            actionsOnOwnRow = onOwnRow;
-            actions.Orientation = onOwnRow ? Orientation.Vertical : Orientation.Horizontal;
-            Grid.SetColumn(tabs, 0);
-            Grid.SetColumnSpan(tabs, onOwnRow ? 2 : 1);
-            Grid.SetColumn(actions, onOwnRow ? 0 : 1);
-            Grid.SetColumnSpan(actions, onOwnRow ? 2 : 1);
-            Grid.SetRow(actions, onOwnRow ? 1 : 0);
-        }
-
-        header.SizeChanged += (_, args) => ArrangeHeader(args.NewSize.Width);
-        actions.SizeChanged += (_, _) => ArrangeHeader(header.Bounds.Width);
-        ArrangeHeader(header.Bounds.Width);
-
-        // The page scrolls instead of squeezing the reader: below the minimum height its rows stay bounded.
-        var analyzeScroll = this.FindControl<ScrollViewer>("AnalyzeTextsScroll")!;
-        var analyzeHost = this.FindControl<Grid>("AnalyzeTextsHost")!;
-        void FitAnalyzeHeight()
-        {
-            if (!this.TryFindResource("Component.TextsPage.AnalyzeMinHeight", out var resource) ||
-                resource is not double minimum) return;
-            analyzeHost.Height = Math.Max(analyzeScroll.Bounds.Height, minimum);
-        }
-        analyzeScroll.SizeChanged += (_, _) => FitAnalyzeHeight();
-        FitAnalyzeHeight();
-
-        var selection = new SelectionPanel(page.Selection, page.Words, settings);
-        _selectionHost.Content = selection;
-        PrepareSidePanel();
-        Host("AnalyzeReaderHost").Content = new ResultsInTextPanel(page.ResultsInText);
-        Lazy("WordListHost", () => new TextWordsPanel(page.Words));
-        Lazy("ListsHost", () => new TextsListsPanel(page.TextsLists));
-        Lazy("DifferenceHost", () => new DifferencePanel(page.Assess.Difference));
-        Lazy("ProposalMovesHost", () => new DifferencePanel(page.ProposalChanges));
-
-        Host("AnalyzeParsePromptHost").Content = new Border
-        {
-            Classes = { "card" },
-            Child = new ParsePrompt { DataContext = page.Context },
-        };
+            Source = page.Context,
+        });
+        this.FindControl<ContentControl>("ReaderHost")!.Content = new ResultsInTextPanel(page.ResultsInText);
     }
 
-    /// <summary>The frame label for the existing Texts selection control.</summary>
-    public string SidePanelTitle => PageRegistry.For(WorkspacePage.Texts).Title;
+    /// <summary>The source pane's title.</summary>
+    public string SidePanelTitle => MotifAppStrings.Texts;
 
-    /// <summary>The existing selection control displayed in the frame's side panel.</summary>
-    public Control SidePanel => _selectionHost;
-
-    private void PrepareSidePanel()
-    {
-        _selectionHost.DataContext = DataContext;
-        _selectionHost.ClearValue(IsVisibleProperty);
-        _selectionHost.ClearValue(WidthProperty);
-        var analyze = this.FindControl<Grid>("AnalyzeTextsHost")!;
-        analyze.Children.Remove(_selectionHost);
-        analyze.ColumnDefinitions = new ColumnDefinitions("*");
-        analyze.ColumnSpacing = 0;
-        foreach (var child in analyze.Children) Grid.SetColumn(child, 0);
-    }
-
-    // A tab's panel is built when its tab is first shown, not when the page is.
-    private void Lazy(string name, Func<Control> build) =>
-        (this.FindControl<LazyContent>(name) ?? throw new InvalidOperationException($"TextsPage.axaml has no element named '{name}'."))
-            .Factory = build;
-
-    private ContentControl Host(string name) =>
-        this.FindControl<ContentControl>(name)
-        ?? throw new InvalidOperationException($"TextsPage.axaml has no element named '{name}'.");
+    /// <summary>The Selection control hosted beside the reader.</summary>
+    public Control SidePanel => _sourcePane;
 }

@@ -2,20 +2,17 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.VisualTree;
 using SIL.Motif.App.Controls;
-using SIL.Motif.App.Services;
 using SIL.Motif.App.Views;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Controls.WordPresentation;
 
 /// <summary>
-/// Presents each morpheme as separate selectable form, gloss and category text, with links and inspection actions.
+/// Presents each morpheme as separate selectable form, gloss and category text, with FieldWorks links.
 /// The parent draws decorative separators between its directly hosted parts.
 /// </summary>
 public sealed class MorphemePanel : Decorator
@@ -460,46 +457,10 @@ public sealed class MorphemePanel : Decorator
             AnchorTip(anchored, part);
         if (last) part.Classes.Add("morphemePanelPartLast");
         if (RevealLinks && morph.HasLink) part.Classes.Add("hoverReveal");
-        if (morph.InspectSubject is not { } reference) return part;
-
-        part.Focusable = true;
-        part.Classes.Add("morphemePanelInspectable");
-        AutomationProperties.SetName(part, $"Inspect {morph.Form}");
-        ToolTip.SetTip(part, $"Show {morph.Form} in the inspector");
-        Point? pressedAt = null;
-        part.AddHandler(PointerPressedEvent, (_, e) =>
-        {
-            pressedAt = e.GetCurrentPoint(part).Properties.IsLeftButtonPressed ? e.GetPosition(part) : null;
-        }, RoutingStrategies.Tunnel, handledEventsToo: true);
-        part.PointerReleased += (_, e) =>
-        {
-            var moved = pressedAt is { } start ? e.GetPosition(part) - start : default;
-            pressedAt = null;
-            if (Math.Abs(moved.X) > 4 || Math.Abs(moved.Y) > 4 ||
-                e.Source is SelectableTextBlock { SelectedText.Length: > 0 } ||
-                e.InitialPressMouseButton != MouseButton.Left || e.Source is Visual source &&
-                source.FindAncestorOfType<HyperlinkButton>(includeSelf: true) is not null)
-                return;
-            part.Focus(NavigationMethod.Pointer);
-            InspectLink.Request(part, reference, morph.Captured);
-            e.Handled = true;
-        };
-        part.KeyDown += OnInspectKeyDown;
         return part;
     }
 
     private sealed record InlineMorphemePart(int Index, bool IsForm);
-
-    [KeyboardShortcutHandler("Morpheme:InspectMorpheme")]
-    private void OnInspectKeyDown(object? sender, KeyEventArgs e)
-    {
-        var entry = KeyboardShortcutRegistry.Find(KeyboardShortcutScope.Morpheme, e.Key, e.KeyModifiers);
-        if (entry?.Behavior != KeyboardShortcutBehavior.InspectMorpheme ||
-            sender is not StackPanel { Tag: ParserReadingMorphViewModel { InspectSubject: { } subject } morph } part ||
-            !KeyboardShortcutRegistry.Allows(entry, KeyboardShortcutRegistry.IsTextInput(e.Source), hasFocusedItem: true)) return;
-        InspectLink.Request(part, subject, morph.Captured);
-        e.Handled = true;
-    }
 
     private Button OverflowButton(int omitted)
     {

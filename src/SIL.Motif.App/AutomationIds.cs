@@ -5,6 +5,43 @@ namespace SIL.Motif.App;
 
 public static class AutomationIds
 {
+    public const string HealthStrip = "motif-health-strip";
+    public const string HealthDetails = "motif-health-details";
+    public const string HealthEnableDiagnostics = "motif-health-enable-diagnostics";
+    public const string ProgressNext = "motif-progress-next";
+    public const string ProgressHeading = "motif-progress-heading";
+    public const string Sources = "motif-sources";
+    public const string Passage = "motif-passage";
+    public const string WordOccurrences = "motif-word-occurrences";
+    public const string GrammarGuide = "motif-grammar-guide";
+    public const string ProposalDocuments = "motif-proposal-documents";
+    public const string ProposalCompare = "motif-proposal-compare";
+    public const string ClaudePanel = "motif-claude-panel";
+    public const string DiagnosticsWarnings = "motif-diagnostics-warnings";
+    public const string DiagnosticsSpeedByRule = "motif-diagnostics-speed-by-rule";
+    public const string WordTrace = "motif-word-trace";
+    public const string SourcesAdd = "motif-sources-add";
+    public const string SourcesList = "motif-sources-list";
+    public const string PassageReader = "motif-passage-reader";
+    public const string PassageKeepAnalysis = "motif-passage-keep-analysis";
+    public const string PassageNextGap = "motif-passage-next-gap";
+    public const string PassageKeepAllLikeThis = "motif-passage-keep-all-like-this";
+    public const string WordDetail = "motif-word-detail";
+    public const string WordAskClaude = "motif-word-ask-claude";
+    public const string WordNotAWord = "motif-word-not-a-word";
+    public const string ProposalsList = "motif-proposals-list";
+    public const string ProposalComments = "motif-proposal-comments";
+    public const string ProposalApply = "motif-proposal-apply";
+    public const string ProposalDecline = "motif-proposal-decline";
+    public const string ProposalCompareFirst = "motif-proposal-compare-first";
+    public const string ProposalCompareSecond = "motif-proposal-compare-second";
+    public const string GrammarGuideSections = "motif-grammar-guide-sections";
+    public const string GrammarGuideDiscussion = "motif-grammar-guide-discussion";
+    public const string ClaudeRequests = "motif-claude-requests";
+    public const string DiagnosticsTabs = "motif-diagnostics-tabs";
+    public const string DiagnosticsWarningDetails = "motif-diagnostics-warning-details";
+    public const string DiagnosticsRuleRows = "motif-diagnostics-rule-rows";
+    public const string ProgressChapters = "motif-progress-chapters";
     public const string MainMenu = "motif-main-menu";
     /// <summary>The ≡ button that opens the menus in a narrow window.</summary>
     public const string MenuButton = "motif-menu-button";
@@ -12,7 +49,6 @@ public static class AutomationIds
     public const string ProjectChip = "motif-project-chip";
     /// <summary>The project card that opens from the chip.</summary>
     public const string ProjectCard = "motif-project-card";
-    public const string ProjectCardSeeWhatChanged = "motif-project-card-see-what-changed";
     public const string ProjectCardChoose = "motif-project-card-choose";
     public const string ProjectCardSettings = "motif-project-card-settings";
     public const string ProjectCardOpenAnother = "motif-project-card-open-another";
@@ -25,49 +61,9 @@ public static class AutomationIds
     public const string SettingsShowHandoff = "motif-settings-show-handoff";
     /// <summary>The button that leaves Settings.</summary>
     public const string SettingsClose = "motif-settings-close";
-    /// <summary>The automation identifier of one finding's row on the Parsimony page.</summary>
-    public static string ForParsimonyFinding(string findingId) => "motif-parsimony-finding-" + findingId;
-
-    /// <summary>The Parsimony page's axis counts, shown once its findings are listed.</summary>
-    public const string ParsimonySummary = "motif-parsimony-summary";
-    /// <summary>The evidence column, shown while a finding is selected.</summary>
-    public const string ParsimonyEvidence = "motif-parsimony-evidence";
-    /// <summary>The automation identifier of one kind-of-finding filter on the Parsimony page.</summary>
-    public static string ParsimonyKindFilter(string measureId) => "motif-parsimony-kind-" + measureId;
-
-    /// <summary>The automation identifier of one decision filter on the Parsimony page.</summary>
-    public static string ParsimonyDecisionFilter(string key) => "motif-parsimony-decision-" + key;
-
-    /// <summary>The Parsimony page's Active and Suppressed tabs.</summary>
-    public const string ParsimonyActiveTab = "motif-parsimony-tab-active";
-    public const string ParsimonySuppressedTab = "motif-parsimony-tab-suppressed";
-    /// <summary>The record type a decision is recorded under, and the reason and question fields.</summary>
-    public const string ParsimonyRecordType = "motif-parsimony-record-type";
-    public const string ParsimonyReason = "motif-parsimony-reason";
-    public const string ParsimonyQuestion = "motif-parsimony-question";
-    /// <summary>The decision actions and the line that says what the last one did.</summary>
-    public const string ParsimonyKeep = "motif-parsimony-keep";
-    public const string ParsimonyDefer = "motif-parsimony-defer";
-    public const string ParsimonyAsk = "motif-parsimony-ask";
-    public const string ParsimonyReturn = "motif-parsimony-return";
-    public const string ParsimonyActionMessage = "motif-parsimony-action-message";
-    /// <summary>The staged-decision link to Review changes.</summary>
-    public const string ParsimonyReviewChanges = "motif-parsimony-review-changes";
-    /// <summary>A finding's decision, shown as the window's chip beside its text.</summary>
-    public const string ParsimonyDecision = "motif-parsimony-decision";
-    /// <summary>The Suppressed decision of one revision.</summary>
-    public static string ForParsimonySuppressed(string revisionId) => "motif-parsimony-suppressed-" + revisionId;
     public const string SelectNewProject = "motif-select-new-project";
     public const string RefreshProject = "motif-refresh-project";
-    public const string AnalyzeTextsTab = "motif-analyze-texts-tab";
-    public const string AnalyzeTextReaderView = "motif-analyze-text-reader-view";
-    public const string AnalyzeWordListView = "motif-analyze-word-list-view";
-    public const string RunAssessment = "motif-run-assessment";
-    public const string EarlierResultsNote = "motif-earlier-results-note";
     public const string SkipSetup = "motif-skip-setup";
-    public const string OverviewSelectionWordCount = "motif-overview-selection-word-count";
-    public const string OverviewSpeed = "motif-overview-speed";
-    public const string OverviewTextCoverage = "motif-overview-text-coverage";
     public const string SetupAddWords = "motif-setup-add-words";
     public const string SetupParserWorkLimit = "motif-setup-parser-work-limit";
     public const string SetupSelectAllTexts = "motif-setup-select-all-texts";
@@ -85,15 +81,6 @@ public static class AutomationIds
     public const string ParseReportProblem = "motif-parse-report-problem";
     public const string ParseAllWordsProgress = "motif-parse-all-words-progress";
     public const string CancelAssessment = "motif-cancel-assessment";
-    public const string ReviewChanges = "motif-review-changes";
-    public const string MeasureChanges = "motif-measure-changes";
-    public const string ReviewPrevious = "motif-review-previous";
-    public const string ReviewNext = "motif-review-next";
-    public const string ReviewKeep = "motif-review-keep";
-    public const string ReviewUndo = "motif-review-undo";
-    public const string ReviewLookedAt = "motif-review-looked-at";
-    public const string ReviewUndoPrompt = "motif-review-undo-prompt";
-    public const string ApplyChanges = "motif-apply-changes";
     public const string WriteHandoff = "motif-write-handoff";
     public const string CancelHandoff = "motif-cancel-handoff";
     public const string HandoffProgress = "motif-handoff-progress";
@@ -101,20 +88,9 @@ public static class AutomationIds
     public const string FreshnessLabel = "motif-freshness-label";
     public const string FreshnessDetail = "motif-freshness-detail";
     public const string ParsePromptText = "motif-parse-prompt-text";
-    public const string HandOffList = "motif-handoff-list";
-    public const string HandOffCheckedWords = "motif-handoff-checked-words";
-    public const string TryWordHandOff = "motif-try-word-handoff";
     public const string DragAllHandoffFiles = "motif-drag-all-handoff-files";
-    public const string ApplyReceipt = "motif-apply-receipt";
-    public const string ApplyConfirm = "motif-apply-confirm";
-    public const string ApplyConfirmCancel = "motif-apply-confirm-cancel";
-    public const string ApplyBackupHelp = "motif-apply-backup-help";
-    public const string TryWordInput = "motif-try-word-input";
-    public const string TryWordRun = "motif-try-word-run";
-    public const string TryWordResult = "motif-try-word-result";
     public const string Pages = "motif-pages";
     public const string ProposalsSetAside = "motif-proposals-set-aside";
-    public const string ProposalsClearFilter = "motif-proposals-clear-filter";
     /// <summary>The button that confirms deleting the selected Proposal.</summary>
     public const string ProposalsConfirmDelete = "motif-proposals-confirm-delete";
     /// <summary>The button that keeps the selected Proposal instead of deleting it.</summary>
@@ -166,30 +142,7 @@ public static class AutomationIds
     public const string ProposalDifferenceMoreWords = "motif-proposal-difference-more-words";
     public const string ProposalDifferenceMorePlaces = "motif-proposal-difference-more-places";
     public const string ProposalDifferenceOpenWord = "motif-proposal-difference-open-word";
-    /// <summary>The bar across the window that names the open Proposal.</summary>
-    public const string ProposalBar = "motif-proposal-bar";
-    /// <summary>The Proposal bar's switch between today's numbers, both, and the Proposal's.</summary>
-    public const string ProposalBarView = "motif-proposal-bar-view";
-    /// <summary>The Proposal bar's button that leaves Proposal mode.</summary>
-    public const string ProposalBarLeave = "motif-proposal-bar-leave";
-    /// <summary>The Proposal bar's button that tries the open Proposal.</summary>
-    public const string ProposalBarTryAgain = "motif-proposal-bar-try-again";
-    /// <summary>The Overview's note on how its numbers read while a Proposal is open.</summary>
-    public const string OverviewProposalNote = "motif-overview-proposal-note";
 
-    /// <summary>The note on the Warnings page that says what is paired with the open Proposal.</summary>
-    public const string WarningsProposalNote = "motif-warnings-proposal-note";
-
-    /// <summary>The note on the Timing page saying what is paired with the open Proposal.</summary>
-    public const string TimingProposalNote = "motif-timing-proposal-note";
-
-    /// <summary>The Texts page's note about what the open Proposal pairs there.</summary>
-    public const string TextsProposalNote = "motif-texts-proposal-note";
-    /// <summary>The Proposals page's grouped table.</summary>
-    public const string ProposalsTable = "motif-proposals-table";
-
-    /// <summary>The "words in Selection" caption under the Overview's first count.</summary>
-    public const string OverviewSelectionLabel = "motif-overview-selection-label";
 
     /// <summary>The Analyze texts reader's Read menu button.</summary>
     public const string ReaderReadMenu = "motif-reader-read-menu";
@@ -201,31 +154,13 @@ public static class AutomationIds
     /// <summary>The text the AI assistants page shows when it finds no supported assistant.</summary>
     public const string AssistantsEmptyText = "motif-assistants-empty-text";
 
-    /// <summary>The word list and its content grid on the Texts matrix, Lists and Review pages and Timing.</summary>
-    public const string ListsWordsSlot = "motif-lists-words-slot";
-    public const string ListsWordsGrid = "motif-lists-words-grid";
-    public const string TimingWordsGrid = "motif-timing-words-grid";
-    public const string ReviewWordsSlot = "motif-review-words-slot";
-    public const string ReviewWordsGrid = "motif-review-words-grid";
-
-    /// <summary>The Review changes page's count heading, and the Apply card's heading and count.</summary>
-    public const string ReviewCountTitle = "motif-review-count-title";
-    public const string ReviewApplyTitle = "motif-review-apply-title";
-    public const string ReviewApplyCount = "motif-review-apply-count";
-
-    /// <summary>The parts of the Texts matrix: a row's label and count, a cell's three lines, the list heading.</summary>
-
-    /// <summary>A word row's Open in text and Try a Word buttons, and the Keep and Undo buttons on a row in the review list.</summary>
+    /// <summary>A word row's Open in Text, Keep and Undo buttons.</summary>
     public const string WordOpenInText = "motif-word-open-in-text";
     public const string WordUndoChange = "motif-word-undo-change";
-    public const string WordTryAWord = "motif-word-try-a-word";
     public const string WordKeepChange = "motif-word-keep-change";
 
     /// <summary>The sentence a pending-change row gives about its word.</summary>
     public const string WordNote = "motif-word-note";
-
-    /// <summary>The Review page's Back button and the group header's Remove button.</summary>
-    public const string ReviewBack = "motif-review-back";
 
     /// <summary>The identifier of one Review group's Undo all button, distinct for each group title.</summary>
     /// <param name="title">The group's title, which is unique within the page.</param>
@@ -246,9 +181,6 @@ public static class AutomationIds
     /// <param name="column">The column's name, such as <c>FieldWorks</c>.</param>
     /// <returns>An identifier shared by that column's heading in every word list.</returns>
     public static string ForWordHeading(string column) => "motif-word-heading-" + column.ToLowerInvariant();
-
-    /// <summary>The Review changes action that declines the open Proposal.</summary>
-    public const string DeclineProposal = "motif-review-decline";
 
     /// <summary>Creates the identifier of the Open button on one Proposal's card.</summary>
     /// <param name="proposalId">The Proposal's canonical id.</param>
@@ -317,16 +249,12 @@ public static class AutomationIds
 
     public static string ForPage(WorkspacePage page) => page switch
     {
-        WorkspacePage.Overview => "motif-page-overview",
+        WorkspacePage.Progress => "motif-page-progress",
+        WorkspacePage.Words => "motif-page-words",
+        WorkspacePage.GrammarGuide => "motif-page-grammar-guide",
+        WorkspacePage.Diagnostics => "motif-page-diagnostics",
         WorkspacePage.Proposals => "motif-page-proposals",
         WorkspacePage.Texts => "motif-page-texts",
-        WorkspacePage.TryAWord => "motif-page-try-a-word",
-        WorkspacePage.Timing => "motif-page-timing",
-        WorkspacePage.Warnings => "motif-page-warnings",
-        WorkspacePage.Parsimony => "motif-page-parsimony",
-        WorkspacePage.Review => "motif-page-review",
-        WorkspacePage.AiHandoff => "motif-page-ai-handoff",
-        WorkspacePage.AiAssistants => "motif-page-ai-assistants",
         WorkspacePage.Settings => "motif-page-settings",
         _ => throw new ArgumentOutOfRangeException(nameof(page), page, "Unknown workspace page."),
     };

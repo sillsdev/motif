@@ -37,15 +37,11 @@ public sealed class ProposalDifferenceMakePanelTests
         var model = new ProposalsPageModel(context);
         await context.OpenProjectAsync(Project);
         await model.DifferenceReading;
-        var host = WorkspaceLayoutHost.ForPage(new ProposalsPage(model));
-        var window = new MotifTestWindow { Width = 1600, Height = 1000, Content = host };
+        var panel = new ProposalDifferencePanel { DataContext = model.Difference };
+        var window = new MotifTestWindow { Width = 1600, Height = 1000, Content = panel };
         window.Show();
         PageScreenshots.Settle(window);
-        var checks = Assert.Single(host.GetVisualDescendants().OfType<Expander>(),
-            expander => expander.Header is TextBlock { Text: var text } && text == MotifAppStrings.ProposalOptionalChecks);
-        checks.IsExpanded = true;
-        PageScreenshots.Settle(window);
-        return (Assert.Single(host.GetVisualDescendants().OfType<ProposalDifferencePanel>()), window);
+        return (panel, window);
     }
 
     private static Control Named(ProposalDifferencePanel panel, string name) => panel.FindControl<Control>(name)!;

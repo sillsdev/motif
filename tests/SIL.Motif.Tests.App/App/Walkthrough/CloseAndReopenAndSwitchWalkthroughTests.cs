@@ -61,7 +61,7 @@ public sealed class CloseAndReopenAndSwitchWalkthroughTests(PristineProjectFixtu
                 "switching to a fresh project did not automatically capture its Baseline and open setup");
             reopenedWalkthrough.SkipSetup();
             Assert.Single(reopenedWalkthrough.Workspace.Selection.Texts);
-            Assert.False(reopenedWalkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
+            Assert.False(reopenedWalkthrough.Workspace.Assess.RunCommand.CanExecute(null));
             Assert.False(reopenedWalkthrough.Workspace.Context.HasEvidence);
             Assert.Equal("Nothing selected yet.", reopenedWalkthrough.Workspace.Selection.SummaryText);
 

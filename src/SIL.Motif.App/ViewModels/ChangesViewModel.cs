@@ -813,7 +813,8 @@ public sealed partial class ChangeViewModel(string kind, string word, string rea
     private WordPresentationKey PresentationKey => new($"change:{ChangeId}");
 
     public WorkspacePage OriginPage { get; } = Enum.TryParse<WorkspacePage>(originPage, out var page) &&
-        page != WorkspacePage.Review ? page : WorkspacePage.Texts;
+        page is WorkspacePage.Progress or WorkspacePage.Texts or WorkspacePage.Words or WorkspacePage.GrammarGuide or
+            WorkspacePage.Proposals or WorkspacePage.Diagnostics or WorkspacePage.Settings ? page : WorkspacePage.Texts;
     public string ChangeId { get; } = changeId ?? CanonicalId.Mint().Value;
     public string? GroupId { get; } = groupId;
     public string? WordformId { get; } = wordformId;

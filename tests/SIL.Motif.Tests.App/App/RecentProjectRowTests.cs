@@ -58,7 +58,7 @@ public sealed class RecentProjectRowTests
     }
 
     [Fact]
-    public async Task TheChooserKeepsTheNewestCopyAndShowsItsStoredFieldsAndFolderLink()
+    public async Task TheRecentMenuKeepsTheNewestCopyAndShowsItsStoredFieldsAndFolderLink()
     {
         var folder = Path.Combine(Path.GetTempPath(), "MotifSyntheticTurkic", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
@@ -87,7 +87,7 @@ public sealed class RecentProjectRowTests
         try
         {
             await workspace.Project.LoadKnownProjectsAsync();
-            var recent = Assert.Single(workspace.PageModel<OverviewPageModel>().ChooseProjectRows);
+            var recent = Assert.Single(workspace.RecentProjects);
 
             Assert.Equal(recentPath, recent.FullFwDataPath);
             Assert.Equal(identity, recent.ProjectIdentity);
@@ -120,7 +120,7 @@ public sealed class RecentProjectRowTests
         try
         {
             await workspace.Project.LoadKnownProjectsAsync();
-            var recent = Assert.Single(workspace.PageModel<OverviewPageModel>().ChooseProjectRows);
+            var recent = Assert.Single(workspace.RecentProjects);
 
             Assert.False(recent.CanOpenFolder);
             Assert.False(workspace.OpenRecentProjectFolderCommand.CanExecute(recent.FolderPath));

@@ -47,9 +47,9 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
             await using var workspace = CreateWorkspace(client);
 
             await workspace.Context.OpenProjectAsync(project.FwDataPath);
-            var review = workspace.PageModel<ReviewPageModel>();
-            await review.MeasureCommand.ExecuteAsync(null);
-            Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
+            var apply = workspace.Context.ProposalApply;
+            await workspace.Context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+            Assert.True(apply.CanApply(null, null, null, null));
 
             var before = ProjectSha256(project.FwDataPath);
             var outcome = await RunReconciliationFailureAsync(project.FwDataPath,
@@ -65,24 +65,17 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
 
             await workspace.CheckFreshnessAsync();
 
-            Assert.Equal("apply.reconciliation-needed", review.ApplyRefusal?.Code);
+            Assert.Equal("apply.reconciliation-needed", apply.ApplyRefusal?.Code);
             Assert.Equal("Applying may have completed, but its result could not be confirmed. " +
-                "Check the project before retrying.", review.ApplyRefusal?.Sentence);
-            Assert.Null(review.ShownApplyRefusal);
-            Assert.Equal(ApplyBlockerKind.ReconciliationNeeded, review.ApplyBlockers[0].Kind);
-            Assert.Equal("FieldWorks may already have these changes. Refresh to check.", review.ApplyBlockReason);
-            Assert.Equal("Changes may already be applied", review.CountText);
-            Assert.True(review.ShowsSideCards);
-            Assert.False(review.CanApply);
-            Assert.False(review.ApplyCommand.CanExecute(null));
-
-            Assert.Same(workspace.RefreshCommand, review.RefreshCommand);
-            await review.RefreshCommand!.ExecuteAsync(null);
+                "Check the project before retrying.", apply.ApplyRefusal?.Sentence);
+            Assert.Equal(ApplyBlockerKind.ReconciliationNeeded, apply.Blockers(null, null, workspace.RefreshCommand, null)[0].Kind);
+            Assert.False(apply.CanApply(null, null, workspace.RefreshCommand, null));
+            await workspace.RefreshCommand.ExecuteAsync(null);
 
             Assert.False(ProjectReconciliationMarker.Exists(project.FwDataPath));
-            Assert.False(review.NeedsReconciliation);
-            Assert.DoesNotContain(review.ApplyBlockers, blocker => blocker.Kind == ApplyBlockerKind.ReconciliationNeeded);
-            Assert.DoesNotContain("may already be applied", review.CountText);
+            Assert.False(apply.NeedsReconciliation);
+            Assert.DoesNotContain(apply.Blockers(null, null, workspace.RefreshCommand, null),
+                blocker => blocker.Kind == ApplyBlockerKind.ReconciliationNeeded);
         }, TimeSpan.FromMinutes(3));
         return Task.CompletedTask;
     }
@@ -127,7 +120,7 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
                 var client = RealCommandClient.Create(project.ManagedRoot, parser, appRunner);
                 await using var workspace = CreateWorkspace(client);
                 await workspace.Context.OpenProjectAsync(project.FwDataPath);
-                var review = workspace.PageModel<ReviewPageModel>();
+                var apply = workspace.Context.ProposalApply;
                 var originalBaselineToken = workspace.Baseline.Token;
                 var originalFit = Assert.Single(workspace.Context.Changes.Snapshot.FitSummary);
                 var before = expectedExitCode == 4 ? ProjectSha256(project.FwDataPath) : null;
@@ -199,14 +192,13 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
                         Assert.Equal(originalFit.Status, refreshedFit.Status);
                         Assert.Equal(originalFit.Reasons, refreshedFit.Reasons);
                         Assert.Single(workspace.Context.Changes.Items);
-                        await review.MeasureCommand.ExecuteAsync(null);
-                        Assert.True(review.MeasurementRefusal is null,
-                            $"The retry check did not complete: {review.MeasurementRefusal?.Sentence ?? review.ApplyBlockReason} {review.MeasurementRefusal?.Details} {review.MeasurementRefusal?.ReportDetails}");
-                        Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
+                        await workspace.Context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+                        Assert.Null(workspace.Context.PendingMeasurement.Refusal);
+                        Assert.True(apply.CanApply(null, null, null, null));
                         break;
                     case 4:
-                        Assert.Equal("apply.reconciliation-needed", review.ApplyRefusal?.Code);
-                        Assert.False(review.ApplyCommand.CanExecute(null));
+                        Assert.Equal("apply.reconciliation-needed", apply.ApplyRefusal?.Code);
+                        Assert.False(apply.CanApply(null, null, null, null));
                         break;
                 }
             }

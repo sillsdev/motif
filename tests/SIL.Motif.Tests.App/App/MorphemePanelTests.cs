@@ -3,6 +3,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.Media;
 using SIL.Motif.App.Controls;
 using SIL.Motif.App.Controls.WordPresentation;
@@ -20,7 +21,7 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
     private const string EntryLink = "silfw://localhost/link?database%3dp%26tool%3dlexiconEdit%26guid%3dx%26tag%3d";
 
     [Fact]
-    public void PartsKeepSelectableTextWritingSystemsLinksAndInspectorBehavior()
+    public void PartsKeepSelectableTextWritingSystemsAndFieldWorksLinks()
     {
         avalonia.Invoke(() =>
         {
@@ -45,9 +46,6 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
             var parts = Assert.IsType<WrapPanel>(panel.Child);
             var part = Assert.Single(parts.Children.OfType<StackPanel>());
             Assert.Same(morph, part.Tag);
-            Assert.True(part.Focusable);
-            Assert.Equal("Inspect كِتَاب", AutomationProperties.GetName(part));
-            Assert.Equal("Show كِتَاب in the inspector", ToolTip.GetTip(part));
 
             var form = Assert.IsType<CopyableTextBlock>(part.Children[0]);
             var gloss = Assert.IsType<CopyableTextBlock>(part.Children[1]);
@@ -68,23 +66,17 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
             Assert.Contains("revealLink", link.Classes);
             Assert.Contains("revealOnHover", link.Classes);
 
-            var window = new MotifTestWindow { Content = panel, Width = 500, Height = 200 };
-            try
-            {
-                window.Show();
-                window.UpdateLayout();
-                var requested = new List<InspectorSubject>();
-                window.AddHandler(InspectLink.RequestedEvent, (_, e) => requested.Add(e.Subject));
-                part.RaiseEvent(new KeyEventArgs
-                    { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, Source = part });
-
-                Assert.Equal(morph.InspectSubject, Assert.Single(requested));
-            }
-            finally
-            {
-                window.Close();
-            }
         });
+    }
+
+    [Theory]
+    [InlineData("https://example.org/object")]
+    [InlineData("not a URI")]
+    public void UnverifiedLinksAreNotOfferedAsFieldWorksTargets(string url)
+    {
+        var morph = new ParserReadingMorphViewModel(new ParserReadingMorph("form", "gloss", "n", null, false, url));
+        Assert.Null(morph.Link);
+        Assert.False(morph.HasLink);
     }
 
     [Fact]
@@ -230,7 +222,7 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void InspectableMorphemesAcceptGapClicksAndKeyboardButIgnoreNestedLinks()
+    public void MorphemeTextKeepsOnlyItsRecordedFieldWorksLink()
     {
         avalonia.Invoke(() =>
         {
@@ -243,8 +235,6 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
             var morph = new ParserReadingMorphViewModel(source);
             var panel = new MorphemePanel { Morphs = [morph] };
             var window = new MotifTestWindow { Content = panel, Width = 320, Height = 120 };
-            var requests = new List<InspectRequestedEventArgs>();
-            window.AddHandler(InspectLink.RequestedEvent, (_, e) => requests.Add(e));
             try
             {
                 window.Show();
@@ -253,31 +243,9 @@ public sealed class MorphemePanelTests(AvaloniaHeadlessFixture avalonia)
                 part.Width = 180;
                 window.UpdateLayout();
 
-                var gap = At(part, new Point(part.Bounds.Width - 2, part.Bounds.Height / 2), window);
-                window.MouseMove(gap);
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                Assert.True(part.IsPointerOver);
-                Assert.True(PartBackgroundMatches("Intent.Surface.Hover", part));
-
-                window.MouseDown(gap, MouseButton.Left);
-                window.MouseUp(gap, MouseButton.Left);
-                Assert.Equal(morph.InspectSubject, Assert.Single(requests).Subject);
-
-                requests.Clear();
-                Assert.True(part.Focus(NavigationMethod.Tab));
-                part.RaiseEvent(new KeyEventArgs
-                    { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, Source = part });
-                Assert.Equal(morph.InspectSubject, Assert.Single(requests).Subject);
-
-                requests.Clear();
+                Assert.False(part.Focusable);
                 var link = Assert.Single(part.Children.OfType<HyperlinkButton>());
-                using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
-                var releaseProperties = new PointerPointProperties(
-                    RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased);
-                link.RaiseEvent(new PointerReleasedEventArgs(
-                    link, pointer, window, new Point(link.Bounds.Width / 2, link.Bounds.Height / 2),
-                    1, releaseProperties, KeyModifiers.None, MouseButton.Left));
-                Assert.Empty(requests);
+                Assert.Equal(new Uri(EntryLink), link.NavigateUri);
             }
             finally
             {

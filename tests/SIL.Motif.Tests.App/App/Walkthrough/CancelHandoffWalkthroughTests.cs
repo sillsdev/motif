@@ -41,11 +41,11 @@ public sealed class CancelHandoffWalkthroughTests(PristineProjectFixture pristin
                 var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
                 FakeParser.BehaveBesideExecutable(parserPath, new { heartbeatPath, processIdPath });
-                walkthrough.ShowPage(WorkspacePage.AiHandoff);
+                walkthrough.ShowPage(WorkspacePage.Settings);
                 walkthrough.Click("Write the AI Handoff folder");
                 walkthrough.WaitUntil(
                     () => File.Exists(heartbeatPath) && File.Exists(processIdPath) &&
-                        walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Running,
+                        walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State == RunState.Running,
                     WalkthroughSteps.Remaining(deadline), "the Handoff importer did not start");
                 var processId = int.Parse(File.ReadAllText(processIdPath));
                 Assert.True(PanglossProcesses.AnyAlive(parserPath, [processId]));
@@ -53,12 +53,12 @@ public sealed class CancelHandoffWalkthroughTests(PristineProjectFixture pristin
                     "Cancel the running AI Handoff").IsEffectivelyEnabled);
                 walkthrough.Click("Cancel the running AI Handoff");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Cancelled &&
+                    () => walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State == RunState.Cancelled &&
                         !PanglossProcesses.AnyAlive(parserPath, [processId]),
                     WalkthroughSteps.Remaining(deadline), "the Handoff cancellation did not unwind");
                 Assert.False(PanglossProcesses.AnyAlive(parserPath, [processId]),
                     "the cancelled Handoff left its PanGloss process alive");
-                Assert.Equal("handoff.cancelled", walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Code);
+                Assert.Equal("handoff.cancelled", walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Refusal?.Code);
                 Assert.False(Directory.Exists(outputDirectory));
                 AssertNoGrammarFiles(handoffParent);
                 Assert.Equal(RunState.Completed, walkthrough.Workspace.Assess.State);
@@ -67,13 +67,13 @@ public sealed class CancelHandoffWalkthroughTests(PristineProjectFixture pristin
                 FakeParser.BehaveBesideExecutable(parserPath, new { });
                 walkthrough.Click("Write the AI Handoff folder");
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
+                    () => walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(deadline), "the retried Handoff did not complete");
 
-                Assert.Equal(RunState.Completed, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State);
+                Assert.Equal(RunState.Completed, walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State);
                 Assert.True(File.Exists(Path.Combine(outputDirectory, "grammar.json")));
-                Assert.NotEmpty(walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Files);
-                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Result!.InvocationId);
+                Assert.NotEmpty(walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files);
+                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Result!.InvocationId);
                 Assert.Equal(retainedBeforeHandoff.Count,
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 return Task.CompletedTask;

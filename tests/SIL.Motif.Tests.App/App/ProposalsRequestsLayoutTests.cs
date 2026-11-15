@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
+using SIL.Motif.App.Views.Shell;
 using SIL.Motif.Contract.Responses;
 using Xunit;
 
@@ -49,18 +51,23 @@ public sealed class ProposalsRequestsLayoutTests
                 {
                     LayoutInvariantFixtures.Apply(window, cell);
                     PageScreenshots.Settle(window);
-                    var scroller = window.GetVisualDescendants().OfType<ScrollViewer>()
-                        .Single(control => control.Name == "ProposalsRequestsScroll");
-                    var proposals = window.GetVisualDescendants().OfType<ListBox>()
-                        .Single(control => control.Name == "ProposalsRowsItems");
+                    var page = window.PageView<ProposalsPage>();
+                    var scroller = Assert.Single(page.GetVisualDescendants().OfType<ScrollViewer>(),
+                        control => control.IsEffectivelyVisible);
                     Assert.True(scroller.Viewport.Height >= 20, $"{cell}: Request viewport is too small: {scroller.Viewport.Height}");
                     Assert.True(scroller.Extent.Height > scroller.Viewport.Height, $"{cell}: Requests do not scroll");
+                    scroller.Offset = new Vector(0, scroller.Extent.Height);
+                    Assert.True(scroller.Offset.Y > 0, $"{cell}: Requests cannot scroll");
+                    var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                    host.ShowSidePanel();
+                    PageScreenshots.Settle(window);
+                    var proposals = Assert.Single(host.GetVisualDescendants().OfType<ListBox>(),
+                        control => control.Name == "ProposalsRowsItems");
                     Assert.True(proposals.IsEffectivelyVisible && proposals.Bounds.Height > 0, $"{cell}: no Proposal list");
                     var bounds = new Rect(proposals.Bounds.Size).TransformToAABB(proposals.TransformToVisual(window)!.Value);
                     Assert.True(bounds.Top < window.ClientSize.Height && bounds.Bottom <= window.ClientSize.Height + 1,
                         $"{cell}: Proposal list is outside the window: {bounds}");
-                    scroller.Offset = new Vector(0, scroller.Extent.Height);
-                    Assert.True(scroller.Offset.Y > 0, $"{cell}: Requests cannot scroll");
+                    host.ShowWorkingPage();
                 }
             }
             finally { window.Close(); }

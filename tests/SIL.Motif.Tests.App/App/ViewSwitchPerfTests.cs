@@ -24,8 +24,8 @@ public sealed class PerfFactAttribute : FactAttribute
 }
 
 /// <summary>
-/// Measures the first activation of every page and Texts tab, then warm tours at two window sizes, with the
-/// "Motif.Ui" trace on. Initial Overview construction has a separate trace sample. The trace goes to
+/// Measures the first activation of every page, then warm tours at two window sizes, with the
+/// "Motif.Ui" trace on. Initial Progress construction has a separate trace sample. The trace goes to
 /// <c>MOTIF_PERF_TRACE</c> (default: a file in the temp folder); <c>tools/Summarize-MotifTrace.ps1</c> turns it into
 /// the baseline table. The window renders with Skia software drawing and the frame is driven by hand, so the
 /// first-frame figure is the render pass and not a GPU present.
@@ -38,14 +38,12 @@ public sealed class ViewSwitchPerfTests
     private static readonly (int Width, int Height, int Zoom)[] Sizes = [(1280, 800, 100), (640, 600, 150)];
     private static readonly string[] ColdTargets =
     [
-        "page:Texts", "tab:AnalyzeTexts", "tab:Lists", "tab:WhatChanged", "page:TryAWord", "page:Timing",
-        "page:Warnings", "page:Review", "page:AiHandoff", "page:AiAssistants", "page:Proposals", "page:Settings",
+        "page:Texts", "page:Words", "page:GrammarGuide", "page:Proposals", "page:Diagnostics", "page:Settings",
     ];
     private static readonly string[] WarmTargets =
     [
-        "page:Overview", "page:Texts", "tab:AnalyzeTexts", "tab:Lists", "tab:WhatChanged", "page:TryAWord",
-        "page:Timing", "page:Warnings", "page:Review", "page:AiHandoff", "page:AiAssistants", "page:Proposals",
-        "page:Settings",
+        "page:Progress", "page:Texts", "page:Words", "page:GrammarGuide", "page:Proposals",
+        "page:Diagnostics", "page:Settings",
     ];
 
     [PerfFact]
@@ -85,8 +83,9 @@ public sealed class ViewSwitchPerfTests
                 {
                     PageScreenshots.Settle(window);
                     await Quiet(window);
-                    Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
-                    MatrixCaptureState.Assert(window, workspace, WorkspacePage.Overview, null);
+                    workspace.Context.Diagnostics = true;
+                    Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
+                    MatrixCaptureState.Assert(window, workspace, WorkspacePage.Progress, null);
                     Assert.Equal((double)width, window.Width);
                     Assert.Equal((double)height, window.Height);
                     Assert.Equal(zoom, preferences.Current.ZoomPercent);
@@ -105,7 +104,7 @@ public sealed class ViewSwitchPerfTests
                             foreach (var (name, page, tab) in PageScreenshots.Views().Skip(1))
                             {
                                 await Switch(workspace, window, name, page, tab);
-                                if (name != "2b-texts-analyze") continue;
+                                if (name != "2-texts") continue;
                                 MatrixCaptureState.Assert(window, workspace, WorkspacePage.Texts,
                                     TextsTab.AnalyzeTexts);
                                 MotifTrace.RunLabel = $"seed {size}";
@@ -113,15 +112,9 @@ public sealed class ViewSwitchPerfTests
                                 MotifTrace.RunLabel = $"cold {size}";
                             }
 
-                            MotifTrace.RunLabel = $"seed {size}";
-                            await PageScreenshots.TryTheSampleWord(workspace);
-                            await WaitForFirstFrame(window, "Try a Word after sample seeding");
-                            await Quiet(window);
                             continue;
                         }
 
-                        MotifTrace.RunLabel = $"prepare {size}";
-                        workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
                         MotifTrace.RunLabel = $"warm {size}";
                         foreach (var (name, page, tab) in PageScreenshots.Views())
                             await Switch(workspace, window, name, page, tab);
@@ -162,7 +155,7 @@ public sealed class ViewSwitchPerfTests
             ms = Math.Round(sample.Milliseconds, 3),
             label = sample.Label,
             kind = "initial",
-            to = WorkspacePage.Overview.ToString(),
+            to = WorkspacePage.Progress.ToString(),
         }));
         File.AppendAllLines(path, lines);
     }
@@ -202,12 +195,7 @@ public sealed class ViewSwitchPerfTests
             ReferenceEqualityComparer.Instance as IEqualityComparer<Avalonia.Visual>);
         using var wall = MotifTrace.Begin("harness.click-to-frame");
         wall?.SetTag("view", name);
-        if (page == WorkspacePage.Texts && workspace.CurrentPage == WorkspacePage.Texts) texts.Tab = tab;
-        else
-        {
-            if (page == WorkspacePage.Texts) texts.Tab = tab;
-            workspace.SelectedPage = workspace.PageOf(page);
-        }
+        workspace.SelectedPage = workspace.PageOf(page);
 
         var clock = Stopwatch.StartNew();
         var tick = new Stopwatch();

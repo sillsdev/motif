@@ -18,14 +18,14 @@ public sealed class WordRowViewModelTests
 {
     private const string Digest = "sha256:" + "0000000000000000000000000000000000000000000000000000000000000000";
 
-    private static (AssessWordsViewModel Words, CompareViewModel Compare, TextsListsViewModel Lists) Loaded(
+    private static (AssessWordsViewModel Words, CompareViewModel Compare) Loaded(
         IEnumerable<AssessmentWordResult> rows)
     {
         var words = new AssessWordsViewModel();
         words.Load(rows.ToArray());
         var compare = new CompareViewModel();
         compare.Load(words.AllRows);
-        return (words, compare, new TextsListsViewModel(compare));
+        return (words, compare);
     }
 
     private static string Fields(WordRowViewModel row) => JsonSerializer.Serialize(row.Row);
@@ -45,10 +45,9 @@ public sealed class WordRowViewModelTests
     }
 
     [Fact]
-    public void OneWordYieldsIdenticalRowFieldsFromTheMatrixListsAndTiming()
+    public void OneWordYieldsIdenticalRowFieldsFromTheAssessmentAndClassifier()
     {
-        var (words, compare, lists) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);
-        var reachedFromLists = 0;
+        var (words, compare) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);
 
         foreach (var word in MatrixListsWindowWordsTests.EveryKindOfWord)
         {
@@ -63,16 +62,7 @@ public sealed class WordRowViewModelTests
             Assert.Equal(placed.Meaning, matrix.Meaning);
             Assert.Equal(placed.Tone, matrix.Tone);
 
-            var list = lists.Lists.FirstOrDefault(candidate =>
-                candidate.Cells.Contains(new TextsListCell(placed.Row, placed.Column)));
-            if (list is null) continue;
-            lists.SelectListCommand.Execute(list);
-            var listed = compare.Words.Single(row => row.Word == word.Word).WordRow;
-            Assert.Equal(Fields(timing), Fields(listed));
-            reachedFromLists++;
         }
-
-        Assert.True(reachedFromLists >= 5, $"Only {reachedFromLists} words were reachable from Lists.");
     }
 
     public static IEnumerable<object[]> EveryStandingAndColumn() =>
@@ -227,23 +217,20 @@ public sealed class WordRowViewModelTests
     }
 
     [Fact]
-    public void TheThreeNextStepsAreAlwaysThere_AndOpenTheWordWhereEachSays()
+    public void WordActionsOpenTheRecordedWord()
     {
         var opened = new List<string>();
-        var tried = new List<string>();
-        var routes = new WordRowRoutes { OpenInText = opened.Add, TryWord = tried.Add };
+        var routes = new WordRowRoutes { OpenInText = opened.Add };
         var row = new WordRowViewModel(Alikula(), routes);
 
-        Assert.Equal((MotifAppStrings.WordRowOpenInText, "Try a Word", "Word Analyses ↗"),
-            (row.OpenInTextLabel, row.TryWordLabel, row.WordAnalysesLabel));
+        Assert.Equal((MotifAppStrings.WordRowOpenInText, "Word Analyses ↗"),
+            (row.OpenInTextLabel, row.WordAnalysesLabel));
         Assert.Equal("Open alikula in Word Analyses", row.WordAnalysesName);
         Assert.Equal(new Uri("silfw://localhost/link?database%3dp%26tool%3dAnalyses"), row.WordAnalysesLink);
 
         row.OpenInTextCommand.Execute(null);
-        row.TryWordCommand.Execute(null);
 
         Assert.Equal(["alikula"], opened);
-        Assert.Equal(["alikula"], tried);
     }
 
     [Fact]
@@ -252,7 +239,7 @@ public sealed class WordRowViewModelTests
         var routes = new WordRowRoutes { OpenInText = _ => { } };
         var row = new WordRowViewModel(Alikula(), routes);
 
-        Assert.Equal("Open alikula in Analyze texts", row.OpenInTextAutomationName);
+        Assert.Equal("Open alikula in Texts", row.OpenInTextAutomationName);
 
         routes.HasTexts = false;
 
@@ -295,7 +282,7 @@ public sealed class WordRowViewModelTests
     [Fact]
     public void AnUnreadWordSaysSo_AndAReadOneShowsNothing()
     {
-        var (words, _, _) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);
+        var (words, _) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);
         var row = words.Find("approved-kept")!.WordRow;
         Assert.Null(row.IsUnread);
         Assert.False(row.ShowUnread);
@@ -333,7 +320,7 @@ public sealed class WordRowViewModelTests
             var source = new TextWordsResponse([],
                 [new TextLines(Guid.Parse("dddddddd-0000-0000-0000-000000000001"), "Text", [line])], true);
             await using var fixture = new SelectionModelFixture(client);
-            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, client, client.ReaderOwner);
+            var inText = new ResultsInTextViewModel(texts, assess, _ => { }, changes, client, client.ReaderOwner);
             await texts.SetProjectAsync(projectPath);
             client.AssessCompletesWith(SelectionModelFixture.WithOrigins(new AssessCommandResponse(
                 new BaselineCaptureResponse(new BaselineToken("p", Digest, "1", "2026-09-05T00:00:00Z", Digest),
@@ -369,14 +356,14 @@ public sealed class WordRowViewModelTests
     [Fact]
     public void TheRoutesTheWordsListHoldsReachEveryRow()
     {
-        var (words, compare, _) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);
-        var tried = new List<string>();
-        words.Routes.TryWord = tried.Add;
+        var (words, compare) = Loaded(MatrixListsWindowWordsTests.EveryKindOfWord);
+        var opened = new List<string>();
+        words.Routes.OpenInText = opened.Add;
         var (cellRow, cellColumn) = CompareViewModel.Place(words.Find("nobody")!);
         compare.SelectCells([new TextsListCell(cellRow, cellColumn)]);
 
-        compare.Words.Single(row => row.Word == "nobody").WordRow.TryWordCommand.Execute(null);
+        compare.Words.Single(row => row.Word == "nobody").WordRow.OpenInTextCommand.Execute(null);
 
-        Assert.Equal(["nobody"], tried);
+        Assert.Equal(["nobody"], opened);
     }
 }

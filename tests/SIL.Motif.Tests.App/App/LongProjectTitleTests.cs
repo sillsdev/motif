@@ -55,9 +55,8 @@ public sealed class LongProjectTitleTests
                 window.Width = width;
                 window.Height = height;
                 settings.ZoomPercent = zoom;
-                workspace.CurrentPage = WorkspacePage.Warnings;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 PageScreenshots.Settle(window);
-                Assert.True(workspace.ShowsChooseWhatToParseAction);
                 Assert.Empty(window.VisibleChooseWhatToParseButtonsOutsideProjectCard());
                 var chip = ProjectCardAccess.Chip(window);
                 var refresh = window.FindInWindowOrWorkspace<Button>("RefreshIconButton")!;

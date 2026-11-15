@@ -112,7 +112,6 @@ public sealed class WalkthroughWindow : IDisposable
         Workspace = composition.Workspace;
         Workspace.Context.Diagnostics = true;
         // A real parser would spend minutes producing a Parsimony Report that most walkthroughs never look at.
-        Workspace.PageModel<ParsimonyPageModel>().AutomaticProduction = advancedAiModePreferences?.IsEnabled == true;
     }
 
     public MainWindow Window { get; }
@@ -228,7 +227,7 @@ public sealed class WalkthroughWindow : IDisposable
         WaitUntil(() => !Workspace.IsProjectOpening && Workspace.Context.EvidencePublication.IsCompleted &&
             (Workspace.Baseline.HasBaseline || Workspace.Baseline.ShownRefusal is not null ||
                 Workspace.Context.Setup?.IsOpen == true ||
-                Workspace.PageModel<OverviewPageModel>().Overview is not null) &&
+                Workspace.Context.Health.Overview is not null) &&
             Workspace.Context.Setup?.ConfigurationLoadTask?.IsCompleted != false,
             timeout, why,
             () => $"IsProjectOpening='{Workspace.IsProjectOpening}', " +
@@ -296,6 +295,18 @@ public sealed class WalkthroughWindow : IDisposable
     public MenuItem ProjectMenuEntry(string name) => Window.FindInWindowOrWorkspace<MenuItem>(name)
         ?? throw new InvalidOperationException($"The File menu has no item named '{name}'.");
 
+    /// <summary>The Selection pane owned by the Texts page.</summary>
+    public SelectionPanel SelectionPane
+    {
+        get
+        {
+            var pane = AllControls().OfType<SelectionPanel>().SingleOrDefault();
+            if (pane is not null) return pane;
+            ShowPage(WorkspacePage.Texts);
+            return AllControls().OfType<SelectionPanel>().Single();
+        }
+    }
+
     /// <summary>The one control named <paramref name="name"/>, wherever it sits: each page's view has names of its own.</summary>
     public T Named<T>(string name) where T : Control =>
         FindNamed<T>(name);
@@ -303,12 +314,6 @@ public sealed class WalkthroughWindow : IDisposable
     private T FindNamed<T>(string name) where T : Control
     {
         var control = AllControls().OfType<T>().SingleOrDefault(candidate => candidate.Name == name);
-        if (control is null && name == "SelectionHost")
-        {
-            ShowPage(WorkspacePage.Texts);
-            ShowTextsTab(TextsTab.AnalyzeTexts);
-            control = AllControls().OfType<T>().SingleOrDefault(candidate => candidate.Name == name);
-        }
         if (control is null && name == "StoreDeletionQuestion")
         {
             OpenNoticeDetailsFlyoutIfAvailable();
@@ -718,7 +723,7 @@ public sealed class WalkthroughWindow : IDisposable
         }
     }
 
-    // A person reaches a control on another page through the sidebar, and one on another tab by its tab.
+    // A person reaches a control on another page through the sidebar.
     private void ShowStageOwning(Control control)
     {
         var owners = control.GetLogicalAncestors().OfType<Control>().Select(ancestor => ancestor.Name).ToList();
@@ -727,36 +732,28 @@ public sealed class WalkthroughWindow : IDisposable
         if (page is not { } owning) return;
 
         ShowPage(owning);
-        if (owning != WorkspacePage.Texts) return;
-
-        if (owners.Contains("ListsHost")) ShowTextsTab(TextsTab.Lists);
-        else if (owners.Contains("SelectionHost") || owners.Contains("ResultsInTextHost")) ShowTextsTab(TextsTab.AnalyzeTexts);
     }
 
-    /// <summary>Opens a Texts page tab the way a person does, by its tab above the page.</summary>
+    /// <summary>Checks that a walkthrough asks for the retained Texts reader.</summary>
     public void ShowTextsTab(TextsTab tab)
     {
-        if (Workspace.PageModel<TextsPageModel>().Tab == tab) return;
-
-        var name = tab switch
-        {
-            TextsTab.AnalyzeTexts => "Analyze texts tab",
-            TextsTab.Lists => "Lists tab",
-            _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, null),
-        };
-        ClickControl(Find<Button>(name), name);
-        Window.UpdateLayout();
-        Pump();
-        Assert.Equal(tab, Workspace.PageModel<TextsPageModel>().Tab);
+        if (tab != TextsTab.AnalyzeTexts) throw new ArgumentOutOfRangeException(nameof(tab), tab, null);
     }
 
     /// <summary>Opens a page the way a person does, by its entry in the sidebar.</summary>
     public void ShowPage(WorkspacePage page)
     {
-        if (page == WorkspacePage.AiHandoff)
+        if (page == WorkspacePage.Settings)
         {
             SettingsTestAccess.Model(Window).ShowHandoffByCopyingFiles = true;
-            page = WorkspacePage.AiAssistants;
+            if (Workspace.CurrentPage != page)
+            {
+                ClickControl(FindNamed<Button>("SettingsButton"), "Settings");
+                Window.UpdateLayout();
+                Pump();
+            }
+            Assert.Equal(page, Workspace.CurrentPage);
+            return;
         }
         if (Workspace.CurrentPage == page) return;
 
@@ -790,18 +787,13 @@ public sealed class WalkthroughWindow : IDisposable
     private void RealizeEveryStage()
     {
         var opening = Workspace.CurrentPage;
-        foreach (var page in Enum.GetValues<WorkspacePage>())
+        foreach (var page in PageRegistry.Entries.Where(entry => Workspace.Context.CanOpenPage(entry.Page)))
         {
-            Workspace.CurrentPage = page;
-            foreach (var tab in Enum.GetValues<TextsTab>())
-            {
-                Workspace.PageModel<TextsPageModel>().Tab = tab;
-                Window.UpdateLayout();
-                Pump();
-            }
+            Workspace.CurrentPage = page.Page;
+            Window.UpdateLayout();
+            Pump();
         }
 
-        Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
         Workspace.CurrentPage = opening;
         Window.UpdateLayout();
     }
@@ -858,11 +850,10 @@ public sealed class WalkthroughWindow : IDisposable
             $"Assess.Refusal?.Message='{Workspace.Assess.Refusal?.Message}', " +
             $"Assess.Progress='{Workspace.Assess.Progress}', " +
             $"Refresh.IsRunning='{Workspace.RefreshCommand.IsRunning}', " +
-            $"Overview.loaded='{Workspace.PageModel<OverviewPageModel>().Overview is not null}', " +
-            $"Overview.refusal='{Workspace.PageModel<OverviewPageModel>().OverviewRefusal?.Sentence}', " +
-            $"Handoff.State='{Workspace.PageModel<AiHandoffPageModel>().Handoff.State}', " +
-            $"Handoff.Refusal?.Message='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal?.Message}', " +
-            $"Handoff.Progress='{Workspace.PageModel<AiHandoffPageModel>().Handoff.Progress}', " +
+            $"Overview.loaded='{Workspace.Context.Health.Overview is not null}', " +
+            $"Handoff.State='{Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State}', " +
+            $"Handoff.Refusal?.Message='{Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Refusal?.Message}', " +
+            $"Handoff.Progress='{Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Progress}', " +
             $"project='{Workspace.Project.KnownProjects.Count}' known projects, " +
             OpenFailureText.Describe(Workspace), Pump, minimumPasses);
 

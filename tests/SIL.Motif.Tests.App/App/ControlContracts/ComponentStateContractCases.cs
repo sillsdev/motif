@@ -148,17 +148,6 @@ internal static class ComponentStateContractCases
         yield return new("Button.filterChip.active TextBlock.chipCount", "selected", ChipWithCount,
             StateStimulus.None, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Primary");
 
-        const string viewFace = "Border.proposalBar ListBox.proposalBarView ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter";
-        yield return new(viewFace, "selected", ProposalViewSwitch, StateStimulus.None, StatePart.Face,
-            ContentPresenter.BackgroundProperty, "Intent.Proposal.Text");
-        yield return new("Border.proposalBar ListBox.proposalBarView ListBoxItem:selected :is(TextBlock)", "selected",
-            ProposalViewSwitch, StateStimulus.None, StatePart.Text, TextBlock.ForegroundProperty, "Intent.Proposal.Fill");
-        yield return new(viewFace, "selected and keyboard focus", ProposalViewSwitch, StateStimulus.KeyboardFocus,
-            StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
-        yield return new("Border.proposalBar ListBox.proposalBarView ListBoxItem", "unselected and keyboard focus",
-            () => ProposalViewSwitch(focusUnselected: true), StateStimulus.KeyboardFocus, StatePart.Ring,
-            Border.BorderBrushProperty, "Intent.Focus");
-
         const string revealFocus = ":is(Button).revealControl:focus-visible";
         yield return new(revealFocus, "keyboard focus", () => Alone(Press("revealControl", "revealButton")),
             StateStimulus.KeyboardFocus, StatePart.Self, Button.BackgroundProperty, "Intent.Surface.Hover");
@@ -194,28 +183,6 @@ internal static class ComponentStateContractCases
             StatePart.Self, Panel.BackgroundProperty, "Intent.Surface.Hover");
         yield return new("Border.morph.inspectable:pointerover", "hover", () => Alone(BorderMorpheme()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
-        yield return new("Border.overviewTile:pointerover", "hover", () => Alone(new Border
-        {
-            Classes = { "overviewTile" }, Width = 200, Height = 80,
-            Child = new TextBlock { Text = "Summary" },
-        }),
-            StateStimulus.Pointer, StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
-        foreach (var (how, stimulus) in Hovers)
-        {
-            yield return new($"Button.overviewTile:{how}" + face, how, () => Alone(Press("overviewTile")), stimulus,
-                StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Hover");
-            yield return new($"Button.overviewTile:{how}" + face, how, () => Alone(Press("overviewTile")), stimulus,
-                StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Border");
-        }
-
-        const string overviewRowHover = "Button.overviewTableRow:pointerover /template/ ContentPresenter#PART_ContentPresenter";
-        yield return new(overviewRowHover, "hover", () => Alone(Press("overviewTableRow")), StateStimulus.Pointer,
-            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Hover");
-
-        const string lookFirstHover = "Button.overviewLookFirstRow:pointerover /template/ ContentPresenter#PART_ContentPresenter";
-        yield return new(lookFirstHover, "hover", () => Alone(Press("overviewLookFirstRow")), StateStimulus.Pointer,
-            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Hover");
-
         yield return new("Button.viewChip.active", "selected", () => Alone(Press("viewChip", "active")), StateStimulus.None,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Neutral");
         yield return new("Button.viewChip.active", "selected under the pointer", () => Alone(Press("viewChip", "active")),
@@ -257,21 +224,6 @@ internal static class ComponentStateContractCases
         yield return new("Button.tab.active", "selected and keyboard focus", () => Alone(Press("tab", "active")),
             StateStimulus.KeyboardFocus, StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
 
-        foreach (var (how, stimulus) in Hovers)
-        {
-            yield return new($"Button.timingRuleRow:{how}" + face, how, () => Alone(Press("timingRuleRow")), stimulus,
-                StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Hover");
-            yield return new($"Button.timingRuleRow:{how}" + face, how, () => Alone(Press("timingRuleRow")), stimulus,
-                StatePart.Face, ContentPresenter.BorderBrushProperty, "Intent.Border");
-            yield return new($"Button.timingRuleRow.chosen:{how}" + face, $"selected and {how}",
-                () => Alone(Press("timingRuleRow", "chosen")), stimulus, StatePart.Face, ContentPresenter.BackgroundProperty,
-                "Intent.Selected.Fill");
-        }
-        yield return new("Button.timingRuleRow.chosen", "selected", () => Alone(Press("timingRuleRow", "chosen")), StateStimulus.None,
-            StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Selected.Fill");
-        yield return new("Button.timingRuleRow.chosen", "selected and keyboard focus", () => Alone(Press("timingRuleRow", "chosen")),
-            StateStimulus.KeyboardFocus, StatePart.Ring, Border.BorderBrushProperty, "Intent.Focus");
-
         yield return new("ToolTip:open :is(TextBlock)", "open", OpenTip, StateStimulus.None, StatePart.Self,
             TextBlock.ForegroundProperty, "Intent.Tooltip.Text");
         yield return new("ToolTip:open :is(TextBlock)", "open", OpenTip, StateStimulus.None, StatePart.Self,
@@ -302,9 +254,6 @@ internal static class ComponentStateContractCases
         const string warningSummaryPressed = "Button.warningSummary:pressed" + face;
         yield return new(warningSummaryPressed, "pressed", () => Alone(Press("warningSummary")), StateStimulus.Press,
             StatePart.Face, ContentPresenter.BackgroundProperty, "Intent.Surface.Subtle");
-
-        yield return new("Button.parsimonyTab.selected", "selected", () => Alone(Press("parsimonyTab", "selected")),
-            StateStimulus.None, StatePart.Self, Button.BackgroundProperty, "Intent.Surface.Subtle");
 
         yield return new(":is(Border).wordStrip:pointerover", "hover", () => Alone(Strip()), StateStimulus.Pointer,
             StatePart.Self, Border.BackgroundProperty, "Intent.Surface.Hover");
@@ -467,7 +416,7 @@ internal static class ComponentStateContractCases
     }
 
     private static Button NextAction(Control row) => NextHost(row).Children.OfType<WrapPanel>().Single().Children.OfType<Button>()
-        .First(button => button.Classes.Contains("wordPresentationNextAction") && Equals(button.Content, "Try a Word"));
+        .First(button => button.Classes.Contains("wordPresentationNextAction") && button.IsEnabled);
 
     private static Grid RowShell(Control row) => (Grid)((Border)((UserControl)row).Content!).Child!;
 
@@ -555,19 +504,6 @@ internal static class ComponentStateContractCases
         return (owner, button);
     }
 
-    private static (Control, Control) ProposalViewSwitch() => ProposalViewSwitch(focusUnselected: false);
-
-    private static (Control, Control) ProposalViewSwitch(bool focusUnselected)
-    {
-        var list = new ListBox { Classes = { "proposalBarView" } };
-        var chosen = new ListBoxItem { Content = "Today" };
-        var other = new ListBoxItem { Content = "Proposal" };
-        list.Items.Add(chosen);
-        list.Items.Add(other);
-        list.SelectedIndex = 0;
-        return (new Border { Classes = { "proposalBar" }, Child = list }, focusUnselected ? other : chosen);
-    }
-
     private static (Control, Control) Entry(bool collapsed, bool selected)
     {
         var list = new ListBox { Classes = { "sidebar" } };
@@ -647,15 +583,21 @@ internal static class TooltipOwners
     internal static IReadOnlyList<TooltipOwner> All { get; } =
     [
         new("navigation badge", "Views/MotifWorkspaceView.axaml", "{Binding BadgeTip}", TooltipScene.Overview,
-            control => control is Border && control.Classes.Contains("pageBadge")),
+            control => control is Border && control.Classes.Contains("pageBadge"))
+        {
+            Pending = "the sample has no page badge to show",
+        },
         new("opinion mark", "OpinionMark.cs", "name", TooltipScene.WordCard,
-            control => control is OpinionMark && control.FindAncestorOfType<ReviewPanel>() is null &&
+            control => control is OpinionMark &&
                 (control.FindAncestorOfType<WordCard>() is null || control.GetVisualAncestors().OfType<Border>()
                     .Any(border => border.Classes.Contains("wordPresentationCardHeader")))),
-        new("mark chip", "Views/MarkChip.cs", "Mark?.Word", TooltipScene.TryAWordRecordedDetails,
+        new("mark chip", "Views/MarkChip.cs", "Mark?.Word", TooltipScene.WordCard,
             control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is null &&
                 !control.GetVisualAncestors().OfType<Border>()
-                .Any(border => border.Name == "WordStrip")),
+                .Any(border => border.Name == "WordStrip"))
+        {
+            Pending = "the sample's open word card does not show a mark chip",
+        },
         new("parse all words", "Views/ProjectCardView.axaml", "Parse the words you chose.", TooltipScene.Overview,
             control => control is Button && Name(control) == "Parse all words")
         {
@@ -670,22 +612,6 @@ internal static class TooltipOwners
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.ProjectCardSettings)
         {
             Pending = "the button is in the project card's pop-up; ProjectCardTests opens it",
-        },
-        new("proposal bar view switch", "Views/MainWindow.axaml", "{Binding ProposalBar.ViewTooltip}", TooltipScene.Overview,
-            control => control is ListBox && AutomationProperties.GetAutomationId(control) == AutomationIds.ProposalBarView)
-        {
-            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalViewSwitchTests reads the tip",
-        },
-        new("proposal bar name", "Views/MainWindow.axaml", "{Binding ProposalBar.Name}", TooltipScene.Overview,
-            control => control is TextBlock && control.Classes.Contains("proposalBarName"))
-        {
-            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalViewSwitchTests reads the tip",
-        },
-        new("proposal bar sentence", "Views/MainWindow.axaml", "{Binding ProposalBar.Sentence}", TooltipScene.Overview,
-            control => control is TextBlock && !control.Classes.Contains("proposalBarName") &&
-                control.GetVisualAncestors().OfType<Border>().Any(bar => bar.Classes.Contains("proposalBar")))
-        {
-            Pending = "the bar shows only while a Proposal is open, which no tooltip scene opens; ProposalViewSwitchTests reads the tip",
         },
         new("refresh", "Views/MainWindow.axaml", "Refresh", TooltipScene.Overview,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.RefreshProject),
@@ -703,10 +629,6 @@ internal static class TooltipOwners
         new("status selection summary", "Views/MotifWorkspaceView.axaml", "{Binding SelectionSummaryText}", TooltipScene.FrameStatus,
             control => control is CopyableTextBlock &&
                 AutomationProperties.GetAutomationId(control) == AutomationIds.SidebarSelectionSummary),
-        new("status changes", "Views/MotifWorkspaceView.axaml", "{Binding ChangesTip}",
-            TooltipScene.FrameStatus, control => control is Button && Name(control) == "Review changes not applied yet"),
-        new("status warnings", "Views/MotifWorkspaceView.axaml", "{Binding WarningsTip}",
-            TooltipScene.FrameStatus, control => control is Button && Name(control) == "Open Warnings"),
         new("status parse progress", "Views/MotifWorkspaceView.axaml", "{Binding ActiveParseProgress.StatusText}",
             TooltipScene.ParseProgress, control => control is Button && Name(control) == "See parse progress"),
         new("project notice summary", "Views/MotifWorkspaceView.axaml.cs", "message", TooltipScene.FrameNotice,
@@ -723,13 +645,13 @@ internal static class TooltipOwners
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.HelpButton),
         new("Settings", "Views/MotifWorkspaceView.axaml", "Settings (Ctrl+,)", TooltipScene.CollapsedSidebar,
             control => control is Button && AutomationProperties.GetAutomationId(control) == AutomationIds.SettingsButton),
-        new("collapsed sidebar entry", "Views/MotifWorkspaceView.axaml", "{Binding RailTip}", TooltipScene.CollapsedSidebar,
+        new("collapsed sidebar entry", "Views/MotifWorkspaceView.axaml", "{Binding Title}", TooltipScene.CollapsedSidebar,
             control => control is ListBoxItem && control.FindAncestorOfType<ListBox>() is { } list &&
                 list.Classes.Contains("sidebar")),
         new("recent project", "Views/MainWindow.axaml.cs", "recent.FullFwDataPath", TooltipScene.OpenRecent,
             control => control is MenuItem && control.Name != "ConfigureMenuItem" &&
                 AutomationProperties.GetAutomationId(control) != AutomationIds.MenuButton),
-        new("filter chip label", "Views/FilterChip.cs", "string.IsNullOrEmpty(Label) ? null : Label", TooltipScene.Statistics,
+        new("filter chip label", "Views/FilterChip.cs", "string.IsNullOrEmpty(Label) ? null : Label", TooltipScene.Matrix,
             control => control is FilterChip),
         new("word cell", "Controls/WordPresentation/WordRow.cs", "facts.SummaryWith(data.WithProposal)", TooltipScene.Matrix,
             control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationForm") &&
@@ -739,7 +661,10 @@ internal static class TooltipOwners
                 control.FindAncestorOfType<WordRow>() is not null),
         new("elapsed word time", "Controls/WordPresentation/WordRow.cs", "timeText", TooltipScene.Timing,
             control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationTime") &&
-                control.FindAncestorOfType<WordRow>() is not null),
+                control.FindAncestorOfType<WordRow>() is not null)
+        {
+            Pending = "the retained Words page does not show the retired Timing row",
+        },
         new("places in a word row", "Controls/WordPresentation/WordRow.cs", "facts.PlacesTooltip", TooltipScene.Matrix,
             control => control is CopyableTextBlock && control.Classes.Contains("wordPresentationPlaces") &&
                 control.FindAncestorOfType<WordRow>() is not null),
@@ -812,204 +737,26 @@ internal static class TooltipOwners
         },
         new("FieldWorks link on a morpheme", "Controls/WordPresentation/MorphemePanel.cs", "name", TooltipScene.WordCard,
             control => control is HyperlinkButton && control.Classes.Contains("morphemePanelLink")),
-        new("morpheme that opens the inspector", "Controls/WordPresentation/MorphemePanel.cs", "$\"Show {morph.Form} in the inspector\"",
-            TooltipScene.WordCard, control => control is StackPanel && control.Classes.Contains("morphemePanelInspectable")),
         new("morpheme overflow", "Controls/WordPresentation/MorphemePanel.cs", "$\"Show all {source}\"", TooltipScene.Matrix,
-            control => control is Button && control.Classes.Contains("morphemePanelOverflow")),
-        new("closing the inspector", "Views/Inspector.axaml", "Close (Esc steps back)", TooltipScene.WordCard,
-            control => control is Button && control.Classes.Contains("inspectorClose"))
+            control => control is Button && control.Classes.Contains("morphemePanelOverflow"))
         {
-            Pending = "no tooltip scene opens the inspector",
-        },
-        new("freshness of the inspector's facts", "Views/Inspector.axaml", "{Binding FreshnessTip}", TooltipScene.WordCard,
-            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<Inspector>() is not null)
-        {
-            Pending = "no tooltip scene opens the inspector",
-        },
-        new("freshness of what the inspected object is", "Views/Inspector.axaml", "{Binding FreshnessTip}", TooltipScene.WordCard,
-            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<Inspector>() is not null)
-        {
-            Pending = "no tooltip scene opens the inspector",
-        },
-        new("FieldWorks link in the inspector", "Views/Inspector.axaml", "{Binding LinkName}", TooltipScene.WordCard,
-            control => control is HyperlinkButton && control.Classes.Contains("revealLink") &&
-                control.FindAncestorOfType<Inspector>() is not null)
-        {
-            Pending = "no tooltip scene opens the inspector",
-        },
-        new("pending change on a list chip", "Views/TextsListsPanel.axaml", "{Binding PendingChangeStatus}", TooltipScene.ListsStaged,
-            control => control is Ellipse && control.Classes.Contains("freshDot") && control.FindAncestorOfType<TextsListsPanel>() is not null),
-        new("the list's sentence", "Views/TextsListsPanel.axaml", "{Binding Lists.SelectedList.Sentence}", TooltipScene.Lists,
-            control => control is TextBlock && ToolTip.GetTip(control) is not null &&
-                control.GetVisualAncestors().OfType<DockPanel>().Any(panel => panel.Name == "ListHeader")),
-        new("Parse again on a list", "Views/TextsListsPanel.axaml", "{Binding Lists.ParseAgainHelpText}", TooltipScene.Lists,
-            control => control is Button && Name(control) == "Parse the selected list's stopped and unparsed words again")
-        {
-            Pending = "the Lists scene opens a list with no stopped or unparsed words, so Parse again is hidden",
+            Pending = "the sample has no word with enough morphemes to show overflow",
         },
         new("word list summary", "Views/TextWordsPanel.axaml", "{Binding Words.SummaryText}", TooltipScene.AnalyzeWordList,
             control => control is CopyableTextBlock && control.Classes.Contains("wordListSummary") &&
                 control.FindAncestorOfType<TextWordsPanel>() is not null),
-        new("Review count title", "Views/ReviewPanel.axaml", "{Binding CountText}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock &&
-                AutomationProperties.GetAutomationId(control) == AutomationIds.ReviewCountTitle)
-        {
-            Pending = "the staged Review scene does not show the count heading",
-        },
-        new("Review all changes menu", "Views/ReviewPanel.axaml", "Review all changes", TooltipScene.ReviewStaged,
-            control => control is Button && control.Classes.Contains("denseTableMenu") && Name(control) == "Review all changes"),
-        new("Review group note", "Views/ReviewPanel.axaml", "{Binding NoteTip}", TooltipScene.ReviewStaged,
-            control => control is TextBlock { DataContext: ReviewChangeGroupViewModel } &&
-                control.Classes.Contains("denseTableGroupName"))
-        {
-            Pending = "the staged Review scene has only ordinary groups, which carry no note",
-        },
-        new("Review grammar row title", "Views/ReviewPanel.axaml", "{Binding Review.Title}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock
-                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: true } entry } } text &&
-                control.Classes.Contains("denseTableItem") && text.Text == entry.Title)
-        {
-            Pending = "the staged sample holds no grammar change",
-        },
-        new("Review grammar row summary", "Views/ReviewPanel.axaml", "{Binding Review.Summary}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock
-                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: true } entry } } text &&
-                !control.Classes.Contains("denseTableItem") && text.Text == entry.Summary)
-        {
-            Pending = "the staged sample holds no grammar change",
-        },
-        new("Review row word", "Views/ReviewPanel.axaml", "{Binding Review.Change.Word}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock
-                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: not null } } } &&
-                control.Classes.Contains("denseTableItem") && control.FindAncestorOfType<ReviewPanel>() is not null),
-        new("Review row looked at", "Views/ReviewPanel.axaml", "Looked at", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock
-                { DataContext: ReviewListEntryViewModel { Review.IsGrammar: false } } && Name(control) == "Looked at" &&
-                control.FindAncestorOfType<ReviewPanel>() is not null)
-        {
-            Pending = "the staged sample has no change marked as looked at",
-        },
-        new("Review grammar row looked at", "Views/ReviewPanel.axaml", "Looked at", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock
-                { DataContext: ReviewListEntryViewModel { Review.IsGrammar: true } } && Name(control) == "Looked at" &&
-                control.FindAncestorOfType<ReviewPanel>() is not null)
-        {
-            Pending = "the staged sample holds no grammar change",
-        },
-        new("Review opinion now", "Views/ReviewPanel.axaml", "{Binding Review.Change.StagedTransition.Now}", TooltipScene.ReviewStaged,
-            control => control is OpinionMark
-                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: { } change } } } &&
-                ToolTip.GetTip(control) as string == change.StagedTransition.Now &&
-                control.FindAncestorOfType<ReviewPanel>() is not null)
-        {
-            Pending = "the staged Review scene does not show the opinion column",
-        },
-        new("Review opinion after Apply", "Views/ReviewPanel.axaml", "{Binding Review.Change.StagedTransition.AfterApply}", TooltipScene.ReviewStaged,
-            control => control is OpinionMark
-                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: { } change } } } &&
-                ToolTip.GetTip(control) as string == change.StagedTransition.AfterApply &&
-                ToolTip.GetTip(control) as string != change.StagedTransition.Now &&
-                control.FindAncestorOfType<ReviewPanel>() is not null)
-        {
-            Pending = "the staged Review scene does not show the opinion column",
-        },
-        new("Review opinion change text", "Views/ReviewPanel.axaml", "{Binding Review.Change.TransitionText}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock
-                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: { } change } } } text &&
-                text.Text == change.TransitionText && control.FindAncestorOfType<ReviewPanel>() is not null)
-        {
-            Pending = "the staged Review scene does not show the opinion column",
-        },
-        new("Review grammar effect", "Views/ReviewPanel.axaml", "{Binding Review.TableOutcomeText}", TooltipScene.ReviewStaged,
-            control => control is CopyableTextBlock
-                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: true } entry } } text &&
-                text.Text == entry.TableOutcomeText && control.FindAncestorOfType<ReviewPanel>() is not null)
-        {
-            Pending = "the staged sample holds no grammar change",
-        },
-        new("Review row location", "Views/ReviewPanel.axaml", "{Binding Review.Change.Presentation.PendingChange.WhereText}",
-            TooltipScene.ReviewStaged, control => control is CopyableTextBlock
-                { DataContext: ReviewListEntryViewModel { Review: { IsGrammar: false, Change: { } change } } } text &&
-                text.Text == change.Presentation.PendingChange?.WhereText &&
-                control.FindAncestorOfType<ReviewPanel>() is not null)
-        {
-            Pending = "the staged Review scene does not show the location column",
-        },
-        new("Review row fit", "Views/ReviewPanel.axaml", "{Binding Review.TableFitDescription}", TooltipScene.ReviewStaged,
-            control => control is Border { DataContext: ReviewListEntryViewModel { Review.IsGrammar: false } } &&
-                control.Classes.Contains("reviewFitTag") && control.FindAncestorOfType<ReviewPanel>() is not null),
-        new("Review grammar row fit", "Views/ReviewPanel.axaml", "{Binding Review.TableFitDescription}", TooltipScene.ReviewStaged,
-            control => control is Border { DataContext: ReviewListEntryViewModel { Review.IsGrammar: true } } &&
-                control.Classes.Contains("reviewFitTag") && control.FindAncestorOfType<ReviewPanel>() is not null)
-        {
-            Pending = "the staged sample holds no grammar change",
-        },
-        new("Review Inspector Word Analyses", "Views/ReviewInspector.axaml", "{Binding Listed.Row.WordAnalysesTip}",
-            TooltipScene.ReviewStaged, control => control is HyperlinkButton { DataContext: ChangeViewModel } &&
-                control.Classes.Contains("reviewLink") &&
-                control.FindAncestorOfType<ReviewInspector>() is not null),
-        new("Try a Word analysis that could not be shown", "Views/TryWordPanel.axaml", "{Binding ProjectionErrorText}",
-            TooltipScene.TryAWordRecordedDetails, control => control is StackPanel { DataContext: TraceAnalysisViewModel } &&
-                control.FindAncestorOfType<TryWordPanel>() is not null && ToolTip.GetTip(control) is string { Length: > 0 }),
-        new("Try a Word attempt stop", "Views/TryWordPanel.axaml", "{Binding StopReason}", TooltipScene.TryAWordRecordedDetails,
-            control => control is CopyableTextBlock { DataContext: TraceCandidateViewModel } &&
-                control.FindAncestorOfType<TryWordPanel>() is not null)
-        {
-            Pending = "the recorded-details scene does not list the attempts that got furthest",
-        },
-        new("Parsimony group heading", "Views/Pages/ParsimonyPage.axaml", "{Binding Label}", TooltipScene.Overview,
-            control => control is TextBlock { DataContext: DenseTableGroup } && control.FindAncestorOfType<ParsimonyPage>() is not null)
-        {
-            Pending = "the sample window shows no Parsimony findings, which need Advanced AI mode",
-        },
-        new("Proposals group heading", "Views/Pages/ProposalsPage.axaml", "{Binding Label}", TooltipScene.Overview,
-            control => control is TextBlock { DataContext: DenseTableGroup } && control.FindAncestorOfType<ProposalsPage>() is not null)
-        {
-            Pending = "the sample window has no scene on the Proposals page",
-        },
-        new("Proposal name", "Views/Pages/ProposalsPage.axaml", "{Binding Label}", TooltipScene.Overview,
-            control => control is TextBlock { DataContext: ProposalCardViewModel } && control.Classes.Contains("denseTableItem"))
-        {
-            Pending = "the sample window has no scene on the Proposals page",
-        },
-        new("Proposal status", "Views/Pages/ProposalsPage.axaml", "{Binding TableStatusText}", TooltipScene.Overview,
-            control => control is TextBlock text && text.DataContext is ProposalCardViewModel card &&
-                text.Text == card.TableStatusText)
-        {
-            Pending = "the sample window has no scene on the Proposals page",
-        },
-        new("Proposal decision facts", "Views/Pages/ProposalsPage.axaml", "{Binding DecisionFacts}", TooltipScene.Overview,
-            control => control is TextBlock text && text.DataContext is ProposalCardViewModel card &&
-                text.Text == card.DecisionFacts)
-        {
-            Pending = "the sample window has no scene on the Proposals page",
-        },
-        new("Proposal Inspector number note", "Views/Pages/ProposalsPage.axaml", "{Binding Note}", TooltipScene.Overview,
-            control => control is CopyableTextBlock { DataContext: ProposalNumber } && control.Classes.Contains("proposalNumber"))
-        {
-            Pending = "the sample window has no scene on the Proposals page",
-        },
-        new("Proposal Coverage cell note", "Views/Pages/ProposalsPage.axaml", "{Binding Coverage.Note}", TooltipScene.Overview,
-            control => ProposalNumberCell(control, column: 4))
-        {
-            Pending = "the sample window has no scene on the Proposals page",
-        },
-        new("Proposal Warnings cell note", "Views/Pages/ProposalsPage.axaml", "{Binding Warnings.Note}", TooltipScene.Overview,
-            control => ProposalNumberCell(control, column: 5))
-        {
-            Pending = "the sample window has no scene on the Proposals page",
-        },
-        new("Proposal Work cell note", "Views/Pages/ProposalsPage.axaml", "{Binding Work.Note}", TooltipScene.Overview,
-            control => ProposalNumberCell(control, column: 6))
-        {
-            Pending = "the sample window has no scene on the Proposals page",
-        },
         new("cancel parsing", "Views/MotifWorkspaceView.axaml", "Cancel keeps the previous results.", TooltipScene.ParseProgress,
             control => control is Button && Name(control) == "Cancel parsing all words"),
         new("expert tree scope", "Views/ExpertTracePanel.axaml", "Turn off to show only the chosen attempt's recorded ancestors and terminal event.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Turn off to show only the chosen attempt's recorded ancestors and terminal event."),
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Turn off to show only the chosen attempt's recorded ancestors and terminal event.")
+        {
+            Pending = "the standalone trace page is retired",
+        },
         new("expert event occurrence", "Views/ExpertTracePanel.axaml", "Select this occurrence to read its recorded details.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Select this occurrence to read its recorded details."),
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Select this occurrence to read its recorded details.")
+        {
+            Pending = "the standalone trace page is retired",
+        },
         new("trimmed trace notation", "Views/DiagnosticPanel.axaml", "{Binding Notation}", TooltipScene.TryAWordRecordedDetails,
             control => control is CopyableTextBlock && control.Classes.Contains("traceNotation") &&
                 control.FindAncestorOfType<DiagnosticPanel>() is not null && ToolTip.GetTip(control) is string)
@@ -1025,27 +772,43 @@ internal static class TooltipOwners
         new("expert input shape", "Views/ExpertTracePanel.axaml", "{Binding InputTip}", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
                 control.FindAncestorOfType<Expander>() is null &&
-                ToolTip.GetTip(control) is string inputTip && inputTip.Contains("input", StringComparison.OrdinalIgnoreCase)),
+                ToolTip.GetTip(control) is string inputTip && inputTip.Contains("input", StringComparison.OrdinalIgnoreCase))
+        {
+            Pending = "the standalone trace page is retired",
+        },
         new("expert output shape", "Views/ExpertTracePanel.axaml", "{Binding OutputTip}", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
                 control.FindAncestorOfType<Expander>() is null &&
-                ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase)),
+                ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase))
+        {
+            Pending = "the standalone trace page is retired",
+        },
         new("expert phonological input shape", "Views/ExpertTracePanel.axaml", "{Binding InputTip}", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
                 control.FindAncestorOfType<Expander>() is { } expander &&
                 AutomationProperties.GetName(expander) == "Expert phonological rules" &&
-                ToolTip.GetTip(control) is string inputTip && inputTip.Contains("input", StringComparison.OrdinalIgnoreCase)),
+                ToolTip.GetTip(control) is string inputTip && inputTip.Contains("input", StringComparison.OrdinalIgnoreCase))
+        {
+            Pending = "the standalone trace page is retired",
+        },
         new("expert phonological output shape", "Views/ExpertTracePanel.axaml", "{Binding OutputTip}", TooltipScene.ExpertTrace,
             control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
                 control.FindAncestorOfType<Expander>() is { } expander &&
                 AutomationProperties.GetName(expander) == "Expert phonological rules" &&
-                ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase)),
+                ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase))
+        {
+            Pending = "the standalone trace page is retired",
+        },
         new("expert subrule index", "Views/ExpertTracePanel.axaml", "The producer's subrule index. No allomorph identity is inferred from it.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "The producer's subrule index. No allomorph identity is inferred from it."),
+            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "The producer's subrule index. No allomorph identity is inferred from it.")
+        {
+            Pending = "the standalone trace page is retired",
+        },
         new("expert environment token", "Views/ExpertTracePanel.axaml", "{Binding Explanation}", TooltipScene.ExpertTrace,
-            control => control is TraceNotationToken { DataContext: EnvironmentToken }),
-        new("earlier timing kind", "Views/TryWordPanel.axaml", "{Binding KindTip}", TooltipScene.TryAWordEarlierTiming,
-            control => control is TextBlock { DataContext: TryWordEarlierRuleTime }),
+            control => control is TraceNotationToken { DataContext: EnvironmentToken })
+        {
+            Pending = "the standalone trace page is retired",
+        },
         new("parser's morphemes", "Views/TraceAnalysesView.axaml", "{Binding LegacyMorphemesTip}", TooltipScene.TryAWordRecordedDetails,
             control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.Surface)
         {
@@ -1063,50 +826,55 @@ internal static class TooltipOwners
         {
             Pending = "Try a Word's compact results replace the recorded-analyses view this scene used to show",
         },
-        new("WORDS column", "Views/Pages/TimingPage.axaml", "How many of these words the parser recorded work for this rule in",
-            TooltipScene.Timing, control => control is CopyableTextBlock { Text: "WORDS" }),
-        new("grammar warning named this rule", "Views/Pages/TimingPage.axaml",
-            "{x:Static vm:TimingRuleRow.GrammarWarningTooltip}", TooltipScene.Timing,
-            control => control is Button && Name(control) == "Open the grammar warning"),
-        new("selected Timing rule name", "Views/Pages/TimingPage.axaml", "{Binding SelectedRuleName}", TooltipScene.Timing,
-            control => control is CopyableTextBlock { Text: "Subject agreement" } &&
-                control.FindAncestorOfType<TimingPage>() is not null),
-        new("Timing share with one side missing", "Views/Pages/TimingPage.axaml", "{Binding Row.ShownShareNote}", TooltipScene.Timing,
-            control => control is CopyableTextBlock { DataContext: TimingKindLegendEntry entry } &&
-                control.FindAncestorOfType<TimingPage>() is not null && ToolTip.GetTip(control) as string == entry.Row.ShownShareNote)
-        {
-            Pending = "a share has a missing side only while a Proposal is open, which no tooltip scene opens",
-        },
         new("completion in detailed statistics", "Views/StatisticsPanel.axaml", "{Binding CompletionStatus}", TooltipScene.Statistics,
-            control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is not null),
+            control => control is MarkChip && control.FindAncestorOfType<StatisticsPanel>() is not null)
+        {
+            Pending = "the retired Statistics table is not hosted by the new pages",
+        },
         new("statistics object name", "Views/StatisticsPanel.axaml", "{Binding Object}", TooltipScene.StatisticsObjects,
             control => control is CopyableTextBlock { DataContext: StatsRowViewModel row } text &&
-                text.Text == row.Object && control.FindAncestorOfType<StatisticsPanel>() is not null),
+                text.Text == row.Object && control.FindAncestorOfType<StatisticsPanel>() is not null)
+        {
+            Pending = "the retired Statistics table is not hosted by the new pages",
+        },
         new("statistics word", "Views/StatisticsPanel.axaml", "{Binding Word}", TooltipScene.Statistics,
             control => control is CopyableTextBlock { DataContext: StatsRowViewModel row } text &&
-                text.Text == row.Word && control.FindAncestorOfType<StatisticsPanel>() is not null),
-        new("statistics heat value", "Views/HeatCell.cs", "TextToolTip", TooltipScene.Statistics,
-            control => control is CopyableTextBlock text && control.GetVisualAncestors().OfType<HeatCell>().Any(cell =>
-                cell.TextToolTip == text.Text && cell.FindAncestorOfType<StatisticsPanel>() is not null)),
+                text.Text == row.Word && control.FindAncestorOfType<StatisticsPanel>() is not null)
+        {
+            Pending = "the retired Statistics table is not hosted by the new pages",
+        },
+        new("statistics attempts", "Views/StatisticsPanel.axaml", "{Binding AttemptsText}", TooltipScene.Statistics,
+            control => control is CopyableTextBlock { DataContext: StatsRowViewModel row } text &&
+                text.Classes.Contains("statisticsValue") && text.Text == row.AttemptsText)
+        {
+            Pending = "the retired Statistics table is not hosted by the new pages",
+        },
+        new("statistics passes", "Views/StatisticsPanel.axaml", "{Binding PassesText}", TooltipScene.Statistics,
+            control => control is CopyableTextBlock { DataContext: StatsRowViewModel row } text &&
+                text.Classes.Contains("statisticsValue") && text.Text == row.PassesText)
+        {
+            Pending = "the retired Statistics table is not hosted by the new pages",
+        },
+        new("statistics parser work", "Views/StatisticsPanel.axaml", "{Binding WorkText}", TooltipScene.Statistics,
+            control => control is CopyableTextBlock { DataContext: StatsRowViewModel row } text &&
+                text.Classes.Contains("statisticsValue") && text.Text == row.WorkText)
+        {
+            Pending = "the retired Statistics table is not hosted by the new pages",
+        },
         new("FieldWorks link in a finding", "Views/GrammarWarningPartsBlock.cs",
             "$\"Open this item in {tool}\"", TooltipScene.Warnings,
             control => control is HyperlinkButton && control.Classes.Contains("warningObjectLink")),
         new("Warnings table named words unavailable", "Views/GrammarPanel.axaml", "{Binding TableNamedWordsNote}", TooltipScene.WarningsTable,
             control => control is CopyableTextBlock && control.FindAncestorOfType<GrammarPanel>() is not null &&
-                ToolTip.GetTip(control) as string == MotifAppStrings.WarningsReachUnavailable),
-        new("Warnings Inspector named words unavailable", "Views/WarningsInspectorPanel.axaml", "{Binding Page.SelectedWarningWordCountNote}",
-            TooltipScene.Warnings, control => control is CopyableTextBlock && control.FindAncestorOfType<WarningsInspectorPanel>() is not null &&
-                ToolTip.GetTip(control) as string == MotifAppStrings.WarningsReachUnavailable),
+                ToolTip.GetTip(control) as string == MotifAppStrings.WarningsReachUnavailable)
+        {
+            Pending = "the Diagnostics page shows recorded warning rows without the retired Warnings table",
+        },
         new("drag all files", "Views/HandoffPanel.axaml", "Drag into a chat. From the keyboard, press Enter to copy the folder path.",
             TooltipScene.Handoff, control => control is Button { Name: "AllFilesButton" }),
         new("question to copy", "Views/HandoffPanel.axaml", "Copy this question", TooltipScene.Handoff,
             control => control is Button && control.Classes.Contains("handoffQuestion")),
     ];
-
-    // A Proposals table number cell: the text block in the numbered column of a Proposal's row.
-    private static bool ProposalNumberCell(Control control, int column) =>
-        control is TextBlock { DataContext: ProposalCardViewModel } && control.Classes.Contains("proposalNumber") &&
-        control.Parent is Control cell && Grid.GetColumn(cell) == column;
 
     private static string? Name(Control control) => Avalonia.Automation.AutomationProperties.GetName(control);
 }

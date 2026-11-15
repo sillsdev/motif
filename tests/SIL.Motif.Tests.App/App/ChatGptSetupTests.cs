@@ -16,7 +16,7 @@ public sealed class ChatGptSetupTests
         var store = new FakeStore();
         var tunnel = new FakeTunnel();
         var context = WorkspaceContextTests.NewContext(new FakeCommandClient(), credentials: store, tunnelClient: tunnel);
-        var page = new AssistantConnectionsPageModel(context) { ChatGptKey = "private-key", ChatGptTunnelId = "tunnel-id" };
+        using var page = new AssistantConnectionsViewModel(context) { ChatGptKey = "private-key", ChatGptTunnelId = "tunnel-id" };
 
         await page.ConnectChatGptCommand.ExecuteAsync(null);
 
@@ -28,6 +28,19 @@ public sealed class ChatGptSetupTests
         Assert.Equal(("private-key", "tunnel-id"), tunnel.Connection);
         page.DisconnectChatGptCommand.Execute(null);
         Assert.True(tunnel.Disconnected);
+    }
+
+    [Fact]
+    public void ConnectionControlsStopObservingTheTunnelOnDispose()
+    {
+        var tunnel = new CountingTunnel();
+        var context = WorkspaceContextTests.NewContext(new FakeCommandClient(), tunnelClient: tunnel);
+        var connections = new AssistantConnectionsViewModel(context);
+
+        Assert.Equal(1, tunnel.Subscribers);
+        connections.Dispose();
+        connections.Dispose();
+        Assert.Equal(0, tunnel.Subscribers);
     }
 
     [Fact]
@@ -486,6 +499,20 @@ public sealed class ChatGptSetupTests
         public string? Read() => Value;
         public bool Write(string credential) { Value = credential; return false; }
         public void Delete() => Value = null;
+    }
+
+    private sealed class CountingTunnel : ITunnelClient
+    {
+        public int Subscribers { get; private set; }
+        public TunnelStatus Status => TunnelStatus.NotConnected;
+        public event Action<TunnelStatus>? StatusChanged
+        {
+            add => Subscribers++;
+            remove => Subscribers--;
+        }
+        public Task ConnectAsync(string key, string tunnelId) => Task.CompletedTask;
+        public void Disconnect() { }
+        public void Dispose() { }
     }
 
     private sealed class FakeTunnel : ITunnelClient

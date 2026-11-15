@@ -1,7 +1,0 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
-             x:Class="SIL.Motif.App.Views.TryAWordPage"
-             x:DataType="vm:TryWordPageModel">
-  <ContentControl x:Name="TryWordPanelHost" />
-</UserControl>

@@ -16,7 +16,6 @@ internal enum KeyboardShortcutScope
     WordList,
     Lists,
     ReviewChanges,
-    Morpheme,
     DiagnosticTree,
     NavigationRail,
     Table,
@@ -66,7 +65,6 @@ internal enum KeyboardShortcutBehavior
     FocusSettingsGroups,
     ShowHelp,
     Back,
-    InspectMorpheme,
     PreviousEntry,
     NextEntry,
     KeepEntry,
@@ -243,7 +241,6 @@ public static class KeyboardShortcutRegistry
             {
                 ResultsTokenViewModel token when token.IsWord => token.Form,
                 WordRowViewModel wordRow => wordRow.Word,
-                ReviewListEntryViewModel entry => entry.Change?.Word,
                 ChangeViewModel change => change.Word,
                 _ => null,
             };
@@ -296,7 +293,6 @@ public static class KeyboardShortcutRegistry
         ShortcutScope.Lists => KeyboardShortcutScope.Lists,
         ShortcutScope.ReviewChanges => KeyboardShortcutScope.ReviewChanges,
         ShortcutScope.DiagnosticTree => KeyboardShortcutScope.DiagnosticTree,
-        ShortcutScope.Morpheme => KeyboardShortcutScope.Morpheme,
         ShortcutScope.NavigationRail => KeyboardShortcutScope.NavigationRail,
         ShortcutScope.Table => KeyboardShortcutScope.Table,
         ShortcutScope.Menu => KeyboardShortcutScope.Menu,

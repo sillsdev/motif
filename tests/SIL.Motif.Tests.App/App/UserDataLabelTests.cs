@@ -21,7 +21,7 @@ public sealed class UserDataLabelTests
             try
             {
                 workspace.Context.OpenPage(WorkspacePage.Texts);
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+
                 const string title = "sample bible_h with a long second part that must wrap rather than be cut off";
                 workspace.Selection.Texts.Add(new TextChoiceViewModel(Guid.NewGuid(), title));
                 PageScreenshots.Settle(window);

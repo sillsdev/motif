@@ -33,7 +33,7 @@ public sealed class SettingsFrameRoutingTests
                 var settings = workspace.PageModel<SettingsPageModel>().Settings!;
                 settings.ZoomPercent = zoom;
                 window.Show();
-                workspace.ShowPageCommand.Execute(WorkspacePage.Timing);
+                workspace.ShowPageCommand.Execute(WorkspacePage.Proposals);
                 PageScreenshots.Settle(window);
                 if (keyboard)
                 {
@@ -67,7 +67,7 @@ public sealed class SettingsFrameRoutingTests
                 PageScreenshots.Settle(window);
                 HeadlessClick.Click(window, back, "Back from Settings");
                 PageScreenshots.Settle(window);
-                Assert.Equal(WorkspacePage.Timing, workspace.CurrentPage);
+                Assert.Equal(WorkspacePage.Proposals, workspace.CurrentPage);
                 Assert.True(window.FindInWindowOrWorkspace<Button>("SettingsButton")!.IsFocused);
             }
             finally

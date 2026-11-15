@@ -33,9 +33,9 @@
                                              TextWrapping="Wrap"
                                              controls:WritingSystemText.Id="{Binding GlossWritingSystem}"
                                              controls:WritingSystemText.StyleName="Normal" />
-                    <views:InspectLink Content="{x:Static app:MotifAppStrings.Inspect}" Subject="{Binding InspectSubject}"
-                                       Captured="{Binding Captured}"
-                                       IsVisible="{Binding InspectSubject, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+                    <HyperlinkButton Content="{x:Static app:MotifAppStrings.BoardOpenInFieldWorks}"
+                                     NavigateUri="{Binding Link}" IsVisible="{Binding HasLink}"
+                                     AutomationProperties.Name="{Binding LinkName}" />
                   </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
@@ -175,82 +175,6 @@
                     </views:ProgressiveItemsControl>
                   </StackPanel>
                 </Border>
-                <Border Classes="wordPresentationCardSection hoverReveal" IsVisible="{Binding HasWhySection}">
-                  <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
-                    <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{Binding WarningSectionHeading}" />
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding NoNamedWarningText}"
-                                             TextWrapping="Wrap" IsVisible="{Binding HasNoNamedWarning}" />
-                    <views:ProgressiveItemsControl x:Name="WordCardNamedWarningDetailsItems"
-                                                   FullItemsSource="{Binding NamedWarningDetails}"
-                                                   IsVisible="{Binding HasNamedWarning}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:NamedWarningCardViewModel">
-                          <DockPanel LastChildFill="True">
-                            <Button DockPanel.Dock="Right" Classes="revealControl revealLink revealOnHover"
-                                    Content="{x:Static app:MotifAppStrings.OpenTheWarning}"
-                                    Command="{Binding $parent[ItemsControl].DataContext.Actions.OpenWarningsCommand}"
-                                    AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenTheGrammarWarningAccessibleName}" />
-                            <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{Binding Message}"
-                                                     IsVisible="{Binding HasMessage}" TextWrapping="Wrap" />
-                          </DockPanel>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </views:ProgressiveItemsControl>
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding NamedMorphemeSentence}"
-                                             IsVisible="{Binding HasNamedMorphemeNames}" />
-                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
-                                IsVisible="{Binding HasOtherWordsUsingMorpheme}">
-                      <views:CopyableTextBlock Classes="muted" Text="{Binding OtherWordsUsingMorphemeHeading}" />
-                      <views:CopyableTextBlock Text="{Binding OtherWordsUsingMorphemeLabel}" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}"
-                                IsVisible="{Binding ShowsWarningCandidates}">
-                      <views:ProgressiveItemsControl x:Name="WordCardMembershipCandidateWarningsItems"
-                                                     FullItemsSource="{Binding MembershipCandidateWarnings}"
-                                                     IsVisible="{Binding HasMembershipCandidateWarnings}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:WarningCandidateViewModel">
-                            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                              <views:CopyableTextBlock Classes="muted" Text="{Binding MembershipLabel}" />
-                              <views:CopyableTextBlock Text="{Binding WordsLabel}" TextWrapping="Wrap" />
-                            </StackPanel>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </views:ProgressiveItemsControl>
-                      <views:ProgressiveItemsControl x:Name="WordCardSpellingCandidateWarningsItems"
-                                                     FullItemsSource="{Binding SpellingCandidateWarnings}"
-                                                     IsVisible="{Binding HasSpellingCandidateWarnings}">
-                        <ItemsControl.ItemTemplate>
-                          <DataTemplate x:DataType="vm:WarningCandidateViewModel">
-                            <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                              <views:CopyableTextBlock Classes="muted" Text="{Binding SpellingLabel}" />
-                              <views:CopyableTextBlock Text="{Binding WordsLabel}" TextWrapping="Wrap" />
-                            </StackPanel>
-                          </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                      </views:ProgressiveItemsControl>
-                    </StackPanel>
-                  </StackPanel>
-                </Border>
-                <Border Classes="wordPresentationCardSection hoverReveal" IsVisible="{Binding HasTimingEvidence}">
-                  <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-                    <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{x:Static app:MotifAppStrings.WorkByRule}" />
-                    <ItemsControl x:Name="WordCardTimingSharesItems" ItemsSource="{Binding TimingShares}"
-                                  IsVisible="{Binding HasTimingShares}">
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:TimingShareViewModel">
-                          <DockPanel LastChildFill="False">
-                            <views:CopyableTextBlock Text="{Binding Name}" />
-                            <views:CopyableTextBlock DockPanel.Dock="Right" Text="{Binding ShareLabel}" />
-                          </DockPanel>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding NotAttributedShareLabel}" />
-                    <views:CopyableTextBlock Classes="muted" Text="{Binding TimingShareBasisLabel}" TextWrapping="Wrap"
-                                             IsVisible="{Binding TimingShareBasisLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                  </StackPanel>
-                </Border>
                 <Border Classes="wordPresentationCardSection last">
                   <StackPanel Spacing="{DynamicResource Intent.Space.Snug}">
                     <views:CopyableTextBlock Classes="wordPresentationCardHeading" Text="{x:Static app:MotifAppStrings.WhatToDo}" />
@@ -261,9 +185,6 @@
                               CommandParameter="{Binding BoundPrimaryAction}" IsVisible="{Binding HasPrimaryAction}"
                               AutomationProperties.Name="{Binding Marking.PrimaryAction.Label, StringFormat='Choose {0} for this word'}" />
                       <views:WordDispositionButtons />
-                      <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.TryAWord}"
-                              Command="{Binding TryWordForTokenCommand}" CommandParameter="{Binding Form}"
-                              IsVisible="{Binding $parent[word:WordCard].Header, Converter={x:Static conv:ObjectConverters.IsNull}}" />
                       <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.MarkAsUnread}"
                               Command="{Binding Actions.MarkTokenUnreadCommand}" CommandParameter="{Binding}"
                               IsVisible="{Binding $parent[word:WordCard].Header, Converter={x:Static conv:ObjectConverters.IsNull}}"

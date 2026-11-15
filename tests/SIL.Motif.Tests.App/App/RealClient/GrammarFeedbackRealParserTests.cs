@@ -1,10 +1,4 @@
-using System.Diagnostics;
 using System.Security.Cryptography;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.VisualTree;
-using SIL.Motif.App;
 using SIL.LCModel;
 using SIL.LCModel.Infrastructure;
 using SIL.Motif.App.ViewModels;
@@ -26,11 +20,10 @@ namespace SIL.Motif.Tests.App.RealClient;
 public sealed class GrammarFeedbackRealParserTests(PristineProjectFixture pristine, ITestOutputHelper output)
 {
     [RealParserFact]
-    public void CheckingGrammarFromWarningsStoresAndPublishesTheRealFinding()
+    public void CheckingGrammarStoresAndPublishesTheRealFinding()
     {
         using var project = ProjectWithAnEmptyRequiredSlot(pristine);
         var parserPath = PanGlossExecutable.TryLocate()!;
-        var deadline = WalkthroughSteps.DeadlineIn(3 * 60);
         output.WriteLine($"Parser: {parserPath}");
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -48,43 +41,20 @@ public sealed class GrammarFeedbackRealParserTests(PristineProjectFixture pristi
             walkthrough.Show();
             var workspace = walkthrough.Workspace;
             await workspace.SetProjectAsync(project.FwDataPath);
-            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-            var page = workspace.PageModel<WarningsPageModel>();
-            walkthrough.WaitUntil(() => page.Grammar.HasChecked && !page.Grammar.IsLoading,
-                WalkthroughSteps.Remaining(deadline), "the automatic grammar check did not complete");
-            Assert.Contains(page.Grammar.Warnings.Findings,
-                finding => finding.Code == GrammarFindingCodes.RequiredSlotEmpty);
+            Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
+            var grammar = workspace.Context.GrammarCheck;
+            Assert.False(grammar.HasChecked);
             Assert.Null(workspace.Context.Evidence.Assessment);
             walkthrough.SkipSetup();
-            walkthrough.ShowPage(WorkspacePage.Warnings);
-            var button = Assert.Single(walkthrough.Window.GetVisualDescendants().OfType<Button>(), candidate =>
-                Avalonia.Automation.AutomationProperties.GetName(candidate) ==
-                    MotifAppStrings.CheckTheGrammarAgainAccessibleName && candidate.IsEffectivelyVisible);
-            var retry = page.Grammar.CheckCommand;
-            Assert.True(button.IsEffectivelyVisible);
-            Assert.True(button.IsEffectivelyEnabled);
-            Assert.Same(retry, button.Command);
-            Assert.True(retry.CanExecute(button.CommandParameter));
-            var centre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2),
-                walkthrough.Window)!.Value;
-            var hit = walkthrough.Window.InputHitTest(centre) as Visual;
-            output.WriteLine($"Before click: point={centre}; target={button.GetType().Name} bounds={button.Bounds}; " +
-                $"hit path={string.Join(" -> ", hit?.GetSelfAndVisualAncestors().Select(item => item.GetType().FullName) ?? [])}");
-            var previousExecution = retry.ExecutionTask;
+            Assert.True(grammar.CheckCommand.CanExecute(null));
+            await grammar.CheckCommand.ExecuteAsync(null);
 
-            HeadlessClick.Click(walkthrough.Window, button, MotifAppStrings.CheckTheGrammarAgainAccessibleName);
-
-            var execution = retry.ExecutionTask;
-            Assert.NotNull(execution);
-            Assert.NotSame(previousExecution, execution);
-            await execution!;
-
-            var refusal = page.Grammar.Refusal;
+            var refusal = grammar.Refusal;
             Assert.True(refusal is null, refusal is null ? null : $"{refusal.Code}: {refusal.Message}");
-            Assert.True(page.Grammar.HasChecked);
-            Assert.False(page.Grammar.IsLoading);
-            Assert.True(page.Grammar.HasBaseline);
-            Assert.Contains(page.Grammar.Warnings.Findings,
+            Assert.True(grammar.HasChecked);
+            Assert.False(grammar.IsLoading);
+            Assert.True(grammar.HasBaseline);
+            Assert.Contains(grammar.Warnings.Findings,
                 finding => finding.Code == GrammarFindingCodes.RequiredSlotEmpty);
             Assert.Contains(workspace.Context.GrammarSummary!.Findings,
                 finding => finding.Code == GrammarFindingCodes.RequiredSlotEmpty);
@@ -99,7 +69,7 @@ public sealed class GrammarFeedbackRealParserTests(PristineProjectFixture pristi
             Assert.True(warnings.Succeeded, warnings.Refusal?.Message);
             Assert.Contains(warnings.Value!.Findings,
                 finding => finding.Code == GrammarFindingCodes.RequiredSlotEmpty);
-            var overview = workspace.PageModel<OverviewPageModel>().Overview;
+            var overview = workspace.Context.Health.Overview;
             Assert.NotNull(overview?.Warnings);
             Assert.Equal(stored.Value.Check.Findings.Count, overview!.Warnings!.Count);
             Assert.Equal(project.SourceSha256,

@@ -47,7 +47,7 @@ public sealed class RunJourneyWalkthroughTests(PristineProjectFixture pristine)
                     WalkthroughSteps.Remaining(deadline), "the first open did not capture a Baseline and open setup");
 
                 Assert.Null(walkthrough.Workspace.Baseline.ShownRefusal);
-                Assert.False(walkthrough.Workspace.PageModel<OverviewPageModel>().SelectionIsUnresolved);
+                Assert.False(walkthrough.Workspace.Context.Health.HasSelectionSummary);
                 Assert.Equal("This Baseline has no Texts.", walkthrough.Workspace.Selection.TextsEmptyMessage);
                 Assert.Empty(walkthrough.Workspace.Selection.Texts);
 
@@ -90,7 +90,7 @@ public sealed class RunJourneyWalkthroughTests(PristineProjectFixture pristine)
                 Assert.False(chooseTexts.IsEffectivelyVisible);
                 walkthrough.Workspace.Context.OpenWord(words[0]);
                 walkthrough.WaitUntil(
-                    () => texts.ShowTextReader && texts.ResultsInText.SelectedToken?.Form == words[0],
+                    () => texts.ResultsInText.SelectedToken?.Form == words[0],
                     TimeSpan.FromSeconds(10), "opening a word without Texts did not show its result");
                 Assert.Equal(words[0], texts.ResultsInText.SelectedToken?.Form);
             }
@@ -99,12 +99,12 @@ public sealed class RunJourneyWalkthroughTests(PristineProjectFixture pristine)
                 project.ManagedRoot, project.FwDataPath, parserPath: parser);
             reopened.Show();
             reopened.WaitUntil(
-                () => reopened.Workspace.PageModel<OverviewPageModel>().HasKnownProjects,
-                TimeSpan.FromSeconds(10), "the Choose a project page did not load Known projects");
-            var chooser = Assert.Single(reopened.Window.GetLogicalDescendants().OfType<OverviewPage>());
-            Assert.True(chooser.Page.ShowChooseProject);
-            var recent = chooser.GetLogicalDescendants().OfType<Button>().Single(button =>
-                AutomationProperties.GetName(button) == "Open MotifTestProj");
+                () => reopened.Workspace.HasRecentProjects,
+                TimeSpan.FromSeconds(10), "the Recent menu did not load Known projects");
+            reopened.Window.OpenFileMenu();
+            reopened.Window.OpenRecentMenu();
+            PageScreenshots.Settle(reopened.Window);
+            var recent = Assert.Single(reopened.Window.RecentProjectItems);
             Assert.True(recent.Focusable);
             recent.Focus();
             Assert.True(recent.IsFocused);
@@ -114,7 +114,7 @@ public sealed class RunJourneyWalkthroughTests(PristineProjectFixture pristine)
                     reopened.Workspace.Baseline.HasBaseline &&
                     !reopened.Workspace.Context.IsOpeningProject,
                 TimeSpan.FromSeconds(15), "the keyboard-accessible recent project did not reopen");
-            Assert.False(chooser.Page.ShowChooseProject);
+            Assert.Equal(project.FwDataPath, reopened.Workspace.Context.ProjectPath);
             return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }

@@ -67,45 +67,15 @@ public sealed class TextsProposalMemoryTests(ITestOutputHelper output)
 
     [SlowScaleFact]
     [Trait("Category", "SlowScale")]
-    public async Task AFlipOverASixHundredEightyEightThousandWordSelectionAlignsTheProposalOnceAndParsesNothing()
+    public void AStoredTrialIndexLooksUpASixHundredEightyEightThousandWordSelection()
     {
         var trial = Trial();
         var summary = MatrixProposalSummary.Of(trial);
-        var indexBefore = GC.GetTotalAllocatedBytes(true);
-        var indexWatch = Stopwatch.StartNew();
-        var rebuilt = ProposalWordIndex.Of(trial, new byte[Words]);
-        output.WriteLine($"MEASURE indexBuildMs={indexWatch.ElapsedMilliseconds} indexAllocated={GC.GetTotalAllocatedBytes(true) - indexBefore} count={rebuilt.Count}");
-        var compare = new CompareViewModel();
-        compare.LoadSources(trial);
-        compare.SelectCells([new(WordProjectStatus.NotPresent, CompareColumnKind.NoParse)]);
-        GC.Collect();
-        var heap = GC.GetTotalMemory(true);
-
-        var sinceLoad = GC.GetTotalAllocatedBytes(true);
+        var before = GC.GetTotalAllocatedBytes(true);
         var watch = Stopwatch.StartNew();
-        compare.ShowProposal(MarkupView.Proposal, MatrixSideState.Held, summary);
-        var first = watch.ElapsedMilliseconds;
-        var firstAllocated = GC.GetTotalAllocatedBytes(true) - sinceLoad;
-        var work = compare.ProposalWork;
-        var listed = compare.Words.Count;
-        var heapAbove = GC.GetTotalMemory(true) - heap;
-
-        sinceLoad = GC.GetTotalAllocatedBytes(true);
-        watch.Restart();
-        foreach (var view in new[] { MarkupView.TodayToProposal, MarkupView.Today, MarkupView.Proposal })
-            compare.ShowProposal(view, MatrixSideState.Held, summary);
-        var flips = watch.ElapsedMilliseconds;
-        var flipsAllocated = GC.GetTotalAllocatedBytes(true) - sinceLoad;
-
-        output.WriteLine($"MEASURE words={Words} firstProposalViewMs={first} firstAllocated={firstAllocated} " +
-            $"heapAboveWhileHeld={heapAbove} threeMoreFlipsMs={flips} threeMoreFlipsAllocated={flipsAllocated} " +
-            $"indexCount={summary.Index.Count} listed={listed}");
+        var found = trial.Count(word => summary.Index.TryFind(word.Word, out _));
+        output.WriteLine($"MEASURE words={Words} lookupMs={watch.ElapsedMilliseconds} lookupAllocated={GC.GetTotalAllocatedBytes(true) - before}");
+        Assert.Equal(Words, found);
         Assert.Equal(Words, summary.Index.Count);
-        Assert.Equal(2, work);
-        Assert.Equal(work, compare.ProposalWork);
-        Assert.Equal(WordListBasis.Proposal, compare.ListBasis);
-        Assert.Equal(Words - (Words + 2) / 3, listed);
-        GC.KeepAlive(trial);
-        await Task.CompletedTask;
     }
 }

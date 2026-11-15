@@ -14,6 +14,30 @@ namespace SIL.Motif.Tests.App;
 public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
 {
     [Fact]
+    public void APageWithoutDetailsDoesNotLeaveAnEmptyInspectorStrip()
+    {
+        avalonia.Invoke(() =>
+        {
+            var host = WorkspaceLayoutHost.ForPage(new PanePage());
+            var window = new MotifTestWindow { Width = 1600, Height = 800, Content = host };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                host.ShowInspector();
+                host.Page = new Border();
+                host.SetPagePanels(null);
+                PageScreenshots.Settle(window);
+
+                Assert.False(host.FindControl<Button>("InspectorStrip")!.IsVisible);
+                Assert.False(host.FindControl<Border>("InspectorPane")!.IsVisible);
+                Assert.Equal(0, host.FindControl<Grid>("PaneGrid")!.ColumnDefinitions[3].Width.Value);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
     public void ForPageAttachesThePageAndItsExistingPanesWithTheirDataContext()
     {
         avalonia.Invoke(() =>
@@ -82,6 +106,28 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
             {
                 window.Close();
             }
+        });
+    }
+
+    [Fact]
+    public void ClaudePanelBelongsToTheShellAcrossPageChanges()
+    {
+        avalonia.Invoke(() =>
+        {
+            var first = new PanePage();
+            var second = new PanePage();
+            var panel = new Border();
+            var host = WorkspaceLayoutHost.ForPage(first);
+            host.ClaudePanel = panel;
+
+            host.Page = second;
+            host.SetPagePanels(second);
+
+            Assert.Same(panel, host.ClaudePanel);
+            Assert.Same(panel, host.FindControl<ContentControl>("ClaudePanelHost")!.Content);
+            host.ClaudePanel = null;
+            Assert.Null(host.FindControl<ContentControl>("ClaudePanelHost")!.Content);
+            Assert.Null(panel.Parent);
         });
     }
 
@@ -172,12 +218,12 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
             try
             {
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 PageScreenshots.Settle(window);
                 var texts = window.PageView<TextsPage>();
-                var selection = texts.FindControl<ContentControl>("SelectionHost")!;
+                var selection = Assert.IsType<SelectionPanel>(texts.SidePanel);
                 Assert.Null(selection.Parent);
-                Assert.Same(texts.DataContext, selection.DataContext);
+                Assert.Same(workspace.Selection, selection.Selection);
 
                 _ = texts.SidePanel;
                 var parentBeforeRepeatedGetter = selection.Parent;
@@ -186,14 +232,14 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Null(selection.Parent);
 
                 var standalonePage = new TextsPage(workspace.PageModel<TextsPageModel>());
-                var standaloneSelection = standalonePage.FindControl<ContentControl>("SelectionHost")!;
+                var standaloneSelection = Assert.IsType<SelectionPanel>(standalonePage.SidePanel);
                 Assert.Null(standaloneSelection.Parent);
-                Assert.Same(standalonePage.DataContext, standaloneSelection.DataContext);
+                Assert.Same(workspace.Selection, standaloneSelection.Selection);
                 var standaloneHost = WorkspaceLayoutHost.ForPage(standalonePage);
                 Assert.Same(standalonePage, standaloneHost.Page);
                 Assert.Same(standaloneSelection,
                     standaloneHost.FindControl<ContentControl>("SidePanelContent")!.Content);
-                Assert.Same(standalonePage.DataContext, standaloneSelection.DataContext);
+                Assert.Same(workspace.Selection, standaloneSelection.Selection);
                 Assert.Same(standaloneSelection, standalonePage.SidePanel);
                 var standaloneParent = standaloneSelection.Parent;
                 Assert.Same(standaloneSelection, standalonePage.SidePanel);
@@ -203,7 +249,7 @@ public sealed class WorkspacePaneHostTests(AvaloniaHeadlessFixture avalonia)
                 PageScreenshots.Settle(window);
                 var mainHost = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 Assert.Same(selection, mainHost.FindControl<ContentControl>("SidePanelContent")!.Content);
-                Assert.Same(texts.DataContext, selection.DataContext);
+                Assert.Same(workspace.Selection, selection.Selection);
                 var mainWindowParent = selection.Parent;
                 Assert.Same(selection, texts.SidePanel);
                 Assert.Same(mainWindowParent, selection.Parent);

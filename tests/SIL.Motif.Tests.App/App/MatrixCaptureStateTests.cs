@@ -13,7 +13,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class MatrixCaptureStateTests
 {
     [Fact]
-    public void SceneSaveRejectsWrongPageTabAndPageHostStateBeforeWritingPng()
+    public void SceneSaveRejectsWrongPageAndPageHostStateBeforeWritingPng()
     {
         var root = CreateCaptureFolder();
         try
@@ -23,44 +23,38 @@ public sealed class MatrixCaptureStateTests
                 var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false);
                 try
                 {
-                    var overviewView = window.PageView(WorkspacePage.Overview);
+                    var progressView = window.PageView(WorkspacePage.Progress);
                     var textsView = window.PageView(WorkspacePage.Texts);
 
                     await AssertSceneSaveRejected(root, window, workspace, "wrong-current-page",
-                        WorkspacePage.Texts, TextsTab.Lists, "Expected CurrentPage Texts");
+                        WorkspacePage.Texts, TextsTab.AnalyzeTexts, "Expected CurrentPage Texts");
 
-                    workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
-                    workspace.CurrentPage = WorkspacePage.Texts;
+                    workspace.CurrentPage = WorkspacePage.Progress;
                     PageScreenshots.Settle(window);
-                    await AssertSceneSaveRejected(root, window, workspace, "wrong-texts-tab",
-                        WorkspacePage.Texts, TextsTab.AnalyzeTexts, "Expected Texts tab AnalyzeTexts");
-
-                    workspace.CurrentPage = WorkspacePage.Overview;
-                    PageScreenshots.Settle(window);
-                    overviewView.IsVisible = false;
+                    progressView.IsVisible = false;
                     PageScreenshots.Settle(window);
                     await AssertSceneSaveRejected(root, window, workspace, "invisible-page-view",
-                        WorkspacePage.Overview, null, "Expected exactly one visible named page");
+                        WorkspacePage.Progress, null, "Expected exactly one visible named page");
 
                     textsView.IsVisible = true;
                     PageScreenshots.Settle(window);
                     await AssertSceneSaveRejected(root, window, workspace, "wrong-active-page-view",
-                        WorkspacePage.Overview, null, "Expected OverviewPage to be visible");
+                        WorkspacePage.Progress, null, "Expected ProgressPage to be visible");
 
-                    overviewView.IsVisible = true;
+                    progressView.IsVisible = true;
                     textsView.IsVisible = false;
-                    overviewView.DataContext = workspace.PageModel<TextsPageModel>();
+                    progressView.DataContext = workspace.PageModel<TextsPageModel>();
                     var wrongModelPath = Path.Combine(root, "wrong-page-model.png");
                     var modelFailure = Assert.ThrowsAny<XunitException>(() => MatrixCaptureState.SaveFrame(window,
-                        workspace, WorkspacePage.Overview, null, wrongModelPath));
+                        workspace, WorkspacePage.Progress, null, wrongModelPath));
                     Assert.Contains("not bound to the selected page model", modelFailure.Message);
                     Assert.False(File.Exists(wrongModelPath));
 
-                    overviewView.DataContext = workspace.PageModel<OverviewPageModel>();
+                    progressView.DataContext = workspace.PageModel<ProgressPageModel>();
                     PageScreenshots.Settle(window);
                     var standardPath = Path.Combine(root, "standard-page-loop.png");
                     var standardFailure = Assert.ThrowsAny<XunitException>(() => PageScreenshots.SavePageFrame(window,
-                        workspace, WorkspacePage.Texts, TextsTab.Lists, standardPath));
+                        workspace, WorkspacePage.Texts, TextsTab.AnalyzeTexts, standardPath));
                     Assert.Contains("Expected CurrentPage Texts", standardFailure.Message);
                     Assert.False(File.Exists(standardPath));
                 }
@@ -77,7 +71,7 @@ public sealed class MatrixCaptureStateTests
     }
 
     [Fact]
-    public void SceneSaveWritesImagesForExplicitOverviewAndTextsStates()
+    public void SceneSaveWritesImagesForExplicitProgressAndTextsStates()
     {
         var root = CreateCaptureFolder();
         try
@@ -88,15 +82,14 @@ public sealed class MatrixCaptureStateTests
                 try
                 {
                     var sizes = new[] { new MatrixSize("full", 900, 700) };
-                    await CaptureScene(root, window, workspace, "overview-good", WorkspacePage.Overview, null, sizes);
+                    await CaptureScene(root, window, workspace, "progress-good", WorkspacePage.Progress, null, sizes);
 
-                    workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
                     workspace.CurrentPage = WorkspacePage.Texts;
-                    await CaptureScene(root, window, workspace, "texts-matrix-good", WorkspacePage.Texts,
-                        TextsTab.Lists, sizes);
+                    await CaptureScene(root, window, workspace, "texts-reader-good", WorkspacePage.Texts,
+                        TextsTab.AnalyzeTexts, sizes);
 
-                    AssertPngExists(root, "overview-good", "overview-good-full-100-light.png");
-                    AssertPngExists(root, "texts-matrix-good", "texts-matrix-good-full-100-light.png");
+                    AssertPngExists(root, "progress-good", "progress-good-full-100-light.png");
+                    AssertPngExists(root, "texts-reader-good", "texts-reader-good-full-100-light.png");
                 }
                 finally
                 {
@@ -131,7 +124,7 @@ public sealed class MatrixCaptureStateTests
                     await Task.Yield();
                     PageScreenshots.Settle(window);
                     Assert.True(ToolTip.GetIsOpen(owner));
-                    await CaptureScene(root, window, workspace, "overview-tip", WorkspacePage.Overview, null,
+                    await CaptureScene(root, window, workspace, "overview-tip", WorkspacePage.Progress, null,
                         [new MatrixSize("full", 900, 700)]);
                     Assert.False(ToolTip.GetIsOpen(owner));
                 }

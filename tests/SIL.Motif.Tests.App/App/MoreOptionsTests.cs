@@ -23,7 +23,7 @@ public sealed class MoreOptionsTests
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, settingsFilePath: path);
             try
             {
-                var overview = workspace.PageModel<OverviewPageModel>();
+                var overview = workspace.Context.Health;
                 overview.Overview = overview.Overview! with
                 {
                     WritingSystems = [Ws("v1", WritingSystemKind.Vernacular), Ws("a1", WritingSystemKind.Analysis)],
@@ -129,7 +129,7 @@ public sealed class MoreOptionsTests
                 var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, preferencesStore: counting);
                 try
                 {
-                    var overview = workspace.PageModel<OverviewPageModel>();
+                    var overview = workspace.Context.Health;
                     overview.Overview = overview.Overview! with
                     {
                         WritingSystems = [Ws("v1", WritingSystemKind.Vernacular), Ws("v2", WritingSystemKind.Vernacular)],

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Styling;
+using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -8,7 +9,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Saves Overview and Timing over the shared sample's recorded times, and Try a Word beside its earlier timing.
+/// Saves project health and diagnostics over the shared sample's recorded times.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewTimingScreenshots
@@ -26,15 +27,13 @@ public sealed class OverviewTimingScreenshots
             var (workspace, window) = await PageScreenshots.OpenOverSampleData(configure: ReadOverviewAndTiming);
             try
             {
-                workspace.Context.TryWord("hawajafika");
-                await workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                Assert.True(workspace.PageModel<TryWordPageModel>().HasEarlierTiming);
+                workspace.Context.UseDiagnosticsPreferences(new MemoryUserPreferencesStore());
+                workspace.Context.ToggleDiagnosticsCommand.Execute(null);
                 window.Height = 780;
                 foreach (var (name, page) in new[]
                 {
-                    ("14-overview-populated", WorkspacePage.Overview),
-                    ("16-timing-filled", WorkspacePage.Timing),
-                    ("17-try-a-word-earlier-timing", WorkspacePage.TryAWord),
+                    ("14-progress-populated", WorkspacePage.Progress),
+                    ("16-diagnostics-filled", WorkspacePage.Diagnostics),
                 })
                 {
                     workspace.CurrentPage = page;
@@ -53,7 +52,7 @@ public sealed class OverviewTimingScreenshots
     internal static void ReadOverviewAndTiming(FakeCommandClient fake, AssessCommandResponse assessment)
     {
         var overview = SampleEvidence.Overview(assessment);
-        OverviewPageWordsTests.AssertCaptureStopCounts(overview, "overview and timing");
+        SampleOverview.AssertCaptureStopCounts(overview, "overview and timing");
         fake.OverviewCompletesWith(overview);
         fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(
             SampleEvidence.Timing(assessment, request.By, request.Rule, request.ExplicitWords))));

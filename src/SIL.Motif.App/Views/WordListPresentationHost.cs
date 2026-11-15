@@ -36,8 +36,6 @@ internal sealed class WordListPresentationHost<T>(
         {
             case WordAction.OpenInText:
                 return Execute(facts.OpenInTextCommand);
-            case WordAction.TryWord:
-                return Execute(facts.TryWordCommand);
             case WordAction.SetOpinion when request.Opinion is { } opinion:
                 return await SetOpinionAsync(facts, opinion).ConfigureAwait(true);
             case WordAction.NavigatePrevious:

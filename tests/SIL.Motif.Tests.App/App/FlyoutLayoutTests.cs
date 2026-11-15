@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Tests.App.Walkthrough;
@@ -12,7 +13,7 @@ namespace SIL.Motif.Tests.App;
 
 /// <summary>
 /// Pins that a pop-up opened from a button shows all of itself: the Help pop-up keeps its title and the start of
-/// every line, and the Try a Word tools menu shows each command's label, at both widths the pages are drawn at.
+/// every line, and the health details show their available facts, at both widths the pages are drawn at.
 /// A pop-up wider than the presenter allows used to scroll sideways, hiding its left side or its labels.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
@@ -23,14 +24,13 @@ public sealed class FlyoutLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false,
-                configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
+            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
             try
             {
                 var cases = new List<string>();
                 foreach (var (which, width) in new[]
                 {
-                    ("help", 1040), ("help", 1240), ("help-texts", 1040), ("tools", 1040), ("tools", 1240),
+                    ("help", 1040), ("help", 1240), ("help-texts", 1040), ("health", 640), ("health", 1040),
                 })
                 {
                     Button? button = null;
@@ -39,32 +39,31 @@ public sealed class FlyoutLayoutTests
                         var failures = new List<string>();
                         window.Width = width;
                         window.Height = 780;
-                        if (which == "tools")
+                        workspace.CurrentPage = which == "help-texts" ? WorkspacePage.Texts : WorkspacePage.Progress;
+                        PageScreenshots.Settle(window);
+                        if (which == "health")
                         {
-                            workspace.Context.TryWord("matinlu");
-                            await workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                            workspace.CurrentPage = WorkspacePage.TryAWord;
-                            PageScreenshots.Settle(window);
                             button = Visible<Button>(window).Single(candidate =>
-                                AutomationProperties.GetName(candidate) == "Try a Word tools");
+                                AutomationProperties.GetAutomationId(candidate) == AutomationIds.HealthStrip);
+                            button.Flyout!.ShowAt(button);
                         }
                         else
                         {
-                            workspace.CurrentPage = which == "help" ? WorkspacePage.Overview : WorkspacePage.Texts;
-                            PageScreenshots.Settle(window);
                             button = window.FindInWindowOrWorkspace<Button>("HelpButton")!;
+                            HeadlessClick.Click(window, button, which);
                         }
-                        HeadlessClick.Click(window, button, which);
                         await Wait.UntilAsync(() => button.Flyout?.IsOpen == true, $"the {which} pop-up did not open",
                             between: () => PageScreenshots.Settle(window));
                         PageScreenshots.Settle(window);
 
                         var presenter = Assert.Single(Visible<FlyoutPresenter>(window));
-                        var scroll = presenter.GetVisualDescendants().OfType<ScrollViewer>().First();
-                        if (scroll.Offset.X > 0.5) failures.Add($"scrolled {scroll.Offset.X:F0} px sideways");
-                        if (scroll.Extent.Width > scroll.Viewport.Width + 0.5)
+                        var scroll = presenter.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+                        if (scroll is not null && scroll.Offset.X > 0.5) failures.Add($"scrolled {scroll.Offset.X:F0} px sideways");
+                        if (scroll is not null && scroll.Extent.Width > scroll.Viewport.Width + 0.5)
                             failures.Add($"{scroll.Extent.Width:F0} px of content in a {scroll.Viewport.Width:F0} px pop-up");
-                        var shown = new Rect(scroll.TranslatePoint(default, window)!.Value, scroll.Viewport);
+                        var shown = scroll is null
+                            ? new Rect(presenter.TranslatePoint(default, window)!.Value, presenter.Bounds.Size)
+                            : new Rect(scroll.TranslatePoint(default, window)!.Value, scroll.Viewport);
                         var words = presenter.GetVisualDescendants().OfType<TextBlock>()
                             .Where(text => text.IsEffectivelyVisible && !string.IsNullOrWhiteSpace(text.Text));
                         foreach (var text in words)

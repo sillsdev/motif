@@ -86,8 +86,7 @@ public sealed class WalkthroughScriptLoaderTests
 
         Assert.Equal("explained-word-card", script.Id);
         Assert.Equal("explained-word-card", script.Fixture);
-        Assert.Equal(8, captures.Length);
-        Assert.Contains(captures, step => step.Id == "word-list-results");
+        Assert.Equal(7, captures.Length);
         Assert.All(captures, step => Assert.True(step.Scale >= 2));
         Assert.Contains(captures.Single(step => step.Id == "approved-agrees").Callouts!, callout =>
             callout.AutomationId.EndsWith("-unread", StringComparison.Ordinal));
@@ -224,10 +223,10 @@ public sealed class WalkthroughScriptLoaderTests
         var path = Path.Combine(FindRepositoryRoot(), "src", "SIL.Motif.Help", "Content", "en", "walkthroughs", "open-project-overview.json");
         using var help = JsonDocument.Parse(File.ReadAllText(path));
 
-        var caption = help.RootElement.GetProperty("callouts").GetProperty("overview")
-            .GetProperty("motif-overview-selection-word-count").GetString();
+        var caption = help.RootElement.GetProperty("callouts").GetProperty("progress")
+            .GetProperty("motif-progress-heading").GetString();
 
-        Assert.Equal("Words in the Selection", caption);
+        Assert.Equal("Project progress", caption);
     }
 
     [Fact]

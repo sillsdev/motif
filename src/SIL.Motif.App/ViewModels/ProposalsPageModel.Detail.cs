@@ -14,6 +14,8 @@ namespace SIL.Motif.App.ViewModels;
 public sealed partial class ProposalsPageModel
 {
     private int _detailGeneration;
+    private CancellationTokenSource? _detailCancellation;
+    private readonly List<Task> _detailReads = [];
     private RationaleEditorModel? _lastRationaleEditor;
     private ObservableCollection<RationaleEditorModel>? _lastComments;
 
@@ -76,6 +78,8 @@ public sealed partial class ProposalsPageModel
     private void ReadDetail(ProposalCardViewModel? card)
     {
         var generation = ++_detailGeneration;
+        _detailCancellation?.Cancel();
+        _detailCancellation = null;
         Detail = null;
         RationaleEditor = null;
         Comments = [];
@@ -83,13 +87,33 @@ public sealed partial class ProposalsPageModel
         OperationDescriptions = [];
         ReviewProgress = string.Empty;
         if (card is null || Context.ProjectPath is not { } path) return;
-        DetailReading = ReadDetailAsync(path, card.ProposalId, generation);
+        var cancellation = _detailCancellation = new CancellationTokenSource();
+        DetailReading = ReadDetailUntilStoppedAsync(path, card.ProposalId, generation, cancellation);
+        _detailReads.RemoveAll(task => task.IsCompleted);
+        _detailReads.Add(DetailReading);
     }
 
-    private async Task ReadDetailAsync(string path, string proposalId, int generation)
+    private async Task ReadDetailUntilStoppedAsync(string path, string proposalId, int generation,
+        CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await ReadDetailAsync(path, proposalId, generation, cancellation.Token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_detailCancellation, cancellation)) _detailCancellation = null;
+            cancellation.Dispose();
+        }
+    }
+
+    private async Task ReadDetailAsync(string path, string proposalId, int generation, CancellationToken cancellationToken)
     {
         var shown = await Context.Commands.ShowProposalAsync(
-            new ShowProposalRequest(path, MotifProductVersion.CurrentText, proposalId), CancellationToken.None)
+            new ShowProposalRequest(path, MotifProductVersion.CurrentText, proposalId), cancellationToken)
             .ConfigureAwait(true);
         if (generation != _detailGeneration || Context.ProjectPath != path) return;
         if (!shown.Succeeded)
@@ -140,7 +164,7 @@ public sealed partial class ProposalsPageModel
         }
         MarkSelectedRead();
         var review = await Context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(path, proposalId),
-            CancellationToken.None).ConfigureAwait(true);
+            cancellationToken).ConfigureAwait(true);
         if (generation != _detailGeneration || Context.ProjectPath != path) return;
         var words = review.Succeeded ? review.Value!.Entries.OfType<WordChangeEntry>().ToArray() : [];
         if (review.Succeeded)

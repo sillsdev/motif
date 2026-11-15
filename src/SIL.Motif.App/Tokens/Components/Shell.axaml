@@ -6,8 +6,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:SIL.Motif.App.Views">
   <Styles.Resources>
-    <StaticResource x:Key="Component.Shell.Width" ResourceKey="Primitive.Size.1240" />
-    <StaticResource x:Key="Component.Shell.Height" ResourceKey="Primitive.Size.780" />
+    <StaticResource x:Key="Component.Shell.Width" ResourceKey="Primitive.Size.1280" />
+    <StaticResource x:Key="Component.Shell.Height" ResourceKey="Primitive.Size.800" />
     <StaticResource x:Key="Component.Shell.MinWidth" ResourceKey="Primitive.Size.640" />
     <StaticResource x:Key="Component.Shell.MinHeight" ResourceKey="Primitive.Size.600" />
     <StaticResource x:Key="Component.Shell.ParseStoppedMaxHeight" ResourceKey="Primitive.Size.150" />
@@ -33,14 +33,18 @@
     <StaticResource x:Key="Component.Shell.SidePanelCollapseWidth" ResourceKey="Primitive.Size.1200" />
     <StaticResource x:Key="Component.Shell.InspectorCollapseWidth" ResourceKey="Primitive.Size.1000" />
     <StaticResource x:Key="Component.Shell.PaneHeaderHeight" ResourceKey="Primitive.Size.28" />
-    <StaticResource x:Key="Component.Shell.ProposalBarNameMaxWidth" ResourceKey="Primitive.Size.360" />
-    <StaticResource x:Key="Component.Shell.ProposalBarSentenceMinWidth" ResourceKey="Primitive.Size.220" />
     <StaticResource x:Key="Component.Shell.PaneButtonSize" ResourceKey="Primitive.Size.22" />
     <StaticResource x:Key="Component.Shell.PaneBodyInset" ResourceKey="Primitive.Inset.8_0_8_0" />
     <StaticResource x:Key="Component.Shell.PaneHeaderInset" ResourceKey="Primitive.Inset.12_0_4_0" />
     <StaticResource x:Key="Component.Shell.InspectorStripWidth" ResourceKey="Primitive.Size.24" />
     <StaticResource x:Key="Component.Shell.InspectorTipClearance" ResourceKey="Intent.Space.Section" />
   </Styles.Resources>
+  <Style Selector=":is(TextBlock).displayTitle">
+    <Setter Property="FontFamily" Value="{DynamicResource Intent.Font.Display}" />
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Display}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
   <Style Selector="Border.workspaceSidePanel, Border.workspaceInspector">
     <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
@@ -111,49 +115,5 @@
   <Style Selector="Border.workspaceNoticeBand :is(TextBlock)">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
-  </Style>
-  <!-- The Proposal bar: one row across the window, in the Proposal tint so every page reads as "with a Proposal open". -->
-  <Style Selector="Border.proposalBar">
-    <Setter Property="MinHeight" Value="{DynamicResource Component.Shell.PaneHeaderHeight}" />
-    <Setter Property="Padding" Value="{DynamicResource Component.Shell.PaneHeaderInset}" />
-    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
-  </Style>
-  <Style Selector="Border.proposalBar :is(TextBlock)">
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Status}" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />
-  </Style>
-  <Style Selector="Border.proposalBar :is(TextBlock).proposalBarName">
-    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
-    <Setter Property="MaxWidth" Value="{DynamicResource Component.Shell.ProposalBarNameMaxWidth}" />
-  </Style>
-  <!-- The view switch: three choices in a row, the chosen one inverted so it reads without colour alone. -->
-  <Style Selector="Border.proposalBar ListBox.proposalBarView">
-    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Fill}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Proposal.Text}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
-    <Setter Property="ClipToBounds" Value="True" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-  </Style>
-  <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem">
-    <Setter Property="MinHeight" Value="{DynamicResource Component.Shell.PaneButtonSize}" />
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Chip}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.None}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Proposal.Text}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Inset.None}" />
-  </Style>
-  <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem.segmentDivider">
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerEnd}" />
-  </Style>
-  <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource Intent.Proposal.Text}" />
-  </Style>
-  <Style Selector="Border.proposalBar ListBox.proposalBarView ListBoxItem:selected :is(TextBlock)">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Fill}" />
-  </Style>
-  <Style Selector="Border.proposalBar Button.proposalBarAction">
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Proposal.Text}" />
   </Style>
 </Styles>

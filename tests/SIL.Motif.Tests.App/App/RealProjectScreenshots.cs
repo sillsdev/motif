@@ -33,7 +33,7 @@ public sealed class RealProjectScreenshotFactAttribute : FactAttribute
 
 /// <summary>
 /// Walks each <c>.fwdata</c> in <c>MOTIF_SCREENSHOT_PROJECTS</c> through the real window, host and parser —
-/// Baseline, grammar check, Texts, Assessment, Try a Word, Timing and AI Handoff — and saves every page.
+/// Baseline, grammar check, Texts, Assessment, Diagnostics and AI Handoff — and saves every page.
 /// Each project is copied first, so the originals are never opened for writing.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
@@ -103,9 +103,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
                 await Drive(walkthrough, original, folder);
                 SaveEveryPage(walkthrough, folder);
                 SaveTimingParserWorkLimit(walkthrough, folder);
-                SaveGrammarWithAKindChosen(walkthrough, folder);
-                SaveCompareWithCellsChosen(walkthrough, folder);
-                SaveWhatChangedAfterARerun(walkthrough, folder);
+                SaveRecordedWarnings(walkthrough, folder);
                 SaveInTextWithNoTextChecked(walkthrough, folder);
             }, TimeSpan.FromMinutes(30));
         }
@@ -133,7 +131,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         setup.NextCommand.Execute(null);
         walkthrough.WaitUntil(() => setup.Step == 1, TimeSpan.FromSeconds(1), "setup did not advance to Text selection");
 
-        walkthrough.WaitUntil(() => workspace.PageModel<WarningsPageModel>().Grammar.HasChecked && !workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.IsRunning,
+        walkthrough.WaitUntil(() => workspace.Context.GrammarCheck.HasChecked && !workspace.Context.GrammarCheck.CheckCommand.IsRunning,
             TimeSpan.FromMinutes(5), "the grammar check did not finish");
 
         walkthrough.WaitUntil(() => workspace.Selection.Texts.Count > 0 ||
@@ -173,7 +171,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         }
         output.WriteLine($"{Path.GetFileName(original)}: {workspace.Selection.Texts.Count(text => text.IsChecked)} texts, " +
             $"{workspace.PageModel<TextsPageModel>().Words.Rows.Count} text words, {workspace.Selection.PastedWordEntries.Count} pasted words, " +
-            $"{workspace.PageModel<WarningsPageModel>().Grammar.Warnings.TotalCount} grammar findings");
+            $"{workspace.Context.GrammarCheck.Warnings.TotalCount} grammar findings");
 
         var savedSelection = SelectionCommands.SetDefault(new SetDefaultSelectionRequest(
             walkthrough.ProjectPath, "Screenshot selection", workspace.Selection.ChosenTextIds,
@@ -189,51 +187,17 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
             new OverviewRequest(walkthrough.ProjectPath), CancellationToken.None);
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
         Assert.NotNull(overview.Value!.AssessmentId);
-        walkthrough.WaitUntil(() => workspace.PageModel<OverviewPageModel>().Overview?.AssessmentId is not null,
+        walkthrough.WaitUntil(() => workspace.Context.Health.Overview?.AssessmentId is not null,
             TimeSpan.FromMinutes(1), "the Overview did not load the stored Assessment");
-
-        workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.Execute(null);
-        walkthrough.WaitUntil(() => !workspace.PageModel<TimingPageModel>().Statistics.LoadCommand.IsRunning, TimeSpan.FromMinutes(2), "Statistics did not load");
 
         var tokens = SelectionModelFixture.VisibleLines(workspace.PageModel<TextsPageModel>().ResultsInText).SelectMany(line => line.Tokens).Where(token => token.IsWord).ToList();
         var inText = tokens.FirstOrDefault(token => token.Verdict == OccurrenceVerdict.Differs) ?? tokens.FirstOrDefault();
         if (inText is not null) workspace.PageModel<TextsPageModel>().ResultsInText.SelectToken(inText);
 
-        var compare = workspace.Assess.Compare;
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Lost"));
-        // Staging needs a wordform in the project; a pasted word the project never saw is refused by design.
-        if (compare.Words.FirstOrDefault(word => word.WordRow.HasWordAnalysesLink) is { } spelling)
-        {
-            spelling.IsChecked = true;
-            compare.ProposeCommand.Execute(ChangeKinds.IncorrectSpelling);
-            walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning,
-                TimeSpan.FromMinutes(2), "The spelling change did not finish");
-        }
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New: PanGloss proposes"));
-        if (compare.Words.FirstOrDefault(word => word.ReadingChoices.Count > 0 && word.WordRow.HasWordAnalysesLink) is { } candidate)
-        {
-            candidate.IsChecked = true;
-            compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
-            walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning,
-                TimeSpan.FromMinutes(2), "The candidate change did not finish");
-        }
-        compare.ClearSelectionCommand.Execute(null);
-
-        workspace.PageModel<AiHandoffPageModel>().Handoff.RunCommand.Execute(null);
-        walkthrough.WaitUntil(() => workspace.PageModel<AiHandoffPageModel>().Handoff.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
+        workspace.PageModel<SettingsPageModel>().Handoff.Handoff.RunCommand.Execute(null);
+        walkthrough.WaitUntil(() => workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State is RunState.Completed or RunState.Cancelled or RunState.Refused,
             TimeSpan.FromMinutes(5), "the Handoff did not finish");
 
-        // Try a Word on a word that did not parse, since that is where its failure story shows.
-        var rows = workspace.Assess.Words.Rows;
-        var tried = rows.FirstOrDefault(row => row.IsFailed && row.MissedApproved.Count > 0)
-            ?? rows.FirstOrDefault(row => row.IsFailed) ?? rows.FirstOrDefault();
-        if (tried is not null)
-        {
-            // Last, the way a person gets there, so no later choice of word clears the trace on screen.
-            workspace.Assess.OpenTryWord!(tried.Word);
-            walkthrough.WaitUntil(() => !workspace.Assess.Trace.TryCommand.IsRunning, TimeSpan.FromMinutes(3), "Try a Word did not finish");
-            output.WriteLine($"Tried '{tried.Word}': {workspace.Assess.Trace.AnswerText}");
-        }
     }
 
     private static void CaptureSetupStep(WalkthroughWindow walkthrough, string folder, string step)
@@ -251,21 +215,20 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var workspace = walkthrough.Workspace;
         try
         {
+            workspace.Context.Diagnostics = true;
             foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
             {
                 Application.Current!.RequestedThemeVariant = variant;
-                foreach (var (name, page, tab) in PageScreenshots.Views())
+                foreach (var (name, page, _) in PageScreenshots.Views())
                 {
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
                     workspace.CurrentPage = page;
                     Save(walkthrough.Window, Path.Combine(folder, $"{name}-{theme}.png"));
                 }
 
                 // A narrow window: the sidebar collapses to icons, and the badges stay.
                 walkthrough.Window.Width = 960;
-                foreach (var (name, page, tab) in PageScreenshots.Views().Take(2))
+                foreach (var (name, page, _) in PageScreenshots.Views().Take(2))
                 {
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
                     workspace.CurrentPage = page;
                     Save(walkthrough.Window, Path.Combine(folder, $"{name}-narrow-{theme}.png"));
                 }
@@ -281,76 +244,32 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
     private static void SaveTimingParserWorkLimit(WalkthroughWindow walkthrough, string folder)
     {
         var workspace = walkthrough.Workspace;
-        var timing = workspace.PageModel<TimingPageModel>();
         var word = workspace.Assess.Result!.Words.FirstOrDefault(row => row.Outcome is "analysed" or "no-analysis")
             ?? workspace.Assess.Result.Words.First();
         _ = workspace.Assess.RerunAsync([word.Word], 60_000, new ParserWorkLimit(1));
         walkthrough.WaitUntil(() => workspace.Assess.State is RunState.Completed or RunState.Refused &&
             !workspace.Assess.IsActive, TimeSpan.FromMinutes(2), "The parser-work-limited re-run did not finish");
         Assert.Equal(RunState.Completed, workspace.Assess.State);
-        timing.SelectWordSetCommand.Execute("parser-work-limit");
-        walkthrough.WaitUntil(() => !timing.SelectWordSetCommand.IsRunning && timing.HasTiming,
-            TimeSpan.FromMinutes(2), "Parser-work-limit timing did not load");
-        Assert.True(timing.HasSelectedWords && timing.KindTiming!.Words.Any(word => word.Completion == SIL.Motif.Contract.Responses.TimingCompletion.WorkLimit),
-            "The search-limit capture must show a recorded capped word.");
-        walkthrough.Window.Height = 1650;
+        workspace.Context.Diagnostics = true;
+        workspace.Context.OpenDiagnostics(DiagnosticsTab.SpeedByRule);
+        walkthrough.WaitUntil(() => workspace.Context.EvidencePublication.IsCompleted,
+            TimeSpan.FromMinutes(2), "The replacement evidence did not finish loading");
         foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
         {
             Application.Current!.RequestedThemeVariant = variant;
-            walkthrough.Workspace.CurrentPage = WorkspacePage.Timing;
-            Save(walkthrough.Window, Path.Combine(folder, $"4b-timing-parser-work-limit-{theme}.png"));
-        }
-        walkthrough.Window.Height = 780;
-        Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
-    }
-
-    // The matrix filtering the list: the violations preset, then the single largest cell.
-    private static void SaveCompareWithCellsChosen(WalkthroughWindow walkthrough, string folder)
-    {
-        var compare = walkthrough.Workspace.Assess.Compare;
-        walkthrough.Workspace.Context.OpenTexts(TextsTab.Lists);
-        compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "Lost"));
-        Save(walkthrough.Window, Path.Combine(folder, "2f-texts-matrix-violations-light.png"));
-        compare.Toggle(compare.Cells.MaxBy(cell => cell.Count)!, additive: false);
-        Save(walkthrough.Window, Path.Combine(folder, "2g-texts-matrix-largest-cell-light.png"));
-        walkthrough.Workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
-        Save(walkthrough.Window, Path.Combine(folder, "2h-texts-matrix-selected-light.png"));
-        compare.ClearSelectionCommand.Execute(null);
-    }
-
-    // A real re-run of a few unknown words with more time, so "What changed" shows moves the parser made.
-    private static void SaveWhatChangedAfterARerun(WalkthroughWindow walkthrough, string folder)
-    {
-        var workspace = walkthrough.Workspace;
-        var words = workspace.Assess.Compare.RerunWords.Take(RerunBudget).ToArray();
-        if (words.Length == 0) return;
-        _ = workspace.Assess.RerunAsync(words, RerunLimitMs);
-        walkthrough.WaitUntil(() => workspace.Assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused &&
-            !workspace.Assess.IsActive, TimeSpan.FromMinutes(20), "the re-run did not finish");
-        Assert.Equal(RunState.Completed, workspace.Assess.State);
-        foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
-        {
-            Application.Current!.RequestedThemeVariant = variant;
-            workspace.Context.OpenTexts(TextsTab.Lists);
-            Save(walkthrough.Window, Path.Combine(folder, $"2a-texts-matrix-after-rerun-{theme}.png"));
+            Save(walkthrough.Window, Path.Combine(folder, $"diagnostics-rule-work-after-rerun-{theme}.png"));
         }
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
     }
 
-    // Few enough words, with enough time each, that the re-run finishes in minutes and still moves some.
-    private const int RerunBudget = 12;
-    private const int RerunLimitMs = 20_000;
-
-    // One finding opened in place, so its detail is reviewed as well as the quiet list.
-    private static void SaveGrammarWithAKindChosen(WalkthroughWindow walkthrough, string folder)
+    private static void SaveRecordedWarnings(WalkthroughWindow walkthrough, string folder)
     {
-        var warnings = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar.Warnings;
+        var warnings = walkthrough.Workspace.Context.GrammarCheck.Warnings;
         var row = warnings.Rows.Cast<GrammarWarningRowViewModel>().MaxBy(finding => finding.RepeatCount);
         if (row is null) return;
-        row.IsOpen = true;
-        walkthrough.Workspace.CurrentPage = WorkspacePage.Warnings;
+        walkthrough.Workspace.Context.Diagnostics = true;
+        walkthrough.Workspace.Context.OpenDiagnostics(DiagnosticsTab.Warnings);
         Save(walkthrough.Window, Path.Combine(folder, "5b-warnings-kind-light.png"));
-        row.IsOpen = false;
     }
 
     // The empty state a person meets after unchecking every Text, which a run over Texts never shows.
@@ -361,7 +280,7 @@ public sealed class RealProjectScreenshots(ITestOutputHelper output)
         var settle = DateTime.Now.AddMilliseconds(500);
         walkthrough.WaitUntil(() => DateTime.Now > settle && !workspace.PageModel<TextsPageModel>().Words.IsLoading,
             TimeSpan.FromMinutes(1), "unchecking the Texts did not settle");
-        workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+        workspace.Context.OpenPage(WorkspacePage.Texts);
         Save(walkthrough.Window, Path.Combine(folder, "2b-texts-analyze-no-text-light.png"));
     }
 

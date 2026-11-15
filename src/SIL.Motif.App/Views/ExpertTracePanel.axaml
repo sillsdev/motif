@@ -54,10 +54,7 @@
       </Grid.ColumnDefinitions>
               <WrapPanel ItemSpacing="{DynamicResource Intent.Space.Related}">
                 <TextBlock Text="{Binding KindText}" TextWrapping="Wrap" />
-                <views:InspectLink Subject="{Binding InspectSubject}" Captured="{Binding Captured}" IsVisible="{Binding CanInspect}">
-                  <TextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap" />
-                </views:InspectLink>
-                <TextBlock Text="{Binding SourceLabel}" IsVisible="{Binding HasUnlinkedSource}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SourceLabel}" TextWrapping="Wrap" />
 
               </WrapPanel>
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">

@@ -73,7 +73,7 @@ public sealed class SelectionAnalyzeTests
             var words = new TextWordsViewModel(client, selection, reads);
             var assess = new AssessViewModel(client, selection);
             var changes = new ChangesViewModel(client);
-            var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, changes, client, reads);
+            var owner = new ResultsInTextViewModel(words, assess, _ => { }, changes, client, reads);
             try
             {
                 await changes.OpenProjectAsync(fixture.ProjectPath);
@@ -112,7 +112,7 @@ public sealed class SelectionAnalyzeTests
         var reads = new WorkspaceSelection(client);
         var words = new TextWordsViewModel(client, selection, reads);
         var assess = new AssessViewModel(client, selection);
-        var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, new ChangesViewModel(client), client, reads);
+        var owner = new ResultsInTextViewModel(words, assess, _ => { }, new ChangesViewModel(client), client, reads);
         var weak = new List<WeakReference<object>>();
         owner.NativeModelCreated += weak.Add;
         var panel = new ResultsInTextPanel(owner);

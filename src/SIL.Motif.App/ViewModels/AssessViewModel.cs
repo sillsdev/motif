@@ -180,9 +180,6 @@ public sealed partial class AssessViewModel : CommandRunViewModel<AssessCommandR
     public TraceWordViewModel Trace { get; }
     public ParseProgressViewModel ParseProgress { get; }
 
-    /// <summary>Opens Try a Word on a word and traces it; set by whoever hosts Try a Word.</summary>
-    public Action<string>? OpenTryWord { get; set; }
-
     /// <summary>
     /// Selects <paramref name="word"/> in <see cref="Words"/> with every filter cleared, so the word is certain to
     /// be listed; a word the Assessment did not answer also clears the matrix's chosen cells.

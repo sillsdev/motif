@@ -69,7 +69,7 @@ public sealed partial class WindowWordsTests
                 window.Height = 780;
                 foreach (var (page, tab) in EveryView())
                 {
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
+
                     workspace.CurrentPage = page;
                     PageScreenshots.Settle(window);
                     shown.AddRange(Rendered(window).Select(text => $"{page}/{tab}: {text}"));
@@ -96,7 +96,7 @@ public sealed partial class WindowWordsTests
             {
                 foreach (var (page, tab) in EveryView())
                 {
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
+
                     workspace.CurrentPage = page;
                     PageScreenshots.Settle(window);
                     shown.AddRange(Rendered(window).Select(text => $"{page}/{tab}: {text}"));
@@ -327,11 +327,7 @@ public sealed partial class WindowWordsTests
     }
 
     private static IEnumerable<(WorkspacePage Page, TextsTab Tab)> EveryView() =>
-    [
-        .. Enum.GetValues<WorkspacePage>().Where(page => page != WorkspacePage.Texts)
-            .Select(page => (page, TextsTab.Lists)),
-        .. Enum.GetValues<TextsTab>().Select(tab => (WorkspacePage.Texts, tab)),
-    ];
+        Enum.GetValues<WorkspacePage>().Select(page => (page, TextsTab.AnalyzeTexts));
 
     private static IEnumerable<string> Steps(MainWindow window, SetupViewModel setup, string mode)
     {

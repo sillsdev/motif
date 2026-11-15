@@ -31,7 +31,7 @@ public sealed class SettingsPageCaptureTests
                 configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
                     new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1")));
-            var overview = workspace.PageModel<OverviewPageModel>();
+            var overview = workspace.Context.Health;
             overview.Overview = overview.Overview! with
             {
                 WritingSystems =

@@ -234,7 +234,7 @@ public sealed class HelpCommandTests
         using var json = JsonDocument.Parse(result.Output);
         Assert.Equal("guide", json.RootElement.GetProperty("kind").GetString());
         Assert.Equal("overview", json.RootElement.GetProperty("code").GetString());
-        Assert.Equal("Overview", json.RootElement.GetProperty("title").GetString());
+        Assert.Equal("Progress and project health", json.RootElement.GetProperty("title").GetString());
         Assert.EndsWith("/guide/overview/", json.RootElement.GetProperty("url").GetString());
     }
 

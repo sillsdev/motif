@@ -38,7 +38,6 @@ public sealed class SettingsPageTests
         var help = new HelpPopupViewModel(new SettingsUriLauncher());
         help.ShowForPage(WorkspacePage.Settings);
         Assert.Equal("Settings", help.Title);
-        Assert.False(PageRegistry.For(WorkspacePage.AiHandoff).ShowInRail);
     }
 
     [Theory]
@@ -71,13 +70,11 @@ public sealed class SettingsPageTests
                 var display = page.FindControl<StackPanel>("SettingsDisplaySection")!;
                 var handoff = Assert.IsType<CheckBox>(page.FindControl<CheckBox>("ShowHandoffByCopyingFiles"));
                 Assert.False(handoff.IsChecked);
-                var assistantPage = Assert.IsType<AssistantConnectionsPage>(
-                    PageRegistry.For(WorkspacePage.AiAssistants).CreateView(workspace.PageOf(WorkspacePage.AiAssistants).Model));
-                assistantPage.ConfigureHandoff(settings, workspace.PageModel<AiHandoffPageModel>());
-                var handoffSection = assistantPage.FindControl<ContentControl>("HandoffSection")!;
-                Assert.False(handoffSection.IsVisible);
+                page.ConfigureHandoff(workspace.PageModel<SettingsPageModel>().Handoff);
+                var handoffSection = page.FindControl<ContentControl>("SettingsHandoffHost")!;
+                Assert.False(handoffSection.IsEffectivelyVisible);
                 settings.ShowHandoffByCopyingFiles = true;
-                Assert.True(handoffSection.IsVisible);
+                Assert.True(handoffSection.IsEffectivelyVisible);
                 Assert.True(preferences.GetExpanded(SettingsExpanderKeys.ShowHandoff));
                 Assert.True(new SettingsViewModel(workspace, preferences).ShowHandoffByCopyingFiles);
                 var themeReset = display.GetVisualDescendants().OfType<Button>().Single(button =>
@@ -523,7 +520,7 @@ public sealed class SettingsPageTests
                 settings.ParserWorkLimitValue = 100000000000000000000m;
                 settings.TimeLimitSeconds = -1m;
                 Assert.NotNull(await settings.CommitParsingLimitsAsync());
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 Assert.Equal(savedStep, settings.ParserWorkLimitValue);
                 Assert.Equal(savedTime, settings.TimeLimitSeconds);
                 Assert.False(settings.HasParserWorkLimitRefusal);
@@ -577,7 +574,7 @@ public sealed class SettingsPageTests
                 Assert.Equal(refused, settings.ParserWorkLimitValue);
                 Assert.True(settings.HasParserWorkLimitRefusal);
 
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 Assert.Equal(savedStep, settings.ParserWorkLimitValue);
                 Assert.Equal(canAssess, workspace.Selection.CanAssess);
                 Assert.Null(await settings.UseAllTextsAsync());
@@ -613,7 +610,7 @@ public sealed class SettingsPageTests
                 Assert.Equal(ParserWorkLimit.Default, workspace.Selection.BuildRequest().PerWordParserWorkLimit);
                 Assert.Equal(saves, fake.SetSelectionLimitsRequests.Count);
 
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 Assert.False(settings.IsNoParserWorkLimit);
                 Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
             }
@@ -891,7 +888,7 @@ public sealed class SettingsPageTests
                 configure: (client, _) => client.DefaultSelectionIs(new NamedSelectionProjection("Default",
                     [Guid.Parse("11111111-0000-0000-0000-000000000001")], [], string.Empty, string.Empty,
                     new SelectionParsingLimits(ParserWorkLimit.Default, SelectionTimeLimitMode.Estimated, null), "1")));
-            var overview = workspace.PageModel<OverviewPageModel>();
+            var overview = workspace.Context.Health;
             overview.Overview = overview.Overview! with
             {
                 WritingSystems = [new WritingSystemDisplay("v-missing", "Missing font language", "V", WritingSystemKind.Vernacular,
@@ -1065,7 +1062,7 @@ public sealed class SettingsPageTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, frame) = await PageScreenshots.OpenOverSampleData(parse: false);
-            var overview = workspace.PageModel<OverviewPageModel>();
+            var overview = workspace.Context.Health;
             var settings = SettingsTestAccess.Model(frame);
             settings.ZoomPercent = 150;
             var page = SettingsTestAccess.Open(frame);

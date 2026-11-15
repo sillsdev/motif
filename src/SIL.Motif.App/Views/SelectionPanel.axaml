@@ -26,7 +26,7 @@
                 AutomationProperties.Name="{x:Static app:MotifAppStrings.ClearAccessibleName}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ClearTexts}" />
       </WrapPanel>
 
-      <TextBox PlaceholderText="Search texts..." Text="{Binding Selection.SearchText}"
+      <TextBox PlaceholderText="{x:Static app:MotifAppStrings.SearchTextsPlaceholder}" Text="{Binding Selection.SearchText}"
                AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchTextsAccessibleName}" />
       <ListBox x:Name="SelectionPanelTextsItems" ItemsSource="{Binding Selection.Texts}"
                MaxHeight="{DynamicResource Component.TextsPage.SelectionListHeight}"

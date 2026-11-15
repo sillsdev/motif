@@ -1,8 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using SIL.Motif.App.ViewModels;
-using SIL.Motif.App.Views;
-using SIL.Motif.Commands.Queries;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
@@ -11,161 +9,33 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewTileNavigationTests
 {
-    [Theory]
-    [InlineData("Open slowest words in Timing", WorkspacePage.Timing)]
-    [InlineData("Open Grammar warnings in Warnings", WorkspacePage.Warnings)]
-    public void OverviewDetailTilesOpenTheirPages(string tileName, WorkspacePage expectedPage)
+    [Fact]
+    public void WaitingProposalNextRowOpensProposals()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             var (workspace, window) = FakeComposedWindow.Create();
             try
             {
-                workspace.Context.Diagnostics = true;
-                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
+                var progress = workspace.PageModel<ProgressPageModel>();
+                progress.WaitingProposals = 1;
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                FakeComposedWindow.Click(window, tileName);
+                var next = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
+                    Avalonia.Automation.AutomationProperties.GetName(button) == progress.WaitingProposalsText);
+                HeadlessClick.Click(window, next, progress.WaitingProposalsText);
 
-                Assert.Equal(expectedPage, workspace.CurrentPage);
+                Assert.Equal(WorkspacePage.Proposals, workspace.CurrentPage);
             }
             finally
             {
-                Close(workspace, window);
-            }
-
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(10));
-    }
-
-    [Fact]
-    public void TextsRequestAppliesItsCellSelectionOnArrival()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var workspace = FakeComposedWindow.CreateWorkspace();
-            try
-            {
-                var cells = (IReadOnlyList<TextsListCell>)[
-                    new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.Match),
-                    new TextsListCell(WordProjectStatus.Approved, CompareColumnKind.NoParse),
-                ];
-                workspace.PageModel<TextsPageModel>().TextsLists.SelectListCommand.Execute(
-                    workspace.PageModel<TextsPageModel>().TextsLists.Lists[0]);
-                workspace.Context.Open(new OpenTextsRequest(TextsTab.Lists, cells));
-
-                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(cells.ToHashSet(), workspace.PageModel<TextsPageModel>().TextsLists.SelectedList!.Cells.ToHashSet());
-                Assert.Equal(cells.ToHashSet(), workspace.PageModel<TextsPageModel>().Assess.Compare.Cells
-                    .Where(cell => cell.IsSelected)
-                    .Select(cell => new TextsListCell(cell.Row, cell.Column)).ToHashSet());
-            }
-            finally
-            {
+                window.Close();
                 workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
 
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(10));
-    }
-
-    [Fact]
-    public void LookFirstRowOpensItsMeasuredWordsFromAnywhereInTheRow()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var (workspace, window) = FakeComposedWindow.Create();
-            try
-            {
-                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
-                window.Show();
-                window.ApplyTemplate();
-                window.UpdateLayout();
-
-                var row = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), link =>
-                    link.DataContext is OverviewLookFirstRow lookFirst && lookFirst.LinkText == "See the 6 words");
-                HeadlessClick.Click(window, row, "Look first row");
-
-                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Lists, workspace.PageModel<TextsPageModel>().Tab);
-                Assert.True(workspace.PageModel<TextsPageModel>().Assess.Compare.Cells.Single(cell =>
-                    cell.Row == WordProjectStatus.Approved && cell.Column == CompareColumnKind.NoParse).IsSelected);
-            }
-            finally
-            {
-                Close(workspace, window);
-            }
-
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(10));
-    }
-
-    [Fact]
-    public void TextCoverageTileClearsThePreviousMatrixFilter()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var (workspace, window) = FakeComposedWindow.Create();
-            try
-            {
-                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
-                window.Show();
-                window.ApplyTemplate();
-                window.UpdateLayout();
-                var compare = workspace.PageModel<TextsPageModel>().Assess.Compare;
-                compare.SelectCells([new TextsListCell(WordProjectStatus.Candidate, CompareColumnKind.Match)]);
-
-                FakeComposedWindow.Click(window, "Open Text coverage in Texts");
-
-                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Lists, workspace.PageModel<TextsPageModel>().Tab);
-                Assert.All(compare.Cells, cell => Assert.True(cell.IsSelected));
-            }
-            finally
-            {
-                Close(workspace, window);
-            }
-
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(10));
-    }
-
-    [Fact]
-    public void AccuracyTileSelectsApprovedWordsInTheMatrix()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var (workspace, window) = FakeComposedWindow.Create();
-            try
-            {
-                workspace.PageModel<OverviewPageModel>().Overview = OverviewPageWordsTests.Populated();
-                window.Show();
-                window.ApplyTemplate();
-                window.UpdateLayout();
-
-                FakeComposedWindow.Click(window, "Open Approved analyses kept in Lists");
-
-                Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-                Assert.Equal(TextsTab.Lists, workspace.PageModel<TextsPageModel>().Tab);
-                Assert.Equal(Enum.GetValues<CompareColumnKind>()
-                        .Select(column => new TextsListCell(WordProjectStatus.Approved, column)).ToHashSet(),
-                    workspace.PageModel<TextsPageModel>().Assess.Compare.Cells.Where(cell => cell.IsSelected)
-                        .Select(cell => new TextsListCell(cell.Row, cell.Column)).ToHashSet());
-            }
-            finally
-            {
-                Close(workspace, window);
-            }
-
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(10));
-    }
-
-    private static void Close(WorkspaceShellViewModel workspace, MainWindow window)
-    {
-        window.Close();
-        workspace.DisposeAsync().AsTask().GetAwaiter().GetResult();
     }
 }

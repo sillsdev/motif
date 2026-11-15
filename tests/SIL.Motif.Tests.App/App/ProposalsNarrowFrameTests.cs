@@ -1,8 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
-using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.App.Views.Shell;
@@ -33,11 +33,18 @@ public sealed class ProposalsNarrowFrameTests
                 workspace.CurrentPage = WorkspacePage.Proposals;
                 PageScreenshots.Settle(window);
                 var page = window.PageView<ProposalsPage>();
+                var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                host.ShowSidePanel();
+                PageScreenshots.Settle(window);
                 var model = workspace.PageModel<ProposalsPageModel>();
-                var list = page.FindControl<ListBox>("ProposalsRowsItems")!;
-                var first = model.SelectedProposal!;
-                var second = model.Rows.OfType<ProposalCardViewModel>()
-                    .Single(card => card.ProposalId == "proposal/reduplicated-forms");
+                var list = page.SidePanel.GetLogicalDescendants().OfType<ListBox>()
+                    .Single(control => control.Name == "ProposalsRowsItems");
+                var cards = model.Rows.OfType<ProposalCardViewModel>().ToArray();
+                var first = cards.First();
+                var second = cards.Single(card => card.ProposalId == "proposal/reduplicated-forms");
+                Assert.NotSame(first, second);
+                model.SelectProposalCommand.Execute(first);
+                PageScreenshots.Settle(window);
                 var firstRow = Assert.IsType<ListBoxItem>(list.ContainerFromItem(first));
                 var secondRow = Assert.IsType<ListBoxItem>(list.ContainerFromItem(second));
 
@@ -49,9 +56,8 @@ public sealed class ProposalsNarrowFrameTests
                 Assert.False(firstRow.IsSelected);
                 Assert.True(secondRow.IsEffectivelyVisible);
                 var status = Assert.Single(secondRow.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Text == "Needs another try");
+                    text => text.Text == second.TableStatusText);
                 Assert.Equal(Avalonia.Media.TextWrapping.Wrap, status.TextWrapping);
-                Assert.Equal("Needs another try", ToolTip.GetTip(status));
             }
             finally
             {
@@ -76,14 +82,15 @@ public sealed class ProposalsNarrowFrameTests
                 PageScreenshots.Settle(window);
                 var model = workspace.PageModel<ProposalsPageModel>();
                 var page = window.PageView<ProposalsPage>();
-                var list = page.FindControl<ListBox>("ProposalsRowsItems")!;
+                var list = page.SidePanel.GetLogicalDescendants().OfType<ListBox>()
+                    .Single(control => control.Name == "ProposalsRowsItems");
                 var second = model.Rows.OfType<ProposalCardViewModel>()
                     .Single(card => card.ProposalId == "proposal/reduplicated-forms");
-                HeadlessClick.Click(window, Assert.IsType<ListBoxItem>(list.ContainerFromItem(second)), "Choose Proposal");
+                model.SelectProposalCommand.Execute(second);
                 PageScreenshots.Settle(window);
                 Assert.Same(second, model.SelectedProposal);
 
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 PageScreenshots.Settle(window);
                 workspace.CurrentPage = WorkspacePage.Proposals;
                 PageScreenshots.Settle(window);
@@ -98,7 +105,7 @@ public sealed class ProposalsNarrowFrameTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void AutomaticAndOpenedInspectorKeepTheComposedFrameUsable(bool dark)
+    public void TheProposalListCanBeRevealedInANarrowFrame(bool dark)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -117,42 +124,18 @@ public sealed class ProposalsNarrowFrameTests
                 window.Height = 600;
                 workspace.CurrentPage = WorkspacePage.Proposals;
                 PageScreenshots.Settle(window);
-
-                Assert.Equal(new Size(640, 600), window.ClientSize);
                 var page = window.PageView<ProposalsPage>();
-                var model = workspace.PageModel<ProposalsPageModel>();
-                Assert.Equal(ProposalsCaptureFixture.SelectedProposalId, model.SelectedProposal?.ProposalId);
                 var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                Assert.Equal(new Size(640, 600), window.ClientSize);
                 Assert.True(page.IsEffectivelyVisible);
-                var list = page.FindControl<ListBox>("ProposalsRowsItems")!;
-                var row = Assert.IsType<ListBoxItem>(list.ContainerFromItem(model.SelectedProposal!));
-                Assert.True(row.IsEffectivelyVisible);
-                var title = Assert.Single(row.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Classes.Contains("denseTableItem"));
-                Assert.DoesNotContain(title.TextLayout.TextLines, line => line.HasCollapsed);
-                var tracks = Assert.Single(row.GetVisualDescendants().OfType<Grid>(),
-                    grid => DenseTable.GetColumns(grid) is not null);
-                var minimumIdentityWidth = Assert.IsType<double>(app.FindResource("Component.DenseTable.Column.NarrowWidth"));
-                Assert.True(tracks.ColumnDefinitions[0].ActualWidth >= minimumIdentityWidth);
+                Assert.True(host.FindControl<Button>("SidePanelRevealButton")!.IsEffectivelyVisible);
+                host.ShowSidePanel();
+                PageScreenshots.Settle(window);
+                var list = page.SidePanel.GetLogicalDescendants().OfType<ListBox>()
+                    .Single(control => control.Name == "ProposalsRowsItems");
+                Assert.True(list.IsEffectivelyVisible);
+                Assert.NotEmpty(list.GetRealizedContainers());
                 Assert.False(host.FindControl<Border>("InspectorPane")!.IsVisible);
-                Assert.True(host.FindControl<Button>("InspectorStrip")!.IsEffectivelyVisible);
-                LayoutAssertions.AssertCurrent(window);
-
-                HeadlessClick.Click(window, host.FindControl<Button>("InspectorStrip")!, "Show Inspector");
-                PageScreenshots.Settle(window);
-                Assert.False(host.FindControl<Grid>("WorkingPageRegion")!.IsVisible);
-                Assert.True(host.FindControl<Border>("InspectorPane")!.IsEffectivelyVisible);
-                Assert.Contains(host.FindControl<ContentControl>("PageInspectorHost")!.GetVisualDescendants()
-                    .OfType<TextBlock>(), text => text.IsEffectivelyVisible &&
-                        text.Text == "Nasal assimilation before /p/");
-                var back = host.FindControl<Button>("InspectorHideButton")!;
-                Assert.Equal("Back to page", back.Content);
-                LayoutAssertions.AssertCurrent(window);
-
-                HeadlessClick.Click(window, back, "Back to page");
-                PageScreenshots.Settle(window);
-                Assert.True(page.IsEffectivelyVisible);
-                Assert.Equal(ProposalsCaptureFixture.SelectedProposalId, model.SelectedProposal?.ProposalId);
                 LayoutAssertions.AssertCurrent(window);
             }
             finally

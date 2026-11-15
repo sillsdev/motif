@@ -23,6 +23,19 @@ namespace SIL.Motif.Tests.App;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData("Source Sans 3")]
+    [InlineData("Lora")]
+    public void ApprovedInterfaceFamiliesResolveFromTheBundledCollection(string family)
+    {
+        avalonia.Invoke(() =>
+        {
+            var face = new Typeface(new FontFamily($"fonts:Motif#{family}"));
+            Assert.True(FontManager.Current.TryGetGlyphTypeface(face, out var glyph));
+            Assert.StartsWith(family, glyph!.FamilyName, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
     [Fact]
     public void DiagnoseAndikaResolution()
     {
@@ -84,7 +97,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
     }
 
     [Fact]
-    public void TextBlocksButtonsAndWordCardsRenderWithAndikaGlyphs()
+    public void TextBlocksButtonsAndWordCardsRenderWithSourceSansGlyphs()
     {
         avalonia.Invoke(() =>
         {
@@ -109,10 +122,10 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
                 Assert.Same(uiFamily, application.FindResource("DefaultFontFamily"));
                 Assert.Same(uiFamily, application.FindResource("SemiFontFamilyRegular"));
                 Assert.Equal(uiFamily, window.FontFamily);
-                AssertAndika(textBlock);
-                AssertAndika(Assert.Single(button.GetVisualDescendants().OfType<TextBlock>(),
+                AssertSourceSans(textBlock);
+                AssertSourceSans(Assert.Single(button.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text == "Undo"));
-                AssertAndika(Assert.Single(wordCard.GetVisualDescendants().OfType<TextBlock>(),
+                AssertSourceSans(Assert.Single(wordCard.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text == "word"));
             }
             finally
@@ -128,7 +141,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
             [new WordCardText("Meaning", "word")]),
     };
 
-    private static void AssertAndika(TextBlock text)
+    private static void AssertSourceSans(TextBlock text)
     {
         var shapedRuns = text.TextLayout.TextLines
             .SelectMany(line => line.TextRuns)
@@ -139,7 +152,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
         foreach (var run in shapedRuns)
         {
             var family = run.GlyphRun.GlyphTypeface.FamilyName;
-            if (family.StartsWith("Andika", StringComparison.OrdinalIgnoreCase)) continue;
+            if (family.StartsWith("Source Sans 3", StringComparison.OrdinalIgnoreCase)) continue;
 
             var characters = string.Join(", ", run.Text.ToString().EnumerateRunes()
                 .Select(rune => $"U+{rune.Value:X4} '{rune}'"));
@@ -162,7 +175,7 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
         var themeFamily = application.FindResource("ContentControlThemeFontFamily") as FontFamily;
         application.TryGetResource("DefaultFontFamily", application.ActualThemeVariant, out var defaultFontFamilyResource);
         var defaultFontFamily = defaultFontFamilyResource as FontFamily;
-        output.WriteLine($"[Andika] TextBlock FontFamily: value={family}; priority={diagnostic.Priority}; diagnostic={diagnostic.Diagnostic}; ContentControlThemeFontFamily={themeFamily}; matchesThemeResource={Equals(family, themeFamily)}");
+        output.WriteLine($"[Font] TextBlock FontFamily: value={family}; priority={diagnostic.Priority}; diagnostic={diagnostic.Diagnostic}; ContentControlThemeFontFamily={themeFamily}; matchesThemeResource={Equals(family, themeFamily)}");
 
         foreach (var resourceKey in new[]
                  {
@@ -172,20 +185,20 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
                  })
         {
             var resourceFound = application.TryGetResource(resourceKey, application.ActualThemeVariant, out var resource);
-            output.WriteLine($"[Andika] Resource '{resourceKey}': found={resourceFound}; value={resource ?? "<none>"}");
+            output.WriteLine($"[Font] Resource '{resourceKey}': found={resourceFound}; value={resource ?? "<none>"}");
         }
 
         foreach (var ancestor in textBlock.GetVisualAncestors().OfType<Control>().Reverse().Append(textBlock))
         {
             var ancestorDiagnostic = ancestor.GetDiagnostic(property);
             var ancestorFamily = ancestor.GetValue(property) as FontFamily;
-            output.WriteLine($"[Andika] FontFamily ancestor {ancestor.GetType().Name}: value={ancestorFamily}; priority={ancestorDiagnostic.Priority}; matchesDefaultFontFamily={Equals(ancestorFamily, defaultFontFamily)}; diagnostic={ancestorDiagnostic.Diagnostic}");
+            output.WriteLine($"[Font] FontFamily ancestor {ancestor.GetType().Name}: value={ancestorFamily}; priority={ancestorDiagnostic.Priority}; matchesDefaultFontFamily={Equals(ancestorFamily, defaultFontFamily)}; diagnostic={ancestorDiagnostic.Diagnostic}");
         }
 
         var computedFamily = family ?? manager.DefaultFontFamily;
         var typeface = new Typeface(computedFamily, textBlock.FontStyle, textBlock.FontWeight, textBlock.FontStretch);
         var typefaceFound = manager.TryGetGlyphTypeface(typeface, out var glyphTypeface);
-        output.WriteLine($"[Andika] Computed Typeface: family={typeface.FontFamily}; style={typeface.Style}; weight={typeface.Weight}; stretch={typeface.Stretch}; resolved={typefaceFound}; glyphFamily={glyphTypeface?.FamilyName ?? "<none>"}");
+        output.WriteLine($"[Font] Computed Typeface: family={typeface.FontFamily}; style={typeface.Style}; weight={typeface.Weight}; stretch={typeface.Stretch}; resolved={typefaceFound}; glyphFamily={glyphTypeface?.FamilyName ?? "<none>"}");
 
         var culture = CultureInfo.CurrentUICulture;
         var characterMatched = manager.TryMatchCharacter('M', textBlock.FontStyle, textBlock.FontWeight,
@@ -193,13 +206,13 @@ public sealed class UiFontResolutionTests(AvaloniaHeadlessFixture avalonia, ITes
         var characterGlyphFamily = characterMatched && manager.TryGetGlyphTypeface(characterTypeface, out var characterGlyph)
             ? characterGlyph?.FamilyName ?? "<none>"
             : "<none>";
-        output.WriteLine($"[Andika] TryMatchCharacter('M'): family={computedFamily}; culture={culture.Name}; matched={characterMatched}; typeface={characterTypeface.FontFamily}; glyphFamily={characterGlyphFamily}");
+        output.WriteLine($"[Font] TryMatchCharacter('M'): family={computedFamily}; culture={culture.Name}; matched={characterMatched}; typeface={characterTypeface.FontFamily}; glyphFamily={characterGlyphFamily}");
 
         var runIndex = 0;
         foreach (var run in textBlock.TextLayout.TextLines.SelectMany(line => line.TextRuns))
         {
             var runFamily = run is ShapedTextRun shaped ? shaped.GlyphRun.GlyphTypeface.FamilyName : "<no glyph run>";
-            output.WriteLine($"[Andika] TextRun[{runIndex++}]: type={run.GetType().Name}; text='{run.Text.ToString()}'; glyphFamily={runFamily}");
+            output.WriteLine($"[Font] TextRun[{runIndex++}]: type={run.GetType().Name}; text='{run.Text.ToString()}'; glyphFamily={runFamily}");
         }
     }
 

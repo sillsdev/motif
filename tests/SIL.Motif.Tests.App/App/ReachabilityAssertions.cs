@@ -241,9 +241,16 @@ internal static class ReachabilityAssertions
     private static bool HasHitTarget(Control control, TopLevel topLevel)
     {
         var bounds = BoundsIn(control, topLevel);
-        if (!Contains(ClientBounds(topLevel), bounds)) return false;
+        var oversized = control.GetVisualAncestors().OfType<ScrollViewer>().Any(viewer =>
+        {
+            var viewport = BoundsIn(viewer, topLevel);
+            return bounds.Width > viewport.Width + Tolerance || bounds.Height > viewport.Height + Tolerance;
+        });
+        var visible = ClientBounds(topLevel);
         foreach (var ancestor in control.GetVisualAncestors().OfType<Control>().Where(item => item.ClipToBounds))
-            if (!Contains(BoundsIn(ancestor, topLevel), bounds)) return false;
+            visible = visible.Intersect(BoundsIn(ancestor, topLevel));
+        if (!oversized && !Contains(visible, bounds)) return false;
+        if (oversized) bounds = bounds.Intersect(visible);
         if (bounds.Width <= Tolerance || bounds.Height <= Tolerance) return false;
         foreach (var (x, y) in new[] { (0.5, 0.5), (0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75) })
         {

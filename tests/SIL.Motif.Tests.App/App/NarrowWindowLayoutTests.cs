@@ -3,20 +3,17 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using Xunit;
-using static SIL.Motif.Tests.App.AnalyzeTextsLayoutTests;
 
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that words give way when the window runs short: the top bar's freshness line shortens rather than running
-/// under the project actions, as it did at 1040 px while Parse all words showed its progress, and Timing's cards wrap
-/// rather than cutting their words off.
+/// Pins the project actions and recorded diagnostic rows at narrow window widths.
 /// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class NarrowWindowLayoutTests
 {
     [Fact]
-    public void FreshnessAndExpandedTimingFitTheirNarrowLayouts()
+    public void ProjectActionsAndDiagnosticsFitTheirNarrowLayouts()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -40,24 +37,19 @@ public sealed class NarrowWindowLayoutTests
                         Assert.True(refreshRight <= barRight + 0.5, $"Refresh ends at {refreshRight}, past the top bar's content at {barRight}.");
                         Assert.Equal(width >= 760, window.FindInWindowOrWorkspace<TextBlock>("ProjectChipDetail")!.IsEffectivelyVisible);
                     });
-                Check("Expanded Timing at 1040", () =>
+                workspace.Context.Diagnostics = true;
+                workspace.Context.OpenDiagnostics(SIL.Motif.App.ViewModels.DiagnosticsTab.SpeedByRule);
+                await workspace.Context.EvidencePublication;
+                Check("Diagnostics at 640", () =>
                 {
-                    window.Width = 1040;
-                    window.Height = 1300;
-                    workspace.CurrentPage = SIL.Motif.App.ViewModels.WorkspacePage.Timing;
+                    window.Width = 640;
+                    window.Height = 600;
                     PageScreenshots.Settle(window);
-                    var statistics = window.GetVisualDescendants().OfType<Expander>()
-                        .First(expander => expander.Header as string == MotifAppStrings.TimingDetailedStatisticsHeading && expander.IsEffectivelyVisible);
-                    statistics.IsExpanded = true;
-                    PageScreenshots.Settle(window);
-                    var panel = statistics.GetVisualDescendants().OfType<SIL.Motif.App.Views.StatisticsPanel>().Single();
-                    var cards = panel.GetVisualDescendants().OfType<Border>()
-                        .Where(border => border.Classes.Contains("card") && border.IsEffectivelyVisible).ToArray();
-                    Assert.NotEmpty(cards);
-                    var cut = cards.SelectMany(card => card.GetVisualDescendants().OfType<TextBlock>())
-                        .Where(text => text.IsEffectivelyVisible && text.TextLayout.Width > text.Bounds.Width + 0.5)
-                        .Select(text => text.Text).ToArray();
-                    Assert.True(cut.Length == 0, "Cut off at 1040: " + string.Join(" | ", cut));
+                    var page = window.PageView<SIL.Motif.App.Views.DiagnosticsPage>();
+                    var rows = page.FindControl<ListBox>("DiagnosticRuleRows")!;
+                    Assert.True(rows.IsEffectivelyVisible);
+                    Assert.True(rows.Bounds.Width > 0 && rows.Bounds.Width <= page.Bounds.Width);
+                    LayoutAssertions.AssertCurrent(page);
                 });
                 Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
 

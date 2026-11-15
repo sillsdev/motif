@@ -1,18 +1,16 @@
 using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>
-/// Pins that a grammar-object Statistics grouping keeps its Kind and Object columns readable in the smallest window,
-/// where star sizing once left them about 30 px wide with their headings and cells cut off.
-/// </summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "System")]
 public sealed class StatisticsPanelLayoutTests
@@ -22,29 +20,26 @@ public sealed class StatisticsPanelLayoutTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
+            var fake = new FakeCommandClient();
+            using var rows = JsonDocument.Parse(
+                """[{"kind":"allomorph","label":"-ka (stative allomorph of causative)","attempts":2000,"passes":1}]""");
+            fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", "grammar.json", "cache", null,
+                rows.RootElement.EnumerateArray().Select(row => row.Clone()).ToList()));
+            var statistics = new StatisticsViewModel(fake)
+            {
+                ProjectPath = "project.fwdata",
+                AssessmentId = "assessment/one",
+                SelectedGroup = "allomorph",
+            };
+            await statistics.LoadCommand.ExecuteAsync(null);
+            var panel = new StatisticsPanel(statistics);
+            var window = new MotifTestWindow { Width = 640, Height = 600, Content = panel };
             try
             {
-                var fake = (FakeCommandClient)workspace.Context.Commands;
-                using var rows = JsonDocument.Parse(
-                    """[{"kind":"allomorph","label":"-ka (stative allomorph of causative)","attempts":2000,"passes":1}]""");
-                fake.StatsCompletesWith(new StatsCommandResponse("assessment/one", "grammar.json", "cache", null,
-                    rows.RootElement.EnumerateArray().Select(row => row.Clone()).ToList()));
-                workspace.CurrentPage = WorkspacePage.Timing;
-                SettingsTestAccess.Model(window).ZoomPercent = 150;
-                window.Width = 640;
-                window.Height = 1300;
+                WindowZoomPolicy.Apply(Application.Current!, 150);
+                window.Show();
                 PageScreenshots.Settle(window);
-                var expander = window.GetVisualDescendants().OfType<Expander>().First(candidate =>
-                    candidate.Header as string == MotifAppStrings.TimingDetailedStatisticsHeading && candidate.IsEffectivelyVisible);
-                expander.IsExpanded = true;
-                PageScreenshots.Settle(window);
-                var statistics = workspace.PageModel<TimingPageModel>().Statistics;
-                statistics.SelectedGroup = "allomorph";
-                await statistics.LoadCommand.ExecuteAsync(null);
-                PageScreenshots.Settle(window);
-
-                var grid = Assert.Single(expander.GetVisualDescendants().OfType<DataGrid>());
+                var grid = Assert.Single(panel.GetVisualDescendants().OfType<DataGrid>());
                 var minimum = (double)window.FindResource("Component.Statistics.WordMinWidth")!;
                 foreach (var (tag, heading) in new[]
                 {
@@ -54,7 +49,7 @@ public sealed class StatisticsPanelLayoutTests
                 {
                     var column = Assert.Single(grid.Columns, candidate => candidate.Tag as string == tag);
                     Assert.True(column.ActualWidth >= minimum - 0.5,
-                        $"The {tag} column is {column.ActualWidth:0.#} px; the Word column's minimum is {minimum:0.#} px.");
+                        $"The {tag} column is {column.ActualWidth:0.#} px; its minimum is {minimum:0.#} px.");
                     var text = Assert.Single(grid.GetVisualDescendants().OfType<DataGridColumnHeader>(),
                         candidate => candidate.IsEffectivelyVisible && candidate.Content as string == heading)
                         .GetVisualDescendants().OfType<TextBlock>().Single(block => block.IsEffectivelyVisible && block.Text == heading);
@@ -67,7 +62,7 @@ public sealed class StatisticsPanelLayoutTests
             finally
             {
                 window.Close();
-                await workspace.DisposeAsync();
+                WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
             }
         }, TimeSpan.FromMinutes(2));
     }

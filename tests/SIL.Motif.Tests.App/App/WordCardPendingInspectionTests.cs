@@ -23,7 +23,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class WordCardPendingInspectionTests
 {
     [Fact]
-    public void PendingMorphsInspectTheirOwnIdentityAndKeepFormsAndGlossesCopyable()
+    public void PendingMorphsKeepFormsAndGlossesCopyableWithoutAnInspector()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -48,9 +48,6 @@ public sealed class WordCardPendingInspectionTests
                     [new WordCardPendingChange("wa-guess", true, true, true, [named, unnamed], false, [], [], false, context)]),
             };
             var window = new MotifTestWindow { Content = card, Width = 640, Height = 600 };
-            InspectRequestedEventArgs? requested = null;
-            var requests = 0;
-            window.AddHandler(InspectLink.RequestedEvent, (_, args) => { requested = args; requests++; });
             try
             {
                 window.Show();
@@ -89,19 +86,6 @@ public sealed class WordCardPendingInspectionTests
                     }
                 }
                 Assert.Null(unnamed.InspectSubject);
-                var link = Assert.Single(card.GetVisualDescendants().OfType<InspectLink>(), item => item.IsEffectivelyVisible);
-                Assert.Same(named, link.DataContext);
-                Assert.Equal(named.InspectSubject, link.Subject);
-                Assert.Equal("Inspect wa-", AutomationProperties.GetName(link));
-                HeadlessClick.Click(window, link, "Inspect wa-");
-                Assert.Equal(1, requests);
-                Assert.Equal(named.InspectSubject, requested!.Subject);
-                Assert.Equal(named.Captured, requested.Captured);
-                Assert.Same(link, requested.Origin);
-                link.Focus();
-                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
-                Dispatcher.UIThread.RunJobs();
-                Assert.Equal(2, requests);
             }
             finally { window.Close(); }
             return Task.CompletedTask;
@@ -148,15 +132,11 @@ public sealed class WordCardPendingInspectionTests
                         .Where(text => ReferenceEquals(text.DataContext, morph)).ToArray();
                     var form = Assert.Single(own, text => text.Text == morph.Form);
                     var gloss = Assert.Single(own, text => text.Text == morph.GlossOrPlaceholder);
-                    var link = Assert.Single(card.GetVisualDescendants().OfType<InspectLink>(), item =>
-                        ReferenceEquals(item.DataContext, morph));
-                    Assert.True(link.IsEffectivelyVisible);
                     var column = form.GetVisualParent()!;
                     Assert.Same(column, gloss.GetVisualParent());
-                    Assert.Same(column, link.GetVisualParent());
                     var columnBounds = new Rect(((Visual)column).TranslatePoint(default, window)!.Value,
                         ((Visual)column).Bounds.Size);
-                    foreach (Control part in new Control[] { form, gloss, link })
+                    foreach (Control part in new Control[] { form, gloss })
                     {
                         var rect = new Rect(part.TranslatePoint(default, window)!.Value, part.Bounds.Size);
                         Assert.True(cardBounds.Contains(rect.TopLeft) && cardBounds.Contains(rect.BottomRight),

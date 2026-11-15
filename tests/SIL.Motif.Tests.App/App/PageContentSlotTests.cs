@@ -89,7 +89,8 @@ public sealed class PageContentSlotTests
             {
                 window.Width = 1280;
                 window.Height = 800;
-                foreach (var page in new[] { WorkspacePage.Review, WorkspacePage.Warnings, WorkspacePage.Overview, WorkspacePage.Texts })
+                foreach (var page in new[] { WorkspacePage.Progress, WorkspacePage.Texts, WorkspacePage.Words,
+                    WorkspacePage.GrammarGuide, WorkspacePage.Proposals, WorkspacePage.Diagnostics, WorkspacePage.Settings })
                 {
                     workspace.CurrentPage = page;
                     PageScreenshots.Settle(window);

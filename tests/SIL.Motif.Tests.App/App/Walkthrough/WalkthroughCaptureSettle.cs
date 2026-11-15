@@ -38,21 +38,18 @@ internal static partial class WalkthroughCaptureSettle
 
     /// <summary>
     /// Waits until nothing that still changes what a page shows is running: the project open, evidence publication,
-    /// a parse or Refresh, the automatic grammar answer and the retained Parsimony read.
+    /// a parse, Refresh or explicit grammar check.
     /// </summary>
     internal static void WaitUntilQuiet(this WalkthroughWindow walkthrough, TimeSpan timeout, string why)
     {
         var workspace = walkthrough.Workspace;
-        var grammar = workspace.PageModel<WarningsPageModel>().Grammar;
-        var parsimony = workspace.PageModel<ParsimonyPageModel>();
+        var grammar = workspace.Context.GrammarCheck;
         walkthrough.WaitUntil(() => !workspace.IsProjectOpening && !workspace.Context.IsOpeningProject &&
             workspace.Context.EvidencePublication.IsCompleted && !workspace.Assess.IsActive &&
-            !workspace.RefreshCommand.IsRunning &&
-            (!workspace.Baseline.HasBaseline || grammar.HasChecked && !grammar.IsLoading) &&
-            parsimony.AutomaticWork.IsCompleted, timeout, why,
+            !workspace.RefreshCommand.IsRunning && !grammar.IsLoading, timeout, why,
             () => $"IsProjectOpening={workspace.IsProjectOpening}; Assess.IsActive={workspace.Assess.IsActive}; " +
                 $"Refresh.IsRunning={workspace.RefreshCommand.IsRunning}; Grammar.HasChecked={grammar.HasChecked}; " +
-                $"Grammar.IsLoading={grammar.IsLoading}; Parsimony.Work={parsimony.AutomaticWork.Status}; " +
+                $"Grammar.IsLoading={grammar.IsLoading}; " +
                 $"EvidencePublication={workspace.Context.EvidencePublication.Status}");
     }
 

@@ -1,13 +1,13 @@
 {
   "id": "no-longer-fits",
   "title": "When a change no longer fits",
-  "description": "See how Review Changes marks a choice that no longer fits the current project.",
+  "description": "Open Proposals for a project that has a choice that no longer fits the current project.",
   "steps": {
-    "review": "The original choice stays visible and blocks Apply until you remove or recheck it."
+    "review": "Proposals is where the Proposals for this project are read."
   },
   "callouts": {
     "review": {
-      "motif-page-review": "Review Changes"
+      "motif-page-proposals": "Proposals"
     }
   }
 }

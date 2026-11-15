@@ -7,6 +7,120 @@ namespace SIL.Motif.App;
 /// </summary>
 public static class MotifAppStrings
 {
+    public static string MeasureCheckingWords => Text("MotifApp.MeasureCheckingWords");
+    public static string MeasurePreparingWords => Text("MotifApp.MeasurePreparingWords");
+    public static string MeasureWordsCheckedFormat => Text("MotifApp.MeasureWordsCheckedFormat");
+    public static string HelpCurrentPageAccessibleName => Text("MotifApp.HelpCurrentPageAccessibleName");
+    public static string HelpCurrentPageTip => Text("MotifApp.HelpCurrentPageTip");
+    public static string GrammarGuide => Text("MotifApp.GrammarGuide");
+    public static string BoardSources => Text("MotifApp.BoardSources");
+    public static string BoardPassage => Text("MotifApp.BoardPassage");
+    public static string BoardApproved => Text("MotifApp.BoardApproved");
+    public static string BoardGuessed => Text("MotifApp.BoardGuessed");
+    public static string BoardNoAnalysis => Text("MotifApp.BoardNoAnalysis");
+    public static string BoardOpenProposals => Text("MotifApp.BoardOpenProposals");
+    public static string ProposalsWaitingForYou => Text("MotifApp.ProposalsWaitingForYou");
+    public static string ProposalsNeedsAnotherTry => Text("MotifApp.ProposalsNeedsAnotherTry");
+    public static string ProposalsNotTried => Text("MotifApp.ProposalsNotTried");
+    public static string ProposalsPendingChanges => Text("MotifApp.ProposalsPendingChanges");
+    public static string ProposalsClosed => Text("MotifApp.ProposalsClosed");
+    public static string ProposalsHideClosed => Text("MotifApp.ProposalsHideClosed");
+    public static string ProposalsShowClosedFormat => Text("MotifApp.ProposalsShowClosedFormat");
+    public static string BoardCompareProposals => Text("MotifApp.BoardCompareProposals");
+    public static string BoardWillFillIn => Text("MotifApp.BoardWillFillIn");
+    public static string BoardWillChange => Text("MotifApp.BoardWillChange");
+    public static string BoardWillStopFillingIn => Text("MotifApp.BoardWillStopFillingIn");
+    public static string BoardComments => Text("MotifApp.BoardComments");
+    public static string BoardDiagnostics => Text("MotifApp.BoardDiagnostics");
+    public static string BoardSpeedByRule => Text("MotifApp.BoardSpeedByRule");
+    public static string BoardWhyThisAnalysis => Text("MotifApp.BoardWhyThisAnalysis");
+    public static string BoardOpenInFieldWorks => Text("MotifApp.BoardOpenInFieldWorks");
+    public static string BoardAskClaude => Text("MotifApp.BoardAskClaude");
+    public static string BoardNotAWord => Text("MotifApp.BoardNotAWord");
+    public static string BoardApply => Text("MotifApp.BoardApply");
+    public static string BoardDecline => Text("MotifApp.BoardDecline");
+    public static string BoardFullTrace => Text("MotifApp.BoardFullTrace");
+    public static string BoardKeepAnalysis => Text("MotifApp.BoardKeepAnalysis");
+    public static string BoardNextGap => Text("MotifApp.BoardNextGap");
+    public static string BoardKeepAllLikeThis => Text("MotifApp.BoardKeepAllLikeThis");
+    public static string HealthWarningsPattern => Text("MotifApp.HealthWarningsPattern");
+    public static string HealthMedianWorkFormat => Text("MotifApp.HealthMedianWorkFormat");
+    public static string HealthTurnOnDiagnostics => Text("MotifApp.HealthTurnOnDiagnostics");
+    public static string Health => Text("MotifApp.Health");
+    public static string Progress => Text("MotifApp.Progress");
+    public static string HealthAssistantConnected => Text("MotifApp.HealthAssistantConnected");
+    public static string HealthAssistantDisconnected => Text("MotifApp.HealthAssistantDisconnected");
+    public static string AssistantsEnabled => Text("MotifApp.AssistantsEnabled");
+    public static string AssistantsDisabled => Text("MotifApp.AssistantsDisabled");
+    public static string AssistantsNotFound => Text("MotifApp.AssistantsNotFound");
+    public static string ProgressNext => Text("MotifApp.ProgressNext");
+    public static string ProgressWaitingProposalsPattern => Text("MotifApp.ProgressWaitingProposalsPattern");
+    public static string ProgressSelectionFormat => Text("MotifApp.ProgressSelectionFormat");
+    public static string SettingsShortcutTip => Text("MotifApp.SettingsShortcutTip");
+    public static string ApplyNoLongerFitsPattern => Text("MotifApp.ApplyNoLongerFitsPattern");
+    public static string ApplyUncertainPattern => Text("MotifApp.ApplyUncertainPattern");
+    public static string ApplyFitNotCheckedSentence => Text("MotifApp.ApplyFitNotCheckedSentence");
+    public static string ApplyRemoveNonFitting => Text("MotifApp.ApplyRemoveNonFitting");
+    public static string ApplyReconciliationSentence => Text("MotifApp.ApplyReconciliationSentence");
+    public static string ApplyNothingSentence => Text("MotifApp.ApplyNothingSentence");
+    public static string ApplyFieldWorksHeldSentence => Text("MotifApp.ApplyFieldWorksHeldSentence");
+    public static string ApplyStaleSentence => Text("MotifApp.ApplyStaleSentence");
+    public static string ApplyLostCountPattern => Text("MotifApp.ApplyLostCountPattern");
+    public static string ApplyLostSentenceFormat => Text("MotifApp.ApplyLostSentenceFormat");
+    public static string ApplyNotMeasuredSentence => Text("MotifApp.ApplyNotMeasuredSentence");
+    public static string ApplyCheckChanges => Text("MotifApp.ApplyCheckChanges");
+    public static string ApplyIncompleteMeasurement => Text("MotifApp.ApplyIncompleteMeasurement");
+    public static string ApplyReadinessUnavailable => Text("MotifApp.ApplyReadinessUnavailable");
+    public static string PageAccessibleNameFormat => Text("MotifApp.PageAccessibleNameFormat");
+    public static string BoardClaude => Text("MotifApp.BoardClaude");
+    public static string BoardProgress => Text("MotifApp.BoardProgress");
+    public static string BoardTexts => Text("MotifApp.BoardTexts");
+    public static string BoardWords => Text("MotifApp.BoardWords");
+    public static string BoardGrammarGuide => Text("MotifApp.BoardGrammarGuide");
+    public static string BoardProposals => Text("MotifApp.BoardProposals");
+    public static string BoardSettings => Text("MotifApp.BoardSettings");
+    public static string BoardWarnings => Text("MotifApp.BoardWarnings");
+    public static string BoardUnused => Text("MotifApp.BoardUnused");
+    public static string BoardAmbiguity => Text("MotifApp.BoardAmbiguity");
+    public static string BoardTemplate => Text("MotifApp.BoardTemplate");
+    public static string BoardSpeed => Text("MotifApp.BoardSpeed");
+    public static string BoardOther => Text("MotifApp.BoardOther");
+    public static string BoardRule => Text("MotifApp.BoardRule");
+    public static string BoardStepsPerWord => Text("MotifApp.BoardStepsPerWord");
+    public static string BoardAskClaudeAboutThis => Text("MotifApp.BoardAskClaudeAboutThis");
+    public static string BoardShowWords => Text("MotifApp.BoardShowWords");
+    public static string BoardHideThisWarning => Text("MotifApp.BoardHideThisWarning");
+    public static string BoardAskClaudeToRevise => Text("MotifApp.BoardAskClaudeToRevise");
+    public static string BoardDraft => Text("MotifApp.BoardDraft");
+    public static string BoardReady => Text("MotifApp.BoardReady");
+    public static string BoardProposal => Text("MotifApp.BoardProposal");
+    public static string BoardYourTexts => Text("MotifApp.BoardYourTexts");
+    public static string BoardNext => Text("MotifApp.BoardNext");
+    public static string BoardThisWeek => Text("MotifApp.BoardThisWeek");
+    public static string BoardDecisions => Text("MotifApp.BoardDecisions");
+    public static string BoardExamplesFromYourTexts => Text("MotifApp.BoardExamplesFromYourTexts");
+    public static string BoardInTheGrammar => Text("MotifApp.BoardInTheGrammar");
+    public static string BoardHistory => Text("MotifApp.BoardHistory");
+    public static string BoardEdit => Text("MotifApp.BoardEdit");
+    public static string BoardWhereTheyDiffer => Text("MotifApp.BoardWhereTheyDiffer");
+    public static string BoardShowInTexts => Text("MotifApp.BoardShowInTexts");
+    public static string BoardChangesToTheGrammar => Text("MotifApp.BoardChangesToTheGrammar");
+    public static string BoardApplyTheFirst => Text("MotifApp.BoardApplyTheFirst");
+    public static string BoardApplyTheSecond => Text("MotifApp.BoardApplyTheSecond");
+    public static string BoardAskClaudeWhichFitsTheGuide => Text("MotifApp.BoardAskClaudeWhichFitsTheGuide");
+    public static string BoardApproveHere => Text("MotifApp.BoardApproveHere");
+    public static string BoardApprovePlaces => Text("MotifApp.BoardApprovePlaces");
+    public static string BoardAnalysis => Text("MotifApp.BoardAnalysis");
+    public static string BoardEveryPlace => Text("MotifApp.BoardEveryPlace");
+    public static string BoardTriedAndFailed => Text("MotifApp.BoardTriedAndFailed");
+    public static string BoardCompare => Text("MotifApp.BoardCompare");
+    public static string BoardFieldWorksClosed => Text("MotifApp.BoardFieldWorksClosed");
+    public static string BoardParserUpdated => Text("MotifApp.BoardParserUpdated");
+    public static string BoardNoAnalysisYet => Text("MotifApp.BoardNoAnalysisYet");
+    public static string BoardAddSource => Text("MotifApp.BoardAddSource");
+    public static string BoardFieldWorksTexts => Text("MotifApp.BoardFieldWorksTexts");
+    public static string BoardParatext => Text("MotifApp.BoardParatext");
+    public static string BoardFile => Text("MotifApp.BoardFile");
     private static readonly System.Resources.ResourceManager Resources =
         new("SIL.Motif.App.MotifAppStrings", typeof(MotifAppStrings).Assembly);
 
@@ -30,8 +144,6 @@ public static class MotifAppStrings
     public static string AddAnalysisFromPanGloss => Text("MotifApp.AddAnalysisFromPanGloss");
 
     public static string ReviewCardEvidenceChanged => Text("MotifApp.ReviewCardEvidenceChanged");
-
-    public static string ReviewCardDetailsUnavailable => Text("MotifApp.ReviewCardDetailsUnavailable");
 
     public static string ShortcutPagesRail => Text("MotifApp.ShortcutPagesRail");
 
@@ -348,8 +460,6 @@ public static class MotifAppStrings
 
     public static string SeeWhatChanged => Text("MotifApp.SeeWhatChanged");
 
-    public static string SeeWhatChangedAccessibleName => Text("MotifApp.SeeWhatChangedAccessibleName");
-
     public static string ParseAllWords => Text("MotifApp.ParseAllWords");
 
     public static string ParseAllWordsAccessibleName => Text("MotifApp.ParseAllWordsAccessibleName");
@@ -378,18 +488,11 @@ public static class MotifAppStrings
 
     public static string ReportProblemAccessibleName => Text("MotifApp.ReportProblemAccessibleName");
 
-    public static string ReviewChangesAccessibleName => Text("MotifApp.ReviewChangesAccessibleName");
-
-    public static string OpenWarningsAccessibleName => Text("MotifApp.OpenWarningsAccessibleName");
-
     public static string TextsWordChangesPattern => Text("MotifApp.TextsWordChangesPattern");
 
     public static string EditMorphemeInFieldWorksFormat => Text("MotifApp.EditMorphemeInFieldWorksFormat");
 
-    public static string StatusChangesPattern => Text("MotifApp.StatusChangesPattern");
     public static string StatusFilterHidesPattern => Text("MotifApp.StatusFilterHidesPattern");
-
-    public static string StatusWarningsPattern => Text("MotifApp.StatusWarningsPattern");
 
     public static string SeeParseProgressAccessibleName => Text("MotifApp.SeeParseProgressAccessibleName");
 
@@ -430,23 +533,9 @@ public static class MotifAppStrings
 
     public static string TrialWorkNoticeAccessibleName => Text("MotifApp.TrialWorkNoticeAccessibleName");
 
-    public static string ProjectSummaryAccessibleName => Text("MotifApp.ProjectSummaryAccessibleName");
-
     public static string Overview => Text("MotifApp.Overview");
 
-    public static string TheOverviewCouldNotBeReadAccessibleName => Text("MotifApp.TheOverviewCouldNotBeReadAccessibleName");
-
     public static string TryAgain => Text("MotifApp.TryAgain");
-
-    public static string ReadTheOverviewAgainAccessibleName => Text("MotifApp.ReadTheOverviewAgainAccessibleName");
-
-    public static string TheLatestParseWasRefusedAccessibleName => Text("MotifApp.TheLatestParseWasRefusedAccessibleName");
-
-    public static string ParseFailureDetails => Text("MotifApp.ParseFailureDetails");
-
-    public static string LatestParseFailureDetailsAccessibleName => Text("MotifApp.LatestParseFailureDetailsAccessibleName");
-
-    public static string WordsInSelection => Text("MotifApp.WordsInSelection");
 
     public static string Places => Text("MotifApp.Places");
 
@@ -454,136 +543,36 @@ public static class MotifAppStrings
 
     public static string Rules => Text("MotifApp.Rules");
 
-    public static string Lexemes => Text("MotifApp.Lexemes");
-
-    public static string ChooseAProjectAccessibleName => Text("MotifApp.ChooseAProjectAccessibleName");
-
-    public static string OpenARecentProject => Text("MotifApp.OpenARecentProject");
-
-    public static string RecentProjectsAccessibleName => Text("MotifApp.RecentProjectsAccessibleName");
-
     public static string OpenFolder => Text("MotifApp.OpenFolder");
-
-    public static string OpenProjectFolderAccessibleName => Text("MotifApp.OpenProjectFolderAccessibleName");
-
-    public static string SelectANewProject => Text("MotifApp.SelectANewProject");
-
-    public static string SelectANewProjectAccessibleName => Text("MotifApp.SelectANewProjectAccessibleName");
-
-    public static string TheDefaultSelectionCouldNotBe => Text("MotifApp.TheDefaultSelectionCouldNotBe");
-
-    public static string LookFirstAccessibleName => Text("MotifApp.LookFirstAccessibleName");
 
     public static string LookFirst => Text("MotifApp.LookFirst");
 
-    public static string StoredResultsToLookAtFirstAccessibleName => Text("MotifApp.StoredResultsToLookAtFirstAccessibleName");
-
-    public static string TextCoverageAccessibleName => Text("MotifApp.TextCoverageAccessibleName");
-
     public static string TextCoverage => Text("MotifApp.TextCoverage");
-
-    public static string OverviewTextsLink => Text("MotifApp.OverviewTextsLink");
-
-    public static string OpenTextCoverageInTextsAccessibleName => Text("MotifApp.OpenTextCoverageInTextsAccessibleName");
-
-    public static string TextCoverageOutcomesAccessibleName => Text("MotifApp.TextCoverageOutcomesAccessibleName");
-
-    public static string ApprovedAnalysesKeptAccessibleName => Text("MotifApp.ApprovedAnalysesKeptAccessibleName");
-
-    public static string ApprovedAnalysesKept => Text("MotifApp.ApprovedAnalysesKept");
-
-    public static string OpenInLists => Text("MotifApp.OpenInLists");
-
-    public static string OverviewListsLink => Text("MotifApp.OverviewListsLink");
-
-    public static string OpenListsFromApprovedKeptAccessibleName => Text("MotifApp.OpenListsFromApprovedKeptAccessibleName");
-
-    public static string ApprovedAnalysesKeptOutcomesAccessibleName => Text("MotifApp.ApprovedAnalysesKeptOutcomesAccessibleName");
-
-    public static string SpeedAccessibleName => Text("MotifApp.SpeedAccessibleName");
-
-    public static string OverviewSlowestWordsLink => Text("MotifApp.OverviewSlowestWordsLink");
-
-    public static string OpenSlowestWordsInTimingAccessibleName => Text("MotifApp.OpenSlowestWordsInTimingAccessibleName");
 
     public static string Speed => Text("MotifApp.Speed");
 
-    public static string OverviewTimeByKindAccessibleName => Text("MotifApp.OverviewTimeByKindAccessibleName");
-
-    public static string SlowestWordsAccessibleName => Text("MotifApp.SlowestWordsAccessibleName");
-
     public static string SlowestWords => Text("MotifApp.SlowestWords");
-
-    public static string SlowestWordsAndRecordedTimesAccessibleName => Text("MotifApp.SlowestWordsAndRecordedTimesAccessibleName");
-
-    public static string GrammarWarningsAccessibleName => Text("MotifApp.GrammarWarningsAccessibleName");
 
     public static string GrammarWarnings => Text("MotifApp.GrammarWarnings");
 
-    public static string OverviewWarningsLink => Text("MotifApp.OverviewWarningsLink");
-
-    public static string OpenGrammarWarningsInWarningsAccessibleName => Text("MotifApp.OpenGrammarWarningsInWarningsAccessibleName");
-
-    public static string WarningKindsAndWordsAccessibleName => Text("MotifApp.WarningKindsAndWordsAccessibleName");
-
-    public static string AskAChatModelAboutAnything => Text("MotifApp.AskAChatModelAboutAnything");
-
-    public static string StartAnAIHandoff => Text("MotifApp.StartAnAIHandoff");
-
-    public static string StartAnAIHandoffAccessibleName => Text("MotifApp.StartAnAIHandoffAccessibleName");
-
-    public static string ProjectHistory => Text("MotifApp.ProjectHistory");
-
-    public static string ProjectHistoryAccessibleName => Text("MotifApp.ProjectHistoryAccessibleName");
-
-    public static string LoadingHistory => Text("MotifApp.LoadingHistory");
-
-    public static string NothingRecordedForThisProjectYet => Text("MotifApp.NothingRecordedForThisProjectYet");
-
-    public static string ProjectHistoryEntriesAccessibleName => Text("MotifApp.ProjectHistoryEntriesAccessibleName");
-
     public static string LostWords => Text("MotifApp.LostWords");
 
-    public static string RecordedApprovedLostWordsAccessibleName => Text("MotifApp.RecordedApprovedLostWordsAccessibleName");
-
-    public static string SharedMorphemes => Text("MotifApp.SharedMorphemes");
-
     public static string Words => Text("MotifApp.Words");
-
-    public static string NamedByAGrammarWarning => Text("MotifApp.NamedByAGrammarWarning");
 
 
     public static string AnalyzeTexts => Text("MotifApp.AnalyzeTexts");
 
-    public static string AnalyzeTextsTabAccessibleName => Text("MotifApp.AnalyzeTextsTabAccessibleName");
-
     public static string Lists => Text("MotifApp.Lists");
-
-    public static string ListsTabAccessibleName => Text("MotifApp.ListsTabAccessibleName");
 
     public static string WhatChanged => Text("MotifApp.WhatChanged");
 
-    public static string WhatChangedTabAccessibleName => Text("MotifApp.WhatChangedTabAccessibleName");
-
-    public static string ReviewTheChangesNotAppliedYetAccessibleName => Text("MotifApp.ReviewTheChangesNotAppliedYetAccessibleName");
-
-    public static string PendingChangesSeparatorMark => Text("MotifApp.PendingChangesSeparatorMark");
-
     public static string ReviewChanges => Text("MotifApp.ReviewChanges");
-
-    public static string ParseAllWordsInTheSelectionAccessibleName => Text("MotifApp.ParseAllWordsInTheSelectionAccessibleName");
-
-    public static string ParseStatusAccessibleName => Text("MotifApp.ParseStatusAccessibleName");
 
     public static string NoResultsYetChooseTheWords => Text("MotifApp.NoResultsYetChooseTheWords");
 
     public static string ReadText => Text("MotifApp.ReadText");
 
-    public static string ShowTheTextReaderAccessibleName => Text("MotifApp.ShowTheTextReaderAccessibleName");
-
     public static string WordList => Text("MotifApp.WordList");
-
-    public static string ShowTheWordListAccessibleName => Text("MotifApp.ShowTheWordListAccessibleName");
 
     public static string TextToReadAccessibleName => Text("MotifApp.TextToReadAccessibleName");
 
@@ -697,21 +686,7 @@ public static class MotifAppStrings
 
     public static string PanGloss => Text("MotifApp.PanGloss");
 
-    public static string InspectorKeyHint => Text("MotifApp.InspectorKeyHint");
-
     public static string CloseTheWordCardAccessibleName => Text("MotifApp.CloseTheWordCardAccessibleName");
-
-    public static string WordListsAccessibleName => Text("MotifApp.WordListsAccessibleName");
-
-    public static string OrderTheWordsInTheSelectedAccessibleName => Text("MotifApp.OrderTheWordsInTheSelectedAccessibleName");
-
-    public static string SearchWordsInListsAccessibleName => Text("MotifApp.SearchWordsInListsAccessibleName");
-
-    public static string ParseTheSelectedListSStoppedAccessibleName => Text("MotifApp.ParseTheSelectedListSStoppedAccessibleName");
-
-    public static string WordsInTheSelectedListAccessibleName => Text("MotifApp.WordsInTheSelectedListAccessibleName");
-
-    public static string ChooseAListAboveToSee => Text("MotifApp.ChooseAListAboveToSee");
 
     public static string SearchWordsAccessibleName => Text("MotifApp.SearchWordsAccessibleName");
 
@@ -765,35 +740,9 @@ public static class MotifAppStrings
 
     public static string RetryWorkOverAccessibleName => Text("MotifApp.RetryWorkOverAccessibleName");
 
-    public static string WhyApplyIsUnavailableAccessibleName => Text("MotifApp.WhyApplyIsUnavailableAccessibleName");
-
-    public static string AppliedToTheFieldWorksProject => Text("MotifApp.AppliedToTheFieldWorksProject");
-
-    public static string WhatApplyChecksAccessibleName => Text("MotifApp.WhatApplyChecksAccessibleName");
-
-    public static string ShowThem => Text("MotifApp.ShowThem");
-
-    public static string ShowChangesThatNoLongerFitAccessibleName => Text("MotifApp.ShowChangesThatNoLongerFitAccessibleName");
-
-    public static string FieldWorksMustBeClosedOrIt => Text("MotifApp.FieldWorksMustBeClosedOrIt");
-
-    public static string WhatBlocksApplyAccessibleName => Text("MotifApp.WhatBlocksApplyAccessibleName");
-
-    public static string ApplyToFieldWorksProjectAccessibleName => Text("MotifApp.ApplyToFieldWorksProjectAccessibleName");
-
     public static string Decline => Text("MotifApp.Decline");
 
     public static string Show => Text("MotifApp.Show");
-
-    public static string ShowChangesAccessibleName => Text("MotifApp.ShowChangesAccessibleName");
-
-    public static string AllChanges => Text("MotifApp.AllChanges");
-
-    public static string NotLookedAtYet => Text("MotifApp.NotLookedAtYet");
-
-    public static string StillFit => Text("MotifApp.StillFit");
-
-    public static string NeedADecision => Text("MotifApp.NeedADecision");
 
     public static string Previous => Text("MotifApp.Previous");
 
@@ -803,49 +752,17 @@ public static class MotifAppStrings
 
     public static string Undo => Text("MotifApp.Undo");
 
-    public static string ReviewAllChangesAccessibleName => Text("MotifApp.ReviewAllChangesAccessibleName");
-
-    public static string ReviewAllChangesTip => Text("MotifApp.ReviewAllChangesTip");
-
-    public static string ChooseAWordInAnalyzeTexts => Text("MotifApp.ChooseAWordInAnalyzeTexts");
-
-    public static string GoToAnalyzeTexts => Text("MotifApp.GoToAnalyzeTexts");
-
     public static string WordChange => Text("MotifApp.WordChange");
 
-    public static string OpinionChange => Text("MotifApp.OpinionChange");
-
     public static string Analysis => Text("MotifApp.Analysis");
-
-    public static string PanGlossEffects => Text("MotifApp.PanGlossEffects");
 
     public static string Where => Text("MotifApp.Where");
 
     public static string Fits => Text("MotifApp.Fits");
 
-    public static string KeepUndo => Text("MotifApp.KeepUndo");
-
-    public static string ChangesGroupedForReviewAccessibleName => Text("MotifApp.ChangesGroupedForReviewAccessibleName");
-
-    public static string CheckAllChangesAgainAgainstTheAccessibleName => Text("MotifApp.CheckAllChangesAgainAgainstTheAccessibleName");
-
-    public static string UndoAll => Text("MotifApp.UndoAll");
-
-    public static string LookedAtAccessibleName => Text("MotifApp.LookedAtAccessibleName");
-
-    public static string LookedAtTip => Text("MotifApp.LookedAtTip");
-
     public static string Project => Text("MotifApp.Project");
 
     public static string Details => Text("MotifApp.Details");
-
-    public static string DetailsForThisChangeAccessibleName => Text("MotifApp.DetailsForThisChangeAccessibleName");
-
-    public static string SelectAChangeToSeeIts => Text("MotifApp.SelectAChangeToSeeIts");
-
-    public static string NowReads => Text("MotifApp.NowReads");
-
-    public static string RefreshedSentenceAccessibleName => Text("MotifApp.RefreshedSentenceAccessibleName");
 
     public static string SoundRuleReplacementReviewAccessibleName => Text("MotifApp.SoundRuleReplacementReviewAccessibleName");
 
@@ -894,34 +811,16 @@ public static class MotifAppStrings
 
     public static string NoProposalsYet => Text("MotifApp.NoProposalsYet");
 
-    public static string ShowAllProposals => Text("MotifApp.ShowAllProposals");
-
-    public static string NoProposalsToShow => Text("MotifApp.NoProposalsToShow");
-
-    public static string SelectAProposal => Text("MotifApp.SelectAProposal");
-
     public static string Status => Text("MotifApp.Status");
 
     public static string BuiltBy => Text("MotifApp.BuiltBy");
 
-    public static string ItsChanges => Text("MotifApp.ItsChanges");
-
-    public static string ProposalNumbersHeading => Text("MotifApp.ProposalNumbersHeading");
-
-    public static string OpenInReviewChanges => Text("MotifApp.OpenInReviewChanges");
-
     /// <summary>The row action that enters the selected Proposal's lens.</summary>
-    public static string ViewWithThisProposal => Text("MotifApp.ViewWithThisProposal");
-
     /// <summary>The heading for a Proposal's explanation.</summary>
     public static string ProposalRationale => Text("MotifApp.ProposalRationale");
 
     /// <summary>The heading for a Proposal's operations.</summary>
-    public static string ProposalWhatItChanges => Text("MotifApp.ProposalWhatItChanges");
-
     /// <summary>Warns that a Proposal's Rationale describes older content.</summary>
-    public static string ProposalRationaleOutOfDate => Text("MotifApp.ProposalRationaleOutOfDate");
-
     /// <summary>The button that makes the Rationale editable.</summary>
     public static string RationaleEdit => Text("MotifApp.RationaleEdit");
 
@@ -947,8 +846,6 @@ public static class MotifAppStrings
     public static string CommentChangedElsewhere => Text("MotifApp.CommentChangedElsewhere");
 
     /// <summary>The group filter is temporarily paused during a Proposal edit.</summary>
-    public static string ProposalFilterPaused => Text("MotifApp.ProposalFilterPaused");
-
     /// <summary>Asks to save or cancel the Rationale edit before switching.</summary>
     public static string RationaleSaveOrCancelFirst => Text("MotifApp.RationaleSaveOrCancelFirst");
 
@@ -989,8 +886,6 @@ public static class MotifAppStrings
     public static string ProposalOperationAffectsPattern => Text("MotifApp.ProposalOperationAffectsPattern");
 
     /// <summary>The heading for optional Proposal checks.</summary>
-    public static string ProposalOptionalChecks => Text("MotifApp.ProposalOptionalChecks");
-
     /// <summary>Opens the confirmation for declining a Proposal.</summary>
     public static string DeclineProposalPrompt => Text("MotifApp.DeclineProposalPrompt");
 
@@ -1004,8 +899,6 @@ public static class MotifAppStrings
     public static string ProposalDeclinedNotice => Text("MotifApp.ProposalDeclinedNotice");
 
     /// <summary>Names the stages of Proposal review.</summary>
-    public static string ProposalStatusStrip => Text("MotifApp.ProposalStatusStrip");
-
     /// <summary>Formats the Trial's approved readings kept and lost.</summary>
     public static string ProposalVerdictFormat => Text("MotifApp.ProposalVerdictFormat");
 
@@ -1067,8 +960,6 @@ public static class MotifAppStrings
     public static string ProposalReviewProgressFormat => Text("MotifApp.ProposalReviewProgressFormat");
 
     /// <summary>Formats the current states shown below the Proposal workflow stages.</summary>
-    public static string ProposalStageStatesFormat => Text("MotifApp.ProposalStageStatesFormat");
-
     public static string Reopen => Text("MotifApp.Reopen");
 
     public static string Delete => Text("MotifApp.Delete");
@@ -1082,10 +973,6 @@ public static class MotifAppStrings
     public static string KeepProposal => Text("MotifApp.KeepProposal");
 
     public static string Proposals => Text("MotifApp.Proposals");
-
-    public static string EachOneIsTriedOnA => Text("MotifApp.EachOneIsTriedOnA");
-
-    public static string NoProposalsYetChangesYouCollect => Text("MotifApp.NoProposalsYetChangesYouCollect");
 
     public static string Proposal => Text("MotifApp.Proposal");
 
@@ -1101,45 +988,13 @@ public static class MotifAppStrings
 
     public static string Open => Text("MotifApp.Open");
 
-    public static string InspectorAccessibleName => Text("MotifApp.InspectorAccessibleName");
-
     public static string TryAWord => Text("MotifApp.TryAWord");
-
-    public static string CloseTheInspectorAccessibleName => Text("MotifApp.CloseTheInspectorAccessibleName");
-
-    public static string CloseEscStepsBackTip => Text("MotifApp.CloseEscStepsBackTip");
-
-    public static string BreadcrumbAccessibleName => Text("MotifApp.BreadcrumbAccessibleName");
 
     public static string Reading => Text("MotifApp.Reading");
 
-    public static string InThisTraceAccessibleName => Text("MotifApp.InThisTraceAccessibleName");
-
-    public static string FromThisTrace => Text("MotifApp.FromThisTrace");
-
-    public static string WhatItIsAccessibleName => Text("MotifApp.WhatItIsAccessibleName");
-
-    public static string WhatItIs => Text("MotifApp.WhatItIs");
-
-    public static string YourWordsThatUseItAccessibleName => Text("MotifApp.YourWordsThatUseItAccessibleName");
-
-    public static string YourWordsThatUseIt => Text("MotifApp.YourWordsThatUseIt");
-
-    public static string FromTheLastParseAllWords => Text("MotifApp.FromTheLastParseAllWords");
-
-    public static string GrammarWarningsAboutItAccessibleName => Text("MotifApp.GrammarWarningsAboutItAccessibleName");
-
-    public static string GrammarWarningsAboutIt => Text("MotifApp.GrammarWarningsAboutIt");
-
-    public static string FromTheLastGrammarCheck => Text("MotifApp.FromTheLastGrammarCheck");
-
     public static string OpenWarnings => Text("MotifApp.OpenWarnings");
 
-    public static string InFieldWorksAccessibleName => Text("MotifApp.InFieldWorksAccessibleName");
-
     public static string InFieldWorks => Text("MotifApp.InFieldWorks");
-
-    public static string FromTheBaseline => Text("MotifApp.FromTheBaseline");
 
     public static string CollapseSideBarAccessibleName => Text("MotifApp.CollapseSideBarAccessibleName");
 
@@ -1151,23 +1006,31 @@ public static class MotifAppStrings
 
     public static string HideInspectorAccessibleName => Text("MotifApp.HideInspectorAccessibleName");
 
+    public static string BackToPage => Text("MotifApp.BackToPage");
+    public static string FilterAll => Text("MotifApp.FilterAll");
+    public static string FilterUnread => Text("MotifApp.FilterUnread");
+    public static string FilterDifferent => Text("MotifApp.FilterDifferent");
+    public static string FilterNotInFieldWorks => Text("MotifApp.FilterNotInFieldWorks");
+    public static string FilterNoParse => Text("MotifApp.FilterNoParse");
+    public static string FilterStopped => Text("MotifApp.FilterStopped");
+    public static string FilterNotParsed => Text("MotifApp.FilterNotParsed");
+    public static string FilterNamedInWarning => Text("MotifApp.FilterNamedInWarning");
+    public static string FilterApproved => Text("MotifApp.FilterApproved");
+    public static string FilterUnknown => Text("MotifApp.FilterUnknown");
+    public static string FilterDisapproved => Text("MotifApp.FilterDisapproved");
+    public static string FilterIncorrectSpelling => Text("MotifApp.FilterIncorrectSpelling");
+    public static string FilterSeveralAnalyses => Text("MotifApp.FilterSeveralAnalyses");
+    public static string SearchWordsPlaceholder => Text("MotifApp.SearchWordsPlaceholder");
+    public static string SearchTextsPlaceholder => Text("MotifApp.SearchTextsPlaceholder");
+
+
     public static string HideInspectorTip => Text("MotifApp.HideInspectorTip");
 
     public static string InspectorHeading => Text("MotifApp.InspectorHeading");
 
-    public static string SelectAnItemToInspect => Text("MotifApp.SelectAnItemToInspect");
-
     public static string ShowInspectorAccessibleName => Text("MotifApp.ShowInspectorAccessibleName");
 
     public static string ShowInspectorTip => Text("MotifApp.ShowInspectorTip");
-
-    public static string ChangesMayAlreadyBeAppliedPattern => Text("MotifApp.ChangesMayAlreadyBeAppliedPattern");
-
-    public static string ChangesMayAlreadyBeApplied => Text("MotifApp.ChangesMayAlreadyBeApplied");
-
-    public static string NoChangesYet => Text("MotifApp.NoChangesYet");
-
-    public static string NoChanges => Text("MotifApp.NoChanges");
 
     public static string ChangeCountPattern => Text("MotifApp.ChangeCountPattern");
 
@@ -1296,10 +1159,6 @@ public static class MotifAppStrings
     public static string WordGroupCountPattern => Text("MotifApp.WordGroupCountPattern");
 
     public static string ChangeGroupCountPattern => Text("MotifApp.ChangeGroupCountPattern");
-
-    public static string ProposalChangeCountFormat => Text("MotifApp.ProposalChangeCountFormat");
-
-    public static string TryWordLoadingGrammar => Text("MotifApp.TryWordLoadingGrammar");
 
     public static string Settings => Text("MotifApp.Settings");
 
@@ -1629,7 +1488,6 @@ public static class MotifAppStrings
 
     public static string SetupNextFirstRun => Text("MotifApp.SetupNextFirstRun");
     public static string SetupNextUseSelection => Text("MotifApp.SetupNextUseSelection");
-    public static string TryWordStaleBaseline => Text("MotifApp.TryWordStaleBaseline");
     public static string WordCardNoParseWarning => Text("MotifApp.WordCardNoParseWarning");
     public static string ReaderMarkLegend => Text("MotifApp.ReaderMarkLegend");
     public static string ProposalsWaitingBadgePattern => Text("MotifApp.ProposalsWaitingBadgePattern");
@@ -1688,87 +1546,13 @@ public static class MotifAppStrings
 
     public static string WriteTheAIHandoffFolderAccessibleName => Text("MotifApp.WriteTheAIHandoffFolderAccessibleName");
 
-    public static string KindOfFinding => Text("MotifApp.KindOfFinding");
-
-    public static string ParsimonyDecisionLabel => Text("MotifApp.ParsimonyDecisionLabel");
-
-    public static string NotebookRecordTypeForThisDecision => Text("MotifApp.NotebookRecordTypeForThisDecision");
-
-    public static string ParsimonyReportEarlierBaselineNotice => Text("MotifApp.ParsimonyReportEarlierBaselineNotice");
-
-    public static string ParsimonyFindingLabel => Text("MotifApp.ParsimonyFindingLabel");
-
-    public static string ParsimonyCountedLabel => Text("MotifApp.ParsimonyCountedLabel");
-
-    public static string StrengthOfEvidence => Text("MotifApp.StrengthOfEvidence");
-
-    public static string PairedParserCheck => Text("MotifApp.PairedParserCheck");
-
-    public static string ParsimonyNothingSuppressed => Text("MotifApp.ParsimonyNothingSuppressed");
-
     public static string Judgment => Text("MotifApp.Judgment");
-
-    public static string ParsimonyReasonLabel => Text("MotifApp.ParsimonyReasonLabel");
-
-    public static string ParsimonyStateLabel => Text("MotifApp.ParsimonyStateLabel");
-
-    public static string ParsimonyActionLabel => Text("MotifApp.ParsimonyActionLabel");
 
     public static string Defer => Text("MotifApp.Defer");
 
     public static string Ask => Text("MotifApp.Ask");
 
-    public static string ReturnToActive => Text("MotifApp.ReturnToActive");
-
-    public static string ParsimonyReviewChanges => Text("MotifApp.ParsimonyReviewChanges");
-
-    public static string ParsimonyReturnLabel => Text("MotifApp.ParsimonyReturnLabel");
-
-    public static string FindingsNotAvailableAccessibleName => Text("MotifApp.FindingsNotAvailableAccessibleName");
-
-    public static string FilterByKindAccessibleName => Text("MotifApp.FilterByKindAccessibleName");
-
-    public static string FilterByDecisionAccessibleName => Text("MotifApp.FilterByDecisionAccessibleName");
-
-    public static string FindingsStillLoadingAccessibleName => Text("MotifApp.FindingsStillLoadingAccessibleName");
-
-    public static string FindingEvidenceAccessibleName => Text("MotifApp.FindingEvidenceAccessibleName");
-
-    public static string DecideThisFindingAccessibleName => Text("MotifApp.DecideThisFindingAccessibleName");
-
-    public static string NotebookRecordTypeAccessibleName => Text("MotifApp.NotebookRecordTypeAccessibleName");
-
-    public static string ReasonAccessibleName => Text("MotifApp.ReasonAccessibleName");
-
-    public static string QuestionAccessibleName => Text("MotifApp.QuestionAccessibleName");
-
-    public static string SavedDecisionAccessibleName => Text("MotifApp.SavedDecisionAccessibleName");
-
-    public static string ParsimonyStateAccessibleName => Text("MotifApp.ParsimonyStateAccessibleName");
-
-    public static string MeasuredFromAnEarlierBaselineAccessibleName => Text("MotifApp.MeasuredFromAnEarlierBaselineAccessibleName");
-
-    public static string EvidenceNotStoredAccessibleName => Text("MotifApp.EvidenceNotStoredAccessibleName");
-
-    public static string JudgmentsNeedingALookAccessibleName => Text("MotifApp.JudgmentsNeedingALookAccessibleName");
-
-    public static string IncompleteReportAccessibleName => Text("MotifApp.IncompleteReportAccessibleName");
-
-    public static string ActiveFindingsAccessibleName => Text("MotifApp.ActiveFindingsAccessibleName");
-
-    public static string SuppressedDecisionsAccessibleName => Text("MotifApp.SuppressedDecisionsAccessibleName");
-
-    public static string TotalWordTime => Text("MotifApp.TotalWordTime");
-
-    public static string MedianWordTime => Text("MotifApp.MedianWordTime");
-
     public static string ObjectTimingDetailIncomplete => Text("MotifApp.ObjectTimingDetailIncomplete");
-
-    public static string TimingMatrixCellHeading => Text("MotifApp.TimingMatrixCellHeading");
-
-    public static string ListFromTexts => Text("MotifApp.ListFromTexts");
-
-    public static string SecondsPerWord => Text("MotifApp.SecondsPerWord");
 
     public static string AssessBudgetStoppedFormat => Text("MotifApp.AssessBudgetStoppedFormat");
     public static string AssessBudgetLabel => Text("MotifApp.AssessBudgetLabel");
@@ -1776,117 +1560,13 @@ public static class MotifAppStrings
     public static string AssessBudgetRefusal => Text("MotifApp.AssessBudgetRefusal");
     public static string ParserWorkLimitField => Text("MotifApp.ParserWorkLimitField");
 
-    public static string ReadingTheParseTimes => Text("MotifApp.ReadingTheParseTimes");
-
-    public static string TimingBaselineStaleNotice => Text("MotifApp.TimingBaselineStaleNotice");
-
-    public static string TimingRuleColumnHeading => Text("MotifApp.TimingRuleColumnHeading");
-
-    public static string TimingKindColumnHeading => Text("MotifApp.TimingKindColumnHeading");
-
     public static string TimingTimeColumnHeading => Text("MotifApp.TimingTimeColumnHeading");
-
-    public static string TimingWordsColumnHeading => Text("MotifApp.TimingWordsColumnHeading");
 
     public static string Inspect => Text("MotifApp.Inspect");
 
-    public static string HowLongTheWordsTook => Text("MotifApp.HowLongTheWordsTook");
-
     public static string Slowest => Text("MotifApp.Slowest");
 
-    public static string TimingSourceMatrixCellOption => Text("MotifApp.TimingSourceMatrixCellOption");
-
-    public static string UseCell => Text("MotifApp.UseCell");
-
-    public static string AList => Text("MotifApp.AList");
-
-    public static string UseList => Text("MotifApp.UseList");
-
-    public static string AIHandoffForTheseWords => Text("MotifApp.AIHandoffForTheseWords");
-
     public static string More => Text("MotifApp.More");
-
-    public static string ChosenInTexts => Text("MotifApp.ChosenInTexts");
-
-    public static string PickWords => Text("MotifApp.PickWords");
-
-    public static string ReRun => Text("MotifApp.ReRun");
-
-    public static string ReRunChosenWords => Text("MotifApp.ReRunChosenWords");
-
-    public static string ParseAgain => Text("MotifApp.ParseAgain");
-
-    public static string ShowAllWords => Text("MotifApp.ShowAllWords");
-
-    public static string AIHandoffForThisRule => Text("MotifApp.AIHandoffForThisRule");
-
-    public static string TimingRuleWordsColumnTip => Text("MotifApp.TimingRuleWordsColumnTip");
-
-    public static string TotalWordTimeAccessibleName => Text("MotifApp.TotalWordTimeAccessibleName");
-
-    public static string TimingControlsAccessibleName => Text("MotifApp.TimingControlsAccessibleName");
-
-    public static string AllTimedWordsAccessibleName => Text("MotifApp.AllTimedWordsAccessibleName");
-
-    public static string NumberOfSlowestWordsAccessibleName => Text("MotifApp.NumberOfSlowestWordsAccessibleName");
-
-    public static string WordsFromAMatrixCellAccessibleName => Text("MotifApp.WordsFromAMatrixCellAccessibleName");
-
-    public static string MatrixCellFromTextsAccessibleName => Text("MotifApp.MatrixCellFromTextsAccessibleName");
-
-    public static string UseCellAccessibleName => Text("MotifApp.UseCellAccessibleName");
-
-    public static string WordsFromAListAccessibleName => Text("MotifApp.WordsFromAListAccessibleName");
-
-    public static string ListFromTextsAccessibleName => Text("MotifApp.ListFromTextsAccessibleName");
-
-    public static string UseListAccessibleName => Text("MotifApp.UseListAccessibleName");
-
-    public static string AIHandoffForTheseWordsAccessibleName => Text("MotifApp.AIHandoffForTheseWordsAccessibleName");
-
-    public static string MoreWaysToChooseWordsAccessibleName => Text("MotifApp.MoreWaysToChooseWordsAccessibleName");
-
-    public static string ChosenInTextsAccessibleName => Text("MotifApp.ChosenInTextsAccessibleName");
-
-    public static string WordsPickedByHandAccessibleName => Text("MotifApp.WordsPickedByHandAccessibleName");
-
-    public static string PickWordsAccessibleName => Text("MotifApp.PickWordsAccessibleName");
-
-    public static string ReRunWordsWithNewLimitsAccessibleName => Text("MotifApp.ReRunWordsWithNewLimitsAccessibleName");
-
-    public static string SecondsPerWordAccessibleName => Text("MotifApp.SecondsPerWordAccessibleName");
-
-    public static string PerWordParserWorkLimitAccessibleName => Text("MotifApp.PerWordParserWorkLimitAccessibleName");
-
-    public static string ReRunChosenWordsAccessibleName => Text("MotifApp.ReRunChosenWordsAccessibleName");
-
-    public static string ParseTheseWordsAgainToMeasureThemAccessibleName => Text("MotifApp.ParseTheseWordsAgainToMeasureThemAccessibleName");
-
-    public static string ShowAllWordsInTimingAccessibleName => Text("MotifApp.ShowAllWordsInTimingAccessibleName");
-
-    public static string WhatEveryShareIsOfAccessibleName => Text("MotifApp.WhatEveryShareIsOfAccessibleName");
-
-    public static string ShareOfTotalWordTimeByKindAccessibleName => Text("MotifApp.ShareOfTotalWordTimeByKindAccessibleName");
-
-    public static string TimingByKindAccessibleName => Text("MotifApp.TimingByKindAccessibleName");
-
-    public static string CallsByKindAccessibleName => Text("MotifApp.CallsByKindAccessibleName");
-
-    public static string TimingByRuleAccessibleName => Text("MotifApp.TimingByRuleAccessibleName");
-
-    public static string OpenTheGrammarWarningAccessibleName => Text("MotifApp.OpenTheGrammarWarningAccessibleName");
-
-    public static string WordsUnderThisRuleAccessibleName => Text("MotifApp.WordsUnderThisRuleAccessibleName");
-
-    public static string NotCheckedYet => Text("MotifApp.NotCheckedYet");
-
-    public static string WarningsCheckExplanation => Text("MotifApp.WarningsCheckExplanation");
-
-    public static string CheckTheGrammar => Text("MotifApp.CheckTheGrammar");
-
-    public static string GrammarNotCheckedYetAccessibleName => Text("MotifApp.GrammarNotCheckedYetAccessibleName");
-
-    public static string CheckTheGrammarAccessibleName => Text("MotifApp.CheckTheGrammarAccessibleName");
 
     public static string FixTheseFirst => Text("MotifApp.FixTheseFirst");
 
@@ -1960,15 +1640,9 @@ public static class MotifAppStrings
 
     public static string StatisticsRowsAccessibleName => Text("MotifApp.StatisticsRowsAccessibleName");
 
-    public static string WarningsAreaLabel => Text("MotifApp.WarningsAreaLabel");
-
     public static string Severity => Text("MotifApp.Severity");
 
-    public static string NamesYourWords => Text("MotifApp.NamesYourWords");
-
     public static string ShowFindingsWithExactUsesInYourWordsAccessibleName => Text("MotifApp.ShowFindingsWithExactUsesInYourWordsAccessibleName");
-
-    public static string SelectedFinding => Text("MotifApp.SelectedFinding");
 
     public static string NamedWords => Text("MotifApp.NamedWords");
 
@@ -1988,8 +1662,6 @@ public static class MotifAppStrings
 
     public static string WarningAfterFixSteps => Text("MotifApp.WarningAfterFixSteps");
 
-    public static string WarningsInspectorEmpty => Text("MotifApp.WarningsInspectorEmpty");
-
     public static string LearnMore => Text("MotifApp.LearnMore");
 
     public static string AIHandoffForThisWarning => Text("MotifApp.AIHandoffForThisWarning");
@@ -1998,133 +1670,13 @@ public static class MotifAppStrings
 
     public static string SelectedWarningDetailsAccessibleName => Text("MotifApp.SelectedWarningDetailsAccessibleName");
 
-    public static string RecentWords => Text("MotifApp.RecentWords");
-
-    public static string TryWordNoTraceToSave => Text("MotifApp.TryWordNoTraceToSave");
-
-    public static string TryWordEmptyPrompt => Text("MotifApp.TryWordEmptyPrompt");
-
     public static string Tracing => Text("MotifApp.Tracing");
-
-    public static string TryWordWhyItDidNotParseHeading => Text("MotifApp.TryWordWhyItDidNotParseHeading");
 
     public static string NoStepRecorded => Text("MotifApp.NoStepRecorded");
 
-    public static string ParserLabel => Text("MotifApp.ParserLabel");
-
-    public static string TryWordAttemptLabel => Text("MotifApp.TryWordAttemptLabel");
-
-    public static string WhyItStopped => Text("MotifApp.WhyItStopped");
-
-    public static string NoMorphemesRecorded => Text("MotifApp.NoMorphemesRecorded");
-
-    public static string RecordedTrace => Text("MotifApp.RecordedTrace");
-
-    public static string OtherRecordedEvent => Text("MotifApp.OtherRecordedEvent");
-
-    public static string MeasuredObject => Text("MotifApp.MeasuredObject");
-
     public static string TimeLabel => Text("MotifApp.TimeLabel");
 
-    public static string OpenASavedTrace => Text("MotifApp.OpenASavedTrace");
-
-    public static string CopyForAChatModel => Text("MotifApp.CopyForAChatModel");
-
-    public static string SaveTheTrace => Text("MotifApp.SaveTheTrace");
-
-    public static string CopyTheTrace => Text("MotifApp.CopyTheTrace");
-
-    public static string TryWordPlainTab => Text("MotifApp.TryWordPlainTab");
-
-    public static string TryWordExpertTab => Text("MotifApp.TryWordExpertTab");
-
     public static string TryIt => Text("MotifApp.TryIt");
-
-    public static string TryWordTimingLabel => Text("MotifApp.TryWordTimingLabel");
-
-    public static string WordAnalysesInFieldWorks => Text("MotifApp.WordAnalysesInFieldWorks");
-
-    public static string TryAWordToolsAccessibleName => Text("MotifApp.TryAWordToolsAccessibleName");
-
-    public static string RecentWordsAccessibleName => Text("MotifApp.RecentWordsAccessibleName");
-
-    public static string OpenASavedTraceAccessibleName => Text("MotifApp.OpenASavedTraceAccessibleName");
-
-    public static string CopyAIDiagnosticInstructionsAccessibleName => Text("MotifApp.CopyAIDiagnosticInstructionsAccessibleName");
-
-    public static string SaveFullDiagnosticJSONAccessibleName => Text("MotifApp.SaveFullDiagnosticJSONAccessibleName");
-
-    public static string CopyFullDiagnosticJSONAccessibleName => Text("MotifApp.CopyFullDiagnosticJSONAccessibleName");
-
-    public static string DiagnosticCaptureDetailsAccessibleName => Text("MotifApp.DiagnosticCaptureDetailsAccessibleName");
-
-    public static string WritingSystemDirectionAndFontAccessibleName => Text("MotifApp.WritingSystemDirectionAndFontAccessibleName");
-
-    public static string PlainTraceViewAccessibleName => Text("MotifApp.PlainTraceViewAccessibleName");
-
-    public static string ExpertTraceViewAccessibleName => Text("MotifApp.ExpertTraceViewAccessibleName");
-
-    public static string TryTheWordAccessibleName => Text("MotifApp.TryTheWordAccessibleName");
-
-    public static string WordToTryAccessibleName => Text("MotifApp.WordToTryAccessibleName");
-
-    public static string CancelTheTraceAccessibleName => Text("MotifApp.CancelTheTraceAccessibleName");
-
-    public static string TryTheProposalAgainAccessibleName => Text("MotifApp.TryTheProposalAgainAccessibleName");
-
-    public static string TryAWordResultAccessibleName => Text("MotifApp.TryAWordResultAccessibleName");
-
-    public static string TryWordOpenInAnalyzeTextsAccessibleName => Text("MotifApp.TryWordOpenInAnalyzeTextsAccessibleName");
-
-    public static string TimingForThisWordAccessibleName => Text("MotifApp.TimingForThisWordAccessibleName");
-
-    public static string SearchCompletenessAccessibleName => Text("MotifApp.SearchCompletenessAccessibleName");
-
-    public static string TryAWordSummaryAccessibleName => Text("MotifApp.TryAWordSummaryAccessibleName");
-
-    public static string TryWordWhyItDidNotParseAccessibleName => Text("MotifApp.TryWordWhyItDidNotParseAccessibleName");
-
-    public static string FieldWorksBesideTheParserAccessibleName => Text("MotifApp.FieldWorksBesideTheParserAccessibleName");
-
-    public static string EveryStoredFieldWorksAnalysisAccessibleName => Text("MotifApp.EveryStoredFieldWorksAnalysisAccessibleName");
-
-    public static string RecordedParserAnalysesAccessibleName => Text("MotifApp.RecordedParserAnalysesAccessibleName");
-
-    public static string PathsTheParserDroppedAccessibleName => Text("MotifApp.PathsTheParserDroppedAccessibleName");
-
-    public static string AttemptsThatGotFurthestAccessibleName => Text("MotifApp.AttemptsThatGotFurthestAccessibleName");
-
-    public static string WhatStoppedTheAttemptAccessibleName => Text("MotifApp.WhatStoppedTheAttemptAccessibleName");
-
-    public static string ShowEveryAttemptAccessibleName => Text("MotifApp.ShowEveryAttemptAccessibleName");
-
-    public static string WhyItDidNotParseAccessibleName => Text("MotifApp.WhyItDidNotParseAccessibleName");
-
-    public static string RecordedStoppedAttemptsAccessibleName => Text("MotifApp.RecordedStoppedAttemptsAccessibleName");
-
-    public static string FullParserAnalysisDetailsAccessibleName => Text("MotifApp.FullParserAnalysisDetailsAccessibleName");
-
-    public static string RecordedTraceContextAccessibleName => Text("MotifApp.RecordedTraceContextAccessibleName");
-
-    public static string PlainTraceStepsAccessibleName => Text("MotifApp.PlainTraceStepsAccessibleName");
-
-    public static string TimeFromAnEarlierParseAccessibleName => Text("MotifApp.TimeFromAnEarlierParseAccessibleName");
-
-    public static string EarlierRuleTimesAccessibleName => Text("MotifApp.EarlierRuleTimesAccessibleName");
-
-    public static string SelectedAttempt => Text("MotifApp.SelectedAttempt");
-
-    public static string TryWordAttemptInspectorEmpty => Text("MotifApp.TryWordAttemptInspectorEmpty");
-
-    public static string TryWordMembershipNotRecorded => Text("MotifApp.TryWordMembershipNotRecorded");
-
-    public static string RecordedSearchWordAccessibleName => Text("MotifApp.RecordedSearchWordAccessibleName");
-
-    public static string StepsOnTheSelectedAttemptAccessibleName => Text("MotifApp.StepsOnTheSelectedAttemptAccessibleName");
-
-    public static string SelectedRecordedStepDetailsAccessibleName => Text("MotifApp.SelectedRecordedStepDetailsAccessibleName");
-
-    public static string TheParsersCodeAccessibleName => Text("MotifApp.TheParsersCodeAccessibleName");
 
     public static string TraceLiveNavigationUnavailable => Text("MotifApp.TraceLiveNavigationUnavailable");
 
@@ -2298,8 +1850,6 @@ public static class MotifAppStrings
 
     public static string PanGlossHelp => Text("MotifApp.PanGlossHelp");
 
-    public static string OpenTheWarning => Text("MotifApp.OpenTheWarning");
-
     public static string MarkAsUnread => Text("MotifApp.MarkAsUnread");
 
     public static string MarkAsUnreadTip => Text("MotifApp.MarkAsUnreadTip");
@@ -2323,53 +1873,7 @@ public static class MotifAppStrings
 
     public static string Staged => Text("MotifApp.Staged");
 
-    public static string TimingNoTimesRecorded => Text("MotifApp.TimingNoTimesRecorded");
-
-    public static string TimingFocusAllWords => Text("MotifApp.TimingFocusAllWords");
-
-    public static string TimingFocusSelectedWordsPattern => Text("MotifApp.TimingFocusSelectedWordsPattern");
-
-    public static string TimingFocusAllWordsUnderRuleFormat => Text("MotifApp.TimingFocusAllWordsUnderRuleFormat");
-
-    public static string TimingFocusSelectedWordsUnderRuleFormat => Text("MotifApp.TimingFocusSelectedWordsUnderRuleFormat");
-
-    public static string TimingRequestedRuleLower => Text("MotifApp.TimingRequestedRuleLower");
-
-    public static string TimingRequestedRule => Text("MotifApp.TimingRequestedRule");
-
-    public static string TimingStoredSummaryFormat => Text("MotifApp.TimingStoredSummaryFormat");
-
-    public static string TimingNoTimesRecordedSelected => Text("MotifApp.TimingNoTimesRecordedSelected");
-
-    public static string TimingNoWordsStopped => Text("MotifApp.TimingNoWordsStopped");
-
-    public static string TimingNoWordsInGroup => Text("MotifApp.TimingNoWordsInGroup");
-
-    public static string TimingNoWordsInSelection => Text("MotifApp.TimingNoWordsInSelection");
-
-    public static string TimingCaptionSomeOfAllFormat => Text("MotifApp.TimingCaptionSomeOfAllFormat");
-
-    public static string TimingCaptionSomeOfTheseFormat => Text("MotifApp.TimingCaptionSomeOfTheseFormat");
-
-    public static string TimingCaptionOneWord => Text("MotifApp.TimingCaptionOneWord");
-
-    public static string TimingCaptionAllWordsFormat => Text("MotifApp.TimingCaptionAllWordsFormat");
-
-    public static string TimingCaptionTheseWordsFormat => Text("MotifApp.TimingCaptionTheseWordsFormat");
-
-    public static string TimingStoppedCaption => Text("MotifApp.TimingStoppedCaption");
-
-    public static string TimingAllWordsButtonFormat => Text("MotifApp.TimingAllWordsButtonFormat");
-
-    public static string TimingAdviceBothLimits => Text("MotifApp.TimingAdviceBothLimits");
-
-    public static string TimingAdviceSearchLimit => Text("MotifApp.TimingAdviceSearchLimit");
-
     public static string TimingAdviceTimeLimit => Text("MotifApp.TimingAdviceTimeLimit");
-
-    public static string TimingStoppedButtonFormat => Text("MotifApp.TimingStoppedButtonFormat");
-
-    public static string TimingRerunMeasurementsPattern => Text("MotifApp.TimingRerunMeasurementsPattern");
 
     public static string TimingPhraseSomeOfAllFormat => Text("MotifApp.TimingPhraseSomeOfAllFormat");
 
@@ -2383,84 +1887,11 @@ public static class MotifAppStrings
 
     public static string TimingNotAttributedLabel => Text("MotifApp.TimingNotAttributedLabel");
 
-    public static string TimingShareHeaderFormat => Text("MotifApp.TimingShareHeaderFormat");
-
-    public static string TimingShareHeader => Text("MotifApp.TimingShareHeader");
-
-    public static string TimingNoSharesShown => Text("MotifApp.TimingNoSharesShown");
-
-    public static string TimingWorkByObjectUnavailable => Text("MotifApp.TimingWorkByObjectUnavailable");
-
-    public static string TimingWorkByObjectNotKept => Text("MotifApp.TimingWorkByObjectNotKept");
-
     public static string TimingShareOfFormat => Text("MotifApp.TimingShareOfFormat");
 
     public static string TimingShareOfOneMissingFormat => Text("MotifApp.TimingShareOfOneMissingFormat");
 
     public static string TimingShareOfManyMissingFormat => Text("MotifApp.TimingShareOfManyMissingFormat");
-
-    public static string TimingNotAttributedNotRecorded => Text("MotifApp.TimingNotAttributedNotRecorded");
-
-    public static string TimingNotAttributedWithShareFormat => Text("MotifApp.TimingNotAttributedWithShareFormat");
-
-    public static string TimingNotAttributedFormat => Text("MotifApp.TimingNotAttributedFormat");
-
-    public static string TimingNoStoredTimingForWords => Text("MotifApp.TimingNoStoredTimingForWords");
-
-    public static string TimingScopeFormat => Text("MotifApp.TimingScopeFormat");
-    public static string TimingDetailLimitedFormat => Text("MotifApp.TimingDetailLimitedFormat");
-    public static string TimingDetailRetried => Text("MotifApp.TimingDetailRetried");
-    public static string TimingObjectTotalsUnavailable => Text("MotifApp.TimingObjectTotalsUnavailable");
-
-    public static string TimingPercentileSummaryFormat => Text("MotifApp.TimingPercentileSummaryFormat");
-
-    public static string TimingNotRecordedLower => Text("MotifApp.TimingNotRecordedLower");
-
-    public static string TimingRuleTimeOfFormat => Text("MotifApp.TimingRuleTimeOfFormat");
-
-    public static string TimingRuleWordsTitleFormat => Text("MotifApp.TimingRuleWordsTitleFormat");
-
-    public static string TimingStoppedAtSearchLimit => Text("MotifApp.TimingStoppedAtSearchLimit");
-
-    public static string TimingStoppedAtTimeLimit => Text("MotifApp.TimingStoppedAtTimeLimit");
-
-    public static string TimingNoStoredTimingForRule => Text("MotifApp.TimingNoStoredTimingForRule");
-
-    public static string TimingRuleSummaryShareFormat => Text("MotifApp.TimingRuleSummaryShareFormat");
-
-    public static string TimingRuleSummaryFormat => Text("MotifApp.TimingRuleSummaryFormat");
-
-    public static string TimingRecordedInWordsPattern => Text("MotifApp.TimingRecordedInWordsPattern");
-
-    public static string TimingOpenProjectFirst => Text("MotifApp.TimingOpenProjectFirst");
-
-    public static string TimingChooseMatrixCellFirst => Text("MotifApp.TimingChooseMatrixCellFirst");
-
-    public static string TimingChooseWordListFirst => Text("MotifApp.TimingChooseWordListFirst");
-
-    public static string TimingNoWordsInList => Text("MotifApp.TimingNoWordsInList");
-
-    public static string TimingEnterWords => Text("MotifApp.TimingEnterWords");
-
-    public static string TimingTickWordsInTexts => Text("MotifApp.TimingTickWordsInTexts");
-
-    public static string TimingHideCalls => Text("MotifApp.TimingHideCalls");
-
-    public static string TimingShowCalls => Text("MotifApp.TimingShowCalls");
-
-    public static string TimingHideCallsAccessibleName => Text("MotifApp.TimingHideCallsAccessibleName");
-
-    public static string TimingShowCallsAccessibleName => Text("MotifApp.TimingShowCallsAccessibleName");
-
-    public static string TimingRerunProgressFormat => Text("MotifApp.TimingRerunProgressFormat");
-
-    public static string TimingRerunProgressParsingFormat => Text("MotifApp.TimingRerunProgressParsingFormat");
-
-    public static string TimingRerunInvalidLimits => Text("MotifApp.TimingRerunInvalidLimits");
-
-    public static string TimingRerunComplete => Text("MotifApp.TimingRerunComplete");
-
-    public static string TimingRerunCancelled => Text("MotifApp.TimingRerunCancelled");
 
     public static string TimingNotRecorded => Text("MotifApp.TimingNotRecorded");
 
@@ -2484,163 +1915,7 @@ public static class MotifAppStrings
 
     public static string TimingUnknownQuality => Text("MotifApp.TimingUnknownQuality");
 
-    public static string ParsimonyFindingCountPattern => Text("MotifApp.ParsimonyFindingCountPattern");
-
-    public static string ParsimonyFilterChoiceLabelFormat => Text("MotifApp.ParsimonyFilterChoiceLabelFormat");
-
-    public static string ParsimonyJobFailed => Text("MotifApp.ParsimonyJobFailed");
-
-    public static string ParsimonyBaselineChanged => Text("MotifApp.ParsimonyBaselineChanged");
-
-    public static string ParsimonyReportUnavailable => Text("MotifApp.ParsimonyReportUnavailable");
-
-    public static string ParsimonyRequiresAdvancedAi => Text("MotifApp.ParsimonyRequiresAdvancedAi");
-
-    public static string ParsimonyNoReport => Text("MotifApp.ParsimonyNoReport");
-
-    public static string ParsimonyNoReportNextStep => Text("MotifApp.ParsimonyNoReportNextStep");
-
-    public static string ParsimonyNoRecordTypes => Text("MotifApp.ParsimonyNoRecordTypes");
-
-    public static string ParsimonyStagedNote => Text("MotifApp.ParsimonyStagedNote");
-
-    public static string ParsimonyReturnStagedLabel => Text("MotifApp.ParsimonyReturnStagedLabel");
-
-    public static string ParsimonyEvidenceNote => Text("MotifApp.ParsimonyEvidenceNote");
-
-    public static string ParsimonyNotMeasuredFormat => Text("MotifApp.ParsimonyNotMeasuredFormat");
-
-    public static string ParsimonyActiveTabFormat => Text("MotifApp.ParsimonyActiveTabFormat");
-
-    public static string ParsimonySuppressedTabFormat => Text("MotifApp.ParsimonySuppressedTabFormat");
-
-    public static string ParsimonyFindingsNotAvailable => Text("MotifApp.ParsimonyFindingsNotAvailable");
-
-    public static string ParsimonyFindingWrongProject => Text("MotifApp.ParsimonyFindingWrongProject");
-
-    public static string ParsimonyFindingNoLongerActive => Text("MotifApp.ParsimonyFindingNoLongerActive");
-
-    public static string ParsimonyDecisionGone => Text("MotifApp.ParsimonyDecisionGone");
-
-    public static string ParsimonyLoadingNoteFormat => Text("MotifApp.ParsimonyLoadingNoteFormat");
-
-    public static string ParsimonyLoadFailedFormat => Text("MotifApp.ParsimonyLoadFailedFormat");
-
-    public static string ParsimonyIncompleteNote => Text("MotifApp.ParsimonyIncompleteNote");
-
-    public static string ParsimonyNoFindingsToReview => Text("MotifApp.ParsimonyNoFindingsToReview");
-
-    public static string ParsimonyToReviewFormat => Text("MotifApp.ParsimonyToReviewFormat");
-
-    public static string ParsimonyAllFindings => Text("MotifApp.ParsimonyAllFindings");
-
-    public static string ParsimonyNotDecided => Text("MotifApp.ParsimonyNotDecided");
-
-    public static string ParsimonyKept => Text("MotifApp.ParsimonyKept");
-
-    public static string ParsimonyDeferred => Text("MotifApp.ParsimonyDeferred");
-
-    public static string ParsimonyAsked => Text("MotifApp.ParsimonyAsked");
-
-    public static string ParsimonyNoReasonGiven => Text("MotifApp.ParsimonyNoReasonGiven");
-
-    public static string ParsimonyReasonFormat => Text("MotifApp.ParsimonyReasonFormat");
-
-    public static string ParsimonyConflictFormat => Text("MotifApp.ParsimonyConflictFormat");
-
-    public static string ParsimonyConflictDefault => Text("MotifApp.ParsimonyConflictDefault");
-
-    public static string ParsimonyStagedStatusFormat => Text("MotifApp.ParsimonyStagedStatusFormat");
-
-    public static string ParsimonyResurfacedFormat => Text("MotifApp.ParsimonyResurfacedFormat");
-
-    public static string ParsimonyDetailCounted => Text("MotifApp.ParsimonyDetailCounted");
-
-    public static string ParsimonyDetailItems => Text("MotifApp.ParsimonyDetailItems");
-
-    public static string ParsimonyDetailWhyReported => Text("MotifApp.ParsimonyDetailWhyReported");
-
-    public static string ParsimonyDetailStrength => Text("MotifApp.ParsimonyDetailStrength");
-
-    public static string ParsimonyDetailPairedCheck => Text("MotifApp.ParsimonyDetailPairedCheck");
-
-    public static string ParsimonyDetailEarlierReason => Text("MotifApp.ParsimonyDetailEarlierReason");
-
-    public static string ParsimonyDetailDecision => Text("MotifApp.ParsimonyDetailDecision");
-
-    public static string ParsimonyDetailSubject => Text("MotifApp.ParsimonyDetailSubject");
-
-    public static string ParsimonyDetailJudgmentId => Text("MotifApp.ParsimonyDetailJudgmentId");
-
-    public static string ParsimonyDetailNotebookRecord => Text("MotifApp.ParsimonyDetailNotebookRecord");
-
-    public static string ParsimonyDetailReason => Text("MotifApp.ParsimonyDetailReason");
-
-    public static string ParsimonyDetailCurrentState => Text("MotifApp.ParsimonyDetailCurrentState");
-
-    public static string ParsimonyReportedBecauseFormat => Text("MotifApp.ParsimonyReportedBecauseFormat");
-
-    public static string ParsimonyWriteQuestionFirst => Text("MotifApp.ParsimonyWriteQuestionFirst");
-
-    public static string ParsimonyReturnStagedMessageFormat => Text("MotifApp.ParsimonyReturnStagedMessageFormat");
-
-    public static string ParsimonyFixNoteFormat => Text("MotifApp.ParsimonyFixNoteFormat");
-
-    public static string ParsimonyFixNoteNone => Text("MotifApp.ParsimonyFixNoteNone");
-
-    public static string ParsimonyItemsNotNamed => Text("MotifApp.ParsimonyItemsNotNamed");
-
-    public static string ParsimonyItemsAndMorePattern => Text("MotifApp.ParsimonyItemsAndMorePattern");
-
-    public static string ParsimonyJoinTwoFormat => Text("MotifApp.ParsimonyJoinTwoFormat");
-
-    public static string ParsimonyJoinManyFormat => Text("MotifApp.ParsimonyJoinManyFormat");
-
     public static string ParsimonyDescribeFormat => Text("MotifApp.ParsimonyDescribeFormat");
-
-    public static string ParsimonyCheckTitle => Text("MotifApp.ParsimonyCheckTitle");
-
-    public static string ParsimonyCheckShortTitle => Text("MotifApp.ParsimonyCheckShortTitle");
-
-    public static string ParsimonyAxisParsimony => Text("MotifApp.ParsimonyAxisParsimony");
-
-    public static string ParsimonyAxisRestrictiveness => Text("MotifApp.ParsimonyAxisRestrictiveness");
-
-    public static string ParsimonyAxisBoth => Text("MotifApp.ParsimonyAxisBoth");
-
-    public static string ParsimonyAxisParsimonyMeaning => Text("MotifApp.ParsimonyAxisParsimonyMeaning");
-
-    public static string ParsimonyAxisRestrictivenessMeaning => Text("MotifApp.ParsimonyAxisRestrictivenessMeaning");
-
-    public static string ParsimonyAxisBothMeaning => Text("MotifApp.ParsimonyAxisBothMeaning");
-
-    public static string ParsimonyQuestionOpen => Text("MotifApp.ParsimonyQuestionOpen");
-
-    public static string ParsimonyFixPlanned => Text("MotifApp.ParsimonyFixPlanned");
-
-    public static string ParsimonyStateSuppressed => Text("MotifApp.ParsimonyStateSuppressed");
-
-    public static string ParsimonyStateStale => Text("MotifApp.ParsimonyStateStale");
-
-    public static string ParsimonyStateEvidenceUnavailable => Text("MotifApp.ParsimonyStateEvidenceUnavailable");
-
-    public static string ParsimonyStateConflict => Text("MotifApp.ParsimonyStateConflict");
-
-    public static string ParsimonyStateDecisionUnavailable => Text("MotifApp.ParsimonyStateDecisionUnavailable");
-
-    public static string ParsimonyTierStatic => Text("MotifApp.ParsimonyTierStatic");
-
-    public static string ParsimonyTierText => Text("MotifApp.ParsimonyTierText");
-
-    public static string ParsimonyTierOutcomes => Text("MotifApp.ParsimonyTierOutcomes");
-
-    public static string ParsimonyVerificationPassed => Text("MotifApp.ParsimonyVerificationPassed");
-
-    public static string ParsimonyVerificationFailed => Text("MotifApp.ParsimonyVerificationFailed");
-
-    public static string ParsimonyVerificationInconclusive => Text("MotifApp.ParsimonyVerificationInconclusive");
-
-    public static string ParsimonyVerificationNotRun => Text("MotifApp.ParsimonyVerificationNotRun");
 
     public static string HandoffWriteAgain => Text("MotifApp.HandoffWriteAgain");
 
@@ -2926,18 +2201,6 @@ public static class MotifAppStrings
 
     public static string TryWordGrammarNotRecorded => Text("MotifApp.TryWordGrammarNotRecorded");
 
-    public static string TryWordDifferentBaselines => Text("MotifApp.TryWordDifferentBaselines");
-
-    public static string TryWordOtherRulesPattern => Text("MotifApp.TryWordOtherRulesPattern");
-
-    public static string TryWordEarlierTimingTitleFormat => Text("MotifApp.TryWordEarlierTimingTitleFormat");
-
-    public static string TryWordEarlierSourceWithWordFormat => Text("MotifApp.TryWordEarlierSourceWithWordFormat");
-
-    public static string TryWordEarlierSourceFormat => Text("MotifApp.TryWordEarlierSourceFormat");
-
-    public static string TryWordShareOfFormat => Text("MotifApp.TryWordShareOfFormat");
-
 
 
     public static string TryWordOpinionCountFormat => Text("MotifApp.TryWordOpinionCountFormat");
@@ -2951,8 +2214,6 @@ public static class MotifAppStrings
     public static string TryWordPieceTried => Text("MotifApp.TryWordPieceTried");
 
     public static string TryWordPieceDiffer => Text("MotifApp.TryWordPieceDiffer");
-
-    public static string WarningsAllAreas => Text("MotifApp.WarningsAllAreas");
 
     public static string WarningsFindingsPattern => Text("MotifApp.WarningsFindingsPattern");
 
@@ -3621,35 +2882,17 @@ public static class MotifAppStrings
 
     public static string StatisticsColumnAnalyses => Text("MotifApp.StatisticsColumnAnalyses");
 
-    public static string TimingDetailedStatisticsHeading => Text("MotifApp.TimingDetailedStatisticsHeading");
-
-    public static string TryWordParserDetailsHeading => Text("MotifApp.TryWordParserDetailsHeading");
-
     public static string TryWordRecordedTreeContextHeading => Text("MotifApp.TryWordRecordedTreeContextHeading");
 
     public static string TraceFullMorphDetailsHeading => Text("MotifApp.TraceFullMorphDetailsHeading");
 
     public static string TraceRawMorphRecordHeading => Text("MotifApp.TraceRawMorphRecordHeading");
 
-    public static string TryWordFullAnalysisDetailsHeading => Text("MotifApp.TryWordFullAnalysisDetailsHeading");
-
     public static string TraceKindWord => Text("MotifApp.TraceKindWord");
 
     public static string ExpertAnalysisPathPlaceholder => Text("MotifApp.ExpertAnalysisPathPlaceholder");
 
     public static string StatisticsFilterPlaceholder => Text("MotifApp.StatisticsFilterPlaceholder");
-
-    public static string ParsimonyReasonPlaceholder => Text("MotifApp.ParsimonyReasonPlaceholder");
-
-    public static string ParsimonyQuestionPlaceholder => Text("MotifApp.ParsimonyQuestionPlaceholder");
-
-    public static string TryWordInputPlaceholder => Text("MotifApp.TryWordInputPlaceholder");
-
-    public static string TimingChooseCellPlaceholder => Text("MotifApp.TimingChooseCellPlaceholder");
-
-    public static string TimingChooseListPlaceholder => Text("MotifApp.TimingChooseListPlaceholder");
-
-    public static string TimingPasteWordsPlaceholder => Text("MotifApp.TimingPasteWordsPlaceholder");
 
     public static string CompareSearchWordsPlaceholder => Text("MotifApp.CompareSearchWordsPlaceholder");
 
@@ -3698,8 +2941,6 @@ public static class MotifAppStrings
     public static string ProjectCardButtonRefresh => Text("MotifApp.ProjectCardButtonRefresh");
 
     public static string ProjectCardButtonParseAllWords => Text("MotifApp.ProjectCardButtonParseAllWords");
-
-    public static string ProjectCardButtonSeeWhatChanged => Text("MotifApp.ProjectCardButtonSeeWhatChanged");
 
     public static string ProjectCardTextsHeading => Text("MotifApp.ProjectCardTextsHeading");
 
@@ -4239,31 +3480,6 @@ public static class MotifAppStrings
 
     public static string TraceStepApplied => Text("MotifApp.TraceStepApplied");
 
-    public static string ReviewApplyLosesAnalysis => Text("MotifApp.ReviewApplyLosesAnalysis");
-    public static string ReviewApplyNotReady => Text("MotifApp.ReviewApplyNotReady");
-    public static string ReviewApplyDoesNotFit => Text("MotifApp.ReviewApplyDoesNotFit");
-    public static string ReviewApplyReconciliationNeeded => Text("MotifApp.ReviewApplyReconciliationNeeded");
-    public static string ReviewApplyUncertain => Text("MotifApp.ReviewApplyUncertain");
-    public static string ReviewApplyFieldWorksHoldsProject => Text("MotifApp.ReviewApplyFieldWorksHoldsProject");
-    public static string ReviewApplyFieldWorksSavedSince => Text("MotifApp.ReviewApplyFieldWorksSavedSince");
-    public static string ReviewApplyNotMeasured => Text("MotifApp.ReviewApplyNotMeasured");
-    public static string ReviewApplyTrialNeeded => Text("MotifApp.ReviewApplyTrialNeeded");
-    public static string ReviewApplyNothingToApply => Text("MotifApp.ReviewApplyNothingToApply");
-    public static string ReviewApplyFitNotChecked => Text("MotifApp.ReviewApplyFitNotChecked");
-    public static string ReviewApplyApplying => Text("MotifApp.ReviewApplyApplying");
-    public static string ReviewApplyMeasuring => Text("MotifApp.ReviewApplyMeasuring");
-    public static string ReviewApplyChooseChange => Text("MotifApp.ReviewApplyChooseChange");
-    public static string ReviewApply => Text("MotifApp.ReviewApply");
-    public static string ApplySummaryFormat => Text("MotifApp.ApplySummaryFormat");
-    public static string ApplyQuestionFormat => Text("MotifApp.ApplyQuestionFormat");
-    public static string ApplyCheckFieldWorksClosed => Text("MotifApp.ApplyCheckFieldWorksClosed");
-    public static string ApplyCheckFieldWorksOpen => Text("MotifApp.ApplyCheckFieldWorksOpen");
-    public static string ApplyResultWroteFormat => Text("MotifApp.ApplyResultWroteFormat");
-    public static string ApplyResultBaselineRecorded => Text("MotifApp.ApplyResultBaselineRecorded");
-    public static string ApplyResultBaselineRecording => Text("MotifApp.ApplyResultBaselineRecording");
-    public static string ApplyResultBaselinePending => Text("MotifApp.ApplyResultBaselinePending");
-    public static string ApplyResultReopen => Text("MotifApp.ApplyResultReopen");
-    public static string ApplyBackupLink => Text("MotifApp.ApplyBackupLink");
     public static string TraceEffortDescription => Text("MotifApp.TraceEffortDescription");
     public static string TraceSegmentsExaminedLabel => Text("MotifApp.TraceSegmentsExaminedLabel");
     public static string TraceParserWorkLabel => Text("MotifApp.TraceParserWorkLabel");
@@ -4298,79 +3514,8 @@ public static class MotifAppStrings
 
     public static string DroppedKindOther => Text("MotifApp.DroppedKindOther");
 
-    public static string OverviewUnparsedPattern => Text("MotifApp.OverviewUnparsedPattern");
-
-    public static string OverviewUnparsedPlacesPattern => Text("MotifApp.OverviewUnparsedPlacesPattern");
-
-    public static string OverviewUnparsedByFormNote => Text("MotifApp.OverviewUnparsedByFormNote");
-
-    public static string OverviewUnparsedNoAnalysisPattern => Text("MotifApp.OverviewUnparsedNoAnalysisPattern");
-
-    public static string OverviewUnparsedWorkLimitPattern => Text("MotifApp.OverviewUnparsedWorkLimitPattern");
-
-    public static string OverviewUnparsedTimeLimitPattern => Text("MotifApp.OverviewUnparsedTimeLimitPattern");
-
-    public static string OverviewUnparsedBothLimitsPattern => Text("MotifApp.OverviewUnparsedBothLimitsPattern");
-
-    public static string OverviewUnparsedStoppedPattern => Text("MotifApp.OverviewUnparsedStoppedPattern");
-
-    public static string OverviewUnparsedRefusedPattern => Text("MotifApp.OverviewUnparsedRefusedPattern");
-
-
-    public static string OverviewUnparsedMoreReasonsPattern => Text("MotifApp.OverviewUnparsedMoreReasonsPattern");
-
-    public static string OverviewUnparsedIncorrectSpellingPattern => Text("MotifApp.OverviewUnparsedIncorrectSpellingPattern");
-
-    public static string OverviewCoverageLeftOutFormat => Text("MotifApp.OverviewCoverageLeftOutFormat");
-
-    public static string OverviewCoverageDigitsPattern => Text("MotifApp.OverviewCoverageDigitsPattern");
-
-    public static string OverviewCoverageOtherWritingSystemPattern => Text("MotifApp.OverviewCoverageOtherWritingSystemPattern");
-
-    public static string OverviewBandsTitleByText => Text("MotifApp.OverviewBandsTitleByText");
-
-    public static string OverviewBandsTitle => Text("MotifApp.OverviewBandsTitle");
-
-    public static string OverviewBandsAccessibleName => Text("MotifApp.OverviewBandsAccessibleName");
-
-    public static string OverviewBandRangeFormat => Text("MotifApp.OverviewBandRangeFormat");
-
-    public static string OverviewBandRestFormat => Text("MotifApp.OverviewBandRestFormat");
-
-    public static string OverviewBandWordsFormat => Text("MotifApp.OverviewBandWordsFormat");
-
-    public static string OverviewBandPlacesFormat => Text("MotifApp.OverviewBandPlacesFormat");
-
-    public static string OverviewUntaggedStemsPattern => Text("MotifApp.OverviewUntaggedStemsPattern");
-
-    public static string OverviewUntaggedStemsDetail => Text("MotifApp.OverviewUntaggedStemsDetail");
-
-    public static string OverviewUntaggedStemsLinkFormat => Text("MotifApp.OverviewUntaggedStemsLinkFormat");
-
-    public static string OverviewBandCountsFormat => Text("MotifApp.OverviewBandCountsFormat");
-
-    public static string OverviewUnparsedNoCountPattern => Text("MotifApp.OverviewUnparsedNoCountPattern");
-    public static string OverviewBandNoCountPattern => Text("MotifApp.OverviewBandNoCountPattern");
-
-    public static string OverviewNotMeasuredPattern => Text("MotifApp.OverviewNotMeasuredPattern");
-
-    public static string OverviewAmbiguityTitle => Text("MotifApp.OverviewAmbiguityTitle");
-
-    public static string OverviewAmbiguityAccessibleName => Text("MotifApp.OverviewAmbiguityAccessibleName");
-
-    public static string OverviewAmbiguityMeanFormat => Text("MotifApp.OverviewAmbiguityMeanFormat");
-
-    public static string OverviewAmbiguityManyPattern => Text("MotifApp.OverviewAmbiguityManyPattern");
-
-    public static string OverviewAmbiguityCountedFormat => Text("MotifApp.OverviewAmbiguityCountedFormat");
 
     public static string OverviewAmbiguityTopCaption => Text("MotifApp.OverviewAmbiguityTopCaption");
-
-    public static string OverviewAnalysesPattern => Text("MotifApp.OverviewAnalysesPattern");
-
-    public static string OverviewUnparsedSelectionPlacesPattern => Text("MotifApp.OverviewUnparsedSelectionPlacesPattern");
-
-    public static string OverviewUnparsedOnlyIncorrectSpellingPattern => Text("MotifApp.OverviewUnparsedOnlyIncorrectSpellingPattern");
 
     public static string ProposalParsimonyTitle => Text("MotifApp.ProposalParsimonyTitle");
 
@@ -4477,13 +3622,10 @@ public static class MotifAppStrings
 
     public static string ProposalParsimonyParserWorkLabel => Text("MotifApp.ProposalParsimonyParserWorkLabel");
 
-    public static string ParserWorkComparisonMoreFormat => Text("MotifApp.ParserWorkComparisonMoreFormat");
     public static string ProposalParsimonyParserWorkMoreFormat => Text("MotifApp.ProposalParsimonyParserWorkMoreFormat");
 
-    public static string ParserWorkComparisonLessFormat => Text("MotifApp.ParserWorkComparisonLessFormat");
     public static string ProposalParsimonyParserWorkLessFormat => Text("MotifApp.ProposalParsimonyParserWorkLessFormat");
 
-    public static string ParserWorkComparisonSame => Text("MotifApp.ParserWorkComparisonSame");
     public static string ProposalParsimonyParserWorkSame => Text("MotifApp.ProposalParsimonyParserWorkSame");
 
     public static string ProposalParsimonyWallTimeSecondsPattern => Text("MotifApp.ProposalParsimonyWallTimeSecondsPattern");
@@ -4615,123 +3757,7 @@ public static class MotifAppStrings
 
     public static string OverviewPairFormat => Text("MotifApp.OverviewPairFormat");
 
-    public static string OverviewCoveragePairFormat => Text("MotifApp.OverviewCoveragePairFormat");
-
-    public static string OverviewAccuracyPairFormat => Text("MotifApp.OverviewAccuracyPairFormat");
-
-    public static string OverviewProposalPairedNote => Text("MotifApp.OverviewProposalPairedNote");
-
-    public static string OverviewProposalOldPairedNoteFormat => Text("MotifApp.OverviewProposalOldPairedNoteFormat");
-
-    public static string OverviewProposalUnpairedLeadPattern => Text("MotifApp.OverviewProposalUnpairedLeadPattern");
-
-    public static string OverviewProposalUnpairedTodayNone => Text("MotifApp.OverviewProposalUnpairedTodayNone");
-
-    public static string OverviewProposalUnpairedProposalNone => Text("MotifApp.OverviewProposalUnpairedProposalNone");
-
-    public static string OverviewProposalUnpairedNotComparable => Text("MotifApp.OverviewProposalUnpairedNotComparable");
-
-    public static string OverviewProposalTodayOnlyNote => Text("MotifApp.OverviewProposalTodayOnlyNote");
-
-    public static string OverviewProposalUnreadableNote => Text("MotifApp.OverviewProposalUnreadableNote");
-
-    public static string ProposalBarLabelFormat => Text("MotifApp.ProposalBarLabelFormat");
-
-    public static string ProposalBarAccessibleName => Text("MotifApp.ProposalBarAccessibleName");
-
-    public static string ProposalBarLeave => Text("MotifApp.ProposalBarLeave");
-
-    public static string ProposalBarLeaveAccessibleName => Text("MotifApp.ProposalBarLeaveAccessibleName");
-
-    public static string ProposalBarTryAgainAccessibleNameFormat => Text("MotifApp.ProposalBarTryAgainAccessibleNameFormat");
-
-    public static string ProposalBarSentenceFormat => Text("MotifApp.ProposalBarSentenceFormat");
-
-    public static string ProposalBarTriedFormat => Text("MotifApp.ProposalBarTriedFormat");
-
-    public static string ProposalBarTriedNoSaveFormat => Text("MotifApp.ProposalBarTriedNoSaveFormat");
-
-    public static string ProposalViewToday => Text("MotifApp.ProposalViewToday");
-
-    public static string ProposalViewTodayToProposal => Text("MotifApp.ProposalViewTodayToProposal");
-
-    public static string ProposalViewProposal => Text("MotifApp.ProposalViewProposal");
-
-    public static string ProposalViewTodayAccessibleName => Text("MotifApp.ProposalViewTodayAccessibleName");
-
-    public static string ProposalViewTodayToProposalAccessibleName => Text("MotifApp.ProposalViewTodayToProposalAccessibleName");
-
-    public static string ProposalViewProposalAccessibleName => Text("MotifApp.ProposalViewProposalAccessibleName");
-
-    public static string ProposalViewSwitchAccessibleName => Text("MotifApp.ProposalViewSwitchAccessibleName");
-
-    public static string ProposalViewTooltipFormat => Text("MotifApp.ProposalViewTooltipFormat");
-
-    public static string OverviewProposalNone => Text("MotifApp.OverviewProposalNone");
-
-    public static string OverviewProposalReading => Text("MotifApp.OverviewProposalReading");
-
-    public static string OverviewTodayViewNote => Text("MotifApp.OverviewTodayViewNote");
-
-    public static string OverviewProposalViewNote => Text("MotifApp.OverviewProposalViewNote");
-
-    public static string OverviewProposalViewOldNoteFormat => Text("MotifApp.OverviewProposalViewOldNoteFormat");
-
-    public static string OverviewProposalViewGapLeadPattern => Text("MotifApp.OverviewProposalViewGapLeadPattern");
-
-    public static string OverviewProposalNoNumbersNote => Text("MotifApp.OverviewProposalNoNumbersNote");
-
-    public static string OverviewTodayBreakdownNote => Text("MotifApp.OverviewTodayBreakdownNote");
-
-    public static string OverviewNeitherParseNote => Text("MotifApp.OverviewNeitherParseNote");
-
-    public static string OverviewProposalTodayNoneLeadPattern => Text("MotifApp.OverviewProposalTodayNoneLeadPattern");
-
-    public static string ProposalPageTodayViewNoteFormat => Text("MotifApp.ProposalPageTodayViewNoteFormat");
-
-    public static string ProposalPageUnreadableFormat => Text("MotifApp.ProposalPageUnreadableFormat");
-
-    public static string ProposalPageTodayOnlyFormat => Text("MotifApp.ProposalPageTodayOnlyFormat");
-
-    public static string ProposalPageNothingFormat => Text("MotifApp.ProposalPageNothingFormat");
-
-    public static string ProposalPageOldNoteFormat => Text("MotifApp.ProposalPageOldNoteFormat");
-
-    public static string ProposalPageNone => Text("MotifApp.ProposalPageNone");
-
-    public static string WarningsProposalPairedNote => Text("MotifApp.WarningsProposalPairedNote");
-
-    public static string WarningsProposalViewNote => Text("MotifApp.WarningsProposalViewNote");
-
-    public static string WarningsProposalTodayNotCheckedNote => Text("MotifApp.WarningsProposalTodayNotCheckedNote");
-
-    public static string WarningsGoneWithProposal => Text("MotifApp.WarningsGoneWithProposal");
-
-    public static string WarningsNewWithProposal => Text("MotifApp.WarningsNewWithProposal");
-
-    public static string WarningsFindingsNoun => Text("MotifApp.WarningsFindingsNoun");
-
-    public static string TimingRuleNew => Text("MotifApp.TimingRuleNew");
-
-    public static string TimingRuleMissing => Text("MotifApp.TimingRuleMissing");
-
-    public static string TimingRuleUnavailable => Text("MotifApp.TimingRuleUnavailable");
-
-    public static string TimingRuleChanges => Text("MotifApp.TimingRuleChanges");
-
-    public static string TimingProposalPairedNote => Text("MotifApp.TimingProposalPairedNote");
-
-    public static string TimingProposalViewNote => Text("MotifApp.TimingProposalViewNote");
-
-    public static string TimingProposalStoppedOnlyNote => Text("MotifApp.TimingProposalStoppedOnlyNote");
-
     public static string TimingNoneToday => Text("MotifApp.TimingNoneToday");
-
-    public static string TimingNoun => Text("MotifApp.TimingNoun");
-
-    public static string TimingProposalDifferentWordsNote => Text("MotifApp.TimingProposalDifferentWordsNote");
-
-    public static string TimingProposalViewNotComparableNote => Text("MotifApp.TimingProposalViewNotComparableNote");
 
     public static string WarningsGoneWithProposalStatus => Text("MotifApp.WarningsGoneWithProposalStatus");
 
@@ -4747,58 +3773,13 @@ public static class MotifAppStrings
 
     public static string WarningsMarkedRowFormat => Text("MotifApp.WarningsMarkedRowFormat");
 
-    public static string PageTiming => Text("MotifApp.PageTiming");
-
-    public static string WarningsProposalReadingNote => Text("MotifApp.WarningsProposalReadingNote");
-
     public static string ProposalDifferencePlacesMorePattern => Text("MotifApp.ProposalDifferencePlacesMorePattern");
 
-    public static string WarningsProposalReadingTodayNotCheckedNote => Text("MotifApp.WarningsProposalReadingTodayNotCheckedNote");
-
-    public static string CompareCellProposalAccessibleNameFormat => Text("MotifApp.CompareCellProposalAccessibleNameFormat");
-    public static string CompareCellProposalPlacesAccessibleNameFormat => Text("MotifApp.CompareCellProposalPlacesAccessibleNameFormat");
     public static string WordRowWithProposalFormat => Text("MotifApp.WordRowWithProposalFormat");
     public static string WordRowSummaryWithProposalLabel => Text("MotifApp.WordRowSummaryWithProposalLabel");
     public static string WordRowSummaryPanGlossTodayFormat => Text("MotifApp.WordRowSummaryPanGlossTodayFormat");
     public static string WordRowTimeWithProposalFormat => Text("MotifApp.WordRowTimeWithProposalFormat");
-    public static string CompareWordsEitherSideFormat => Text("MotifApp.CompareWordsEitherSideFormat");
-    public static string CompareWordsNotListedPattern => Text("MotifApp.CompareWordsNotListedPattern");
-
-    public static string TextsProposalWordCardsNote => Text("MotifApp.TextsProposalWordCardsNote");
-
     public static string TextsWordNotMeasured => Text("MotifApp.TextsWordNotMeasured");
-
-    public static string TextsListChipAccessibleNameFormat => Text("MotifApp.TextsListChipAccessibleNameFormat");
-
-    public static string TextsListChipPairAccessibleNameFormat => Text("MotifApp.TextsListChipPairAccessibleNameFormat");
-
-    public static string TextsListChipProposalAccessibleNameFormat => Text("MotifApp.TextsListChipProposalAccessibleNameFormat");
-
-    public static string TextsListPlacesNotCounted => Text("MotifApp.TextsListPlacesNotCounted");
-
-    public static string TextsListPlacesTodayFormat => Text("MotifApp.TextsListPlacesTodayFormat");
-
-    public static string TextsMovedChipLabel => Text("MotifApp.TextsMovedChipLabel");
-
-    public static string TextsMovedChipAccessibleNameFormat => Text("MotifApp.TextsMovedChipAccessibleNameFormat");
-
-    public static string TextsMovedChipWordsPattern => Text("MotifApp.TextsMovedChipWordsPattern");
-
-    public static string TextsMovedListSummaryFormat => Text("MotifApp.TextsMovedListSummaryFormat");
-
-    public static string PageDeltaSameMorePattern => Text("MotifApp.PageDeltaSameMorePattern");
-
-    public static string PageDeltaSameFewerPattern => Text("MotifApp.PageDeltaSameFewerPattern");
-
-    public static string PageDeltaWarningsMorePattern => Text("MotifApp.PageDeltaWarningsMorePattern");
-
-    public static string PageDeltaWarningsFewerPattern => Text("MotifApp.PageDeltaWarningsFewerPattern");
-
-    public static string PageDeltaWorkMoreFormat => Text("MotifApp.PageDeltaWorkMoreFormat");
-
-    public static string PageDeltaWorkFewerFormat => Text("MotifApp.PageDeltaWorkFewerFormat");
-
-    public static string PageDeltaPageNameFormat => Text("MotifApp.PageDeltaPageNameFormat");
 
     public static string DifferenceWithProposalFormat => Text("MotifApp.DifferenceWithProposalFormat");
 
@@ -4816,39 +3797,9 @@ public static class MotifAppStrings
 
     public static string DifferenceProposalToLabel => Text("MotifApp.DifferenceProposalToLabel");
 
-    public static string TextsListCountsNoun => Text("MotifApp.TextsListCountsNoun");
-
-    public static string TextsChangesNoun => Text("MotifApp.TextsChangesNoun");
-
-    public static string TextsListsPairedNote => Text("MotifApp.TextsListsPairedNote");
-
-    public static string TextsListsDifferentWordsNote => Text("MotifApp.TextsListsDifferentWordsNote");
-
-    public static string TextsListsViewNote => Text("MotifApp.TextsListsViewNote");
-
-    public static string TextsListsReadingNote => Text("MotifApp.TextsListsReadingNote");
-
-    public static string TextsWhatChangedReadingNote => Text("MotifApp.TextsWhatChangedReadingNote");
-
-    public static string TextsWhatChangedPairedNote => Text("MotifApp.TextsWhatChangedPairedNote");
-
-    public static string TextsWhatChangedViewNote => Text("MotifApp.TextsWhatChangedViewNote");
-
-    public static string TextsListChipProposalNoneAccessibleNameFormat => Text("MotifApp.TextsListChipProposalNoneAccessibleNameFormat");
-
-    public static string TextsListChipProposalReadingAccessibleNameFormat => Text("MotifApp.TextsListChipProposalReadingAccessibleNameFormat");
-
-    public static string TextsListHandOffMovedHelp => Text("MotifApp.TextsListHandOffMovedHelp");
-
-    public static string TextsListHandOffEitherSideHelp => Text("MotifApp.TextsListHandOffEitherSideHelp");
-
-    public static string TextsListHandOffProposalHelp => Text("MotifApp.TextsListHandOffProposalHelp");
-
     public static string DifferenceMovedNoneWorseUnknownFormat => Text("MotifApp.DifferenceMovedNoneWorseUnknownFormat");
 
     public static string DifferenceNowUnknownPattern => Text("MotifApp.DifferenceNowUnknownPattern");
-
-    public static string MoreActionsGlyph => Text("MotifApp.MoreActionsGlyph");
 
     public static string HandoffStepOneMark => Text("MotifApp.HandoffStepOneMark");
 
@@ -4858,8 +3809,6 @@ public static class MotifAppStrings
 
     public static string ChosenCellSeparatorMark => Text("MotifApp.ChosenCellSeparatorMark");
 
-
-    public static string AiAssistantsTitle => Text("MotifApp.AiAssistantsTitle");
 
     public static string AdvancedAiModeTitle => Text("MotifApp.AdvancedAiModeTitle");
 

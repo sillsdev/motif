@@ -561,7 +561,6 @@ public sealed class WordRow : UserControl
             Classes = { "wordPresentationNext" },
         };
         next.Children.Add(NextAction(data, MotifAppStrings.WordRowOpenInText, WordAction.OpenInText));
-        next.Children.Add(NextAction(data, MotifAppStrings.TryAWord, WordAction.TryWord));
         next.Children.Add(NextAction(data, data.Facts.WordAnalysesLabel, WordAction.OpenAnalyses,
             data.Facts.HasWordAnalysesLink));
         host.Children.Add(next);
@@ -598,11 +597,9 @@ public sealed class WordRow : UserControl
         button.IsEnabled = enabled;
         button.Classes.Add("wordPresentationAction");
         if (action == WordAction.OpenInText) AutomationProperties.SetAutomationId(button, AutomationIds.WordOpenInText);
-        if (action == WordAction.TryWord) AutomationProperties.SetAutomationId(button, AutomationIds.WordTryAWord);
         AutomationProperties.SetName(button, automationName ?? action switch
         {
             WordAction.OpenInText => data.Facts.OpenInTextAutomationName,
-            WordAction.TryWord => $"Try {data.Facts.Word} in Try a Word",
             WordAction.UndoChange => $"Undo: {data.Facts.Word}",
             WordAction.ReconfirmChange => $"Check again: {data.Facts.Word}",
             _ => data.Facts.WordAnalysesName,
@@ -740,13 +737,7 @@ public sealed class WordRow : UserControl
     [KeyboardShortcutHandler(
         "WordList:OpenWordCard", "WordList:CloseWordCard", "WordList:PreviousRow", "WordList:NextRow",
         "WordList:PreviousScreen", "WordList:NextScreen", "WordList:FirstItem", "WordList:LastItem",
-        "WordList:Approve", "WordList:Disapprove", "WordList:Unknown",
-        "Lists:OpenWordCard", "Lists:CloseWordCard", "Lists:PreviousRow", "Lists:NextRow",
-        "Lists:PreviousScreen", "Lists:NextScreen", "Lists:FirstItem", "Lists:LastItem",
-        "Lists:Approve", "Lists:Disapprove", "Lists:Unknown",
-        "ReviewChanges:OpenWordCard", "ReviewChanges:CloseWordCard", "ReviewChanges:PreviousRow",
-        "ReviewChanges:NextRow", "ReviewChanges:PreviousScreen", "ReviewChanges:NextScreen",
-        "ReviewChanges:FirstItem", "ReviewChanges:LastItem")]
+        "WordList:Approve", "WordList:Disapprove", "WordList:Unknown")]
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (Data is not { } data || State is null) return;

@@ -107,21 +107,13 @@ public sealed class CompareOverviewParityTests(PristineProjectFixture pristine) 
             Assert.True(appOverview.Succeeded, appOverview.Refusal?.Message);
             Assert.True(appTiming.Succeeded, appTiming.Refusal?.Message);
             var overviewContext = WorkspaceContextTests.NewContext(client);
-            var overviewPage = new OverviewPageModel(overviewContext);
+            var progress = new ProgressPageModel(overviewContext);
             await overviewContext.OpenProjectAsync(projectPath);
-            Assert.NotNull(overviewPage.Overview);
-            Assert.Equal(appOverview.Value!.MotifStoreCreatedUtc, overviewPage.Overview.MotifStoreCreatedUtc);
-            Assert.Equal(appOverview.Value.SelectionWordCount, overviewPage.Overview.SelectionWordCount);
-            Assert.Equal(appOverview.Value.TextCoverage, overviewPage.Overview.TextCoverage);
-            Assert.Equal(appOverview.Value.Accuracy, overviewPage.Overview.Accuracy);
-            Assert.Contains($"{appOverview.Value.SelectionWordCount:N0}", overviewPage.SelectionWordCountText);
-            Assert.Contains($"of their {appOverview.Value.TextCoverage.TotalOccurrences:N0} places",
-                overviewPage.TextCoverageWords);
-            Assert.Equal(appOverview.Value.Accuracy.ApprovedWordsNoMatch + appOverview.Value.Accuracy.ApprovedWordsNoParse,
-                overviewPage.AccuracySegments.Where(segment => segment.Mark == Mark.Of(MeaningTone.Problem) || segment.Mark == Mark.NoParse)
-                    .Sum(segment => segment.Count));
-            Assert.Contains($"{appOverview.Value.Accuracy.RejectedAnalysesRebuilt:N0} disapproved analys",
-                overviewPage.AccuracyBreakdown);
+            Assert.NotNull(progress.Health.Overview);
+            Assert.Equal(appOverview.Value!.MotifStoreCreatedUtc, progress.Health.Overview.MotifStoreCreatedUtc);
+            Assert.Equal(appOverview.Value.SelectionWordCount, progress.Health.Overview.SelectionWordCount);
+            Assert.Equal(appOverview.Value.TextCoverage, progress.Health.Overview.TextCoverage);
+            Assert.Equal(appOverview.Value.Accuracy, progress.Health.Overview.Accuracy);
             Assert.Equal(overview.Value!.TextCoverage, appOverview.Value!.TextCoverage);
             Assert.Equal(overview.Value.Accuracy, appOverview.Value.Accuracy);
             Assert.Equal(overview.Value.WordformCount, appOverview.Value.WordformCount);

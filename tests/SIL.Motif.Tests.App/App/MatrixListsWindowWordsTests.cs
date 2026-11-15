@@ -167,86 +167,12 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
     }
 
     [Fact]
-    public void ListsUseNamesThatMatchTheMatrix()
-    {
-        var compare = Compare(EveryKindOfWord);
-        Assert.Equal(compare.Presets.Select(preset => preset.Label),
-            new TextsListsViewModel(compare).Lists.Select(list => list.Name));
-    }
-
-    [Fact]
-    public void AListedWordStartsAtTheLeftOfItsRow()
-    {
-        avalonia.Invoke(() =>
-        {
-            var compare = Compare([Word("nobody", "no-analysis", ProjectStanding.NotPresent)]);
-            var offset = WithWindow(new TextsListsPanel(new TextsListsViewModel(compare)), window =>
-            {
-                var word = window.GetVisualDescendants().OfType<TextBlock>().Single(text =>
-                    text.Classes.Contains("wordPresentationForm") && text.Text == "nobody");
-                var tick = window.GetVisualDescendants().OfType<CheckBox>().Single(box =>
-                    AutomationProperties.GetName(box) == "Tick nobody");
-                return word.TranslatePoint(default, tick)!.Value.X - tick.Bounds.Width;
-            });
-
-            Assert.InRange(offset, 0, 24);
-        });
-    }
-
-    [Fact]
-    public void ListsOpenOnTheFirstListThatHasWords()
-    {
-        var compare = Compare([
-            Word("new-parse", "analysed", ProjectStanding.NotPresent, "no-opinion"),
-            Word("stopped", "timed-out", ProjectStanding.Approved),
-        ]);
-
-        var lists = new TextsListsViewModel(compare);
-
-        Assert.Equal("New: PanGloss proposes", lists.SelectedList?.Name);
-        Assert.Equal(["new-parse"], compare.Words.Select(word => word.Word));
-    }
-
-    [Fact]
-    public void ListsReopenOnAListWithWordsAfterANewParse()
-    {
-        var compare = Compare([Word("approved-empty", "no-analysis", ProjectStanding.Approved)]);
-        var lists = new TextsListsViewModel(compare);
-        var words = new AssessWordsViewModel();
-        words.Load([Word("nobody", "no-analysis", ProjectStanding.NotPresent)]);
-
-        compare.Load(words.AllRows);
-        lists.SelectFirstIfNeeded();
-
-        Assert.Equal("Nobody can analyze", lists.SelectedList?.Name);
-        Assert.Equal(["nobody"], compare.Words.Select(word => word.Word));
-    }
-
-    [Fact]
-    public void ListsHandOffButtonsSayWhichWordsTheySend()
-    {
-        var compare = Compare([
-            Word("nobody", "no-analysis", ProjectStanding.NotPresent),
-            Word("nobody-too", "no-analysis", ProjectStanding.NotPresent),
-        ]);
-        var lists = new TextsListsViewModel(compare);
-
-        Assert.Equal(WindowCopy.AiHandoffForThisList, lists.HandOffListLabel);
-        Assert.Equal(WindowCopy.AiHandoff, lists.HandOffCheckedWordsLabel);
-        compare.Words[0].IsChecked = true;
-        Assert.Equal(WindowCopy.AiHandoffForThisWord, lists.HandOffCheckedWordsLabel);
-        compare.Words[1].IsChecked = true;
-        Assert.Equal(WindowCopy.AiHandoffForWordCount(2), lists.HandOffCheckedWordsLabel);
-    }
-
-    [Fact]
-    public async Task NoCommandOnTheMatrixOrListsChangesAnOpinion()
+    public async Task NoClassifierCommandChangesAnOpinion()
     {
         var (compare, client) = CompareWithClient(EveryKindOfWord);
-        var lists = new TextsListsViewModel(compare);
         compare.ClearSelectionCommand.Execute(null);
         object?[] parameters = [null, ChangeKinds.Approve, ChangeKinds.Reject, ChangeKinds.Candidate];
-        var commands = new object[] { compare, lists }.SelectMany(owner => owner.GetType().GetProperties()
+        var commands = new object[] { compare }.SelectMany(owner => owner.GetType().GetProperties()
                 .Where(property => typeof(ICommand).IsAssignableFrom(property.PropertyType))
                 .Select(property => (ICommand)property.GetValue(owner)!))
             .ToArray();
@@ -304,44 +230,6 @@ public sealed partial class MatrixListsWindowWordsTests(AvaloniaHeadlessFixture 
 
             AssertWindowWords(shown);
             Assert.DoesNotContain("Approve one analysis at a time, in the text.", shown);
-        });
-    }
-
-    [Fact]
-    public void EveryStringTheListsShowUsesWindowWords()
-    {
-        avalonia.Invoke(() =>
-        {
-            var compare = Compare(EveryKindOfWord);
-            var lists = new TextsListsViewModel(compare);
-            var shown = new List<string>();
-            foreach (var list in lists.Lists)
-            {
-                lists.SelectListCommand.Execute(list);
-                shown.AddRange([list.Name, list.Sentence, list.CountText, lists.HandOffListDisabledReason, lists.ParseAgainHelpText,
-                    lists.HandOffCheckedWordsHelpText, lists.HandOffListLabel, lists.HandOffCheckedWordsLabel]);
-                shown.AddRange(Rendered(new TextsListsPanel(lists)));
-            }
-
-            AssertWindowWords(shown);
-        });
-    }
-
-    [Fact]
-    public void MatrixWordListOffersNoOpinionButtonsAndListsOffersOneHandOffOfEachKind()
-    {
-        avalonia.Invoke(() =>
-        {
-            var compare = Compare(EveryKindOfWord);
-            var lists = new TextsListsViewModel(compare);
-            WithWindow(new TextsListsPanel(lists), window =>
-            {
-                var listButtons = window.GetLogicalDescendants().OfType<Button>().ToArray();
-                Assert.Single(listButtons, button => Equals(button.Content, lists.HandOffListLabel));
-                Assert.False(Assert.Single(listButtons, button => Equals(button.Content, WindowCopy.AiHandoff)).IsVisible);
-                Assert.DoesNotContain(listButtons, button => button.CommandParameter is string);
-                return true;
-            });
         });
     }
 

@@ -12,10 +12,14 @@ public sealed partial class ExtractedPageTextTests
 {
     public static TheoryData<string> ExtractedViews() =>
     [
-        "Views/TryWordPanel.axaml",
-        "Views/Pages/ParsimonyPage.axaml",
         "Views/HandoffPanel.axaml",
-        "Views/Pages/AssistantConnectionsPage.axaml",
+        "Views/Pages/ProgressPage.axaml",
+        "Views/Pages/TextsPage.axaml",
+        "Views/Pages/WordsPage.axaml",
+        "Views/Pages/GrammarGuidePage.axaml",
+        "Views/Pages/ProposalsPage.axaml",
+        "Views/Pages/DiagnosticsPage.axaml",
+        "Views/Shell/HealthStrip.axaml",
     ];
 
     [Theory]

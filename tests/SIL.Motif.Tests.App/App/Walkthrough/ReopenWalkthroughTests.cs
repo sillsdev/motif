@@ -100,13 +100,11 @@ public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
             reopened.OpenRecentProjectByClick(project.FwDataPath);
             await reopened.Workspace.Context.EvidencePublication;
 
-            var overview = reopened.Workspace.PageModel<OverviewPageModel>();
-            var timing = reopened.Workspace.PageModel<TimingPageModel>();
+            var health = reopened.Workspace.Context.Health;
             var texts = reopened.Workspace.PageModel<TextsPageModel>();
-            var review = reopened.Workspace.PageModel<ReviewPageModel>();
             reopened.WaitUntil(
-                () => overview.Overview?.AssessmentId == assessmentId && timing.HasStoredTiming &&
-                    texts.Assess.Words.AllRows.Count > 0 && review.Changes.Count == 1,
+                () => health.Overview?.AssessmentId == assessmentId &&
+                    texts.Assess.Words.AllRows.Count > 0 && reopened.Workspace.Context.Changes.Count == 1,
                 TimeSpan.FromSeconds(30), "the reopened window did not publish its stored page data");
 
             Assert.Equal(capture.Value!.Token, reopened.Workspace.Baseline.Token);
@@ -114,22 +112,12 @@ public sealed class ReopenWalkthroughTests(PristineProjectFixture pristine)
             Assert.NotNull(storedEvidence);
             Assert.True(storedEvidence.IsStored);
             Assert.Equal(assessmentId, reopened.Workspace.Context.Evidence.ParseTimeAssessmentId);
-            Assert.Equal(assessmentId, overview.Overview!.AssessmentId);
-            Assert.Equal("0 of 1 words parse", overview.TextCoverageMain);
-            Assert.Contains("of the words in your Selection", overview.TextCoverageWords, StringComparison.Ordinal);
-            Assert.Equal("No analyses are approved yet, so there is nothing to rebuild", overview.AccuracyMain);
-            var overviewText = Assert.Single(reopened.Window.GetLogicalDescendants().OfType<OverviewPage>())
-                .GetLogicalDescendants().OfType<TextBlock>().Where(control => control.IsVisible)
-                .Select(control => control.Text);
-            Assert.Contains(overview.TextCoverageMain, overviewText);
-            Assert.Contains(overview.AccuracyMain, overviewText);
+            Assert.Equal(assessmentId, health.Overview!.AssessmentId);
+            Assert.Equal(0, health.Overview.TextCoverage.ParsedWords);
             Assert.Equal("motifa", Assert.Single(texts.Assess.Words.AllRows).Word);
-            Assert.True(timing.HasStoredTiming);
-            Assert.Equal(assessmentId, timing.StoredTiming!.AssessmentId);
-            Assert.Equal(changeId, Assert.Single(review.Changes.Items).ChangeId);
             Assert.Equal(changeId, Assert.Single(reopened.Workspace.Context.Changes.Items).ChangeId);
             Assert.False(reopened.Workspace.Context.Setup?.IsOpen == true);
-            var warnings = reopened.Workspace.PageModel<WarningsPageModel>().Grammar;
+            var warnings = reopened.Workspace.Context.GrammarCheck;
             Assert.True(warnings.HasChecked);
             Assert.True(warnings.HasBaseline);
             Assert.False(warnings.IsLoading);

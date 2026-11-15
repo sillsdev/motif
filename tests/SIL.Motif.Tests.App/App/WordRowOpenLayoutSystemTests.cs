@@ -39,9 +39,8 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
             {
                 window.Height = 1600;
                 var texts = workspace.PageModel<TextsPageModel>();
-                texts.Tab = TextsTab.AnalyzeTexts;
-                texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
-                workspace.CurrentPage = WorkspacePage.Texts;
+
+                workspace.CurrentPage = WorkspacePage.Words;
                 PageScreenshots.Settle(window);
 
                 var rowIndex = texts.Words.Rows.Select((item, index) => (item, index))
@@ -50,7 +49,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                 Assert.Equal(ScrollBarVisibility.Auto,
                     ScrollViewer.GetVerticalScrollBarVisibility(pageList));
                 var lastPage = workspace.VisiblePages[^1];
-                var textsPage = workspace.VisiblePages.Single(page => page.Page == WorkspacePage.Texts);
+                var textsPage = workspace.VisiblePages.Single(page => page.Page == WorkspacePage.Words);
                 // Low resolution, low resolution zoomed in, and a half-screen width.
                 foreach (var (zoom, width) in new[] { (100, 640), (150, 640), (100, 1040) })
                 {
@@ -73,7 +72,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                     Assert.True(textsEntry.IsEffectivelyVisible,
                         $"'{textsPage.AutomationName}' is not reachable at {width}px and {zoom}% zoom.");
                     HeadlessClick.Click(window, textsEntry, textsPage.AutomationName);
-                    Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+                    Assert.Equal(WorkspacePage.Words, workspace.CurrentPage);
                 }
                 WindowZoomPolicy.Apply(application, 100);
                 var wordsList = window.GetVisualDescendants().OfType<ListBox>()
@@ -115,7 +114,7 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                     Assert.NotNull(analysis.Token);
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
                         block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.InFieldWorksNow);
-                    Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    Assert.DoesNotContain(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
                         block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.WorkByRule);
                     Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
                         block => block.IsEffectivelyVisible && block.Text == "WHERE IT APPEARS");

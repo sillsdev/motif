@@ -314,28 +314,25 @@ public sealed class HelpCatalogTests
     }
 
     [Fact]
-    public void ReadingOverviewHelpDoesNotTreatAggregateStandingAsEveryAnalysisOpinion()
+    public void ReadingProjectHealthHelpDistinguishesRecordedWorkFromElapsedTime()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
         var page = catalog.GetHelpPage(HelpEntryKind.Guide, "reading-the-overview")!;
 
-        Assert.DoesNotContain("has no saved project opinion for that analysis", page, StringComparison.Ordinal);
-        Assert.Contains("Unknown and Disapproved analyses", page, StringComparison.Ordinal);
-        Assert.Contains("PanGloss matched an analysis marked Disapproved", page, StringComparison.Ordinal);
-        Assert.Contains("shows the recorded comparison detail", page, StringComparison.Ordinal);
+        Assert.Contains("distinct from elapsed time", page, StringComparison.Ordinal);
+        Assert.Contains("missing or stale measurement", page, StringComparison.Ordinal);
+        Assert.Contains("does not run the parser", page, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void TextsHelpExplainsSpecificMixedOpinionsAndIncompleteSearches()
+    public void TextsHelpExplainsTheSelectionAndReader()
     {
         var catalog = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"));
         var page = catalog.GetHelpPage(HelpEntryKind.Guide, "texts")!;
 
-        Assert.Contains("Unknown × Different", page, StringComparison.Ordinal);
-        Assert.Contains("PanGloss matched an analysis FieldWorks marked Disapproved", page, StringComparison.Ordinal);
-        Assert.Contains("shows recorded comparison detail beneath it", page, StringComparison.Ordinal);
-        Assert.Contains("Every word row uses the meaning named by its Matrix cell", page, StringComparison.Ordinal);
-        Assert.Contains("does not establish that an analysis was not built", page, StringComparison.Ordinal);
+        Assert.Contains("current Selection", page, StringComparison.Ordinal);
+        Assert.Contains("Opening Texts does not start a parse", page, StringComparison.Ordinal);
+        Assert.Contains("[Words](guide:words)", page, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -432,14 +429,12 @@ public sealed class HelpCatalogTests
         var agent = Assert.IsType<HelpEntry>(catalog.Find(guideKind, "agents/start-here"));
         var learnIndex = Assert.IsType<HelpEntry>(catalog.Find(guideKind, "learn/index"));
 
-        Assert.Equal("Overview", overview.Title);
+        Assert.Equal("Progress and project health", overview.Title);
         Assert.Equal(
-            "Overview is the first page you see. It shows the results of your last run: how many of your " +
-            "words parse, how many words with approved analyses were rebuilt exactly, which words " +
-            "are slow, and what the grammar check found. Opening it doesn't parse anything. Nothing here " +
-            "changes your FieldWorks project.",
-            overview.Description);
-        Assert.StartsWith("# Overview", overview.HelpPage, StringComparison.Ordinal);
+            "Progress shows supported next actions for the open project. A Proposal appears as a next action " +
+            "when its stored standing says it is waiting for a decision. If there is no supported action, " +
+            "the page does not invent one.", overview.Description);
+        Assert.StartsWith("# Progress and project health", overview.HelpPage, StringComparison.Ordinal);
         Assert.Equal("agents/start-here", agent.Slug);
         Assert.Equal(
             HelpCatalog.SiteRoot + "/guide/agents/start-here/",

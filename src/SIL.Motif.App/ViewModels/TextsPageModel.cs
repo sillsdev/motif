@@ -1,84 +1,41 @@
 using System.ComponentModel;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using SIL.Motif.App.Services;
 using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
-/// <summary>Opens the Texts page on one of its tabs.</summary>
-/// <param name="Tab">The tab to show.</param>
-/// <param name="Cells">The matrix cells to select, or <see langword="null"/> to preserve the current selection.</param>
-public sealed record OpenTextsRequest(TextsTab Tab, IReadOnlyList<TextsListCell>? Cells = null)
-    : PageRequest(WorkspacePage.Texts);
+/// <summary>Opens the Texts page on its reader.</summary>
+public sealed record OpenTextsRequest() : PageRequest(WorkspacePage.Texts);
 
-/// <summary>Opens one word in the Texts page's word list, with every filter cleared.</summary>
+/// <summary>Opens one word in the Texts reader.</summary>
 /// <param name="Word">The word to select.</param>
 /// <param name="WordformId">The exact wordform to select, or null for spelling-only navigation.</param>
 public sealed record OpenWordRequest(string Word, string? WordformId = null) : PageRequest(WorkspacePage.Texts);
 
-/// <summary>The two views inside Analyze texts.</summary>
-public enum AnalyzeTextsView
-{
-    TextReader,
-    WordList,
-}
-
-/// <summary>
-/// The Texts page's model: which of its <see cref="TextsTab"/>s is showing, the word views it hosts, and the links
-/// from those views to the other pages.
-/// </summary>
-public sealed partial class TextsPageModel : PageModel
+/// <summary>The current Selection and its Text reader.</summary>
+public sealed class TextsPageModel : PageModel
 {
     public TextsPageModel(WorkspaceContext context) : base(context)
     {
-        Words = new TextWordsViewModel(context.Commands, context.Selection, context.SelectionReads);
-        Words.Memory = context.ViewMemory;
-        Words.OpenWord = context.OpenWord;
-        Words.HandOff = context.HandOff;
-        Assess.TextWords = Words;
-        Words.WordRowRoutes = Assess.Words.Routes;
-        ShowTabCommand = new RelayCommand<TextsTab>(tab => Tab = tab);
-        ShowAnalyzeViewCommand = new RelayCommand<AnalyzeTextsView>(view => AnalyzeView = view);
-        ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.TryWord, context.Changes,
+        Words = context.GetOrCreateTextWords();
+        ResultsInText = new ResultsInTextViewModel(Words, Assess, context.OpenWord, context.Changes,
             context.Commands, context.SelectionReads)
         {
             OpenTexts = () =>
             {
-                if (context.ConfigureCommand is { } configure && configure.CanExecute(null))
-                    configure.Execute(null);
+                if (context.ConfigureCommand is { } configure && configure.CanExecute(null)) configure.Execute(null);
             },
-            OpenWarnings = () => context.OpenPage(WorkspacePage.Warnings),
-            ProposalStanding = () => context.ProposalStanding,
-        };
-        context.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(WorkspaceContext.EvidenceLens)) ResultsInText.ApplyLens(context.EvidenceLens);
-            else if (args.PropertyName == nameof(WorkspaceContext.ProposalStanding)) ResultsInText.RefreshProposalStanding();
+            OpenWarnings = () => context.OpenDiagnostics(DiagnosticsTab.Warnings),
         };
         Words.WordCardActions = ResultsInText;
-        Assess.Compare.WordCardTokenFactory = ResultsInText.GetCardToken;
         context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);
         context.RegisterOccurrenceNavigator(anchor =>
         {
-            Tab = TextsTab.AnalyzeTexts;
-            AnalyzeView = AnalyzeTextsView.TextReader;
             ResultsInText.ShowReader();
             if (!ResultsInText.SelectOccurrenceText(anchor)) return false;
             ResultsInText.NavigateOccurrence(anchor);
             return true;
         });
-        Assess.Compare.Changes = context.Changes;
-        TextsLists = new TextsListsViewModel(Assess.Compare);
-        TextsLists.HandOff = context.HandOff;
-        Assess.Compare.ChosenCellsChanged += OnChosenCellsChanged;
-        Assess.Compare.OpenWord = context.OpenWord;
-        Assess.Difference.OpenWord = context.OpenWord;
-        ProposalChanges = new DifferenceViewModel(Assess.Words.Routes) { OpenWord = context.OpenWord };
-        Assess.Compare.HandOff = context.HandOff;
-        Assess.OpenTryWord = context.TryWord;
         Assess.PropertyChanged += OnAssessPropertyChanged;
-        Assess.Compare.PropertyChanged += OnCompareChanged;
         context.PropertyChanged += OnContextPropertyChanged;
         context.SelectionReads.PropertyChanged += (_, args) =>
         {
@@ -88,85 +45,22 @@ public sealed partial class TextsPageModel : PageModel
     }
 
     public AssessViewModel Assess => Context.Assess;
-
     public SelectionViewModel Selection => Context.Selection;
 
-    /// <summary>The chosen Texts' words and lines, which the page loads for itself.</summary>
+    /// <summary>The chosen Texts' words and lines.</summary>
     public TextWordsViewModel Words { get; }
 
-    /// <summary>The changes not applied yet, which the page's header offers to review.</summary>
-    public ChangesViewModel Changes => Context.Changes;
-
-    /// <summary>The In text view: the chosen Texts, each occurrence against the Assessment.</summary>
+    /// <summary>The current Text and its recorded word analyses.</summary>
     public ResultsInTextViewModel ResultsInText { get; }
 
-    /// <summary>The fixed word questions, which select their exact cells in the page's Compare matrix.</summary>
-    public TextsListsViewModel TextsLists { get; }
-
-    /// <summary>What the open Proposal moves between today's cells and its own, listed as What Changed lists two runs'.</summary>
-    public DifferenceViewModel ProposalChanges { get; }
-
-    /// <summary>Whether Texts keeps its Selection list beside the word detail.</summary>
-    public bool ShowSelectionPanel => Context.Inspector is null;
-
-    /// <summary>Which view of the words the Texts page is showing.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowAnalyzeTexts))]
-    [NotifyPropertyChangedFor(nameof(ShowLists))]
-    [NotifyPropertyChangedFor(nameof(ShowWhatChanged))]
-    private TextsTab _tab = TextsTab.AnalyzeTexts;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowTextReader))]
-    [NotifyPropertyChangedFor(nameof(ShowWordList))]
-    [NotifyPropertyChangedFor(nameof(ShowAnalyzeParsePrompt))]
-    private AnalyzeTextsView _analyzeView = AnalyzeTextsView.TextReader;
-
-    public bool ShowAnalyzeTexts => Tab == TextsTab.AnalyzeTexts;
-
-    /// <summary>Whether Analyze texts shows its text, which it does before the first parse too.</summary>
-    public bool ShowAnalyzeTextsContent => ShowAnalyzeTexts;
-
-    /// <summary>Whether the tab offers a parse before results exist, including a retry after cancellation.</summary>
+    /// <summary>Whether a parse can be started before results exist.</summary>
     public bool ShowParsePrompt => Context.NeedsAssessment &&
-        (Assess.Refusal is null or { Reason: FailureReason.Cancelled }) && ShowAnalyzeTexts;
-
-    /// <summary>Whether the prompt sits above the text reader, which still shows FieldWorks' analyses.</summary>
-    public bool ShowAnalyzeParsePrompt => ShowParsePrompt && ShowAnalyzeTexts && ShowTextReader;
-
-    public bool ShowLists => Tab == TextsTab.Lists;
-
-    public bool ShowWhatChanged => Tab == TextsTab.WhatChanged;
-
-    /// <summary>Whether the Lists tab draws, in every view of the Proposal bar.</summary>
-    public bool ShowListsContent => ShowLists && ShowsTabContent;
-
-    /// <summary>Whether the What Changed tab draws the comparison of the last two runs: not where it lists the Proposal's moves.</summary>
-    public bool ShowWhatChangedContent => ShowWhatChanged && ShowsTabContent && !ShowsProposalMoves;
-
-    /// <summary>Whether the What Changed tab draws the words the open Proposal moves, in the pair and Proposal views with its side held.</summary>
-    public bool ShowProposalMovesContent => ShowWhatChanged && ShowsProposalMoves;
-
-    public bool ShowTextReader => AnalyzeView == AnalyzeTextsView.TextReader;
-
-    public bool ShowWordList => AnalyzeView == AnalyzeTextsView.WordList;
-
-    public bool ShowAssessStatus => Assess.IsActive || Assess.Refusal is not null;
+        (Assess.Refusal is null or { Reason: FailureReason.Cancelled });
 
     public bool ShowAssessRefusal => Assess.Refusal is not null;
 
-    /// <summary>Opens the tab passed as the command parameter.</summary>
-    public IRelayCommand<TextsTab> ShowTabCommand { get; }
-
-    /// <summary>Opens the text reader or the word list inside Analyze texts.</summary>
-    public IRelayCommand<AnalyzeTextsView> ShowAnalyzeViewCommand { get; }
-
-    /// <summary>Whether the word views have nothing to show and nothing to explain yet: no run, no refusal.</summary>
-    public bool ShowEmptyResults => Context.HasNoEvidence && !Assess.IsActive && Assess.Refusal is null;
-
     protected override void OnProjectCleared()
     {
-        ClearMatrixProposal();
         ResultsInText.ClearProject();
         Words.ClearProject();
         Words.ShowAssessment(null);
@@ -177,121 +71,35 @@ public sealed partial class TextsPageModel : PageModel
 
     protected override Task OnStopWorkAsync() => Task.WhenAll(Words.StopAsync(), ResultsInText.StopAsync());
 
-    protected override async Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
+    protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {
-        ShowMatrixProposal();
-        ShowTodaysEvidence(lens);
-        await EnsureMatrixSideAsync(cancellationToken).ConfigureAwait(true);
-    }
-
-    private void ShowTodaysEvidence(EvidenceLens lens)
-    {
-        if (lens.Today.Assessment is not { } shown) return;
-        UpdateListedOccurrences();
-        var expected = Context.SelectionReads.Reader?.Context.ExpectedWriteContext();
-        var root = Context.Evidence.ParseTimeAssessmentId;
-        var wordforms = (Context.SelectionReads.Summary?.Words ?? []).GroupBy(word => word.Key.Form, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.SelectMany(word => word.Actions.CandidateWordformIds)
-                .Distinct().ToArray(), StringComparer.Ordinal);
-        Assess.Compare.WordTargetFactory = result =>
+        if (lens.Today.Assessment is not null)
         {
-            var ids = wordforms.GetValueOrDefault(result.Word.Trim().Normalize(System.Text.NormalizationForm.FormD)) ?? [];
-            return new WordActionTarget(result.Word, ids.Length == 1 ? ids[0] : null, null,
-                result.Origin?.AssessmentId ?? root, expected);
-        };
-        Words.ShowAssessmentSource(Assess.Words.SourceOf);
-        if (shown.WasRerun && Assess.Difference.HasDifference) Tab = TextsTab.WhatChanged;
+            UpdateListedOccurrences();
+            Words.ShowAssessmentSource(Assess.Words.SourceOf);
+        }
+        return Task.CompletedTask;
     }
 
-    private void UpdateListedOccurrences()
-    {
+    private void UpdateListedOccurrences() =>
         Assess.Words.UpdateOccurrences(Words.OccurrenceCountOf, Words.PlacesAreFromWordList);
-        Assess.Compare.UpdateOccurrences(Words.OccurrenceCountOf, Words.PlacesAreFromWordList);
-    }
-
-    private bool _openingRequestedCells;
 
     protected override void OnRequested(PageRequest request)
     {
-        switch (request)
-        {
-            case OpenTextsRequest texts:
-                Tab = texts.Tab;
-                if (texts.Cells is { } cells)
-                {
-                    _openingRequestedCells = true;
-                    try { TextsLists.ShowCells(cells); }
-                    finally { _openingRequestedCells = false; }
-                }
-                break;
-            case OpenWordRequest word:
-                AnalyzeView = AnalyzeTextsView.TextReader;
-                Tab = TextsTab.AnalyzeTexts;
-                ResultsInText.ShowReader();
-                Assess.SelectWord(word.Word);
-                ResultsInText.SelectWord(word.Word, word.WordformId);
-                break;
-        }
-    }
-
-    // The note follows the result of the words check, which a new load of today's words can change.
-    private void OnCompareChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is not (nameof(CompareViewModel.ProposalWordsMatch) or nameof(CompareViewModel.HasWords))) return;
-        ProposalDelta = PageDelta.Of(Assess.Compare.ProposalSameChange(), PageDeltaKind.SameWords);
-        OnPropertyChanged(nameof(ProposalNote));
-        OnPropertyChanged(nameof(HasProposalNote));
-        ShowProposalMoves();
+        if (request is not OpenWordRequest word) return;
+        ResultsInText.ShowReader();
+        Assess.SelectWord(word.Word);
+        ResultsInText.SelectWord(word.Word, word.WordformId);
     }
 
     private void OnAssessPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        OnPropertyChanged(nameof(ShowEmptyResults));
         OnPropertyChanged(nameof(ShowParsePrompt));
-        OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
-        OnPropertyChanged(nameof(ShowAssessStatus));
         OnPropertyChanged(nameof(ShowAssessRefusal));
-    }
-
-    partial void OnTabChanged(TextsTab value)
-    {
-        if (MotifTrace.IsEnabled && !MotifTrace.SwitchIsTo("tab", value.ToString()))
-            MotifTrace.BeginSwitch("tab", _tracedTab.ToString(), value.ToString());
-        _tracedTab = value;
-        using var span = MotifTrace.BeginInSwitch("switch.tab-changed");
-        OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
-        OnPropertyChanged(nameof(ShowParsePrompt));
-        OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
-        OnPropertyChanged(nameof(ProposalNote));
-        OnPropertyChanged(nameof(HasProposalNote));
-        OnPropertyChanged(nameof(ShowsTabContent));
-        OnPropertyChanged(nameof(ShowListsContent));
-        ShowProposalMoves();
-        if (value == TextsTab.Lists)
-            TextsLists.SelectFirstIfNeeded();
-    }
-
-    private TextsTab _tracedTab;
-
-    private void OnChosenCellsChanged(object? sender, EventArgs e)
-    {
-        if (Tab == TextsTab.Lists && !_openingRequestedCells && TextsLists.SelectedList is null)
-            TextsLists.SelectFirstIfNeeded();
     }
 
     private void OnContextPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(WorkspaceContext.Inspector))
-            OnPropertyChanged(nameof(ShowSelectionPanel));
-        if (e.PropertyName is nameof(WorkspaceContext.ProposalView) or nameof(WorkspaceContext.Lens)
-            or nameof(WorkspaceContext.EvidenceLens)) ShowMatrixProposal();
-        if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) && Context.CurrentPage == WorkspacePage.Texts)
-            _ = ReadShownMatrixSideAsync();
-        if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment))
-        {
-            OnPropertyChanged(nameof(ShowAnalyzeTextsContent));
-            OnPropertyChanged(nameof(ShowParsePrompt));
-            OnPropertyChanged(nameof(ShowAnalyzeParsePrompt));
-        }
+        if (e.PropertyName == nameof(WorkspaceContext.NeedsAssessment)) OnPropertyChanged(nameof(ShowParsePrompt));
     }
 }

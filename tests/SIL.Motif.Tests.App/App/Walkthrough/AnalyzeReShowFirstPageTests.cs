@@ -73,18 +73,17 @@ public sealed class AnalyzeReShowFirstPageTests(ITestOutputHelper output)
             var texts = window.Workspace.PageModel<TextsPageModel>();
 
             // Visit Analyze once, fully settled, as a person who has read it would have.
-            texts.Tab = TextsTab.AnalyzeTexts;
+
             window.WaitUntil(() => { PageScreenshots.Settle(window.Window, passes: 9); return Strips(window).Count > 0; },
                 TimeSpan.FromSeconds(60), "the first visit to Analyze showed no word strips");
 
             var rounds = new List<(int Tokens, int Created)>();
             for (var round = 0; round < 2; round++)
             {
-                texts.Tab = TextsTab.Lists;
+                window.ShowPage(WorkspacePage.Words);
                 PageScreenshots.Settle(window.Window, passes: 9);
                 var before = Visuals(window);
-
-                texts.Tab = TextsTab.AnalyzeTexts;
+                window.Workspace.CurrentPage = WorkspacePage.Texts;
                 for (var iteration = 0; iteration < 10; iteration++)
                 {
                     Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();

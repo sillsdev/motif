@@ -247,28 +247,28 @@ internal static class ReleasePathwayReplay
     private static void ClickAfterWindowsLockRefusal(
         Window window, WorkspaceShellViewModel workspace, string projectPath, string automationId)
     {
-        var review = workspace.PageModel<ReviewPageModel>();
+        var apply = workspace.Context.ProposalApply;
         // A runner can withdraw a finished check for a moment after the capture, so Apply is awaited again.
         WaitUntil(() => FindOptional(window, automationId) is { IsEffectivelyEnabled: true }, TimeSpan.FromSeconds(60),
-            "Apply was not available before the lock test", () => review.ApplyBlockReason);
+            "Apply was not available before the lock test");
         using (new FileStream(projectPath + ".lock", FileMode.OpenOrCreate,
                    FileAccess.ReadWrite, FileShare.None))
         {
             Click(window, automationId);
-            WaitUntil(() => review.ApplyRefusal is not null || review.Receipt is not null,
+            WaitUntil(() => apply.ApplyRefusal is not null || apply.Receipt is not null,
                 TimeSpan.FromSeconds(30), "Apply did not answer while FieldWorks held the project");
-            if (review.ApplyRefusal?.Code != "project.in-use")
+            if (apply.ApplyRefusal?.Code != "project.in-use")
                 throw new InvalidOperationException("Apply did not report that the locked project is in use.");
         }
 
         // A refused Apply drops the check's results, so a person checks again before applying.
-        WaitUntil(() => FindOptional(window, "motif-measure-changes") is { IsEffectivelyEnabled: true } || review.CanApply,
-            TimeSpan.FromSeconds(30), "Neither Check nor Apply became available after the lock was released",
-            () => review.ApplyBlockReason);
-        if (!review.CanApply) Click(window, "motif-measure-changes");
-        WaitUntil(() => review.CanApply, TimeSpan.FromMinutes(2),
-            "Apply did not become available after the project lock was released",
-            () => review.ApplyBlockReason);
+        WaitUntil(() => FindOptional(window, "motif-measure-changes") is { IsEffectivelyEnabled: true } ||
+                        FindOptional(window, automationId) is { IsEffectivelyEnabled: true },
+            TimeSpan.FromSeconds(30), "Neither Check nor Apply became available after the lock was released");
+        if (FindOptional(window, automationId) is not { IsEffectivelyEnabled: true })
+            Click(window, "motif-measure-changes");
+        WaitUntil(() => FindOptional(window, automationId) is { IsEffectivelyEnabled: true }, TimeSpan.FromMinutes(2),
+            "Apply did not become available after the project lock was released");
         Click(window, automationId);
     }
 
@@ -315,7 +315,7 @@ internal static class ReleasePathwayReplay
             "text" => string.Equals(ControlText(target), step.ExpectedText, StringComparison.Ordinal),
             "assessmentPublished" => IsVisible(target) && workspace.Assess.State == RunState.Completed &&
                 workspace.Context.EvidencePublication.IsCompleted && !workspace.Context.NeedsAssessment &&
-                workspace.PageModel<OverviewPageModel>().Overview is
+                workspace.Context.Health.Overview is
                     { AssessmentId: not null, AssessedUtc: not null },
             "parseProgressVisibleOrCompleted" => IsVisible(target) || workspace.Assess.State == RunState.Completed,
             _ => throw new InvalidDataException($"Unknown wait condition '{step.Condition}'."),

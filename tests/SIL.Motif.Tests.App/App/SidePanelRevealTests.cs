@@ -50,8 +50,7 @@ public sealed class SidePanelRevealTests
                     () => $"side visible={side.IsEffectivelyVisible}, reveal visible={reveal.IsVisible}");
                 Assert.True(side.IsEffectivelyVisible);
                 Assert.False(reveal.IsVisible);
-                var selector = Assert.IsType<ContentControl>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
-                Assert.Equal("SelectionHost", selector.Name);
+                var selector = Assert.IsType<SelectionPanel>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
                 Assert.True(selector.IsEffectivelyVisible);
                 var close = host.FindControl<Button>("SidePanelCollapseButton")!;
                 AssertInside(window, close);
@@ -93,7 +92,7 @@ public sealed class SidePanelRevealTests
                 Assert.Equal(600, window.ClientSize.Height);
                 var rail = window.FindInWindowOrWorkspace<ListBox>("PageList")!;
                 var entries = workspace.VisiblePages.ToArray();
-                Assert.True(entries.Length >= 9);
+                Assert.Equal(6, entries.Length);
                 foreach (var entry in entries)
                 {
                     rail.ScrollIntoView(entry);

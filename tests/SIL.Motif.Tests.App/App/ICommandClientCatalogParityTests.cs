@@ -77,6 +77,8 @@ public sealed class ICommandClientCatalogParityTests
     // A store-writing client method must map to a catalogued CLI verb.
     private static readonly HashSet<string> ReadsThatNeverWriteTheStore = new(StringComparer.Ordinal)
     {
+        nameof(ICommandClient.ListGrammarGuideAsync),
+        nameof(ICommandClient.ShowGrammarGuideAsync),
         nameof(ICommandClient.ListKnownProjectsAsync),
         nameof(ICommandClient.GetCurrentBaselineAsync),
         nameof(ICommandClient.ListRationaleRevisionsAsync),

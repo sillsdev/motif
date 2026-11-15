@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             xmlns:response="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
+             x:Class="SIL.Motif.App.Views.DiagnosticsPage"
+             x:DataType="vm:DiagnosticsPageModel">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/DiagnosticsScoped.axaml" />
+  </UserControl.Styles>
+  <Grid Margin="{DynamicResource Intent.Inset.Page}" RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
+    <views:CopyableTextBlock Classes="displayTitle" Text="{x:Static app:MotifAppStrings.DiagnosticsGroup}" />
+    <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsTabs}">
+      <TabItem Header="{x:Static app:MotifAppStrings.BoardWarnings}"
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardWarnings}">
+        <ListBox x:Name="DiagnosticWarningRows" Classes="diagnosticRows" ItemsSource="{Binding Warnings.Rows}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardWarnings}"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsWarnings}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:GrammarWarningRowViewModel">
+                <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+                  <views:CopyableTextBlock Text="{Binding PanGlossTitle}" TextWrapping="Wrap" />
+                  <views:GrammarWarningPartsBlock Parts="{Binding SubjectParts}" />
+                  <views:CopyableTextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                             IsVisible="{Binding Message, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  <views:CopyableTextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                             IsVisible="{Binding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+      <TabItem Header="{x:Static app:MotifAppStrings.BoardSpeedByRule}"
+               AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardSpeedByRule}">
+        <Grid RowDefinitions="Auto,*" IsVisible="{Binding SpeedByRule.HasRows}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsSpeedByRule}">
+          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.TimingTimeColumnHeading}" />
+          <ListBox Grid.Row="1" x:Name="DiagnosticRuleRows" Classes="diagnosticRows" ItemsSource="{Binding SpeedByRule.Rows}"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardSpeedByRule}"
+                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.DiagnosticsRuleRows}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="response:TimingWorkAggregate">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Group}">
+                  <views:CopyableTextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                  <views:CopyableTextBlock Grid.Column="1" Text="{Binding ParserWork}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</UserControl>

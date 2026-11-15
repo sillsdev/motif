@@ -23,7 +23,7 @@ public sealed partial class HelpPopupViewModel : ObservableObject
         _content = new HelpContentSource(catalog ?? HelpCatalog.Load());
         OpenOnlineCommand = new AsyncRelayCommand(OpenOnlineAsync);
         LinkCommand = new AsyncRelayCommand<LinkClickedEventArgs>(FollowLinkAsync);
-        SetPage(_content.ForPage(WorkspacePage.Overview));
+        SetPage(_content.ForPage(WorkspacePage.Progress));
     }
 
     /// <summary>The title of the current help entry.</summary>
@@ -176,32 +176,24 @@ public sealed partial class HelpPopupViewModel : ObservableObject
 
         private static string PageCode(WorkspacePage page) => page switch
         {
-            WorkspacePage.Overview => "OverviewPage",
+            WorkspacePage.Progress => "ProgressPage",
+            WorkspacePage.Words => "WordsPage",
+            WorkspacePage.GrammarGuide => "GrammarGuidePage",
+            WorkspacePage.Diagnostics => "DiagnosticsPage",
             WorkspacePage.Proposals => "ProposalsPage",
             WorkspacePage.Texts => "TextsPage",
-            WorkspacePage.TryAWord => "TryAWordPage",
-            WorkspacePage.Timing => "TimingPage",
-            WorkspacePage.Warnings => "WarningsPage",
-            WorkspacePage.Parsimony => "ParsimonyPage",
-            WorkspacePage.Review => "ReviewPage",
-            WorkspacePage.AiHandoff => "AiHandoffPage",
-            WorkspacePage.AiAssistants => "AiAssistantsPage",
             WorkspacePage.Settings => "SettingsPage",
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
         private static string GuideCode(WorkspacePage page) => page switch
         {
-            WorkspacePage.Overview => "overview",
+            WorkspacePage.Progress => "progress",
+            WorkspacePage.Words => "words",
+            WorkspacePage.GrammarGuide => "grammar-guide",
+            WorkspacePage.Diagnostics => "diagnostics",
             WorkspacePage.Proposals => "proposals",
             WorkspacePage.Texts => "texts",
-            WorkspacePage.TryAWord => "try-a-word",
-            WorkspacePage.Timing => "timing",
-            WorkspacePage.Warnings => "warnings",
-            WorkspacePage.Parsimony => "parsimony-findings",
-            WorkspacePage.Review => "review-changes",
-            WorkspacePage.AiHandoff => "ai-handoff",
-            WorkspacePage.AiAssistants => "ai-assistants",
             WorkspacePage.Settings => "settings",
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };

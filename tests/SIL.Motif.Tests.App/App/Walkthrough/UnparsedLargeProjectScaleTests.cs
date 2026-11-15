@@ -87,7 +87,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
         {
             window.ShowPage(WorkspacePage.Texts);
             window.ShowTextsTab(TextsTab.AnalyzeTexts);
-            texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+            window.ShowPage(WorkspacePage.Words);
             await window.Workspace.Context.EvidencePublication;
             window.WaitUntil(() => !texts.Words.IsLoading && texts.Words.Rows.Count == project.SelectedWordCount,
                 TimeSpan.FromSeconds(30), "the large Word list did not load");
@@ -128,7 +128,8 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
         Capture(window, "word-list-end");
         await measurements.MeasureAsync("Unparsed: read and scroll longest Text", 30, async () =>
         {
-            texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+            window.ShowPage(WorkspacePage.Texts);
+            texts.ResultsInText.ShowReader();
             var model = texts.ResultsInText;
             window.WaitUntil(() => model.Texts.Count == project.TextIds.Count,
                 TimeSpan.FromSeconds(30), "the large Text inventory did not load");
@@ -184,7 +185,7 @@ public sealed class UnparsedLargeProjectScaleTests(ITestOutputHelper output)
         measurements.AssertReadCounts("Unparsed: read and scroll longest Text", 1, 128, 1, 4096);
         Assert.Null(window.Workspace.Assess.Result);
         Capture(window, "text-reader-end");
-        texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+        window.ShowPage(WorkspacePage.Words);
         PageScreenshots.Settle(window.Window);
         var list = Assert.Single(window.Window.GetVisualDescendants().OfType<ListBox>(),
             control => control.IsEffectivelyVisible && ReferenceEquals(control.ItemsSource, texts.Words.DisplayRows));

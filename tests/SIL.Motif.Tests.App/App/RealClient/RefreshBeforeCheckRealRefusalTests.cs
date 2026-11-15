@@ -61,12 +61,12 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
         {
             using var project = new WalkthroughProject(pristine);
             await using var window = await OpenAppliedWindowAsync(project, holdOffAutomaticRefresh: false);
-            var review = window.Workspace.PageModel<ReviewPageModel>();
+            var apply = window.Workspace.Context.ProposalApply;
 
             Assert.Equal(1, window.Refreshes);
             Assert.False(window.Workspace.Context.Evidence.AppliedSinceRefresh);
-            Assert.Null(review.BaselineRefusal);
-            Assert.Equal(MotifAppStrings.ApplyResultBaselineRecorded, review.ApplyResultBaselineText);
+            Assert.Null(apply.BaselineRefusal);
+            Assert.NotNull(apply.Receipt);
             await AssertTheStoreHoldsACurrentBaselineAsync(window);
         }, TimeSpan.FromMinutes(3));
         return Task.CompletedTask;
@@ -97,15 +97,17 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
                 SeededProject.AnalysedWordForm));
             Assert.Single(window.Workspace.Context.Changes.Items);
             Assert.True(window.Workspace.Context.Evidence.AppliedSinceRefresh);
-            var review = window.Workspace.PageModel<ReviewPageModel>();
+            var measurement = window.Workspace.Context.PendingMeasurement;
+            var apply = window.Workspace.Context.ProposalApply;
 
-            await review.MeasureCommand.ExecuteAsync(null);
+            await measurement.MeasureCommand.ExecuteAsync(null);
 
-            Assert.Null(review.MeasurementRefusal);
+            Assert.Null(measurement.Refusal);
             Assert.Equal(1, window.Refreshes);
             Assert.False(window.Workspace.Context.Evidence.AppliedSinceRefresh);
             Assert.NotEqual(staleToken, window.Workspace.Baseline.Token);
-            Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
+            Assert.True(apply.CanApply(null, null, window.Workspace.RefreshCommand, null),
+                string.Join("; ", apply.Blockers(null, null, window.Workspace.RefreshCommand, null)));
         }, TimeSpan.FromMinutes(3));
         return Task.CompletedTask;
     }
@@ -123,19 +125,21 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
                 RealCommandClient.Create(project.ManagedRoot, parser, runner), runner, project.FwDataPath);
             await window.Workspace.Context.OpenProjectAsync(project.FwDataPath);
             new FieldWorksSimulator(project.FwDataPath).AddWordform("saved-by-fieldworks");
-            var review = window.Workspace.PageModel<ReviewPageModel>();
+            var measurement = window.Workspace.Context.PendingMeasurement;
+            var apply = window.Workspace.Context.ProposalApply;
 
-            await review.MeasureCommand.ExecuteAsync(null);
+            await measurement.MeasureCommand.ExecuteAsync(null);
 
-            Assert.Equal(RefusalCodes.ChangeRefreshRequired, review.MeasurementRefusal?.Code);
+            Assert.Equal(RefusalCodes.ChangeRefreshRequired, measurement.Refusal?.Code);
             Assert.Equal(0, window.Refreshes);
 
             await window.Workspace.RefreshCommand.ExecuteAsync(null);
-            await review.MeasureCommand.ExecuteAsync(null);
+            await measurement.MeasureCommand.ExecuteAsync(null);
 
-            Assert.Null(review.MeasurementRefusal);
+            Assert.Null(measurement.Refusal);
             Assert.Equal(1, window.Refreshes);
-            Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
+            Assert.True(apply.CanApply(null, null, window.Workspace.RefreshCommand, null),
+                string.Join("; ", apply.Blockers(null, null, window.Workspace.RefreshCommand, null)));
         }, TimeSpan.FromMinutes(3));
         return Task.CompletedTask;
     }
@@ -162,23 +166,25 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
         try
         {
             await window.Workspace.Context.OpenProjectAsync(project.FwDataPath);
-            var review = window.Workspace.PageModel<ReviewPageModel>();
-            await review.MeasureCommand.ExecuteAsync(null);
-            Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
+            var measurement = window.Workspace.Context.PendingMeasurement;
+            var apply = window.Workspace.Context.ProposalApply;
+            await measurement.MeasureCommand.ExecuteAsync(null);
+            Assert.True(apply.CanApply(null, null, window.Workspace.RefreshCommand, null),
+                string.Join("; ", apply.Blockers(null, null, window.Workspace.RefreshCommand, null)));
             var before = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(project.FwDataPath)));
 
             // Most tests are about the check's own Refresh, so Apply's automatic one is held off for them.
             if (holdOffAutomaticRefresh) window.Workspace.Context.RefreshProjectCommand = null;
             try
             {
-                await review.ApplyCommand.ExecuteAsync(null);
+                await apply.ApplyCurrentAsync(null);
             }
             finally
             {
                 window.Workspace.Context.RefreshProjectCommand = window.Workspace.RefreshCommand;
             }
 
-            Assert.Null(review.ApplyRefusal);
+            Assert.Null(apply.ApplyRefusal);
             Assert.NotEqual(before, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(project.FwDataPath))));
             if (holdOffAutomaticRefresh) Assert.True(window.Workspace.Context.Evidence.AppliedSinceRefresh);
             return window;
@@ -219,8 +225,6 @@ public sealed class RefreshBeforeCheckRealRefusalTests(PristineProjectFixture pr
                 new BaselineViewModel(client), selection, new AssessViewModel(client, selection),
                 new NoFolderPicker(), new NoDragSource(), client);
             Workspace.Baseline.Refreshed += (_, _) => Refreshes++;
-            // This test is about the Review check; a real parser would spend minutes on a Parsimony Report.
-            Workspace.PageModel<ParsimonyPageModel>().AutomaticProduction = false;
         }
 
         public CommandClient Client { get; }

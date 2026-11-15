@@ -44,7 +44,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
             var selection = new SelectionViewModel(client);
             var words = new TextWordsViewModel(client, selection, client.ReaderOwner);
             var assess = new AssessViewModel(client, selection);
-            var reader = new ResultsInTextViewModel(words, assess, _ => { }, _ => { },
+            var reader = new ResultsInTextViewModel(words, assess, _ => { },
                 new ChangesViewModel(client), client, client.ReaderOwner);
             await words.SetProjectAsync(ProjectPath);
             var analysis = Stored(Book, "book");
@@ -84,12 +84,11 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
             var (owner, _, _) = await Loaded();
             var tokens = SelectionModelFixture.VisibleLines(owner).SelectMany(line => line.Tokens)
                 .Where(token => token.IsWord).Append(owner.GetCardToken(Result("standalone", Book))).ToArray();
-            Assert.Equal(3, owner.TokenActionCommands.Count);
-            Assert.Equal(3, owner.TokenActionCommands.Distinct(ReferenceEqualityComparer.Instance).Count());
+            Assert.Equal(2, owner.TokenActionCommands.Count);
+            Assert.Equal(2, owner.TokenActionCommands.Distinct(ReferenceEqualityComparer.Instance).Count());
             Assert.All(tokens, token =>
             {
                 Assert.Same(owner.AddChangeForTargetCommand, token.AddChangeForTokenCommand);
-                Assert.Same(owner.TryWordForTargetCommand, token.TryWordForTokenCommand);
                 Assert.Same(owner.StageMarkingChoiceForTargetCommand, token.StageMarkingChoiceForTokenCommand);
             });
             Assert.DoesNotContain(typeof(ResultsTokenViewModel).GetFields(
@@ -287,7 +286,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
         var changes = new ChangesViewModel(fake);
         if (pending is not null) fake.PendingChangesIs(pending);
         await changes.OpenProjectAsync(ProjectPath);
-        var inText = new ResultsInTextViewModel(texts, assess, shown.Add, _ => { }, changes, fake, fake.ReaderOwner);
+        var inText = new ResultsInTextViewModel(texts, assess, shown.Add, changes, fake, fake.ReaderOwner);
 
         var lines = sourceLines ??
         [
@@ -383,7 +382,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
             var words = new TextWordsViewModel(fake, selection, fake.ReaderOwner);
             var assess = new AssessViewModel(fake, selection) { ProjectPath = ProjectPath };
             var changes = new ChangesViewModel(fake);
-            var reader = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, changes, fake, fake.ReaderOwner);
+            var reader = new ResultsInTextViewModel(words, assess, _ => { }, changes, fake, fake.ReaderOwner);
             var analysis = Stored(Book, "book");
             var token = Word("kitabu", analysis);
             var text = new TextLines(TextId, "Alpha", [new TextLine(1, [token])
@@ -766,6 +765,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
             await inText.OpenTokenCardAsync(token);
 
             Assert.Equal(token.Occurrence, inText.SelectedToken!.Occurrence);
+            Assert.Empty(fake.TimingRequests);
             Assert.False(token.Marking.IsUnread);
             var request = Assert.Single(fake.ReadWordStateRequests, item => item.IsRead is not null);
             Assert.Equal([token.Occurrence!], request.Occurrences);
@@ -813,7 +813,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
                 timingOverrideAssessmentIds: ["assessment/rerun"]);
             fake.TimingCompletesWith(new TimingResponse("assessment/parse", "selected", "rule", 1, 1, 1, [], [], []));
 
-            await inText.OpenTokenCardAsync(SelectionModelFixture.VisibleLines(inText)[0].Tokens[0]);
+            await inText.LoadCardTimingAsync(SelectionModelFixture.VisibleLines(inText)[0].Tokens[0]);
 
             var request = Assert.Single(fake.TimingRequests);
             Assert.Equal("assessment/parse", request.AssessmentId);
@@ -2171,7 +2171,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
         var fake = new FakeCommandClient();
         var selection = new SelectionViewModel(fake);
         var inText = new ResultsInTextViewModel(
-            new TextWordsViewModel(fake, selection, fake.ReaderOwner), new AssessViewModel(fake, selection), _ => { }, _ => { },
+            new TextWordsViewModel(fake, selection, fake.ReaderOwner), new AssessViewModel(fake, selection), _ => { },
             new ChangesViewModel(fake), fake, fake.ReaderOwner);
 
         Assert.Null(inText.Message);
@@ -2190,7 +2190,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
             var selection = new SelectionViewModel(fake);
             var texts = new TextWordsViewModel(fake, selection, fake.ReaderOwner);
             fake.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
-            var inText = new ResultsInTextViewModel(texts, new AssessViewModel(fake, selection), _ => { }, _ => { },
+            var inText = new ResultsInTextViewModel(texts, new AssessViewModel(fake, selection), _ => { },
                 new ChangesViewModel(fake), fake, fake.ReaderOwner);
             var fixture = new SelectionModelFixture(fake);
             _fixtures.Add(fixture);

@@ -22,12 +22,10 @@ public sealed class DiagnosticsPlumbingTests
             new AssessViewModel(fake, selection), new NoPicker(), new NoPicker(), fake, pageEntries: PageRegistry.Entries);
     }
 
-    [Theory]
-    [InlineData(WorkspacePage.Warnings)]
-    [InlineData(WorkspacePage.Parsimony)]
-    [InlineData(WorkspacePage.Timing)]
-    public void ADiagnosticPageLeavesTheRailWhenDisabledAndComesBack(WorkspacePage diagnostic)
+    [Fact]
+    public void DiagnosticsLeavesTheRailWhenDisabledAndComesBack()
     {
+        var diagnostic = WorkspacePage.Diagnostics;
         var workspace = NewWorkspace();
         Assert.False(workspace.Context.Diagnostics);
         workspace.Context.Diagnostics = true;
@@ -50,7 +48,7 @@ public sealed class DiagnosticsPlumbingTests
     }
 
     [Fact]
-    public void TheSelectedPageStaysWhenStillVisibleAndOtherwiseFallsBackToOverview()
+    public void TheSelectedPageStaysWhenStillVisibleAndOtherwiseFallsBackToProgress()
     {
         var workspace = NewWorkspace();
         workspace.CurrentPage = WorkspacePage.Texts;
@@ -58,11 +56,11 @@ public sealed class DiagnosticsPlumbingTests
         Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
 
         workspace.Context.Diagnostics = true;
-        workspace.CurrentPage = WorkspacePage.Parsimony;
+        workspace.CurrentPage = WorkspacePage.Diagnostics;
         workspace.Context.Diagnostics = false;
 
-        Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
-        Assert.Equal(WorkspacePage.Overview, workspace.SelectedPage.Page);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.Progress, workspace.SelectedPage.Page);
     }
 
     [Fact]
@@ -87,7 +85,7 @@ public sealed class DiagnosticsPlumbingTests
             var next = NewWorkspace();
             next.Context.UseDiagnosticsPreferences(reread);
             Assert.True(next.Context.Diagnostics);
-            Assert.Contains(next.VisiblePages, page => page.Page == WorkspacePage.Parsimony);
+            Assert.Contains(next.VisiblePages, page => page.Page == WorkspacePage.Diagnostics);
         }
         finally
         {
@@ -150,28 +148,39 @@ public sealed class DiagnosticsPlumbingTests
     }
 
     [Fact]
-    public void TryWordKeepsItsResultsAndHidesTraceUntilDiagnosticsIsEnabled()
+    public void DisablingDiagnosticsRemovesItsPageFromTheVisibleTree()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var workspace = NewWorkspace();
-            var page = workspace.PageModel<TryWordPageModel>();
-            var panel = new TryWordPanel(page);
-            var window = new MotifTestWindow { Content = panel };
+            var (workspace, window) = FakeComposedWindow.Create();
             try
             {
                 window.Show();
-                PageScreenshots.SettleLayout(window);
-                Assert.Contains(workspace.VisiblePages, entry => entry.Page == WorkspacePage.TryAWord);
-                Assert.True(panel.FindControl<Control>("TryWordInputBox")!.IsEffectivelyVisible);
-                Assert.False(panel.FindControl<Control>("TryWordModeButtons")!.IsEffectivelyVisible);
-                Assert.False(panel.FindControl<Control>("TraceDetails")!.IsEffectivelyVisible);
-                Assert.False(panel.AttemptInspector.IsVisible);
-                workspace.Context.ToggleDiagnosticsCommand.Execute(null);
-                PageScreenshots.SettleLayout(window);
-                Assert.True(panel.FindControl<Control>("TryWordModeButtons")!.IsEffectivelyVisible);
-                Assert.True(panel.FindControl<Control>("TraceDetails")!.IsEffectivelyVisible);
-                Assert.True(panel.AttemptInspector.IsVisible);
+                workspace.Context.Diagnostics = true;
+                workspace.CurrentPage = WorkspacePage.Diagnostics;
+                PageScreenshots.Settle(window);
+                var page = Assert.IsType<DiagnosticsPage>(window.EnsurePageView(WorkspacePage.Diagnostics));
+                Assert.True(page.IsEffectivelyVisible);
+                var tabs = Assert.Single(page.GetVisualDescendants().OfType<TabControl>());
+                Assert.Equal(new[] { "Warnings", "Speed by Rule" },
+                    tabs.Items.OfType<TabItem>().Select(tab => tab.Header));
+
+                workspace.Context.Diagnostics = false;
+                PageScreenshots.Settle(window);
+
+                Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
+                Assert.False(page.IsEffectivelyVisible);
+                Assert.DoesNotContain(page, window.GetVisualDescendants());
+                Assert.Null(page.Parent);
+                Assert.DoesNotContain(workspace.VisiblePages, entry => entry.Page == WorkspacePage.Diagnostics);
+                Assert.Throws<InvalidOperationException>(() => window.EnsurePageView(WorkspacePage.Diagnostics));
+
+                workspace.Context.Diagnostics = true;
+                workspace.CurrentPage = WorkspacePage.Diagnostics;
+                PageScreenshots.Settle(window);
+                var reopened = Assert.IsType<DiagnosticsPage>(window.EnsurePageView(WorkspacePage.Diagnostics));
+                Assert.NotSame(page, reopened);
+                Assert.True(reopened.IsEffectivelyVisible);
             }
             finally { window.Close(); await workspace.DisposeAsync(); }
         }, TimeSpan.FromSeconds(30));

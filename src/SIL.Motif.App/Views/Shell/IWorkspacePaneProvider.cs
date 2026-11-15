@@ -18,7 +18,7 @@ public interface IWorkspacePaneProvider
     /// <summary>Optional page details shown unless an object inspection is open; null means no page details.</summary>
     Control? InspectorContent => null;
 
-    /// <summary>Actions pinned below the Inspector, or below the page when it collapses; null means no pinned actions.</summary>
+    /// <summary>Actions pinned below the details pane, or below the page when it collapses; null means no pinned actions.</summary>
     Control? InspectorFooter => null;
 
     /// <summary>

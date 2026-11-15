@@ -1,72 +1,25 @@
-using SIL.Motif.App;
 using System.Globalization;
-using Avalonia.Controls;
-using Avalonia.LogicalTree;
-using Avalonia.Threading;
-using SIL.Motif.App.ViewModels;
-using SIL.Motif.App.Views;
 using SIL.Motif.Help;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>
-/// Ensures the canonical Overview guide names every section and the reading guide links back to its full page tour.
-/// </summary>
-[Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class OverviewGuideTests
 {
-    private static readonly string[] RetiredCardNames = ["Accuracy", "**Timing**", "**Warnings**"];
-
     [Fact]
-    public void TheOverviewGuideNamesEveryTableAndTheReadingGuideLinksBack()
+    public void ProgressAndHealthGuidesDescribeRecordedFactsAndLinkToEachOther()
     {
-        var titles = RenderedTileTitles();
-        Assert.Equal([MotifAppStrings.TextCoverage, MotifAppStrings.ApprovedAnalysesKept, MotifAppStrings.Speed, MotifAppStrings.SlowestWords, MotifAppStrings.GrammarWarnings], titles);
-
         var catalog = HelpCatalog.Load(CultureInfo.GetCultureInfo("en"));
-        var guide = catalog.GetHelpPage(HelpEntryKind.Guide, "overview");
-        Assert.NotNull(guide);
-        foreach (var title in titles)
-            Assert.True(guide.Contains($"**{title}**", StringComparison.Ordinal), $"overview does not name {title}");
-        foreach (var retired in RetiredCardNames)
-            Assert.False(guide.Contains(retired, StringComparison.Ordinal), $"overview still says {retired}");
-        Assert.False(guide.Contains("its [Baseline]", StringComparison.Ordinal), "overview puts a Baseline on the page");
+        var progress = Assert.IsType<string>(catalog.GetHelpPage(HelpEntryKind.Guide, "progress"));
+        var overview = Assert.IsType<string>(catalog.GetHelpPage(HelpEntryKind.Guide, "overview"));
+        var reading = Assert.IsType<string>(catalog.GetHelpPage(HelpEntryKind.Guide, "reading-the-overview"));
 
-        var readingGuide = catalog.GetHelpPage(HelpEntryKind.Guide, "reading-the-overview");
-        Assert.NotNull(readingGuide);
-        Assert.Contains("[Overview](guide:overview)", readingGuide);
+        Assert.Contains("waiting for a decision", progress);
+        Assert.Contains("does not start a parse", progress);
+        Assert.Contains("[Progress and project health](guide:overview)", progress);
+        Assert.Contains("recorded median parser-work", overview);
+        Assert.Contains("[Reading project health](guide:reading-the-overview)", overview);
+        Assert.Contains("missing or stale measurement", reading);
+        Assert.Contains("[Progress and project health](guide:overview)", reading);
     }
-
-    private static string[] RenderedTileTitles()
-    {
-        string[] titles = [];
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var fake = new FakeCommandClient();
-            var context = WorkspaceContextTests.NewContext(fake);
-            var page = new OverviewPageModel(context);
-            fake.OverviewCompletesWith(OverviewPageWordsTests.Populated());
-            await context.OpenProjectAsync(@"C:\projects\sample.fwdata");
-            var window = new MotifTestWindow { Width = 1240, Height = 900, Content = new OverviewPage(page) };
-            try
-            {
-                window.Show();
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
-                titles = window.GetLogicalDescendants().OfType<Control>()
-                    .Where(tile => tile.Classes.Contains("overviewTile") && tile.IsEffectivelyVisible)
-                    .OrderBy(Grid.GetRow).ThenBy(Grid.GetColumn)
-                    .Select(tile => tile.GetLogicalDescendants().OfType<TextBlock>()
-                        .Single(text => text.Classes.Contains("overviewTileTitle")).Text!)
-                    .ToArray();
-            }
-            finally
-            {
-                window.Close();
-            }
-        }, TimeSpan.FromSeconds(10));
-        return titles;
-    }
-
 }

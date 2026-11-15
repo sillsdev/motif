@@ -68,37 +68,32 @@ public sealed class WorkspacePageTests
         new(word, outcome, false, "Search completed", 10, null) { ProjectStanding = standing };
 
     [Fact]
-    public void TheWorkspaceRegistersEveryPageInOrderAndOpensOnOverview()
+    public void TheWorkspaceRegistersEveryPageInOrderAndOpensOnProgress()
     {
         var (_, _, workspace) = NewWorkspace();
 
         Assert.Equal(
-            [WorkspacePage.Overview, WorkspacePage.Proposals, WorkspacePage.Texts, WorkspacePage.TryAWord,
-                WorkspacePage.Timing, WorkspacePage.Warnings, WorkspacePage.Parsimony, WorkspacePage.Review,
-                WorkspacePage.AiHandoff, WorkspacePage.AiAssistants, WorkspacePage.Settings],
+            [WorkspacePage.Progress, WorkspacePage.Texts, WorkspacePage.Words, WorkspacePage.GrammarGuide,
+                WorkspacePage.Proposals, WorkspacePage.Diagnostics, WorkspacePage.Settings],
             workspace.Pages.Select(page => page.Page));
         Assert.Equal(
-            ["Overview", "Proposals", "Texts", "Try a Word", "Parser Work", "Warnings", "Parsimony", "Review Changes",
-                "AI Handoff", "AI Assistants", "Settings"],
+            ["Progress", "Texts", "Words", "Grammar Guide", "Proposals", "Diagnostics", "Settings"],
             workspace.Pages.Select(page => page.Title));
-        Assert.Equal(workspace.Pages.Single(page => page.Page == WorkspacePage.AiAssistants).Title,
-            MotifAppStrings.AiAssistantsTitle);
         Assert.DoesNotContain(workspace.VisiblePages, page => page.Page == WorkspacePage.Settings);
-        Assert.Equal(workspace.Pages.Where(page => page.IsAvailable && page.Page is not (WorkspacePage.Settings or WorkspacePage.AiHandoff)),
+        Assert.Equal(workspace.Pages.Where(page => page.IsAvailable && page.Page != WorkspacePage.Settings),
             workspace.VisiblePages);
-        Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
         Assert.All(workspace.Pages, page => Assert.False(page.HasBadge));
     }
 
     [Theory]
-    [InlineData(WorkspacePage.Overview)]
-    [InlineData(WorkspacePage.Proposals)]
+    [InlineData(WorkspacePage.Progress)]
     [InlineData(WorkspacePage.Texts)]
-    [InlineData(WorkspacePage.TryAWord)]
-    [InlineData(WorkspacePage.Timing)]
-    [InlineData(WorkspacePage.Warnings)]
-    [InlineData(WorkspacePage.Review)]
-    [InlineData(WorkspacePage.AiAssistants)]
+    [InlineData(WorkspacePage.Words)]
+    [InlineData(WorkspacePage.GrammarGuide)]
+    [InlineData(WorkspacePage.Proposals)]
+    [InlineData(WorkspacePage.Diagnostics)]
+    [InlineData(WorkspacePage.Settings)]
     public void ShowingAPageMovesTheCurrentMarkerToThatPageAlone(WorkspacePage page)
     {
         var (_, _, workspace) = NewWorkspace();
@@ -108,7 +103,7 @@ public sealed class WorkspacePageTests
 
         Assert.Equal(page, workspace.CurrentPage);
         Assert.Same(workspace.PageOf(page), workspace.SelectedPage);
-        Assert.Equal(Enum.GetValues<WorkspacePage>().Select(each => each == page),
+        Assert.Equal(workspace.Pages.Select(entry => entry.Page == page),
             workspace.Pages.Select(entry => entry.IsCurrent));
     }
 
@@ -117,36 +112,25 @@ public sealed class WorkspacePageTests
     {
         var (_, _, workspace) = NewWorkspace();
 
-        workspace.SelectedPage = workspace.Pages[7];
+        workspace.SelectedPage = workspace.PageOf(WorkspacePage.Words);
         workspace.SelectedPage = null!;
 
-        Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.Words, workspace.CurrentPage);
     }
 
     [Fact]
-    public void TheTextsPageOpensOnAnalyzeAndEachTabShowsOnlyItsOwnContent()
+    public void TextsAndWordsShareTheCurrentSelectionsWordRows()
     {
         var (_, _, workspace) = NewWorkspace();
         var texts = workspace.PageModel<TextsPageModel>();
+        var words = workspace.PageModel<WordsPageModel>();
 
-        Assert.Equal(TextsTab.AnalyzeTexts, texts.Tab);
-        Assert.True(texts.ShowAnalyzeTexts);
-        Assert.False(texts.ShowLists);
-        Assert.False(texts.ShowWhatChanged);
-
-        foreach (var tab in Enum.GetValues<TextsTab>())
-        {
-            texts.ShowTabCommand.Execute(tab);
-
-            Assert.Equal(tab, texts.Tab);
-            Assert.Equal(tab == TextsTab.AnalyzeTexts, texts.ShowAnalyzeTexts);
-            Assert.Equal(tab == TextsTab.Lists, texts.ShowLists);
-            Assert.Equal(tab == TextsTab.WhatChanged, texts.ShowWhatChanged);
-        }
+        Assert.Same(texts.Words, words.Words);
+        Assert.NotNull(texts.ResultsInText);
     }
 
     [Fact]
-    public async Task OpeningListsAfterAnAssessmentSelectsItsFirstQuestion()
+    public async Task AssessmentPublishesItsRecordedWordToTheSharedEvidence()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
@@ -155,32 +139,31 @@ public sealed class WorkspacePageTests
         {
             Words = [Word("kitabu", "no-analysis", ProjectStanding.Approved)],
         });
+
         await workspace.Assess.RunCommand.ExecuteAsync(null);
+        await workspace.Context.EvidencePublication;
 
-        var texts = workspace.PageModel<TextsPageModel>();
-        texts.ShowTabCommand.Execute(TextsTab.Lists);
-
-        Assert.Equal("Lost", texts.TextsLists.SelectedList?.Name);
-        Assert.Equal(["kitabu"], texts.Assess.Compare.Words.Select(word => word.Word));
+        Assert.Equal(["kitabu"], workspace.Assess.Compare.Words.Select(word => word.Word));
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
     [Fact]
-    public async Task ChoosingAProjectFromAnotherPageNamesItAndOpensTexts()
+    public async Task ChoosingAProjectFromAnotherPageNamesItAndOpensProgress()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
-        workspace.ShowPageCommand.Execute(WorkspacePage.AiHandoff);
+        workspace.ShowPageCommand.Execute(WorkspacePage.Settings);
 
         await ChooseProjectAsync(fake, projectPicker, workspace);
 
         Assert.True(workspace.HasProject);
         Assert.Equal("one.fwdata", workspace.ProjectName);
-        Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
     [Theory]
-    [InlineData(true, WorkspacePage.Proposals)]
-    [InlineData(false, WorkspacePage.Texts)]
-    public async Task OpeningAProjectShowsReadyProposalsOrTexts(bool ready, WorkspacePage expected)
+    [InlineData(true, WorkspacePage.Progress)]
+    [InlineData(false, WorkspacePage.Progress)]
+    public async Task OpeningAProjectStartsOnProgressRegardlessOfStandings(bool ready, WorkspacePage expected)
     {
         var (fake, picker, workspace) = NewWorkspace();
         var cards = ready
@@ -195,24 +178,22 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task ARunStartingOpensTheMatrixOnTheTextsPage()
+    public async Task StartingARunKeepsTheCurrentPage()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
         workspace.Selection.AllWordforms = true;
-        workspace.PageModel<TextsPageModel>().ShowTabCommand.Execute(TextsTab.AnalyzeTexts);
         fake.AssessBlocksUntilCancelled(new Refusal("assess.cancelled", FailureReason.Cancelled, "Cancelled."));
 
         var running = workspace.Assess.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowAnalyzeTexts);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
         workspace.Assess.CancelCommand.Execute(null);
         await running;
     }
 
     [Fact]
-    public async Task ARunKeepsTheCurrentTabAndARerunWithMovesOpensWhatChanged()
+    public async Task RerunningPublishesTheDifferenceWithoutChangingPages()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
@@ -221,22 +202,22 @@ public sealed class WorkspacePageTests
             new("alimpiga", outcome, incomplete, "Search completed", 10, null) { ProjectStanding = ProjectStanding.NotPresent };
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("timed-out", true)] });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        Assert.True(workspace.PageModel<TextsPageModel>().ShowAnalyzeTexts);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
 
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RerunAsync(["alimpiga"], 30_000);
 
-        Assert.Equal(TextsTab.WhatChanged, workspace.PageModel<TextsPageModel>().Tab);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
         Assert.Equal(MoveKind.Settled, workspace.Assess.Difference.SelectedMove!.Kind);
 
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Timed("no-analysis", false)] });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal(TextsTab.WhatChanged, workspace.PageModel<TextsPageModel>().Tab);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
     [Fact]
-    public async Task TheWarningsBadgeCountsTheStoredGrammarCheck()
+    public async Task StoredGrammarFindingsAndProposalBadgeKeepTheirOwnCounts()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         var stored = new GrammarCheckResponse(
@@ -252,18 +233,15 @@ public sealed class WorkspacePageTests
 
         await ChooseProjectAsync(fake, projectPicker, workspace);
 
-        var warnings = workspace.PageOf(WorkspacePage.Warnings);
-        Assert.Equal("2", warnings.Badge);
-        Assert.Equal("2 warnings", warnings.BadgeTip);
+        Assert.Equal(2, workspace.Context.GrammarSummary!.Findings.Count);
         var proposals = workspace.PageOf(WorkspacePage.Proposals);
         proposals.BadgeCount = 2;
         Assert.Equal("2 Proposals waiting for your decision", proposals.BadgeTip);
-        Assert.True(warnings.HasBadge);
         Assert.Empty(fake.AssessRequests);
     }
 
     [Fact]
-    public async Task TheReviewBadgeCountsTheOneChangesListTheMatrixAddsTo()
+    public async Task StagedWordChangesShareOneOwnerAndCount()
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
@@ -273,29 +251,22 @@ public sealed class WorkspacePageTests
             Words = [Word("kitabu", "no-analysis", ProjectStanding.Approved), Word("mwalimu", "no-analysis", ProjectStanding.NotPresent)],
         });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        var review = workspace.PageOf(WorkspacePage.Review);
-        Assert.False(review.HasBadge);
-
         Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
         foreach (var word in workspace.Assess.Compare.Words) word.IsChecked = true;
         await workspace.Assess.Compare.ProposeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
 
         Assert.Equal(2, workspace.Context.Changes.Items.Count);
-        Assert.Equal("2", review.Badge);
         Assert.Equal("2 word changes not applied yet", workspace.Context.Changes.CountText);
-        Assert.Equal("2 changes not applied yet", review.ChangesTip);
 
         await workspace.Context.Changes.RemoveCommand.ExecuteAsync(workspace.Context.Changes.Items[0]);
 
-        Assert.Equal("1", review.Badge);
         Assert.Equal("1 word change not applied yet", workspace.Context.Changes.CountText);
-        Assert.Equal("1 change not applied yet", review.ChangesTip);
-        Assert.Equal("1 warning", review.WarningsTip);
     }
 
     [Theory]
     [InlineData(900, true)]
-    [InlineData(1279, true)]
+    [InlineData(999, true)]
+    [InlineData(1000, false)]
     [InlineData(1280, false)]
     [InlineData(1400, false)]
     public void TheSidebarCollapsesToIconsBelowItsWidthThreshold(double width, bool collapsed)
@@ -378,22 +349,22 @@ public sealed class WorkspacePageTests
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
         workspace.Context.Setup!.SkipCommand.Execute(null);
-        workspace.CurrentPage = WorkspacePage.Overview;
+        workspace.CurrentPage = WorkspacePage.Progress;
 
         workspace.ConfigureCommand.Execute(null);
 
-        Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
         Assert.True(workspace.Context.Setup.IsOpen);
         Assert.Equal(0, workspace.Context.Setup.Step);
 
         var opened = 0;
         workspace.Context.Setup.SkipCommand.Execute(null);
-        workspace.ShowPageCommand.Execute(WorkspacePage.Overview);
+        workspace.ShowPageCommand.Execute(WorkspacePage.Progress);
         workspace.OpenConfiguration = () => opened++;
         workspace.ConfigureCommand.Execute(null);
 
         Assert.Equal(1, opened);
-        Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
     [Fact]
@@ -518,7 +489,7 @@ public sealed class WorkspacePageTests
         workspace.Selection.AllWordforms = true;
         fake.AssessCompletesWith(NewAssessResponse() with { Words = [Word("kitabu", "timed-out", ProjectStanding.Approved)] });
         await workspace.Assess.RunCommand.ExecuteAsync(null);
-        workspace.ShowPageCommand.Execute(WorkspacePage.Overview);
+        workspace.ShowPageCommand.Execute(WorkspacePage.Progress);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved.AddHours(3), false, false));
         await workspace.RefreshCommand.ExecuteAsync(null);
@@ -529,18 +500,13 @@ public sealed class WorkspacePageTests
         Assert.Equal("Refreshed", workspace.FreshnessLabel);
         Assert.True(workspace.Context.NeedsAssessment);
         Assert.True(workspace.ShowsParseAllWordsAction);
-        Assert.False(workspace.SeeWhatChangedCommand.CanExecute(null));
 
         fake.AssessCompletesWith(NewAssessResponse(Saved.AddHours(3)) with
             { Words = [Word("kitabu", "analysed", ProjectStanding.Approved)] });
         await workspace.ParseAllWordsCommand.ExecuteAsync(null);
 
         Assert.False(workspace.Context.NeedsAssessment);
-        Assert.True(workspace.SeeWhatChangedCommand.CanExecute(null));
-        workspace.SeeWhatChangedCommand.Execute(null);
-
-        Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
-        Assert.Equal(TextsTab.WhatChanged, workspace.PageModel<TextsPageModel>().Tab);
+        Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
     }
 
     [Fact]
@@ -588,17 +554,17 @@ public sealed class WorkspacePageTests
     {
         var (fake, projectPicker, workspace) = NewWorkspace();
         await ChooseProjectAsync(fake, projectPicker, workspace);
-        Assert.Single(fake.CheckGrammarRequests);
+        Assert.Empty(fake.CheckGrammarRequests);
 
         fake.CaptureBaselineCompletesWith(new BaselineCaptureResponse(Token, ProjectPath, Saved, false, false));
         await workspace.Baseline.RefreshCommand.ExecuteAsync(null);
 
-        Assert.Equal(2, fake.CheckGrammarRequests.Count);
-        Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.HasChecked);
+        Assert.Single(fake.CheckGrammarRequests);
+        Assert.Empty(fake.AssessRequests);
     }
 
     [Fact]
-    public async Task AutomaticGrammarWaitsForTheOtherProjectOpenParticipants()
+    public async Task OpeningWaitsForOtherParticipantsWithoutStartingGrammar()
     {
         using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -618,10 +584,10 @@ public sealed class WorkspacePageTests
             remainingOpen.SetResult();
             await opening.WaitAsync(testLifetime.Token);
 
-            Assert.Single(fake.CheckGrammarRequests);
-            Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.IsLoading);
+            Assert.Empty(fake.CheckGrammarRequests);
+            Assert.False(workspace.Context.GrammarCheck.IsLoading);
             Assert.False(workspace.Context.IsOpeningProject);
-            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
             Assert.Empty(fake.AssessRequests);
         }
         finally
@@ -677,7 +643,7 @@ public sealed class WorkspacePageTests
     }
 
     [Fact]
-    public async Task OpeningAnUncheckedBaselineChecksGrammarOnOverviewWithoutBlockingOrAssessing()
+    public async Task OpeningAnUncheckedBaselineReadsOnlyUntilAnExplicitGrammarCheck()
     {
         using var testLifetime = new CancellationTokenSource(TimeSpan.FromMinutes(1));
         var (fake, projectPicker, workspace) = NewWorkspace();
@@ -685,7 +651,7 @@ public sealed class WorkspacePageTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         fake.OnCheckGrammar((_, _) => checking.Task);
-        var grammar = workspace.PageModel<WarningsPageModel>().Grammar;
+        var grammar = workspace.Context.GrammarCheck;
         fake.OnOverview((_, _) =>
         {
             if (grammar.HasChecked) published.TrySetResult();
@@ -700,7 +666,9 @@ public sealed class WorkspacePageTests
         {
             await ChooseProjectAsync(fake, projectPicker, workspace).WaitAsync(testLifetime.Token);
             Assert.True(workspace.Baseline.HasBaseline);
-            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
+            Assert.Empty(fake.CheckGrammarRequests);
+            var check = grammar.CheckCommand.ExecuteAsync(null);
             Assert.Equal(ProjectPath, Assert.Single(fake.CheckGrammarRequests).ProjectPath);
             Assert.True(grammar.IsLoading);
             Assert.False(grammar.HasChecked);
@@ -709,14 +677,15 @@ public sealed class WorkspacePageTests
             Assert.Null(workspace.Context.Evidence.Assessment);
 
             checking.SetResult(response);
+            await check.WaitAsync(testLifetime.Token);
             await published.Task.WaitAsync(testLifetime.Token);
 
             Assert.True(grammar.HasChecked);
             Assert.False(grammar.IsLoading);
             Assert.Equal("fwdata.dropped-entry", Assert.Single(grammar.Warnings.Findings).Code);
-            Assert.Equal("1", workspace.PageOf(WorkspacePage.Warnings).Badge);
+            Assert.Equal("1", workspace.Context.GrammarSummary!.Findings.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
             Assert.Equal("fwdata.dropped-entry", Assert.Single(workspace.Context.GrammarSummary!.Findings).Code);
-            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
             Assert.Empty(fake.AssessRequests);
             Assert.Null(workspace.Context.Evidence.Assessment);
         }
@@ -751,8 +720,10 @@ public sealed class WorkspacePageTests
         try
         {
             await ChooseProjectAsync(fake, projectPicker, workspace).WaitAsync(testLifetime.Token);
+            Assert.Empty(fake.CheckGrammarRequests);
+            var check = workspace.Context.GrammarCheck.CheckCommand.ExecuteAsync(null);
             Assert.Single(fake.CheckGrammarRequests);
-            Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.IsLoading);
+            Assert.True(workspace.Context.GrammarCheck.IsLoading);
             var oldOverviewReads = fake.OverviewRequests.Count(request => request.ProjectPath == ProjectPath);
 
             var switching = workspace.SetProjectAsync(otherPath, captureFreshProject: false);
@@ -760,13 +731,14 @@ public sealed class WorkspacePageTests
             Assert.True(checkCancellation.IsCancellationRequested);
             Assert.False(switching.IsCompleted);
             checking.SetResult(oldResult);
+            await check.WaitAsync(testLifetime.Token);
             await switching.WaitAsync(testLifetime.Token);
 
             Assert.Equal(otherPath, workspace.Context.ProjectPath);
-            Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
+            Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
             Assert.Equal(oldOverviewReads,
                 fake.OverviewRequests.Count(request => request.ProjectPath == ProjectPath));
-            var grammar = workspace.PageModel<WarningsPageModel>().Grammar;
+            var grammar = workspace.Context.GrammarCheck;
             Assert.True(grammar.HasChecked);
             Assert.False(grammar.IsLoading);
             Assert.Empty(grammar.Warnings.Findings);
@@ -789,7 +761,7 @@ public sealed class WorkspacePageTests
         var (fake, projectPicker, workspace) = NewWorkspace();
         fake.StoredGrammarCheckIs(new GrammarCheckResponse([], HasBaseline: true));
         await ChooseProjectAsync(fake, projectPicker, workspace).WaitAsync(testLifetime.Token);
-        var grammar = workspace.PageModel<WarningsPageModel>().Grammar;
+        var grammar = workspace.Context.GrammarCheck;
         var beforeRetry = fake.OverviewRequests.Count;
 
         await grammar.CheckCommand.ExecuteAsync(null);
@@ -808,7 +780,7 @@ public sealed class WorkspacePageTests
         {
             var retrying = grammar.CheckCommand.ExecuteAsync(null);
             Assert.True(grammar.IsLoading);
-            Assert.False(workspace.PageModel<WarningsPageModel>().CheckGrammarCommand.CanExecute(null));
+            Assert.False(workspace.Context.GrammarCheck.CheckCommand.CanExecute(null));
             var beforeStop = fake.OverviewRequests.Count;
 
             var stopping = workspace.Context.StopPageWorkAsync();
@@ -842,10 +814,10 @@ public sealed class WorkspacePageTests
 
         await ChooseProjectAsync(fake, projectPicker, workspace);
 
-        Assert.False(workspace.PageModel<WarningsPageModel>().IsGrammarNotChecked);
+        Assert.True(workspace.Context.GrammarCheck.HasChecked);
         Assert.Empty(fake.CheckGrammarRequests);
-        Assert.Equal("1 finding", workspace.PageModel<WarningsPageModel>().Grammar.SummaryText);
-        Assert.True(workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.CanExecute(null));
+        Assert.Equal("1 finding", workspace.Context.GrammarCheck.SummaryText);
+        Assert.True(workspace.Context.GrammarCheck.CheckCommand.CanExecute(null));
     }
 
     [Fact]
@@ -859,13 +831,13 @@ public sealed class WorkspacePageTests
         fake.StoredGrammarCheckIs(stored);
         fake.CheckGrammarCompletesWith(stored);
         await ChooseProjectAsync(fake, projectPicker, workspace);
-        Assert.Equal("1", workspace.PageModel<WarningsPageModel>().Badge);
+        Assert.Equal("1", workspace.Context.GrammarSummary!.Findings.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         workspace.Context.ClearProject();
 
-        Assert.Equal(string.Empty, workspace.PageModel<WarningsPageModel>().Badge);
+        Assert.Empty(workspace.Context.GrammarSummary!.Findings);
         Assert.Equal("Not checked yet", workspace.Context.GrammarSummary?.SummaryText);
-        Assert.False(workspace.PageModel<WarningsPageModel>().Grammar.HasChecked);
+        Assert.False(workspace.Context.GrammarCheck.HasChecked);
     }
 
     [Fact]
@@ -941,12 +913,12 @@ public sealed class WorkspacePageTests
     public void TheAiHandoffActionOffersARewriteOnlyOnceFilesExist()
     {
         var (_, _, workspace) = NewWorkspace();
-        Assert.Equal("Write the AI Handoff", workspace.PageModel<AiHandoffPageModel>().HandoffActionText);
+        Assert.Equal("Write the AI Handoff", workspace.PageModel<SettingsPageModel>().Handoff.HandoffActionText);
 
-        workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
-        workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
+        workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
+        workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State = RunState.Completed;
 
-        Assert.Equal("Write the AI Handoff again", workspace.PageModel<AiHandoffPageModel>().HandoffActionText);
+        Assert.Equal("Write the AI Handoff again", workspace.PageModel<SettingsPageModel>().Handoff.HandoffActionText);
     }
 
     private sealed class FakeProjectPicker : IProjectPicker

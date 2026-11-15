@@ -20,8 +20,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins that the speed the Overview and Timing lead with is PanGloss's own stored per-word time, carried
-/// unchanged through the window's real command client.
+/// Pins stored parser work and elapsed time through the real command client and the health details.
 /// </summary>
 [Collection(LcmCacheTestCollection.Name)]
 [Trait("MotifTestLevel", "Integration")]
@@ -31,7 +30,7 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
         Path.Combine(Path.GetTempPath(), "Motif.OverviewSpeed", Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task TheSpeedHeadlineIsTheStoredWordCountAndTheirSummedParserWork()
+    public async Task HealthDetailsUseTheStoredMedianParserWork()
     {
         Directory.CreateDirectory(_managedRoot);
         using var cache = pristine.NewScratch();
@@ -99,19 +98,16 @@ public sealed class OverviewSpeedRealClientTests(PristineProjectFixture pristine
         Assert.Equal(totalWork, read.Value.Timing.Work.TotalParserWork);
 
         var context = WorkspaceContextTests.NewContext(client);
-        var overview = new OverviewPageModel(context);
-        var timing = new TimingPageModel(context);
+        var progress = new ProgressPageModel(context);
         await context.OpenProjectAsync(projectPath);
 
-        var expectedTotal = TimingShare.FormatParserWork(totalWork);
-        // The total is the words' parser work added up; how long the run took on this computer is a separate line.
-        Assert.Equal($"{measured.Length:N0} {(measured.Length == 1 ? "word" : "words")} · {expectedTotal} in total",
-            overview.SpeedMain);
-        Assert.Equal($"Took {TimingShare.FormatDuration(totalMs)} on this computer", overview.SpeedElapsed);
-        Assert.True(timing.HasHeadline, timing.TimingRefusal?.Sentence ?? "Timing read no stored words");
-        Assert.Equal(expectedTotal, timing.HeadlineTotal);
-        // The caption counts the measured words against every chosen word, so the untimed one is not hidden.
-        Assert.Equal($"for {measured.Length:N0} of the {words.Count:N0} words", timing.HeadlineTotalCaption);
+        var median = Assert.IsType<double>(read.Value.Timing.Work.MedianParserWork);
+        Assert.Equal(median, progress.Health.Overview!.Timing.Work.MedianParserWork);
+        Assert.True(progress.Health.HasMedianWork);
+        Assert.Contains(median.ToString("N2", System.Globalization.CultureInfo.CurrentCulture),
+            progress.Health.MedianWorkText);
+        Assert.DoesNotContain("parser", progress.Health.AccessibleName, StringComparison.OrdinalIgnoreCase);
+        await context.StopProjectWorkAsync();
     }
 
     public void Dispose()

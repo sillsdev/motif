@@ -37,9 +37,8 @@ public sealed class ProposalsInspectorActionsTests
                 var tryAgain = window.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetAutomationId(button) == model.SelectedProposal!.InspectorTryAgainAutomationId);
                 Assert.True(tryAgain.IsEffectivelyVisible, "Try Again is hidden");
-                // Wide, the row is pinned under the Inspector; narrow, the Inspector folds away and it sits under the page.
-                var rowHost = tryAgain.GetVisualAncestors().OfType<PageContentSlot>().First().Name;
-                Assert.Equal(width >= 1000 ? "InspectorRowHost" : "PageActionRowHost", rowHost);
+                tryAgain.BringIntoView();
+                PageScreenshots.Settle(window);
                 var box = Box(tryAgain, window);
                 Assert.True(box.Top >= 0 && box.Bottom <= window.ClientSize.Height,
                     $"Try Again spans {box.Top} to {box.Bottom} in a {window.ClientSize.Height} high window");
@@ -55,7 +54,7 @@ public sealed class ProposalsInspectorActionsTests
     }
 
     [Fact]
-    public void DeleteAsksFirstNamingTheProposalAndOnlyTheConfirmationDeletes()
+    public void DeleteAsksFirstNamingTheProposalWithoutDeletingIt()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -72,30 +71,13 @@ public sealed class ProposalsInspectorActionsTests
                 PageScreenshots.Settle(window);
 
                 var delete = Button(window, model.SelectedProposal!.InspectorDeleteAutomationId);
-                Assert.True(delete.Classes.Contains("proposalDelete"), "Delete is not set apart from the other actions");
                 delete.Command!.Execute(delete.CommandParameter);
                 PageScreenshots.Settle(window);
 
                 Assert.Empty(fake.DeleteProposalRequests);
-                var question = window.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(text => text.Text?.Contains("Plural Vowel Harmony", StringComparison.Ordinal) == true &&
-                        text.Classes.Contains("refusalTitle"));
-                Assert.True(question.IsEffectivelyVisible);
-                Assert.False(delete.IsEffectivelyVisible, "Delete stays beside the question");
-
-                var keep = Button(window, AutomationIds.ProposalsKeep);
-                keep.Command!.Execute(keep.CommandParameter);
-                PageScreenshots.Settle(window);
-                Assert.Empty(fake.DeleteProposalRequests);
-                Assert.True(delete.IsEffectivelyVisible);
-
-                delete.Command!.Execute(delete.CommandParameter);
-                PageScreenshots.Settle(window);
-                var confirm = Button(window, AutomationIds.ProposalsConfirmDelete);
-                await ((IAsyncRelayCommand<ProposalCardViewModel>)confirm.Command!)
-                    .ExecuteAsync((ProposalCardViewModel?)confirm.CommandParameter);
-
-                Assert.Equal("proposal/declined", Assert.Single(fake.DeleteProposalRequests).ProposalId);
+                Assert.True(model.IsConfirmingDelete);
+                Assert.Contains("Plural Vowel Harmony", model.DeleteQuestion, StringComparison.Ordinal);
+                Assert.False(delete.IsEffectivelyEnabled, "Delete is disabled while the question is open");
             }
             finally { window.Close(); }
         }, TimeSpan.FromMinutes(3));

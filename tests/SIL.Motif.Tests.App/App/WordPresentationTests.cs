@@ -70,10 +70,8 @@ public sealed class WordPresentationTests
                 var card = Assert.Single(window.GetVisualDescendants().OfType<WordCard>());
                 AvaloniaScaleCounts.AssertSubtreeBudget(
                     AvaloniaScaleCounts.CaptureSubtree(card), "WordCard", 64, 18);
-                var tryWord = window.GetVisualDescendants().OfType<Button>().Single(button =>
-                    AutomationProperties.GetName(button) == "Try morpheme in Try a Word");
-                tryWord.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                Assert.Equal(new WordRequest(key, 7, WordAction.TryWord), host.LastRequest);
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetName(button)?.Contains("Try a Word", StringComparison.Ordinal) == true);
             }
             finally
             {

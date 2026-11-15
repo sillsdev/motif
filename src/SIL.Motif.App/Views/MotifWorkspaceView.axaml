@@ -26,17 +26,13 @@
                 <Setter Property="AutomationProperties.AutomationId" Value="{Binding AutomationId}" />
               </Style>
               <Style Selector="ListBoxItem" x:DataType="vm:PageViewModel">
-                <Setter Property="ToolTip.Tip" Value="{Binding RailTip}" />
+                <Setter Property="ToolTip.Tip" Value="{Binding Title}" />
                 <Setter Property="views:ClearTipPlacement.IsEnabled" Value="True" />
               </Style>
             </ListBox.Styles>
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:PageViewModel">
-                <StackPanel>
-                <Border IsVisible="{Binding IsDiagnosticsGroupStart}">
-                  <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.DiagnosticsGroup}" Classes="pageLabel" />
-                </Border>
-                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <Grid ColumnDefinitions="Auto,*,Auto">
                   <Viewbox Classes="pageIcon" VerticalAlignment="Center">
                     <Canvas Width="{DynamicResource Component.Sidebar.IconCanvasSize}"
                             Height="{DynamicResource Component.Sidebar.IconCanvasSize}">
@@ -51,12 +47,7 @@
                           AutomationProperties.Name="{Binding BadgeTip}" views:ClearTipPlacement.IsEnabled="True">
                     <views:CopyableTextBlock Text="{Binding Badge}" />
                   </Border>
-                  <Border Grid.Column="3" Classes="proposalDelta" IsVisible="{Binding HasDeltaBadge}"
-                          AutomationProperties.Name="{Binding DeltaBadgeName}">
-                    <views:CopyableTextBlock Text="{Binding DeltaBadge}" />
-                  </Border>
                 </Grid>
-                </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
@@ -64,12 +55,12 @@
             <StackPanel x:Name="SidebarUtilities" Classes="sidebarUtilities" Classes.collapsed="{Binding IsSidebarCollapsed}">
               <Button x:Name="HelpButton" Theme="{DynamicResource BorderlessButton}"
                       Classes="Tertiary sidebarUtility"
-                      AutomationProperties.Name="Help for the current page"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.HelpCurrentPageAccessibleName}"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.HelpButton}"
-                      ToolTip.Tip="Help for the current page (F1)" views:ClearTipPlacement.IsEnabled="True">
+                      ToolTip.Tip="{x:Static app:MotifAppStrings.HelpCurrentPageTip}" views:ClearTipPlacement.IsEnabled="True">
                 <StackPanel Classes="sidebarUtilityContent" Orientation="Horizontal">
                   <TextBlock Classes="sidebarUtilityGlyph" Text="?" />
-                  <TextBlock x:Name="SidebarHelpLabel" Classes="sidebarUtilityLabel" Text="Help" />
+                  <TextBlock x:Name="SidebarHelpLabel" Classes="sidebarUtilityLabel" Text="{x:Static app:MotifAppStrings.Help}" />
                 </StackPanel>
                 <Button.Flyout>
                   <Flyout Placement="RightEdgeAlignedBottom" FlyoutPresenterClasses="help"
@@ -80,12 +71,15 @@
               </Button>
               <Button x:Name="SettingsButton" Theme="{DynamicResource BorderlessButton}"
                       Classes="Tertiary settingsGear sidebarUtility"
-                      AutomationProperties.Name="Settings"
+                      AutomationProperties.Name="{x:Static app:MotifAppStrings.Settings}"
                       AutomationProperties.AutomationId="{x:Static app:AutomationIds.SettingsButton}"
-                      ToolTip.Tip="Settings (Ctrl+,)" views:ClearTipPlacement.IsEnabled="True"
+                      ToolTip.Tip="{x:Static app:MotifAppStrings.SettingsShortcutTip}" views:ClearTipPlacement.IsEnabled="True"
                       views:ClearTipPlacement.Anchor="{Binding #SidebarUtilities}" Click="OnSettingsClick">
+                <StackPanel Classes="sidebarUtilityContent" Orientation="Horizontal">
                 <Path Classes="settingsGearGlyph"
                       Data="M19.73 9.93 L21.98 9.88 L21.98 14.12 L19.73 14.07 L18.93 16.0 L20.55 17.56 L17.56 20.55 L16.0 18.93 L14.07 19.73 L14.12 21.98 L9.88 21.98 L9.93 19.73 L8.0 18.93 L6.44 20.55 L3.45 17.56 L5.07 16.0 L4.27 14.07 L2.02 14.12 L2.02 9.88 L4.27 9.93 L5.07 8.0 L3.45 6.44 L6.44 3.45 L8.0 5.07 L9.93 4.27 L9.88 2.02 L14.12 2.02 L14.07 4.27 L16.0 5.07 L17.56 3.45 L20.55 6.44 L18.93 8.0 Z M12 8.5 A3.5 3.5 0 1 0 12 15.5 A3.5 3.5 0 1 0 12 8.5 Z" />
+                  <TextBlock x:Name="SidebarSettingsLabel" Classes="sidebarUtilityLabel" Text="{x:Static app:MotifAppStrings.BoardSettings}" />
+                </StackPanel>
               </Button>
             </StackPanel>
           </StackPanel>
@@ -160,9 +154,6 @@
           <Panel x:Name="PageHost" Grid.Row="2" ClipToBounds="True" />
         </Grid>
       </shell:WorkspaceLayoutHost.Page>
-      <shell:WorkspaceLayoutHost.ObjectInspector>
-        <views:Inspector x:Name="Inspector" DataContext="{Binding Inspector}" />
-      </shell:WorkspaceLayoutHost.ObjectInspector>
     </shell:WorkspaceLayoutHost>
 
     <Border x:Name="StatusBar" Grid.Row="1" Classes="statusBar">
@@ -170,6 +161,7 @@
         <StackPanel Classes="statusGroup" Orientation="Horizontal">
           <Button Classes="statusCompact statusTip" Content="{x:Static app:MotifAppStrings.TechDemoCompact}" Click="OnStatusReportProblemClick"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportProblemAccessibleName}"
+                  views:ClearTipPlacement.Anchor="{Binding #StatusBar}"
                   ToolTip.Tip="{x:Static app:MotifAppStrings.TechDemoCompactTip}" />
           <HyperlinkButton Content="{x:Static app:MotifAppStrings.ReportProblem}" Classes="statusFull" Click="OnStatusReportProblemClick"
                            AutomationProperties.Name="{x:Static app:MotifAppStrings.ReportProblemAccessibleName}" />
@@ -184,24 +176,7 @@
         <StackPanel Grid.Column="2" Classes="statusGroup" Orientation="Horizontal">
           <TextBlock x:Name="StatusFilterHides" Text="{Binding FilterHidesText}" IsVisible="{Binding FilterHidesText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                      VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
-          <Button x:Name="StatusChanges" Classes="statusTip" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
-                  Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Review}"
-                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ReviewChangesAccessibleName}"
-                  ToolTip.Tip="{Binding ChangesTip}">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Classes="statusCompact" Text="{Binding Badge}" />
-              <TextBlock Classes="statusFull" Text="{Binding ChangesTip}" />
-            </StackPanel>
-          </Button>
-          <Button x:Name="StatusWarnings" Classes="statusTip" x:DataType="vm:PageViewModel" IsVisible="{Binding HasBadge}"
-                  Command="{Binding Model.ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Warnings}"
-                  AutomationProperties.Name="{x:Static app:MotifAppStrings.OpenWarningsAccessibleName}" ToolTip.Tip="{Binding WarningsTip}">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock Text="⚠ " />
-              <TextBlock Classes="statusCompact" Text="{Binding Badge}" />
-              <TextBlock Classes="statusFull" Text="{Binding WarningsTip}" />
-            </StackPanel>
-          </Button>
+          <ContentControl x:Name="HealthStripHost" />
           <Button x:Name="StatusParseProgress" Classes="statusTip" IsVisible="{Binding ShowsParseAllWordsProgress}"
                   AutomationProperties.Name="{x:Static app:MotifAppStrings.SeeParseProgressAccessibleName}" ToolTip.Tip="{Binding ActiveParseProgress.StatusText}">
             <StackPanel Classes="statusGroup" Orientation="Horizontal">

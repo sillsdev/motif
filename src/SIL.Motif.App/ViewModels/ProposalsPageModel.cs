@@ -790,11 +790,11 @@ public sealed partial class ProposalsPageModel : PageModel
     /// <summary>The three filter groups and their current counts.</summary>
     public IReadOnlyList<ProposalGroupFilterViewModel> GroupFilters =>
     [
-        Filter(ProposalListFilter.YourChangesNotAppliedYet, "Your changes not applied yet",
+        Filter(ProposalListFilter.YourChangesNotAppliedYet, MotifAppStrings.ProposalsPendingChanges,
             CountFor(ProposalListFilter.YourChangesNotAppliedYet)),
-        Filter(ProposalListFilter.WaitingForYou, "Waiting for you",
+        Filter(ProposalListFilter.WaitingForYou, MotifAppStrings.ProposalsWaitingForYou,
             CountFor(ProposalListFilter.WaitingForYou)),
-        Filter(ProposalListFilter.Closed, "Closed", CountFor(ProposalListFilter.Closed)),
+        Filter(ProposalListFilter.Closed, MotifAppStrings.ProposalsClosed, CountFor(ProposalListFilter.Closed)),
     ];
 
     /// <summary>The three filter groups with their rows, in standings order.</summary>
@@ -807,9 +807,9 @@ public sealed partial class ProposalsPageModel : PageModel
                 .ToDictionary(card => card.ProposalId, StringComparer.Ordinal);
             return new[]
                 {
-                    ListGroup(ProposalListFilter.YourChangesNotAppliedYet, "Your changes not applied yet", cards),
-                    ListGroup(ProposalListFilter.WaitingForYou, "Waiting for you", cards),
-                    ListGroup(ProposalListFilter.Closed, "Closed", cards),
+                    ListGroup(ProposalListFilter.YourChangesNotAppliedYet, MotifAppStrings.ProposalsPendingChanges, cards),
+                    ListGroup(ProposalListFilter.WaitingForYou, MotifAppStrings.ProposalsWaitingForYou, cards),
+                    ListGroup(ProposalListFilter.Closed, MotifAppStrings.ProposalsClosed, cards),
                 }
                 .Where(group => group.Cards.Count > 0 &&
                     (SelectedGroupFilter is null || SelectedGroupFilter == group.Filter))
@@ -974,11 +974,11 @@ public sealed partial class ProposalsPageModel : PageModel
         var cards = standings.Proposals.Select(card => CardFor(card, labels)).ToArray();
         Groups = new (ProposalGroup, string)[]
             {
-                (ProposalGroup.WaitingForYou, "Waiting for you"),
-                (ProposalGroup.NeedsAnotherTry, "Needs another try"),
-                (ProposalGroup.NotTried, "Not tried yet"),
-                (ProposalGroup.NotAppliedYet, "Your changes not applied yet"),
-                (ProposalGroup.SetAside, "Closed"),
+                (ProposalGroup.WaitingForYou, MotifAppStrings.ProposalsWaitingForYou),
+                (ProposalGroup.NeedsAnotherTry, MotifAppStrings.ProposalsNeedsAnotherTry),
+                (ProposalGroup.NotTried, MotifAppStrings.ProposalsNotTried),
+                (ProposalGroup.NotAppliedYet, MotifAppStrings.ProposalsPendingChanges),
+                (ProposalGroup.SetAside, MotifAppStrings.ProposalsClosed),
             }
             .Select(entry => new ProposalGroupViewModel(entry.Item1, entry.Item2,
                 cards.Where(card => card.Card.Group == entry.Item1).ToArray()))
@@ -992,9 +992,9 @@ public sealed partial class ProposalsPageModel : PageModel
                 string.Join(", ", standings.Unreadable.Select(item =>
                     item.Label == item.ProposalId ? item.ProposalId : $"{item.Label} ({item.ProposalId})")));
         UpdateRows(selectedId);
-        SetAsideLinkText = _includeSetAside ? "Hide closed"
+        SetAsideLinkText = _includeSetAside ? MotifAppStrings.ProposalsHideClosed
             : standings.SetAsideCount == 0 ? string.Empty
-            : $"Show closed ({standings.SetAsideCount.ToString(CultureInfo.CurrentCulture)})";
+            : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalsShowClosedFormat, standings.SetAsideCount);
         var waiting = cards.Count(card => !card.Card.IsDraft && card.Card.Status == "proposed");
         BadgeCount = waiting == 0 ? null : waiting;
     }
@@ -1115,8 +1115,6 @@ public sealed partial class ProposalsPageModel : PageModel
             return;
         }
         PicturesLoading = Pictures.LoadAsync(path, value.ProposalId, !value.Card.IsDraft && !PicturesFrozen(value.Card.Status));
-        Parsimony.SetTrial(value.Card.Trial);
-        ParsimonyWatching = Parsimony.Watch(path, value.ProposalId);
         // The same Proposal chosen again, as when the list was re-read, only refreshes what its card offers.
         if (value.ProposalId == _differenceProposalId && path == _differenceProject)
         {
@@ -1196,7 +1194,9 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         Parsimony.Stop();
         Pictures.Clear();
-        return Difference.StopAsync();
+        ++_detailGeneration;
+        _detailCancellation?.Cancel();
+        return Task.WhenAll(_detailReads.Append(Difference.StopAsync()));
     }
 
     // Decided keeps no new Difference, untried has no Trial, and deferred can make its words again.
@@ -1206,9 +1206,9 @@ public sealed partial class ProposalsPageModel : PageModel
         : card.Status == "deferred" ? DifferenceOffer.Deferred
         : DifferenceOffer.Available;
 
-    private Task OpenAsync(ProposalCardViewModel? card) => OpenProposalAsync(card, WorkspacePage.Overview);
+    private Task OpenAsync(ProposalCardViewModel? card) => OpenProposalAsync(card, WorkspacePage.Proposals);
 
-    private Task OpenInReviewAsync(ProposalCardViewModel? card) => OpenProposalAsync(card, WorkspacePage.Review);
+    private Task OpenInReviewAsync(ProposalCardViewModel? card) => OpenProposalAsync(card, WorkspacePage.Proposals);
 
     private async Task OpenProposalAsync(ProposalCardViewModel? card, WorkspacePage page)
     {

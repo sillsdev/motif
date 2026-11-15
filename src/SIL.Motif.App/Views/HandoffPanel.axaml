@@ -62,10 +62,10 @@
             <ItemsControl x:Name="HandoffPanelPlannedFilesItems" ItemsSource="{Binding PlannedFiles}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="views:PlannedHandoffFile">
-                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Component.Handoff.PlannedGap}" Margin="{DynamicResource Component.Handoff.PlannedMargin}">
-                    <views:CopyableTextBlock Text="{Binding Name}" FontWeight="{DynamicResource Intent.Weight.Section}" Width="{DynamicResource Component.Handoff.PlannedNameWidth}" />
-                    <views:CopyableTextBlock Grid.Column="1" Classes="muted" Text="{Binding Purpose}" TextWrapping="Wrap" />
-                  </Grid>
+                  <StackPanel Spacing="{DynamicResource Intent.Space.Compact}" Margin="{DynamicResource Component.Handoff.PlannedMargin}">
+                    <views:CopyableTextBlock Text="{Binding Name}" FontWeight="{DynamicResource Intent.Weight.Section}" TextWrapping="Wrap" />
+                    <views:CopyableTextBlock Classes="muted" Text="{Binding Purpose}" TextWrapping="Wrap" />
+                  </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>

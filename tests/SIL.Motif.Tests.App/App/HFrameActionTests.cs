@@ -66,7 +66,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
     [Theory]
     [InlineData(100)]
     [InlineData(150)]
-    public void StatusCountsOpenTheirPagesAtTheActualMinimumWidth(int zoom)
+    public void HealthOpensItsDetailsAtTheActualMinimumWidth(int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -77,23 +77,18 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 window.Height = 600;
                 SettingsTestAccess.Model(window)
                     .ZoomPercent = zoom;
-                workspace.PageOf(WorkspacePage.Review).BadgeCount = 3;
-                workspace.PageOf(WorkspacePage.Warnings).BadgeCount = 2;
                 PageScreenshots.Settle(window);
                 foreach (var action in window.FindInWindowOrWorkspace<Border>("TopBar")!.GetVisualDescendants()
                     .OfType<Button>().Where(button => button.IsEffectivelyVisible))
                     AssertInside(window, action);
-                foreach (var (name, page) in new[]
-                    { ("StatusChanges", WorkspacePage.Review), ("StatusWarnings", WorkspacePage.Warnings) })
-                {
-                    workspace.CurrentPage = WorkspacePage.Overview;
-                    PageScreenshots.Settle(window);
-                    var button = window.FindInWindowOrWorkspace<Button>(name)!;
-                    AssertInside(window, button);
-                    Click(window, button);
-                    PageScreenshots.Settle(window);
-                    Assert.Equal(page, workspace.CurrentPage);
-                }
+                var health = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                    AutomationProperties.GetAutomationId(button) == AutomationIds.HealthStrip);
+                AssertInside(window, health);
+                health.Focus(NavigationMethod.Tab);
+                PageScreenshots.Settle(window);
+                Assert.True(health.Flyout!.IsOpen);
+                Assert.Null(window.FindInWindowOrWorkspace<Button>("StatusChanges"));
+                Assert.Null(window.FindInWindowOrWorkspace<Button>("StatusWarnings"));
                 Assert.Equal(640, window.ClientSize.Width);
             }
             finally
@@ -251,8 +246,8 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Theory]
-    [InlineData(WorkspacePage.Overview, 100)]
-    [InlineData(WorkspacePage.Overview, 150)]
+    [InlineData(WorkspacePage.Progress, 100)]
+    [InlineData(WorkspacePage.Progress, 150)]
     [InlineData(WorkspacePage.Texts, 100)]
     [InlineData(WorkspacePage.Texts, 150)]
     public void ModifiedSpaceCannotEraseTheCurrentRailLocation(WorkspacePage page, int zoom)
@@ -305,7 +300,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 window.Height = 600;
                 SettingsTestAccess.Model(window)
                     .ZoomPercent = zoom;
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 var rail = window.FindInWindowOrWorkspace<ListBox>("PageList")!;
                 rail.ItemsSource = workspace.VisiblePages.Where(page => page.Page != WorkspacePage.Texts).ToArray();
                 workspace.CurrentPage = WorkspacePage.Texts;
@@ -313,10 +308,11 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 Assert.Equal(WorkspacePage.Texts, workspace.CurrentPage);
                 Assert.Null(rail.SelectedItem);
 
-                workspace.CurrentPage = WorkspacePage.Warnings;
+                workspace.Context.Diagnostics = true;
+                workspace.CurrentPage = WorkspacePage.Diagnostics;
                 PageScreenshots.Settle(window);
-                var current = workspace.PageOf(WorkspacePage.Warnings);
-                Assert.Equal(WorkspacePage.Warnings, workspace.CurrentPage);
+                var current = workspace.PageOf(WorkspacePage.Diagnostics);
+                Assert.Equal(WorkspacePage.Diagnostics, workspace.CurrentPage);
                 Assert.Same(current, rail.SelectedItem);
                 var item = window.GetVisualDescendants().OfType<ListBoxItem>().Single(control =>
                     ReferenceEquals(control.DataContext, current));
@@ -324,7 +320,7 @@ public sealed class HFrameActionTests(AvaloniaHeadlessFixture avalonia)
                 window.KeyPress(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, null);
                 window.KeyRelease(Key.Space, RawInputModifiers.Control, PhysicalKey.Space, null);
                 PageScreenshots.Settle(window);
-                Assert.Equal(WorkspacePage.Warnings, workspace.CurrentPage);
+                Assert.Equal(WorkspacePage.Diagnostics, workspace.CurrentPage);
                 Assert.Same(current, rail.SelectedItem);
                 Assert.True(item.IsSelected);
             }

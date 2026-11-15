@@ -59,6 +59,9 @@ public sealed class DenseTable
     private static readonly AttachedProperty<Action<object>?> OpenDetailsProperty =
         AvaloniaProperty.RegisterAttached<DenseTable, ListBox, Action<object>?>("OpenDetails");
 
+    private static readonly AttachedProperty<Func<object, bool>?> SelectRowProperty =
+        AvaloniaProperty.RegisterAttached<DenseTable, ListBox, Func<object, bool>?>("SelectRow");
+
     private static readonly AttachedProperty<bool> ConfiguredProperty =
         AvaloniaProperty.RegisterAttached<DenseTable, Grid, bool>("Configured");
 
@@ -309,10 +312,11 @@ public sealed class DenseTable
     /// Gives <paramref name="list"/> the table's keyboard model and keeps group headings out of it. Enter on a
     /// focused row calls <paramref name="openDetails"/> with that row, when the page shows row details.
     /// </summary>
-    public static void Attach(ListBox list, Action<object>? openDetails = null)
+    public static void Attach(ListBox list, Action<object>? openDetails = null, Func<object, bool>? selectRow = null)
     {
         ArgumentNullException.ThrowIfNull(list);
         list.SetValue(OpenDetailsProperty, openDetails);
+        list.SetValue(SelectRowProperty, selectRow);
         object? selectedRow = list.SelectedItem is IDenseTableGroupHeading ? null : list.SelectedItem;
         list.SelectionChanged += (_, _) =>
         {
@@ -458,8 +462,12 @@ public sealed class DenseTable
         };
         if ((uint)next < (uint)rows.Length)
         {
-            list.SelectedItem = rows[next];
-            FocusRow(list, rows[next]);
+            var row = rows[next];
+            if (list.GetValue(SelectRowProperty) is not { } select || select(row))
+            {
+                list.SelectedItem = row;
+                FocusRow(list, row);
+            }
         }
         args.Handled = true;
     }

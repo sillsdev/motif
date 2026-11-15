@@ -79,7 +79,7 @@ public sealed class CommandSeamCoverageTests(PristineProjectFixture pristine)
         var assess = new AssessViewModel(fake, selectionViewModel) { ProjectPath = project.FwDataPath };
         var changes = new ChangesViewModel(client);
         await changes.OpenProjectAsync(project.FwDataPath);
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, fake, reads);
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, changes, fake, reads);
         await texts.SetProjectAsync(project.FwDataPath);
         await SelectionModelFixture.RealizeAsync(inText);
 

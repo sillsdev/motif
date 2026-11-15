@@ -4,9 +4,9 @@
   "steps": [
     { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
     { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
-    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-overview-selection-word-count", "condition": "text", "expectedText": "2", "timeoutMs": 30000 },
-    { "id": "open-warnings", "kind": "click", "automationId": "motif-page-warnings" },
-    { "id": "highlight-warnings", "kind": "highlight", "automationId": "motif-page-warnings" },
-    { "id": "findings", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-page-warnings" } ] }
+    { "id": "wait-for-project", "kind": "waitFor", "automationId": "motif-progress-heading", "condition": "visible", "timeoutMs": 30000 },
+    { "id": "open-warnings", "kind": "click", "automationId": "motif-page-diagnostics" },
+    { "id": "highlight-warnings", "kind": "highlight", "automationId": "motif-page-diagnostics" },
+    { "id": "findings", "kind": "capture", "durationMs": 1400, "callouts": [ { "automationId": "motif-page-diagnostics" } ] }
   ]
 }

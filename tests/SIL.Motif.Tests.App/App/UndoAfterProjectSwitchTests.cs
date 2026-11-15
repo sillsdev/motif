@@ -45,11 +45,10 @@ public sealed class UndoAfterProjectSwitchTests
         var selection = new SelectionViewModel(fake);
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
             new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
-        var review = new ReviewPageModel(context);
         await context.OpenProjectAsync(FirstProject);
 
-        var undoing = review.ReviewGroups.Single(group => group.Title == "Added")
-            .UndoAllCommand.ExecuteAsync(null);
+        var group = new ReviewChangeGroupViewModel("Added", context.Changes.Items.ToArray(), context.Changes);
+        var undoing = group.UndoAllCommand.ExecuteAsync(null);
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await context.OpenProjectAsync(SecondProject);
         release.SetResult(CommandOutcome<PendingChangesSnapshot>.Success(

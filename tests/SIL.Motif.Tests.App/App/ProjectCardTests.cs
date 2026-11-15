@@ -88,7 +88,7 @@ public sealed class ProjectCardTests
             {
                 var setup = workspace.Context.Setup;
                 Assert.NotNull(setup);
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 LayoutInvariantFixtures.Apply(window, new LayoutCell(width, 780, zoom));
                 PageScreenshots.Settle(window);
                 Assert.True(workspace.Baseline.HasBaseline);
@@ -110,7 +110,7 @@ public sealed class ProjectCardTests
                 await workspace.Context.EvidencePublication;
                 PageScreenshots.Settle(window);
 
-                Assert.Equal(WorkspacePage.Overview, workspace.CurrentPage);
+                Assert.Equal(WorkspacePage.Progress, workspace.CurrentPage);
                 Assert.True(workspace.Baseline.HasBaseline);
                 Assert.True(setup.CanRunDefaultSelection);
                 Assert.False(setup.IsOpen);

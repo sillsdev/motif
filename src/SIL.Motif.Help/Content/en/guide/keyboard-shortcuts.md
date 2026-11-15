@@ -1,64 +1,47 @@
 # Keyboard Shortcuts
 
-Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, paste, undo and redo. Elsewhere, Ctrl+C copies selected text or the focused word, Ctrl+V does nothing, Ctrl+Z undoes the last staging action, and Ctrl+Y redoes it; on macOS use ⌘, with ⌘+Shift+Z also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for Review Changes; Apply there writes it to the FieldWorks project. In Analyze texts, Delete stages removing the word's FieldWorks analysis, S stages Incorrect spelling, P opens the PanGloss analyses to add, and Shift+F10 opens the word's opinion tiles. In Analyze texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).
+Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, paste, undo and redo. Elsewhere, Ctrl+C copies selected text or the focused word, Ctrl+V does nothing, Ctrl+Z undoes the last staging action, and Ctrl+Y redoes it; on macOS use ⌘, with ⌘+Shift+Z also redoing. Letter shortcuts work when focus is outside text entry. A, D and U stage an opinion for the focused analysis. In Texts, Delete stages removing the word's FieldWorks analysis, S stages Incorrect spelling, P opens the PanGloss analyses to add, and Shift+F10 opens the word's opinion tiles. In Texts, Up and Down focus the first word on the previous or next line, Page Up and Page Down move by a screen of visible lines, and Home and End focus the first or last line of the Text. For the available display choices, see [Settings](guide:settings).
 
-## Analyze Texts
-
-| Key | Windows / Linux | macOS | Page or scope | Action |
-| --- | --- | --- | --- | --- |
-| ← or → | ← or → | ← or → | Analyze Texts | Move Between Words |
-| ↑ | ↑ | ↑ | Analyze Texts | Move Focus to the First Word on the Previous Line |
-| ↓ | ↓ | ↓ | Analyze Texts | Move Focus to the First Word on the Next Line |
-| Enter or Space | Enter or Space | Enter or Space | Analyze Texts | Open the Word Card |
-| Escape | Esc | Esc | Analyze Texts | Close the Word Card |
-| Page Up | Page Up | Page Up | Analyze Texts | Move Up One Screen of Lines |
-| Page Down | Page Down | Page Down | Analyze Texts | Move Down One Screen of Lines |
-| Home | Home | Home | Analyze Texts | Go to the First Line of the Text |
-| End | End | End | Analyze Texts | Go to the Last Line of the Text |
-| A | A | A | Analyze Texts | Stage Approve |
-| D | D | D | Analyze Texts | Stage Disapprove |
-| U | U | U | Analyze Texts | Stage Unknown |
-| Delete | Delete | Delete | Analyze Texts | Stage Removing the Analysis |
-| S | S | S | Analyze Texts | Stage Incorrect Spelling |
-| P | P | P | Analyze Texts | Add Analysis from PanGloss |
-| F10 | Shift+F10 | Shift+F10 | Analyze Texts | Set Analysis |
-| F | Ctrl+F | ⌘+F | Analyze Texts | Focus the Word Search |
-| Enter | Enter | Enter | Analyze Texts | Save Parsing Limits |
-| Escape | Esc | Esc | Analyze Texts | Cancel Parsing Limit Edits |
-
-## Word List
+## Texts
 
 | Key | Windows / Linux | macOS | Page or scope | Action |
 | --- | --- | --- | --- | --- |
-| Enter or Space | Enter or Space | Enter or Space | Word List | Open or Close the Word Card |
-| ↑ | ↑ | ↑ | Word List | Move to the Previous Row |
-| ↓ | ↓ | ↓ | Word List | Move to the Next Row |
-| Page Up | Page Up | Page Up | Word List | Move Up One Screen of Words |
-| Page Down | Page Down | Page Down | Word List | Move Down One Screen of Words |
-| Home | Home | Home | Word List | Go to the First Row |
-| End | End | End | Word List | Go to the Last Row |
-| Escape | Esc | Esc | Word List | Close the Word Card |
-| A | A | A | Word List | Stage Approve |
-| D | D | D | Word List | Stage Disapprove |
-| U | U | U | Word List | Stage Unknown |
-| F | Ctrl+F | ⌘+F | Word List | Focus the Word Search |
+| ← or → | ← or → | ← or → | Texts | Move Between Words |
+| ↑ | ↑ | ↑ | Texts | Move Focus to the First Word on the Previous Line |
+| ↓ | ↓ | ↓ | Texts | Move Focus to the First Word on the Next Line |
+| Enter or Space | Enter or Space | Enter or Space | Texts | Open the Word Card |
+| Escape | Esc | Esc | Texts | Close the Word Card |
+| Page Up | Page Up | Page Up | Texts | Move Up One Screen of Lines |
+| Page Down | Page Down | Page Down | Texts | Move Down One Screen of Lines |
+| Home | Home | Home | Texts | Go to the First Line of the Text |
+| End | End | End | Texts | Go to the Last Line of the Text |
+| A | A | A | Texts | Stage Approve |
+| D | D | D | Texts | Stage Disapprove |
+| U | U | U | Texts | Stage Unknown |
+| Delete | Delete | Delete | Texts | Stage Removing the Analysis |
+| S | S | S | Texts | Stage Incorrect Spelling |
+| P | P | P | Texts | Add Analysis from PanGloss |
+| F10 | Shift+F10 | Shift+F10 | Texts | Set Analysis |
+| F | Ctrl+F | ⌘+F | Texts | Focus the Word Search |
+| Enter | Enter | Enter | Texts | Save Parsing Limits |
+| Escape | Esc | Esc | Texts | Cancel Parsing Limit Edits |
 
-## Lists
+## Words
 
 | Key | Windows / Linux | macOS | Page or scope | Action |
 | --- | --- | --- | --- | --- |
-| Enter or Space | Enter or Space | Enter or Space | Lists | Open or Close the Word Card |
-| ↑ | ↑ | ↑ | Lists | Move to the Previous Row |
-| ↓ | ↓ | ↓ | Lists | Move to the Next Row |
-| Page Up | Page Up | Page Up | Lists | Move Up One Screen of Words |
-| Page Down | Page Down | Page Down | Lists | Move Down One Screen of Words |
-| Home | Home | Home | Lists | Go to the First Row |
-| End | End | End | Lists | Go to the Last Row |
-| Escape | Esc | Esc | Lists | Close the Word Card |
-| A | A | A | Lists | Stage Approve |
-| D | D | D | Lists | Stage Disapprove |
-| U | U | U | Lists | Stage Unknown |
-| F | Ctrl+F | ⌘+F | Lists | Focus the Word Search |
+| Enter or Space | Enter or Space | Enter or Space | Words | Open or Close the Word Card |
+| ↑ | ↑ | ↑ | Words | Move to the Previous Row |
+| ↓ | ↓ | ↓ | Words | Move to the Next Row |
+| Page Up | Page Up | Page Up | Words | Move Up One Screen of Words |
+| Page Down | Page Down | Page Down | Words | Move Down One Screen of Words |
+| Home | Home | Home | Words | Go to the First Row |
+| End | End | End | Words | Go to the Last Row |
+| Escape | Esc | Esc | Words | Close the Word Card |
+| A | A | A | Words | Stage Approve |
+| D | D | D | Words | Stage Disapprove |
+| U | U | U | Words | Stage Unknown |
+| F | Ctrl+F | ⌘+F | Words | Focus the Word Search |
 
 ## Tables
 
@@ -72,29 +55,6 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | Tab | Shift+Tab | Shift+Tab | Tables | Previous Table Action |
 | Menu key or ↓ | Menu key or Alt+↓ | Menu key or Alt+↓ | Tables | Open Row Actions |
 | Enter | Enter | Enter | Tables | Open Row Details |
-
-## Review Changes
-
-| Key | Windows / Linux | macOS | Page or scope | Action |
-| --- | --- | --- | --- | --- |
-| Enter or Space | Enter or Space | Enter or Space | Review Changes | Open or Close the Word Card |
-| ↑ | ↑ | ↑ | Review Changes | Move to the Previous Row |
-| ↓ | ↓ | ↓ | Review Changes | Move to the Next Row |
-| Page Up | Page Up | Page Up | Review Changes | Move Up One Screen of Words |
-| Page Down | Page Down | Page Down | Review Changes | Move Down One Screen of Words |
-| Home | Home | Home | Review Changes | Go to the First Row |
-| End | End | End | Review Changes | Go to the Last Row |
-| Escape | Esc | Esc | Review Changes | Close the Word Card |
-| ↑ | Alt+↑ | Alt+↑ | Review Changes | Previous Change |
-| ↓ | Alt+↓ | Alt+↓ | Review Changes | Next Change |
-| K | Alt+K | Alt+K | Review Changes | Keep Change |
-| U | Alt+Shift+U | Alt+Shift+U | Review Changes | Undo Change |
-
-## Morpheme
-
-| Key | Windows / Linux | macOS | Page or scope | Action |
-| --- | --- | --- | --- | --- |
-| Enter or Space | Enter or Space | Enter or Space | Morpheme | Open the Inspector |
 
 ## Diagnostic Tree
 
@@ -121,7 +81,7 @@ Inside text inputs, Ctrl+C/X/V and Ctrl+Z/Y use the control's own copy, cut, pas
 | --- | --- | --- | --- | --- |
 | F or E or V or T or H | Alt+F or Alt+E or Alt+V or Alt+T or Alt+H | Alt+F or Alt+E or Alt+V or Alt+T or Alt+H | Window | Open a Menu |
 | F1 | F1 | F1 | Window | Open Help for This Page |
-| Escape | Esc | Esc | Window | Step Back in the Inspector or Leave the Proposal |
+| Escape | Esc | Esc | Window | Close the Project Card |
 | ? | Shift+/ | Shift+/ | Window | Show Keyboard Shortcuts |
 | O | Ctrl+O | ⌘+O | Window | Open a Project |
 | , | Ctrl+, | ⌘+, | Window | Open Settings |

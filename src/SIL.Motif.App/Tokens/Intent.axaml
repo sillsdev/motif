@@ -45,7 +45,6 @@
     Intent.Success                agrees: bars, underlines, glyphs (Semi's Success)
     Intent.Success.Fill           behind agreeing text (Semi's SuccessLight)
     Intent.Success.Text           small text saying all is well, such as "Current"
-    Intent.Warning                no result, and heat (Semi's Warning)
     Intent.Warning.Fill           a notice, and behind no-result text (Semi's WarningLight)
     Intent.Warning.Text           small text saying something is out of date
     Intent.Danger                 differs, and errors (Semi's Danger)
@@ -105,12 +104,6 @@
     Intent.Severity.Error         an error's mark
     Intent.Severity.Info          a note's mark
   Time by kind, the same colour for a kind wherever it falls in a chart:
-    Intent.Timing.MorphRule       morphological rules
-    Intent.Timing.PhonRule        phonological rules
-    Intent.Timing.Lexicon         lexical entries
-    Intent.Timing.RootLookup      root lookup
-    Intent.Timing.Parser          the parser's own bookkeeping
-    Intent.Timing.Unattributed    parser time no rule's timer accounts for
 
   Spacing (double, for Spacing, and for Width and Height of gaps):
     Intent.Space.None             0
@@ -118,13 +111,13 @@
     Intent.Space.Compact          4, inside a dense group
     Intent.Space.Snug             4, a dot beside its label
     Intent.Space.Related          6, between related controls
-    Intent.Space.Group            8, between groups
-    Intent.Space.Section          12, between sections
+    Intent.Space.Group            12, between groups
+    Intent.Space.Section          16, between sections
 
   Insets (Thickness, for Padding):
     Intent.Inset.None             no padding
-    Intent.Inset.Page             8 on each side of a page
-    Intent.Inset.Panel            8 on each side of a panel
+    Intent.Inset.Page             16 on each side of a page
+    Intent.Inset.Panel            16 on each side of a panel
     Intent.Inset.Row              6 horizontally and 4 vertically for a compact row
     Intent.Inset.Chip             6 horizontally and 2 vertically for a compact chip
     Intent.Inset.Notice           6 horizontally and 4 vertically for a notice
@@ -155,13 +148,15 @@
     Intent.Radius.Control         a list entry, chip or small control, at 3
 
   Type sizes (double, for FontSize):
+    Intent.Font.Mark             symbols in outcome and status marks
+    Intent.Font.Display          interface display headings
+    Intent.Type.Display          prominent page headings, 28
     Intent.Type.Title             a page's title, 16 and semibold
     Intent.Type.Section           a section's heading, 13
     Intent.Weight.Section         semibold weight for section headings
     Intent.Weight.Strong          bold weight for emphasized values
-    Intent.Weight.Normal          normal weight where emphasis must be reset
-    Intent.Type.Navigation        sidebar entries and menu entries, 13
-    Intent.Type.Body              ordinary control text, 13
+    Intent.Type.Navigation        sidebar entries and menu entries, 14
+    Intent.Type.Body              ordinary control text, 15
     Intent.Type.Status            the freshness line, 12
     Intent.Type.Small             chips and filter chips, 12
     Intent.Type.Caption           a secondary label or a line label in Analyze texts, 11
@@ -209,12 +204,12 @@
   <StaticResource x:Key="Intent.Space.Compact" ResourceKey="Primitive.Space.4" />
   <StaticResource x:Key="Intent.Space.Snug" ResourceKey="Primitive.Space.4" />
   <StaticResource x:Key="Intent.Space.Related" ResourceKey="Primitive.Space.6" />
-  <StaticResource x:Key="Intent.Space.Group" ResourceKey="Primitive.Space.8" />
-  <StaticResource x:Key="Intent.Space.Section" ResourceKey="Primitive.Space.12" />
+  <StaticResource x:Key="Intent.Space.Group" ResourceKey="Primitive.Space.12" />
+  <StaticResource x:Key="Intent.Space.Section" ResourceKey="Primitive.Space.16" />
 
   <StaticResource x:Key="Intent.Inset.None" ResourceKey="Primitive.Inset.0_0_0_0" />
-  <StaticResource x:Key="Intent.Inset.Page" ResourceKey="Primitive.Inset.8_8_8_8" />
-  <StaticResource x:Key="Intent.Inset.Panel" ResourceKey="Primitive.Inset.8_8_8_8" />
+  <StaticResource x:Key="Intent.Inset.Page" ResourceKey="Primitive.Inset.16_16_16_16" />
+  <StaticResource x:Key="Intent.Inset.Panel" ResourceKey="Primitive.Inset.16_16_16_16" />
   <StaticResource x:Key="Intent.Inset.Row" ResourceKey="Primitive.Inset.6_4_6_4" />
   <StaticResource x:Key="Intent.Inset.Chip" ResourceKey="Primitive.Inset.6_2_6_2" />
   <StaticResource x:Key="Intent.Inset.Notice" ResourceKey="Primitive.Inset.6_4_6_4" />
@@ -242,12 +237,14 @@
   <StaticResource x:Key="Intent.Radius.Control" ResourceKey="Primitive.Radius.3" />
 
   <StaticResource x:Key="Intent.Type.Title" ResourceKey="Primitive.Type.16" />
+  <StaticResource x:Key="Intent.Font.Mark" ResourceKey="Primitive.Font.Mark" />
+  <StaticResource x:Key="Intent.Font.Display" ResourceKey="Primitive.Font.Display" />
+  <StaticResource x:Key="Intent.Type.Display" ResourceKey="Primitive.Type.28" />
   <StaticResource x:Key="Intent.Type.Section" ResourceKey="Primitive.Type.13" />
   <StaticResource x:Key="Intent.Weight.Section" ResourceKey="Primitive.FontWeight.SemiBold" />
   <StaticResource x:Key="Intent.Weight.Strong" ResourceKey="Primitive.FontWeight.Bold" />
-  <StaticResource x:Key="Intent.Weight.Normal" ResourceKey="Primitive.FontWeight.Normal" />
-  <StaticResource x:Key="Intent.Type.Navigation" ResourceKey="Primitive.Type.13" />
-  <StaticResource x:Key="Intent.Type.Body" ResourceKey="Primitive.Type.13" />
+  <StaticResource x:Key="Intent.Type.Navigation" ResourceKey="Primitive.Type.14" />
+  <StaticResource x:Key="Intent.Type.Body" ResourceKey="Primitive.Type.15" />
   <StaticResource x:Key="Intent.Type.Status" ResourceKey="Primitive.Type.12" />
   <StaticResource x:Key="Intent.Type.Small" ResourceKey="Primitive.Type.12" />
   <StaticResource x:Key="Intent.Type.Caption" ResourceKey="Primitive.Type.11" />
@@ -296,7 +293,6 @@
       <StaticResource x:Key="Intent.Success" ResourceKey="SemiColorSuccess" />
       <StaticResource x:Key="Intent.Success.Fill" ResourceKey="SemiColorSuccessLight" />
       <SolidColorBrush x:Key="Intent.Success.Text" Color="{StaticResource Primitive.Color.Green800}" />
-      <StaticResource x:Key="Intent.Warning" ResourceKey="SemiColorWarning" />
       <StaticResource x:Key="Intent.Warning.Fill" ResourceKey="SemiColorWarningLight" />
       <SolidColorBrush x:Key="Intent.Warning.Text" Color="{StaticResource Primitive.Color.Amber800}" />
       <SolidColorBrush x:Key="Intent.Unread.Text" Color="{StaticResource Primitive.Color.Violet800}" />
@@ -348,12 +344,6 @@
       <SolidColorBrush x:Key="Intent.Severity.Warning.Fill" Color="{StaticResource Primitive.Color.Amber25}" />
       <SolidColorBrush x:Key="Intent.Severity.Error" Color="{StaticResource Primitive.Color.Rose950}" />
       <SolidColorBrush x:Key="Intent.Severity.Info" Color="{StaticResource Primitive.Color.Slate600}" />
-      <SolidColorBrush x:Key="Intent.Timing.MorphRule" Color="{StaticResource Primitive.Color.Blue650}" />
-      <SolidColorBrush x:Key="Intent.Timing.PhonRule" Color="{StaticResource Primitive.Color.Violet600}" />
-      <SolidColorBrush x:Key="Intent.Timing.Lexicon" Color="{StaticResource Primitive.Color.Green700}" />
-      <SolidColorBrush x:Key="Intent.Timing.RootLookup" Color="{StaticResource Primitive.Color.Amber700}" />
-      <SolidColorBrush x:Key="Intent.Timing.Parser" Color="{StaticResource Primitive.Color.Teal950}" />
-      <SolidColorBrush x:Key="Intent.Timing.Unattributed" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="Intent.Clear" Color="{StaticResource Primitive.Color.Clear}" />
@@ -392,7 +382,6 @@
       <StaticResource x:Key="Intent.Success" ResourceKey="SemiColorSuccess" />
       <StaticResource x:Key="Intent.Success.Fill" ResourceKey="SemiColorSuccessLight" />
       <SolidColorBrush x:Key="Intent.Success.Text" Color="{StaticResource Primitive.Color.Green300}" />
-      <StaticResource x:Key="Intent.Warning" ResourceKey="SemiColorWarning" />
       <StaticResource x:Key="Intent.Warning.Fill" ResourceKey="SemiColorWarningLight" />
       <SolidColorBrush x:Key="Intent.Warning.Text" Color="{StaticResource Primitive.Color.Amber300}" />
       <SolidColorBrush x:Key="Intent.Unread.Text" Color="{StaticResource Primitive.Color.Violet200}" />
@@ -444,12 +433,6 @@
       <SolidColorBrush x:Key="Intent.Severity.Warning.Fill" Color="{StaticResource Primitive.Color.Amber975}" />
       <SolidColorBrush x:Key="Intent.Severity.Error" Color="{StaticResource Primitive.Color.Rose200}" />
       <SolidColorBrush x:Key="Intent.Severity.Info" Color="{StaticResource Primitive.Color.Slate400}" />
-      <SolidColorBrush x:Key="Intent.Timing.MorphRule" Color="{StaticResource Primitive.Color.Blue350}" />
-      <SolidColorBrush x:Key="Intent.Timing.PhonRule" Color="{StaticResource Primitive.Color.Violet300}" />
-      <SolidColorBrush x:Key="Intent.Timing.Lexicon" Color="{StaticResource Primitive.Color.Green300}" />
-      <SolidColorBrush x:Key="Intent.Timing.RootLookup" Color="{StaticResource Primitive.Color.Amber300}" />
-      <SolidColorBrush x:Key="Intent.Timing.Parser" Color="{StaticResource Primitive.Color.Cyan400}" />
-      <SolidColorBrush x:Key="Intent.Timing.Unattributed" Color="{StaticResource Primitive.Color.Slate600}" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

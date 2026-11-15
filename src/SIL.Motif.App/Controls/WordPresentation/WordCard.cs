@@ -121,7 +121,6 @@ public sealed partial class WordCard : UserControl
         DocumentProperty.Changed.AddClassHandler<WordCard>((card, _) =>
         {
             card.BuildUnlessBatching();
-            card.LoadCardTiming();
         });
         HeaderProperty.Changed.AddClassHandler<WordCard>((card, _) => card.BuildUnlessBatching());
         FailureProperty.Changed.AddClassHandler<WordCard>((card, _) => card.BuildUnlessBatching());
@@ -134,7 +133,6 @@ public sealed partial class WordCard : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        LoadCardTiming();
         StartHostedRead();
     }
 
@@ -247,14 +245,6 @@ public sealed partial class WordCard : UserControl
                 _sections.Children.Add(retry);
             }
         }
-    }
-
-    private void LoadCardTiming()
-    {
-        if (TopLevel.GetTopLevel(this) is null) return;
-        var token = Document?.Sections.OfType<WordCardAnalysis>().Select(section => section.Token)
-            .FirstOrDefault(item => item is not null);
-        if (token?.Actions is { } actions) _ = actions.LoadCardTimingAsync(token);
     }
 
     private async void OnActionButtonClick(object? sender, RoutedEventArgs e)

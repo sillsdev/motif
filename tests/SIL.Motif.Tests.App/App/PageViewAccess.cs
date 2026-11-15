@@ -34,7 +34,6 @@ internal static class PageViewAccess
 
     private static WorkspacePage PageOf(Type viewType) => viewType.Name switch
     {
-        nameof(AssistantConnectionsPage) => WorkspacePage.AiAssistants,
         _ => Enum.GetValues<WorkspacePage>().Single(page => $"{page}Page" == viewType.Name),
     };
 }

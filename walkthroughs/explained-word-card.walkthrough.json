@@ -5,7 +5,6 @@
     { "id": "open-project-menu", "kind": "click", "automationId": "motif-project-menu" },
     { "id": "select-project", "kind": "click", "automationId": "motif-select-new-project" },
     { "id": "open-texts", "kind": "click", "automationId": "motif-page-texts" },
-    { "id": "open-analyze-texts", "kind": "click", "automationId": "motif-analyze-texts-tab" },
     { "id": "wait-for-first-word", "kind": "waitFor", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-67656c6469-word", "condition": "visible", "timeoutMs": 30000 },
     { "id": "wait-for-evler-approval", "kind": "waitFor", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-action", "condition": "visible", "timeoutMs": 30000 },
 
@@ -95,13 +94,6 @@
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fix" },
       { "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-unread" }
     ] },
-    { "id": "open-word-list", "kind": "click", "automationId": "motif-analyze-word-list-view" },
-    { "id": "wait-for-word-list-result", "kind": "waitFor", "automationId": "motif-word-row-word-list-geldi-word", "condition": "visible", "timeoutMs": 30000 },
-    { "id": "highlight-word-list-result", "kind": "highlight", "automationId": "motif-word-row-word-list-geldi-word" },
-    { "id": "word-list-results", "kind": "capture", "durationMs": 400, "cropPadding": 4, "scale": 2.5, "callouts": [
-      { "automationId": "motif-word-row-word-list-geldi-word" }
-    ] },
-    { "id": "restore-text-reader", "kind": "click", "automationId": "motif-analyze-text-reader-view" },
     { "id": "highlight-restored-word-card", "kind": "highlight", "automationId": "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-word" }
   ]
 }

@@ -174,32 +174,30 @@ public sealed class RefreshBeforeCheckTests
     }
 
     [Fact]
-    public async Task TheProposalBarsTryAgainRefreshesFirstAfterAnApply()
+    public async Task TryingAProposalRefreshesFirstAfterAnApply()
     {
         var (fake, context) = await OpenProposalAsync();
         var refresh = new RefreshProbe(context);
         context.RefreshProjectCommand = refresh.Command;
         context.RecordApplied();
-        var bar = new ProposalBarViewModel(context);
+        var outcome = await context.TryAgainAsync(ProposalId, CancellationToken.None);
 
-        await bar.TryAgainCommand.ExecuteAsync(null);
-
+        Assert.True(outcome.Succeeded);
         Assert.Equal(1, refresh.Runs);
         Assert.Single(fake.EnqueueTrialRequests);
     }
 
     [Fact]
-    public async Task AFailedRefreshShowsOnTheProposalBarAndQueuesNothing()
+    public async Task AFailedRefreshRefusesTheTryAndQueuesNothing()
     {
         var (fake, context) = await OpenProposalAsync();
         context.RefreshProjectCommand = new RefreshProbe(context) { Captures = false }.Command;
         context.RecordApplied();
-        var bar = new ProposalBarViewModel(context);
-
-        await bar.TryAgainCommand.ExecuteAsync(null);
+        var outcome = await context.TryAgainAsync(ProposalId, CancellationToken.None);
 
         Assert.Empty(fake.EnqueueTrialRequests);
-        Assert.Contains("could not be refreshed", bar.Sentence);
+        Assert.False(outcome.Succeeded);
+        Assert.Equal(WindowRefusal.RefreshFailedCode, outcome.Refusal?.Code);
     }
 
     [Fact]
@@ -209,9 +207,8 @@ public sealed class RefreshBeforeCheckTests
         var refresh = new RefreshProbe(context);
         context.RefreshProjectCommand = refresh.Command;
         context.RecordApplied();
-        var page = new ReviewPageModel(context);
 
-        await page.TryAgainCommand.ExecuteAsync(null);
+        await context.TryAgainAsync(ProposalId, CancellationToken.None);
 
         Assert.Equal(1, refresh.Runs);
         Assert.Single(fake.EnqueueTrialRequests);
@@ -223,7 +220,6 @@ public sealed class RefreshBeforeCheckTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Pending("revision/before"));
         var context = WorkspaceContextTests.NewContext(fake);
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         var refresh = new RefreshProbe(context)
         {
@@ -235,12 +231,12 @@ public sealed class RefreshBeforeCheckTests
         fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/after", FakeCommandClient.CompleteNumbers));
 
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
         Assert.Equal(1, refresh.Runs);
         Assert.Equal("revision/after", Assert.Single(fake.MeasurePendingRequests).Revision);
-        Assert.Null(page.MeasurementRefusal);
-        Assert.True(page.CanApply);
+        Assert.Null(context.PendingMeasurement.Refusal);
+        Assert.True(context.ProposalApply.CanApply(null, null, null, null));
     }
 
     [Fact]
@@ -251,12 +247,11 @@ public sealed class RefreshBeforeCheckTests
         fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         var context = WorkspaceContextTests.NewContext(fake);
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         var refresh = new RefreshProbe(context);
         context.RefreshProjectCommand = refresh.Command;
 
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
         Assert.Equal(0, refresh.Runs);
         Assert.Single(fake.MeasurePendingRequests);
@@ -268,17 +263,16 @@ public sealed class RefreshBeforeCheckTests
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(Pending("revision/one"));
         var context = WorkspaceContextTests.NewContext(fake);
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         context.RefreshProjectCommand = new RefreshProbe(context) { Captures = false }.Command;
         context.RecordApplied();
 
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
         Assert.Empty(fake.MeasurePendingRequests);
-        Assert.Equal(WindowRefusal.RefreshFailedCode, page.MeasurementRefusal?.Code);
-        Assert.False(page.IsMeasuring);
-        Assert.False(page.CanApply);
+        Assert.Equal(WindowRefusal.RefreshFailedCode, context.PendingMeasurement.Refusal?.Code);
+        Assert.False(context.PendingMeasurement.IsMeasuring);
+        Assert.False(context.ProposalApply.CanApply(null, null, null, null));
     }
 
     [Fact]
@@ -292,27 +286,27 @@ public sealed class RefreshBeforeCheckTests
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
             "Applied pending changes.");
         var context = WorkspaceContextTests.NewContext(fake);
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         var appliesWhenRefreshed = -1;
         var refresh = new RefreshProbe(context) { During = () => appliesWhenRefreshed = fake.ApplyPendingRequests.Count };
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
         // Apply's own Refresh stops with no Refresh to run, leaving the Baseline stale for the next check.
-        await page.ApplyCommand.ExecuteAsync(null);
+        await context.ProposalApply.ApplyCurrentAsync(null);
         context.RefreshProjectCommand = refresh.Command;
         Assert.True(context.Evidence.AppliedSinceRefresh);
         Assert.Equal(0, refresh.Runs);
         fake.PendingChangesIs(Pending("revision/two"));
         await context.Changes.ReloadAsync();
 
-        Assert.False(page.ApplyCommand.CanExecute(null));
-        Assert.Contains("Refresh before applying", page.ApplyBlockReason);
-        await page.ApplyCommand.ExecuteAsync(null);
+        Assert.False(context.ProposalApply.CanApply(null, null, null, null));
+        Assert.Contains(context.ProposalApply.Blockers(null, null, null, null),
+            blocker => blocker.Kind == ApplyBlockerKind.FieldWorksSavedSince);
+        await context.ProposalApply.ApplyCurrentAsync(null);
         Assert.Single(fake.ApplyPendingRequests);
         fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/two", "revision/two", FakeCommandClient.CompleteNumbers));
-        await page.MeasureCommand.ExecuteAsync(null);
-        await page.ApplyCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+        await context.ProposalApply.ApplyCurrentAsync(null);
 
         Assert.Equal(1, refresh.Runs);
         Assert.Equal(1, appliesWhenRefreshed);
@@ -345,14 +339,13 @@ public sealed class RefreshBeforeCheckTests
         fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         var context = WorkspaceContextTests.NewContext(fake);
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
         var refresh = new RefreshProbe(context);
         context.RefreshProjectCommand = refresh.Command;
         context.RecordApplied();
         context.PublishEvidence(new WorkspaceEvidence(ReRunAssessment(), DateTimeOffset.UtcNow, WasRerun: true));
 
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
         Assert.Equal(1, refresh.Runs);
         Assert.Single(fake.MeasurePendingRequests);

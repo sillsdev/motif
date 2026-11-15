@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.HandoffSection"
+             x:DataType="vm:HandoffSessionViewModel">
+  <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+    <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.AiHandoffHeading}" />
+    <Button Content="{Binding HandoffActionText}" Command="{Binding Handoff.RunCommand}"
+            AutomationProperties.Name="{x:Static app:MotifAppStrings.WriteTheAIHandoffFolderAccessibleName}"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.WriteHandoff}" />
+    <ContentControl x:Name="HandoffHost" />
+  </StackPanel>
+</UserControl>

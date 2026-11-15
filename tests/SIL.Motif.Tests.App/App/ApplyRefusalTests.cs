@@ -30,16 +30,15 @@ public sealed class ApplyRefusalTests
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
             new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource(),
             new BaselineViewModel(fake));
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
-        await page.ApplyCommand.ExecuteAsync(null);
+        await context.ProposalApply.ApplyCurrentAsync(null);
 
         Assert.Equal("FieldWorks has this project open. Close it before applying changes.",
-            page.ApplyRefusal?.Sentence);
+            context.ProposalApply.ApplyRefusal?.Sentence);
         Assert.Single(context.Changes.Items);
-        Assert.False(page.HasReceipt);
+        Assert.Null(context.ProposalApply.Receipt);
         Assert.Single(fake.ApplyPendingRequests);
     }
 

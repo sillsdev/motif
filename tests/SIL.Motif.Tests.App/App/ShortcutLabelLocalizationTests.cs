@@ -23,7 +23,7 @@ public sealed class ShortcutLabelLocalizationTests
         var culture = CultureInfo.GetCultureInfo(locale);
         var help = HelpCatalog.Load(culture);
         Assert.Equal("Keyboard Shortcuts", help.Find(HelpEntryKind.Ui, "shortcut-page-title")!.Title);
-        Assert.Equal("Analyze Texts", help.Find(HelpEntryKind.Ui, "shortcut-scope-analyze-texts")!.Title);
+        Assert.Equal("Texts", help.Find(HelpEntryKind.Ui, "shortcut-scope-analyze-texts")!.Title);
         Assert.Equal("Open the Word Card", help.Find(HelpEntryKind.Ui, "shortcut-open-word-card")!.Title);
         var page = help.GetHelpPage(HelpEntryKind.Guide, "keyboard-shortcuts")!;
         Assert.StartsWith("# Keyboard Shortcuts\n", page, StringComparison.Ordinal);

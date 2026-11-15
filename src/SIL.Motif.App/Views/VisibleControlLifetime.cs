@@ -5,7 +5,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App.Services;
 namespace SIL.Motif.App.Views;
 
-// Hidden hosts stay attached; pinned by `HiddenMatrixHostReleasesRowsAndRestoresCheckedWords`.
+// Hidden stays attached; pinned by `VirtualizedLinesAndLongLinePagesShareBoundedModelsAndReleaseOnDetach`.
 internal sealed class VisibleControlLifetime
 {
     private readonly Control _control;

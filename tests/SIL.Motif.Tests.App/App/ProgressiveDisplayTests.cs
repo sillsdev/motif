@@ -58,11 +58,11 @@ public sealed class ProgressiveDisplayTests
     private static readonly string[] ViewNames =
     [
         "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "GrammarPanel", "HandoffPanel",
-        "Inspector", "MotifWorkspaceView", "OverviewInspector", "Pages/AssistantConnectionsPage", "Pages/OverviewPage", "Pages/ParsimonyPage",
-        "Pages/ProposalsPage", "Pages/TimingPage",
+        "MotifWorkspaceView",
+        "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage",
         "ProposalDifferencePanel", "ProposalParsimonyPanel", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
-        "RetirementProposalReviewPanel", "ReviewInspector", "ReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel", "TextsListsPanel",
-        "TraceAnalysesView", "TryWordAttemptInspector", "TryWordPanel", "WarningsFilterPanel", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
+        "RetirementProposalReviewPanel", "SelectionPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel",
+        "TraceAnalysesView", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
     ];
 
     [Fact]
@@ -110,12 +110,6 @@ public sealed class ProgressiveDisplayTests
                 var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
                 Assert.Equal("alikula", reader.SelectedToken!.Form);
                 Assert.NotEmpty(reader.LinePages!.RealizedLines);
-                if (viewName is "TextsListsPanel")
-                {
-                    var source = workspace.Assess.Words.AllRows[0].Source;
-                    workspace.Assess.Compare.Load(Enumerable.Range(0, 2000).Select(index =>
-                        new AssessWordRowViewModel(source with { Word = $"word-{index}" })).ToArray());
-                }
                 var root = Build(viewName, workspace, sampleWindow);
                 var entries = Inventory().Where(entry => entry.View == viewName).ToArray();
                 var targets = Fragments(root).SelectMany(fragment => Controls(fragment)
@@ -140,12 +134,14 @@ public sealed class ProgressiveDisplayTests
                     if (entry.Mode is "tree" or "grid") continue;
                     var isFragment = !ReferenceEquals(root, fragment);
                     var externalScroll = isFragment || viewName is "DiagnosticPanel" or "ExpertTracePanel" or
-                        "TraceAnalysesView" or "OverviewInspector";
+                        "TraceAnalysesView";
                     window.Content = externalScroll ? new ScrollViewer { Content = fragment } : fragment;
                     foreach (var ancestor in items.GetLogicalAncestors().OfType<Control>())
                     {
                         ancestor.IsVisible = true;
                         if (ancestor is Expander expander) expander.IsExpanded = true;
+                        if (ancestor is TabItem tab && tab.GetLogicalAncestors().OfType<TabControl>().FirstOrDefault() is { } tabs)
+                            tabs.SelectedItem = tab;
                     }
                     items.IsVisible = true;
                     var count = isFragment ? 500 : 2000;
@@ -254,7 +250,7 @@ public sealed class ProgressiveDisplayTests
             .Where(path => File.ReadAllText(path).Contains("Children.Add(", StringComparison.Ordinal) ||
                 File.ReadAllText(path).Contains("ProgressivePanel.Populate(this", StringComparison.Ordinal))
             .Select(path => Path.GetFileName(path).Split('.')[0]).Distinct().Order().ToArray();
-        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "HeatCell", "MainWindow", "MarkChip", "MorphemePanel", "MotifWorkspaceView", "NamedMark", "OutcomeBar", "OverviewShareBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken", "WorkspaceLayoutHost" },
+        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "MainWindow", "MarkChip", "MorphemePanel", "MotifWorkspaceView", "NamedMark", "OutcomeBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken", "WorkspaceLayoutHost" },
             codeBuilt);
     }
 
@@ -265,9 +261,7 @@ public sealed class ProgressiveDisplayTests
         {
             var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData();
             var texts = workspace.PageModel<TextsPageModel>();
-            texts.Tab = TextsTab.AnalyzeTexts;
             workspace.CurrentPage = WorkspacePage.Texts;
-            texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
             var reader = texts.ResultsInText;
             var panel = AnalyzeTextsLayoutTests.Panel(sampleWindow);
             await reader.SelectionRefresh;
@@ -474,131 +468,7 @@ public sealed class ProgressiveDisplayTests
     }
 
     [Fact]
-    public void ReviewRealizesNearbyChangesAndKeyboardTargetsAcrossGroups()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var (workspace, sample) = await LayoutInvariantFixtures.OpenFreshSampleData(composeWindow: false, seedReaderToken: false, configure: (fake, assessment) =>
-            {
-                var source = assessment.Words.First(word => word.StoredAnalyses.Count > 0);
-                var words = Enumerable.Range(0, 200).Select(index => source with { Word = $"review-{index:D3}" }).ToArray();
-                fake.AssessCompletesWith(assessment with { Words = [.. assessment.Words, .. words] });
-                var changes = words.Select((word, index) => new PendingChange($"change-{index}", $"wordform-{index}",
-                    word.Word, index < 100 ? ChangeKinds.AddCandidate : ChangeKinds.RemoveAnalysis,
-                    "assessment/one", word.Word, [$"operation-{index}"])
-                {
-                    Analyses = [new ReviewAnalysis(word.StoredAnalyses[0], ReadingGrade.Candidate, true, true)],
-                    StoredAnalysisId = $"analysis-{index}",
-                }).ToArray();
-                fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", changes,
-                    changes.Select(change => new ChangeFit(change.ChangeId, true, [])).ToArray()));
-            });
-            var page = workspace.PageModel<ReviewPageModel>();
-            var panel = new ReviewPanel(page);
-            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = WorkspaceLayoutHost.ForPage(panel) };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-                var items = panel.FindControl<ListBox>("ReviewItems")!;
-                var groups = page.ReviewGroups;
-                Assert.Equal(2, groups.Count);
-                Assert.All(groups, group => Assert.Equal(100, group.Items.Count));
-                AssertBoundedRows("first");
-                items.ScrollIntoView(TableEntry(groups[0].Items[0]));
-                PageScreenshots.Settle(window);
-                var first = ChangeRow(groups[0].Items[0]);
-                first.Focus();
-                AssertFocus(0, 0);
-                for (var index = 1; index <= 12; index++)
-                {
-                    Press(Key.Down);
-                    AssertFocus(0, index);
-                    AssertBoundedRows($"down {index}");
-                }
-
-                Press(Key.End);
-                AssertFocus(1, 99);
-                AssertBoundedRows("end");
-                Press(Key.Up);
-                AssertFocus(1, 98);
-                Press(Key.Home);
-                AssertFocus(0, 0);
-
-                items.ScrollIntoView(TableEntry(groups[0].Items[99]));
-                PageScreenshots.Settle(window);
-                Assert.True(ChangeRow(groups[0].Items[99]).Focus());
-                PageScreenshots.Settle(window);
-                AssertFocus(0, 99);
-                Press(Key.Down);
-                AssertFocus(1, 0);
-                Press(Key.Up);
-                AssertFocus(0, 99);
-                AssertBoundedRows("group boundary");
-
-                Press(Key.Home);
-                AssertInspector(groups[0].Items[0]);
-                Press(Key.End);
-                AssertFocus(1, 99);
-                AssertInspector(groups[1].Items[99]);
-                Press(Key.Home);
-                AssertFocus(0, 0);
-                AssertInspector(groups[0].Items[0]);
-                AssertBoundedRows("Inspector return");
-
-                void AssertInspector(ChangeViewModel change)
-                {
-                    PageScreenshots.Settle(window);
-                    var card = Assert.Single(panel.InspectorContent.GetVisualDescendants().OfType<WordCard>());
-                    Assert.Equal(change.Presentation.Key, card.Document!.Key);
-                    var pending = Assert.Single(card.Document.Sections.OfType<WordCardPendingChange>());
-                    Assert.Equal(change.Reading, pending.Reading);
-                }
-
-                void Press(Key key)
-                {
-                    window.KeyPress(key, RawInputModifiers.None, PhysicalKey.None, null);
-                    window.KeyRelease(key, RawInputModifiers.None, PhysicalKey.None, null);
-                    PageScreenshots.Settle(window);
-                }
-
-                ReviewListEntryViewModel TableEntry(ChangeViewModel change) => page.TableEntries
-                    .OfType<ReviewListEntryViewModel>().Single(item => ReferenceEquals(item.Change, change));
-
-                ListBoxItem ChangeRow(ChangeViewModel change) =>
-                    Assert.IsType<ListBoxItem>(items.ContainerFromItem(TableEntry(change)));
-
-                void AssertFocus(int groupIndex, int rowIndex)
-                {
-                    var focused = Assert.Single(items.GetRealizedContainers(), container => container.IsFocused);
-                    var entry = Assert.IsType<ReviewListEntryViewModel>(focused.DataContext);
-                    Assert.Same(groups[groupIndex].Items[rowIndex], entry.Change);
-                    Assert.Same(entry.Review, page.Current);
-                    var top = focused.TranslatePoint(default, window)!.Value.Y;
-                    Assert.InRange(top, 0, window.Bounds.Height - focused.Bounds.Height);
-                }
-
-                void AssertBoundedRows(string position)
-                {
-                    var rows = items.GetRealizedContainers().Where(container =>
-                        container.DataContext is ReviewListEntryViewModel { Change: not null }).ToArray();
-                    var rowHeight = (double)Application.Current!.FindResource("Component.DenseTable.RowHeight")!;
-                    var budget = 2 * (int)Math.Ceiling(items.Bounds.Height / rowHeight) + 2;
-                    Assert.InRange(rows.Length, 1, budget);
-                    Assert.InRange(items.GetRealizedContainers().Count(), 1, budget + groups.Count);
-                    _output.WriteLine($"Review {position}: {rows.Length}/{budget} table rows for 200 changes");
-                }
-            }
-            finally
-            {
-                window.Close();
-                sample.Close();
-            }
-        }, TimeSpan.FromSeconds(60));
-    }
-
-    [Fact]
-    public void TimingRuleTableRealizesOnlyNearbyRowsWithItsRealRowTemplate()
+    public void DiagnosticsRuleListRealizesNearbyRowsAndReachesTheLastRule()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -607,16 +477,26 @@ public sealed class ProgressiveDisplayTests
             {
                 window.Width = 1240;
                 window.Height = 780;
-                workspace.CurrentPage = WorkspacePage.Timing;
+                workspace.Context.Diagnostics = true;
+                workspace.Context.OpenDiagnostics(DiagnosticsTab.SpeedByRule);
                 PageScreenshots.Settle(window);
-                var table = Assert.Single(window.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
-                    control => AutomationProperties.GetName(control) == "Timing by rule");
-                var row = ((System.Collections.IList)table.FullItemsSource!)[0];
-                table.FullItemsSource = Enumerable.Repeat(row, 2000).ToArray();
+                var page = window.PageView<DiagnosticsPage>();
+                var list = page.FindControl<ListBox>("DiagnosticRuleRows")!;
+                var rows = Enumerable.Range(0, 2000).Select(index =>
+                    new TimingWorkAggregate($"rule-{index}", $"Rule {index}", "morph_rule", index, false)).ToArray();
+                list.ItemsSource = rows;
                 PageScreenshots.Settle(window);
-                Assert.InRange(table.GetRealizedContainers().Count(), 1, 22);
+                Assert.InRange(list.GetRealizedContainers().Count(), 1, 100);
+                list.ScrollIntoView(rows.Length - 1);
+                PageScreenshots.Settle(window);
+                Assert.NotNull(list.ContainerFromIndex(rows.Length - 1));
+                Assert.InRange(list.GetRealizedContainers().Count(), 1, 100);
             }
-            finally { window.Close(); }
+            finally
+            {
+                window.Close();
+                await workspace.DisposeAsync();
+            }
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -632,18 +512,15 @@ public sealed class ProgressiveDisplayTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, sample) = await LayoutInvariantFixtures.OpenFreshSampleData(composeWindow: false, parse: false);
-            var panel = new DiagnosticPanel(workspace.PageModel<TryWordPageModel>().Diagnostics);
-            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
+            var panel = new DiagnosticPanel(workspace.Context.WordTraceSession.Diagnostics);
+            var tree = panel.FindControl<TreeView>("TreeHost")!;
+            panel.FindControl<Grid>("DetailGrid")!.Children.Remove(tree);
+            tree.DataContext = panel.DataContext;
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new ScrollViewer { Content = tree } };
             try
             {
                 var leaf = new TraceStepViewModel(new TraceStep("Failed", "rule", "word", null, null, []), null);
                 var children = Enumerable.Range(0, 500).Select(_ => leaf.WithChildren([])).ToArray();
-                var tree = panel.FindControl<TreeView>("TreeHost")!;
-                foreach (var ancestor in tree.GetLogicalAncestors().OfType<Control>())
-                {
-                    ancestor.IsVisible = true;
-                    if (ancestor is Expander expander) expander.IsExpanded = true;
-                }
                 tree.IsVisible = true;
                 tree.ItemsSource = new[] { leaf.WithChildren(children, expandForFilter: true) };
                 window.Show();
@@ -660,7 +537,17 @@ public sealed class ProgressiveDisplayTests
                 {
                     var next = children[index + 1];
                     KeyPresses.PressUntil(window, Key.Down, () => ReferenceEquals(next, tree.SelectedItem),
-                        $"child {index + 1} selected", () => $"selected '{tree.SelectedItem}'", release: true);
+                        $"child {index + 1} selected", () =>
+                        {
+                            var focus = window.FocusManager?.GetFocusedElement() as Control;
+                            var item = focus as TreeViewItem;
+                            var owner = item?.GetLogicalAncestors().OfType<ItemsControl>().FirstOrDefault();
+                            return $"selected child {Array.IndexOf(children, tree.SelectedItem as TraceStepViewModel)}, " +
+                                $"focused {focus?.GetType().Name} child {Array.IndexOf(children, focus?.DataContext as TraceStepViewModel)}, " +
+                                $"owner {owner?.GetType().Name} index {(item is null ? -1 : owner?.IndexFromContainer(item))}/{owner?.ItemCount}, " +
+                                $"offset {scroll.Offset}, extent {scroll.Extent}, viewport {scroll.Viewport}, " +
+                                $"root realized {root.GetRealizedContainers().Count()}, target realized {root.ContainerFromIndex(index + 1) is not null}";
+                        }, release: true);
                 }
                 Assert.Same(children[navigationSteps], tree.SelectedItem);
                 Assert.True(scroll.Offset.Y > initialOffset);
@@ -710,18 +597,21 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(seedReaderToken: false);
+            var (workspace, sample) = await LayoutInvariantFixtures.OpenFreshSampleData(seedReaderToken: false);
+            var statistics = new StatisticsViewModel(workspace.Context.Commands)
+            {
+                ProjectPath = workspace.Context.ProjectPath,
+                AssessmentId = workspace.Context.Evidence.ParseTimeAssessmentId,
+            };
+            await statistics.LoadCommand.ExecuteAsync(null);
+            var page = new StatisticsPanel(statistics);
+            var window = new MotifTestWindow
+            {
+                Width = 1040, Height = 1300, Content = new ScrollViewer { Content = page },
+            };
             try
             {
-                window.Width = 1040;
-                window.Height = 1300;
-                workspace.CurrentPage = WorkspacePage.Timing;
-                PageScreenshots.Settle(window);
-                var page = window.PageView<TimingPage>();
-                var expander = Assert.Single(page.GetLogicalDescendants().OfType<Expander>(),
-                    control => Equals(control.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
-                expander.IsExpanded = true;
-                if (page.Page.Statistics.LoadCommand.ExecutionTask is { } loading) await loading;
+                window.Show();
                 PageScreenshots.Settle(window);
                 var grid = Assert.Single(page.GetVisualDescendants().OfType<DataGrid>());
                 var pageScroll = Assert.Single(grid.GetVisualAncestors().OfType<ScrollViewer>());
@@ -738,9 +628,8 @@ public sealed class ProgressiveDisplayTests
                 }
                 grid.ScrollIntoView(grid.ItemsSource!.Cast<StatsRowViewModel>().First(), numericColumns[0]);
                 PageScreenshots.Settle(window);
-                var heatCellTexts = grid.GetVisualDescendants().OfType<HeatCell>()
-                    .Where(cell => cell.IsEffectivelyVisible)
-                    .Select(cell => Assert.Single(cell.GetVisualDescendants().OfType<CopyableTextBlock>()))
+                var heatCellTexts = grid.GetVisualDescendants().OfType<CopyableTextBlock>()
+                    .Where(cell => cell.IsEffectivelyVisible && cell.Classes.Contains("statisticsValue"))
                     .Where(text => !string.IsNullOrEmpty(text.Text))
                     .ToArray();
                 Assert.NotEmpty(heatCellTexts);
@@ -839,7 +728,7 @@ public sealed class ProgressiveDisplayTests
                 var completedText = Assert.Single(completedChip.GetVisualDescendants().OfType<CopyableTextBlock>());
                 LayoutAssertions.AssertTextFits(completedText);
             }
-            finally { window.Close(); }
+            finally { window.Close(); sample.Close(); await workspace.DisposeAsync(); }
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -850,17 +739,21 @@ public sealed class ProgressiveDisplayTests
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await LayoutInvariantFixtures.OpenFreshSampleData(seedReaderToken: false);
+            var (workspace, sample) = await LayoutInvariantFixtures.OpenFreshSampleData(seedReaderToken: false);
+            var statistics = new StatisticsViewModel(workspace.Context.Commands)
+            {
+                ProjectPath = workspace.Context.ProjectPath,
+                AssessmentId = workspace.Context.Evidence.ParseTimeAssessmentId,
+            };
+            await statistics.LoadCommand.ExecuteAsync(null);
+            var page = new StatisticsPanel(statistics);
+            var window = new MotifTestWindow
+            {
+                Width = width, Height = height, Content = new ScrollViewer { Content = page },
+            };
             try
             {
-                window.Width = width;
-                window.Height = height;
-                workspace.CurrentPage = WorkspacePage.Timing;
-                PageScreenshots.Settle(window);
-                var page = window.PageView<TimingPage>();
-                var expander = Assert.Single(page.GetLogicalDescendants().OfType<Expander>(),
-                    control => Equals(control.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
-                expander.IsExpanded = true;
+                window.Show();
                 PageScreenshots.Settle(window);
                 var grid = Assert.Single(page.GetVisualDescendants().OfType<DataGrid>());
                 var rows = Enumerable.Range(0, 2000).Select(index => new StatsRowViewModel(
@@ -878,16 +771,14 @@ public sealed class ProgressiveDisplayTests
                     $"The {rowsPresenter.Bounds.Height}px rows viewport shows fewer than eight " +
                     $"{firstRow.Bounds.Height}px rows at {width}×{height}.");
                 Assert.InRange(grid.GetVisualDescendants().OfType<DataGridRow>().Count(), 8, 64);
-                if (height <= 780)
-                    Assert.True(pageScroll.Extent.Height > pageScroll.Viewport.Height,
-                        "The Timing page should scroll to reach detailed statistics at this window height.");
+                Assert.True(pageScroll.Viewport.Height > 0);
                 Assert.InRange(grid.GetVisualDescendants().OfType<DataGridRow>().Count(), 1, 64);
                 grid.ScrollIntoView(rows[^1], grid.Columns[0]);
                 PageScreenshots.Settle(window);
                 Assert.Contains(grid.GetVisualDescendants().OfType<DataGridRow>(), row => ReferenceEquals(row.DataContext, rows[^1]));
                 Assert.InRange(grid.GetVisualDescendants().OfType<DataGridRow>().Count(), 1, 40);
             }
-            finally { window.Close(); }
+            finally { window.Close(); sample.Close(); await workspace.DisposeAsync(); }
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -982,13 +873,13 @@ public sealed class ProgressiveDisplayTests
     }
 
     [Fact]
-    public void ALargeTryWordAnalysisListRealizesOnePageOfItsOwnRowsAndOffersMore()
+    public void ALargeTraceAnalysisListRealizesOnePageAndOffersMore()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, sampleWindow) = await LayoutInvariantFixtures.OpenFreshSampleData(renderForCapture: false, composeWindow: false, parse: false);
-            var panel = new TryWordPanel(workspace.PageModel<TryWordPageModel>());
-            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new ScrollViewer { Content = panel } };
+            var list = new ProgressiveItemsControl();
+            var window = new MotifTestWindow { Width = 1240, Height = 780, Content = new ScrollViewer { Content = list } };
             try
             {
                 var analyses = Enumerable.Range(0, 924).Select(index => new TraceAnalysisViewModel(
@@ -996,9 +887,6 @@ public sealed class ProgressiveDisplayTests
                         [.. Enumerable.Range(0, 4).Select(part => new TraceMorph(null, $"m{part}", null, $"g{part}",
                             "N", null, null, null, null, null))]), allowLiveLinks: false)).ToArray();
                 window.Show();
-                var list = panel.FindControl<ProgressiveItemsControl>("TryWordParserAnalysesItems")!;
-                foreach (var ancestor in list.GetLogicalAncestors().OfType<Control>()) ancestor.IsVisible = true;
-                list.IsVisible = true;
                 list.FullItemsSource = analyses;
                 PageScreenshots.Settle(window);
                 await list.PageRefresh;
@@ -1089,7 +977,7 @@ public sealed class ProgressiveDisplayTests
     private static Control Build(string name, WorkspaceShellViewModel workspace, MainWindow sample)
     {
         var texts = workspace.PageModel<TextsPageModel>();
-        var trace = workspace.PageModel<TryWordPageModel>();
+        var trace = workspace.Context.WordTraceSession;
         if (name == "MotifWorkspaceView")
         {
             var shell = sample.FindControl<MotifWorkspaceView>("WorkspaceView")!;
@@ -1103,20 +991,14 @@ public sealed class ProgressiveDisplayTests
             "DiagnosticPanel" => new DiagnosticPanel(trace.Diagnostics),
             "DifferencePanel" => new DifferencePanel(workspace.Assess.Difference),
             "ExpertTracePanel" => new ExpertTracePanel { DataContext = trace.Trace },
-            "GrammarPanel" => new GrammarPanel(workspace.PageModel<WarningsPageModel>().Grammar),
-            "HandoffPanel" => new HandoffPanel(workspace.PageModel<AiHandoffPageModel>().Handoff),
-            "Inspector" => new Inspector { DataContext = workspace.Inspector },
-            "OverviewInspector" => new OverviewInspector(workspace.PageModel<OverviewPageModel>()),
+            "GrammarPanel" => new GrammarPanel(workspace.Context.GrammarCheck),
+            "HandoffPanel" => new HandoffPanel(workspace.PageModel<SettingsPageModel>().Handoff.Handoff),
             "SettingsPage" => BuildSettingsPage(workspace),
             "SettingsNavigation" => BuildSettingsPage(workspace).Navigation,
-            "Pages/AssistantConnectionsPage" => new AssistantConnectionsPage(
-                workspace.PageModel<AssistantConnectionsPageModel>()),
-            "Pages/OverviewPage" => new OverviewPage(workspace.PageModel<OverviewPageModel>()),
-            "Pages/ParsimonyPage" => WorkspaceLayoutHost.ForPage(
-                new ParsimonyPage(workspace.PageModel<ParsimonyPageModel>())),
+            "Pages/DiagnosticsPage" => new DiagnosticsPage(workspace.PageModel<DiagnosticsPageModel>()),
+            "Pages/GrammarGuidePage" => new GrammarGuidePage(workspace.PageModel<GrammarGuidePageModel>()),
             "Pages/ProposalsPage" => WorkspaceLayoutHost.ForPage(
                 new ProposalsPage(workspace.PageModel<ProposalsPageModel>())),
-            "Pages/TimingPage" => new TimingPage(workspace.PageModel<TimingPageModel>()),
             "ReviewWordRow" => new PresentationWordRow
             {
                 Data = new WordPresentation(new WordPresentationKey("review:scale"), 1,
@@ -1147,19 +1029,12 @@ public sealed class ProgressiveDisplayTests
             {
                 DataContext = new RetirementProposalReviewViewModel(EmptyRetirementReview()),
             },
-            "ReviewInspector" => new ReviewInspector(workspace.PageModel<ReviewPageModel>(),
-                new ReviewWordPresentationHost(workspace.PageModel<ReviewPageModel>())),
-            "ReviewPanel" => WorkspaceLayoutHost.ForPage(new ReviewPanel(workspace.PageModel<ReviewPageModel>())),
             "SelectionPanel" => new SelectionPanel(workspace.Selection, texts.Words),
             "SetupDialog" => new SetupDialog { DataContext = workspace.Context.Setup },
-            "StatisticsPanel" => new StatisticsPanel(workspace.PageModel<TimingPageModel>().Statistics),
+            "StatisticsPanel" => new StatisticsPanel(new StatisticsViewModel(workspace.Context.Commands)),
             "TextWordsPanel" => BuildTextWordsPanel(texts.Words),
-            "TextsListsPanel" => new TextsListsPanel(texts.TextsLists),
             "TraceAnalysesView" => new TraceAnalysesView { DataContext = trace.Trace },
-            "TryWordPanel" => new TryWordPanel(trace),
-            "TryWordAttemptInspector" => new TryWordAttemptInspector(trace.Trace),
-            "WarningsFilterPanel" => new WarningsFilterPanel(workspace.PageModel<WarningsPageModel>()),
-            "WarningsInspectorPanel" => new WarningsInspectorPanel(workspace.PageModel<WarningsPageModel>()),
+            "WarningsInspectorPanel" => new WarningsInspectorPanel(workspace.Context.GrammarCheck),
             "WordCard" => BuildWordCard(workspace),
             "WordDispositionButtons" => new WordDispositionButtons
             {

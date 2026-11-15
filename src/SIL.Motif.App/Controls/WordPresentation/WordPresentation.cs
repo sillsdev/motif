@@ -71,7 +71,6 @@ public enum WordAction
     OpenCard,
     CloseCard,
     OpenInText,
-    TryWord,
     OpenAnalyses,
     SetOpinion,
     ToggleRead,

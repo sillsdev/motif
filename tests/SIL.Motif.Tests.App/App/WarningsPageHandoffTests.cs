@@ -49,12 +49,12 @@ public sealed class WarningsPageHandoffTests
         var selection = new SelectionViewModel(fake);
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection),
             new ChangesViewModel(fake), fake, new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
-        var warnings = new WarningsPageModel(context);
-        var handoffPage = new AiHandoffPageModel(context);
-        warnings.Grammar.Warnings.Load([warning]);
-        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(warnings.Grammar.Warnings.Rows));
+        var warnings = context.GrammarCheck.Warnings;
+        var handoffPage = new SettingsPageModel(context).Handoff;
+        warnings.Load([warning]);
+        var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(warnings.Rows));
 
-        warnings.Grammar.Warnings.HandOffCommand.Execute(row);
+        warnings.HandOffCommand.Execute(row);
         handoffPage.Handoff.ProjectPath = ProjectPath;
         Assert.Null(handoffPage.Handoff.InvocationId);
         Assert.True(handoffPage.Handoff.RunCommand.CanExecute(null));

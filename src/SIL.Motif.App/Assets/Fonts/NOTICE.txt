@@ -3,6 +3,10 @@ Copyright (c) 2004-2025 SIL Global
 Source: https://software.sil.org/andika/download/
 License: SIL Open Font License 1.1, included as OFL.txt.
 
+Source Sans 3 and Lora (SourceSans3/ and Lora/)
+Source: https://github.com/google/fonts/tree/cc39c4c2c304bc368c9b7c311ea2bcc6013299fe/ofl
+License: SIL Open Font License 1.1, included as OFL.txt in each directory.
+
 Charis SIL 6.200 (CharisSIL/)
 Copyright (c) 1997-2023 SIL International
 Source: https://software.sil.org/charis/download/

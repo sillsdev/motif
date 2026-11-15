@@ -34,14 +34,14 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 var retainedBeforeHandoff = WalkthroughStoreAssertions.ListInvocations(project.FwDataPath);
                 var assessmentInvocationId = walkthrough.Workspace.Assess.Result!.InvocationId;
 
-                walkthrough.ShowPage(WorkspacePage.AiHandoff);
+                walkthrough.ShowPage(WorkspacePage.Settings);
                 walkthrough.Click("Write the AI Handoff folder");
                 var handoffDeadline = WalkthroughSteps.DeadlineIn(180);
                 walkthrough.WaitUntil(
-                    () => walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.State == RunState.Completed,
+                    () => walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State == RunState.Completed,
                     WalkthroughSteps.Remaining(handoffDeadline), "the Handoff did not complete");
 
-                var handoff = walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff;
+                var handoff = walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
                 Assert.Equal(Path.GetFullPath(outputDirectory), Path.GetFullPath(handoff.OutputDirectory!));
                 Assert.NotNull(handoff.Result);
                 Assert.Equal(baselineToken, handoff.Result!.Baseline.Token);
@@ -69,7 +69,7 @@ public sealed class UploadSimulationWalkthroughTests(PristineProjectFixture pris
                 var validation = receiver.Validate();
                 Assert.Empty(validation.Failures);
                 Assert.Empty(validation.Findings);
-                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff.Result!.InvocationId);
+                Assert.Equal(assessmentInvocationId, walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Result!.InvocationId);
                 Assert.Equal(retainedBeforeHandoff.Count,
                     WalkthroughStoreAssertions.ListInvocations(project.FwDataPath).Count);
                 Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));

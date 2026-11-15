@@ -262,7 +262,7 @@ public sealed class PendingChangesViewModelTests
         await changes.OpenProjectAsync("project.fwdata");
 
         await changes.ApproveStoredAnalysisAsync("word", "analysis/one", "form = gloss",
-            WorkspacePage.TryAWord);
+            WorkspacePage.Words);
 
         var change = Assert.Single(fake.PendingPutRequests).Change;
         Assert.Equal(ChangeKinds.Approve, change.Kind);
@@ -272,7 +272,7 @@ public sealed class PendingChangesViewModelTests
         Assert.Null(change.Reading);
         Assert.Null(change.ReadingIndex);
         Assert.Null(change.Occurrence);
-        Assert.Equal(WorkspacePage.TryAWord.ToString(), change.OriginPage);
+        Assert.Equal(WorkspacePage.Words.ToString(), change.OriginPage);
     }
 
     [Fact]
@@ -427,14 +427,13 @@ public sealed class PendingChangesViewModelTests
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
         var context = new WorkspaceContext(selection, new AssessViewModel(fake, selection), changes, fake,
             new FolderPicker(), new DragSource(), new BaselineViewModel(fake));
-        var review = new ReviewPageModel(context);
 
         await context.OpenProjectAsync("project.fwdata");
 
         Assert.False(Assert.Single(changes.Snapshot.FitSummary).StillFits);
-        Assert.False(review.CanApply);
-        Assert.Contains("no longer fits", review.ApplyBlockReason);
-        Assert.False(review.ApplyCommand.CanExecute(null));
+        Assert.False(context.ProposalApply.CanApply(null, null, null, null));
+        Assert.Contains(context.ProposalApply.Blockers(null, null, null, null),
+            blocker => blocker.Kind == ApplyBlockerKind.NoLongerFits);
         Assert.Equal("No longer fits the current project. Remove this change before review.",
             Assert.Single(changes.Items).FitStatus);
         Assert.DoesNotContain(InternalId, Assert.Single(changes.Items).FitStatus);

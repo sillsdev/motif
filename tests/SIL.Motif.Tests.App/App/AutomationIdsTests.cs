@@ -136,7 +136,19 @@ public sealed class AutomationIdsTests
             Assert.DoesNotMatch(@"AutomationProperties\.SetAutomationId\s*\([^,]+,\s*""[^""]+""\s*\)", source);
         }
 
-        Assert.All(constants.Keys, name => Assert.Contains(name, references));
+        var reserved = new HashSet<string>(StringComparer.Ordinal)
+        {
+            nameof(AutomationIds.Sources), nameof(AutomationIds.GrammarGuide), nameof(AutomationIds.ProposalDocuments),
+            nameof(AutomationIds.ProposalCompare), nameof(AutomationIds.WordTrace), nameof(AutomationIds.SourcesAdd),
+            nameof(AutomationIds.SourcesList), nameof(AutomationIds.PassageReader), nameof(AutomationIds.PassageKeepAnalysis),
+            nameof(AutomationIds.PassageNextGap), nameof(AutomationIds.PassageKeepAllLikeThis), nameof(AutomationIds.WordDetail),
+            nameof(AutomationIds.WordAskClaude), nameof(AutomationIds.WordNotAWord), nameof(AutomationIds.ProposalComments),
+            nameof(AutomationIds.ProposalApply), nameof(AutomationIds.ProposalDecline), nameof(AutomationIds.ProposalCompareFirst),
+            nameof(AutomationIds.ProposalCompareSecond), nameof(AutomationIds.ClaudeRequests),
+            nameof(AutomationIds.DiagnosticsWarningDetails), nameof(AutomationIds.ProgressChapters),
+        };
+        Assert.All(reserved, name => Assert.Contains(name, constants.Keys));
+        Assert.All(constants.Keys.Except(reserved), name => Assert.Contains(name, references));
     }
 
     private static DirectoryInfo FindRepositoryRoot()

@@ -6,10 +6,11 @@ using SIL.Motif.Contract.Responses;
 
 namespace SIL.Motif.App.ViewModels;
 
-/// <summary>One change in Review changes' single list: what it is, whether it was looked at, and Keep and Undo.</summary>
+/// <summary>One Proposal change: its description, looked-at state, and Keep and Undo actions.</summary>
 public sealed partial class ReviewEntryViewModel : ObservableObject
 {
-    internal ReviewEntryViewModel(ReviewPageModel page, ReviewEntry? entry, ChangeViewModel? change)
+    internal ReviewEntryViewModel(ReviewEntry? entry, ChangeViewModel? change,
+        Func<ReviewEntryViewModel, Task> keep, Func<ReviewEntryViewModel, Task> undo)
     {
         if (entry is null && change is null)
             throw new ArgumentException("A review entry needs the review's entry or a word change.", nameof(entry));
@@ -17,8 +18,8 @@ public sealed partial class ReviewEntryViewModel : ObservableObject
         Change = change;
         _isLookedAt = entry?.LookedAt == true;
         if (change is not null) change.IsLookedAt = _isLookedAt;
-        KeepCommand = new AsyncRelayCommand(() => page.KeepAsync(this), () => Entry is not null);
-        UndoCommand = new AsyncRelayCommand(() => page.UndoAsync(this));
+        KeepCommand = new AsyncRelayCommand(() => keep(this), () => Entry is not null);
+        UndoCommand = new AsyncRelayCommand(() => undo(this));
     }
 
     /// <summary>

@@ -1,7 +1,10 @@
-using Avalonia.Automation.Peers;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 
@@ -11,33 +14,46 @@ namespace SIL.Motif.Tests.App;
 public sealed class TimingAccessibilityTests
 {
     [Fact]
-    public void RuleSelectorsNameTheirRuleAndOpenItsRecordedWords()
+    public void RecordedRuleWorkIsNamedAndReachableOnDiagnostics()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false);
+            var fake = new FakeCommandClient();
+            fake.TimingCompletesWith(new TimingResponse("assessment-parse", "all", "rule", 1, null, null, [], [], [])
+            {
+                ParserWorkAggregates =
+                [
+                    new TimingWorkAggregate("first", "First rule", "morph_rule", 4, false),
+                    new TimingWorkAggregate("second", "Second rule", "phon_rule", 6, false),
+                ],
+            });
+            var context = WorkspaceContextTests.NewContext(fake);
+            await context.OpenProjectAsync("project.fwdata");
+            context.PublishEvidence(new WorkspaceEvidence(WorkspaceContextTests.Assessment(), DateTimeOffset.Now, false));
+            var model = new DiagnosticsPageModel(context);
+            await model.SpeedByRule.ReadAsync("project.fwdata", CancellationToken.None);
+            model.SelectedTabIndex = (int)DiagnosticsTab.SpeedByRule;
+            var page = new DiagnosticsPage(model);
+            var window = new MotifTestWindow { Width = 640, Height = 600, Content = page };
             try
             {
-                workspace.CurrentPage = WorkspacePage.Timing;
+                window.Show();
                 PageScreenshots.Settle(window);
-                var buttons = window.GetVisualDescendants().OfType<Button>()
-                    .Where(button => button.Classes.Contains("timingRuleRow") && button.IsEffectivelyVisible).ToArray();
-                Assert.True(buttons.Length >= 2);
-                foreach (var button in buttons)
-                {
-                    var row = Assert.IsType<TimingRuleRow>(button.DataContext);
-                    Assert.Equal($"Show words timed under {row.Share.Label}",
-                        ControlAutomationPeer.CreatePeerForElement(button)!.GetName());
-                }
-                var first = buttons[0];
-                var chosen = Assert.IsType<TimingRuleRow>(first.DataContext);
-                first.BringIntoView();
+                var rows = page.FindControl<ListBox>("DiagnosticRuleRows")!;
+                Assert.Equal(MotifAppStrings.BoardSpeedByRule, AutomationProperties.GetName(rows));
+                Assert.Equal(2, rows.ItemCount);
+                Assert.Contains(rows.GetVisualDescendants().OfType<CopyableTextBlock>(), text => text.Text == "First rule");
+                rows.ScrollIntoView(1);
                 PageScreenshots.Settle(window);
-                HeadlessClick.Click(window, first, $"Show words timed under {chosen.Share.Label}");
-                PageScreenshots.Settle(window);
-                Assert.Equal(chosen.Share.Label, workspace.PageModel<TimingPageModel>().SelectedRuleName);
+                Assert.NotNull(rows.ContainerFromIndex(1));
+                Assert.Contains(rows.GetVisualDescendants().OfType<CopyableTextBlock>(), text => text.Text == "Second rule");
+                Assert.Empty(fake.AssessRequests);
             }
-            finally { window.Close(); await workspace.DisposeAsync(); }
-        }, TimeSpan.FromMinutes(2));
+            finally
+            {
+                window.Close();
+                await context.StopProjectWorkAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
     }
 }

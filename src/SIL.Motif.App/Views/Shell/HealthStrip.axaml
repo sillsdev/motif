@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Shell.HealthStrip"
+             x:DataType="vm:HealthStripViewModel">
+  <Button x:Name="HealthButton" PointerEntered="OnPointerEntered" GotFocus="OnGotFocus"
+          AutomationProperties.AutomationId="{x:Static app:AutomationIds.HealthStrip}"
+          AutomationProperties.Name="{Binding AccessibleName}">
+    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+      <TextBlock Text="{x:Static app:MotifAppStrings.Health}" />
+      <TextBlock Text="{Binding WarningText}" IsVisible="{Binding HasWarnings}" />
+      <TextBlock Text="{Binding AssistantStateText}" IsVisible="{Binding HasAssistantState}" />
+    </StackPanel>
+    <Button.Flyout>
+      <Flyout Placement="TopEdgeAlignedLeft">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Related}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.HealthDetails}">
+          <TextBlock Text="{Binding WarningText}" IsVisible="{Binding HasWarnings}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding MedianWorkText}" IsVisible="{Binding HasMedianWork}" TextWrapping="Wrap" />
+          <Button Content="{x:Static app:MotifAppStrings.HealthTurnOnDiagnostics}"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.HealthEnableDiagnostics}"
+                  IsVisible="{Binding CanTurnOnDiagnostics}" Command="{Binding TurnOnDiagnosticsCommand}" />
+        </StackPanel>
+      </Flyout>
+    </Button.Flyout>
+  </Button>
+</UserControl>

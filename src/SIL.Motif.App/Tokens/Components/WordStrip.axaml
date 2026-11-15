@@ -8,6 +8,9 @@
         xmlns:media="using:Avalonia.Media"
         xmlns:word="clr-namespace:SIL.Motif.App.Controls.WordPresentation">
   <Styles.Resources>
+    <StaticResource x:Key="Component.WordStrip.StagedPadding" ResourceKey="Primitive.Inset.4_0_4_0" />
+    <StaticResource x:Key="Component.WordStrip.StagedRule" ResourceKey="Primitive.Inset.2_0_0_0" />
+    <StaticResource x:Key="Component.WordStrip.StagedType" ResourceKey="Primitive.Type.9" />
     <StaticResource x:Key="Component.WordStrip.Padding" ResourceKey="Primitive.Inset.4_0_4_0" />
     <StaticResource x:Key="Component.WordStrip.Radius" ResourceKey="Primitive.Radius.3" />
     <StaticResource x:Key="Component.WordStrip.WordRowHeight" ResourceKey="Primitive.Size.22" />
@@ -181,5 +184,18 @@
   <Style Selector=":is(TextBlock).lineSentence">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector="Border.stagedStrip">
+    <Setter Property="Padding" Value="{DynamicResource Component.WordStrip.StagedPadding}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Component.WordStrip.StagedRule}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Change.Action}" />
+    <Setter Property="Background" Value="{DynamicResource Intent.Change.Fill}" />
+  </Style>
+  <Style Selector="Border.stagedStrip TextBlock">
+    <Setter Property="FontSize" Value="{DynamicResource Component.WordStrip.StagedType}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Change.Text}" />
+  </Style>
+  <Style Selector="Border.stagedStrip TextBlock.stagedLabel">
+    <Setter Property="FontWeight" Value="Bold" />
   </Style>
 </Styles>

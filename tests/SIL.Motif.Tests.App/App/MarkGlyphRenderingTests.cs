@@ -53,7 +53,7 @@ public sealed class MarkGlyphRenderingTests
     {
         _avalonia.Invoke(() =>
         {
-            var family = Assert.IsType<FontFamily>(Application.Current!.FindResource("Primitive.Font.UI"));
+            var family = Assert.IsType<FontFamily>(Application.Current!.FindResource("Intent.Font.Mark"));
             Assert.True(FontManager.Current.TryGetGlyphTypeface(new Typeface(family), out var andika));
 
             foreach (var mark in AllMarks().Where(mark => mark.Glyph.Length > 0))

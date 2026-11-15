@@ -18,12 +18,6 @@ public sealed class ResponsivePageLayoutTests(ResponsivePageLayoutTests.SampleWi
         {
             foreach (var entry in PageRegistry.Entries)
             {
-                if (entry.Page == WorkspacePage.AiHandoff) continue;
-                if (entry.Page == WorkspacePage.Parsimony)
-                {
-                    yield return ["parsimony-enabled", entry.Page, TextsTab.Lists];
-                    continue;
-                }
                 var routes = PageScreenshots.Views().Where(view => view.Page == entry.Page).ToArray();
                 if (routes.Length == 0)
                     throw new InvalidOperationException($"No responsive fixture is declared for {entry.Page}.");
@@ -38,27 +32,13 @@ public sealed class ResponsivePageLayoutTests(ResponsivePageLayoutTests.SampleWi
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
-            var separate = page is WorkspacePage.Parsimony or WorkspacePage.TryAWord ||
-                page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts;
-            var (workspace, window) = separate
-                ? await PageScreenshots.OpenOverSampleData(
-                    seedReaderToken: page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts,
-                    advancedAiModeEnabled: page == WorkspacePage.Parsimony,
-                    configure: (fake, _) =>
-                    {
-                        if (page == WorkspacePage.Parsimony)
-                            ParsimonyStateScreenshots.Configure(fake, "listed-evidence");
-                    })
-                : await fixture.GetAsync();
+            var (workspace, window) = await fixture.GetAsync();
             try
             {
-                workspace.PageModel<TextsPageModel>().Tab = tab;
-                if (page == WorkspacePage.TryAWord) await PageScreenshots.TryTheSampleWord(workspace);
+                workspace.Context.Diagnostics = true;
+
                 workspace.CurrentPage = page;
-                if (page == WorkspacePage.Parsimony)
-                    await ParsimonyStateScreenshots.DriveAsync("listed-evidence",
-                        workspace.PageModel<ParsimonyPageModel>());
-                if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
+                if (page == WorkspacePage.Texts)
                     await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                 PageScreenshots.AssertSceneHasExpectedErrorState(window, workspace, scene);
                 LayoutAssertions.AssertResponsiveLayouts(window);
@@ -68,11 +48,6 @@ public sealed class ResponsivePageLayoutTests(ResponsivePageLayoutTests.SampleWi
             {
                 WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
                 Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
-                if (separate)
-                {
-                    window.Close();
-                    await workspace.DisposeAsync();
-                }
             }
         }, TimeSpan.FromMinutes(3));
     }

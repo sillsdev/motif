@@ -39,8 +39,6 @@ public sealed class TestLevelGuardTests
         new("SIL.Motif.Tests.App", "TimingSharesTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.App", "TooltipPlacementTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.App", "WordRowOpenLayoutSystemTests", TestBoundary.FakeOnly, "Unit"),
-        new("SIL.Motif.Tests.App", "ParsimonyDecisionChipTests", TestBoundary.FakeOnly, "Unit"),
-        new("SIL.Motif.Tests.App", "ParsimonyTabSelectionTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.App", "TimingSourceAvailabilityTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.App", "SettingsViewTests", TestBoundary.FakeOnly, "Unit"),
         new("SIL.Motif.Tests.App", "EntryPointStartupTests", TestBoundary.Deterministic, "Unit"),

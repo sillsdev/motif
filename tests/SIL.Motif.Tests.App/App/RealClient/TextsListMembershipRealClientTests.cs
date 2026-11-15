@@ -48,20 +48,19 @@ public sealed class TextsListMembershipRealClientTests(PristineProjectFixture pr
             ["Stopped"] = ["motifextra"],
             ["Not parsed"] = [],
         };
-        var lists = page.TextsLists;
-        Assert.Equal(8, lists.Lists.Count);
-        Assert.Equal(4, lists.Lists.Count(list => list.HasWords));
+        Assert.Equal(8, compare.Presets.Count);
+        Assert.Equal(4, compare.Presets.Count(preset => preset.Count > 0));
 
-        foreach (var list in lists.Lists)
+        foreach (var list in compare.Presets)
         {
-            var expected = expectedWords[list.Name].Order(StringComparer.Ordinal).ToArray();
-            lists.SelectListCommand.Execute(list);
+            var expected = expectedWords[list.Label].Order(StringComparer.Ordinal).ToArray();
+            compare.SelectPresetCommand.Execute(list);
             var actual = compare.Words.Select(row => row.Word).Order(StringComparer.Ordinal).ToArray();
             Assert.Equal(expected, actual);
-            Assert.Equal(expected.Length, list.WordCount);
+            Assert.Equal(expected.Length, list.Count);
         }
 
-        lists.SelectListCommand.Execute(lists.Lists.Single(list => list.Name == "Lost"));
+        compare.SelectPresetCommand.Execute(compare.Presets.Single(list => list.Label == "Lost"));
         var approvedNoParse = Assert.Single(compare.Words);
         Assert.Equal(AnalysisMarkingClass.None, approvedNoParse.Marking.PanGlossClass);
         Assert.Equal([OpinionMarkKind.Approved], approvedNoParse.OpinionMarks.Select(mark => mark.Kind));

@@ -128,34 +128,35 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
                 window.OpenRecentProjectByClick(project.FwDataPath);
                 await window.Workspace.Context.EvidencePublication;
                 window.WaitUntilProjectIsQuiet(TimeSpan.FromSeconds(30), "large project did not finish opening");
-                window.ShowPage(WorkspacePage.Overview);
-                Assert.NotNull(window.Workspace.PageModel<OverviewPageModel>().Overview);
+                window.ShowPage(WorkspacePage.Progress);
+                Assert.NotNull(window.Workspace.Context.Health.Overview);
                 PageScreenshots.Settle(window.Window);
                 measurements.Checkpoint("Large: after first Skia render");
             });
             measurements.AssertReadCounts("Open stored Overview", 1, 267, wordCount, 162189);
             Capture(window, "overview");
             var texts = window.Workspace.PageModel<TextsPageModel>();
-            await measurements.MeasureAsync("Open Lists", 15, () =>
+            await measurements.MeasureAsync("Open Words", 15, () =>
             {
-                window.ShowPage(WorkspacePage.Texts);
-                window.ShowTextsTab(TextsTab.Lists);
-                Assert.Equal(wordCount, texts.Assess.Compare.Cells.Sum(cell => cell.WordCount));
+                window.ShowPage(WorkspacePage.Words);
+                window.WaitUntil(() => !texts.Words.IsLoading && texts.Words.Rows.Count > 0,
+                    TimeSpan.FromSeconds(30), "the Selection word rows did not load");
                 PageScreenshots.Settle(window.Window);
             });
-            Capture(window, "lists");
-            await measurements.MeasureAsync("Open largest List", 5, () =>
+            Capture(window, "words");
+            await measurements.MeasureAsync("Reach the final word row", 5, () =>
             {
-                window.ShowTextsTab(TextsTab.Lists);
-                var largest = texts.TextsLists.Lists.MaxBy(list => list.WordCount)!;
-                Assert.True(largest.WordCount > 0);
-                texts.TextsLists.SelectListCommand.Execute(largest);
-                PageScreenshots.Settle(window.Window);
-                output.WriteLine($"Largest List: {largest.Name}, {largest.WordCount} words");
+                var rows = window.Window.GetVisualDescendants().OfType<ListBox>()
+                    .Single(list => list.Name == "TextWordsPanelRowsItems");
+                Assert.True(rows.ItemCount > 0);
+                rows.ScrollIntoView(rows.ItemCount - 1);
+                window.WaitUntil(() => rows.ContainerFromIndex(rows.ItemCount - 1) is not null,
+                    TimeSpan.FromSeconds(5), "the final word row was not realized");
             });
-            Capture(window, "lists");
+            Capture(window, "words-end");
             await measurements.MeasureAsync("Analyze longest Text and scroll to end", 6, async () =>
             {
+                window.ShowPage(WorkspacePage.Texts);
                 window.ShowTextsTab(TextsTab.AnalyzeTexts);
                 window.WaitUntil(() => texts.ResultsInText.Texts.Count == project.TextIds.Count,
                     TimeSpan.FromSeconds(30), "the large Texts were not loaded");
@@ -183,20 +184,22 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
             });
             measurements.AssertReadCounts("Analyze longest Text and scroll to end", 1, 128, 1, 4096);
             Capture(window, "analyze-end");
-            await measurements.MeasureAsync("Open Timing", 5, () =>
+            await measurements.MeasureAsync("Open rule diagnostics", 5, () =>
             {
-                window.ShowPage(WorkspacePage.Timing);
-                Assert.True(window.Workspace.PageModel<TimingPageModel>().HasStoredTiming);
+                window.Workspace.Context.Diagnostics = true;
+                window.Workspace.Context.OpenDiagnostics(DiagnosticsTab.SpeedByRule);
+                Assert.NotNull(window.Workspace.Context.Evidence.ParseTimeAssessmentId);
                 PageScreenshots.Settle(window.Window);
             });
-            Capture(window, "timing");
-            await measurements.MeasureAsync("Open Warnings and check grammar", 15, async () =>
+            Capture(window, "rule-diagnostics");
+            await measurements.MeasureAsync("Open Diagnostics and check grammar", 15, async () =>
             {
-                window.ShowPage(WorkspacePage.Warnings);
-                var warnings = window.Workspace.PageModel<WarningsPageModel>();
-                await warnings.CheckGrammarCommand.ExecuteAsync(null);
-                Assert.True(warnings.Grammar.HasChecked);
-                Assert.True(warnings.Grammar.Warnings.HasAny);
+                window.Workspace.Context.Diagnostics = true;
+                window.ShowPage(WorkspacePage.Diagnostics);
+                var grammar = window.Workspace.Context.GrammarCheck;
+                await grammar.CheckCommand.ExecuteAsync(null);
+                Assert.True(grammar.HasChecked);
+                Assert.True(grammar.Warnings.HasAny);
                 PageScreenshots.Settle(window.Window);
             });
             Capture(window, "warnings");
@@ -211,14 +214,14 @@ public sealed class LargeProjectScaleTests(ITestOutputHelper output)
                 Assert.Contains("parse-results.json", handoff.Value.Files);
                 Assert.All(handoff.Value.Files, file => Assert.True(File.Exists(Path.Combine(destination, file)), file));
             });
-            await measurements.MeasureAsync("Open Review with pending changes", 15, () =>
+            await measurements.MeasureAsync("Open Proposals with pending changes", 15, () =>
             {
-                window.ShowPage(WorkspacePage.Review);
-                Assert.Equal(changeCount, window.Workspace.PageModel<ReviewPageModel>().Changes.Count);
+                window.ShowPage(WorkspacePage.Proposals);
+                Assert.Equal(changeCount, window.Workspace.Context.Changes.Count);
                 PageScreenshots.Settle(window.Window);
             });
             measurements.AssertBudgets();
-            Capture(window, $"review-{changeCount}");
+            Capture(window, $"proposals-{changeCount}");
         }, TimeSpan.FromMinutes(10));
         using var process = Process.GetCurrentProcess();
         output.WriteLine($"Host lifetime peak RSS: {process.PeakWorkingSet64 / 1048576d:F1} MiB");

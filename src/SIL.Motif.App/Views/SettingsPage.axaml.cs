@@ -51,6 +51,8 @@ public sealed partial class SettingsPage : UserControl, IWorkspacePaneProvider
             {
                 _pageModel.PropertyChanged += OnSettingsModelChanged;
                 DataContext = _pageModel.Settings;
+                if (_pageModel.HandoffRequestVersion > 0)
+                    Dispatcher.UIThread.Post(() => this.FindControl<Control>("SettingsHandoffHost")?.BringIntoView());
             }
             ObserveSettings();
             ScrollToSelectedGroup();
@@ -69,12 +71,21 @@ public sealed partial class SettingsPage : UserControl, IWorkspacePaneProvider
         AddHandler(InputElement.KeyDownEvent, OnSettingsKeyDown, RoutingStrategies.Tunnel);
     }
 
+    /// <summary>Creates Settings over the workspace's shared page model.</summary>
+    public SettingsPage(WorkspaceContext context) : this(
+        (context ?? throw new ArgumentNullException(nameof(context))).GetOrCreatePage(static owner => new SettingsPageModel(owner))) { }
+
     /// <summary>Uses the window Settings model assigned through this page's registration model.</summary>
     public SettingsPage(SettingsPageModel model) : this()
     {
         ArgumentNullException.ThrowIfNull(model);
         _pageModel = model;
         DataContext = model.Settings;
+    }
+
+    internal void ConfigureHandoff(HandoffSessionViewModel session)
+    {
+        this.FindControl<ContentControl>("SettingsHandoffHost")!.Content = new HandoffSection(session);
     }
 
     /// <summary>The section navigator supplied to the workspace side panel.</summary>
@@ -87,6 +98,8 @@ public sealed partial class SettingsPage : UserControl, IWorkspacePaneProvider
     {
         if (e.PropertyName == nameof(SettingsPageModel.Settings) && sender is SettingsPageModel model)
             DataContext = model.Settings;
+        if (e.PropertyName == nameof(SettingsPageModel.HandoffRequestVersion))
+            Dispatcher.UIThread.Post(() => this.FindControl<Control>("SettingsHandoffHost")?.BringIntoView());
     }
 
     private void OnPageDataContextChanged(object? sender, EventArgs e)

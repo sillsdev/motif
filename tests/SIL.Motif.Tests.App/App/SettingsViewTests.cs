@@ -302,8 +302,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 }).Append(new WritingSystemDisplay("a-0", "Analysis", "a0", WritingSystemKind.Analysis,
                     0, true, "", "", true, new Dictionary<string, double> { ["Normal"] = 12d }))
                     .ToArray();
-                var overview = workspace.PageModel<OverviewPageModel>().Overview!;
-                workspace.PageModel<OverviewPageModel>().Overview = overview with { WritingSystems = systems };
+                var overview = workspace.Context.Health.Overview!;
+                workspace.Context.Health.Overview = overview with { WritingSystems = systems };
                 PageScreenshots.Settle(window);
 
                 var page = OpenSettings(window);
@@ -815,7 +815,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                 try
                 {
                     workspace.Context.OpenPage(WorkspacePage.Texts);
-                    workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+
                     PageScreenshots.Settle(window);
                     var panel = Assert.Single(window.GetVisualDescendants().OfType<SelectionPanel>());
                     Assert.True(panel.Settings is { HasProject: true, HasSavedSelection: true },
@@ -927,12 +927,7 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
 
                         foreach (var (name, route, tab) in PageScreenshots.Views())
                         {
-                            workspace.PageModel<SIL.Motif.App.ViewModels.TextsPageModel>().Tab = tab;
-                            if (route == SIL.Motif.App.ViewModels.WorkspacePage.TryAWord)
-                            {
-                                workspace.Context.TryWord("hawajafika");
-                                await workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                            }
+                            workspace.Context.Diagnostics = true;
                             workspace.CurrentPage = route;
                             PageScreenshots.Settle(window);
                             try
@@ -1277,8 +1272,8 @@ public sealed class SettingsViewTests(AvaloniaHeadlessFixture avalonia)
                     settingsFilePath: settingsPath);
                 try
                 {
-                    var overview = workspace.PageModel<OverviewPageModel>().Overview!;
-                    workspace.PageModel<OverviewPageModel>().Overview = overview with
+                    var overview = workspace.Context.Health.Overview!;
+                    workspace.Context.Health.Overview = overview with
                     {
                         WritingSystems = WritingSystemCaptureData(),
                     };

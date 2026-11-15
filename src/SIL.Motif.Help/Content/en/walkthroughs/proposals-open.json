@@ -1,17 +1,13 @@
 {
   "id": "proposals-open",
   "title": "Open a Proposal",
-  "description": "See the Proposals waiting for review and open one beside today's numbers.",
+  "description": "See the Proposals for a project.",
   "steps": {
-    "proposals": "Proposals lists what is waiting for you, what needs another try and your own changes not applied yet.",
-    "overview-with-proposal": "View with This Proposal shows the Overview with a bar naming the Proposal. The four headline numbers read today's value, then the Proposal's; the rest of the page is today's."
+    "proposals": "Proposals lists the Proposals for this project."
   },
   "callouts": {
     "proposals": {
       "motif-proposal-row-8d2ef64357cba44e": "A Proposal beside its before and after numbers"
-    },
-    "overview-with-proposal": {
-      "motif-overview-text-coverage": "Today's words that parse, then the Proposal's"
     }
   }
 }

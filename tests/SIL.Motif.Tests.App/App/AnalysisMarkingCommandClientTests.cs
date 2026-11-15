@@ -207,7 +207,6 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
             var compare = new CompareViewModel();
             compare.Load(table.AllRows);
             var row = Assert.Single(compare.Words);
-            var lists = new TextsListsViewModel(compare);
             var inText = await LoadInTextAsync(project, assessment, null);
             var card = ResultsToken(inText, token.Form!);
             var placement = CompareViewModel.Place(Assert.Single(table.AllRows));
@@ -218,8 +217,8 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
             Assert.Equal(expectedLabel, card.VerdictLabel);
             Assert.Equal(expectedColumn, placement.Item2);
             Assert.Equal(expectedListCount,
-                lists.Lists.Count(list => list.HasWords && list.Cells.Contains(new TextsListCell(
-                    placement.Item1, placement.Item2))));
+                compare.Presets.Count(preset => preset.Count > 0 &&
+                    preset.Cells.Any(cell => cell.Row == placement.Item1 && cell.Column == placement.Item2)));
         }, TimeSpan.FromSeconds(180));
     }
 
@@ -258,7 +257,7 @@ public sealed class AnalysisMarkingCommandClientTests(PristineProjectFixture pri
         var changes = new ChangesViewModel(project.Client);
         await changes.OpenProjectAsync(project.Project.FwDataPath);
         fake.ReadWordStateCompletesWith(new WordReadStateResponse([], true));
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, fake, reads);
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, changes, fake, reads);
         await texts.SetProjectAsync(project.Project.FwDataPath);
         fake.AssessCompletesWith(assessment);
         await assess.RunCommand.ExecuteAsync(null);

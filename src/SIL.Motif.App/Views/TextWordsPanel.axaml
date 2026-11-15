@@ -10,48 +10,41 @@
              x:DataType="views:TextWordsPanel">
   <Grid Margin="{DynamicResource Component.TextsPage.PageInset}"
         RowDefinitions="Auto,Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Intent.Space.Compact}">
       <views:CopyableTextBlock Classes="wordListSummary" Text="{Binding Words.SummaryText}" TextTrimming="CharacterEllipsis"
                                ToolTip.Tip="{Binding Words.SummaryText}"
                                AutomationProperties.Name="{Binding Words.SummaryText}"
                                VerticalAlignment="Center" />
-      <TextBox x:Name="WordListSearch" Text="{Binding Words.SearchText}" PlaceholderText="Search words..."
+      <TextBox x:Name="WordListSearch" Text="{Binding Words.SearchText}" PlaceholderText="{x:Static app:MotifAppStrings.SearchWordsPlaceholder}"
                Width="{DynamicResource Component.TextsPage.WordListSearchWidth}"
                Grid.Column="1" AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchWordsAccessibleName}" />
-      <Button IsVisible="False" Content="{Binding Words.HandOffCheckedWordsLabel}"
-              Command="{Binding Words.HandOffCheckedWordsCommand}"
-              AutomationProperties.Name="{Binding Words.HandOffCheckedWordsLabel}"
-              AutomationProperties.HelpText="{Binding Words.HandOffCheckedWordsHelpText}"
-              Grid.Column="2" />
     </Grid>
 
-    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-      <StackPanel Orientation="Horizontal">
-      <views:FilterChip Label="All" Count="{Binding Words.AllCount}" IsActive="{Binding Words.IsAllFilter}"
+    <WrapPanel Grid.Row="1" Orientation="Horizontal">
+      <views:FilterChip Label="{x:Static app:MotifAppStrings.FilterAll}" Count="{Binding Words.AllCount}" IsActive="{Binding Words.IsAllFilter}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Null}" />
-      <views:FilterChip Label="Approved" Count="{Binding Words.ApprovedFilterCount}" Mark="{x:Static vm:Mark.Approved}"
+      <views:FilterChip Label="{x:Static app:MotifAppStrings.FilterApproved}" Count="{Binding Words.ApprovedFilterCount}" Mark="{x:Static vm:Mark.Approved}"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Approved}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Approved}" />
-      <views:FilterChip Label="Unknown" Count="{Binding Words.CandidateFilterCount}" Mark="{x:Static vm:Mark.Unknown}"
+      <views:FilterChip Label="{x:Static app:MotifAppStrings.FilterUnknown}" Count="{Binding Words.CandidateFilterCount}" Mark="{x:Static vm:Mark.Unknown}"
                         IsVisible="{Binding Words.CandidateFilterCount}"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Candidate}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Candidate}" />
-      <views:FilterChip Label="Disapproved" Count="{Binding Words.RejectedFilterCount}" Mark="{x:Static vm:Mark.Disapproved}"
+      <views:FilterChip Label="{x:Static app:MotifAppStrings.FilterDisapproved}" Count="{Binding Words.RejectedFilterCount}" Mark="{x:Static vm:Mark.Disapproved}"
                         IsVisible="{Binding Words.RejectedFilterCount}"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.Rejected}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.Rejected}" />
-      <views:FilterChip Label="Not in FieldWorks" Count="{Binding Words.NotPresentFilterCount}" Mark="{x:Static vm:Mark.NotInFieldWorks}"
+      <views:FilterChip Label="{x:Static app:MotifAppStrings.FilterNotInFieldWorks}" Count="{Binding Words.NotPresentFilterCount}" Mark="{x:Static vm:Mark.NotInFieldWorks}"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.NotPresent}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.NotPresent}" />
-      <views:FilterChip Label="Incorrect spelling" Count="{Binding Words.IncorrectSpellingFilterCount}"
+      <views:FilterChip Label="{x:Static app:MotifAppStrings.FilterIncorrectSpelling}" Count="{Binding Words.IncorrectSpellingFilterCount}"
                         IsVisible="{Binding Words.IncorrectSpellingFilterCount}"
                         IsActive="{Binding Words.StatusFilter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:WordProjectStatus.IncorrectSpelling}}"
                         Command="{Binding Words.SetStatusFilterCommand}" CommandParameter="{x:Static vm:WordProjectStatus.IncorrectSpelling}" />
-      <views:FilterChip Label="Several analyses" Count="{Binding Words.SeveralFilterCount}"
+      <views:FilterChip Label="{x:Static app:MotifAppStrings.FilterSeveralAnalyses}" Count="{Binding Words.SeveralFilterCount}"
                         IsVisible="{Binding Words.SeveralFilterCount}" IsActive="{Binding Words.SeveralOnly}"
                         Command="{Binding Words.ShowSeveralCommand}" />
-      </StackPanel>
-    </ScrollViewer>
+    </WrapPanel>
 
     <views:RefusalBlock Grid.Row="2" DataContext="{Binding Words.ShownRefusal}" />
 

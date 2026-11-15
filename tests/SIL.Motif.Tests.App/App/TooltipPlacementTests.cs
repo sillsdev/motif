@@ -29,16 +29,13 @@ public sealed class TooltipPlacementTests
         "refresh", "project chip", "word cell", "drag all files", "question to copy",
         "word strip", "disapproved mark on a strip", "staged change", "opinion on a word card",
         "mark unread without a text occurrence", "FieldWorks link on a morpheme", "FieldWorks link in a finding",
-        "collapsed sidebar entry", "WORDS column", "completion in detailed statistics",
-        "statistics object name", "statistics word", "statistics heat value",
+        "collapsed sidebar entry",
     };
 
     // Reported gaps: no side of these reader owners is clear, so each tip takes the side that covers fewest.
     private static readonly Dictionary<string, string> Gaps = new()
     {
         ["disapproved mark on a strip"] = "in the Letter, the tip overlaps the adjacent anapenda word strip",
-        ["show Inspector"] = "the notice's Got It sits left of the strip and the first word row fills the side below it",
-        ["tech demo promise"] = "Overview's full-width Open in Lists footer sits above the status bar on every side",
     };
 
     // Light theme only: placement is geometry, and some owners appear only at 1240.

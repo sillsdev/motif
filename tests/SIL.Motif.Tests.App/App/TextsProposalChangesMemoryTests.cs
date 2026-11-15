@@ -28,16 +28,16 @@ public sealed class TextsProposalChangesMemoryTests(ITestOutputHelper output)
     {
         var today = Trial(3);
         var summary = MatrixProposalSummary.Of(Trial(5));
+        var facts = today.Select(word => AssessmentRowFacts.Counted(word, null, false)).ToArray();
         var compare = new CompareViewModel();
         compare.LoadSources(today);
-        compare.ShowProposal(MarkupView.TodayToProposal, MatrixSideState.Held, summary);
         today = null!;
         GC.Collect();
         var baseline = GC.GetTotalMemory(true);
         var allocated = GC.GetTotalAllocatedBytes(true);
         var watch = Stopwatch.StartNew();
 
-        var moves = compare.ProposalMoves()!;
+        var moves = ProposalMoveSet.Of(facts, summary);
         var found = watch.ElapsedMilliseconds;
         var foundAllocated = GC.GetTotalAllocatedBytes(true) - allocated;
         var foundHeld = GC.GetTotalMemory(true) - baseline;
@@ -56,7 +56,6 @@ public sealed class TextsProposalChangesMemoryTests(ITestOutputHelper output)
         output.WriteLine($"MEASURE words={Words} moves={moves.Moves.Count} moved={changes.MovedCount} findMs={found} " +
             $"findAllocated={foundAllocated} findHeld={foundHeld} loadMs={shownMs} loadHeld={shownHeld} " +
             $"biggestWords={listed} openMs={listedMs} openHeld={listedHeld}");
-        Assert.Equal(1, compare.MoveSets);
         Assert.Equal(0, ((LazyMovedWords)biggest.Words).Made);
         Assert.True(listedHeld - shownHeld < 8L << 20, $"opening the biggest move held {listedHeld - shownHeld} bytes");
         Assert.True(foundHeld < moves.Moves.Sum(move => move.Indices.Length) * 6L, $"the moves held {foundHeld} bytes");
@@ -71,14 +70,13 @@ public sealed class TextsProposalChangesMemoryTests(ITestOutputHelper output)
         Assert.InRange(moved, Words / 6, Words / 2);
         Assert.InRange(held, 1, moved * 6L);
 
-        compare.ShowProposal(MarkupView.Today, MatrixSideState.None, null);
         changes.LoadProposalMoves(null);
         for (var pass = 0; pass < 3; pass++) { GC.Collect(); GC.WaitForPendingFinalizers(); }
         var after = GC.GetTotalMemory(true) - baseline;
         output.WriteLine($"MEASURE words={Words} heldAfterRelease={after}");
 
         Assert.Empty(changes.Moves);
-        Assert.Null(compare.HeldProposalMoves);
+        Assert.Null(changes.ProposalMoves);
         Assert.True(after <= 1L << 20, $"{after} bytes remain above today's own words");
         GC.KeepAlive(compare);
     }

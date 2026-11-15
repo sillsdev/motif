@@ -146,7 +146,7 @@ public sealed class AnalysisOperationBulkStagingTests
         };
         var source = new TextWordsResponse([], [new TextLines(TextId, "Bulk text", [line])], true);
         var fixture = new SelectionModelFixture(client);
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, changes, client, client.ReaderOwner);
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, changes, client, client.ReaderOwner);
         await texts.SetProjectAsync(ProjectPath);
         client.AssessCompletesWith(SelectionModelFixture.WithOrigins(Assessment(Forms)));
         await assess.RunCommand.ExecuteAsync(null);

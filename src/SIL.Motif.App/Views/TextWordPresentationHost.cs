@@ -48,9 +48,6 @@ internal sealed class TextWordPresentationHost(TextWordsViewModel words, TextWor
             case WordAction.OpenInText:
                 Execute(row.Listed.Row.OpenInTextCommand);
                 return new WordActionResult(true);
-            case WordAction.TryWord:
-                Execute(row.Listed.Row.TryWordCommand);
-                return new WordActionResult(true);
             case WordAction.SetOpinion when request.Opinion is { } opinion:
                 var behavior = opinion switch
                 {

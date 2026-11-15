@@ -70,13 +70,14 @@ public sealed class LargeProjectViewSwitchPerfTests
             window.OpenRecentProjectByClick(project.FwDataPath);
             await window.Workspace.Context.EvidencePublication;
             window.WaitUntilProjectIsQuiet(TimeSpan.FromSeconds(60), "large project did not finish opening");
-            window.ShowPage(WorkspacePage.Overview);
+            window.Workspace.Context.Diagnostics = true;
+            window.ShowPage(WorkspacePage.Progress);
             PageScreenshots.Settle(window.Window);
             // Prime the Texts reader, as a user who has opened Texts once would have.
             window.ShowPage(WorkspacePage.Texts);
             window.WaitUntil(() => window.Workspace.PageModel<TextsPageModel>().ResultsInText.Texts.Count == LargeProjectFixture.TextCount,
                 TimeSpan.FromSeconds(60), "the large Texts were not loaded");
-            window.ShowPage(WorkspacePage.Overview);
+            window.ShowPage(WorkspacePage.Progress);
             PageScreenshots.Settle(window.Window);
 
             using var sink = MotifTrace.StartListening(path);

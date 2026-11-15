@@ -94,26 +94,6 @@ public sealed record InspectorDetail(string Label, string Value)
 }
 
 /// <summary>
-/// A request to show one object in the inspector beside the page: a morpheme, rule or other name, by identity.
-/// Unlike a <see cref="PageRequest"/> it leaves the page where it is.
-/// </summary>
-/// <param name="Subject">The object to show.</param>
-public sealed record OpenInspectorRequest(InspectorSubject Subject)
-{
-    /// <summary>The trace the subject was named in, when it was opened from one; its details are kept apart.</summary>
-    public InspectorTrace? Trace { get; init; }
-
-    /// <summary>What that trace itself recorded about the subject, line by line; empty when not opened from a trace.</summary>
-    public IReadOnlyList<InspectorDetail> Captured { get; init; } = [];
-
-    /// <summary>
-    /// What the inspector's first breadcrumb names, such as the word whose card it opened from; <see langword="null"/>
-    /// names the page.
-    /// </summary>
-    public string? From { get; init; }
-}
-
-/// <summary>
 /// The project and evidence published to the window's pages, their shared Assessment and Selection, pending
 /// changes, and navigation actions.
 /// </summary>
@@ -126,6 +106,39 @@ public sealed record OpenInspectorRequest(InspectorSubject Subject)
 /// </remarks>
 public sealed partial class WorkspaceContext : ObservableObject, IProjectStateParticipant
 {
+    private HandoffSessionViewModel? _handoffSession;
+    private ProposalApplyViewModel? _proposalApply;
+    private PendingChangesMeasurement? _pendingMeasurement;
+    private WordTraceSessionViewModel? _wordTraceSession;
+    private readonly GrammarCheckSession _grammarCheck;
+
+    internal HandoffSessionViewModel HandoffSession => _handoffSession ??= new HandoffSessionViewModel(this);
+
+    /// <summary>The window's Apply and reconciliation state.</summary>
+    public ProposalApplyViewModel ProposalApply => _proposalApply ??= new ProposalApplyViewModel(this);
+
+    /// <summary>The current pending Draft's explicitly requested measurement.</summary>
+    public PendingChangesMeasurement PendingMeasurement => _pendingMeasurement ??= new PendingChangesMeasurement(this);
+
+    /// <summary>The project-scoped trace and its stored word context.</summary>
+    public WordTraceSessionViewModel WordTraceSession => _wordTraceSession ??= new WordTraceSessionViewModel(this);
+
+    internal void DisposeHandoffSession() => _handoffSession?.Dispose();
+
+    internal TextWordsViewModel GetOrCreateTextWords()
+    {
+        if (Assess.TextWords is { } existing) return existing;
+        var words = new TextWordsViewModel(Commands, Selection, SelectionReads)
+        {
+            Memory = ViewMemory,
+            OpenWord = OpenWord,
+            HandOff = HandOff,
+            WordRowRoutes = Assess.Words.Routes,
+        };
+        Assess.TextWords = words;
+        return words;
+    }
+
     private Func<OccurrenceAnchor, bool>? _occurrenceNavigator;
     private Func<OccurrenceAnchor, TextOccurrenceLocation?>? _occurrenceLocationProvider;
 
@@ -151,6 +164,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         assess.Trace.UseViewMemory(ViewMemory);
         assess.Compare.UseViewMemory(ViewMemory);
         Changes = changes;
+        assess.Compare.Changes = changes;
         Commands = commands;
         TryWordSessions = tryWordSessions ?? NoTryWordSessions.Instance;
         assess.Trace.TryWordSessions = TryWordSessions;
@@ -169,6 +183,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         DiagnosticDialogs = diagnosticDialogs ?? NoDesktopServices.Instance;
         Clock = clock ?? TimeProvider.System;
         TextStyles = new TextStyles();
+        Health = new HealthStripViewModel(this);
         Assess.Trace.SetTextStyles(TextStyles);
         AdvancedAiModePreferences = advancedAiModePreferences;
         DefaultProposalChecks = defaultProposalChecks ?? new MemoryDefaultProposalChecksStore();
@@ -181,16 +196,22 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         Selection.PropertyChanged += OnSelectionPropertyChanged;
         Assess.Words.Routes.HasTexts = Selection.HasTexts;
         Assess.Words.Routes.OpenInText = OpenWord;
-        Assess.Words.Routes.TryWord = TryWord;
         Assess.Words.Routes.Changes = Changes;
         Assess.Words.Routes.StageOpinion = change => Changes.StageStoredOpinionAsync(change);
         Evidence.PropertyChanged += OnEvidencePropertyChanged;
+        _grammarCheck = new GrammarCheckSession(this);
         _projectParticipants.Add(baseline);
         _projectParticipants.Add(selection);
         _projectParticipants.Add(Changes);
         _projectParticipants.Add(this);
+        _projectParticipants.Add(_grammarCheck);
         _projectParticipants.Add(new StoredEvidenceLoader(this));
     }
+
+    /// <summary>The stored overview facts shared by the shell and Settings.</summary>
+    public HealthStripViewModel Health { get; }
+
+    internal GrammarViewModel GrammarCheck => _grammarCheck.Grammar;
 
     /// <summary>What the one Assessment run measures; the Texts page edits it and the shell summarises it.</summary>
     public SelectionViewModel Selection { get; }
@@ -372,11 +393,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>The page the window is showing.</summary>
     [ObservableProperty]
-    private WorkspacePage _currentPage;
-
-    /// <summary>The object the inspector shows, or <see langword="null"/> while it is closed.</summary>
-    [ObservableProperty]
-    private OpenInspectorRequest? _inspector;
+    private WorkspacePage _currentPage = WorkspacePage.Progress;
 
     private readonly List<PageModel> _pages = [];
     private readonly List<IProjectStateParticipant> _projectParticipants = [];
@@ -398,6 +415,9 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>Whether a project open is still running its stages, the stored evidence read among them.</summary>
     internal bool IsOpeningProject => Volatile.Read(ref _openCancellation) is not null;
+
+    internal T GetOrCreatePage<T>(Func<WorkspaceContext, T> create) where T : PageModel =>
+        _pages.OfType<T>().FirstOrDefault() ?? create(this);
 
     // Called by each page model's constructor, so the context reaches a page only through its hooks.
     internal void Attach(PageModel page)
@@ -453,6 +473,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         ++_pageRequestVersion;
         _selectionReaderRequested = false;
         _readerEvidence = null;
+        _pendingMeasurement?.Reset();
+        _wordTraceSession?.ClearProject();
+        if (_proposalApply is { } apply)
+        {
+            apply.Reset();
+            apply.Receipt = null;
+            apply.ApplyRefusal = null;
+        }
         Assess.Reset();
         Lens = null;
         Baseline = null;
@@ -460,8 +488,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         UpdateEvidenceLens();
         Changes.AssessmentId = null;
         GrammarSummary = null;
-        CurrentPage = WorkspacePage.Overview;
-        Inspector = null;
+        CurrentPage = WorkspacePage.Progress;
         ProjectPath = null;
         ViewMemory.OpenProject(null);
         Assess.ProjectPath = null;
@@ -544,6 +571,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             await LoadStoredEvidenceAsync(projectPath, cancellationToken).ConfigureAwait(true);
         await RefreshProposalTrialAsync(cancellationToken).ConfigureAwait(true);
         if (Lens is not null) await PublishToPagesAsync(cancellationToken).ConfigureAwait(true);
+        await _grammarCheck.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
         foreach (var page in _pages.ToArray())
             await page.BaselineCapturedAsync(cancellationToken).ConfigureAwait(true);
     }
@@ -551,6 +579,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Stops whatever work any page has running, and returns once each has stopped.</summary>
     public async Task StopPageWorkAsync()
     {
+        await _grammarCheck.StopAsync().ConfigureAwait(true);
         foreach (var page in _pages.ToArray()) await page.StopWorkAsync().ConfigureAwait(true);
     }
 
@@ -559,8 +588,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     {
         ++_pageRequestVersion;
         TrialRun.CancelAll();
+        if (_pendingMeasurement is { } measurement) await measurement.StopAsync().ConfigureAwait(true);
+        if (_proposalApply is { } apply) await apply.StopAsync().ConfigureAwait(true);
         await Assess.DisposeAsync().ConfigureAwait(true);
-        await Assess.Trace.StopAsync().ConfigureAwait(true);
+        if (_wordTraceSession is { } trace) await trace.StopAsync().ConfigureAwait(true);
+        else await Assess.Trace.StopAsync().ConfigureAwait(true);
         await StopPageWorkAsync().ConfigureAwait(true);
         await SelectionReads.StopAsync().ConfigureAwait(true);
         await ProposalSelectionReads.StopAsync().ConfigureAwait(true);
@@ -697,7 +729,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
                     ProposalSelectionReads.Clear();
                 if (!IsCurrentOpen(generation)) return;
                 await Task.WhenAll(_pages.ToArray()
-                    .Select(page => page.EvidencePublishedAsync(EvidenceLens, cancellationToken))).ConfigureAwait(true);
+                    .Select(page => page.EvidencePublishedAsync(EvidenceLens, cancellationToken))
+                    .Append(_grammarCheck.EvidencePublishedAsync(cancellationToken))).ConfigureAwait(true);
             }
             while (_republish && IsCurrentOpen(generation));
         }
@@ -729,28 +762,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         await Changes.TargetAsync(proposalId, cancellationToken).ConfigureAwait(true);
         if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath)) return;
         var trial = read.Value;
-        // Opening the same Proposal again, as a refresh does, keeps the view the person chose on the bar.
+        // Preserve the evidence view of an already-open Proposal while refreshing its Trial.
         var view = Lens is { } open && open.ProposalId == proposalId ? open.View : MarkupView.TodayToProposal;
         Lens = new ProposalLens(proposalId, FirstNamed(trial?.Label, label) ?? proposalId, trial?.IntentDigest ?? string.Empty,
             trial, view) { ReadRefusal = read.Refusal };
         await PublishToPagesAsync(cancellationToken).ConfigureAwait(true);
-    }
-
-    /// <summary>How pages that follow the Proposal bar show a pair; today's while no Proposal is open.</summary>
-    public MarkupView ProposalView => Lens?.View ?? MarkupView.Today;
-
-    /// <summary>
-    /// Chooses how the pages that follow the Proposal bar show a pair: today's, today's beside the Proposal's, or the
-    /// Proposal's. It is not an evidence change, so it raises <see cref="ProposalView"/> alone: no page reloads,
-    /// re-reads or re-applies the lens. The choice belongs to the open Proposal, and leaving it forgets the choice.
-    /// </summary>
-    public void ShowProposalView(MarkupView view)
-    {
-        if (_lens is not { } lens || lens.View == view) return;
-        // Set through the field, not Lens, so listeners of the evidence lens never hear a view change.
-        _lens = lens with { View = view };
-        EvidenceLens.ShowView(view);
-        OnPropertyChanged(nameof(ProposalView));
     }
 
     private static string? FirstNamed(params string?[] labels) => labels.FirstOrDefault(
@@ -787,7 +803,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         if (Lens is { } lens && lens.ProposalId == proposalId)
         {
             if (!outcome.Succeeded && TrialRun.StateFor(proposalId).JobId is null)
-                Lens = lens with { Trial = null, ReadRefusal = outcome.Refusal, View = ProposalView };
+                Lens = lens with { Trial = null, ReadRefusal = outcome.Refusal };
             else
                 await RefreshProposalTrialAsync(cancellationToken, outcome.Succeeded ? outcome : null)
                     .ConfigureAwait(true);
@@ -822,7 +838,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath, lens.ProposalId)) return;
         if (!read.Succeeded)
         {
-            Lens = lens with { Trial = null, ReadRefusal = read.Refusal, View = ProposalView };
+            Lens = lens with { Trial = null, ReadRefusal = read.Refusal };
             return;
         }
         var trial = read.Value;
@@ -838,7 +854,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
             if (!IsCurrentProposalRead(openGeneration, proposalReadGeneration, projectPath, lens.ProposalId)) return;
             if (!detailed.Succeeded)
             {
-                Lens = lens with { Trial = null, ReadRefusal = detailed.Refusal, View = ProposalView };
+                Lens = lens with { Trial = null, ReadRefusal = detailed.Refusal };
                 return;
             }
             trial = detailed.Value;
@@ -894,13 +910,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         _tracedPage = value;
         using var span = MotifTrace.BeginInSwitch("switch.page-changed");
         ++_pageRequestVersion;
-        if (value == WorkspacePage.TryAWord && ProjectPath is { } projectPath)
-            TryWordSessions.Prewarm(projectPath, Commands.ParserPath);
-        if (value is not (WorkspacePage.Texts or WorkspacePage.Review)) return;
+        if (value is not (WorkspacePage.Texts or WorkspacePage.Words)) return;
         RequireSelectionReader();
     }
 
-    private WorkspacePage _tracedPage;
+    private WorkspacePage _tracedPage = WorkspacePage.Progress;
 
     private void RequireSelectionReader()
     {
@@ -914,7 +928,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     /// <summary>Whether <paramref name="page"/> is shown and can be opened in this window.</summary>
     public bool CanOpenPage(WorkspacePage page) =>
-        PageEntries.FirstOrDefault(entry => entry.Page == page) is not { IsDiagnostic: true } || Diagnostics;
+        PageEntries.FirstOrDefault(entry => entry.Page == page) is { } entry && (!entry.IsDiagnostic || Diagnostics);
 
     /// <summary>The registered pages that determine which pages can be opened.</summary>
     public IReadOnlyList<PageEntry> PageEntries { get; init; } = PageRegistry.Entries;
@@ -925,7 +939,7 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
 
     partial void OnDiagnosticsChanged(bool value)
     {
-        if (!CanOpenPage(CurrentPage)) CurrentPage = WorkspacePage.Overview;
+        if (!CanOpenPage(CurrentPage)) CurrentPage = WorkspacePage.Progress;
     }
 
     /// <summary>Loads and persists the person's Diagnostics preference.</summary>
@@ -946,7 +960,6 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     /// <summary>Opens <paramref name="page"/> as it stands; a page this window does not offer stays closed.</summary>
     public void OpenPage(WorkspacePage page)
     {
-        if (page == WorkspacePage.AiHandoff) page = WorkspacePage.AiAssistants;
         if (!CanOpenPage(page)) return;
         if (MotifTrace.IsEnabled && page != CurrentPage)
             MotifTrace.BeginSwitch("page", CurrentPage.ToString(), page.ToString());
@@ -958,13 +971,11 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     public void Open(PageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (CanOpenPage(request.Page))
-        {
-            if (MotifTrace.IsEnabled && request.Page != CurrentPage)
-                MotifTrace.BeginSwitch("page", CurrentPage.ToString(), request.Page.ToString());
-            using var span = MotifTrace.BeginInSwitch("switch.open-page");
-            CurrentPage = request.Page == WorkspacePage.AiHandoff ? WorkspacePage.AiAssistants : request.Page;
-        }
+        if (!CanOpenPage(request.Page)) return;
+        if (MotifTrace.IsEnabled && request.Page != CurrentPage)
+            MotifTrace.BeginSwitch("page", CurrentPage.ToString(), request.Page.ToString());
+        using var span = MotifTrace.BeginInSwitch("switch.open-page");
+        CurrentPage = request.Page;
         var version = ++_pageRequestVersion;
         var publication = EvidencePublication;
         var delivery = DeliverRequestAsync(request, publication, version, Volatile.Read(ref _openGeneration));
@@ -977,21 +988,14 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
         if (version != _pageRequestVersion || !IsCurrentOpen(generation)) return;
         if (request is DeferredOccurrenceRequest occurrence)
             request = _occurrenceNavigator?.Invoke(occurrence.Anchor) == true
-                ? new OpenTextsRequest(TextsTab.AnalyzeTexts)
+                ? new OpenTextsRequest()
                 : new OpenWordRequest(occurrence.Word, occurrence.WordformId);
         using var span = MotifTrace.Begin("switch.deliver-request");
         foreach (var page in _pages.ToArray()) page.Requested(request);
     }
 
-    /// <summary>Opens the Texts page on <paramref name="tab"/>.</summary>
-    /// <param name="tab">The tab to show.</param>
-    public void OpenTexts(TextsTab tab) => OpenTexts(tab, null);
-
-    /// <summary>Opens the Texts page on <paramref name="tab"/> with the requested matrix cells selected.</summary>
-    /// <param name="tab">The tab to show.</param>
-    /// <param name="cells">The matrix cells to select, or <see langword="null"/> to preserve the current selection.</param>
-    public void OpenTexts(TextsTab tab, IReadOnlyList<TextsListCell>? cells) =>
-        Open(new OpenTextsRequest(tab, cells));
+    /// <summary>Opens the Texts reader.</summary>
+    public void OpenTexts() => Open(new OpenTextsRequest());
 
     /// <summary>Opens <paramref name="word"/> in the Texts page's word list, with every filter cleared.</summary>
     public void OpenWord(string word) => Open(new OpenWordRequest(word));
@@ -1015,32 +1019,8 @@ public sealed partial class WorkspaceContext : ObservableObject, IProjectStatePa
     internal TextOccurrenceLocation? OccurrenceLocation(OccurrenceAnchor occurrence) =>
         _occurrenceLocationProvider?.Invoke(occurrence);
 
-    /// <summary>Opens Try a Word on <paramref name="word"/> and traces it straight away.</summary>
-    public void TryWord(string word) => Open(new TryWordRequest(word));
-
-    /// <summary>
-    /// Opens the inspector on <paramref name="subject"/>, beside the page the window is showing, with its first
-    /// breadcrumb naming <paramref name="from"/>, or the page when that is <see langword="null"/>.
-    /// </summary>
-    public void OpenInspector(InspectorSubject subject, string? from = null, InspectorTrace? trace = null,
-        IReadOnlyList<InspectorDetail>? captured = null)
-    {
-        var request = new OpenInspectorRequest(subject ?? throw new ArgumentNullException(nameof(subject)))
-        {
-            From = from,
-            Trace = trace,
-            Captured = trace is null ? [] : captured ?? [],
-        };
-        // Asking again for the object already open starts its breadcrumb afresh, as a new request would.
-        if (Equals(Inspector, request)) OnPropertyChanged(nameof(Inspector));
-        else Inspector = request;
-    }
-
-    /// <summary>Closes the inspector.</summary>
-    public void CloseInspector() => Inspector = null;
-
-    /// <summary>Opens the Timing page on <paramref name="words"/>, filtered to <paramref name="rule"/> when named.</summary>
-    public void OpenTiming(IReadOnlyList<string> words, TraceTimingKey? rule, string? label = null) => Open(new OpenTimingRequest(words, rule, label));
+    /// <summary>Opens a recorded Diagnostics tab when it is enabled.</summary>
+    public void OpenDiagnostics(DiagnosticsTab tab) => Open(new OpenDiagnosticsRequest(tab));
 
     /// <summary>Opens the AI Handoff page with <paramref name="words"/> as the words it will write.</summary>
     public void HandOff(IReadOnlyList<string> words) => Open(new HandOffRequest(words));

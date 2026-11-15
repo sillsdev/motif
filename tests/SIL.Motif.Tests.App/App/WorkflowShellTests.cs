@@ -66,9 +66,9 @@ public sealed class WorkflowShellTests
                 Assert.NotNull(view.FindControl<ListBox>("PageList"));
                 Assert.NotNull(view.FindControl<Border>("StatusBar"));
                 var pageHost = Assert.IsType<Panel>(view.FindControl<Panel>("PageHost"));
-                workspace.CurrentPage = WorkspacePage.Review;
+                workspace.CurrentPage = WorkspacePage.Proposals;
                 PageScreenshots.Settle(window);
-                var page = Assert.Single(pageHost.Children, child => child.Name == "ReviewPage");
+                var page = Assert.Single(pageHost.Children, child => child.Name == "ProposalsPage");
                 Assert.True(page.IsEffectivelyVisible);
                 Assert.Contains(window.GetVisualDescendants(), control =>
                     AutomationProperties.GetAutomationId(control) == AutomationIds.Pages && control.IsEffectivelyVisible);
@@ -95,7 +95,8 @@ public sealed class WorkflowShellTests
     public void EveryPageHasExactlyOneRegistryEntryAndTheSidebarFollowsItsOrder()
     {
         var registered = PageRegistry.Entries.Select(entry => entry.Page).ToList();
-        Assert.Equal(Enum.GetValues<WorkspacePage>().Order(), registered.Order());
+        Assert.Equal(new[] { WorkspacePage.Progress, WorkspacePage.Texts, WorkspacePage.Words,
+            WorkspacePage.GrammarGuide, WorkspacePage.Proposals, WorkspacePage.Diagnostics, WorkspacePage.Settings }, registered);
         Assert.Equal(registered.Count, registered.Distinct().Count());
 
         var workspace = NewWorkspace();
@@ -126,10 +127,11 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
+                workspace.Context.Diagnostics = true;
                 window.EnsureAllPageViews();
                 var host = window.FindInWindowOrWorkspace<Panel>("PageHost")!;
                 Assert.Equal(PageHosts, host.Children.Select(child => child.Name));
-                foreach (var page in Enum.GetValues<WorkspacePage>())
+                foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
                 {
                     var built = PageRegistry.For(page).CreateView(workspace.PageOf(page).Model);
                     Assert.IsType(built.GetType(), host.Children.Single(child => child.Name == $"{page}Page"));
@@ -143,19 +145,14 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
-    public void AnAutomaticallyCheckedGrammarOffersAWorkingRetryOnWarnings()
+    public void DiagnosticsShowsStoredGrammarWithoutStartingAnotherCheck()
     {
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(
             new BaselineToken("p", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64)),
             DateTimeOffset.UtcNow, false));
         fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
-        fake.OnCheckGrammar((_, _) =>
-        {
-            var result = new GrammarCheckResponse([], HasBaseline: true);
-            fake.StoredGrammarCheckIs(result);
-            return Task.FromResult(CommandOutcome<GrammarCheckResponse>.Success(result));
-        });
+        fake.StoredGrammarCheckIs(new GrammarCheckResponse([], HasBaseline: true));
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = NewComposedWindow(fake);
@@ -164,23 +161,18 @@ public sealed class WorkflowShellTests
                 window.Show();
                 await workspace.SetProjectAsync(@"C:\projects\one.fwdata");
                 workspace.Context.Setup?.SkipCommand.Execute(null);
-                workspace.CurrentPage = WorkspacePage.Warnings;
+                workspace.Context.Diagnostics = true;
+                workspace.CurrentPage = WorkspacePage.Diagnostics;
                 await SIL.Motif.Tests.TestFixtures.Wait.UntilAsync(
-                    () => workspace.PageModel<WarningsPageModel>().Grammar.HasChecked,
-                    "The automatic grammar check did not finish.", TimeSpan.FromMinutes(1));
+                    () => workspace.Context.GrammarCheck.HasChecked,
+                    "The stored grammar check did not load.", TimeSpan.FromMinutes(1));
                 window.UpdateLayout();
                 Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
-                Assert.Single(fake.CheckGrammarRequests);
-                var check = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
+                Assert.Empty(fake.CheckGrammarRequests);
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Check the grammar again" && button.IsEffectivelyVisible);
-                Assert.True(check.IsEffectivelyVisible);
-                Assert.True(check.IsEffectivelyEnabled);
-
-                Click(window, check);
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-
-                Assert.Equal(2, fake.CheckGrammarRequests.Count);
+                Assert.Empty(fake.CheckGrammarRequests);
             }
             finally
             {
@@ -197,13 +189,14 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
+                workspace.Context.Diagnostics = true;
                 window.EnsureAllPageViews();
-                foreach (var page in Enum.GetValues<WorkspacePage>())
+                foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
                 {
                     workspace.CurrentPage = page;
 
                     var visible = PageHosts.Where(name => Host(window, name).IsVisible).ToList();
-                    Assert.Equal([$"{(page == WorkspacePage.AiHandoff ? WorkspacePage.AiAssistants : page)}Page"], visible);
+                    Assert.Equal([$"{page}Page"], visible);
                 }
             }
             finally
@@ -226,8 +219,7 @@ public sealed class WorkflowShellTests
 
                 var entries = SidebarEntries(window);
                 Assert.Equal(
-                    ["Overview page", "Proposals page", "Texts page", "Try a Word page", "Review Changes page",
-                        "AI Assistants page", "Parser Work page", "Warnings page", "Parsimony page"],
+                    ["Progress page", "Texts page", "Words page", "Grammar Guide page", "Proposals page", "Diagnostics page"],
                     entries.Select(AutomationProperties.GetName));
 
                 foreach (var page in workspace.VisiblePages.Select(entry => entry.Page).Reverse())
@@ -280,10 +272,10 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
-                workspace.Context.Changes.Items.Add(new ChangeViewModel(ChangeKinds.Approve, "kitabu", "kitabu"));
-                window.Width = 1279;
+                workspace.PageOf(WorkspacePage.Proposals).BadgeCount = 2;
+                window.Width = 999;
                 window.Show();
-                window.UpdateLayout();
+                PageScreenshots.Settle(window);
 
                 var sidebar = window.FindInWindowOrWorkspace<Border>("Sidebar")!;
                 Assert.True(workspace.IsSidebarCollapsed);
@@ -291,38 +283,34 @@ public sealed class WorkflowShellTests
                 Assert.All(SidebarEntries(window), entry => Assert.False(Label(entry).IsEffectivelyVisible));
                 Assert.Equal(workspace.VisiblePages.Select(page => (object)page.Title), SidebarEntries(window).Select(entry => ToolTip.GetTip(entry)));
 
-                window.Width = 1280;
+                window.Width = 1000;
                 PageScreenshots.Settle(window);
                 Assert.False(workspace.IsSidebarCollapsed);
-                Assert.Equal(190, sidebar.Bounds.Width);
+                Assert.Equal(176, sidebar.Bounds.Width);
                 Assert.All(SidebarEntries(window), entry => Assert.True(Label(entry).IsEffectivelyVisible));
                 Assert.Equal(workspace.VisiblePages.Select(page => (object)page.Title), SidebarEntries(window).Select(entry => ToolTip.GetTip(entry)));
-                Assert.True(Entry(SidebarEntries(window), WorkspacePage.Review).GetVisualDescendants().OfType<Border>()
+                Assert.True(Entry(SidebarEntries(window), WorkspacePage.Proposals).GetVisualDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("pageBadge")).IsEffectivelyVisible);
 
                 window.Width = 900;
-                window.UpdateLayout();
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-
+                PageScreenshots.Settle(window);
                 Assert.True(workspace.IsSidebarCollapsed);
                 Assert.Equal(44, sidebar.Bounds.Width);
                 var entries = SidebarEntries(window);
                 Assert.All(entries, entry => Assert.False(Label(entry).IsEffectivelyVisible));
-                Assert.Equal(workspace.VisiblePages.Select(page => (object)page.Title), entries.Select(entry => ToolTip.GetTip(entry)));
-                var reviewBadge = Entry(entries, WorkspacePage.Review).GetVisualDescendants().OfType<Border>()
+                var proposalEntry = Entry(entries, WorkspacePage.Proposals);
+                var badge = proposalEntry.GetVisualDescendants().OfType<Border>()
                     .Single(border => border.Classes.Contains("pageBadge"));
-                Assert.True(reviewBadge.IsEffectivelyVisible);
-                var reviewEntry = Entry(entries, WorkspacePage.Review);
-                var icon = reviewEntry.GetVisualDescendants().OfType<Viewbox>()
+                Assert.True(badge.IsEffectivelyVisible);
+                var icon = proposalEntry.GetVisualDescendants().OfType<Viewbox>()
                     .Single(view => view.Classes.Contains("pageIcon"));
-                var iconBounds = new Rect(icon.TranslatePoint(default, reviewEntry)!.Value, icon.Bounds.Size);
-                var badgeBounds = new Rect(reviewBadge.TranslatePoint(default, reviewEntry)!.Value, reviewBadge.Bounds.Size);
+                var iconBounds = new Rect(icon.TranslatePoint(default, proposalEntry)!.Value, icon.Bounds.Size);
+                var badgeBounds = new Rect(badge.TranslatePoint(default, proposalEntry)!.Value, badge.Bounds.Size);
                 Assert.False(iconBounds.Intersects(badgeBounds), $"Icon {iconBounds} overlaps badge {badgeBounds}.");
-                Assert.True(badgeBounds.Right <= reviewEntry.Bounds.Width, "The badge extends beyond its navigation item.");
+                Assert.True(badgeBounds.Right <= proposalEntry.Bounds.Width, "The badge extends beyond its navigation item.");
+                Click(window, proposalEntry);
+                Assert.Equal(WorkspacePage.Proposals, workspace.CurrentPage);
 
-                Click(window, Entry(entries, WorkspacePage.Review));
-                Assert.Equal(WorkspacePage.Review, workspace.CurrentPage);
             }
             finally
             {
@@ -363,7 +351,7 @@ public sealed class WorkflowShellTests
             try
             {
                 window.Show();
-                Assert.Equal((1240d, 780d, 640d, 600d), (window.Width, window.Height, window.MinWidth, window.MinHeight));
+                Assert.Equal((1280d, 800d, 640d, 600d), (window.Width, window.Height, window.MinWidth, window.MinHeight));
                 var topBar = window.GetLogicalDescendants().OfType<Border>().Single(border => border.Classes.Contains("topBar"));
                 var chromePadding = OperatingSystem.IsWindows() ? new Thickness(18, 0, 138, 0)
                     : OperatingSystem.IsMacOS() ? new Thickness(76, 0, 18, 0)
@@ -652,78 +640,30 @@ public sealed class WorkflowShellTests
     }
 
     [Fact]
-    public void TheReviewPageShowsOrderedGroupsAndKeyboardReachableActions()
+    public void TheWorkspaceKeepsOneStagingOwnerForPendingChanges()
     {
         _avalonia.Invoke(() =>
         {
             var (workspace, window) = NewComposedWindow();
             try
             {
-                window.Width = 1920;
-                workspace.CurrentPage = WorkspacePage.Review;
-                window.Show();
-                window.UpdateLayout();
-
-                var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
-                var list = review.GetLogicalDescendants().OfType<ItemsControl>()
-                    .Single(control => AutomationProperties.GetName(control) == "Changes grouped for review");
-                Assert.Same(workspace.Context.Changes, workspace.Assess.Compare.Changes);
-                var page = workspace.PageModel<ReviewPageModel>();
-                workspace.Context.Changes.Items.Add(new ChangeViewModel(
-                    ChangeKinds.RemoveAnalysis, "kalamu", "old reading", changeId: "remove-kalamu",
-                    storedAnalysisId: "stored-reading"));
-                workspace.Context.Changes.Items.Add(new ChangeViewModel(
-                    ChangeKinds.AddCandidate, "kitabu", "reading", changeId: "add-kitabu"));
-                window.UpdateLayout();
-
-                var groups = page.ReviewGroups;
-                Assert.Equal(["Added", "Removed"], groups.Select(item => item.Title));
-                Assert.Same(page.TableEntries, list.ItemsSource);
-                Assert.Equal(page.ReviewGroups.Select(item => item.Title),
-                    page.TableEntries.OfType<ReviewChangeGroupViewModel>().Select(group => group.Title));
-                Assert.Contains(review.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Text == "Added");
-                var added = page.TableEntries.OfType<ReviewListEntryViewModel>().Single(entry => entry.Change?.Word == "kitabu");
-                var addedRow = ((ListBox)list).ContainerFromItem(added)!;
-                Assert.Equal("Not in FieldWorks → Unknown", added.Change!.TransitionText);
-                Assert.Equal([OpinionMarkKind.None, OpinionMarkKind.Unknown],
-                    addedRow.GetVisualDescendants().OfType<OpinionMark>().Select(mark => mark.Kind!.Value));
-                var buttons = review.GetLogicalDescendants().OfType<Button>().ToArray();
-                var undo = buttons.Single(button => AutomationProperties.GetName(button) == "Undo: kitabu");
-                var keep = buttons.Single(button => AutomationProperties.GetName(button) == "Keep: kitabu");
-                Assert.Same(keep.Parent, undo.Parent);
-                Assert.Equal(2, buttons.Count(button => Equals(button.Content, "Undo") &&
-                    AutomationProperties.GetName(button)?.StartsWith("Undo: ", StringComparison.Ordinal) == true));
-                Assert.Equal(2, buttons.Count(button => Equals(button.Content, "Keep") &&
-                    AutomationProperties.GetName(button)?.StartsWith("Keep: ", StringComparison.Ordinal) == true));
-                Assert.True(undo.IsEffectivelyVisible);
-                Assert.True(undo.IsHitTestVisible);
-                Assert.Equal(1d, undo.Opacity);
-                Assert.True(undo.IsTabStop);
-                Assert.Contains(buttons, button =>
-                    AutomationProperties.GetName(button) == "Undo all: Added");
-                Assert.DoesNotContain(buttons, button =>
-                    AutomationProperties.GetName(button) == "Go to text in Added");
-                page.SelectEntry(added.Review!);
-                PageScreenshots.Settle(window);
-                var goToText = Assert.Single(review.InspectorContent.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == added.Change.Listed!.Row.OpenInTextAutomationName);
-                Assert.Equal(1d, goToText.Opacity);
-                Assert.True(goToText.IsEffectivelyVisible);
-                Assert.True(goToText.IsHitTestVisible);
-                Assert.True(goToText.IsTabStop);
-                Assert.True(goToText.Focus(NavigationMethod.Tab));
-                Assert.Equal(1d, undo.Opacity);
+                var changes = workspace.Context.Changes;
+                Assert.Same(changes, workspace.Assess.Compare.Changes);
+                changes.Items.Add(new ChangeViewModel(ChangeKinds.RemoveAnalysis, "kalamu", "old reading",
+                    changeId: "remove-kalamu", storedAnalysisId: "stored-reading"));
+                changes.Items.Add(new ChangeViewModel(ChangeKinds.AddCandidate, "kitabu", "reading",
+                    changeId: "add-kitabu"));
+                Assert.Equal(2, changes.Items.Count);
+                Assert.Equal("Not in FieldWorks → Unknown", changes.Items.Single(change => change.Word == "kitabu").TransitionText);
+                Assert.Contains(workspace.Context.ProposalApply.Blockers(null, null, null, null),
+                    blocker => blocker.Kind == ApplyBlockerKind.NotMeasured);
             }
-            finally
-            {
-                window.Close();
-            }
+            finally { window.Close(); }
         });
     }
 
     [Fact]
-    public void MissingReviewContextUsesTheSharedParsePrompt()
+    public void MissingOccurrenceContextRemainsUnavailableAndTextsOffersTheRealParsePrompt()
     {
         var fake = new FakeCommandClient();
         fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(
@@ -738,100 +678,60 @@ public sealed class WorkflowShellTests
                 window.Show();
                 await workspace.SetProjectAsync(@"C:\projects\review-context.fwdata");
                 workspace.Context.Setup?.SkipCommand.Execute(null);
-                workspace.CurrentPage = WorkspacePage.Review;
+                workspace.CurrentPage = WorkspacePage.Texts;
                 var change = new ChangeViewModel(ChangeKinds.Approve, "kitabu", "reading", "change",
                     occurrence: new OccurrenceAnchor(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 0));
-                workspace.Context.Changes.Items.Add(change);
-                var review = Assert.Single(window.GetLogicalDescendants().OfType<ReviewPanel>());
-                var page = workspace.PageModel<ReviewPageModel>();
-                _ = page.ReviewEntries;
-                var key = change.Presentation.Key;
-                var row = new PresentationWordRow
-                {
-                    Data = change.Presentation,
-                    State = new SIL.Motif.App.Controls.WordPresentation.WordInteractionState(key, IsOpen: true),
-                    Host = review.PresentationHost,
-                };
-                window.Content = row;
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
+                change.ToggleContext();
                 Assert.True(change.HasUnavailableContext);
-                var prompts = row.GetLogicalDescendants().OfType<ParsePrompt>().ToArray();
-                Assert.Single(prompts, prompt => prompt.IsEffectivelyVisible);
-                Assert.All(prompts, prompt => Assert.Same(workspace.Context, prompt.DataContext));
+                PageScreenshots.Settle(window);
+                var prompt = Assert.Single(window.GetVisualDescendants().OfType<ParsePrompt>(),
+                    candidate => candidate.IsEffectivelyVisible);
+                Assert.Same(workspace.Context, prompt.DataContext);
             }
-            finally
-            {
-                window.Close();
-            }
-        }, TimeSpan.FromSeconds(10));
+            finally { window.Close(); await workspace.DisposeAsync(); }
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
-    public void OnlyTheCurrentTextsTabShowsAndItsTabIsMarkedActive()
+    public void TextsAndWordsHaveDistinctPageHosts()
     {
         _avalonia.Invoke(() =>
         {
             var (workspace, window) = NewComposedWindow();
             try
             {
-                workspace.CurrentPage = WorkspacePage.Texts;
                 window.Show();
-                window.UpdateLayout();
-
-                Assert.Contains("active", ButtonNamed(window, "Analyze texts tab").Classes);
-                Assert.DoesNotContain("active", ButtonNamed(window, "Lists tab").Classes);
-                Assert.True(Host(window, "AnalyzeTextsHost").IsEffectivelyVisible);
-
-                ButtonNamed(window, "Analyze texts tab").Command!.Execute(TextsTab.AnalyzeTexts);
-                window.UpdateLayout();
-
-                Assert.Contains("active", ButtonNamed(window, "Analyze texts tab").Classes);
-                Assert.DoesNotContain("active", ButtonNamed(window, "Lists tab").Classes);
-                Assert.True(Host(window, "AnalyzeTextsHost").IsEffectivelyVisible);
-                Assert.False(Host(window, "ListsHost").IsEffectivelyVisible);
-
-                ButtonNamed(window, "Lists tab").Command!.Execute(TextsTab.Lists);
-                window.UpdateLayout();
-
-                Assert.False(Host(window, "AnalyzeTextsHost").IsEffectivelyVisible);
-                Assert.True(Host(window, "ListsHost").IsEffectivelyVisible);
-                Assert.Contains("active", ButtonNamed(window, "Lists tab").Classes);
+                workspace.CurrentPage = WorkspacePage.Texts;
+                PageScreenshots.Settle(window);
+                var texts = window.PageView<TextsPage>();
+                Assert.True(texts.IsEffectivelyVisible);
+                workspace.CurrentPage = WorkspacePage.Words;
+                PageScreenshots.Settle(window);
+                Assert.False(texts.IsEffectivelyVisible);
+                Assert.True(window.PageView<WordsPage>().IsEffectivelyVisible);
+                Assert.Same(workspace.PageModel<TextsPageModel>().Words, workspace.PageModel<WordsPageModel>().Words);
             }
-            finally
-            {
-                window.Close();
-            }
+            finally { window.Close(); }
         });
     }
 
     [Fact]
-    public void TryAWordIsAPageOfItsOwnAndTheWordsViewNoLongerHostsIt()
+    public void TraceSessionIsSharedWithoutASeparateTryWordPage()
     {
         _avalonia.Invoke(() =>
         {
             var (workspace, window) = NewComposedWindow();
             try
             {
-                workspace.CurrentPage = WorkspacePage.TryAWord;
+                workspace.Context.Diagnostics = true;
                 window.Show();
-                window.UpdateLayout();
-
                 window.EnsureAllPageViews();
                 window.RealizeLazyContent();
                 var pages = window.FindInWindowOrWorkspace<Panel>("PageHost")!.Children;
-                var tryPage = Assert.IsType<TryAWordPage>(pages.Single(page => page.Name == "TryAWordPage"));
-                var tryWord = Assert.Single(tryPage.GetLogicalDescendants().OfType<TryWordPanel>());
-                Assert.Same(workspace.Assess.Trace, tryWord.Trace);
-                Assert.Single(tryPage.GetLogicalDescendants().OfType<DiagnosticPanel>());
-                var texts = Assert.IsType<TextsPage>(pages.Single(page => page.Name == "TextsPage"));
-                Assert.Empty(texts.GetLogicalDescendants().OfType<TryWordPanel>());
-                Assert.Equal("TryAWordPage", tryPage.Name);
+                Assert.DoesNotContain(pages, page => page.Name == "TryAWordPage");
+                Assert.Same(workspace.Assess.Trace, workspace.Context.WordTraceSession.Trace);
             }
-            finally
-            {
-                window.Close();
-            }
+            finally { window.Close(); }
         });
     }
 
@@ -844,12 +744,12 @@ public sealed class WorkflowShellTests
             var (workspace, window) = NewComposedWindow();
             try
             {
-                workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
-                workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"));
-                workspace.PageModel<AiHandoffPageModel>().Handoff.OutputDirectory = @"C:\handoff";
-                workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
+                workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
+                workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files.Add(new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"));
+                workspace.PageModel<SettingsPageModel>().Handoff.Handoff.OutputDirectory = @"C:\handoff";
+                workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State = RunState.Completed;
                 SettingsTestAccess.Model(window).ShowHandoffByCopyingFiles = true;
-                workspace.CurrentPage = WorkspacePage.AiHandoff;
+                workspace.CurrentPage = WorkspacePage.Settings;
                 window.Show();
                 window.UpdateLayout();
 

@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProgressPage"
+             x:DataType="vm:ProgressPageModel">
+  <StackPanel Margin="{DynamicResource Intent.Inset.Page}" Spacing="{DynamicResource Intent.Space.Group}">
+    <views:CopyableTextBlock Classes="displayTitle" Text="{x:Static app:MotifAppStrings.Progress}"
+               AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressHeading}" />
+    <views:CopyableTextBlock Text="{Binding Context.ProjectName}" IsVisible="{Binding Context.HasProject}" />
+    <views:CopyableTextBlock Text="{Binding Health.SelectionSummary}" IsVisible="{Binding Health.HasSelectionSummary}" TextWrapping="Wrap" />
+    <StackPanel IsVisible="{Binding HasWaitingProposals}" Spacing="{DynamicResource Intent.Space.Related}"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNext}">
+      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProgressNext}" />
+      <Button Command="{Binding ShowPageCommand}" CommandParameter="{x:Static vm:WorkspacePage.Proposals}"
+              AutomationProperties.Name="{Binding WaitingProposalsText}">
+        <TextBlock Text="{Binding WaitingProposalsText}" />
+      </Button>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

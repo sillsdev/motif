@@ -290,124 +290,6 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     }
 
 
-    [Fact]
-    public void TimingsChartHasItsOwnColoursEachVisibleOnItsCard()
-    {
-        var failures = new List<string>();
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var priorTheme = Application.Current!.RequestedThemeVariant;
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false,
-                configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
-            try
-            {
-                workspace.CurrentPage = WorkspacePage.Timing;
-                foreach (var theme in Themes)
-                {
-                    Application.Current!.RequestedThemeVariant = theme;
-                    PageScreenshots.Settle(window);
-                    var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>(),
-                        candidate => candidate.IsEffectivelyVisible);
-                    Assert.True(bar.IsEffectivelyVisible);
-                    var brushes = KindBrushes(bar);
-                    var parts = brushes.Select(brush => Assert.IsAssignableFrom<ISolidColorBrush>(brush).Color).ToArray();
-                    var reserved = new[] { Resolve("Intent.Primary", theme), Resolve("Intent.Link", theme) };
-                    if (parts.Distinct().Count() != parts.Length) failures.Add($"{theme}: two parts share a colour");
-                    if (parts.Intersect(reserved).Any()) failures.Add($"{theme}: a part is Intent.Primary or Intent.Link");
-                    var card = Backdrop(bar);
-                    for (var index = 0; index < parts.Length; index++)
-                    {
-                        var ratio = Ratio(Painted(bar, Layer(brushes[index])), card);
-                        if (ratio < Part) failures.Add($"{theme} part {index + 1} {parts[index]}: {ratio:F2}:1 on {card}");
-                    }
-                }
-            }
-            finally
-            {
-                Application.Current!.RequestedThemeVariant = priorTheme;
-                window.Close();
-            }
-        }, TimeSpan.FromMinutes(1));
-
-        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
-    }
-
-    [Fact]
-    public void TimingsLegendShowsEachKindBesideItsPartsColourInARowThatWraps()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false,
-                configure: OverviewTimingScreenshots.ReadOverviewAndTiming);
-            try
-            {
-                // The width the page review and PR-06 drew.
-                window.Width = 1240;
-                window.Height = 780;
-                workspace.CurrentPage = WorkspacePage.Timing;
-                PageScreenshots.Settle(window);
-                var bar = Assert.Single(window.GetVisualDescendants().OfType<TimingKindBar>(),
-                    candidate => candidate.IsEffectivelyVisible);
-                var legend = window.GetLogicalDescendants().OfType<ItemsControl>()
-                    .Single(control => AutomationProperties.GetName(control) == "Timing by kind");
-                var swatches = legend.GetVisualDescendants().OfType<Border>()
-                    .Where(border => border.Classes.Contains("swatch")).Select(border => border.Background).ToArray();
-
-                Assert.Equal(bar.Rows!.Count, swatches.Length);
-                var rows = legend.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("swatch"))
-                    .Select(border => Math.Round(border.TranslatePoint(default, legend)!.Value.Y)).Distinct().Count();
-                Assert.True(rows < swatches.Length, $"the legend is a list of {rows} rows, not a row that wraps");
-                for (var index = 0; index < swatches.Length; index++)
-                    Assert.Same(bar.BrushFor(bar.Rows[index].Kind), swatches[index]);
-                Assert.Equal(swatches.Length, swatches.Distinct().Count());
-            }
-            finally
-            {
-                window.Close();
-            }
-        }, TimeSpan.FromMinutes(1));
-    }
-
-    [Theory]
-    [InlineData("morph_rule", "Intent.Timing.MorphRule")]
-    [InlineData("phon_rule", "Intent.Timing.PhonRule")]
-    [InlineData("lex_entry", "Intent.Timing.Lexicon")]
-    [InlineData("root_index", "Intent.Timing.RootLookup")]
-    [InlineData("parser", "Intent.Timing.Parser")]
-    [InlineData("anything else", "Intent.Timing.Unattributed")]
-    public void ATimingKindKeepsItsOwnColourWhereverItFallsInTheBar(string kind, string key)
-    {
-        avalonia.Invoke(() =>
-        {
-            foreach (var theme in Themes)
-            {
-                var bar = new TimingKindBar();
-                var window = new MotifTestWindow { Content = bar, RequestedThemeVariant = theme, Width = 400, Height = 100 };
-                ScopedComponentStyles.Include(window, "Timing");
-                try
-                {
-                    window.Show();
-                    foreach (var order in new[] { new[] { kind, "other" }, new[] { "other", kind } })
-                    {
-                        bar.Rows = [.. order.Select(name => new TimingShare(name, name, 1, 0.5, 1,
-                            new SIL.Motif.Contract.Responses.TimingAggregateRow(name, name, 1, 0.5, 1) { Kind = name }))];
-                        window.UpdateLayout();
-                        var entry = Assert.Single(bar.Legend, entry => entry.Row.Kind == kind);
-                        var brush = Assert.IsAssignableFrom<ISolidColorBrush>(entry.Brush);
-                        Assert.Equal(Resolve(key, theme), brush.Color);
-                    }
-                }
-                finally
-                {
-                    window.Close();
-                }
-            }
-        });
-    }
-
-    private static IBrush?[] KindBrushes(TimingKindBar bar) =>
-        [bar.MorphRuleBrush, bar.PhonRuleBrush, bar.LexiconBrush, bar.RootLookupBrush, bar.ParserBrush, bar.UnattributedBrush];
-
     // Each owner restyles the text inside it, and a tooltip's text is its owner's logical descendant.
     public static TheoryData<string> TooltipOwners() => new() { "plain", "stagedStrip", "markChip", "ruleRow", "handoffQuestion" };
 
@@ -493,95 +375,6 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         });
     }
 
-    // A disabled control's own label may be faint; its reason, in the tooltip and beside it, must still read.
-    [Fact]
-    public void DisabledReasonsRemainReadableAfterThemeChange()
-    {
-        var failures = new List<string>();
-        var measured = 0;
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var fake = new FakeCommandClient();
-            fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-                [new("kept", "wordform/kept", "kept", "approve", "assessment/one", "reading", ["operation/kept"])],
-                [new ChangeFit("kept", true, [])]));
-            var context = DisabledReasonContext(fake);
-            var review = new ReviewPageModel(context);
-            await context.OpenProjectAsync(@"C:\projects\reasons.fwdata");
-            var compare = new CompareViewModel();
-            compare.Load([new AssessWordRowViewModel(
-                new AssessmentWordResult("hawajafika", "no-analysis", false, "Search completed", 1, null)
-                {
-                    ProjectStanding = ProjectStanding.Approved,
-                    OccurrenceCount = 1,
-                })]);
-            var lists = new TextsListsViewModel(compare);
-
-            var prior = Application.Current!.RequestedThemeVariant;
-            var reviewWindow = new MotifTestWindow
-            {
-                Content = SIL.Motif.App.Views.Shell.WorkspaceLayoutHost.ForPage(new ReviewPanel(review)),
-                Width = 1100, Height = 800,
-            };
-            var listsWindow = new MotifTestWindow { Content = new TextsListsPanel(lists), Width = 1100, Height = 800 };
-            try
-            {
-                Application.Current.RequestedThemeVariant = ThemeVariant.Light;
-                reviewWindow.Show();
-                listsWindow.Show();
-                foreach (var (state, list) in new[] { ("ticked none", "Lost"), ("empty list", "Nobody can analyze") })
-                {
-                    lists.SelectListCommand.Execute(lists.Lists.Single(candidate => candidate.Name == list));
-                    foreach (var theme in Themes)
-                    {
-                        Application.Current.RequestedThemeVariant = theme;
-                        PageScreenshots.Settle(listsWindow);
-                        PageScreenshots.Settle(reviewWindow);
-                        var apply = Disabled(reviewWindow, "Apply to FieldWorks project", failures);
-                        var owners = new[] { apply }.OfType<Button>().ToList();
-                        var reasons = new List<(string What, TextBlock Text)>();
-                        foreach (var owner in owners.Where(owner => ToolTip.GetTip(owner) is not null))
-                            reasons.AddRange(ControlContracts.TooltipScenes.OpenTipTexts(owner)
-                                .Select(text => ($"the tooltip on {AutomationProperties.GetName(owner)}", text)));
-                        reasons.AddRange(Shown(listsWindow, lists.HandOffCheckedWordsDisabledReason, lists.HandOffListDisabledReason)
-                            .Select(text => ("the reason under the AI Handoff buttons", text)));
-                        reasons.AddRange(Shown(reviewWindow, [review.ApplyBlockedTitle, review.ApplyDisabledReason ?? string.Empty])
-                            .Select(text => ("the reasons Apply is blocked", text)));
-                        var minimumReasons = 2;
-                        if (reasons.Count < minimumReasons)
-                            failures.Add($"{theme} {state}: only {reasons.Count} reasons showed");
-                        foreach (var (what, text) in reasons)
-                        {
-                            var ratio = Effective(text);
-                            measured++;
-                            if (ratio < Text) failures.Add($"{theme} {state}: {what} '{text.Text}' is {ratio:F2}:1, needs {Text}:1");
-                        }
-                        foreach (var owner in owners) ToolTip.SetIsOpen(owner, false);
-                    }
-                }
-            }
-            finally
-            {
-                Application.Current!.RequestedThemeVariant = prior;
-                reviewWindow.Close();
-                listsWindow.Close();
-            }
-        }, TimeSpan.FromMinutes(1));
-
-        Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
-        Assert.True(measured > 0, "no reason was measured");
-    }
-
-    private static Button? Disabled(Window window, string name, List<string> failures)
-    {
-        var button = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(candidate => AutomationProperties.GetName(candidate) == name);
-        if (button is null) failures.Add($"'{name}' is not shown");
-        else if (button.IsEffectivelyEnabled) failures.Add($"'{name}' is enabled, so it shows no reason");
-        else if (AutomationProperties.GetHelpText(button) is not { Length: > 0 })
-            failures.Add($"'{name}' is disabled with no accessible reason");
-        return button is { IsEffectivelyEnabled: false } ? button : null;
-    }
-
     private static Button? DisabledByAutomationId(Window window, string automationId, List<string> failures)
     {
         var button = window.GetVisualDescendants().OfType<Button>().FirstOrDefault(candidate =>
@@ -591,30 +384,6 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
         else if (ToolTip.GetTip(button) is not string { Length: > 0 })
             failures.Add($"'{automationId}' is disabled with no reason in its tooltip");
         return button is { IsEffectivelyEnabled: false } ? button : null;
-    }
-
-    private static IEnumerable<TextBlock> Shown(Window window, params string[] sentences) =>
-        window.GetVisualDescendants().OfType<TextBlock>()
-            .Where(text => text.IsEffectivelyVisible && !string.IsNullOrEmpty(text.Text) && sentences.Contains(text.Text) &&
-                text.FindAncestorOfType<ToolTip>() is null);
-
-    private static WorkspaceContext DisabledReasonContext(FakeCommandClient fake)
-    {
-        fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
-        var selection = new SelectionViewModel(fake);
-        return new WorkspaceContext(selection, new AssessViewModel(fake, selection), new ChangesViewModel(fake), fake,
-            new NoFolder(), new NoDrag(), new BaselineViewModel(fake));
-    }
-
-    private sealed class NoFolder : SIL.Motif.App.Services.IHandoffFolderPicker
-    {
-        public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default) => Task.FromResult<string?>(null);
-    }
-
-    private sealed class NoDrag : SIL.Motif.App.Services.IFileDragSource
-    {
-        public Task<Avalonia.Input.DragDropEffects> StartDragAsync(Avalonia.Input.PointerPressedEventArgs trigger,
-            IReadOnlyList<string> filePaths, Avalonia.Input.DragDropEffects allowedEffects) => Task.FromResult(allowedEffects);
     }
 
     private static Color LabelColour(Button button) => Assert.IsAssignableFrom<ISolidColorBrush>(
@@ -642,7 +411,6 @@ public sealed class ContrastTests(AvaloniaHeadlessFixture avalonia)
     {
         { "Intent.Space.Compact", 4.0 },                       // DialogLabelFieldGap, Semi ExtraTight
         { "Intent.Space.Related", 6.0 },                       // DialogControlGap
-        { "Intent.Space.Group", 8.0 },                         // DialogButtonStripGap, Semi Tight
         { "Intent.Gap.BeforeGroup", new Thickness(0, 8, 0, 0) },   // DialogGroupSeparation
         { "Intent.Gap.BeforeRelated", new Thickness(0, 6, 0, 0) }, // DialogControlGapAbove, DialogLabelGroupGapAbove
         { "Intent.Gap.AfterRelated", new Thickness(0, 0, 6, 0) },  // DataTree.TrailingGap

@@ -160,10 +160,10 @@ public sealed class ChromeLayoutTests
             {
                 window.Width = 820;
                 window.Height = 600;
-                workspace.CurrentPage = WorkspacePage.AiAssistants;
+                workspace.CurrentPage = WorkspacePage.Settings;
                 PageScreenshots.Settle(window);
 
-                var page = window.PageView<AssistantConnectionsPage>();
+                var page = window.PageView<SettingsPage>();
                 var targets = page.GetVisualDescendants().OfType<Control>()
                     .Where(control => control is Button or CheckBox)
                     .Where(control => control.IsEffectivelyVisible)
@@ -176,8 +176,10 @@ public sealed class ChromeLayoutTests
                     PageScreenshots.Settle(window);
                     var scroll = target.GetVisualAncestors().OfType<ScrollViewer>()
                         .FirstOrDefault(viewer => viewer.IsEffectivelyVisible);
-                    Assert.NotNull(scroll);
-                    AssertInside(target, scroll, scroll.Viewport, ControlName(target));
+                    if (scroll is not null)
+                        AssertInside(target, scroll, scroll.Viewport, ControlName(target));
+                    else
+                        AssertInside(target, window, window.ClientSize, ControlName(target));
                 }
             }
             finally

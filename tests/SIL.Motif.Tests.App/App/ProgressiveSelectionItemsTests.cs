@@ -77,7 +77,7 @@ public sealed class ProgressiveSelectionItemsTests
             var client = new FakeCommandClient();
             var selection = new SelectionViewModel(client);
             var words = new TextWordsViewModel(client, selection, client.ReaderOwner);
-            var owner = new ResultsInTextViewModel(words, new AssessViewModel(client, selection), _ => { }, _ => { },
+            var owner = new ResultsInTextViewModel(words, new AssessViewModel(client, selection), _ => { },
                 new ChangesViewModel(client), client, client.ReaderOwner);
             await using var fixture = new SelectionModelFixture(client);
             await fixture.PublishAsync(new TextWordsResponse([], [new TextLines(Guid.NewGuid(), "Text",

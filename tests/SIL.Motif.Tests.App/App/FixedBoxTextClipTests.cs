@@ -6,12 +6,14 @@ using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.App.Walkthrough;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>Andika's line box is 1.611 em, so text in a box of fixed height can need more than the box gives it.</summary>
+/// <summary>Text and controls stay within their measured boxes at the supported interface zooms.</summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 [Trait("MotifTestLevel", "Unit")]
 public sealed class FixedBoxTextClipTests(ITestOutputHelper output)
@@ -19,71 +21,39 @@ public sealed class FixedBoxTextClipTests(ITestOutputHelper output)
     [Theory]
     [InlineData(100)]
     [InlineData(150)]
-    public void ReviewRowsKeepTheirTextAndTicksInsideTheFixedRowAtEveryZoom(int zoom)
+    public void DiagnosticWarningsKeepTheirTextInsideTheControlsAtEveryZoom(int zoom)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             LayoutInvariantFixtures.ResetSharedState();
-            var (workspace, window) = await ReviewScreenshots.OpenAsync(ReviewDenseTableTests.MixedChanges());
+            var fake = new FakeCommandClient();
+            var warning = new GrammarWarning(GrammarDiagnosticLevel.Warning, "Recorded", [], [],
+                "A recorded warning with enough detail to wrap when the window is narrow.");
+            fake.StoredGrammarCheckIs(new GrammarCheckResponse([warning], HasBaseline: true));
+            var context = WorkspaceContextTests.NewContext(fake);
+            context.Diagnostics = true;
+            var model = new DiagnosticsPageModel(context);
+            await context.OpenProjectAsync("project.fwdata");
+            var page = new DiagnosticsPage(model);
+            var window = new MotifTestWindow { Width = 640, Height = 600, Content = page };
             try
             {
-                workspace.CurrentPage = WorkspacePage.Review;
-                var page = workspace.PageModel<ReviewPageModel>();
-                await page.LoadReviewAsync();
-                window.Width = 1920;
-                window.Height = 1080;
                 WindowZoomPolicy.Apply(Application.Current!, zoom);
+                window.Show();
                 PageScreenshots.Settle(window);
-                foreach (var entry in page.TableEntries.OfType<ReviewListEntryViewModel>().Where(entry => entry.Review is not null))
-                    entry.Review!.IsLookedAt = true;
-                PageScreenshots.Settle(window);
-                var panel = Assert.Single(window.GetVisualDescendants().OfType<ReviewPanel>());
-                var rows = panel.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("denseTableRow")).ToArray();
-                Assert.Equal(2, rows.Length);
-                Assert.Equal(2, rows.SelectMany(row => row.GetVisualDescendants().OfType<TextBlock>())
-                    .Count(text => text.Text == "✓" && text.IsEffectivelyVisible && text.Classes.Contains("denseTableCount")));
-                Assert.Empty(FixedBoxClips.Find(panel, $"review@{zoom}", output));
+                var list = page.FindControl<ListBox>("DiagnosticWarningRows")!;
+                Assert.Single(list.Items);
+                Assert.Empty(FixedBoxClips.Find(page, $"diagnostics@{zoom}", output));
             }
             finally
             {
                 LayoutInvariantFixtures.ResetSharedState();
                 window.Close();
+                await context.StopProjectWorkAsync();
             }
         }, TimeSpan.FromSeconds(60));
     }
 
-    [Theory]
-    [InlineData(100, "listed-evidence", "ParsimonyRowsItems")]
-    [InlineData(150, "listed-evidence", "ParsimonyRowsItems")]
-    [InlineData(100, "suppressed-with-reason", "ParsimonySuppressedItems")]
-    [InlineData(150, "suppressed-with-reason", "ParsimonySuppressedItems")]
-    public void ParsimonyRowsKeepTheirTextInsideTheirRowsAtEveryZoom(int zoom, string state, string listName)
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            LayoutInvariantFixtures.ResetSharedState();
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, advancedAiModeEnabled: true,
-                configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, state));
-            try
-            {
-                workspace.CurrentPage = WorkspacePage.Parsimony;
-                var page = workspace.PageModel<ParsimonyPageModel>();
-                if (state.StartsWith("suppressed", StringComparison.Ordinal)) page.IsShowingSuppressed = true;
-                window.Width = 1920;
-                window.Height = 1080;
-                WindowZoomPolicy.Apply(Application.Current!, zoom);
-                PageScreenshots.Settle(window);
-                var list = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(), box => box.Name == listName);
-                Assert.Contains(list.GetVisualDescendants().OfType<Border>(), b => b.Classes.Contains("denseTableRow"));
-                Assert.Empty(FixedBoxClips.Find(list, $"parsimony-{state}@{zoom}", output));
-            }
-            finally
-            {
-                LayoutInvariantFixtures.ResetSharedState();
-                window.Close();
-            }
-        }, TimeSpan.FromSeconds(60));
-    }
 }
 
 internal static class FixedBoxClips

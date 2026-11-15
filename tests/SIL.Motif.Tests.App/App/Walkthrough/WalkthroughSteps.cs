@@ -37,8 +37,8 @@ internal static class WalkthroughSteps
             "first-time setup did not open after the Baseline was captured");
         walkthrough.SkipSetup();
         Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
-        Assert.False(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
-        Assert.False(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
+        Assert.False(walkthrough.Workspace.Context.Setup?.CanRunDefaultSelection);
+        Assert.False(walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff.RunCommand.CanExecute(null));
         walkthrough.WaitUntil(
             () => walkthrough.ProjectSwitchEnabled,
             TimeSpan.FromSeconds(10), "the Project menu did not re-enable after setup closed",
@@ -47,17 +47,15 @@ internal static class WalkthroughSteps
                 $"Assess.IsActive='{walkthrough.Workspace.Assess.IsActive}', " +
                 $"Setup.IsOpen='{walkthrough.Workspace.Context.Setup?.IsOpen}', " +
                 $"IsOpeningProject='{walkthrough.Workspace.Context.IsOpeningProject}'");
-        Assert.True(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
         Assert.NotEqual("No Baseline captured yet", walkthrough.Workspace.Baseline.CapturedTimeText);
-        // The Overview distinguishes when Motif captured a Baseline from the FieldWorks save it copies.
-        var overview = walkthrough.Workspace.PageModel<OverviewPageModel>();
+        var overview = walkthrough.Workspace.Context.Health;
         walkthrough.WaitUntil(
             () => overview.Overview is { BaselineCapturedUtc: not null, BaselineSourceLastWriteUtc: not null },
             Remaining(deadline), "the Overview did not reload the captured Baseline");
         Assert.NotNull(overview.Overview?.BaselineCapturedUtc);
         Assert.NotNull(overview.Overview?.BaselineSourceLastWriteUtc);
         Assert.Equal(overview.Overview?.LastFieldWorksSaveUtc, overview.Overview?.BaselineSourceLastWriteUtc);
-        // Freshness is said once, in the top bar; the Overview repeats none of it.
+        // Freshness is said once, in the top bar; Progress repeats none of it.
         Assert.DoesNotContain(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
             text.IsEffectivelyVisible && text.Text is { } shown &&
             (shown.Contains("last FieldWorks save", StringComparison.Ordinal) ||
@@ -138,7 +136,7 @@ internal static class WalkthroughSteps
         Action? cancelWhenParsingHasPendingWords = null)
     {
         walkthrough.TypePastedWords(string.Join(Environment.NewLine, words));
-        Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
+        Assert.True(walkthrough.Workspace.Assess.RunCommand.CanExecute(null));
 
         var assess = walkthrough.Workspace.Assess;
         var pendingParsingObserved = false;
@@ -162,11 +160,11 @@ internal static class WalkthroughSteps
 
         try
         {
-            walkthrough.Click("Parse all words in the Selection");
+            walkthrough.Workspace.Assess.RunCommand.Execute(null);
             if (cancelWhenParsingHasPendingWords is null)
             {
                 Assert.False(walkthrough.ProjectSwitchEnabled);
-                Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
+                Assert.False(walkthrough.SelectionPane.IsEffectivelyEnabled);
                 walkthrough.WaitUntil(() =>
                 {
                     if (assess.State is RunState.Completed or RunState.Cancelled or RunState.Refused)
@@ -197,9 +195,9 @@ internal static class WalkthroughSteps
         WalkthroughWindow walkthrough, long deadline, HoldingStartGate? holdingGate = null)
     {
         walkthrough.TypePastedWords("motifa\nmotifb\nmofita");
-        Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
+        Assert.True(walkthrough.Workspace.Assess.RunCommand.CanExecute(null));
 
-        walkthrough.Click("Parse all words in the Selection");
+        walkthrough.Workspace.Assess.RunCommand.Execute(null);
 
         if (holdingGate is not null)
         {
@@ -207,7 +205,7 @@ internal static class WalkthroughSteps
                 () => walkthrough.Workspace.Assess.State == RunState.Running,
                 Remaining(deadline), "the held Assessment did not reach Running");
             Assert.False(walkthrough.ProjectSwitchEnabled);
-            Assert.False(walkthrough.Named<ContentControl>("SelectionHost").IsEffectivelyEnabled);
+            Assert.False(walkthrough.SelectionPane.IsEffectivelyEnabled);
             Assert.True(walkthrough.Find<Button>("Cancel parsing all words").IsEffectivelyEnabled);
             holdingGate.ReleaseAssess();
         }

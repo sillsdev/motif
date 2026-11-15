@@ -76,7 +76,7 @@ public sealed class ReaderToolbarResponsiveTests
                     Assert.True(search.IsEffectivelyVisible, $"Search is hidden at {width}x{height}/{zoom}%/{themeName}.");
                     Assert.True(read.IsEffectivelyVisible, $"Read is hidden at {width}x{height}/{zoom}%/{themeName}.");
                     Assert.True(select.IsEffectivelyVisible, $"Select is hidden at {width}x{height}/{zoom}%/{themeName}.");
-                    Assert.Equal("Search words...", search.PlaceholderText);
+                    Assert.Equal("Search Words...", search.PlaceholderText);
                     Assert.True(string.IsNullOrEmpty(search.Text), "Search must start empty to show its placeholder.");
 
                     var controls = new Control[] { picker, search, read, select };

@@ -46,11 +46,7 @@ internal static class MatrixCaptureState
         Xunit.Assert.True(object.ReferenceEquals(expectedContext, visiblePage.DataContext),
             "The visible page view is not bound to the selected page model.");
 
-        if (expectedTab is { } tab)
-        {
-            var actualTab = workspace.PageModel<TextsPageModel>().Tab;
-            Xunit.Assert.True(tab == actualTab, $"Expected Texts tab {tab}, but the window shows {actualTab}.");
-        }
+
     }
 
     /// <summary>Checks the explicit route before writing a rendered frame to <paramref name="path"/>.</summary>

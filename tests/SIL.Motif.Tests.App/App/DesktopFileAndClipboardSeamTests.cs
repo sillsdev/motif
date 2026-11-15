@@ -8,7 +8,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins what the diagnostic tools, Try a Word, and AI Handoff hand the clipboard and the diagnostic file
+/// Pins what the shared trace tools and AI Handoff hand the clipboard and the diagnostic file
 /// dialogs, through scripted doubles rather than the window's own clipboard and storage provider.
 /// </summary>
 public sealed class DesktopFileAndClipboardSeamTests
@@ -263,9 +263,9 @@ public sealed class DesktopFileAndClipboardSeamTests
     }
 
     [Fact]
-    public async Task TryAWordOpensAValidSavedDiagnosticForAWindowOfItsOwn()
+    public async Task SharedTraceOpensAValidSavedDiagnosticForAWindowOfItsOwn()
     {
-        var page = new TryWordPageModel(NewContext());
+        var page = NewContext().WordTraceSession;
         OpenedDiagnostic? opened = null;
         page.SavedDiagnosticOpened += diagnostic => opened = diagnostic;
         _files.NextOpenReads(ValidDiagnosticJson);
@@ -279,9 +279,9 @@ public sealed class DesktopFileAndClipboardSeamTests
     }
 
     [Fact]
-    public async Task TryAWordShowsARefusedSavedDiagnosticInAWindowOfItsOwn()
+    public async Task SharedTraceShowsARefusedSavedDiagnosticInAWindowOfItsOwn()
     {
-        var page = new TryWordPageModel(NewContext());
+        var page = NewContext().WordTraceSession;
         OpenedDiagnostic? opened = null;
         page.SavedDiagnosticOpened += diagnostic => opened = diagnostic;
         _files.NextOpenReads("{");
@@ -296,9 +296,9 @@ public sealed class DesktopFileAndClipboardSeamTests
     }
 
     [Fact]
-    public async Task TryAWordIgnoresACancelledOpen()
+    public async Task SharedTraceIgnoresACancelledOpen()
     {
-        var page = new TryWordPageModel(NewContext());
+        var page = NewContext().WordTraceSession;
         var openedCount = 0;
         page.SavedDiagnosticOpened += _ => openedCount++;
         _files.NextOpenCancels();
@@ -310,10 +310,10 @@ public sealed class DesktopFileAndClipboardSeamTests
     }
 
     [Fact]
-    public async Task TryAWordsDiagnosticToolsCopyTheSharedTrace()
+    public async Task DiagnosticToolsCopyTheSharedTrace()
     {
         var context = NewContext();
-        var page = new TryWordPageModel(context);
+        var page = context.WordTraceSession;
 
         Assert.Same(page.Trace, page.Diagnostics.Trace);
         await page.Diagnostics.CopyInstructionsAsync();
@@ -324,9 +324,9 @@ public sealed class DesktopFileAndClipboardSeamTests
     }
 
     [Fact]
-    public async Task TheAiHandoffPageCopiesThroughTheComposedClipboard()
+    public async Task SettingsHandoffCopiesThroughTheComposedClipboard()
     {
-        var page = new AiHandoffPageModel(NewContext());
+        var page = new SettingsPageModel(NewContext()).Handoff;
         page.Handoff.PastedHeader = "the starter prompt";
 
         await page.Handoff.CopyStarterPromptAsync();

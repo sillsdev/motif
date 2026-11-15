@@ -63,7 +63,6 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
                 InteractiveControlFamily.Disclosure,
                 InteractiveControlFamily.List,
                 InteractiveControlFamily.SelectableText,
-                InteractiveControlFamily.ContentSurface,
                 InteractiveControlFamily.Collection,
                 InteractiveControlFamily.Container);
             var sentence = block.GetLogicalDescendants().OfType<CopyableTextBlock>()

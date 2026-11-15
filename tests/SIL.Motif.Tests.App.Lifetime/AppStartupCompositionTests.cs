@@ -98,7 +98,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
 
     // Resident sessions latch for the whole process, so this separate test process is the only one that runs them.
     [Fact]
-    public void OpeningTryAWordWarmsTheParserAndAWordIsTracedOnTheResidentSession()
+    public void OpeningTextsDoesNotStartTheParserAndAnExplicitWarmSessionTracesWords()
     {
         var host = MotifAppHost.Shared;
         using var project = new WalkthroughProject(pristine);
@@ -113,7 +113,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
             RunnerLauncher = new NoRunnerLauncher(new JobRunnerLaunchOptions(project.ManagedRoot, parser)),
             TryWordSessions = new TryWordSessionsAdapter() };
 
-        host.Run("open Try a Word, trace a word on the resident session", JourneyLimit, async () =>
+        host.Run("open Texts, then trace words on an explicitly warmed resident session", JourneyLimit, async () =>
         {
             var session = host.Start(options);
             try
@@ -121,10 +121,13 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 await session.KnownProjectsLoaded;
                 await SelectNewProjectAsync(session, () => picker.Calls == 1);
                 await Wait.UntilAsync(() => session.Workspace.Baseline.HasBaseline, "the Baseline did not load");
-                await ShowPageAsync(session, WorkspacePage.TryAWord);
+                await ShowPageAsync(session, WorkspacePage.Texts);
                 var path = session.Workspace.Context.ProjectPath!;
+                Assert.Equal(WarmSessionPhase.Idle, session.Workspace.Context.TryWordSessions.GetPhase(path, parser));
+                Assert.DoesNotContain(FakeParser.Invocations(parser), command => command is "serve" or "parse" or "batch");
+                session.Workspace.Context.TryWordSessions.Prewarm(path, parser);
                 await Wait.UntilAsync(() => session.Workspace.Context.TryWordSessions.GetPhase(path, parser) == WarmSessionPhase.Ready,
-                    "opening Try a Word did not warm the parser");
+                    "the requested resident session did not warm the parser");
 
                 var trace = session.Workspace.Assess.Trace;
                 trace.SetWord("motifa");
@@ -349,8 +352,7 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                     session.Window.UpdateLayout();
                     session.Window.GetVisualDescendants().OfType<CheckBox>()
                         .Single(box => box.Name == "ShowHandoffByCopyingFiles").IsChecked = true;
-                    await ShowPageAsync(session, WorkspacePage.AiAssistants);
-                    var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
+                    var handoff = workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
                     await handoff.RunCommand.ExecuteAsync(null);
                     Assert.True(handoff.State == RunState.Completed, "The Handoff was not written: " +
                         handoff.Refusal?.Code + " " + handoff.Refusal?.Message);
@@ -364,15 +366,17 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                     var windowRuns = FakeParser.Invocations(parser).Count(command => command == "batch");
                     Assert.True(windowRuns > 0, "The window's runs did not reach the substituted parser.");
 
-                    stage = "Review with Measure/Trial";
-                    await ShowPageAsync(session, WorkspacePage.Review);
-                    var review = workspace.PageModel<ReviewPageModel>();
-                    await Wait.UntilAsync(() => review.MeasureCommand.CanExecute(null), "the pending change did not reach Review");
+                    stage = "Pending changes with Measure/Trial";
+                    await ShowPageAsync(session, WorkspacePage.Proposals);
+                    var measurement = workspace.Context.PendingMeasurement;
+                    await Wait.UntilAsync(() => measurement.MeasureCommand.CanExecute(null), "the pending change did not reach measurement");
                     Assert.Equal(draft, workspace.Context.Changes.Snapshot.DraftId);
-                    await review.MeasureCommand.ExecuteAsync(null);
-                    Assert.Null(review.MeasurementRefusal);
-                    Assert.True(review.CanApply, "The Trial did not run through the substituted runner and parser: " +
-                        review.ApplyBlockReason);
+                    await measurement.MeasureCommand.ExecuteAsync(null);
+                    Assert.Null(measurement.Refusal);
+                    Assert.True(workspace.Context.ProposalApply.CanApply(null, null, workspace.RefreshCommand, null),
+                        "The Trial did not run through the substituted runner and parser: " +
+                        string.Join(", ", workspace.Context.ProposalApply.Blockers(null, null, workspace.RefreshCommand, null)
+                            .Select(blocker => blocker.Kind)));
                     Assert.True(FakeParser.Invocations(parser).Count(command => command == "batch") > windowRuns,
                         "The Trial did not reach the substituted parser through the runner.");
                 }
@@ -480,20 +484,15 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                         $"baseline refusal='{workspace.Baseline.ShownRefusal?.Sentence}'");
                 Assert.True(workspace.ShowsParseAllWordsAction);
 
-                stage = "Overview prompt";
-                await ShowPageAsync(session, WorkspacePage.Overview);
+                stage = "Progress without a parse prompt";
+                await ShowPageAsync(session, WorkspacePage.Progress);
                 Assert.True(workspace.Context.NeedsAssessment);
-                Assert.Contains(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
+                Assert.DoesNotContain(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
-                    text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible &&
-                    text.GetVisualAncestors().Any(ancestor => ancestor is OverviewPage));
-                Assert.Contains(session.Window.GetVisualDescendants().OfType<Button>(), button =>
-                    button.Content?.ToString() == "Parse all words" && button.IsEffectivelyVisible &&
-                    ReferenceEquals(button.Command, workspace.ParseAllWordsCommand) &&
-                    button.GetVisualAncestors().Any(ancestor => ancestor is OverviewPage));
+                    text.IsEffectivelyVisible);
 
-                stage = "Review prompt";
-                await ShowPageAsync(session, WorkspacePage.Review);
+                stage = "Proposals without a parse prompt";
+                await ShowPageAsync(session, WorkspacePage.Proposals);
                 Assert.DoesNotContain(session.Window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
                     text.IsEffectivelyVisible);
@@ -514,7 +513,8 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 await ShowPageAsync(session, WorkspacePage.Texts);
                 var texts = workspace.PageModel<TextsPageModel>();
                 Assert.True(texts.ShowParsePrompt);
-                Assert.True(texts.ShowAnalyzeTextsContent);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<ResultsInTextPanel>(), panel =>
+                    panel.IsEffectivelyVisible);
                 await Wait.UntilAsync(() => session.Window.GetVisualDescendants().OfType<CopyableTextBlock>().Any(text =>
                         AutomationProperties.GetAutomationId(text) == SIL.Motif.App.AutomationIds.ParsePromptText &&
                         text.Text == workspace.Context.ParsePromptText && text.IsEffectivelyVisible),
@@ -550,10 +550,11 @@ public sealed class AppStartupCompositionTests(PristineProjectFixture pristine) 
                 File.WriteAllText(releasePath, string.Empty);
                 await Wait.UntilAsync(() => !workspace.ParseAllWordsCommand.IsRunning && !workspace.Context.NeedsAssessment,
                     "the released parse did not complete");
-                Assert.False(workspace.ShowsParseAllWordsAction);
+                Assert.True(workspace.ShowsParseAllWordsAction);
                 Assert.False(workspace.ShowsParseAllWordsProgress);
                 Assert.True(workspace.ShowsRefreshAction);
-                Assert.True(texts.ShowAnalyzeTextsContent);
+                Assert.Contains(session.Window.GetVisualDescendants().OfType<ResultsInTextPanel>(), panel =>
+                    panel.IsEffectivelyVisible);
                 Assert.False(texts.ShowParsePrompt);
                 Assert.True(workspace.Context.HasEvidence);
             }

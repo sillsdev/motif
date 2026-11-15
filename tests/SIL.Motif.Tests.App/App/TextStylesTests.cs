@@ -37,18 +37,21 @@ public sealed class TextStylesTests
             var releaseReader = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             try
             {
-                var overview = workspace.PageModel<OverviewPageModel>();
+                var overview = workspace.Context.Health;
                 overview.Overview = overview.Overview! with { WritingSystems = [WritingSystemTestData.Arabic] };
                 var texts = workspace.PageModel<TextsPageModel>();
-                texts.Tab = TextsTab.AnalyzeTexts;
-                texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+
+                texts.ResultsInText.ShowReader();
                 workspace.CurrentPage = WorkspacePage.Texts;
                 await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                 await workspace.Selection.LoadTextsAsync(workspace.Context.ProjectPath!);
 
+                overview.Overview = overview.Overview! with { WritingSystems = [WritingSystemTestData.Arabic] };
                 var notices = workspace.Context.TextStyles.MissingFontNotices;
+                await Wait.UntilAsync(() => notices.Count > 0, "Missing-font notice was not displayed",
+                    between: () => PageScreenshots.Settle(window));
                 Assert.Single(notices);
-                var noticeRow = window.FindInWindowOrWorkspace<ItemsControl>("MainWindowWritingSystemNoticesItems");
+                var noticeRow = window.FindInWindowOrWorkspace<Border>("NoticeBand");
                 Assert.NotNull(noticeRow);
                 var selectionPanel = Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>());
                 var selectAll = Assert.Single(selectionPanel.GetLogicalDescendants().OfType<Button>(), button =>
@@ -189,7 +192,7 @@ public sealed class TextStylesTests
             var bundledFontAssets = AssetLoader.GetAssets(
                     new Uri("avares://SIL.Motif.App/Assets/Fonts", UriKind.Absolute), null)
                 .Count(asset => asset.OriginalString.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase));
-            Assert.Equal(17, bundledFontAssets);
+            Assert.Equal(21, bundledFontAssets);
             var systems = families.Select((family, index) => new WritingSystemDisplay(
                 $"qaa-x-font-{index}", family, family, WritingSystemKind.Vernacular, index, index == 0,
                 family, string.Empty, false,
@@ -699,7 +702,7 @@ public sealed class TextStylesTests
     }
 
     [Fact]
-    public void InterfaceTypographyUsesTheBundledAndikaLayoutAndScriptFallback()
+    public void InterfaceTypographyUsesSourceSansAndScriptFallback()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
@@ -710,7 +713,7 @@ public sealed class TextStylesTests
             Assert.Equal("Scheherazade New", Assert.Single(style.FontFallbacks));
             Assert.Equal(TextStyles.InterfaceFontFamily, style.FontFamily);
 
-            var text = new TextBlock { Text = "Motif uses Andika." };
+            var text = new TextBlock { Text = "Motif uses Source Sans 3." };
             styles.Apply(text, TextStyleRequest.Interface("en"));
             var window = new MotifTestWindow { Content = text, Width = 320, Height = 80 };
             try
@@ -721,7 +724,7 @@ public sealed class TextStylesTests
                 Assert.Equal(TextStyles.InterfaceFontFamily, text.FontFamily);
                 Assert.Equal(resolved.FontSize, text.FontSize);
                 Assert.True(FontManager.Current.TryGetGlyphTypeface(new Typeface(text.FontFamily!), out var face));
-                Assert.StartsWith("Andika", face!.FamilyName, StringComparison.OrdinalIgnoreCase);
+                Assert.StartsWith("Source Sans 3", face!.FamilyName, StringComparison.OrdinalIgnoreCase);
                 var metrics = styles.GetLineMetrics(text);
                 Assert.NotNull(metrics);
                 Assert.True(metrics.Value.Ascent > 0);
@@ -729,7 +732,7 @@ public sealed class TextStylesTests
                 var runs = text.TextLayout.TextLines.SelectMany(line => line.TextRuns)
                     .OfType<ShapedTextRun>().ToArray();
                 Assert.NotEmpty(runs);
-                Assert.All(runs, run => Assert.StartsWith("Andika", run.GlyphRun.GlyphTypeface.FamilyName,
+                Assert.All(runs, run => Assert.StartsWith("Source Sans 3", run.GlyphRun.GlyphTypeface.FamilyName,
                     StringComparison.OrdinalIgnoreCase));
             }
             finally

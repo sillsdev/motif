@@ -1,0 +1,6 @@
+<Styles xmlns="https://github.com/avaloniaui">
+  <Style Selector="ListBox.diagnosticRows ListBoxItem">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+</Styles>

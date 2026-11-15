@@ -27,9 +27,8 @@ public sealed class SizeMatrixScreenshots
 {
     private static readonly string[] AdditionalSceneNames =
     [
-        "settings-open", "settings-parsing", "open-recent-projects", "try-a-word-traced-expert",
-        "ai-assistants-advanced", "parsimony-enabled", "first-run-setup-first-step",
-        "refused-store-delete-action", "review-pending-changes",
+        "settings-open", "settings-parsing", "open-recent-projects",
+        "first-run-setup-first-step", "refused-store-delete-action",
     ];
 
     /// <summary>Stable screenshot scene names accepted by the capture matrix selector.</summary>
@@ -75,11 +74,11 @@ public sealed class SizeMatrixScreenshots
                 configure: (fake, _) => fake.ProposalStandingsCompleteWith(ProposalsPageScreenshots.Standings()));
             try
             {
+                workspace.Context.Diagnostics = true;
                 foreach (var (scene, page, tab) in PageScreenshots.Views())
                 {
                     if (!selection.Scenes.Contains(scene, StringComparer.Ordinal)) continue;
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
-                    if (page == WorkspacePage.TryAWord) await PageScreenshots.TryTheSampleWord(workspace);
+
                     workspace.CurrentPage = page;
                     if (page == WorkspacePage.Texts && tab == TextsTab.AnalyzeTexts)
                         await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
@@ -90,7 +89,7 @@ public sealed class SizeMatrixScreenshots
 
                 if (selection.ContainsAny("settings-open", "settings-parsing"))
                 {
-                    workspace.CurrentPage = WorkspacePage.Overview;
+                    workspace.CurrentPage = WorkspacePage.Progress;
                     var settings = OpenSettings(window);
                     if (selection.Contains("settings-open"))
                         await CaptureScene(run, window, workspace, "settings-open",
@@ -110,22 +109,14 @@ public sealed class SizeMatrixScreenshots
 
                 if (selection.Contains("open-recent-projects"))
                 {
-                    workspace.CurrentPage = WorkspacePage.Overview;
+                    workspace.CurrentPage = WorkspacePage.Progress;
                     OpenRecentProjects(window);
                     await CaptureScene(run, window, workspace, "open-recent-projects",
-                        expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
+                        expectedPage: WorkspacePage.Progress, expectedTab: null, sizes: sizes, selection: selection);
                     CloseRecentProjects(window);
                 }
 
-                if (selection.Contains("try-a-word-traced-expert"))
-                {
-                    workspace.CurrentPage = WorkspacePage.TryAWord;
-                    await PageScreenshots.TryTheSampleWord(workspace);
-                    workspace.Assess.Trace.IsExpert = true;
-                    await CaptureScene(run, window, workspace, "try-a-word-traced-expert",
-                        expectedPage: WorkspacePage.TryAWord, expectedTab: null, sizes: sizes, selection: selection);
-                    workspace.Assess.Trace.IsExpert = false;
-                }
+
             }
             finally
             {
@@ -134,53 +125,16 @@ public sealed class SizeMatrixScreenshots
                 window.Close();
             }
 
-            if (selection.ContainsAny("ai-assistants-advanced", "parsimony-enabled"))
-            {
-                var (advancedWorkspace, advancedWindow) = await PageScreenshots.OpenOverSampleData(
-                    advancedAiModeEnabled: true,
-                    configure: (fake, _) => ParsimonyStateScreenshots.Configure(fake, "listed-evidence"));
-                try
-                {
-                    if (selection.Contains("ai-assistants-advanced"))
-                    {
-                        advancedWorkspace.CurrentPage = WorkspacePage.AiAssistants;
-                        PageScreenshots.Settle(advancedWindow);
-                        var advancedMode = Assert.Single(advancedWindow.GetVisualDescendants().OfType<CheckBox>(),
-                            checkBox => Equals(checkBox.Content, "Turn On Advanced AI Mode"));
-                        advancedMode.IsChecked = true;
-                        PageScreenshots.Settle(advancedWindow);
-                        Assert.True(advancedWorkspace.PageModel<AssistantConnectionsPageModel>().IsEnabled);
-                        Assert.True(advancedMode.IsChecked);
-                        await CaptureScene(run, advancedWindow, advancedWorkspace, "ai-assistants-advanced",
-                            expectedPage: WorkspacePage.AiAssistants, expectedTab: null, sizes: sizes, selection: selection);
-                    }
-                    if (selection.Contains("parsimony-enabled"))
-                    {
-                        advancedWorkspace.CurrentPage = WorkspacePage.Parsimony;
-                        await ParsimonyStateScreenshots.DriveAsync("listed-evidence",
-                            advancedWorkspace.PageModel<ParsimonyPageModel>());
-                        await CaptureScene(run, advancedWindow, advancedWorkspace, "parsimony-enabled",
-                            expectedPage: WorkspacePage.Parsimony, expectedTab: null, sizes: sizes, selection: selection);
-                    }
-                }
-                finally
-                {
-                    Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
-                    WindowZoomPolicy.Apply(Application.Current!, ZoomPolicy.DefaultPercent);
-                    advancedWindow.Close();
-                }
-            }
-
             if (selection.Contains("first-run-setup-first-step"))
             {
                 var (setupWorkspace, setupWindow) = await PageScreenshots.OpenOverSampleData(
                     parse: false, leaveSetupOpen: true);
                 try
                 {
-                    setupWorkspace.CurrentPage = WorkspacePage.Overview;
+                    setupWorkspace.CurrentPage = WorkspacePage.Progress;
                     Assert.NotNull(setupWorkspace.Context.Setup);
                     await CaptureScene(run, setupWindow, setupWorkspace, "first-run-setup-first-step",
-                        expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
+                        expectedPage: WorkspacePage.Progress, expectedTab: null, sizes: sizes, selection: selection);
                 }
                 finally { setupWindow.Close(); }
             }
@@ -192,7 +146,7 @@ public sealed class SizeMatrixScreenshots
                     configure: (fake, _) => fake.CurrentBaselineRefusesWith(SampleStoreRefusal()));
                 try
                 {
-                    refusedWorkspace.CurrentPage = WorkspacePage.Overview;
+                    refusedWorkspace.CurrentPage = WorkspacePage.Progress;
                     Assert.True(refusedWorkspace.HasRefreshRefusal);
                     // The refusal lives in the notice details flyout, so the capture opens it as a person does.
                     var opener = refusedWindow.FindInWindowOrWorkspace<Button>("NoticeDetailsButton")!;
@@ -206,27 +160,12 @@ public sealed class SizeMatrixScreenshots
                     Assert.True(delete.IsEffectivelyVisible);
                     Assert.True(delete.IsEffectivelyEnabled);
                     await CaptureScene(run, refusedWindow, refusedWorkspace, "refused-store-delete-action",
-                        expectedPage: WorkspacePage.Overview, expectedTab: null, sizes: sizes, selection: selection);
+                        expectedPage: WorkspacePage.Progress, expectedTab: null, sizes: sizes, selection: selection);
                     opener.Flyout!.Hide();
                 }
                 finally { refusedWindow.Close(); }
             }
 
-            if (selection.Contains("review-pending-changes"))
-            {
-                var reviewFake = new FakeCommandClient();
-                reviewFake.PendingChangesIs(ReviewScreenshots.Blocked());
-                var (reviewWorkspace, reviewWindow) = await ReviewScreenshots.OpenAsync(reviewFake);
-                try
-                {
-                    reviewWorkspace.CurrentPage = WorkspacePage.Review;
-                    PageScreenshots.Settle(reviewWindow);
-                    Assert.NotEmpty(reviewWorkspace.PageModel<ReviewPageModel>().ReviewEntries);
-                    await CaptureScene(run, reviewWindow, reviewWorkspace, "review-pending-changes",
-                        expectedPage: WorkspacePage.Review, expectedTab: null, sizes: sizes, selection: selection);
-                }
-                finally { reviewWindow.Close(); }
-            }
         }, TimeSpan.FromMinutes(30));
 
         run.WriteArtifacts();

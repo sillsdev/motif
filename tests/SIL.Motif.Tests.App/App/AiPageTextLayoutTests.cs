@@ -14,36 +14,38 @@ namespace SIL.Motif.Tests.App;
 public sealed class AiPageTextLayoutTests(AiPageLayoutSample fixture) : IClassFixture<AiPageLayoutSample>
 {
     [Fact]
-    public void ParsimonyRemainsAvailableWhenAssistantToolsAreOff()
+    public void DiagnosticsRemainsAvailableWhenAssistantToolsAreOff()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await fixture.GetAsync();
-            var assistants = workspace.PageModel<AssistantConnectionsPageModel>();
+            var assistants = workspace.PageModel<SettingsPageModel>().Connections;
             var oldEnabled = assistants.IsEnabled;
+            var oldDiagnostics = workspace.Context.Diagnostics;
             try
             {
                 assistants.IsEnabled = false;
-                workspace.ShowPageCommand.Execute(WorkspacePage.AiAssistants);
+                workspace.ShowPageCommand.Execute(WorkspacePage.Settings);
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
-                var page = window.PageView<AssistantConnectionsPage>();
+                var page = window.PageView<SettingsPage>();
                 Assert.DoesNotContain(page.GetVisualDescendants().OfType<CopyableTextBlock>(),
                     text => text.IsEffectivelyVisible &&
                         text.Text == "Parsimony is available when Advanced AI mode is on.");
-                Assert.True(workspace.Context.CanOpenPage(WorkspacePage.Parsimony));
+                workspace.Context.Diagnostics = true;
+                Assert.True(workspace.Context.CanOpenPage(WorkspacePage.Diagnostics));
             }
             finally
             {
                 assistants.IsEnabled = oldEnabled;
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.Context.Diagnostics = oldDiagnostics;
+                workspace.CurrentPage = WorkspacePage.Progress;
             }
         }, TimeSpan.FromMinutes(2));
     }
 
     [Theory]
-    [InlineData(WorkspacePage.AiAssistants)]
-    [InlineData(WorkspacePage.AiHandoff)]
+    [InlineData(WorkspacePage.Settings)]
     public void InstructionsFitAtTheMinimumWidthAtEnlargedZoom(WorkspacePage destination) =>
         AiPageTextLayoutChecks.Verify(fixture, destination, false, 640, 600, 150);
 }
@@ -54,7 +56,7 @@ public sealed class AiPageTextLayoutSystemTests(AiPageLayoutSample fixture) : IC
 {
     public static IEnumerable<object[]> Cells()
     {
-        foreach (var page in new[] { WorkspacePage.AiAssistants, WorkspacePage.AiHandoff })
+        foreach (var page in new[] { WorkspacePage.Settings })
         // The 640x600 zoomed-in cell is the Unit case above; light theme only, since the text arrangement is the check.
         foreach (var (width, height, zoom) in new[] { (820, 600, 150), (1040, 780, 100) })
             yield return [page, false, width, height, zoom];
@@ -77,7 +79,7 @@ internal static class AiPageTextLayoutChecks
             var settings = SettingsPageTests.WindowSettings(window);
             var oldZoom = settings.ZoomPercent;
             var oldTheme = Application.Current!.RequestedThemeVariant;
-            var assistants = workspace.PageModel<AssistantConnectionsPageModel>();
+            var assistants = workspace.PageModel<SettingsPageModel>().Connections;
             var oldEnabled = assistants.IsEnabled;
             try
             {
@@ -92,12 +94,10 @@ internal static class AiPageTextLayoutChecks
                 PageScreenshots.SettleLayout(window);
                 Assert.InRange(window.ClientSize.Width, width - 1, width + 1);
                 Assert.InRange(window.ClientSize.Height, height - 1, height + 1);
-                var page = destination == WorkspacePage.AiAssistants
-                    ? (Control)window.PageView<AssistantConnectionsPage>()
-                    : window.PageView<AiHandoffPage>();
-                if (destination == WorkspacePage.AiAssistants)
+                var page = window.PageView<SettingsPage>();
+                if (destination == WorkspacePage.Settings)
                 {
-                    var model = workspace.PageModel<AssistantConnectionsPageModel>();
+                    var model = workspace.PageModel<SettingsPageModel>().Connections;
                     Assert.True(model.IsEnabled);
                     Assert.True(model.HasNoAssistants);
                     Assert.Contains(page.GetVisualDescendants().OfType<CopyableTextBlock>(),
@@ -118,7 +118,7 @@ internal static class AiPageTextLayoutChecks
                 settings.ZoomPercent = oldZoom;
                 Application.Current!.RequestedThemeVariant = oldTheme;
                 assistants.IsEnabled = oldEnabled;
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 PageScreenshots.SettleLayout(window);
             }
         }, TimeSpan.FromMinutes(2));

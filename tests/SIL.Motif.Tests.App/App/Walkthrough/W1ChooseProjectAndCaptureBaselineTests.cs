@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Avalonia.Controls;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Tests.Parser;
 using SIL.Motif.Tests.TestFixtures;
@@ -27,8 +26,9 @@ public sealed class W1ChooseProjectAndCaptureBaselineTests(PristineProjectFixtur
                 walkthrough, SeededProject.TextTitle, ParserWorkLimit.DefaultWork.ToString(),
                 WalkthroughSteps.Remaining(deadline));
             Assert.False(walkthrough.Workspace.Context.NeedsAssessment);
-            Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
-            Assert.True(walkthrough.Find<Button>("Write the AI Handoff folder").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Workspace.Context.Setup?.CanRunDefaultSelection);
+            Assert.True(walkthrough.Workspace.PageModel<SIL.Motif.App.ViewModels.SettingsPageModel>()
+                .Handoff.Handoff.RunCommand.CanExecute(null));
             Assert.Equal($"1 text, parser work limit {ParserWorkLimit.DefaultWork:N0}", walkthrough.Workspace.Selection.SummaryText);
 
             Assert.Equal(project.SourceSha256, WalkthroughStoreAssertions.Sha256(project.FwDataPath));

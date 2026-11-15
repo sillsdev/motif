@@ -10,9 +10,9 @@ namespace SIL.Motif.Tests.App;
 internal static class ScopedComponentStyles
 {
     private static readonly string[] All =
-        ["Settings", "Review", "Overview", "Setup", "Timing", "Parsimony", "TryWord", "Warnings", "Proposals", "Handoff"];
+        ["Settings", "Setup", "TryWord", "Warnings", "Proposals", "Handoff", "Diagnostics"];
 
-    /// <summary>Includes the named component's scoped styles, such as <c>Timing</c> or <c>TimingScoped</c>, in <paramref name="host"/>.</summary>
+    /// <summary>Includes the named component's scoped styles, such as <c>SettingsScoped</c>, in <paramref name="host"/>.</summary>
     internal static void Include(StyledElement host, params string[] components)
     {
         foreach (var component in components)

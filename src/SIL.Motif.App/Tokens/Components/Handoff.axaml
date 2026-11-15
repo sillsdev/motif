@@ -17,8 +17,6 @@
     <StaticResource x:Key="Component.Handoff.TitleSize" ResourceKey="Primitive.Type.15" />
     <StaticResource x:Key="Component.Handoff.ActionMargin" ResourceKey="Primitive.Inset.10_0_0_0" />
     <StaticResource x:Key="Component.Handoff.GlyphMargin" ResourceKey="Primitive.Inset.0_0_10_0" />
-    <StaticResource x:Key="Component.Handoff.PlannedNameWidth" ResourceKey="Primitive.Size.220" />
-    <StaticResource x:Key="Component.Handoff.PlannedGap" ResourceKey="Primitive.Space.14" />
     <StaticResource x:Key="Component.Handoff.PlannedMargin" ResourceKey="Primitive.Inset.0_3_0_3" />
     <StaticResource x:Key="Component.Handoff.DragHeight" ResourceKey="Primitive.Size.56" />
     <StaticResource x:Key="Component.Handoff.FilePadding" ResourceKey="Primitive.Inset.0_8_0_8" />

@@ -1,28 +1,11 @@
 # What Motif does
 
-Motif tells you how well the FieldWorks parser handles your words: which ones parse, which of your approved analyses the grammar still builds, how much parser work each word takes, and what the grammar check found. You can also look at one word closely and collect corrections to its analyses.
+Motif reads a saved FieldWorks project and records how its parser handles a Selection of words. It helps you inspect texts, word analyses, stored grammar warnings and Proposals for changes. FieldWorks remains the place where you edit the project; Motif writes changes only when you choose Apply.
 
-Motif reads your saved FieldWorks project. It writes nothing to it until you open **Review Changes** and choose **Apply to FieldWorks project**. FieldWorks is where you edit the project.
+The interface uses Source Sans 3 and Lora. Linguistic text uses the fonts selected in the project's writing systems. Motif includes Andika, Charis SIL, Doulos SIL and Gentium Plus for projects that use them.
 
-The window uses Andika for its interface text; linguistic text uses the fonts selected in the FieldWorks project's writing systems. Motif includes Andika, Charis SIL, Doulos SIL and Gentium Plus, so a project using one of them does not need a separate font installation.
+To start, [install Motif](guide:install), [open your project](guide:open-a-project), and press **Refresh**. Choose the words to parse and run the parser when you want new measurements. Opening the window reads stored results; it does not start a parse.
 
-To start, [install Motif](guide:install), then [open your project](guide:open-a-project).
+Use **Progress** to see available next actions, **Texts** to read the selected texts, **Words** to inspect their word rows, **Grammar Guide** to read saved Grammar Design Records, and **Proposals** to inspect saved Proposals. The optional **Diagnostics** page shows stored warnings and rule timing. See [The Motif window](guide:the-window) for the page layout and [Settings](guide:settings) for display and connection choices.
 
-Motif uses PanGloss to parse words. [Parse all words](term:parse-all-words) keeps the results of each run. The [Overview](term:overview) shows stored results such as Text Coverage, **Approved analyses kept**, timing, and grammar warnings. Opening the window shows the last results; it doesn't parse again.
-
-1. [Open your project](guide:open-a-project) and press **Refresh**.
-2. [Choose the words to measure](guide:first-run-setup) and start the first run.
-3. Read the [Overview](guide:overview).
-4. After your first run, open **Texts**, choose a word that did not parse, and use [Try a Word](guide:try-a-word) to inspect it.
-5. In **Texts**, look at words and choose analysis changes.
-6. On **Review Changes**, check them, then choose **Apply to FieldWorks project**. See [Applying changes](guide:apply-to-fieldworks) first.
-7. After you edit the grammar in FieldWorks, save, press **Refresh**, then **Parse all words**.
-
-For details about individual steps, see the [Refresh](guide:refresh-numbers), [Texts](guide:texts) and [Review Changes](guide:review-changes) guides.
-
-For keyboard navigation and shortcuts, see [Keyboard shortcuts](guide:keyboard-shortcuts).
-For window zoom, theme, project parsing limits and Help, see [Settings](guide:settings).
-
-You can also make an **AI Handoff** folder with project context and a question for a chat model. Review the data-sensitivity notice before sharing it: the folder can contain real grammar, lexicon, and text data.
-
-![Motif’s Overview after opening a project](shot:open-project-overview/overview)
+You can choose to make a file Handoff for an assistant. Review the data-sensitivity notice before sharing its files: they can contain grammar, lexicon and text data.

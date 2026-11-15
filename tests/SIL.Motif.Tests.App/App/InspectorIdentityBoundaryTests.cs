@@ -1,6 +1,4 @@
 using System.Xml.Linq;
-using Avalonia.Input;
-using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Baselines;
 using SIL.Motif.Commands.Queries;
@@ -20,7 +18,7 @@ public sealed class InspectorIdentityBoundaryTests(PristineProjectFixture pristi
     [InlineData("structural")]
     [InlineData("grammar-local")]
     [InlineData("authored")]
-    public async Task TraceMorphLaunchPreservesIdentityLimitsAndCapturedDetails(string? quality)
+    public void RecordedMorphIdentityOnlyResolvesAuthoredFieldWorksFacts(string? quality)
     {
         using var project = new WalkthroughProject(pristine);
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
@@ -30,20 +28,19 @@ public sealed class InspectorIdentityBoundaryTests(PristineProjectFixture pristi
             FormId = project.Seed.FirstLexemeFormId.ToString("B").ToUpperInvariant(),
             MsaId = project.FirstMsaId.ToString("N"), IdentityQuality = quality, IdentityScope = "recorded grammar",
         };
-        var chip = new TraceMorphViewModel(morph, allowLiveLink: false);
-        var (context, inspector) = InspectorFor(project.FwDataPath);
-        context.OpenInspector(chip.InspectSubject!, trace: new InspectorTrace("recorded word", captured.Value!.Token.BundleDigest),
-            captured: [new InspectorDetail("Form", "recorded form")]);
-        await inspector.Loading;
-        Assert.Equal(quality ?? "unknown", context.Inspector!.Subject.IdentityQuality);
-        Assert.Contains(inspector.TraceDetails, detail => detail.Value == "recorded form");
-        Assert.Equal(quality == "authored", inspector.Facts.Count > 0);
-        Assert.Equal(quality == "authored", inspector.Facts.Any(row => row.Link is not null));
-        if (quality != "authored") Assert.Contains("without a FieldWorks identity", inspector.FactsNote);
+        var recorded = new TraceMorphViewModel(morph, allowLiveLink: false);
+        var result = InspectQuery.Query(new InspectRequest(project.FwDataPath, recorded.InspectSubject!));
+
+        Assert.Null(recorded.Link);
+        Assert.Equal("recorded form", recorded.Form);
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(quality == "authored", result.Value!.Facts.Value is not null);
+        if (quality == "authored") Assert.NotNull(result.Value.Facts.Value!.Entry!.FieldWorks);
+        else Assert.Equal(InspectorResolution.NotAuthored, result.Value.Resolution);
     }
 
     [Fact]
-    public async Task TraceOpenedThroughInspectorRetainsFactsButCannotLinkToAReplacedProject()
+    public void ReplacedProjectKeepsRecordedFactsButSuppliesNoLiveTarget()
     {
         using var project = new WalkthroughProject(pristine);
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
@@ -54,34 +51,14 @@ public sealed class InspectorIdentityBoundaryTests(PristineProjectFixture pristi
         saved.Save(project.FwDataPath);
         var morph = new TraceMorph(null, "recorded form", null, null, null, null, null, null, null, null)
             { FormId = project.Seed.FirstLexemeFormId.ToString("D"), IdentityQuality = "authored" };
-        var (context, inspector) = InspectorFor(project.FwDataPath);
-        context.OpenInspector(new TraceMorphViewModel(morph, allowLiveLink: false).InspectSubject!,
-            trace: new InspectorTrace("recorded word", captured.Value!.Token.BundleDigest),
-            captured: [new InspectorDetail("Form", "recorded form")]);
-        await inspector.Loading;
-        Assert.NotEmpty(inspector.Facts);
-        Assert.All(inspector.Facts, row => Assert.Null(row.Link));
-        Assert.Contains(inspector.TraceDetails, detail => detail.Value == "recorded form");
-    }
+        var recorded = new TraceMorphViewModel(morph, allowLiveLink: false);
+        var result = InspectQuery.Query(new InspectRequest(project.FwDataPath, recorded.InspectSubject!));
 
-    private static (WorkspaceContext, InspectorViewModel) InspectorFor(string path)
-    {
-        var client = new FakeCommandClient();
-        client.OnInspect((request, _) => Task.FromResult(InspectQuery.Query(request)));
-        var selection = new SelectionViewModel(client);
-        var context = new WorkspaceContext(selection, new AssessViewModel(client, selection), new ChangesViewModel(client),
-            client, new NoFolderPicker(), new NoDragSource(), new BaselineViewModel(client)) { ProjectPath = path };
-        return (context, new InspectorViewModel(context, _ => "Try a Word"));
-    }
-
-    private sealed class NoFolderPicker : IHandoffFolderPicker
-    {
-        public Task<string?> PickFolderAsync(CancellationToken cancellationToken) => Task.FromResult<string?>(null);
-    }
-
-    private sealed class NoDragSource : IFileDragSource
-    {
-        public Task<DragDropEffects> StartDragAsync(PointerPressedEventArgs trigger,
-            IReadOnlyList<string> filePaths, DragDropEffects allowedEffects) => Task.FromResult(DragDropEffects.None);
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal("recorded form", recorded.Form);
+        Assert.Null(recorded.Link);
+        Assert.NotNull(result.Value!.Facts.Value);
+        Assert.Null(result.Value.Facts.Value!.Entry!.FieldWorks);
+        Assert.All(result.Value.Facts.Value.Senses, sense => Assert.Null(sense.FieldWorks));
     }
 }

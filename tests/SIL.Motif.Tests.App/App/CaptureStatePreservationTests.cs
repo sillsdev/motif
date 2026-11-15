@@ -82,7 +82,7 @@ public sealed class CaptureStatePreservationTests
                 window.Height = 900;
                 PageScreenshots.Settle(window);
                 var originalSize = window.ClientSize;
-                MatrixCaptureState.SaveFrame(window, workspace, WorkspacePage.Overview, null,
+                MatrixCaptureState.SaveFrame(window, workspace, WorkspacePage.Progress, null,
                     Path.Combine(folder, "routed-before.png"));
                 var viewportChanges = 0;
                 window.PropertyChanged += (_, change) =>
@@ -91,12 +91,12 @@ public sealed class CaptureStatePreservationTests
                         viewportChanges++;
                 };
 
-                PageScreenshots.SavePageFrame(window, workspace, WorkspacePage.Overview, null,
+                PageScreenshots.SavePageFrame(window, workspace, WorkspacePage.Progress, null,
                     Path.Combine(folder, "routed.png"));
 
                 Assert.Equal(0, viewportChanges);
                 Assert.Equal(originalSize, window.ClientSize);
-                MatrixCaptureState.Assert(window, workspace, WorkspacePage.Overview, null);
+                MatrixCaptureState.Assert(window, workspace, WorkspacePage.Progress, null);
                 Assert.True(File.Exists(Path.Combine(folder, "routed.png")));
             }
             finally { window.Close(); }

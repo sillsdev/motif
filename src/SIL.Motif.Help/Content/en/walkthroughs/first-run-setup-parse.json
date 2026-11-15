@@ -5,7 +5,7 @@
   "steps": {
     "selection": "Select all texts and add a word to the Default Selection before saving it.",
     "cancelling": "The progress panel shows the current run and lets you cancel it.",
-    "parsed": "After setup, run Parse all words to record measurements for the Selection."
+    "parsed": "After setup, run Parse all words to record measurements for the Selection; Progress then reads them."
   },
   "callouts": {
     "selection": {
@@ -13,7 +13,7 @@
       "motif-setup-add-words": "Words included in the Default Selection"
     },
     "parsed": {
-      "motif-overview-selection-word-count": "Words in the Selection"
+      "motif-progress-heading": "Progress after the parse"
     },
     "cancelling": {
       "motif-parse-progress-details": "Progress for the current Parse all words run",

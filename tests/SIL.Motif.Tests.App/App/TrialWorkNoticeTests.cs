@@ -83,40 +83,38 @@ public sealed class TrialWorkNoticeTests
     }
 
     [Fact]
-    public async Task ReviewNoticeFollowsTheProposalAndClearsForPendingChanges()
+    public async Task NoticeFollowsTheProposalAndClearsForPendingChanges()
     {
         var fake = new FakeCommandClient();
         var context = WorkspaceContextTests.NewContext(fake);
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(@"C:\projects\one.fwdata");
         fake.ReadTrialCompletesWith(TrialRecordWith(TrialWorkAt(26.0)));
         await context.OpenProposalAsync("proposal/one", CancellationToken.None);
         fake.EnqueueTrialCompletesWith(new JobEnqueuedResponse("job/one", "trial", "project/test"));
-        await page.TryAgainCommand.ExecuteAsync(null);
-        Assert.Equal("This Trial makes parsing about 26% more work than the Baseline.", page.WorkNotice);
+        await context.TryAgainAsync("proposal/one", CancellationToken.None);
+        Assert.Equal("This Trial makes parsing about 26% more work than the Baseline.", TrialWorkNotice.For(context.Lens?.Trial?.Work));
 
         fake.ReadTrialCompletesWith(TrialRecordWith(TrialWorkAt(0.0)) with { ProposalId = "proposal/two" });
         await context.OpenProposalAsync("proposal/two", CancellationToken.None);
-        Assert.Null(page.WorkNotice);
+        Assert.Null(TrialWorkNotice.For(context.Lens?.Trial?.Work));
 
         await context.LeaveProposalAsync();
-        Assert.Null(page.WorkNotice);
+        Assert.Null(TrialWorkNotice.For(context.Lens?.Trial?.Work));
     }
 
     [Fact]
-    public async Task ReviewNoticeLoadsFromTheStoredTrialAndClearsWhenTheProjectChanges()
+    public async Task NoticeLoadsFromTheStoredTrialAndClearsWhenTheProjectChanges()
     {
         var fake = new FakeCommandClient();
         var context = WorkspaceContextTests.NewContext(fake);
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(@"C:\projects\one.fwdata");
         fake.ReadTrialCompletesWith(TrialRecordWith(TrialWorkAt(26.0)));
 
         await context.OpenProposalAsync("proposal/one", CancellationToken.None);
-        Assert.Equal("This Trial makes parsing about 26% more work than the Baseline.", page.WorkNotice);
+        Assert.Equal("This Trial makes parsing about 26% more work than the Baseline.", TrialWorkNotice.For(context.Lens?.Trial?.Work));
 
         await context.OpenProjectAsync(@"C:\projects\two.fwdata");
-        Assert.Null(page.WorkNotice);
+        Assert.Null(TrialWorkNotice.For(context.Lens?.Trial?.Work));
     }
 
     private static TrialWork TrialWorkAt(

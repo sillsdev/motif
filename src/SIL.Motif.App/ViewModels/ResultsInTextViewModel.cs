@@ -62,7 +62,6 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private readonly TextWordsViewModel _texts;
     private readonly AssessViewModel _assess;
     private readonly Action<string> _showWord;
-    private readonly Action<string> _tryWord;
     private readonly ChangesViewModel _changes;
     private readonly ICommandClient _commands;
     private readonly HashSet<ResultsTokenViewModel> _cardTimingLoads = [];
@@ -82,18 +81,16 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
     private string? _readStateNotice;
 
     public ResultsInTextViewModel(
-        TextWordsViewModel texts, AssessViewModel assess, Action<string> showWord, Action<string> tryWord,
+        TextWordsViewModel texts, AssessViewModel assess, Action<string> showWord,
         ChangesViewModel changes, ICommandClient commands, WorkspaceSelection selection)
     {
         ArgumentNullException.ThrowIfNull(texts);
         ArgumentNullException.ThrowIfNull(assess);
         ArgumentNullException.ThrowIfNull(showWord);
-        ArgumentNullException.ThrowIfNull(tryWord);
         _selectionOwner = selection ?? throw new ArgumentNullException(nameof(selection));
         _texts = texts;
         _assess = assess;
         _showWord = showWord;
-        _tryWord = tryWord;
         _changes = changes ?? throw new ArgumentNullException(nameof(changes));
         _commands = commands ?? throw new ArgumentNullException(nameof(commands));
         SetFilterCommand = new RelayCommand<ResultsInTextFilter>(filter => Filter = filter);
@@ -101,7 +98,6 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         ClearSelectedWordsCommand = new RelayCommand(ClearSelectedWords, () => HasCheckedWords);
         ChooseWordsCommand = new RelayCommand(() => IsChoosingWords = !IsChoosingWords);
         ShowInWordsCommand = new RelayCommand(() => { if (SelectedToken is { } token) _showWord(token.Form); });
-        TryWordCommand = new RelayCommand(() => { if (SelectedToken is { } token) _tryWord(token.Form); });
         OpenPanGlossGuideCommand = new RelayCommand(() => OpenPanGlossGuide?.Invoke());
         OpenWarningsCommand = new RelayCommand(() => OpenWarnings?.Invoke());
         RecheckChangesCommand = new AsyncRelayCommand(() => _changes.RecheckAsync(), CanRecheckChanges);
@@ -114,13 +110,9 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
             CanStageMarkingChoice);
         AddChangeForTargetCommand = new AsyncRelayCommand<WordChangeAction>(AddChangeForTargetAsync,
             action => action?.IsAvailable == true);
-        TryWordForTargetCommand = new RelayCommand<string>(form =>
-        {
-            if (!string.IsNullOrWhiteSpace(form)) _tryWord(form);
-        });
         StageMarkingChoiceForTargetCommand = new AsyncRelayCommand<WordMarkingChoice>(StageCapturedMarkingChoiceAsync,
             choice => choice?.IsAvailable == true);
-        TokenActionCommands = [AddChangeForTargetCommand, TryWordForTargetCommand, StageMarkingChoiceForTargetCommand];
+        TokenActionCommands = [AddChangeForTargetCommand, StageMarkingChoiceForTargetCommand];
         MarkTokenReadCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
             token => token is null ? Task.CompletedTask : MarkReadAsync(token), CanMarkTokenReadState);
         MarkTokenUnreadCommand = new AsyncRelayCommand<ResultsTokenViewModel>(
@@ -147,9 +139,6 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>Opens the selected word in the Words view.</summary>
     public IRelayCommand ShowInWordsCommand { get; }
-
-    /// <summary>Opens the selected word in the Words view and traces it there.</summary>
-    public IRelayCommand TryWordCommand { get; }
 
     /// <summary>Opens the PanGloss guide in the window's Help popup.</summary>
     public IRelayCommand OpenPanGlossGuideCommand { get; }
@@ -179,9 +168,6 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
 
     /// <summary>The one pending-action command shared by every token and standalone card.</summary>
     public IAsyncRelayCommand<WordChangeAction> AddChangeForTargetCommand { get; }
-
-    /// <summary>The one Try a Word command whose parameter carries the card's spelling.</summary>
-    public IRelayCommand<string> TryWordForTargetCommand { get; }
 
     /// <summary>The one Set command whose parameter retains its original word and evidence.</summary>
     public IAsyncRelayCommand<WordMarkingChoice> StageMarkingChoiceForTargetCommand { get; }
@@ -367,10 +353,7 @@ public sealed partial class ResultsInTextViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(token);
         SelectToken(token);
         var displayed = SelectedToken ?? token;
-        var generation = ++_cardTimingGeneration;
-        var read = MarkReadAsync(displayed);
-        var timing = ReadTokenTimingAsync(displayed, generation);
-        await Task.WhenAll(read, timing).ConfigureAwait(true);
+        await MarkReadAsync(displayed).ConfigureAwait(true);
     }
 
     /// <summary>Marks one word occurrence Read.</summary>

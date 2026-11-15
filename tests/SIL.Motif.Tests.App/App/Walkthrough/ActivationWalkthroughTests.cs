@@ -57,12 +57,6 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
                         walkthrough.Workspace.Selection.Texts.Count == 1,
                     WalkthroughSteps.Remaining(deadline), "the recent project did not load its Baseline and Texts");
 
-                // Activation is measured after the grammar work that successful opening starts.
-                var grammar = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar;
-                walkthrough.WaitUntil(() => grammar.HasChecked && !grammar.IsLoading,
-                    WalkthroughSteps.Remaining(deadline), "the automatic opening grammar check did not finish");
-                Assert.Null(grammar.Refusal);
-                Assert.True(grammar.HasBaseline);
                 Assert.Null(walkthrough.Workspace.Context.Evidence.Assessment);
 
                 var baselineToken = walkthrough.Workspace.Baseline.Token;
@@ -70,6 +64,7 @@ public sealed class ActivationWalkthroughTests(PristineProjectFixture pristine)
                 Assert.Equal(capturedAt.ToUniversalTime(),
                     walkthrough.Workspace.Baseline.SourceLastWriteUtc!.Value.UtcDateTime);
                 var invocationsBeforeSave = FakeParser.Invocations(parserPath);
+                Assert.Empty(invocationsBeforeSave);
                 Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen == true);
 
                 simulator.SaveEdit(cache =>

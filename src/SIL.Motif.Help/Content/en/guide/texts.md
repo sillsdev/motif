@@ -1,25 +1,7 @@
 # Texts
 
-**Texts** is where you choose material to measure and compare word analyses. Its tabs are **Analyze texts**, **Lists**, and **What changed**. In **Analyze texts**, use **Read text** to follow words in context or **Word list** to inspect words directly. Choose texts or added words there, then use **Parse all words** to record results for that Selection. If the Baseline has no Texts, Analyze texts says so and does not offer a Choose texts action. The text picker sits in the side panel beside the page. On narrow windows it folds away; choose the active Texts icon again to open or close it. The Inspector has its own labelled edge strip to reopen it. When the window cannot fit the page beside it, the Inspector uses the working area; **Back to page** returns to the same work. Crossing a panel’s width threshold restores the automatic layout.
+**Texts** shows the reader and the current Selection. Use the page's side panel to choose Texts and select a Text to read. The reader presents the selected Text and its available word analyses in context.
 
-The **Read text** view creates line rows as they are needed while you scroll through a long Text, instead of building them all in advance. This keeps the reader responsive on long Texts.
+Choose a word to inspect the recorded analysis and available actions. Opening Texts does not start a parse. To inspect the Selection's word rows, open [Words](guide:words).
 
-Every word row uses the meaning named by its Matrix cell, including in **Lists** and **Analyze texts**. A card may show recorded comparison detail beneath that shared meaning. For example, a word with Unknown and Disapproved analyses can appear in **Unknown × Different** when PanGloss matched an analysis FieldWorks marked Disapproved; the row keeps the cell's **Have a look** meaning and shows recorded comparison detail beneath it. When Approved and Disapproved analyses share a morphology, both opinions remain visible; that match does not establish which other analyses PanGloss matched.
-
-An **Analyze texts** card can also show which FieldWorks item a grammar warning names in that word. **Other words that use -a** lists words with the same named item. Membership and spelling matches stay labelled as possible matches. This evidence records a connection to the warning; it does not say the warning caused the word's result. Open the warning to read PanGloss's full description.
-
-A stopped search does not establish that an analysis was not built, even if it found some readings. Those words stay in **Stopped**, with **No result**; a word that was not parsed has no new comparison evidence. The shared word lists and **Analyze texts** use the same per-word comparison.
-
-**Word list** counts words by their FieldWorks opinion, with a separate filter for Approved, Unknown, Disapproved and Not in FieldWorks. These counts describe words, while each analysis in a word card keeps its own opinion. The shared row also shows the meaning, places and time. Identical forms and glosses can still name different entries; the differing PanGloss morpheme is marked. When both entry names are recorded, its tooltip names them.
-
-**Lists** holds named word lists, such as **Lost** or **Built something else**, and opens on the first list that has words. One line names the list, counts its words and places, and says what it holds. Open a word to see a FieldWorks and PanGloss card; its morphemes open in the Inspector, and FieldWorks links appear when you point at or focus a morpheme. Tick words to send just those: the button says **AI Handoff for this word** or names the number of words. **AI Handoff for this list** sends every word in the selected list. With no words ticked, **AI Handoff** is disabled and explains **Tick words first.** A list of stopped or unparsed words also offers **Parse again**. A refused word stays under **No parse**, with the badge **PanGloss can’t read it** and its recorded reason on the row and card. Refused words are excluded from **Parse again**. If the reason names this project’s phonemes, inspect the phoneme inventory before starting another parse. On a **Word list** or **Lists** row, press **A**, **D** or **U** to stage Approve, Disapprove or Make Unknown for a word with one stored analysis. If it has several analyses, choose one in **Analyze texts**. Each action applies to the word form everywhere in the project and remains pending until you apply it.
-
-In **What changed**, a move between two problem outcomes begins **Still a problem:** and names the old and new outcomes. The outcome changed, while the word remains a problem.
-
-Use the keyboard to move through a Text, the Word list and Lists, and stage an opinion on one stored analysis at a time. [Keyboard shortcuts](guide:keyboard-shortcuts) lists the keys for Analyze texts, the Word list, and Lists.
-
-Changes you collect remain pending until you review and apply them. The page’s **Review Changes** link opens that list; it does not write anything to FieldWorks. [Text Coverage](term:text-coverage) appears on the Overview after a measurement.
-
-![Texts after Parse all words records the current comparison](shot:open-project-overview/texts)
-
-A compact row shows one analysis and states the total when PanGloss returned several analyses. Open the word card to see every analysis and its grammatical category, even when the analyses have the same spelling.
+The Selection determines the words sent to the parser when you choose to run it. See [Choose a Default Selection](guide:default-selection) for how it is saved.

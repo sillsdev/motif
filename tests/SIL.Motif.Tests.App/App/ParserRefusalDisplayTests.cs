@@ -20,13 +20,11 @@ public sealed class ParserRefusalDisplayTests
         words.Load([result]);
         var compare = new CompareViewModel { Rerun = (_, _) => Task.CompletedTask };
         compare.Load(words.AllRows);
-        var lists = new TextsListsViewModel(compare);
-        lists.SelectedList = lists.Lists.Single(list => list.Name == "Nobody can analyze");
+        compare.SelectCells([new TextsListCell(WordProjectStatus.NotPresent, CompareColumnKind.NoParse)]);
 
         var row = Assert.Single(compare.Words).WordRow;
         Assert.Equal(ParserOutcome.NoParse, row.Outcome);
         Assert.Equal(5, compare.Columns.Count);
-        Assert.Equal(8, lists.Lists.Count);
         var cell = compare.ChosenCell!;
         Assert.Equal(CompareColumnKind.NoParse, cell.Column);
         Assert.Equal(ParserRefusals.Title, cell.Label);
@@ -36,9 +34,8 @@ public sealed class ParserRefusalDisplayTests
         Assert.Equal(CompareFamilyKind.Unknown, Assert.Single(compare.Words).Family);
         Assert.Contains("phonemes", row.MeaningDetail);
         Assert.False(compare.CanRerun);
-        Assert.False(lists.CanParseAgain);
         Assert.Empty(compare.RerunWords);
-        Assert.Equal(ParserRefusals.ListExplanation, lists.SelectedList.Sentence);
+        Assert.Equal(ParserRefusals.ListExplanation, cell.Explanation);
     }
 
     [Fact]

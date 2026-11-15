@@ -21,7 +21,7 @@ namespace SIL.Motif.Tests.App;
 public sealed class WritingSystemTextScreenshots
 {
     [ScreenshotFact]
-    public void CapturesCharisSilInAnalyzeTextsAndTryAWord()
+    public void CapturesCharisSilInTextsAndWords()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
@@ -72,12 +72,10 @@ public sealed class WritingSystemTextScreenshots
                 Capture(window, folder, style.RequestedFontInstalled ? "charis-sil-analyze-after" :
                     "charis-sil-analyze-before", "light");
 
-                workspace.Context.TryWord("Sungura");
-                await workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                workspace.CurrentPage = WorkspacePage.TryAWord;
+                workspace.CurrentPage = WorkspacePage.Words;
                 PageScreenshots.Settle(window);
-                Capture(window, folder, style.RequestedFontInstalled ? "charis-sil-try-a-word-after" :
-                    "charis-sil-try-a-word-before", "light");
+                Capture(window, folder, style.RequestedFontInstalled ? "charis-sil-words-after" :
+                    "charis-sil-words-before", "light");
             }
             finally
             {
@@ -88,7 +86,7 @@ public sealed class WritingSystemTextScreenshots
     }
 
     [ScreenshotFact]
-    public void CapturesRightToLeftTextCardWordListReviewAndMissingFontLine()
+    public void CapturesRightToLeftTextCardWordListAndMissingFontLine()
     {
         var folder = Environment.GetEnvironmentVariable(ScreenshotFactAttribute.FolderVariable)!;
         Directory.CreateDirectory(folder);
@@ -104,11 +102,9 @@ public sealed class WritingSystemTextScreenshots
                 window.Height = 1500;
                 var resolver = workspace.Context.TextStyles;
 
-                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
-                var wordsView = workspace.PageModel<TextsPageModel>().Words;
                 var texts = workspace.PageModel<TextsPageModel>();
-                texts.Tab = TextsTab.AnalyzeTexts;
-                texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.TextReader);
+
+                texts.ResultsInText.ShowReader();
                 workspace.CurrentPage = WorkspacePage.Texts;
                 await workspace.Context.EvidencePublication;
                 await texts.ResultsInText.SelectionRefresh;
@@ -151,21 +147,13 @@ public sealed class WritingSystemTextScreenshots
                 }
 
                 texts.ResultsInText.CloseTokenCard();
-                texts.ShowAnalyzeViewCommand.Execute(AnalyzeTextsView.WordList);
+                workspace.CurrentPage = WorkspacePage.Words;
                 foreach (var (theme, variant) in Themes())
                 {
                     Application.Current!.RequestedThemeVariant = variant;
                     Capture(window, folder, "rtl-word-list", theme);
                 }
 
-                fake.PendingChangesIs(WritingSystemTestData.ArabicPendingChange());
-                await workspace.Context.Changes.ReloadAsync();
-                workspace.CurrentPage = WorkspacePage.Review;
-                foreach (var (theme, variant) in Themes())
-                {
-                    Application.Current!.RequestedThemeVariant = variant;
-                    Capture(window, folder, "rtl-review", theme);
-                }
             }
             finally
             {

@@ -20,7 +20,7 @@ public sealed class TopBarScreenshots
             var (workspace, window) = await PageScreenshots.OpenOverSampleData();
             try
             {
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 foreach (var (theme, variant) in new[] { ("light", ThemeVariant.Light), ("dark", ThemeVariant.Dark) })
                 {
                     Application.Current!.RequestedThemeVariant = variant;

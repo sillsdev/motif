@@ -5,6 +5,7 @@ using SIL.LCModel.Infrastructure;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Tests.Parser;
@@ -72,42 +73,23 @@ public sealed class RefusedWordsWalkthroughTests(PristineProjectFixture pristine
                 var workspace = walkthrough.Workspace;
                 Assert.Contains("3 refused", workspace.Assess.Result!.CompletionSummary);
                 Assert.Contains("phonemes", workspace.Assess.Result.CompletionSummary);
-                var overview = workspace.PageModel<OverviewPageModel>();
-                walkthrough.WaitUntil(() => overview.Overview is not null, WalkthroughSteps.Remaining(deadline),
-                    "the Overview did not load");
-                Assert.Contains(overview.TextCoverageSegments, segment => segment.Mark == Mark.ParserRefusal && segment.Count == 3);
-                var compare = workspace.Assess.Compare;
-                compare.SelectCells([new TextsListCell(WordProjectStatus.NotPresent, CompareColumnKind.NoParse)]);
-                Assert.Equal(4, compare.Words.Count);
-                var refusedRows = compare.Words.Where(word => word.WordRow.HasRefusalReason).ToArray();
+                walkthrough.WaitUntil(() => workspace.Context.Health.Overview is not null,
+                    WalkthroughSteps.Remaining(deadline), "project health did not load");
+                var rows = workspace.Assess.Words.AllRows;
+                var refusedRows = rows.Where(word => word.WordRow.HasRefusalReason).ToArray();
                 Assert.Equal(3, refusedRows.Length);
                 Assert.All(refusedRows, word => Assert.Contains("phonemes", word.WordRow.MeaningDetail));
-                Assert.False(compare.CanRerun);
-                var texts = workspace.PageModel<TextsPageModel>();
-                workspace.CurrentPage = WorkspacePage.Texts;
-                texts.Tab = TextsTab.Lists;
-                texts.TextsLists.SelectedList = texts.TextsLists.Lists.Single(list => list.Name == "Nobody can analyze");
-                Assert.False(texts.TextsLists.CanParseAgain);
 
-                compare.SelectCells([new TextsListCell(WordProjectStatus.NotPresent, CompareColumnKind.NoMatch)]);
-                texts.Tab = TextsTab.Lists;
-                PageScreenshots.Settle(walkthrough.Window);
-                var lion = Assert.Single(compare.Words);
-                Assert.Equal(2, lion.Readings.Count);
-                Assert.Contains("2 analyses", lion.WordRow.ReadingCountText);
+                var evidence = workspace.Context.Evidence;
+                var timing = await workspace.Context.Commands.TimingAsync(new TimingRequest(projectPath,
+                    evidence.ParseTimeAssessmentId, By: "kind", OverrideAssessmentIds: evidence.TimingOverrideAssessmentIds),
+                    CancellationToken.None);
+                Assert.True(timing.Succeeded, timing.Refusal?.Message);
+                Assert.Equal(3, timing.Value!.Words.Count(word => word.Completion == TimingCompletion.Refused));
 
-                workspace.CurrentPage = WorkspacePage.Timing;
-                var timing = workspace.PageModel<TimingPageModel>();
-                await timing.SelectWordSetCommand.ExecuteAsync("all");
-                Assert.Equal(3, timing.KindTiming!.Words.Count(word => word.Completion == TimingCompletion.Refused));
-                workspace.Context.OpenTiming(refusedRows.Select(word => word.Word).ToArray(), null);
-                walkthrough.WaitUntil(() => timing.KindTiming?.Words.Count == 3 && !timing.IsLoadingTiming,
-                    WalkthroughSteps.Remaining(deadline), "the refused-word timing selection did not load");
-                Assert.False(timing.RerunWordsCommand.CanExecute(null));
-
-                walkthrough.ShowPage(WorkspacePage.AiHandoff);
+                walkthrough.ShowPage(WorkspacePage.Settings);
                 walkthrough.Click("Write the AI Handoff folder");
-                var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
+                var handoff = workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
                 walkthrough.WaitUntil(() => handoff.State is RunState.Completed or RunState.Refused,
                     WalkthroughSteps.Remaining(deadline), "the Handoff did not finish");
                 Assert.Equal(RunState.Completed, handoff.State);
@@ -119,8 +101,7 @@ public sealed class RefusedWordsWalkthroughTests(PristineProjectFixture pristine
                 Assert.Empty(chosenTexts.RootElement.EnumerateArray());
                 Assert.Contains("empty array", handoff.PastedHeader);
 
-                workspace.CurrentPage = WorkspacePage.TryAWord;
-                var page = workspace.PageModel<TryWordPageModel>();
+                var page = workspace.Context.WordTraceSession;
                 page.Trace.WordToTry = "chats";
                 await page.Trace.TryCommand.ExecuteAsync(null);
                 Assert.True(page.HasLastParseRefusal);

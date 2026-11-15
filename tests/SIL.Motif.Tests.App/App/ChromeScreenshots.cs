@@ -61,7 +61,7 @@ public sealed class ChromeScreenshots
             {
                 window.Width = 820;
                 window.Height = 600;
-                workspace.CurrentPage = WorkspacePage.AiAssistants;
+                workspace.CurrentPage = WorkspacePage.Settings;
                 PageScreenshots.Settle(window);
                 var toggle = Assert.Single(window.GetVisualDescendants().OfType<CheckBox>(),
                     checkBox => checkBox.Content as string == "Turn On Advanced AI Mode");

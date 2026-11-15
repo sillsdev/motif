@@ -22,7 +22,6 @@ public sealed class SetAnalysisActionTests
     [Theory]
     [InlineData("strip", 640)]
     [InlineData("card", 1240)]
-    [InlineData("review", 1240)]
     public void ARealWordMenuNamesSetAnalysisAndLeavesTheCurrentOpinionAlone(string host, int width)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
@@ -52,11 +51,9 @@ public sealed class SetAnalysisActionTests
                 popup.MouseDown(point, MouseButton.Left);
                 popup.MouseUp(point, MouseButton.Left);
                 PageScreenshots.Settle(window);
-                Assert.Equal(host == "review" ? 1 : 0, fake.PendingPutRequests.Count);
+                Assert.Empty(fake.PendingPutRequests);
                 Assert.Empty(fake.ApplyPendingRequests);
                 Assert.Empty(fake.ApplyProposalRequests);
-                if (host == "review")
-                    Assert.Equal("1 change not applied yet", workspace.PageModel<ReviewPageModel>().CountText);
                 mark.Flyout!.Hide();
             }
             finally { window.Close(); await workspace.DisposeAsync(); }
@@ -64,46 +61,32 @@ public sealed class SetAnalysisActionTests
     }
 
     [Fact]
-    public void ReviewDetailsOwnAnActionableCardForTheCapturedWordAndEvidence()
+    public void WordCardStagesTheCapturedOccurrenceAndEvidence()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await OpenAnalyzeTexts();
             try
             {
-                var card = await SurfaceAsync(workspace, window, "review", "Sungura");
-                var actions = card.GetVisualDescendants().OfType<Button>().Where(button => button.IsEffectivelyVisible).ToArray();
-                Assert.Single(actions, button => Equals(button.Content, MotifAppStrings.TryAWord));
-                var unread = Assert.Single(actions, button => Equals(button.Content, MotifAppStrings.MarkAsUnread));
-                Assert.Equal("Only in Motif. The word stays coloured until you look at it again.", ToolTip.GetTip(unread));
-                Assert.NotNull(PartButton(card, "fix"));
+                var card = await SurfaceAsync(workspace, window, "card", "Sungura");
                 var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
-                Assert.Single(fake.PendingPutRequests);
                 var menu = OpenByPointer(window, PartButton(card, "fix"));
-                var approved = Assert.Single(menu.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Set analysis: Approved");
-                Assert.True(Assert.IsType<WordDispositionTile>(approved.DataContext).IsCurrent);
-                Assert.Null(approved.CommandParameter);
-                var unknown = Assert.Single(menu.GetVisualDescendants().OfType<Button>(), button =>
+                var choice = Assert.Single(menu.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Set analysis: Unknown");
-                Assert.False(Assert.IsType<WordDispositionTile>(unknown.DataContext).IsCurrent);
-                var captured = Assert.IsType<WordMarkingChoice>(unknown.CommandParameter);
+                var captured = Assert.IsType<WordMarkingChoice>(choice.CommandParameter);
                 Assert.NotNull(captured.Target.ExpectedContext);
                 Assert.NotNull(captured.Choice.StoredAnalysisId);
-                Assert.True(unknown.Command!.CanExecute(unknown.CommandParameter));
-                var command = Assert.IsAssignableFrom<IAsyncRelayCommand>(unknown.Command);
-                HeadlessClick.Click(TopLevel.GetTopLevel(unknown)!, unknown, "Set analysis: Unknown in Review");
+                var command = Assert.IsAssignableFrom<IAsyncRelayCommand>(choice.Command);
+                HeadlessClick.Click(TopLevel.GetTopLevel(choice)!, choice, "Set analysis: Unknown");
                 Assert.NotNull(command.ExecutionTask);
                 await command.ExecutionTask!;
-                Assert.Equal(2, fake.PendingPutRequests.Count);
-                var put = fake.PendingPutRequests.Last();
+                var put = Assert.Single(fake.PendingPutRequests);
                 Assert.Equal(captured.Target.Form, put.Change.Word);
                 Assert.Equal(captured.Target.WordformId,
                     SIL.Motif.Contract.Ids.CanonicalId.Parse(put.Change.WordformId).ToGuid());
                 Assert.Equal(captured.Target.Occurrence, put.Change.Occurrence);
                 Assert.Equal(captured.Choice.StoredAnalysisId, put.Change.StoredAnalysisId);
                 Assert.Equal(captured.Target.ExpectedContext, put.ExpectedContext);
-                Assert.Null(put.ProposalId);
                 Assert.Empty(fake.ApplyPendingRequests);
                 Assert.Empty(fake.ApplyProposalRequests);
             }
@@ -221,96 +204,7 @@ public sealed class SetAnalysisActionTests
             PageScreenshots.Settle(window);
             return OpenCard(window);
         }
-        Assert.Equal("review", host);
-        var assessment = Assert.IsType<SIL.Motif.Contract.Responses.AssessCommandResponse>(workspace.Assess.Result);
-        var assessed = Assert.Single(assessment.Words, word => word.Word == form);
-        Assert.NotNull(workspace.Assess.Words.Find(form));
-        var captured = token.CaptureActionTarget(workspace.Context.Changes.AssessmentId);
-        Assert.NotNull(captured.WordformId);
-        Assert.NotNull(captured.Occurrence);
-        Assert.NotNull(captured.ExpectedContext);
-        Assert.Equal(assessed.Origin?.AssessmentId, captured.AssessmentId);
-        Assert.True(strip.Focus());
-        window.KeyPress(Key.D, RawInputModifiers.None, PhysicalKey.None, null);
-        Assert.NotNull(reader.StageMarkingChoiceForTargetCommand.ExecutionTask);
-        await reader.StageMarkingChoiceForTargetCommand.ExecutionTask!;
-        var staged = Assert.Single(workspace.Context.Changes.Items);
-        Assert.Equal(captured.WordformId,
-            SIL.Motif.Contract.Ids.CanonicalId.Parse(staged.WordformId!).ToGuid());
-        Assert.Equal(captured.Occurrence, staged.Occurrence);
-        workspace.CurrentPage = WorkspacePage.Review;
-        var review = workspace.PageModel<ReviewPageModel>();
-        await review.LoadReviewAsync();
-        var entry = Assert.Single(review.Entries, entry => entry.Change?.Word == form);
-        Assert.Equal(staged.ChangeId, entry.Change!.ChangeId);
-        review.SelectEntry(entry);
-        PageScreenshots.Settle(window);
-        var panel = Assert.Single(window.GetVisualDescendants().OfType<ReviewPanel>());
-        var list = panel.FindControl<ListBox>("ReviewItems")!;
-        Assert.NotNull(review.SelectedTableEntry);
-        var row = list.ContainerFromItem(review.SelectedTableEntry)!;
-        Assert.NotNull(row);
-        var rowMenu = Assert.Single(row.GetVisualDescendants().OfType<Button>(),
-            button => button.Classes.Contains("denseTableMenu"));
-        HeadlessClick.Click(window, rowMenu, "Review row actions");
-        var rowFlyout = Assert.IsType<Flyout>(rowMenu.Flyout);
-        Assert.True(rowFlyout.IsOpen);
-        var body = FlyoutContent.Of(rowFlyout);
-        var details = Assert.Single(body.GetVisualDescendants().OfType<Button>(), button => button.Content is "Details");
-        HeadlessClick.Click(TopLevel.GetTopLevel(details)!, details, "Details for the captured change");
-        PageScreenshots.Settle(window);
-        if (review.ShowContextCommand.ExecutionTask is { } contextRead) await contextRead;
-        PageScreenshots.Settle(window);
-        Assert.False(rowFlyout.IsOpen);
-        Assert.Same(entry, review.Current);
-        var card = Assert.Single(panel.InspectorContent.GetVisualDescendants().OfType<WordCard>());
-        await CardReadFinishedAsync(window, card);
-        PageScreenshots.Settle(window);
-        Assert.NotNull(card.Document);
-        Assert.Null(card.Failure);
-        Assert.False(card.CanRetry);
-        Assert.Equal(entry.Change.Presentation.Key, card.Document.Key);
-        Assert.Contains(card.Document!.Sections, section => section is WordCardAnalysis { Token: not null });
-        var analysis = Assert.Single(card.Document.Sections.OfType<WordCardAnalysis>());
-        var reviewed = Assert.IsType<ResultsTokenViewModel>(analysis.Token);
-        var reviewedTarget = reviewed.CaptureActionTarget(workspace.Context.Changes.AssessmentId);
-        Assert.Equal(captured.Form, reviewedTarget.Form);
-        Assert.Equal(captured.WordformId, reviewedTarget.WordformId);
-        Assert.Equal(captured.Occurrence, reviewedTarget.Occurrence);
-        Assert.Equal(captured.AssessmentId, reviewedTarget.AssessmentId);
-        Assert.Equal(workspace.Context.SelectionReads.Reader!.Context.ExpectedWriteContext(),
-            reviewedTarget.ExpectedContext);
-        Assert.NotNull(reviewed.Actions);
-        Assert.Contains(reviewed.Disposition.StoredRows.SelectMany(stored => stored.Tiles), tile =>
-            !tile.IsCurrent && tile.Action?.IsAvailable == true &&
-            reviewed.StageMarkingChoiceForTokenCommand?.CanExecute(tile.Action) == true);
-        return card;
-    }
-
-    private static async Task CardReadFinishedAsync(Window window, WordCard card)
-    {
-        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        void Check()
-        {
-            if (card.Document is not null || card.CanRetry ||
-                card.Failure is { } failure && failure != "Loading word details…")
-                finished.TrySetResult();
-        }
-        void Changed(object? sender, AvaloniaPropertyChangedEventArgs change) => Check();
-        void Closed(object? sender, EventArgs args) => finished.TrySetException(
-            new InvalidOperationException("The window closed before Review's card read finished."));
-        card.PropertyChanged += Changed;
-        window.Closed += Closed;
-        try
-        {
-            Check();
-            await finished.Task;
-        }
-        finally
-        {
-            card.PropertyChanged -= Changed;
-            window.Closed -= Closed;
-        }
+        throw new ArgumentOutOfRangeException(nameof(host), host, null);
     }
 
     private static Button PartButton(Control surface, string part) =>

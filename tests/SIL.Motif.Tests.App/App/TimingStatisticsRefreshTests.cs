@@ -19,9 +19,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-/// <summary>
-/// Checks that opening Detailed statistics starts its read once, without a second refresh control on the page.
-/// </summary>
+/// <summary>Checks when recorded statistics are read and how partial reruns affect their scope.</summary>
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class TimingStatisticsRefreshTests
 {
@@ -33,54 +31,25 @@ public sealed class TimingStatisticsRefreshTests
         "project-1", "sha256:" + new string('a', 64), "1", "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
     [Fact]
-    public void DetailedStatisticsLoadWhenOpenedWithoutASeparateRefreshButton()
+    public void DiagnosticsDoesNotStartASeparateStatisticsRead()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (fake, workspace) = NewWorkspace();
-            var kindTiming = new TaskCompletionSource<CommandOutcome<TimingResponse>>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-            fake.OnTiming((request, _) => request.By == "kind"
-                ? kindTiming.Task
-                : Task.FromResult(CommandOutcome<TimingResponse>.Success(Timing("rule"))));
+            fake.OnTiming((request, _) => Task.FromResult(CommandOutcome<TimingResponse>.Success(Timing(request.By))));
             fake.StatsCompletesWith(new StatsCommandResponse("assessment-parse", "grammar.json", "cache.sqlite", null, []));
             await workspace.SetProjectAsync(ProjectPath);
             if (workspace.Context.Setup is { IsOpen: true } setup) await setup.SkipCommand.ExecuteAsync(null);
-            var window = new MainWindow();
-            window.Compose(workspace);
             workspace.Context.Diagnostics = true;
-            window.Show();
-            try
-            {
-                workspace.CurrentPage = WorkspacePage.Timing;
-                workspace.Context.PublishEvidence(new WorkspaceEvidence(Run(), Saved, WasRerun: false));
-                PageScreenshots.SettleLayout(window);
-                var statistics = workspace.PageModel<TimingPageModel>().Statistics;
-                Assert.Equal(30, workspace.PageModel<TimingPageModel>().RerunSeconds);
-                Assert.Equal(ParserWorkLimit.DefaultWork, workspace.PageModel<TimingPageModel>().RerunSteps);
-                Assert.DoesNotContain(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Refresh statistics");
-                Assert.False(workspace.Context.EvidencePublication.IsCompleted);
+            workspace.Context.PublishEvidence(new WorkspaceEvidence(Run(), Saved, WasRerun: false));
+            await workspace.Context.EvidencePublication;
+            workspace.Context.OpenDiagnostics(DiagnosticsTab.SpeedByRule);
+            Assert.Empty(fake.StatsRequests);
 
-                var details = window.GetLogicalDescendants().OfType<Expander>()
-                    .Single(expander => Equals(expander.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
-                details.IsExpanded = true;
-                PageScreenshots.SettleLayout(window);
-                Assert.NotNull(statistics.LoadCommand.ExecutionTask);
-                await statistics.LoadCommand.ExecutionTask!;
-                Assert.Single(fake.StatsRequests);
-
-                kindTiming.SetResult(CommandOutcome<TimingResponse>.Success(Timing("kind")));
-                await workspace.Context.EvidencePublication;
-                details.IsExpanded = false;
-                details.IsExpanded = true;
-                PageScreenshots.SettleLayout(window);
-                Assert.Single(fake.StatsRequests);
-            }
-            finally
-            {
-                window.Close();
-            }
+            var statistics = new StatisticsViewModel(fake) { ProjectPath = ProjectPath, AssessmentId = "assessment-timing" };
+            await statistics.LoadCommand.ExecuteAsync(null);
+            Assert.Single(fake.StatsRequests);
+            await workspace.DisposeAsync();
         }, TimeSpan.FromSeconds(30));
     }
 
@@ -98,7 +67,10 @@ public sealed class TimingStatisticsRefreshTests
                 null, [rawWord]));
             await workspace.SetProjectAsync(ProjectPath);
             if (workspace.Context.Setup is { IsOpen: true } setup) await setup.SkipCommand.ExecuteAsync(null);
-            var timing = workspace.PageModel<TimingPageModel>();
+            var statistics = new StatisticsViewModel(fake)
+            {
+                ProjectPath = ProjectPath, AssessmentId = "assessment-timing", HasTimingOverrides = true,
+            };
 
             var run = Run() with
             {
@@ -109,11 +81,12 @@ public sealed class TimingStatisticsRefreshTests
             Assert.NotNull(workspace.Assess.Words.Find("motifa"));
             workspace.Context.PublishEvidence(new WorkspaceEvidence(run, Saved, WasRerun: false));
             await workspace.Context.EvidencePublication;
-            await timing.Statistics.LoadCommand.ExecuteAsync(null);
+            await statistics.LoadCommand.ExecuteAsync(null);
 
-            Assert.True(Assert.Single(timing.Statistics.Rows).IsIncomplete);
-            Assert.Contains("original Parse all words run", timing.Statistics.ScopeNote, StringComparison.Ordinal);
-            Assert.Contains("later word reruns appear above in Timing", timing.Statistics.ScopeNote, StringComparison.Ordinal);
+            Assert.True(Assert.Single(statistics.Rows).IsIncomplete);
+            Assert.Contains("original Parse all words run", statistics.ScopeNote, StringComparison.Ordinal);
+            Assert.Contains("later word reruns appear above in Timing", statistics.ScopeNote, StringComparison.Ordinal);
+            await workspace.DisposeAsync();
         }, TimeSpan.FromSeconds(30));
     }
 

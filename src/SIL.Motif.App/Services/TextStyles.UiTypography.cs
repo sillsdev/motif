@@ -9,8 +9,8 @@ public sealed partial class TextStyles
 {
     private const string EmbeddedFontCollectionKey = "fonts:Motif";
     private const string EmbeddedFontAssets = "avares://SIL.Motif.App/Assets/Fonts";
-    private const string AndikaFamilyName = EmbeddedFontCollectionKey + "#Andika";
-    private static readonly FontFamily UiFontFamily = new(AndikaFamilyName);
+    private const string InterfaceFamilyName = EmbeddedFontCollectionKey + "#Source Sans 3";
+    private static readonly FontFamily UiFontFamily = new(InterfaceFamilyName);
     private static readonly string[] WritingSystemFontFamilies =
     [
         "Andika",
@@ -113,7 +113,7 @@ public sealed partial class TextStyles
     }
 
     internal static FontFamily InterfaceFontFamily => UiFontFamily;
-    internal static string InterfaceFontFamilyName => AndikaFamilyName;
+    internal static string InterfaceFontFamilyName => InterfaceFamilyName;
     internal static FontManagerOptions CurrentInterfaceFontOptions =>
         InterfaceFontOptionsForLanguage(System.Globalization.CultureInfo.CurrentUICulture.Name);
 
@@ -162,7 +162,7 @@ public sealed partial class TextStyles
                 FontFamily = new FontFamily(family),
                 UnicodeRange = UnicodeRange.Parse(range),
             }).ToArray();
-        return new FontManagerOptions { DefaultFamilyName = AndikaFamilyName, FontFallbacks = fallbacks };
+        return new FontManagerOptions { DefaultFamilyName = InterfaceFamilyName, FontFallbacks = fallbacks };
     }
 
     private static IReadOnlyList<string> UiFallbackFamilies(string? language)

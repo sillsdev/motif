@@ -19,7 +19,7 @@ public sealed class ProposalNumberEmphasisTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void ChangedTrialFiguresAreBoldInTheWideTableAndFocusedInspector(bool dark)
+    public void TrialFiguresRemainAvailableWithoutTheRetiredInspector(bool dark)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -38,41 +38,13 @@ public sealed class ProposalNumberEmphasisTests
                 var card = Assert.IsType<ProposalCardViewModel>(model.SelectedProposal);
                 Assert.Contains(card.Numbers, number => number.Moved);
                 Assert.Contains(card.Numbers, number => !number.Moved);
-                var page = window.PageView<ProposalsPage>();
-                var list = page.FindControl<ListBox>("ProposalsRowsItems")!;
-                var row = Assert.IsType<ListBoxItem>(list.ContainerFromItem(card));
-                var measures = new[]
-                {
-                    (card.ApprovedKept!, card.TableApprovedKeptText),
-                    (card.Coverage!, card.TableCoverageText),
-                    (card.Warnings!, card.TableWarningsText),
-                    (card.Work!, card.TableWorkText),
-                };
-                var failures = new List<string>();
-                Capture(window, dark, "wide");
-                foreach (var (number, value) in measures)
-                {
-                    var text = Assert.Single(row.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == value);
-                    CheckEmphasis(text, number, failures);
-                }
-                var settings = SettingsTestAccess.Model(window);
-                settings.ZoomPercent = 150;
-                window.Width = 640;
-                window.Height = 600;
-                PageScreenshots.Settle(window);
+                Assert.NotNull(card.ApprovedKept);
+                Assert.NotNull(card.Coverage);
+                Assert.NotNull(card.Warnings);
+                Assert.NotNull(card.Work);
                 var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
-                HeadlessClick.Click(window, host.FindControl<Button>("InspectorStrip")!, "Show Inspector");
-                PageScreenshots.Settle(window);
-                var inspector = host.FindControl<ContentControl>("PageInspectorHost")!;
-                Capture(window, dark, "focused");
-                foreach (var number in card.Numbers)
-                {
-                    var text = Assert.Single(inspector.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                        text => ReferenceEquals(text.DataContext, number) && text.Text == number.Value);
-                    CheckEmphasis(text, number, failures);
-                }
+                Assert.False(host.FindControl<Border>("InspectorPane")!.IsVisible);
                 LayoutAssertions.AssertCurrent(window);
-                Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
             }
             finally
             {

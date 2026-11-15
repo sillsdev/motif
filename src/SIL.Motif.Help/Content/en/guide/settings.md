@@ -22,13 +22,19 @@ When the parser work limit is finite, the time limit can follow Motif's estimate
 
 ## Default Proposal Checks
 
-Default Proposal Checks sets how thorough Motif's grammar check is when it runs by itself, from Warnings, or for a Proposal. **Compare Stored Analyses** checks that each word's saved analyses still parse, which is the one part of a grammar check that slows down as a project grows. Choose one:
+Default Proposal Checks sets how thorough Motif's grammar check is when it runs by itself or for a Proposal. **Compare Stored Analyses** checks that each word's saved analyses still parse, which is the one part of a grammar check that slows down as a project grows. Choose one:
 
 - **Within a work budget (recommended)** compares words until a fixed amount of work is spent, then says how many were left. It gives the same result on every computer.
 - **Every word** compares all of them. A large project can take half a minute or more.
 - **Off** skips the comparison; the other grammar checks still run.
 
 The choice is remembered for this user on this computer and applies to the next grammar check. Results already shown keep the choice they were checked with. The command line's [Check a grammar](cmd:grammar%20check) accepts `--stored-analyses` to override it for one run.
+
+## Assistant connections and file Handoff
+
+Settings contains assistant connection choices and their actual connection status. Select the assistants you want to connect and follow the instructions shown for the selected client.
+
+Turn on **Show Hand Off by Copying Files** to use the file Handoff controls in Settings. When you request a Handoff for selected words, Motif opens those controls with the words selected. Choose the write action yourself and review the data-sensitivity notice before sharing the files.
 
 ## Writing Systems
 

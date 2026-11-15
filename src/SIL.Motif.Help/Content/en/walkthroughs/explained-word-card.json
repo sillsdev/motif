@@ -9,8 +9,7 @@
     "no-stored-new-reading": "The dashed mark means FieldWorks has no reading stored. A solid ≠ and underline mark the new reading PanGloss found.",
     "disapproved-conflict": "D marks the stored reading as Disapproved. PanGloss still builds it, so the reading conflicts with that opinion.",
     "no-parse": "There is no reading stored in FieldWorks, and PanGloss found no complete reading.",
-    "capped": "PanGloss stopped before finishing its search. The dotted ◖ and underline mark the unfinished search; other readings may still exist.",
-    "word-list-results": "The Word list shows the parsed wordforms for the selected Text."
+    "capped": "PanGloss stopped before finishing its search. The dotted ◖ and underline mark the unfinished search; other readings may still exist."
   },
   "callouts": {
     "approved-agrees": {
@@ -59,9 +58,6 @@
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-pangloss": "Brown means PanGloss stopped at the work limit.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-fix": "A means FieldWorks approved this reading. Choose Set analysis to change what FieldWorks holds.",
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6f6b756c6c6172c4b16e6461-unread": "Unread marks a word whose current reading has not been reviewed."
-    },
-    "word-list-results": {
-      "motif-word-row-word-list-geldi-word": "A word from the selected Text, with its gloss."
     }
   }
 }

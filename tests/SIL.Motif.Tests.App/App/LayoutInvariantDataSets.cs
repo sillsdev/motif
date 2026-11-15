@@ -1,6 +1,7 @@
 using Avalonia.Media;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Commands.Queries;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Tests.App.Walkthrough;
 using SIL.Motif.Tests.TestFixtures;
@@ -17,7 +18,7 @@ internal sealed record LayoutVisit(
     Action<WorkspaceShellViewModel>? Select = null);
 
 /// <summary>
-/// What one quick-tier sweep shows: the same two words, texts, Review changes, Proposals and Parsimony findings
+/// What one quick-tier sweep shows: the same two words, texts and Proposals
 /// as the plain sweep, with the strings that stress a layout swapped in. <paramref name="Tier"/> names the sweep's
 /// own findings list.
 /// </summary>
@@ -25,17 +26,12 @@ internal sealed record LayoutDataSet(
     string Tier, TextWordsResponse Words, AssessCommandResponse Assessment, Action<FakeCommandClient> Configure,
     Func<WorkspaceShellViewModel, Task> Arrange, IReadOnlyList<LayoutVisit>? Visits = null)
 {
-    /// <summary>Ticks every listed word and marks every Review row Looked at, since a row's checked state changes its layout.</summary>
+    /// <summary>Ticks every listed word, since a row's checked state changes its layout.</summary>
     internal static Task TickEveryRow(WorkspaceShellViewModel workspace)
     {
-        var compared = workspace.Assess.Compare.Words;
         var listed = workspace.PageModel<TextsPageModel>().Words.ProjectWords;
-        Assert.True(compared.Count + listed.Count > 0, "No word row exists to tick.");
-        foreach (var word in compared) word.IsChecked = true;
+        Assert.NotEmpty(listed);
         foreach (var word in listed) word.IsChecked = true;
-        var reviewed = workspace.PageModel<ReviewPageModel>().ReviewEntries.Where(entry => entry.Review is not null).ToArray();
-        Assert.NotEmpty(reviewed);
-        foreach (var entry in reviewed) entry.Review!.IsLookedAt = true;
         return Task.CompletedTask;
     }
 
@@ -47,7 +43,7 @@ internal sealed record LayoutDataSet(
     internal static LayoutDataSet Plain() => new("quick", LayoutInvariantFixtures.QuickWords(),
         LayoutInvariantFixtures.QuickAssessment(), LayoutInvariantFixtures.ConfigurePopulated, TickEveryRow);
 
-    /// <summary>Both words, one text title, one Review change and the project's default vernacular are Arabic script.</summary>
+    /// <summary>Both words, one text title and the project's default vernacular are Arabic script.</summary>
     internal static LayoutDataSet RightToLeft()
     {
         var tag = SeededProject.RightToLeftTag;
@@ -84,7 +80,10 @@ internal sealed record LayoutDataSet(
             Texts = [.. words.Texts.Select(text => text with
             {
                 Title = Title(text.Title), TitleWritingSystem = TitleTag(text.Title),
-                Lines = [.. text.Lines.Select(line => line with { Tokens = [.. line.Tokens.Select(Token)] })],
+                Lines = [.. text.Lines.Select(line => line with
+                {
+                    SentenceWritingSystem = tag, Tokens = [.. line.Tokens.Select(Token)],
+                })],
             })],
         };
         var assessment = LayoutInvariantFixtures.QuickAssessment();
@@ -99,6 +98,10 @@ internal sealed record LayoutDataSet(
         return new("quick-rtl", words, assessment, fake =>
         {
             LayoutInvariantFixtures.ConfigurePopulated(fake);
+            fake.OverviewCompletesWith(SampleEvidence.Overview(assessment) with
+            {
+                WritingSystems = [WritingSystemTestData.English with { IsDefault = false }, arabic],
+            });
             var snapshot = ReviewScreenshots.Blocked();
             fake.PendingChangesIs(snapshot with
             {
@@ -115,52 +118,37 @@ internal sealed record LayoutDataSet(
         }, workspace =>
         {
             WalkthroughFonts.Register();
-            var overview = workspace.PageModel<OverviewPageModel>();
-            overview.Overview = overview.Overview! with { WritingSystems = [WritingSystemTestData.English with { IsDefault = false }, arabic] };
+            workspace.Context.TextStyles.ReplaceContextIfChanged([WritingSystemTestData.English with { IsDefault = false }, arabic]);
             return TickEveryRow(workspace);
         }, [
-            new(WorkspacePage.Overview, "Overview/populated", false,
+            new(WorkspacePage.Words, "Words/populated", false,
                 [new(ArabicFirst, FlowDirection.RightToLeft), new(ArabicSecond, FlowDirection.RightToLeft)]),
-            new(WorkspacePage.Review, "Review/populated", false, [new(ArabicSecond, FlowDirection.RightToLeft)]),
-            new(WorkspacePage.Review, "Review/details-shown", true, [new("تَاب", FlowDirection.RightToLeft)], workspace =>
-            {
-                var review = workspace.PageModel<ReviewPageModel>();
-                review.SelectEntry(Assert.Single(review.Entries, entry => entry.Change?.Word == ArabicSecond));
-            }),
+            new(WorkspacePage.Texts, "Texts/populated", false,
+                [new(ArabicFirst, FlowDirection.RightToLeft)]),
         ]);
     }
 
-    /// <summary>One Proposal name of about a hundred and twenty characters and one Parsimony limitation of about three hundred.</summary>
+    /// <summary>Long Proposal and Grammar Guide titles remain readable at narrow sizes.</summary>
     internal static LayoutDataSet Long()
     {
         const string name = "Sound change for the second-person plural subject prefix before vowel-initial verb stems in the northern dialect";
-        const string advice = "This count covers only the prohibitions written in this grammar, so a restriction that the parser " +
-            "enforces through a feature, a natural class or a rule ordering is not in it, and the paired parser check that would " +
-            "show whether the named forms are still blocked has not been run for this project, which makes the share a floor.";
+        const string guide = "Subject prefixes before vowel-initial verb stems in the northern dialect";
         return Plain() with
         {
             Tier = "quick-long",
             Visits =
             [
                 new(WorkspacePage.Proposals, "Proposals/populated", false, [new(name)]),
-                new(WorkspacePage.Parsimony, "Parsimony/details-shown", true, [new(advice)]),
+                new(WorkspacePage.GrammarGuide, "GrammarGuide/populated", false, [new(guide)]),
             ],
             Configure = fake =>
             {
-                ParsimonyStateScreenshots.Configure(fake, "listed-evidence", report => report with
-                {
-                    Findings = [.. report.Findings.Select(finding => finding with { Limitations = [advice] })],
-                });
                 ProposalsPageScreenshots.Configure(fake, name);
                 fake.PendingChangesIs(ReviewScreenshots.Blocked());
+                fake.GrammarGuideListHandler = (_, _) => Task.FromResult(CommandOutcome<GdrListResponse>.Success(
+                    new(true, [new GdrSummary("gdr/1", "1", guide, "")])));
             },
-            Arrange = async workspace =>
-            {
-                await TickEveryRow(workspace);
-                // The advice shows in the Inspector for a selected finding.
-                var page = workspace.PageModel<ParsimonyPageModel>();
-                Assert.True(page.SelectFinding(page.Rows.First(row => !row.IsHeader).Link!), page.SelectionMessage);
-            },
+            Arrange = TickEveryRow,
         };
     }
 }

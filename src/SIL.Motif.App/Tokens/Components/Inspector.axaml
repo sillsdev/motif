@@ -77,12 +77,6 @@
     <Setter Property="Foreground" Value="{DynamicResource Intent.Consequence.Problem}" />
   </Style>
 
-  <!-- A name that opens the inspector is a link, so it underlines under the pointer as every link does. -->
-  <Style Selector="HyperlinkButton.inspectLink, HyperlinkButton.inspectorAction">
-    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
-    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Body}" />
-    <Setter Property="Foreground" Value="{DynamicResource Intent.Link}" />
-  </Style>
   <Style Selector="HyperlinkButton.crumb">
     <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />

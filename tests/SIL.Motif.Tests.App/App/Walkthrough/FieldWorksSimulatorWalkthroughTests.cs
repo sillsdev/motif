@@ -34,7 +34,7 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         var releaseParserPath = Path.Combine(project.ManagedRoot, "analysis-parser-release");
         var deadline = WalkthroughSteps.DeadlineIn(360);
 
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
@@ -109,20 +109,14 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             walkthrough.Window.UpdateLayout();
             Assert.False(setMenu.Flyout.IsOpen);
 
-            walkthrough.ShowPage(WorkspacePage.Review);
-            var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
-            Assert.Single(review.Changes.Items);
-            var checkNumbers = walkthrough.Find<Button>("Check what applying does to the numbers");
-            Assert.True(checkNumbers.IsEffectivelyVisible);
-            Assert.True(checkNumbers.IsEffectivelyEnabled);
-            walkthrough.Click("Check what applying does to the numbers");
-            walkthrough.WaitUntil(() => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
-                WalkthroughSteps.Remaining(deadline), "checking the confirmed change did not enable Apply");
-            walkthrough.Click("Apply to FieldWorks project");
-            walkthrough.ClickAutomationId(AutomationIds.ApplyConfirm);
-            walkthrough.WaitUntil(() => review.HasReceipt && review.Changes.Items.Count == 0,
-                WalkthroughSteps.Remaining(deadline), "Apply did not finish after the uncertain decision was confirmed");
-            return Task.CompletedTask;
+            walkthrough.ShowPage(WorkspacePage.Proposals);
+            var context = walkthrough.Workspace.Context;
+            Assert.Single(context.Changes.Items);
+            await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+            Assert.True(context.ProposalApply.CanApply(null, null, null, null));
+            await context.ProposalApply.ApplyCurrentAsync(null);
+            Assert.NotNull(context.ProposalApply.Receipt);
+            Assert.Empty(context.Changes.Items);
         }, WalkthroughSteps.Remaining(deadline));
     }
 
@@ -220,15 +214,15 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                     walkthrough.Workspace.Context.Setup?.IsOpen == true,
                 StepFor(deadline), "the window did not show the held project and its setup");
             walkthrough.SkipSetup();
-            walkthrough.ShowPage(WorkspacePage.Review);
+            walkthrough.ShowPage(WorkspacePage.Proposals);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Context.Changes.Items.Count == 1,
                 StepFor(deadline), "the pending change did not appear in Review");
 
-            var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
-            Assert.False(review.CanApply);
-            Assert.False(review.ApplyCommand.CanExecute(null));
-            Assert.False(string.IsNullOrWhiteSpace(review.ApplyBlockReason));
+            var apply = walkthrough.Workspace.Context.ProposalApply;
+            Assert.False(apply.CanApply(null, null, null, null));
+            Assert.Contains(apply.Blockers(null, null, null, null),
+                blocker => blocker.Kind == ApplyBlockerKind.FieldWorksHoldsProject);
             return Task.CompletedTask;
         }, TimeSpan.FromSeconds(60));
     }
@@ -242,7 +236,6 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
         using var held = new FieldWorksSimulator(project.FwDataPath).Hold();
         var deadline = WalkthroughSteps.DeadlineIn(60);
         var parser = FakeParser.Copy(project.ManagedRoot);
-        var prompt = "Check these changes to see how many of the words you changed keep their approved analyses.";
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
@@ -256,27 +249,15 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
                 StepFor(deadline), "the window did not show the held project and its setup");
             walkthrough.SkipSetup();
 
-            walkthrough.ShowPage(WorkspacePage.Review);
+            walkthrough.ShowPage(WorkspacePage.Proposals);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Context.Changes.Items.Count == 1,
                 StepFor(deadline), "the pending change did not appear in Review");
 
-            var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
-            await review.LoadReviewAsync();
-            WaitForMeasureAction(walkthrough, deadline);
-            var applyButton = walkthrough.Find<Button>("Apply to FieldWorks project");
-            var checkNumbers = walkthrough.Find<Button>("Check what applying does to the numbers");
-            Assert.True(checkNumbers.IsEffectivelyVisible);
-            Assert.True(checkNumbers.IsEffectivelyEnabled);
-            walkthrough.Click("Check what applying does to the numbers");
-            Assert.False(walkthrough.Workspace.Context.Setup?.IsOpen);
-            walkthrough.WaitUntil(
-                () => !review.IsMeasuring && review.NumbersText != prompt,
-                StepFor(deadline), "the pending change was not checked");
-            WaitForMeasurementDisplay(walkthrough, review, deadline);
-            Assert.Null(review.MeasurementRefusal);
-            Assert.False(applyButton.IsEffectivelyEnabled);
-            Assert.False(string.IsNullOrWhiteSpace(review.ApplyBlockReason));
+            var context = walkthrough.Workspace.Context;
+            await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+            Assert.Null(context.PendingMeasurement.Refusal);
+            Assert.False(context.ProposalApply.CanApply(null, null, null, null));
 
             held.Dispose();
             walkthrough.Window.Hide();
@@ -287,64 +268,21 @@ public sealed class FieldWorksSimulatorWalkthroughTests(PristineProjectFixture p
             var concurrentFreshnessCheck = walkthrough.Workspace.CheckFreshnessAsync();
             var checksShareTask = ReferenceEquals(freshnessCheck, concurrentFreshnessCheck);
             await Task.WhenAll(freshnessCheck, concurrentFreshnessCheck);
-            await review.LoadReviewAsync();
-            WaitForMeasureAction(walkthrough, deadline);
             walkthrough.WaitUntil(
                 () => !walkthrough.Workspace.Baseline.FieldWorksHeldProject,
                 StepFor(deadline), "the window did not clear the held-project status after release");
-            var releasedCheckNumbers = walkthrough.Find<Button>("Check what applying does to the numbers");
-            walkthrough.WaitUntil(
-                () => walkthrough.Workspace.Context.Setup?.IsOpen != true && !walkthrough.SetupDialogIsShown &&
-                    releasedCheckNumbers.IsEffectivelyVisible && releasedCheckNumbers.IsEffectivelyEnabled,
-                StepFor(deadline), "the Review action was not available after FieldWorks was released");
-            WaitForMeasurementDisplay(walkthrough, review, deadline);
             Assert.True(checksShareTask, "Concurrent activation checks should share one freshness read.");
-            walkthrough.Click("Check what applying does to the numbers");
-            Assert.True(review.IsMeasuring);
-            walkthrough.WaitUntil(
-                () => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
-                StepFor(deadline), "the released project changes were not checked again");
-            Assert.Null(review.MeasurementRefusal);
-            Assert.True(review.ApplyCommand.CanExecute(null), review.ApplyBlockReason);
-            Assert.True(applyButton.IsEffectivelyEnabled);
-            walkthrough.Click("Apply to FieldWorks project");
-            walkthrough.ClickAutomationId(AutomationIds.ApplyConfirm);
-            walkthrough.WaitUntil(
-                () => (review.HasReceipt && review.Changes.Items.Count == 0) || review.ApplyRefusal is not null,
-                StepFor(deadline), "Apply returned neither a Receipt nor a refusal");
-            Assert.Null(review.ApplyRefusal);
-            Assert.Empty(review.Changes.Items);
-            Assert.True(review.HasReceipt);
-            CopyableTextBlock? receipt = null;
-            walkthrough.WaitUntil(() => (receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
-                .SingleOrDefault(text => text.Text == review.ReceiptText)) is not null && receipt.IsEffectivelyVisible,
-                StepFor(deadline), "the Receipt text was not shown");
+            await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+            Assert.Null(context.PendingMeasurement.Refusal);
+            Assert.True(context.ProposalApply.CanApply(null, null, null, null));
+            await context.ProposalApply.ApplyCurrentAsync(null);
+            Assert.Null(context.ProposalApply.ApplyRefusal);
+            Assert.Empty(context.Changes.Items);
+            Assert.NotNull(context.ProposalApply.Receipt);
         }, TimeSpan.FromSeconds(60));
     }
 
     private static TimeSpan StepFor(long deadline) => TimeSpan.FromTicks(Math.Min(
         WalkthroughSteps.Remaining(deadline).Ticks, TimeSpan.FromSeconds(30).Ticks));
 
-    private static void WaitForMeasureAction(WalkthroughWindow walkthrough, long deadline)
-    {
-        walkthrough.WaitUntil(
-            () => walkthrough.Window.GetLogicalDescendants().OfType<Button>().Any(button =>
-                string.Equals(Avalonia.Automation.AutomationProperties.GetName(button),
-                    "Check what applying does to the numbers", StringComparison.Ordinal) &&
-                button.IsEffectivelyVisible && button.IsEffectivelyEnabled),
-            StepFor(deadline), "Review's measurement action did not become available after loading its entries");
-    }
-
-    private static void WaitForMeasurementDisplay(
-        WalkthroughWindow walkthrough, ReviewPageModel review, long deadline)
-    {
-        var numbers = walkthrough.Named<CopyableTextBlock>("ReviewNumbersText");
-        var progress = walkthrough.Named<CopyableTextBlock>("ReviewMeasurementProgress");
-        walkthrough.WaitUntil(
-            () => !review.IsMeasuring && numbers.Text == review.NumbersText &&
-                progress.IsEffectivelyVisible == review.IsMeasuring,
-            StepFor(deadline), "Review's displayed measurement state did not catch up with its model");
-        walkthrough.Window.UpdateLayout();
-        Dispatcher.UIThread.RunJobs();
-    }
 }

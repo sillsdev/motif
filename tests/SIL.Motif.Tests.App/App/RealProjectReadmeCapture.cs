@@ -93,8 +93,8 @@ public sealed class RealProjectReadmeCapture(ITestOutputHelper output)
             TimeSpan.FromMinutes(1), "first-open setup did not appear");
         workspace.Context.Setup!.SkipCommand.Execute(null);
         walkthrough.WaitUntil(() => !workspace.Context.Setup.IsOpen, TimeSpan.FromMinutes(1), "setup did not close");
-        walkthrough.WaitUntil(() => workspace.PageModel<WarningsPageModel>().Grammar.HasChecked &&
-            !workspace.PageModel<WarningsPageModel>().Grammar.CheckCommand.IsRunning,
+        walkthrough.WaitUntil(() => workspace.Context.GrammarCheck.HasChecked &&
+            !workspace.Context.GrammarCheck.CheckCommand.IsRunning,
             TimeSpan.FromMinutes(5), "the grammar check did not finish");
 
         walkthrough.WaitUntil(() => workspace.Selection.Texts.Count > 0, TimeSpan.FromMinutes(2), "the project has no Texts");
@@ -123,13 +123,12 @@ public sealed class RealProjectReadmeCapture(ITestOutputHelper output)
             new SIL.Motif.Contract.Requests.OverviewRequest(walkthrough.ProjectPath), CancellationToken.None);
         Assert.True(overview.Succeeded, overview.Refusal?.Message);
         Assert.NotNull(overview.Value!.AssessmentId);
-        walkthrough.WaitUntil(() => workspace.PageModel<OverviewPageModel>().Overview?.AssessmentId is not null,
+        walkthrough.WaitUntil(() => workspace.Context.Health.Overview?.AssessmentId is not null,
             TimeSpan.FromMinutes(1), "the Overview did not load the stored Assessment");
 
-        workspace.CurrentPage = WorkspacePage.Overview;
-        Save(walkthrough.Window, Path.Combine(folder, "1-overview.png"));
+        workspace.CurrentPage = WorkspacePage.Progress;
+        Save(walkthrough.Window, Path.Combine(folder, "1-progress.png"));
 
-        workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
         workspace.CurrentPage = WorkspacePage.Texts;
         // The first Text of a project is often a one-word placeholder, which teaches a reader nothing.
         var reader = workspace.PageModel<TextsPageModel>().ResultsInText;
@@ -137,46 +136,16 @@ public sealed class RealProjectReadmeCapture(ITestOutputHelper output)
         await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, walkthrough.Window);
         Save(walkthrough.Window, Path.Combine(folder, "2-texts-analyze.png"));
 
-        workspace.CurrentPage = WorkspacePage.Warnings;
+        workspace.Context.Diagnostics = true;
+        workspace.Context.OpenDiagnostics(DiagnosticsTab.Warnings);
         Save(walkthrough.Window, Path.Combine(folder, "3-warnings.png"));
 
-        // One harmless pending change in the scratch copy, so Review has something to list.
-        var compare = workspace.Assess.Compare;
-        workspace.Context.OpenTexts(TextsTab.Lists);
-        Dispatcher.UIThread.RunJobs();
-        foreach (var preset in compare.Presets)
-        {
-            compare.SelectPresetCommand.Execute(preset);
-            if (compare.Words.Any(word => word.ReadingChoices.Count > 0)) break;
-        }
-        output.WriteLine($"Staging from preset words: {compare.Words.Count}, with readings: " +
-            $"{compare.Words.Count(word => word.ReadingChoices.Count > 0)}");
-        // Fewest readings first: a word with one reading is the least ambiguous change to show.
-        foreach (var candidate in compare.Words.Where(word => word.ReadingChoices.Count > 0 && word.Word.Length is > 5 and <= 12)
-                     .OrderBy(word => word.ReadingChoices.Count).ThenBy(word => word.Word.Length).Take(300))
-        {
-            candidate.IsChecked = true;
-            compare.ProposeCommand.Execute(ChangeKinds.AddCandidate);
-            walkthrough.WaitUntil(() => !compare.ProposeCommand.IsRunning, TimeSpan.FromMinutes(2),
-                "The candidate change did not finish");
-            try { walkthrough.WaitUntil(() => compare.Changes.Count > 0, TimeSpan.FromSeconds(1), "no pending change"); }
-            catch (Exception) { /* a word the change list skipped; the next one is tried */ }
-            output.WriteLine($"Staged '{candidate.Word}': refusal {compare.Changes.LastRefusal?.Message ?? "none"}, skipped {compare.Changes.Snapshot.SkippedWord}, pending {compare.Changes.Count}");
-            if (compare.Changes.Count > 0) break;
-            candidate.IsChecked = false;
-        }
-        compare.ClearSelectionCommand.Execute(null);
-        workspace.CurrentPage = WorkspacePage.Review;
-        Save(walkthrough.Window, Path.Combine(folder, "4-review.png"));
-
-        var rows = workspace.Assess.Words.Rows;
-        var tried = rows.Where(row => !row.IsFailed && row.Word.Length <= 12).MaxBy(row => row.Word.Length) ??
-            rows.FirstOrDefault(row => !row.IsFailed) ?? rows.First();
-        workspace.Assess.OpenTryWord!(tried.Word);
-        walkthrough.WaitUntil(() => !workspace.Assess.Trace.TryCommand.IsRunning, TimeSpan.FromMinutes(3),
-            "Try a Word did not finish");
-        output.WriteLine($"Tried '{tried.Word}': {workspace.Assess.Trace.AnswerText}");
-        Save(walkthrough.Window, Path.Combine(folder, "5-try-a-word.png"));
+        workspace.CurrentPage = WorkspacePage.Words;
+        Save(walkthrough.Window, Path.Combine(folder, "4-words.png"));
+        workspace.CurrentPage = WorkspacePage.Proposals;
+        Save(walkthrough.Window, Path.Combine(folder, "5-proposals.png"));
+        workspace.CurrentPage = WorkspacePage.GrammarGuide;
+        Save(walkthrough.Window, Path.Combine(folder, "6-grammar-guide.png"));
     }
 
     private static void Save(MainWindow window, string path)

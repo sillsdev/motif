@@ -116,7 +116,9 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal(selectedTextIds, selectionPanel.Selection.ChosenTextIds.Order());
 
             var previousInvocationId = parsed.InvocationId;
-            walkthrough.Click("Parse all words in the Selection");
+            var card = ProjectCardAccess.Open(walkthrough.Window);
+            HeadlessClick.Click(walkthrough.Window, card.FindControl<Button>("CardParseAllWordsButton")!, "Parse all words");
+            ProjectCardAccess.Close(walkthrough.Window);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Assess.Result?.InvocationId != previousInvocationId &&
@@ -166,9 +168,8 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextLimits);
             SetupWalkthroughActions.TypeSetupLimit(walkthrough, "Parser work limit for each word", "3100");
             SetupWalkthroughActions.ClickSetupButton(walkthrough, SIL.Motif.App.MotifAppStrings.SetupNextFirstRun);
-            var grammar = walkthrough.Workspace.PageModel<WarningsPageModel>().Grammar;
-            var grammarCheck = walkthrough.Workspace.PageModel<WarningsPageModel>()
-                .CheckGrammarCommand.ExecuteAsync(null);
+            var grammar = walkthrough.Workspace.Context.GrammarCheck;
+            var grammarCheck = grammar.CheckCommand.ExecuteAsync(null);
             walkthrough.WaitUntil(() => grammar.IsLoading, TimeSpan.FromSeconds(30),
                 "the held grammar check did not start before the first run");
             walkthrough.WaitUntil(() => File.Exists(grammarStarted), TimeSpan.FromSeconds(30),
@@ -198,7 +199,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal(AssessmentStage.Capturing, stageWhenSetupClosed);
             Assert.False(walkthrough.SetupDialogIsShown);
             Assert.Equal(RunState.Running, walkthrough.Workspace.Assess.State);
-            Assert.Equal(WorkspacePage.Texts, walkthrough.Workspace.Context.CurrentPage);
+            Assert.Equal(WorkspacePage.Progress, walkthrough.Workspace.Context.CurrentPage);
             Assert.True(walkthrough.Find<ProgressBar>("Parse all words progress").IsEffectivelyVisible);
             walkthrough.Click("Cancel parsing all words");
             walkthrough.WaitUntil(
@@ -209,8 +210,9 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 "the released grammar check did not finish");
             await grammarCheck;
 
+            walkthrough.ShowPage(WorkspacePage.Texts);
             walkthrough.ShowTextsTab(TextsTab.AnalyzeTexts);
-            Assert.True(walkthrough.Workspace.PageModel<TextsPageModel>().ShowAnalyzeParsePrompt);
+            Assert.True(walkthrough.Workspace.PageModel<TextsPageModel>().ShowParsePrompt);
             if (Environment.GetEnvironmentVariable("MOTIF_SCREENSHOTS") is { Length: > 0 } captureRoot)
             {
                 Directory.CreateDirectory(captureRoot);
@@ -237,7 +239,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
             Assert.Contains(walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>(), text =>
                 text.Text == walkthrough.Workspace.Selection.SummaryText && text.IsVisible);
             Assert.Equal(1m, walkthrough.Workspace.Selection.PerWordTimeLimitSeconds);
-            Assert.True(walkthrough.Find<Button>("Parse all words in the Selection").IsEffectivelyEnabled);
+            Assert.True(walkthrough.Workspace.ParseAllWordsCommand.CanExecute(null));
 
             var commands = Assert.IsType<CommandClient>(walkthrough.Workspace.Context.Commands);
             var stored = await commands.ReadDefaultSelectionAsync(
@@ -302,6 +304,7 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
 
             Assert.True(walkthrough.Workspace.Context.NeedsAssessment);
             Assert.False(walkthrough.Workspace.Context.Setup!.CanRunDefaultSelection);
+            walkthrough.ShowPage(WorkspacePage.Texts);
             var configureButtons = walkthrough.Window.GetLogicalDescendants().OfType<Button>()
                 .Where(button => button.Content?.ToString() == "Choose what to parse" && button.IsEffectivelyVisible)
                 .ToArray();
@@ -311,11 +314,9 @@ public sealed class FirstRunSetupWalkthroughTests(PristineProjectFixture pristin
                 Assert.True(button.IsEffectivelyEnabled);
                 Assert.Same(walkthrough.Workspace.ConfigureCommand, button.Command);
             });
-            // Every page offers the action in the project card; outside it Timing offers only its shared parse prompt.
-            walkthrough.ShowPage(WorkspacePage.Timing);
             var outsideCard = Assert.Single(walkthrough.Window.VisibleChooseWhatToParseButtonsOutsideProjectCard());
             Assert.NotNull(outsideCard.FindAncestorOfType<ParsePrompt>());
-            Assert.NotNull(outsideCard.FindAncestorOfType<TimingPage>());
+            Assert.NotNull(outsideCard.FindAncestorOfType<TextsPage>());
             Assert.Same(walkthrough.Workspace.ConfigureCommand, outsideCard.Command);
             var card = ProjectCardAccess.Open(walkthrough.Window);
             var cardAction = card.FindControl<Button>("CardChooseButton");

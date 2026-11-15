@@ -16,114 +16,6 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 [Collection(AvaloniaHeadlessCollection.Name)]
 public sealed class DesktopSeamWalkthroughTests
 {
-    private const string DiagnosticJson = """
-        {"schemaVersion":"pangloss.trace-details.v5","word":"word",
-         "search":{"completed":false,"capped":false,"timedOut":false,"invalidShape":false,"elapsedNs":2},
-         "result":{"signature":"-","guessed":false,"analyses":[]},"categories":{},"trace":null}
-        """;
-
-    [Fact]
-    public void ASavedDiagnosticOpensFromTryAWordAndItsJsonIsSavedAndCopied()
-    {
-        var clipboard = new RecordingClipboard();
-        List<(string SuggestedFileName, string Json)> saved = [];
-        var openPrompts = 0;
-        List<TopLevel> dialogOwners = [];
-        TopLevel? mainWindow = null;
-        TopLevel? diagnosticWindow = null;
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            using var walkthrough = new WalkthroughWindow(Path.GetTempPath(), "unused.fwdata", clipboard: clipboard);
-            walkthrough.Show();
-            walkthrough.SkipSetup();
-            walkthrough.ShowPage(WorkspacePage.TryAWord);
-
-            walkthrough.DiagnosticFiles.NextOpenCancels();
-            OpenSavedTrace(walkthrough.Window);
-            Assert.Empty(walkthrough.Window.OwnedWindows);
-
-            walkthrough.DiagnosticFiles.NextOpenReads(DiagnosticJson);
-            OpenSavedTrace(walkthrough.Window);
-            var diagnostic = Assert.IsType<DiagnosticWindow>(Assert.Single(walkthrough.Window.OwnedWindows));
-            mainWindow = walkthrough.Window;
-            diagnosticWindow = diagnostic;
-            try
-            {
-                diagnostic.UpdateLayout();
-                Pump();
-                InteractiveControlSweep.AssertScene(walkthrough, "opened diagnostic window",
-                    InteractiveControlFamily.Action,
-                    InteractiveControlFamily.Link,
-                    InteractiveControlFamily.TextEntry,
-                    InteractiveControlFamily.Choice,
-                    InteractiveControlFamily.Check,
-                    InteractiveControlFamily.Disclosure,
-                    InteractiveControlFamily.List,
-                    InteractiveControlFamily.SelectableText,
-                    InteractiveControlFamily.Mark,
-                    InteractiveControlFamily.Tree,
-                    InteractiveControlFamily.Collection);
-                Assert.Equal(DiagnosticJson, Assert.Single(diagnostic.GetLogicalDescendants().OfType<DiagnosticPanel>())
-                    .Tools.Trace.DiagnosticJson);
-
-                ClickTool(diagnostic, "Save full diagnostic JSON");
-                walkthrough.DiagnosticFiles.CancelSaves = true;
-                ClickTool(diagnostic, "Save full diagnostic JSON");
-                ClickTool(diagnostic, "Copy full diagnostic JSON");
-            }
-            finally
-            {
-                diagnostic.Close();
-            }
-
-            saved.AddRange(walkthrough.DiagnosticFiles.Saved);
-            openPrompts = walkthrough.DiagnosticFiles.OpenPrompts;
-            dialogOwners.AddRange(walkthrough.DiagnosticFiles.DialogOwners);
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(30));
-
-        Assert.Equal(2, openPrompts);
-        Assert.Equal([mainWindow!, diagnosticWindow!], dialogOwners);
-        Assert.Equal(("word.trace.json", DiagnosticJson), Assert.Single(saved));
-        Assert.Equal(DiagnosticJson, Assert.Single(clipboard.Copied));
-    }
-
-    [Fact]
-    public void AMalformedSavedDiagnosticOpensAWindowThatSaysWhy()
-    {
-        WindowRefusal? shown = null;
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            using var walkthrough = new WalkthroughWindow(Path.GetTempPath(), "unused.fwdata");
-            walkthrough.Show();
-            walkthrough.SkipSetup();
-            walkthrough.ShowPage(WorkspacePage.TryAWord);
-
-            walkthrough.DiagnosticFiles.NextOpenReads("{");
-            OpenSavedTrace(walkthrough.Window);
-            var diagnostic = Assert.IsType<DiagnosticWindow>(Assert.Single(walkthrough.Window.OwnedWindows));
-            try
-            {
-                diagnostic.UpdateLayout();
-                Pump();
-                var error = diagnostic.GetLogicalDescendants().OfType<RefusalBlock>().Single(block =>
-                    AutomationProperties.GetName(block) == "Diagnostic file error");
-                Assert.True(error.IsVisible);
-                shown = error.DataContext as WindowRefusal;
-            }
-            finally
-            {
-                diagnostic.Close();
-            }
-
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(30));
-
-        Assert.Equal(SIL.Motif.Contract.Commands.RefusalCodes.WordTraceMalformedDiagnostic, shown?.Code);
-    }
-
     [Fact]
     public void TheStarterPromptAndAQuestionAreCopiedExactly()
     {
@@ -134,14 +26,14 @@ public sealed class DesktopSeamWalkthroughTests
         AvaloniaHeadlessFixture.RunUntilComplete(() =>
         {
             using var walkthrough = new WalkthroughWindow(Path.GetTempPath(), "unused.fwdata", clipboard: clipboard);
-            var handoff = walkthrough.Workspace.PageModel<AiHandoffPageModel>().Handoff;
+            var handoff = walkthrough.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
             handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
             handoff.OutputDirectory = @"C:\handoff";
             handoff.PastedHeader = starterPrompt;
             handoff.State = RunState.Completed;
             walkthrough.Show();
             walkthrough.SkipSetup();
-            walkthrough.ShowPage(WorkspacePage.AiHandoff);
+            walkthrough.ShowPage(WorkspacePage.Settings);
             InteractiveControlSweep.AssertScene(walkthrough, "completed Handoff",
                 InteractiveControlFamily.Action,
                 InteractiveControlFamily.Link,
@@ -160,27 +52,4 @@ public sealed class DesktopSeamWalkthroughTests
         Assert.Equal([starterPrompt, question], clipboard.Copied);
     }
 
-    private static void OpenSavedTrace(Window window) => ClickTool(window, "Try a Word tools", "Open a saved trace");
-
-    private static void ClickTool(DiagnosticWindow window, string accessibleName) =>
-        ClickTool(window, "Diagnostic tools", accessibleName);
-
-    // The tools sit in a flyout, which is outside the window's logical tree until it opens.
-    private static void ClickTool(Window window, string menuName, string accessibleName)
-    {
-        var tools = window.GetLogicalDescendants().OfType<Button>().Single(button =>
-            AutomationProperties.GetName(button) == menuName);
-        var flyout = Assert.IsType<Flyout>(tools.Flyout);
-        flyout.ShowAt(tools);
-        Pump();
-        var tool = Assert.IsAssignableFrom<Control>(flyout.Content).GetLogicalDescendants().OfType<Button>()
-            .Single(button => AutomationProperties.GetName(button) == accessibleName);
-        Assert.True(tool.IsEffectivelyEnabled, $"'{accessibleName}' is not effectively enabled.");
-        tool.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        Pump();
-        flyout.Hide();
-        Pump();
-    }
-
-    private static void Pump() => Dispatcher.UIThread.RunJobs();
 }

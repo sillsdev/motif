@@ -619,8 +619,6 @@ public sealed partial class ResultsTokenViewModel : ObservableObject, IDisposabl
     /// <summary>Removes a staged change from this word's strip.</summary>
     public IAsyncRelayCommand<ChangeViewModel>? UndoStagedChangeCommand => Actions?.Changes.RemoveCommand;
 
-    public IRelayCommand<string>? TryWordForTokenCommand => Actions?.TryWordForTargetCommand;
-
     public IAsyncRelayCommand<WordMarkingChoice>? StageMarkingChoiceForTokenCommand => Actions?.StageMarkingChoiceForTargetCommand;
 
     /// <summary>The spelling action captured from this card rather than the reader's later selected token.</summary>

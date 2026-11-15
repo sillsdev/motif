@@ -20,6 +20,7 @@ using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
+using SIL.Motif.App.Views.Shell;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Commands;
@@ -147,7 +148,8 @@ public sealed class MainWindowSmokeTests
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
-            workspace.CurrentPage = WorkspacePage.Timing;
+            workspace.Context.Diagnostics = true;
+            workspace.CurrentPage = WorkspacePage.Diagnostics;
             try
             {
                 window.Show();
@@ -159,45 +161,35 @@ public sealed class MainWindowSmokeTests
                 Assert.NotNull(helpButton);
                 Assert.True(helpButton.Flyout?.IsOpen);
                 var helpView = Assert.IsType<HelpPopupView>(Assert.IsType<Flyout>(helpButton.Flyout).Content);
-                Assert.Equal("Timing", helpView.FindControl<TextBlock>("HelpTitle")?.Text);
+                Assert.Equal("Diagnostics", helpView.FindControl<TextBlock>("HelpTitle")?.Text);
                 var helpDescription = helpView.FindControl<TextBlock>("HelpDescription");
                 Assert.False(helpDescription?.IsVisible);
                 var markdownRenderer = Assert.Single(helpView.GetVisualDescendants().OfType<MarkdownRenderer>());
-                const string expectedSentence = "to inspect timing for the words with the most parser work";
-                const string expectedAltText = "Saved parse timings on the Timing page";
-                const string expectedSection = "does not repeat those words in a separate list beside a rule's costliest words";
-                const string expectedOpening = "opens on All";
+                const string expectedSentence = "Opening the page does not start a parse or a grammar check.";
                 var projectionCommitted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                bool TimingIsRendered()
+                bool DiagnosticsIsRendered()
                 {
                     if (markdownRenderer.RenderedTextProjection is not { } projection) return false;
                     var text = string.Join("\n", projection.Buffers.Select(buffer => buffer.Text.ToString()));
-                    return text.Contains(expectedSentence, StringComparison.Ordinal) &&
-                        text.Contains(expectedSection, StringComparison.Ordinal) &&
-                        text.Contains(expectedAltText, StringComparison.Ordinal);
+                    return text.Contains(expectedSentence, StringComparison.Ordinal);
                 }
                 markdownRenderer.PropertyChanged += (_, changed) =>
                 {
-                    if (changed.Property == MarkdownRenderer.RenderedTextProjectionProperty && TimingIsRendered())
+                    if (changed.Property == MarkdownRenderer.RenderedTextProjectionProperty && DiagnosticsIsRendered())
                         projectionCommitted.TrySetResult();
                 };
-                if (TimingIsRendered()) projectionCommitted.TrySetResult();
+                if (DiagnosticsIsRendered()) projectionCommitted.TrySetResult();
                 await projectionCommitted.Task.WaitAsync(TimeSpan.FromSeconds(5));
                 var renderedTextProjection = Assert.IsType<MarkdownTextProjection>(
                     markdownRenderer.RenderedTextProjection);
                 var renderedText = string.Join("\n", renderedTextProjection.Buffers.Select(buffer => buffer.Text.ToString()));
                 Assert.Contains(expectedSentence, renderedText);
-                Assert.Contains(expectedSection, renderedText);
-                Assert.Contains(expectedAltText, renderedText);
-                Assert.Equal(2, renderedText.Split(expectedOpening).Length);
                 Assert.DoesNotContain(renderedTextProjection.Buffers,
-                    buffer => buffer.Text.ToString().Trim() == "Timing");
+                    buffer => buffer.Text.ToString().Trim() == "Diagnostics");
                 var help = Assert.IsType<HelpPopupViewModel>(helpView.DataContext);
                 Assert.Equal(help.Title, helpView.FindControl<TextBlock>("HelpTitle")?.Text);
                 Assert.Equal(help.Description, helpDescription?.Text);
                 Assert.Contains(expectedSentence, help.Markdown);
-                Assert.Contains(expectedSection, help.Markdown);
-                Assert.Contains(expectedAltText, help.Markdown);
             }
             finally
             {
@@ -275,6 +267,7 @@ public sealed class MainWindowSmokeTests
         _avalonia.Invoke(() =>
         {
             var (workspace, window, _) = NewComposedWindow();
+            window.Width = 1280;
             try
             {
                 window.Show();
@@ -291,10 +284,11 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains(settings.GetVisualAncestors(), ancestor => ReferenceEquals(ancestor, footer));
                 Assert.Equal(AutomationIds.HelpButton, AutomationProperties.GetAutomationId(help));
                 Assert.Equal(AutomationIds.SettingsButton, AutomationProperties.GetAutomationId(settings));
+                Assert.True(window.FindInWindowOrWorkspace<TextBlock>("SidebarSettingsLabel")!.IsEffectivelyVisible);
                 Assert.Equal("Help for the current page (F1)", ToolTip.GetTip(help));
                 Assert.Equal("Settings (Ctrl+,)", ToolTip.GetTip(settings));
 
-                window.Width = 1040;
+                window.Width = 960;
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
@@ -302,6 +296,7 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal(Avalonia.Layout.Orientation.Vertical, utilities.Orientation);
                 Assert.True(help.IsEffectivelyVisible);
                 Assert.False(window.FindInWindowOrWorkspace<TextBlock>("SidebarHelpLabel")?.IsEffectivelyVisible ?? true);
+                Assert.False(window.FindInWindowOrWorkspace<TextBlock>("SidebarSettingsLabel")?.IsEffectivelyVisible ?? true);
                 Assert.True(settings.IsEffectivelyVisible);
 
                 var before = workspace.CurrentPage;
@@ -331,7 +326,7 @@ public sealed class MainWindowSmokeTests
             try
             {
                 window.Show();
-                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                workspace.Context.OpenPage(WorkspacePage.Texts);
                 workspace.PageModel<TextsPageModel>().ResultsInText.OpenPanGlossGuideCommand.Execute(null);
                 window.UpdateLayout();
 
@@ -361,7 +356,7 @@ public sealed class MainWindowSmokeTests
                 window.Show();
                 workspace.Context.Baseline = new WorkspaceBaseline(true, string.Empty, string.Empty,
                     string.Empty, string.Empty, null);
-                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                workspace.Context.OpenPage(WorkspacePage.Texts);
                 window.UpdateLayout();
                 var prompt = Assert.Single(window.GetVisualDescendants().OfType<ParsePrompt>(),
                     candidate => candidate.IsEffectivelyVisible);
@@ -391,48 +386,48 @@ public sealed class MainWindowSmokeTests
         {
             var (workspace, window, _) = NewComposedWindow();
             using var closer = window.CloseOnExit();
+            workspace.Context.Diagnostics = true;
             window.EnsureAllPageViews();
             window.RealizeLazyContent();
 
             Assert.Same(workspace, window.DataContext);
             Assert.Equal("Motif (tech demo)", window.Title);
-            Assert.Same(workspace.PageModel<OverviewPageModel>(),
-                window.PageView<OverviewPage>().DataContext);
-            Assert.Same(workspace.PageModel<WarningsPageModel>().Grammar, Assert.Single(window.GetLogicalDescendants().OfType<GrammarPanel>()).Grammar);
+            Assert.Same(workspace.PageModel<ProgressPageModel>(),
+                window.PageView<ProgressPage>().DataContext);
+            Assert.Same(workspace.PageModel<DiagnosticsPageModel>(),
+                window.PageView<DiagnosticsPage>().DataContext);
             // The frame attaches only the current page's side panel, which holds the Texts selection.
             workspace.CurrentPage = WorkspacePage.Texts;
             Assert.Same(workspace.Selection, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Selection);
             Assert.Same(workspace.PageModel<TextsPageModel>().Words, Assert.Single(window.GetLogicalDescendants().OfType<SelectionPanel>()).Words);
             Assert.Same(workspace.PageModel<TextsPageModel>().ResultsInText,
                 Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>()).InText);
-            Assert.Same(workspace.PageModel<TextsPageModel>().TextsLists,
-                Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>()).Lists);
-            Assert.Same(
-                workspace.PageModel<TimingPageModel>().Statistics, Assert.Single(window.GetLogicalDescendants().OfType<StatisticsPanel>()).Statistics);
+            Assert.Same(workspace.PageModel<TextsPageModel>().Words, workspace.PageModel<WordsPageModel>().Words);
             Assert.Contains(window.GetLogicalDescendants().OfType<HandoffPanel>(),
-                panel => ReferenceEquals(workspace.PageModel<AiHandoffPageModel>().Handoff, panel.Handoff));
+                panel => ReferenceEquals(workspace.PageModel<SettingsPageModel>().Handoff.Handoff, panel.Handoff));
         });
     }
 
     [Fact]
-    public void ReviewChangesShowsTheFieldWorksBackupReminder()
+    public void FirstRunNoticeIncludesTheFieldWorksBackupReminder()
     {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        _avalonia.Invoke(() =>
         {
-            var (workspace, window) = await ReviewScreenshots.OpenAsync(new FakeCommandClient());
+            var (_, window, _) = NewComposedWindow(PageScreenshots.FirstRunNotice());
             try
             {
-                workspace.CurrentPage = WorkspacePage.Review;
+                window.Show();
                 PageScreenshots.Settle(window);
-                var note = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text => text.Text ==
-                    "FieldWorks must be closed, or it keeps its own copy. Keep a backup: this is a tech demo.");
+                var note = Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.Text == TechDemoNoticeViewModel.NoticeText);
                 Assert.True(note.IsEffectivelyVisible, "The backup reminder is hidden.");
+                Assert.Contains("back up FieldWorks", note.Text, StringComparison.Ordinal);
             }
             finally
             {
                 window.Close();
             }
-        }, TimeSpan.FromMinutes(1));
+        });
     }
 
     [Fact]
@@ -496,7 +491,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void OverviewKeepsItsFiguresAndTablesAndShowsARefreshRefusalOnce()
+    public void ProgressHidesStaleHealthFactsAndShowsARefreshRefusalOnce()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -526,9 +521,10 @@ public sealed class MainWindowSmokeTests
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var page = window.PageView<OverviewPage>();
                 var text = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
-                Assert.Same(overview, workspace.PageModel<OverviewPageModel>().Overview);
+                Assert.Same(overview, workspace.PageModel<ProgressPageModel>().Health.Overview);
+                Assert.False(workspace.Context.Health.HasWarnings);
+                Assert.False(workspace.Context.Health.HasMedianWork);
                 Assert.Equal(2, fake.OverviewRequests.Count);
                 Assert.All(fake.OverviewRequests, request => Assert.Equal(projectPath, request.ProjectPath));
                 Assert.DoesNotContain("opened ", text, StringComparison.Ordinal);
@@ -549,26 +545,6 @@ public sealed class MainWindowSmokeTests
                 Assert.Equal(workspace.FreshnessLabel, freshnessLabel.Text);
                 Assert.Equal(workspace.FreshnessDetail, freshnessDetail.Text);
                 ProjectCardAccess.Close(window);
-                Assert.NotNull(page.FindControl<ItemsControl>("OverviewCoverageRows"));
-                Assert.NotNull(page.FindControl<ItemsControl>("OverviewAccuracyRows"));
-                var overviewModel = workspace.PageModel<OverviewPageModel>();
-                Assert.Equal(Mark.ParserRefusal,
-                    Assert.Single(overviewModel.TextCoverageSegments, segment => segment.Label == "can't read").Mark);
-                Assert.Equal(Mark.Of(MeaningTone.Problem),
-                    Assert.Single(overviewModel.AccuracySegments, segment => segment.Label == "lost").Mark);
-                Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(item => item.Text == overviewModel.TextCoverageWords).FontWeight);
-                Assert.Equal(Avalonia.Media.FontWeight.Normal, page.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(item => item.Text == overviewModel.SpeedMedian).FontWeight);
-                var tiles = window.GetLogicalDescendants().OfType<Control>()
-                    .Where(item => item.Classes.Contains("overviewTile")).ToArray();
-                Assert.Equal(7, tiles.Length);
-                Assert.All(tiles, tile =>
-                {
-                    Assert.Equal(Avalonia.Layout.HorizontalAlignment.Stretch, tile.HorizontalAlignment);
-                    Assert.Equal(Avalonia.Layout.VerticalAlignment.Stretch, tile.VerticalAlignment);
-                });
-
                 workspace.Context.PublishEvidence(new WorkspaceEvidence(new AssessCommandResponse(
                     new BaselineCaptureResponse(
                         new BaselineToken("project", "sha256:" + new string('a', 64), "1",
@@ -613,7 +589,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void OverviewWithoutStoredAssessmentDoesNotShowZeroesAsResults()
+    public void ProgressWithoutStoredAssessmentDoesNotShowZeroesAsResults()
     {
         _avalonia.Invoke(() =>
         {
@@ -622,7 +598,7 @@ public sealed class MainWindowSmokeTests
             {
                 workspace.Context.Baseline = new SIL.Motif.App.ViewModels.WorkspaceBaseline(
                     true, "Captured", "Saved", "Today", "Not held", null);
-                workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with
+                workspace.Context.Health.Overview = SampleOverview() with
                 {
                     AssessmentId = null,
                     AssessedUtc = null,
@@ -636,17 +612,15 @@ public sealed class MainWindowSmokeTests
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var page = window.PageView<OverviewPage>();
+                var page = window.PageView<ProgressPage>();
                 var text = string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>().Select(item => item.Text));
                 Assert.True(workspace.Context.NeedsAssessment);
-                Assert.Contains(window.GetVisualDescendants().OfType<CopyableTextBlock>(), prompt =>
-                    AutomationProperties.GetAutomationId(prompt) == AutomationIds.ParsePromptText &&
-                    prompt.Text == workspace.Context.ParsePromptText && prompt.IsEffectivelyVisible);
                 var card = ProjectCardAccess.Open(window);
                 Assert.Contains(card.GetLogicalDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Parse all words");
                 ProjectCardAccess.Close(window);
-                Assert.Contains("Not checked yet", text);
+                Assert.False(workspace.Context.Health.HasWarnings);
+                Assert.False(workspace.Context.Health.HasMedianWork);
                 Assert.DoesNotContain("0 of 0", text);
                 Assert.DoesNotContain("words hit the parser work limit", text);
             }
@@ -658,7 +632,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void OverviewSaysWhenTheDefaultSelectionHasNotResolvedAgainstTheBaseline()
+    public void ProgressHidesCountsWhenTheDefaultSelectionHasNotResolvedAgainstTheBaseline()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -673,7 +647,7 @@ public sealed class MainWindowSmokeTests
                 workspace.Context.Baseline = new WorkspaceBaseline(true, string.Empty, string.Empty,
                     string.Empty, string.Empty, null);
                 await workspace.Context.Setup!.ProjectOpenedAsync(@"C:\projects\one.fwdata");
-                workspace.PageModel<OverviewPageModel>().Overview = SampleOverview() with
+                workspace.Context.Health.Overview = SampleOverview() with
                 {
                     SelectionResolved = false,
                     SelectionWordCount = 0,
@@ -685,17 +659,8 @@ public sealed class MainWindowSmokeTests
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var page = window.PageView<OverviewPage>();
-                var counts = page.GetVisualDescendants().OfType<UniformGrid>()
-                    .Single(item => item.Classes.Contains("overviewCounts"));
-                var selectionCell = Assert.IsAssignableFrom<StackPanel>(counts.Children[0]);
-                var selectionCount = Assert.IsAssignableFrom<TextBlock>(selectionCell.Children[0]);
-                Assert.Equal("not resolved", selectionCount.Text);
-                Assert.True(selectionCount.IsEffectivelyVisible);
-
-                var unresolvedNotice = Assert.Single(page.GetVisualDescendants().OfType<CopyableTextBlock>(), item =>
-                    item.Text?.Contains("Selection could not be resolved", StringComparison.Ordinal) == true);
-                Assert.True(unresolvedNotice.IsEffectivelyVisible);
+                Assert.False(workspace.Context.Health.HasSelectionSummary);
+                Assert.Equal(string.Empty, workspace.Context.Health.SelectionSummary);
             }
             finally
             {
@@ -711,12 +676,11 @@ public sealed class MainWindowSmokeTests
         {
             var (workspace, window, _) = NewComposedWindow();
             using var closer = window.CloseOnExit();
+            workspace.Context.Diagnostics = true;
             window.Show();
-            foreach (var page in Enum.GetValues<WorkspacePage>())
-            foreach (var tab in Enum.GetValues<TextsTab>())
+            foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
             {
                 workspace.CurrentPage = page;
-                workspace.PageModel<TextsPageModel>().Tab = tab;
                 window.UpdateLayout();
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
@@ -727,27 +691,9 @@ public sealed class MainWindowSmokeTests
                 Assert.NotEmpty(controls);
                 foreach (var control in controls)
                     Assert.False(string.IsNullOrWhiteSpace(EffectiveAccessibleName(control)),
-                        $"{page}/{tab}: {control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name. " +
+                        $"{page}: {control.GetType().Name} (content '{(control as ContentControl)?.Content}') has no accessible name. " +
                         string.Join(" <- ", control.GetLogicalAncestors().OfType<Control>().Select(parent => $"{parent.GetType().Name}#{parent.Name}")));
             }
-
-            workspace.Context.ProjectPath = @"C:\projects\one.fwdata";
-            workspace.CurrentPage = WorkspacePage.Timing;
-            var more = window.GetLogicalDescendants().OfType<Button>()
-                .Single(button => AutomationProperties.GetName(button) == "More ways to choose words");
-            more.Flyout!.ShowAt(more);
-            var menu = Assert.IsAssignableFrom<Control>(Assert.IsType<Flyout>(more.Flyout).Content);
-            var pickedWords = Assert.Single(menu.GetLogicalDescendants().OfType<TextBox>(), input =>
-                AutomationProperties.GetName(input) == "Words picked by hand");
-            pickedWords.Text = "motifa";
-            window.UpdateLayout();
-            Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
-
-            var pickWords = Assert.Single(menu.GetLogicalDescendants().OfType<Button>(), button =>
-                AutomationProperties.GetName(button) == "Pick words");
-            Assert.True(pickWords.IsEffectivelyVisible);
-            Assert.True(pickWords.IsEffectivelyEnabled);
         });
     }
 
@@ -759,13 +705,12 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
             try
             {
+                workspace.Context.Diagnostics = true;
                 window.Show();
                 var inspected = 0;
-                foreach (var page in Enum.GetValues<WorkspacePage>())
-                foreach (var tab in Enum.GetValues<TextsTab>())
+                foreach (var page in PageRegistry.Entries.Select(entry => entry.Page))
                 {
                     workspace.CurrentPage = page;
-                    workspace.PageModel<TextsPageModel>().Tab = tab;
                     window.UpdateLayout();
 
                     var readOnlyText = window.GetVisualDescendants().OfType<TextBlock>()
@@ -775,8 +720,6 @@ public sealed class MainWindowSmokeTests
                         .ToList();
 
                     inspected += readOnlyText.Count;
-                    Assert.All(readOnlyText.Where(text => text.Classes.Contains("stage-title")),
-                        title => Assert.Equal(22, title.FontSize));
                     Assert.All(readOnlyText, text =>
                     {
                         var selectable = text as SelectableTextBlock;
@@ -859,97 +802,42 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void ResultTablesRenderSelectableDynamicCells()
+    public void DiagnosticsRendersSelectableWarningTextAndRecordedFieldWorksLinks()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
             var fake = (FakeCommandClient)workspace.Context.Commands;
+            var warning = new GrammarWarning(
+                GrammarDiagnosticLevel.Warning, "Entry",
+                [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Object,
+                    ObjectId: "entry-1", FieldWorksKind: "LexEntry",
+                    FieldWorksLink: "silfw://motif.test/project/entry-1") { FieldWorksTool = "lexiconEdit" }],
+                [], "warning: lex entry: dropped")
+            {
+                Group = "Dropped item",
+                Code = "fwdata.dropped-item",
+                Description = "PanGloss reports a dropped item.",
+            };
+            fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(null, null, false));
+            fake.StoredGrammarCheckIs(new GrammarCheckResponse([warning], HasBaseline: true));
+            workspace.Context.Diagnostics = true;
             try
             {
-                const string projectPath = @"C:\projects\aweti.fwdata";
-                var token = new BaselineToken("project", "sha256:" + new string('a', 64), "1",
-                    "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64));
-                fake.CurrentBaselineCompletesWith(new CurrentBaselineResponse(token, DateTimeOffset.UtcNow, false));
-                fake.StoredGrammarCheckIs(new GrammarCheckResponse([], HasBaseline: true));
-                fake.DefaultSelectionResponseIs(new DefaultSelectionResponse(null, SetupSkipped: true));
-                fake.ListTextsCompletesWith(new TextInventoryResponse([], HasBaseline: true));
-                await workspace.SetProjectAsync(projectPath, captureFreshProject: false);
-                using var statisticsDocument = JsonDocument.Parse(
-                    "{\"kind\":\"word\",\"form\":\"motifa\",\"attempts\":2,\"passes\":1,\"elapsed_ns\":5000000}");
-                fake.StatsCompletesWith(new StatsCommandResponse("assessment", "grammar", "cache", null,
-                    [statisticsDocument.RootElement.Clone()]));
-                workspace.Context.PublishEvidence(new WorkspaceEvidence(new AssessCommandResponse(
-                    new BaselineCaptureResponse(token, projectPath, DateTimeOffset.UtcNow, false, false),
-                    new SelectionProjection([], []), [], "summary"), DateTimeOffset.Now, WasRerun: false));
-                workspace.PageModel<TimingPageModel>().Statistics.Rows.Add(new StatsRowViewModel(statisticsDocument.RootElement.Clone()));
-                workspace.CurrentPage = WorkspacePage.Timing;
-
+                await workspace.SetProjectAsync(@"C:\projects\aweti.fwdata", captureFreshProject: false);
+                workspace.Context.OpenDiagnostics(DiagnosticsTab.Warnings);
                 window.Show();
-                window.ApplyTemplate();
-                window.UpdateLayout();
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-
-                var details = window.GetVisualDescendants().OfType<Expander>()
-                    .Single(expander => Equals(expander.Header, MotifAppStrings.TimingDetailedStatisticsHeading));
-                details.IsExpanded = true;
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-
-                var statistics = window.GetVisualDescendants().OfType<DataGrid>()
-                    .Single(grid => AutomationProperties.GetName(grid) == "Statistics rows");
-                AssertSelectableCells(statistics);
-                statistics.SelectedItem = null;
-                var statisticsCell = statistics.GetVisualDescendants().OfType<CopyableTextBlock>()
-                    .First(cell => cell.IsEffectivelyVisible && cell.Text == "motifa");
-                RaiseLeftPointerPress(statisticsCell, window);
-                Assert.Same(workspace.PageModel<TimingPageModel>().Statistics.Rows[0], statistics.SelectedItem);
-
-                var warning = new GrammarWarning(
-                    GrammarDiagnosticLevel.Warning, "Entry",
-                    [new GrammarWarningPart("lex entry", GrammarWarningPartRole.Object,
-                        ObjectId: "entry-1", FieldWorksKind: "LexEntry",
-                        FieldWorksLink: "silfw://motif.test/project/entry-1") { FieldWorksTool = "lexiconEdit" }],
-                    [new GrammarWarningPart("dropped", GrammarWarningPartRole.Text)],
-                    "warning: lex entry: dropped")
-                {
-                    Group = "Dropped item",
-                    Code = "fwdata.dropped-item",
-                    Description = "PanGloss reports a dropped item.",
-                    Guidance = "Restore the missing item in FieldWorks.",
-                };
-                fake.CheckGrammarCompletesWith(new GrammarCheckResponse([warning], HasBaseline: true));
-                var grammarModel = workspace.PageModel<WarningsPageModel>().Grammar;
-                workspace.CurrentPage = WorkspacePage.Warnings;
-                window.UpdateLayout();
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-
-                var checkAgain = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Check the grammar again" &&
-                    button.IsEffectivelyVisible);
-                Assert.True(checkAgain.IsEffectivelyEnabled);
-                var beforeRetry = fake.CheckGrammarRequests.Count;
-                ClickButton(window, checkAgain);
-                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                Assert.Equal(beforeRetry + 1, fake.CheckGrammarRequests.Count);
-                Assert.Equal(projectPath, fake.CheckGrammarRequests[^1].ProjectPath);
-                var findings = window.GetVisualDescendants().OfType<ItemsControl>()
-                    .Single(control => AutomationProperties.GetName(control) == "Grammar findings");
-                var row = Assert.IsType<GrammarWarningRowViewModel>(Assert.Single(grammarModel.Warnings.Rows));
-                grammarModel.Warnings.OpenDetailsCommand.Execute(row);
-                window.UpdateLayout();
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-
-                Assert.Single(window.GetVisualDescendants().OfType<TextBlock>(),
-                    block => block.Text == "Restore the missing item in FieldWorks." && block.IsEffectivelyVisible);
-                var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(), button =>
-                    button.Classes.Contains("warningEntryAction"));
-                Assert.True(link.IsEffectivelyVisible);
+                PageScreenshots.Settle(window);
+                var list = Assert.Single(window.GetVisualDescendants().OfType<ListBox>(),
+                    item => item.Name == "DiagnosticWarningRows");
+                var link = Assert.Single(list.GetVisualDescendants().OfType<HyperlinkButton>());
                 Assert.Equal(new Uri("silfw://motif.test/project/entry-1"), link.NavigateUri);
+                var message = Assert.Single(list.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                    text => text.Text == "PanGloss reports a dropped item.");
+                message.SelectAll();
+                Assert.Equal(message.Text, message.SelectedText);
+                Assert.Empty(fake.AssessRequests);
+                Assert.Empty(fake.CheckGrammarRequests);
             }
             finally
             {
@@ -1052,6 +940,22 @@ public sealed class MainWindowSmokeTests
         });
     }
 
+    [Theory]
+    [InlineData("https://example.org/item")]
+    [InlineData("not a uri")]
+    public void AWarningWithAnUnverifiedTargetKeepsItsNameWithoutALink(string target)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var block = new GrammarWarningPartsBlock
+            {
+                Parts = [new GrammarWarningPart("entry", GrammarWarningPartRole.Object, "id", "lex entry", target)],
+            };
+            Assert.Empty(block.Children.OfType<HyperlinkButton>());
+            Assert.Equal("entry", Assert.Single(block.Children.OfType<CopyableTextBlock>()).Text);
+        });
+    }
+
     [Fact]
     public void UnavailableGrammarWarningLinksKeepTheSubjectNameReadable()
     {
@@ -1084,7 +988,7 @@ public sealed class MainWindowSmokeTests
                 new AssessmentProgress(AssessmentStage.Parsing, 1, 2, "Parsing the Selection..."));
             workspace.Assess.Refusal = new Refusal(
                 "assess.parser-unavailable", FailureReason.Refused, "PanGloss is not built.");
-            workspace.PageModel<AiHandoffPageModel>().Handoff.Refusal = new Refusal(
+            workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Refusal = new Refusal(
                 "handoff.cancelled", FailureReason.Cancelled, "The Handoff run was cancelled.");
 
             var application = Application.Current!;
@@ -1100,7 +1004,7 @@ public sealed class MainWindowSmokeTests
 
 
     [Fact]
-    public async Task TextsMatrixShowsAssessmentWordsWithoutIdentifiers()
+    public async Task WordsAndReaderShowAssessmentEvidenceWithoutIdentifiers()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -1163,13 +1067,12 @@ public sealed class MainWindowSmokeTests
                     workspace.Context, captured, assessment, assessment.Words.Select(word => word.Word).ToArray());
                 workspace.Assess.Result = assessment;
                 await workspace.Context.EvidencePublication;
-                workspace.Context.OpenTexts(TextsTab.Lists);
-                workspace.PageModel<TextsPageModel>().TextsLists.ShowCells([]);
+                workspace.Context.OpenPage(WorkspacePage.Words);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
 
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
+                var panel = Assert.Single(window.GetLogicalDescendants().OfType<TextWordsPanel>());
                 Assert.True(panel.IsEffectivelyVisible);
 
                 Assert.Equal(4, workspace.Assess.Words.TotalCount);
@@ -1181,19 +1084,12 @@ public sealed class MainWindowSmokeTests
                 Assert.Contains("Morphology evidence unavailable: invalid shape.", rows[3].Detail);
 
                 var words = panel.GetLogicalDescendants().OfType<ListBox>()
-                    .Single(list => AutomationProperties.GetName(list) == "Words in the selected list");
-                Assert.Equal(4, words.ItemCount);
-                Assert.Equal(["motifa", "motifb", "motifc", "motifd"],
-                    workspace.Assess.Compare.Words.Select(word => word.Word));
+                    .Single(list => AutomationProperties.GetName(list) == MotifAppStrings.WordsToTestAccessibleName);
+                Assert.Equal(5, words.ItemCount);
                 Assert.DoesNotContain(panel.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
 
-                var open = panel.GetVisualDescendants().OfType<Button>().Single(button =>
-                    AutomationProperties.GetName(button) == "Open motifa in Analyze texts" &&
-                    button.FindAncestorOfType<ListBox>() is { } box && AutomationProperties.GetName(box) == "Words in the selected list");
-                open.BringIntoView();
-                PageScreenshots.Settle(window);
-                HeadlessClick.Click(window, open, "Open motifa in Analyze texts");
+                workspace.Context.OpenWord("motifa");
                 await page.ResultsInText.SelectionRefresh;
                 await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                 var selected = page.ResultsInText.SelectedToken;
@@ -1241,10 +1137,11 @@ public sealed class MainWindowSmokeTests
                 Assert.True(morphLink.IsHitTestVisible);
                 Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(),
                     text => text.Text?.Contains("11111111-1111", StringComparison.Ordinal) == true);
-                workspace.CurrentPage = WorkspacePage.Review;
+                workspace.CurrentPage = WorkspacePage.Proposals;
                 Dispatcher.UIThread.RunJobs();
                 window.UpdateLayout();
                 Assert.False(selected.IsCardOpen);
+                Assert.Empty(fake.PendingPutRequests);
             }
             finally
             {
@@ -1254,65 +1151,7 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void MatrixOffersNoOpinionForAWordAndLinksItToItsText()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var (workspace, window, _) = NewComposedWindow();
-            try
-            {
-                var fake = Assert.IsType<FakeCommandClient>(workspace.Context.Commands);
-                fake.ListTextsCompletesWith(new TextInventoryResponse(
-                    [new TextChoiceSummary(Guid.Parse("55555555-5555-4555-8555-555555555555"), "Alpha")],
-                    HasBaseline: true));
-                await workspace.Selection.SetProjectAsync(@"C:\projects\one.fwdata");
-                workspace.Assess.Result = new AssessCommandResponse(
-                    new BaselineCaptureResponse(
-                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
-                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
-                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
-                    new SelectionProjection([], []), [], "1 word assessed")
-                {
-                    Words =
-                    [
-                        new AssessmentWordResult("pasted-word", "analysed", false, "Search completed", 1, null)
-                        {
-                            ProjectStanding = ProjectStanding.Approved,
-                            Morphology = new ParseWordEvidence(
-                                ParseMorphEvidence.Schema, 0, "pasted-word", 1, false, false, false,
-                                [new ParseAnalysis([new("11111111-1111-1111-1111-111111111111",
-                                    "22222222-2222-2222-2222-222222222222", null, null)])], []),
-                        },
-                    ],
-                };
-                workspace.Context.OpenTexts(TextsTab.Lists);
-                workspace.PageModel<TextsPageModel>().TextsLists.ShowCells([]);
-                window.Show();
-                window.ApplyTemplate();
-                window.UpdateLayout();
-
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
-                var word = Assert.Single(workspace.Assess.Compare.Words);
-                word.IsChecked = true;
-                window.UpdateLayout();
-                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<ComboBox>(), candidate =>
-                    AutomationProperties.GetName(candidate) == "Analysis for pasted-word");
-                Assert.DoesNotContain(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
-                    candidate.CommandParameter is ChangeKinds.Approve or ChangeKinds.Reject or ChangeKinds.Candidate);
-                var open = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), candidate =>
-                    AutomationProperties.GetName(candidate) == "Open pasted-word in Analyze texts");
-                Assert.Equal(MotifAppStrings.WordRowOpenInText, open.Content);
-            }
-            finally
-            {
-                window.Close();
-            }
-        }, TimeSpan.FromSeconds(10));
-    }
-
-
-    [Fact]
-    public void AnalyzeTextsSwitchesBetweenTheReaderAndWordList()
+    public void TextsAndWordsShareTheSelectionWhileNavigationChangesPages()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -1343,19 +1182,12 @@ public sealed class MainWindowSmokeTests
                     workspace.Context, captured, assessment);
                 workspace.Assess.Result = assessment;
                 await workspace.Context.EvidencePublication;
-                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                workspace.Context.OpenPage(WorkspacePage.Texts);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
                 await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
 
-                var readText = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Show the text reader");
-                var wordList = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Show the word list");
-                Assert.True(readText.IsEffectivelyVisible);
-                Assert.True(wordList.IsEffectivelyVisible);
-                Assert.Equal(AnalyzeTextsView.WordList, wordList.CommandParameter);
                 var textChooser = Assert.Single(window.GetLogicalDescendants().OfType<ListBox>(), list =>
                     AutomationProperties.GetName(list) == "Texts to analyze");
                 var secondText = Assert.Single(textChooser.GetLogicalDescendants().OfType<CheckBox>(), checkBox =>
@@ -1368,38 +1200,31 @@ public sealed class MainWindowSmokeTests
                 Assert.True(secondText.IsChecked);
                 await workspace.Context.EvidencePublication;
                 Assert.Contains(secondTextId, workspace.Selection.ChosenTextIds);
-                var pageView = window.PageView<TextsPage>();
-                var readerHost = pageView.FindControl<ContentControl>("AnalyzeReaderHost");
-                var wordListHost = pageView.FindControl<ContentControl>("WordListHost");
-                Assert.NotNull(readerHost);
-                Assert.NotNull(wordListHost);
-                Assert.True(readerHost!.IsEffectivelyVisible);
-                Assert.False(wordListHost!.IsEffectivelyVisible);
-
-                ClickButton(window, wordList);
-                window.UpdateLayout();
-                Assert.Equal(AnalyzeTextsView.WordList, page.AnalyzeView);
-                Assert.True(wordListHost.IsEffectivelyVisible);
-                Assert.False(readerHost.IsEffectivelyVisible);
-                Assert.Equal(1, Assert.Single(wordListHost.GetLogicalDescendants().OfType<ListBox>(), list =>
-                    AutomationProperties.GetName(list) == "Words to test").ItemCount);
-                await page.Words.SettleVisibleDetailsAsync();
-                PageScreenshots.Settle(window);
-                Assert.Contains(wordListHost.GetLogicalDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.Text == "kitabu");
-                var handOff = Assert.Single(wordListHost.GetLogicalDescendants().OfType<Button>(), button =>
-                    Equals(button.Content, "AI Handoff"));
-                Assert.Same(page.Words.HandOffCheckedWordsCommand, handOff.Command);
-
-                ClickButton(window, readText);
+                await page.ResultsInText.SelectionRefresh;
                 await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
-                Assert.False(wordListHost.IsEffectivelyVisible);
+                var pageView = window.PageView<TextsPage>();
+                var readerHost = pageView.FindControl<ContentControl>("ReaderHost")!;
                 Assert.True(readerHost.IsEffectivelyVisible);
                 var lines = Assert.Single(readerHost.GetLogicalDescendants().OfType<ItemsControl>(), control =>
                     AutomationProperties.GetName(control) == "Text lines and parser results");
                 Assert.Equal(1, lines.ItemCount);
                 Assert.Contains(readerHost.GetLogicalDescendants().OfType<CopyableTextBlock>(), text =>
                     text.Text == "kitabu");
+
+                workspace.CurrentPage = WorkspacePage.Words;
+                PageScreenshots.Settle(window);
+                var words = Assert.Single(window.GetVisualDescendants().OfType<TextWordsPanel>());
+                Assert.Same(page.Words, words.Words);
+                Assert.Equal(1, Assert.Single(words.GetLogicalDescendants().OfType<ListBox>(), list =>
+                    AutomationProperties.GetName(list) == MotifAppStrings.WordsToTestAccessibleName).ItemCount);
+                await page.Words.SettleVisibleDetailsAsync();
+                PageScreenshots.Settle(window);
+                Assert.Contains(words.GetLogicalDescendants().OfType<CopyableTextBlock>(), text => text.Text == "kitabu");
+
+                workspace.CurrentPage = WorkspacePage.Texts;
+                await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
+                Assert.True(readerHost.IsEffectivelyVisible);
+
             }
             finally
             {
@@ -1409,72 +1234,31 @@ public sealed class MainWindowSmokeTests
     }
 
     [Fact]
-    public void ListsShowSeparateAiHandoffsForTheListAndItsTickedWords()
+    public void HandoffKeepsTheRequestedWordsInSettings()
     {
-        _avalonia.Invoke(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window, _) = NewComposedWindow();
+            ((FakeCommandClient)workspace.Context.Commands).CurrentBaselineCompletesWith(
+                new CurrentBaselineResponse(null, null, false));
             try
             {
-                workspace.Assess.Result = new AssessCommandResponse(
-                    new BaselineCaptureResponse(
-                        new BaselineToken("project", "sha256:" + new string('a', 64), "1",
-                            "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64)),
-                        "project.fwdata", DateTimeOffset.UtcNow, false, false),
-                    new SelectionProjection([], []), [], "1 word assessed")
-                {
-                    Words =
-                    [
-                        new AssessmentWordResult("dogs", "no-analysis", false, "Search completed", 1, null)
-                        {
-                            ProjectStanding = ProjectStanding.Approved,
-                        },
-                    ],
-                };
-                var page = workspace.PageModel<TextsPageModel>();
-                page.TextsLists.SelectListCommand.Execute(page.TextsLists.Lists.Single(list =>
-                    list.Name == "Built something else"));
-                workspace.Context.OpenTexts(TextsTab.Lists);
+                await workspace.SetProjectAsync(@"C:\projects\one.fwdata", captureFreshProject: false);
                 window.Show();
-                window.ApplyTemplate();
-                window.UpdateLayout();
-
-                var panel = Assert.Single(window.GetLogicalDescendants().OfType<TextsListsPanel>());
-                var namedLists = panel.GetLogicalDescendants().OfType<Button>()
-                    .Where(button => AutomationProperties.GetName(button)?.StartsWith(
-                        "Open the ", StringComparison.Ordinal) == true)
-                    .ToArray();
-                Assert.Equal(8, namedLists.Length);
-                var parsedDifferently = Assert.Single(namedLists, button =>
-                    AutomationProperties.GetName(button) == "Open the Built something else word list");
-                ClickButton(window, parsedDifferently);
-                Assert.Equal("Built something else", page.TextsLists.SelectedList?.Name);
-                Assert.True(Assert.Single(panel.GetLogicalDescendants().OfType<ListBox>(), list =>
-                    AutomationProperties.GetName(list) == "Words in the selected list").IsEffectivelyVisible);
-
-                var listHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == page.TextsLists.HandOffListLabel);
-                var checkedHandoff = Assert.Single(panel.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetAutomationId(button) == AutomationIds.HandOffCheckedWords);
-
-                Assert.Equal(page.TextsLists.HandOffListLabel, listHandoff.Content);
-                Assert.Equal(page.TextsLists.HandOffCheckedWordsLabel, checkedHandoff.Content);
-                Assert.Same(page.TextsLists.HandOffListCommand, listHandoff.Command);
-                Assert.Same(page.TextsLists.HandOffCheckedWordsCommand, checkedHandoff.Command);
-
-                var changedTab = Assert.Single(window.GetLogicalDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "What changed tab");
-                ClickButton(window, changedTab);
-                window.UpdateLayout();
-                Assert.Equal(TextsTab.WhatChanged, page.Tab);
-                var pageView = window.PageView<TextsPage>();
-                Assert.True(pageView.FindControl<ContentControl>("DifferenceHost")!.IsEffectivelyVisible);
+                workspace.Context.HandOff(["dogs", "cats"]);
+                PageScreenshots.Settle(window);
+                Assert.Equal(WorkspacePage.Settings, workspace.CurrentPage);
+                var handoff = workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
+                Assert.Equal(["dogs", "cats"], handoff.ChosenWords);
+                Assert.Contains(window.GetLogicalDescendants().OfType<HandoffPanel>(), panel =>
+                    ReferenceEquals(panel.Handoff, handoff));
             }
             finally
             {
                 window.Close();
+                await workspace.DisposeAsync();
             }
-        });
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -1486,7 +1270,6 @@ public sealed class MainWindowSmokeTests
             try
             {
                 workspace.CurrentPage = WorkspacePage.Texts;
-                workspace.PageModel<TextsPageModel>().ShowTabCommand.Execute(TextsTab.AnalyzeTexts);
                 window.Show();
                 window.ApplyTemplate();
                 window.UpdateLayout();
@@ -1521,17 +1304,18 @@ public sealed class MainWindowSmokeTests
             try
             {
                 workspace.CurrentPage = WorkspacePage.Texts;
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                 window.Show();
                 window.UpdateLayout();
 
                 var page = window.PageView<TextsPage>();
-                var selectionHost = Assert.IsType<ContentControl>(page.FindControl<ContentControl>("SelectionHost"));
+                var selectionHost = Assert.IsType<SelectionPanel>(page.SidePanel);
                 var variant = window.ActualThemeVariant;
                 Assert.True(Application.Current!.TryGetResource(
-                    "Component.TextsPage.SelectionPanelWidth", variant, out var resolvedWidth));
+                    "Component.Shell.SidePanelWidth", variant, out var resolvedWidth));
 
-                Assert.Equal(Assert.IsType<double>(resolvedWidth), selectionHost.Bounds.Width);
+                var frame = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
+                Assert.Equal(Assert.IsType<double>(resolvedWidth), frame.FindControl<Border>("SidePanelBorder")!.Bounds.Width);
+                Assert.InRange(selectionHost.Bounds.Width, 1, Assert.IsType<double>(resolvedWidth));
             }
             finally
             {
@@ -1548,7 +1332,7 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
             try
             {
-                workspace.Context.OpenTexts(TextsTab.Lists);
+                workspace.Context.OpenPage(WorkspacePage.Texts);
                 workspace.Assess.Refusal = new Refusal(
                     "assess.parser-unavailable", FailureReason.Refused, "PanGloss is not built.",
                     new Dictionary<string, string>
@@ -1590,10 +1374,10 @@ public sealed class MainWindowSmokeTests
                     new HandoffFileViewModel("grammar.json", @"C:\handoff\grammar.json"),
                     new HandoffFileViewModel("parse-results.json", @"C:\handoff\parse-results.json"),
                 };
-                foreach (var file in files) workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(file);
-                workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
+                foreach (var file in files) workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files.Add(file);
+                workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State = RunState.Completed;
                 SettingsTestAccess.Model(window).ShowHandoffByCopyingFiles = true;
-                workspace.CurrentPage = WorkspacePage.AiAssistants;
+                workspace.CurrentPage = WorkspacePage.Settings;
 
                 window.Show();
                 window.ApplyTemplate();
@@ -1657,7 +1441,7 @@ public sealed class MainWindowSmokeTests
 
                 window.Show();
                 window.ApplyTemplate();
-                workspace.Context.OpenTexts(TextsTab.AnalyzeTexts);
+                workspace.Context.OpenPage(WorkspacePage.Texts);
                 window.UpdateLayout();
                 var analyzePanel = Assert.Single(window.GetLogicalDescendants().OfType<ResultsInTextPanel>());
                 Assert.Contains(analyzePanel.GetLogicalDescendants().OfType<CopyableTextBlock>(), block =>
@@ -1679,10 +1463,10 @@ public sealed class MainWindowSmokeTests
             var (workspace, window, _) = NewComposedWindow();
             try
             {
-                workspace.PageModel<AiHandoffPageModel>().Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
-                workspace.PageModel<AiHandoffPageModel>().Handoff.PastedHeader = "pasted header text";
-                workspace.PageModel<AiHandoffPageModel>().Handoff.State = RunState.Completed;
-                workspace.CurrentPage = WorkspacePage.AiHandoff;
+                workspace.PageModel<SettingsPageModel>().Handoff.Handoff.Files.Add(new HandoffFileViewModel("handoff.md", @"C:\handoff\handoff.md"));
+                workspace.PageModel<SettingsPageModel>().Handoff.Handoff.PastedHeader = "pasted header text";
+                workspace.PageModel<SettingsPageModel>().Handoff.Handoff.State = RunState.Completed;
+                workspace.CurrentPage = WorkspacePage.Settings;
 
                 window.Show();
                 window.ApplyTemplate();
@@ -1770,6 +1554,7 @@ public sealed class MainWindowSmokeTests
         || visual.FindAncestorOfType<ToggleButton>(includeSelf: false) is not null
         || visual.FindAncestorOfType<TextBox>(includeSelf: false) is not null
         || visual.FindAncestorOfType<ComboBox>(includeSelf: false) is not null
+        || visual.FindAncestorOfType<TabItem>(includeSelf: false) is not null
         || visual.FindAncestorOfType<MenuItem>(includeSelf: false) is not null;
 
     [Fact]
@@ -1784,7 +1569,6 @@ public sealed class MainWindowSmokeTests
             try
             {
                 Assert.True(workspace.IsSidebarCollapsed);
-                // The Parsimony page is absent from a window without Advanced AI mode, so only the offered pages are walked.
                 foreach (var page in workspace.VisiblePages.Select(entry => entry.Page).Where(workspace.Context.CanOpenPage).Reverse())
                 {
                     var entry = window.GetLogicalDescendants().OfType<ListBoxItem>()

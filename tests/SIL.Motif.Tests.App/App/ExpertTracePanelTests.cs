@@ -51,53 +51,24 @@ public sealed class ExpertTracePanelTests
     }
 
     [Fact]
-    public void TheModeSwitchKeepsTheSelectedOccurrenceAndOpenInspector()
+    public void TheModeSwitchKeepsTheSelectedOccurrence()
     {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var (workspace, window) = await PageScreenshots.OpenOverSampleData(seedReaderToken: false, configure: (fake, _) =>
-                fake.TraceWordCompletesWith(PageScreenshots.TraceWithIdentities()));
-            try
-            {
-                window.Width = 1240;
-                window.Height = 1600;
-                workspace.CurrentPage = WorkspacePage.TryAWord;
-                workspace.Context.TryWord("matinlu");
-                await workspace.Assess.Trace.TryCommand.ExecutionTask!;
-                PageScreenshots.Settle(window);
-                var trace = workspace.Assess.Trace;
-                trace.Result = TraceWordViewModel.FromDiagnosticJson(ExpertTraceReadingTests.NotationDiagnostic).Result;
-                trace.SelectedCandidate = trace.Candidates[0];
-                var attempt = trace.SelectedCandidate;
-                var selected = FindInspectable(trace.RecordedRoots[0]);
-                trace.SelectedStep = selected;
-                workspace.Context.OpenInspector(selected.InspectSubject!, trace: trace.InspectorTrace, captured: selected.Captured);
-                await workspace.Inspector.Loading;
-                var subject = workspace.Inspector.Title;
-                var expert = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Expert trace view");
-                expert.Command!.Execute(expert.CommandParameter);
-                PageScreenshots.Settle(window);
-                var picker = Assert.Single(window.GetVisualDescendants().OfType<ComboBox>(), box =>
-                    AutomationProperties.GetName(box) == "Expert attempt");
-                Assert.Equal(trace.Candidates.Count, picker.Items.Count);
-                Assert.Same(attempt, picker.SelectedItem);
-                Assert.Same(attempt, trace.SelectedCandidate);
-                Assert.Equal(selected.RecordedStep.StepId, trace.SelectedStep!.RecordedStep.StepId);
-                Assert.True(workspace.Inspector.IsOpen);
-                Assert.Equal(subject, workspace.Inspector.Title);
-                Assert.Contains(window.GetVisualDescendants().OfType<Control>(), control =>
-                    AutomationProperties.GetName(control) == "Expert trace events" && control.IsEffectivelyVisible);
-                var plain = Assert.Single(window.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetName(button) == "Plain trace view");
-                plain.Command!.Execute(plain.CommandParameter);
-                PageScreenshots.Settle(window);
-                Assert.Equal(selected.RecordedStep.StepId, trace.SelectedStep!.RecordedStep.StepId);
-                Assert.True(workspace.Inspector.IsOpen);
-            }
-            finally { window.Close(); }
-        }, TimeSpan.FromMinutes(1));
+        var trace = TraceWordViewModel.FromDiagnosticJson(ExpertTraceReadingTests.NotationDiagnostic);
+        trace.SelectedCandidate = trace.Candidates[0];
+        var attempt = trace.SelectedCandidate;
+        var selected = FindInspectable(trace.RecordedRoots[0]);
+        trace.SelectedStep = selected;
+
+        trace.SetExpertCommand.Execute(true);
+        Assert.True(trace.IsExpert);
+        Assert.Same(attempt, trace.SelectedCandidate);
+        Assert.Equal(selected.RecordedStep.StepId, trace.SelectedStep!.RecordedStep.StepId);
+        trace.SetExpertCommand.Execute(false);
+        Assert.False(trace.IsExpert);
+        Assert.Same(attempt, trace.SelectedCandidate);
+        Assert.Equal(selected.RecordedStep.StepId, trace.SelectedStep!.RecordedStep.StepId);
     }
+
     [Fact]
     public void OpeningUnrecordedExpertSectionsShowsTheirAvailability()
     {

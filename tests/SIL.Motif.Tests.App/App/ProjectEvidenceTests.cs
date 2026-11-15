@@ -39,8 +39,9 @@ public sealed class ProjectEvidenceTests
             var fake = new FakeCommandClient();
             var context = NewContext(fake);
             var texts = new TextsPageModel(context);
-            var timing = new TimingPageModel(context);
-            var tryWord = new TryWordPageModel(context);
+            context.Diagnostics = true;
+            _ = new DiagnosticsPageModel(context);
+            var trace = context.WordTraceSession;
             fake.ReadCurrentEvidenceCompletesWith(StoredSnapshot());
             fake.TimingCompletesWith(new TimingResponse("assessment-parse", "all", "kind", 1, 5, 8, [], [], []));
             fake.TraceWordCompletesWith(new WordTraceResponse("dogs", true, true, null, 1, null, 10,
@@ -50,17 +51,15 @@ public sealed class ProjectEvidenceTests
             await context.OpenProjectAsync(ProjectPath);
 
             Assert.Equal("dogs", Assert.Single(texts.Assess.Words.AllRows).Word);
-            Assert.False(texts.ShowEmptyResults);
-            Assert.Contains(fake.TimingRequests, request => request.AssessmentId == "assessment-parse" &&
-                request.By == "kind");
-            Assert.NotNull(timing.KindTiming);
-            Assert.False(timing.ShowNoEvidence);
-
-            fake.TimingRequests.Clear();
-            context.TryWord("dogs");
-            await tryWord.Trace.TryCommand.ExecutionTask!;
             Assert.Contains(fake.TimingRequests, request => request.AssessmentId == "assessment-parse" &&
                 request.By == "rule");
+
+            fake.TimingRequests.Clear();
+            trace.Trace.WordToTry = "dogs";
+            await trace.Trace.TryCommand.ExecuteAsync(null);
+            Assert.Contains(fake.TraceWordRequests, request => request.Word == "dogs");
+            Assert.Empty(fake.TimingRequests);
+            await context.StopProjectWorkAsync();
         }, TimeSpan.FromSeconds(10));
     }
 
@@ -79,9 +78,8 @@ public sealed class ProjectEvidenceTests
         fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         await workspace.SetProjectAsync(ProjectPath);
-        var overview = workspace.PageModel<OverviewPageModel>();
-        var review = workspace.PageModel<ReviewPageModel>();
-        await review.MeasureCommand.ExecuteAsync(null);
+        var apply = workspace.Context.ProposalApply;
+        await workspace.Context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
         switch (state)
         {
@@ -100,9 +98,10 @@ public sealed class ProjectEvidenceTests
         var stale = state != "current";
         Assert.Equal(stale, workspace.FreshnessIsStale);
         Assert.Equal(!stale, workspace.FreshnessIsCurrent);
-        Assert.Equal(stale, overview.OverviewIsStale);
-        Assert.Equal(!stale, review.CanApply);
-        Assert.Equal(stale, review.ApplyBlockReason.Contains("Refresh", StringComparison.Ordinal));
+        Assert.Equal(stale, workspace.Context.Evidence.IsStale);
+        Assert.Equal(!stale, apply.CanApply(null, null, workspace.Context.RefreshProjectCommand, null));
+        Assert.Equal(stale, apply.Blockers(null, null, workspace.Context.RefreshProjectCommand, null)
+            .Any(blocker => blocker.Kind == ApplyBlockerKind.FieldWorksSavedSince));
         Assert.Equal(state == "applied-since" ? "Changes applied"
             : stale ? "FieldWorks saved since" : "Current", workspace.FreshnessLabel);
         Assert.Equal(stale ? ProjectFreshness.SavedSince : ProjectFreshness.Current, workspace.Freshness);
@@ -190,16 +189,16 @@ public sealed class ProjectEvidenceTests
         var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
         var fake = new FakeCommandClient();
         var context = NewContext(fake, clock);
-        var warnings = new WarningsPageModel(context);
+        var grammar = context.GrammarCheck;
         var answer = new TaskCompletionSource<CommandOutcome<GrammarCheckResponse>>();
         fake.OnCheckGrammar((_, _) => answer.Task);
         await context.OpenProjectAsync(ProjectPath);
 
-        var checking = warnings.CheckGrammarCommand.ExecuteAsync(null);
+        var checking = grammar.CheckCommand.ExecuteAsync(null);
         // Further ahead than the wall clock can get before the wait gives up, so only the composed clock passes.
         clock.Advance(TimeSpan.FromSeconds(90));
-        await Wait.UntilAsync(() => warnings.Grammar.ElapsedSeconds == 90, "The grammar check never took the composed clock.");
-        Assert.Equal("90 s", warnings.Grammar.ElapsedText);
+        await Wait.UntilAsync(() => grammar.ElapsedSeconds == 90, "The grammar check never took the composed clock.");
+        Assert.Equal("90 s", grammar.ElapsedText);
         answer.SetResult(CommandOutcome<GrammarCheckResponse>.Success(new GrammarCheckResponse([], HasBaseline: true)));
         await checking;
     }
@@ -210,7 +209,7 @@ public sealed class ProjectEvidenceTests
         var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero));
         var fake = new FakeCommandClient();
         var context = NewContext(fake, clock);
-        var handoff = new AiHandoffPageModel(context);
+        var handoff = new SettingsPageModel(context).Handoff;
         await context.OpenProjectAsync(ProjectPath);
 
         context.Selection.AllWordforms = true;
@@ -234,7 +233,7 @@ public sealed class ProjectEvidenceTests
             var zone = TimeZoneInfo.CreateCustomTimeZone("test-plus-9-30", TimeSpan.FromHours(9.5), "Test", "Test");
             var clock = new FixedClock(new DateTimeOffset(2026, 3, 4, 10, 30, 0, TimeSpan.Zero), zone);
             var context = NewContext(new FakeCommandClient(), clock);
-            var handoff = new AiHandoffPageModel(context);
+            var handoff = new SettingsPageModel(context).Handoff;
             await context.OpenProjectAsync(ProjectPath);
 
             context.PublishEvidence(new WorkspaceEvidence(Run("invocation/one"), clock.GetUtcNow(), false));
@@ -303,11 +302,9 @@ public sealed class ProjectEvidenceTests
             .WordRow.Row.Origin!.AssessmentId);
         Assert.Equal(root.AssessmentId, workspace.Assess.Words.Find("dog")!.WordRow.Row.Origin!.AssessmentId);
         Assert.Equal(["replacement-cat"], workspace.Context.Evidence.TimingOverrideAssessmentIds);
-        var timing = workspace.PageModel<TimingPageModel>();
-        Assert.Equal("replacement-cat", Assert.Single(timing.KindTiming!.Words).Origin!.AssessmentId);
-        Assert.Equal(2, workspace.PageModel<OverviewPageModel>().Overview!.TextCoverage.ParsedWords);
+        Assert.Equal(2, workspace.Context.Health.Overview!.TextCoverage.ParsedWords);
         Assert.True(fake.StoredGrammarCheckRequests.Count > beforeReads);
-        var touched = Assert.Single(workspace.PageModel<WarningsPageModel>().Grammar.Warnings.Findings).YourWords;
+        var touched = Assert.Single(workspace.Context.GrammarCheck.Warnings.Findings).YourWords;
         Assert.Equal("replacement-cat", Assert.Single(touched!.Words).Row.Origin!.AssessmentId);
         Assert.Equal(3, Assert.Single(touched.Words).Row.ElapsedMs);
         Assert.Empty(fake.CheckGrammarRequests);

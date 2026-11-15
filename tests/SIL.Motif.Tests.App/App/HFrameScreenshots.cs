@@ -44,10 +44,9 @@ public sealed class HFrameScreenshots
                 window.Width = width;
                 window.Height = height;
                 SettingsTestAccess.Model(window).ZoomPercent = zoom;
-                foreach (var page in new[] { WorkspacePage.Overview, WorkspacePage.Texts, WorkspacePage.Review })
+                foreach (var page in new[] { WorkspacePage.Progress, WorkspacePage.Texts, WorkspacePage.Proposals })
                 {
                     workspace.CurrentPage = page;
-                    if (page == WorkspacePage.Texts) workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
                     PageScreenshots.Save(window, Path.Combine(folder, $"frame-{page}-{width}-{height}-{zoom}-{theme}.png"));
                 }
                 var settings = window.FindInWindowOrWorkspace<Button>("SettingsButton")!;

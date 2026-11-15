@@ -37,7 +37,7 @@ internal static class CommandContractCases
     public static IReadOnlyList<CommandContract> Authored { get; } =
     [
         new(typeof(WorkspaceShellViewModel), nameof(WorkspaceShellViewModel.ShowPageCommand),
-            typeof(WorkspacePage), WorkspacePage.Overview, true,
+            typeof(WorkspacePage), WorkspacePage.Progress, true,
             "WorkspacePageTests.ARunOpensTheMatrixAndARerunWithMovesOpensWhatChanged"),
         new(typeof(WorkspaceShellViewModel), nameof(WorkspaceShellViewModel.SelectNewProjectCommand),
             null, null, true,
@@ -60,9 +60,6 @@ internal static class CommandContractCases
         new(typeof(WorkspaceShellViewModel), nameof(WorkspaceShellViewModel.RefreshCommand),
             null, null, false,
             "WorkspacePageTests.WhileRefreshingTheTopRowHidesBothActionsUntilCaptureFinishes"),
-        new(typeof(WorkspaceShellViewModel), nameof(WorkspaceShellViewModel.SeeWhatChangedCommand),
-            null, null, false,
-            "WorkspacePageTests.ARunOpensTheMatrixAndARerunWithMovesOpensWhatChanged"),
         new(typeof(WorkspaceShellViewModel), nameof(WorkspaceShellViewModel.CancelParsingCommand),
             null, null, false,
             "ParseProgressWalkthroughTests.TryAWordShowsItsCurrentWordAndElapsedTimeAndDoesNotReplaceARunningTrace"),
@@ -115,8 +112,6 @@ internal static class CommandContractCases
             "FirstRunSetupWalkthroughTests.SelectingAndClearingTextsUsesTheFinalSelectionForTheFirstParse"),
         new(typeof(CompareViewModel), nameof(CompareViewModel.ClearSelectionCommand), null, null, true,
             "CompareViewModelTests.AClickChoosesOneCellCtrlClickAddsAndClickingTheOnlyChoiceClearsIt"),
-        new(typeof(CompareViewModel), nameof(CompareViewModel.ToggleMovedFilterCommand), null, null, true,
-            "TextsProposalMovedChipTests.ChoosingTheChipListsOnlyTheWordsTheProposalMovesAndChoosingItAgainListsAllOfThemAgain"),
         new(typeof(CompareViewModel), nameof(CompareViewModel.FocusFixFirstCommand),
             typeof(CompareFixFirstViewModel), null, true,
             "CompareViewModelTests.FocusingAFixFirstWordMatchesTheExactForm"),

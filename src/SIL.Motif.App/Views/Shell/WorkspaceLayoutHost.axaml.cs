@@ -42,10 +42,6 @@ public sealed partial class WorkspaceLayoutHost : UserControl
     private bool _hasPageInspector;
     private Control? _inspectorFooter;
     private Control? _inspectorActions;
-    private bool _objectInspectorOpen;
-    private bool _inspectorWasVisibleBeforeObject;
-    private bool? _inspectorOverrideBeforeObject;
-    private bool? _sideOverrideBeforeObject;
     private bool? _sidePanelOpenOverride;
     private bool? _inspectorOpenOverride;
     private double _viewportWidth = double.PositiveInfinity;
@@ -194,11 +190,16 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         set => Part<ContentControl>("WorkingPageHost").Content = value;
     }
 
-    /// <summary>The shared object Inspector displayed while an object inspection is open.</summary>
-    public Control? ObjectInspector
+    /// <summary>The shell-owned assistant panel, independent of the current page's panes.</summary>
+    public Control? ClaudePanel
     {
-        get => Part<ContentControl>("ObjectInspectorHost").Content as Control;
-        set => Part<ContentControl>("ObjectInspectorHost").Content = value;
+        get => Part<ContentControl>("ClaudePanelHost").Content as Control;
+        set
+        {
+            var host = Part<ContentControl>("ClaudePanelHost");
+            host.Content = value;
+            host.IsVisible = value is not null;
+        }
     }
 
     /// <summary>Replaces the current page's optional panes and detaches the preceding page's controls.</summary>
@@ -229,34 +230,9 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         UpdatePanes();
     }
 
-    /// <summary>Updates whether the shared object Inspector has a subject.</summary>
-    public void SetObjectInspectorOpen(bool isOpen)
-    {
-        if (isOpen && !_objectInspectorOpen)
-        {
-            _inspectorWasVisibleBeforeObject = Part<Border>("InspectorPane").IsVisible;
-            _inspectorOverrideBeforeObject = _inspectorOpenOverride;
-            _sideOverrideBeforeObject = _sidePanelOpenOverride;
-        }
-        else if (!isOpen && _objectInspectorOpen && !InspectorFitsBesidePage() &&
-                 !_inspectorWasVisibleBeforeObject)
-        {
-            _inspectorOpenOverride = _inspectorOverrideBeforeObject;
-            _sidePanelOpenOverride = _sideOverrideBeforeObject;
-        }
-        _objectInspectorOpen = isOpen;
-        UpdatePanes();
-    }
-
     /// <summary>Shows the Inspector pane, closing the side panel when both panes cannot fit.</summary>
     public void ShowInspector()
     {
-        if (_objectInspectorOpen && !Part<Border>("InspectorPane").IsVisible)
-        {
-            _inspectorWasVisibleBeforeObject = false;
-            _inspectorOverrideBeforeObject = _inspectorOpenOverride;
-            _sideOverrideBeforeObject = _sidePanelOpenOverride;
-        }
         _inspectorOpenOverride = true;
         if (!BothPanelsFit()) _sidePanelOpenOverride = false;
         UpdatePanes();
@@ -288,8 +264,8 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         if (!_isAttachedToVisualTree) return;
         var sideVisible = _hasSidePanel && (_sidePanelOpenOverride ??
             _viewportWidth >= (double)this.FindResource("Component.Shell.SidePanelCollapseWidth")!);
-        var inspectorVisible = (_hasPageInspector || _inspectorFooter is not null || _inspectorActions is not null || _objectInspectorOpen ||
-            _inspectorOpenOverride == true) && (_inspectorOpenOverride ??
+        var hasDetails = _hasPageInspector || _inspectorFooter is not null || _inspectorActions is not null;
+        var inspectorVisible = hasDetails && (_inspectorOpenOverride ??
             _viewportWidth >= (double)this.FindResource("Component.Shell.InspectorCollapseWidth")!);
         if (sideVisible && inspectorVisible && !BothPanelsFit()) sideVisible = false;
         var focusedInspector = inspectorVisible && !InspectorFitsBesidePage();
@@ -299,12 +275,12 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         columns[2].Width = focusedInspector ? new GridLength(0) : GridLength.Star;
         columns[3].Width = focusedInspector ? GridLength.Star
             : new GridLength(inspectorVisible ? (double)this.FindResource("Component.Inspector.Width")!
-                : (double)this.FindResource("Component.Shell.InspectorStripWidth")!);
+                : hasDetails ? (double)this.FindResource("Component.Shell.InspectorStripWidth")! : 0);
         Part<Grid>("WorkingPageRegion").IsVisible = !focusedInspector;
         var returnButton = Part<Button>("InspectorHideButton");
         returnButton.Classes.Set("focusedInspectorReturn", focusedInspector);
-        returnButton.Content = focusedInspector ? "Back to page" : "›";
-        AutomationProperties.SetName(returnButton, focusedInspector ? "Back to page" : "Hide Inspector");
+        returnButton.Content = focusedInspector ? MotifAppStrings.BackToPage : "›";
+        AutomationProperties.SetName(returnButton, focusedInspector ? MotifAppStrings.BackToPage : MotifAppStrings.HideInspectorAccessibleName);
         var footerHost = Part<PageContentSlot>(inspectorVisible ? "InspectorFooterHost" : "PageActionFooterHost");
         // Release the previous host first: a slot ignores a re-set of the Content it still holds.
         var previousHost = Part<PageContentSlot>(inspectorVisible ? "PageActionFooterHost" : "InspectorFooterHost");
@@ -318,10 +294,8 @@ public sealed partial class WorkspaceLayoutHost : UserControl
         Part<Border>("SidePanelBorder").IsVisible = sideVisible;
         Part<Button>("SidePanelRevealButton").IsVisible = _hasSidePanel && !sideVisible;
         Part<Border>("InspectorPane").IsVisible = inspectorVisible;
-        Part<Button>("InspectorStrip").IsVisible = !inspectorVisible;
-        Part<PageContentSlot>("PageInspectorHost").IsVisible = _hasPageInspector && !_objectInspectorOpen;
-        Part<ContentControl>("ObjectInspectorHost").IsVisible = _objectInspectorOpen;
-        Part<TextBlock>("InspectorEmpty").IsVisible = !_hasPageInspector && !_objectInspectorOpen;
+        Part<Button>("InspectorStrip").IsVisible = hasDetails && !inspectorVisible;
+        Part<PageContentSlot>("PageInspectorHost").IsVisible = _hasPageInspector;
         // The band budget reads which bands show, so a visibility change must re-run it even at an unchanged size.
         InvalidateMeasure();
     }
@@ -360,7 +334,6 @@ public sealed partial class WorkspaceLayoutHost : UserControl
 
     private void OnPageInspectorRequested(object? sender, RoutedEventArgs e)
     {
-        _objectInspectorOpen = false;
         ShowInspector();
     }
 

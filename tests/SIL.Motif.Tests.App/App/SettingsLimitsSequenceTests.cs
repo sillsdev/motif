@@ -376,7 +376,7 @@ public sealed class SettingsLimitsSequenceTests
             Assert.False(settings.HasParserWorkLimitRefusal);
             Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
             Assert.Equal(150000m, workspace.Selection.PerWordParserWorkLimit);
-            workspace.CurrentPage = WorkspacePage.Overview;
+            workspace.CurrentPage = WorkspacePage.Progress;
             workspace.CurrentPage = WorkspacePage.Settings;
             settings.OpenGroup(Group.Parsing);
             Assert.False(settings.IsNoParserWorkLimit);
@@ -398,7 +398,7 @@ public sealed class SettingsLimitsSequenceTests
             settings.TimeLimitSeconds = 9m;
             Assert.False(workspace.Selection.PerWordParserWorkLimitUnbounded);
             Assert.Equal(9m, workspace.Selection.PerWordTimeLimitSeconds);
-            workspace.CurrentPage = WorkspacePage.Overview;
+            workspace.CurrentPage = WorkspacePage.Progress;
             workspace.CurrentPage = WorkspacePage.Settings;
             settings.OpenGroup(Group.Parsing);
             Assert.False(settings.IsNoParserWorkLimit);
@@ -652,7 +652,7 @@ public sealed class SettingsLimitsSequenceTests
                 case Act.LeaveAndReturn:
                     log.Add("leave+return");
                     exact = RefusedShown || _tickHeld || _heldUntick;
-                    workspace.CurrentPage = WorkspacePage.Overview;
+                    workspace.CurrentPage = WorkspacePage.Progress;
                     workspace.CurrentPage = WorkspacePage.Settings;
                     settings.OpenGroup(Group.Parsing);
                     if (exact) Reset();

@@ -43,7 +43,7 @@ public sealed class WindowDisposalCancellationTests(PristineProjectFixture prist
                         holdUntilPath = releasePath,
                         holdTimeoutMs = 120_000,
                     });
-                    walkthrough.Click("Parse all words in the Selection");
+                    walkthrough.Workspace.Assess.RunCommand.Execute(null);
                     walkthrough.WaitUntil(
                         () => File.Exists(startedPath) && workspace.Assess.State == RunState.Running &&
                             PanglossProcesses.TryReadProcessId(processIdPath, out _),

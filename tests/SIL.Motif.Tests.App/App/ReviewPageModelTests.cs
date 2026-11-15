@@ -17,189 +17,13 @@ public sealed class ReviewPageModelTests
     private const string InternalId = "12345678-1234-1234-1234-123456789abc";
 
     [Fact]
-    public async Task ReviewNamesEveryNativeProhibitionDeletionWithoutTruncation()
-    {
-        var effects = Enumerable.Range(0, 12).Select(index => new EffectView($"bundle-{index}",
-            "analysis/wfiMorphBundle/msa", [new EffectChange("ref", $"msa-{index}", null)],
-            JsonSerializer.SerializeToElement(new { nativeProhibitionCleanup = true,
-                summary = $"Delete word-analysis reference bundle-{index}.Msa to msa-{index}." }))).ToArray();
-        var entry = new GrammarChangeEntry("cleanup", 0, "Retarget a prohibition", ["cleanup"], [],
-            "digest", false, "EditAdhocProhibitionReferences", "1 prohibition", effects, [], []);
-        var fake = new FakeCommandClient
-        {
-            Review = new ProposalReviewResponse(string.Empty, string.Empty, "revision/one", [entry], null, null, [], 0)
-            { IsDraft = true, DraftName = PendingChanges.DraftName, IsPendingChanges = true },
-        };
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        await page.LoadReviewAsync();
-        var text = Assert.Single(page.Entries).EffectText;
-        foreach (var index in Enumerable.Range(0, 12))
-            Assert.Contains($"Delete word-analysis reference bundle-{index}.Msa to msa-{index}.", text);
-    }
-
-    [Fact]
-    public async Task ReviewBadgeCountsAStagedParsimonyJudgment()
-    {
-        var operation = "operation/parsimony-decision";
-        var entry = new GrammarChangeEntry(operation, 0, "Record a decision on a Parsimony finding", [operation],
-            [], "sha256:decision", false, "RecordParsimonyDisposition", "1 decision", [], [], []);
-        var fake = new FakeCommandClient
-        {
-            Review = new ProposalReviewResponse(string.Empty, string.Empty, "revision/one", [entry], null, null, [], 0)
-            {
-                IsPendingChanges = true,
-                IsDraft = true,
-                DraftName = PendingChanges.DraftName,
-            },
-        };
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        await page.LoadReviewAsync();
-
-        Assert.Equal("1", page.Badge);
-        Assert.Equal("RecordParsimonyDisposition", Assert.IsType<GrammarChangeEntry>(
-            Assert.Single(page.Entries).Entry).Composer);
-    }
-
-    [Fact]
-    public async Task OpeningAStagedRetirementDraftLoadsItsReviewStatus()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
-        fake.RetirementReviewCompletesWith(new RetirementReviewQueryResponse(true, "draft/one",
-            "waiting-for-dry-run", null, null, null, ["A Dry Run is not available yet."]));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-
-        await context.OpenProjectAsync(ProjectPath);
-
-        Assert.Empty(fake.RetirementReviewRequests);
-        context.OpenPage(WorkspacePage.Review);
-
-        Assert.Equal("draft/one", Assert.Single(fake.RetirementReviewRequests).DraftId);
-        Assert.True(page.HasRetirementReview);
-        Assert.Contains("A Dry Run is not available yet.", page.RetirementReview!.PendingEvidenceText,
-            StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task HiddenReviewWaitsForThePageToOpenBeforeReadingTheDraft()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot(null, "none", [], []));
-        var context = NewContext(fake);
-        _ = new ReviewPageModel(context);
-
-        await context.OpenProjectAsync(ProjectPath);
-
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
-        await context.Changes.ReloadAsync();
-
-        Assert.Empty(fake.ProposalReviewRequests);
-        context.OpenPage(WorkspacePage.Review);
-        Assert.Null(Assert.Single(fake.ProposalReviewRequests).ProposalId);
-    }
-
-    [Fact]
-    public async Task HiddenReviewCountsStagedRetirementFromTheStoreAndLoadsFullReviewOnOpen()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot(null, "none", [], []));
-        fake.ProposalReviewEntryCount = 1;
-        fake.Review = new ProposalReviewResponse("", "sha256:intent", "sha256:revision",
-            [new GrammarChangeEntry("operation/retire", 0, "Retire a rule", ["operation/retire"], [],
-                "sha256:content", false, "RetireAllomorph", "Retirement", [], [], [])], null, null, [], 0)
-        {
-            IsDraft = true,
-            DraftName = "pending-changes",
-            IsPendingChanges = true,
-        };
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-
-        await context.OpenProjectAsync(ProjectPath);
-        fake.ProposalReviewEntryCountRequests.Clear();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/retirement", [], []));
-        await context.Changes.ReloadAsync();
-
-        Assert.Equal("1", page.Badge);
-        Assert.Single(fake.ProposalReviewEntryCountRequests);
-        Assert.Empty(fake.ProposalReviewRequests);
-
-        context.OpenPage(WorkspacePage.Review);
-
-        Assert.Single(fake.ProposalReviewRequests);
-        Assert.IsType<GrammarChangeEntry>(Assert.Single(page.Entries).Entry);
-        Assert.Equal("1", page.Badge);
-    }
-
-    [Fact]
-    public async Task ADeletedWordformBlocksApplyAndRemovingItKeepsTheOtherChange()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first"), Change("deleted", "second")],
-            [new ChangeFit("kept", true, []),
-             new ChangeFit("deleted", false, [$"Wordform {InternalId} was deleted in FieldWorks."])]));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-
-        await context.OpenProjectAsync(ProjectPath);
-
-        Assert.False(page.CanApply);
-        Assert.Contains("1 change no longer fits", page.ApplyBlockReason);
-        var fitStatus = context.Changes.Items.Single(item => item.ChangeId == "deleted").FitStatus;
-        Assert.Equal("No longer fits the current project. Remove this change before review.", fitStatus);
-        Assert.DoesNotContain(InternalId, fitStatus);
-
-        await page.RemoveNonFittingCommand.ExecuteAsync(null);
-
-        Assert.Equal("kept", Assert.Single(context.Changes.Items).ChangeId);
-        Assert.Equal("kept", Assert.Single(context.Changes.Snapshot.Changes).ChangeId);
-        Assert.Equal("remove-pending-change", Assert.Single(fake.UsageEntries).Command);
-    }
-
-    [Fact]
-    public async Task ReloadingChangesRebuildsReviewGroupsOnceForTheSnapshot()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [], []));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        var reviewGroupsChanges = 0;
-        page.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(ReviewPageModel.ReviewGroups)) reviewGroupsChanges++;
-        };
-        var changes = new[]
-        {
-            Change("first", "first"),
-            Change("second", "second"),
-            Change("third", "third"),
-        };
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two", changes,
-            changes.Select(change => new ChangeFit(change.ChangeId, true, [])).ToArray()));
-
-        await context.Changes.ReloadAsync();
-
-        Assert.Equal(1, reviewGroupsChanges);
-        Assert.Equal(3, Assert.Single(page.ReviewGroups).Items.Count);
-    }
-
-    [Fact]
     public async Task RefreshRechecksChangeFitBeforeApply()
     {
         var fake = new FakeCommandClient();
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
         var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
+        var page = context.ProposalApply;
         await context.OpenProjectAsync(ProjectPath);
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
             [Change("kept", "first")], [new ChangeFit("kept", false, ["Wordform was deleted."])]));
@@ -213,7 +37,7 @@ public sealed class ReviewPageModelTests
         Assert.Equal("revision/one", Assert.Single(fake.PendingRecheckRequests).ExpectedRevision);
         Assert.Single(fake.PendingLoadRequests);
         Assert.True(Assert.Single(context.Changes.Items).IsUncertain);
-        Assert.False(page.CanApply);
+        Assert.False(page.CanApply(null, null, null, null));
     }
 
     [Fact]
@@ -238,33 +62,6 @@ public sealed class ReviewPageModelTests
         Assert.Single(fake.PendingLoadRequests);
         Assert.Null(context.Changes.ShownRefusal);
         Assert.Equal("revision/refreshed", context.Changes.Snapshot.Revision);
-    }
-
-    [Fact]
-    public async Task UncertainChangesHaveTheirOwnPlainApplyBlockReason()
-    {
-        var uncertain = new ChangeFit("uncertain", ChangeFitStatus.Uncertain,
-            ["The words in the source sentence have changed."])
-        {
-            Uncertainty = new ChangeUncertainty("The words in the source sentence have changed.",
-                [new OccurrenceWordToken(0, "wordform/first", "first")],
-                [new OccurrenceWordToken(0, "wordform/changed", "changed")]),
-        };
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("uncertain", "first")], [uncertain]));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-
-        await context.OpenProjectAsync(ProjectPath);
-
-        var item = Assert.Single(context.Changes.Items);
-        Assert.Equal("Needs another look", item.FitStatus);
-        Assert.Same(item, Assert.Single(page.UncertainChanges));
-        Assert.True(Assert.Single(item.AfterWords, word => word.Form == "changed").IsChanged);
-        Assert.False(page.CanApply);
-        Assert.StartsWith("1 change needs another look because its sentence changed. Check it again or undo it.",
-            page.ApplyBlockReason);
     }
 
     [Theory]
@@ -304,209 +101,6 @@ public sealed class ReviewPageModelTests
         Assert.Equal("Undo: kitabu", undoName.GetValue(change));
     }
 
-    [Fact]
-    public void ReviewExposesACommandForReconcheckingOneUncertainChange()
-    {
-        Assert.NotNull(typeof(ReviewPageModel).GetProperty("ReconfirmChangeCommand"));
-    }
-
-    [Fact]
-    public async Task CheckAgainAndUndoTargetTheSelectedUncertainChange()
-    {
-        var uncertain = new ChangeFit("uncertain", ChangeFitStatus.Uncertain,
-            ["The words in the source sentence have changed."])
-        {
-            Uncertainty = new ChangeUncertainty("The words in the source sentence have changed.",
-                [new OccurrenceWordToken(0, "wordform/first", "first")],
-                [new OccurrenceWordToken(0, "wordform/changed", "changed")]),
-        };
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("uncertain", "first")], [uncertain]));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        fake.ReconfirmCompletesWith(new PendingChangesSnapshot("draft/one", "revision/two",
-            [Change("uncertain", "first")], [new ChangeFit("uncertain", true, [])]));
-
-        await page.ReconfirmChangeCommand.ExecuteAsync(Assert.Single(page.UncertainChanges));
-
-        Assert.Equal("uncertain", Assert.Single(fake.PendingReconfirmRequests).ChangeId);
-        Assert.True(Assert.Single(context.Changes.Items).Fit?.StillFits);
-        await context.Changes.RemoveCommand.ExecuteAsync(Assert.Single(context.Changes.Items));
-        Assert.Equal("uncertain", Assert.Single(fake.PendingRemoveRequests).ChangeId);
-    }
-
-    [Fact]
-    public async Task CheckAgainReplacesOnlyTheFitsThatPassedTheCommand()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first"), Change("deleted", "second")],
-            [new ChangeFit("kept", false, ["Baseline changed."]),
-             new ChangeFit("deleted", false, ["Wordform was deleted."])]));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        fake.RecheckCompletesWith(new PendingChangesSnapshot("draft/one", "revision/two",
-            [Change("kept", "first"), Change("deleted", "second")],
-            [new ChangeFit("kept", true, []),
-             new ChangeFit("deleted", false, ["Wordform was deleted."])]));
-
-        await page.CheckAgainCommand.ExecuteAsync(null);
-
-        Assert.Equal("revision/one", Assert.Single(fake.PendingRecheckRequests).ExpectedRevision);
-        Assert.True(context.Changes.Items.Single(item => item.ChangeId == "kept").Fit?.StillFits);
-        Assert.True(context.Changes.Items.Single(item => item.ChangeId == "deleted").IsNoLongerFits);
-    }
-
-    [Fact]
-    public async Task AFieldWorksSaveBlocksApplyUntilRefresh()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one", FakeCommandClient.CompleteNumbers));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        await page.MeasureCommand.ExecuteAsync(null);
-        Assert.True(page.CanApply);
-
-        var saved = DateTimeOffset.UtcNow;
-        context.Baseline = new WorkspaceBaseline(true, "", "", "", "", null)
-        {
-            SourceLastWriteUtc = saved,
-            ProjectLastWriteUtc = saved.AddHours(1),
-        };
-
-        Assert.False(page.CanApply);
-        Assert.Contains("Refresh", page.ApplyBlockReason);
-    }
-
-    [Fact]
-    public async Task OpeningReviewDoesNotStartAParserRun()
-    {
-        var fake = new FakeCommandClient();
-        var context = NewContext(fake);
-        _ = new ReviewPageModel(context);
-
-        await context.OpenProjectAsync(ProjectPath);
-        context.OpenPage(WorkspacePage.Review);
-
-        Assert.Empty(fake.AssessRequests);
-        Assert.Empty(fake.MeasurePendingRequests);
-    }
-
-    [Fact]
-    public async Task ApplyEnablesOnlyAfterThePersonMeasuresCompleteEvidence()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
-            "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-
-        Assert.False(page.CanApply);
-        Assert.Equal("Apply to FieldWorks project", page.ApplyButtonText);
-        await page.MeasureCommand.ExecuteAsync(null);
-
-        Assert.True(page.CanApply);
-        Assert.Equal(["first"], Assert.Single(fake.MeasurePendingRequests).Words);
-        Assert.Contains("kept their approved analyses", page.NumbersText);
-        Assert.Equal("trial --pending", Assert.Single(fake.UsageEntries).Command);
-    }
-
-    [Theory]
-    [InlineData(new[] { "first" }, "Applying these changes would lose an approved analysis for 1 word: first. " +
-        "Change or remove the changes that cause it before applying.")]
-    [InlineData(new[] { "first", "second" }, "Applying these changes would lose an approved analysis for 2 words: " +
-        "first, second. Change or remove the changes that cause it before applying.")]
-    public async Task ALostApprovedAnalysisDisablesApplyBeforeAnyClick(string[] lost, string reason)
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first"), Change("other", "second")],
-            [new ChangeFit("kept", true, []), new ChangeFit("other", true, [])]));
-        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
-            FakeCommandClient.CompleteNumbers with { WordsLosingApprovedAnalysis = lost }));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-
-        await page.MeasureCommand.ExecuteAsync(null);
-
-        Assert.False(page.CanApply);
-        Assert.False(page.ApplyCommand.CanExecute(null));
-        Assert.Equal(reason, page.ApplyBlockReason);
-    }
-
-    [Fact]
-    public async Task ChangingTheChangesClearsTheLostAnalysisReasonUntilTheyAreCheckedAgain()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create("job/one", "revision/one",
-            FakeCommandClient.CompleteNumbers with { WordsLosingApprovedAnalysis = ["first"] }));
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        await page.MeasureCommand.ExecuteAsync(null);
-
-        var raised = new List<string?>();
-        page.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
-            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        await context.Changes.ReloadAsync();
-
-        Assert.Equal("See what applying does to the numbers before applying.", page.ApplyBlockReason);
-        Assert.Contains(nameof(ReviewPageModel.ApplyBlockReason), raised);
-    }
-
-    [Fact]
-    public async Task ACancelledMeasurementShowsTheCancellationMessage()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingRefusal = new Refusal("job.wait-cancelled", FailureReason.Cancelled,
-            "Waiting for job 'job/one' was cancelled.");
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-
-        await page.MeasureCommand.ExecuteAsync(null);
-
-        Assert.Equal("The check was cancelled.", page.MeasurementRefusal?.Sentence);
-        Assert.Equal("trial --pending", Assert.Single(fake.UsageEntries).Command);
-    }
-
-    [Fact]
-    public async Task ACheckOfChangesThatChangedMeanwhileRefreshesThemAndAsksForAnotherCheck()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first")], [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingRefusal = new Refusal("trial.changes-changed", FailureReason.Refused,
-            "The changes changed. Reload them before measuring.");
-        var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/two",
-            [Change("kept", "first"), Change("added", "second")],
-            [new ChangeFit("kept", true, []), new ChangeFit("added", true, [])]));
-
-        await page.MeasureCommand.ExecuteAsync(null);
-
-        Assert.Equal("revision/two", context.Changes.Snapshot.Revision);
-        Assert.Equal("The changes were updated while they were being checked. Check them again.",
-            page.MeasurementRefusal?.Sentence);
-    }
-
     [Theory]
     [InlineData("trial.nothing-pending", "There are no changes to check.")]
     [InlineData("apply.nothing-pending", "Motif could not complete this request. Review the project and try again.")]
@@ -524,11 +118,11 @@ public sealed class ReviewPageModelTests
         fake.ApplyPendingRefusal = new Refusal("job.wait-timeout", FailureReason.Busy,
             "The wait expired.");
         var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
+        var page = context.ProposalApply;
         await context.OpenProjectAsync(ProjectPath);
 
-        await page.MeasureCommand.ExecuteAsync(null);
-        await page.ApplyCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+        await page.ApplyCurrentAsync(null);
 
         Assert.Equal("The check took too long and was stopped. Your changes are unchanged; try applying again.",
             page.ApplyRefusal?.Sentence);
@@ -556,11 +150,11 @@ public sealed class ReviewPageModelTests
                 "job.wait-cancelled", FailureReason.Cancelled, "Waiting for the Dry Run was cancelled."));
         };
         var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
+        var page = context.ProposalApply;
         await context.OpenProjectAsync(ProjectPath);
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
-        var applying = page.ApplyCommand.ExecuteAsync(null);
+        var applying = page.ApplyCurrentAsync(null);
         var applyToken = await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await context.OpenProjectAsync(@"C:\projects\two.fwdata");
         var cancelled = applyToken.IsCancellationRequested;
@@ -584,15 +178,15 @@ public sealed class ReviewPageModelTests
             new AppliedLogEntrySummary("draft/one", "2026-01-01", "Motif", "sha256:intent")),
             "Applied pending changes.");
         var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
+        var page = context.ProposalApply;
         await context.OpenProjectAsync(ProjectPath);
         await context.Changes.PutAsync(new ChangeIntent("added", ChangeKinds.Approve, "wordform/added", "second"));
         var stagedRevision = context.Changes.Snapshot.Revision;
         fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
             "job/one", stagedRevision, FakeCommandClient.CompleteNumbers));
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
-        await page.ApplyCommand.ExecuteAsync(null);
+        await page.ApplyCurrentAsync(null);
 
         Assert.Empty(context.Changes.Items);
         Assert.Equal("draft/one", page.Receipt!.ProposalId);
@@ -617,14 +211,13 @@ public sealed class ReviewPageModelTests
         fake.ApplyPendingHandler = (_, _) =>
             Task.FromResult(CommandOutcome<ApplyPendingResult>.Success(ApplyPendingResult.NothingPending));
         var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
+        var page = context.ProposalApply;
         await context.OpenProjectAsync(ProjectPath);
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
-        await page.ApplyCommand.ExecuteAsync(null);
+        await page.ApplyCurrentAsync(null);
 
         Assert.Null(page.Receipt);
-        Assert.False(page.HasReceipt);
         Assert.Null(page.ApplyRefusal);
         Assert.False(context.Evidence.AppliedSinceRefresh);
     }
@@ -640,43 +233,13 @@ public sealed class ReviewPageModelTests
         fake.ApplyPendingRefusal = new Refusal("apply.regression", FailureReason.Refused,
             "Approved readings matched less often.");
         var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
+        var page = context.ProposalApply;
         await context.OpenProjectAsync(ProjectPath);
-        await page.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
 
-        await page.ApplyCommand.ExecuteAsync(null);
+        await page.ApplyCurrentAsync(null);
 
         Assert.Contains("worse results", page.ApplyRefusal?.Sentence);
-    }
-
-    [Fact]
-    public async Task FieldWorksHoldingTheProjectBlocksApplyAndKeepEditingReturnsToTheOrigin()
-    {
-        var fake = new FakeCommandClient();
-        fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one",
-            [Change("kept", "first") with { OriginPage = "Warnings" }],
-            [new ChangeFit("kept", true, [])]));
-        fake.MeasurePendingCompletesWith(SIL.Motif.Tests.Support.TestFixtures.PendingMeasureResponseFactory.Create(
-            "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
-        var context = NewContext(fake);
-        context.Diagnostics = true;
-        var page = new ReviewPageModel(context);
-        await context.OpenProjectAsync(ProjectPath);
-        context.OpenPage(WorkspacePage.Texts);
-        context.OpenPage(WorkspacePage.Warnings);
-        context.OpenPage(WorkspacePage.Timing);
-        context.OpenPage(WorkspacePage.Review);
-        await page.MeasureCommand.ExecuteAsync(null);
-        context.Baseline = new WorkspaceBaseline(true, "", "", "", "", null)
-        {
-            FieldWorksHeldProject = true,
-        };
-
-        Assert.False(page.CanApply);
-        Assert.Contains("FieldWorks has this project open", page.ApplyBlockReason);
-        Assert.False(page.ApplyCommand.CanExecute(null));
-        page.KeepEditingCommand.Execute(null);
-        Assert.Equal(WorkspacePage.Warnings, context.CurrentPage);
     }
 
     private static PendingChange Change(string id, string word) =>
@@ -693,11 +256,9 @@ public sealed class ReviewPageModelTests
         fake.PendingChangesIs(new PendingChangesSnapshot("draft/one", "revision/one", [first, other],
             [new ChangeFit(first.ChangeId, !nonFitting, []), new ChangeFit(other.ChangeId, true, [])]));
         var context = NewContext(fake);
-        var page = new ReviewPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
 
-        if (nonFitting) await page.RemoveNonFittingCommand.ExecuteAsync(null);
-        else await context.Changes.RemoveCommand.ExecuteAsync(context.Changes.Items[0]);
+        await context.Changes.RemoveCommand.ExecuteAsync(context.Changes.Items[0]);
 
         Assert.Equal("own", Assert.Single(fake.PendingRemoveRequests).ChangeId);
         Assert.Equal("other", Assert.Single(context.Changes.Items).ChangeId);

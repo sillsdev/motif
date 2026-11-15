@@ -29,7 +29,7 @@ public sealed class AnalyzeTextsScreenshots
                 (fake, assessment) => AnalyzeTextsLayoutTests.ConfigureStoredExplanation(fake, assessment));
             try
             {
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+
                 workspace.CurrentPage = WorkspacePage.Texts;
                 window.Height = 1500;
                 PageScreenshots.Settle(window);

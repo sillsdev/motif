@@ -18,6 +18,9 @@
     <StaticResource x:Key="Component.Mark.SeverityIconSize" ResourceKey="Primitive.Size.10" />
   </Styles.Resources>
 
+  <Style Selector=":is(TextBlock).markGlyph">
+    <Setter Property="FontFamily" Value="{DynamicResource Intent.Font.Mark}" />
+  </Style>
   <Style Selector=":is(TextBlock).outcomeMark">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Small}" />
     <Setter Property="FontWeight" Value="SemiBold" />

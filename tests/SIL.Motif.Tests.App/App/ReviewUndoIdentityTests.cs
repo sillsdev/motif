@@ -89,7 +89,6 @@ public sealed partial class ReviewUndoRealClientTests
             var context = WorkspaceContextTests.NewContext(fake);
             await using var ownership = new WorkspaceOwnership(context);
             var texts = new TextsPageModel(context);
-            var review = new ReviewPageModel(context);
             await context.OpenProjectAsync(project.FwDataPath);
             await RealizeIdentityOccurrencesAsync(texts.Context, texts);
             var ownToken = texts.ResultsInText.LinePages!.RealizedLines.SelectMany(line => line.Tokens)
@@ -101,8 +100,15 @@ public sealed partial class ReviewUndoRealClientTests
                 case "checked": await texts.ResultsInText.UndoChangesCommand.ExecuteAsync(AnalysisOperationScope.CheckedWords); break;
                 case "text": await texts.ResultsInText.UndoChangesCommand.ExecuteAsync(AnalysisOperationScope.SelectedText); break;
                 case "row": await context.Changes.RemoveCommand.ExecuteAsync(context.Changes.Items.Single(item => item.ChangeId == first.ChangeId)); break;
-                case "non-fitting": await review.RemoveNonFittingCommand.ExecuteAsync(null); break;
-                case "visible-group": await review.ReviewGroups.Single(group => group.IsNoLongerFits).UndoAllCommand.ExecuteAsync(null); break;
+                case "non-fitting":
+                    foreach (var item in context.Changes.Items.Where(item => item.IsNoLongerFits).ToArray())
+                        await context.Changes.RemoveCommand.ExecuteAsync(item);
+                    break;
+                case "visible-group":
+                    var group = new ReviewChangeGroupViewModel("No longer fits",
+                        context.Changes.Items.Where(item => item.IsNoLongerFits).ToArray(), context.Changes);
+                    await group.UndoAllCommand.ExecuteAsync(null);
+                    break;
             }
 
             Assert.DoesNotContain(fake.PendingRemoveRequests, request => request.ChangeId == first.GroupId);
@@ -207,7 +213,6 @@ public sealed partial class ReviewUndoRealClientTests
             var context = WorkspaceContextTests.NewContext(fake);
             await using var ownership = new WorkspaceOwnership(context);
             var texts = new TextsPageModel(context);
-            var review = new ReviewPageModel(context);
             await context.OpenProjectAsync(project.FwDataPath);
             await RealizeIdentityOccurrencesAsync(texts.Context, texts);
             AssertHomographMarkers(texts, project.Text.AnalysedWordformId, otherId, true);
@@ -218,12 +223,12 @@ public sealed partial class ReviewUndoRealClientTests
             fake.MeasurePendingCompletesWith(measured.Value!);
             fake.ApplyPendingHandler = (request, cancellation) => real.ApplyPendingAsync(refuse
                 ? request with { Revision = "stale-revision" } : request, cancellation);
-            await review.MeasureCommand.ExecuteAsync(null);
-            Assert.True(review.CanApply, review.ApplyBlockReason);
+            await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+            Assert.True(context.ProposalApply.CanApply(null, null, null, null));
 
-            await review.ApplyCommand.ExecuteAsync(null);
+            await context.ProposalApply.ApplyCurrentAsync(null);
 
-            Assert.Equal(refuse, review.ApplyRefusal is not null);
+            Assert.Equal(refuse, context.ProposalApply.ApplyRefusal is not null);
             var persisted = await real.LoadPendingChangesAsync(new PendingChangesRequest(project.FwDataPath,
                 MotifProductVersion.CurrentText), CancellationToken.None);
             Assert.True(persisted.Succeeded, persisted.Refusal?.Message);

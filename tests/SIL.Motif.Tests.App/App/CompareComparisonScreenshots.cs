@@ -60,10 +60,10 @@ public sealed class CompareComparisonScreenshots
             try
             {
                 workspace.CurrentPage = WorkspacePage.Texts;
-                workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
+
                 PageScreenshots.Settle(window);
                 var matrix = workspace.Assess.Compare;
-                workspace.PageModel<TextsPageModel>().TextsLists.ShowCells([new(WordProjectStatus.Candidate, CompareColumnKind.NoMatch)]);
+                matrix.SelectCells([new(WordProjectStatus.Candidate, CompareColumnKind.NoMatch)]);
                 var meaning = matrix.Words.Single(word => word.Word == mixed.Word).Meaning;
                 Assert.Equal("Have a look", meaning);
                 Assert.False(matrix.ShowsMeaning);
@@ -74,9 +74,9 @@ public sealed class CompareComparisonScreenshots
                     {
                         window.Width = width;
                         window.Height = 780;
-                        workspace.PageModel<TextsPageModel>().Tab = TextsTab.Lists;
+
                         PageScreenshots.Save(window, Path.Combine(folder, $"compare-mixed-{width}-{theme}.png"));
-                        workspace.PageModel<TextsPageModel>().Tab = TextsTab.AnalyzeTexts;
+
                         await AnalyzeTextsLayoutTests.SettleReaderAsync(workspace, window);
                         var inText = workspace.PageModel<TextsPageModel>().ResultsInText;
                         var anchor = Assert.Single(workspace.Context.SelectionReads.Summary!.SourcePositions).Location.Anchor;

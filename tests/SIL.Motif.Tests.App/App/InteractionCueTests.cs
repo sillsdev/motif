@@ -25,7 +25,7 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
 {
     private static readonly ThemeVariant[] Themes = [ThemeVariant.Light, ThemeVariant.Dark];
 
-    public static TheoryData<string> Focusables() => new() { "button", "sidebar", "overviewTile", "wordStrip" };
+    public static TheoryData<string> Focusables() => new() { "button", "sidebar", "health", "wordStrip" };
 
     [Theory]
     [MemberData(nameof(Focusables))]
@@ -70,13 +70,12 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
     }
 
     [Fact]
-    public void APointerClickOnAnOverviewTileLeavesNoRing()
+    public void APointerClickOnTheHealthButtonLeavesNoRing()
     {
         avalonia.Invoke(() =>
         {
-            var (content, tile) = Build("overviewTile");
+            var (content, tile) = Build("health");
             var window = new MotifTestWindow { Content = content, Width = 400, Height = 300 };
-            ScopedComponentStyles.Include(window, "Overview");
             try
             {
                 window.Show();
@@ -84,7 +83,6 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                 tile.Focus(NavigationMethod.Pointer);
                 Dispatcher.UIThread.RunJobs();
                 Assert.Null(RingAround(tile));
-                Assert.Equal(Resource("Intent.Border", ThemeVariant.Light), ((Button)tile).BorderBrush);
             }
             finally
             {
@@ -218,9 +216,9 @@ public sealed class InteractionCueTests(AvaloniaHeadlessFixture avalonia)
                 var item = new ListBoxItem { Content = "Timing" };
                 list.Items.Add(item);
                 return (list, item);
-            case "overviewTile":
-                var tile = new Button { Classes = { "overviewTile" }, Content = "Speed" };
-                return (tile, tile);
+            case "health":
+                var health = new Button { Content = "Health" };
+                return (health, health);
             default:
                 var strip = new Border { Classes = { "wordStrip" }, Focusable = true, Child = new TextBlock { Text = "Sungura" } };
                 return (strip, strip);

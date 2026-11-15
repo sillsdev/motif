@@ -1,13 +1,10 @@
-using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Automation;
-using Avalonia.Input;
+using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.App;
-using SIL.Motif.App.Controls;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.App.Views.Shell;
@@ -22,503 +19,145 @@ namespace SIL.Motif.Tests.App;
 public sealed class ProposalsWorkspacePaneTests
 {
     [Fact]
-    public void ProviderGettersStayStableWhileTheWorkspaceLayoutHostOwnsTheirControls()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var page = new ProposalsPage(new ProposalsPageModel(
-                WorkspaceContextTests.NewContext(new FakeCommandClient())));
-            var provider = Assert.IsAssignableFrom<IWorkspacePaneProvider>(page);
-            var sidePanel = Assert.IsAssignableFrom<Control>(provider.SidePanel);
-            var inspector = Assert.IsAssignableFrom<Control>(provider.InspectorContent);
-            Assert.Null(sidePanel.Parent);
-            Assert.Null(inspector.Parent);
-            var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-
-                var sideParent = sidePanel.Parent;
-                var inspectorParent = inspector.Parent;
-                Assert.Same(sidePanel, host.FindControl<ContentControl>("SidePanelContent")!.Content);
-                Assert.Same(inspector, host.FindControl<ContentControl>("PageInspectorHost")!.Content);
-                Assert.Same(sidePanel, provider.SidePanel);
-                Assert.Same(inspector, provider.InspectorContent);
-                Assert.Same(sideParent, sidePanel.Parent);
-                Assert.Same(inspectorParent, inspector.Parent);
-
-                window.Content = new Border();
-                PageScreenshots.Settle(window);
-                window.Content = host;
-                PageScreenshots.Settle(window);
-
-                Assert.Same(sideParent, sidePanel.Parent);
-                Assert.Same(inspectorParent, inspector.Parent);
-            }
-            finally
-            {
-                window.Close();
-            }
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(30));
-    }
-
-    [Fact]
-    public void LoadingPageShowsItsReadingMessageAndHidesFilters()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
-        {
-            var page = new ProposalsPage(new ProposalsPageModel(
-                WorkspaceContextTests.NewContext(new FakeCommandClient())));
-            var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new MotifTestWindow { Width = 1000, Height = 780, Content = host };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-
-                Assert.Contains(host.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Reading Proposals…");
-                Assert.DoesNotContain(host.GetVisualDescendants().OfType<FilterChip>(), chip => chip.IsEffectivelyVisible);
-            }
-            finally
-            {
-                window.Close();
-            }
-            return Task.CompletedTask;
-        }, TimeSpan.FromSeconds(30));
-    }
-
-    [Fact]
-    public void EmptyGroupFilterIsDisabled()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var fake = new FakeCommandClient();
-            fake.ProposalStandingsCompleteWith(new ProposalStandings(
-                [Card("p/open", "Open", ProposalGroup.WaitingForYou)], 0));
-            var context = WorkspaceContextTests.NewContext(fake);
-            var model = new ProposalsPageModel(context);
-            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
-            var page = new ProposalsPage(model);
-            var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-
-                var closed = Assert.Single(host.GetVisualDescendants().OfType<FilterChip>(), chip =>
-                    chip.Label == "Closed");
-                Assert.Equal(0, closed.Count);
-                Assert.False(closed.IsEnabled);
-            }
-            finally
-            {
-                window.Close();
-            }
-        }, TimeSpan.FromMinutes(3));
-    }
-
-    [Fact]
-    public void PausedFilterNoticeAppearsBesideFiltersAndClearsAfterCancel()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var fake = new FakeCommandClient();
-            var one = Card("p/one", "One", ProposalGroup.WaitingForYou);
-            var two = Card("p/two", "Two", ProposalGroup.WaitingForYou);
-            fake.ProposalStandingsCompleteWith(new ProposalStandings([one, two], 0));
-            var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
-            var status = "proposed";
-            fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
-                new ProposalDetailProjection(request.ProposalId, status, "Label", null, null, [], Comments: [comment])));
-            var context = WorkspaceContextTests.NewContext(fake);
-            var model = new ProposalsPageModel(context);
-            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
-            await model.DetailReading;
-            await model.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
-            var editor = Assert.Single(model.Comments);
-            editor.EditCommand.Execute(null);
-            editor.Document.Paragraphs[0].Runs[0].Text += " typed";
-            var page = new ProposalsPage(model);
-            var provider = Assert.IsAssignableFrom<IWorkspacePaneProvider>(page);
-            var side = Assert.IsAssignableFrom<Control>(provider.SidePanel);
-            var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-                Assert.DoesNotContain(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
-                status = "rejected";
-                fake.ProposalStandingsCompleteWith(new ProposalStandings([two], 1));
-                await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
-                await model.DetailReading;
-                PageScreenshots.Settle(window);
-                Assert.Contains(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
-                editor.CancelCommand.Execute(null);
-                PageScreenshots.Settle(window);
-                Assert.DoesNotContain(side.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == MotifAppStrings.ProposalFilterPaused);
-                Assert.Equal(ProposalListFilter.WaitingForYou, model.SelectedGroupFilter);
-            }
-            finally { window.Close(); }
-        }, TimeSpan.FromMinutes(3));
-    }
-
-    [Fact]
-    public void EmptyPageExplainsThatThereAreNoProposalsAndHidesFilters()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var fake = new FakeCommandClient();
-            fake.ProposalStandingsCompleteWith(new ProposalStandings([], 0));
-            var context = WorkspaceContextTests.NewContext(fake);
-            var model = new ProposalsPageModel(context);
-            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
-            var page = new ProposalsPage(model);
-            var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new MotifTestWindow { Width = 1000, Height = 780, Content = host };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-
-                Assert.Contains(host.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "No Proposals yet");
-                Assert.DoesNotContain(host.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Select a Proposal to see its details.");
-                Assert.DoesNotContain(host.GetVisualDescendants().OfType<FilterChip>(), chip => chip.IsEffectivelyVisible);
-            }
-            finally
-            {
-                window.Close();
-            }
-        }, TimeSpan.FromMinutes(3));
-    }
-
-    [Fact]
-    public void RefusedPageHidesTheOldProposalActionsAndFilters()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var openCard = Card("p/open", "Open", ProposalGroup.WaitingForYou);
-            var reads = 0;
-            var fake = new FakeCommandClient();
-            fake.OnProposalStandings((_, _) => Interlocked.Increment(ref reads) == 1
-                ? Task.FromResult(CommandOutcome<ProposalStandings>.Success(new ProposalStandings([openCard], 1)))
-                : Task.FromResult(CommandOutcome<ProposalStandings>.Refused(
-                    new Refusal("store.unavailable", FailureReason.Refused, "The Proposals could not be read."))));
-            var context = WorkspaceContextTests.NewContext(fake);
-            var model = new ProposalsPageModel(context);
-            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
-            var page = new ProposalsPage(model);
-            var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new MotifTestWindow { Width = 1000, Height = 780, Content = host };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-                await model.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.Closed);
-                PageScreenshots.Settle(window);
-
-                Assert.DoesNotContain(host.GetVisualDescendants().OfType<FilterChip>(), chip => chip.IsEffectivelyVisible);
-                Assert.DoesNotContain(host.GetVisualDescendants().OfType<Button>(), button =>
-                    button.IsEffectivelyVisible && AutomationProperties.GetAutomationId(button) is { } id &&
-                    id.StartsWith("motif-proposals-", StringComparison.Ordinal));
-                Assert.DoesNotContain(host.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Open");
-            }
-            finally
-            {
-                window.Close();
-            }
-        }, TimeSpan.FromMinutes(3));
-    }
-
-    [Fact]
-    public void AFilterWithNoRowsExplainsTheResultAndCanBeCleared()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var openCard = Card("p/open", "Open", ProposalGroup.WaitingForYou);
-            var fake = new FakeCommandClient();
-            fake.OnProposalStandings((request, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
-                request.IncludeSetAside
-                    ? new ProposalStandings([openCard], 0)
-                    : new ProposalStandings([openCard], 1))));
-            var context = WorkspaceContextTests.NewContext(fake);
-            var model = new ProposalsPageModel(context);
-            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
-            var page = new ProposalsPage(model);
-            var host = WorkspaceLayoutHost.ForPage(page);
-            var window = new MotifTestWindow { Width = 1000, Height = 780, Content = host };
-            try
-            {
-                window.Show();
-                PageScreenshots.Settle(window);
-                await model.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.Closed);
-                PageScreenshots.Settle(window);
-
-                Assert.Contains(host.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Nothing in Closed.");
-                var clearFilter = host.GetVisualDescendants().OfType<Button>().Single(button =>
-                    AutomationProperties.GetAutomationId(button) == AutomationIds.ProposalsClearFilter);
-                Assert.True(clearFilter.IsEffectivelyVisible);
-                Assert.NotNull(clearFilter.Command);
-                clearFilter.Command.Execute(clearFilter.CommandParameter);
-                PageScreenshots.Settle(window);
-
-                Assert.Null(model.SelectedGroupFilter);
-                Assert.Equal("Open", Assert.Single(model.Rows.OfType<ProposalCardViewModel>()).Label);
-            }
-            finally
-            {
-                window.Close();
-            }
-        }, TimeSpan.FromMinutes(3));
-    }
-
-    [Fact]
-    public void ProposalsPageExposesAndHostsGroupFiltersAndSelectedDetails()
+    public void PointerAndKeyboardSelectionMarkProposalsReadButAutomaticSelectionDoesNot()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var cards = new[]
             {
-                Card("p/pending", "Your changes", ProposalGroup.NotAppliedYet, pending: true),
-                Card("p/ready", "Nasal assimilation before /p/", ProposalGroup.WaitingForYou),
-                Card("p/stale", "Reduplicated forms", ProposalGroup.NeedsAnotherTry) with { IsUnread = true },
-                Card("p/new", "Try meN- before vowels", ProposalGroup.NotTried),
-                Card("p/closed", "Old nasal rule", ProposalGroup.SetAside) with { Status = "withdrawn" },
+                Card("p/one", "First", ProposalGroup.WaitingForYou) with { IsUnread = true },
+                Card("p/two", "Second", ProposalGroup.WaitingForYou) with { IsUnread = true },
+                Card("p/three", "Third", ProposalGroup.WaitingForYou) with { IsUnread = true },
             };
-            var activeCards = cards.Where(card => card.Group != ProposalGroup.SetAside).ToArray();
             var fake = new FakeCommandClient();
-            fake.OnProposalStandings((request, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
-                new ProposalStandings(request.IncludeSetAside ? cards : activeCards, 1))));
-            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
-            var standalone = new MotifTestWindow { Width = 2400, Height = 780 };
+            fake.ProposalStandingsCompleteWith(new ProposalStandings(cards, 0));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProposalsPageModel(context);
+            await context.OpenProjectAsync("project.fwdata");
+            context.OpenPage(WorkspacePage.Proposals);
+            await model.DetailReading;
+            var page = new ProposalsPage(model);
+            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = WorkspaceLayoutHost.ForPage(page) };
             try
             {
-                var model = workspace.PageModel<ProposalsPageModel>();
-                var page = new ProposalsPage(model);
-                var standaloneHost = WorkspaceLayoutHost.ForPage(page);
-                standalone.Content = standaloneHost;
-                standalone.Show();
-                PageScreenshots.Settle(standalone);
-
-                var provider = Assert.IsAssignableFrom<IWorkspacePaneProvider>(page);
-                Assert.Equal("Proposals", provider.SidePanelTitle);
-                var sidePanel = Assert.IsAssignableFrom<Control>(provider.SidePanel);
-                var inspector = Assert.IsAssignableFrom<Control>(provider.InspectorContent);
-                Assert.Same(sidePanel, standaloneHost.FindControl<ContentControl>("SidePanelContent")!.Content);
-                Assert.Same(inspector, standaloneHost.FindControl<ContentControl>("PageInspectorHost")!.Content);
-                Assert.Contains(standaloneHost.GetVisualDescendants().OfType<FilterChip>(), chip => chip.IsEffectivelyVisible);
-                Assert.Contains(standaloneHost.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Nasal assimilation before /p/");
-                var table = Assert.IsType<ListBox>(page.FindControl<ListBox>("ProposalsRowsItems"));
-                Assert.IsType<VirtualizingStackPanel>(table.ItemsPanelRoot);
-                Assert.Same(model.SelectedProposal, table.SelectedItem);
-                var groupItems = table.GetVisualDescendants().OfType<ListBoxItem>()
-                    .Where(item => item.DataContext is DenseTableGroup).ToArray();
-                Assert.Equal(["Your changes not applied yet", "Waiting for you"], groupItems
-                    .Select(item => Assert.IsType<DenseTableGroup>(item.DataContext).Label));
-                Assert.Equal(["1 proposal", "3 proposals"], groupItems
-                    .Select(item => Assert.IsType<DenseTableGroup>(item.DataContext).CountText));
-                Assert.All(groupItems, item =>
-                {
-                    Assert.False(item.Focusable);
-                    Assert.True(item.IsHitTestVisible);
-                    Assert.True(item.IsEnabled);
-                    Assert.False(item.IsSelected);
-                });
-                Assert.All(groupItems, item =>
-                {
-                    var group = Assert.IsType<DenseTableGroup>(item.DataContext);
-                    var heading = Assert.Single(item.GetVisualDescendants().OfType<TextBlock>(), text =>
-                        text.Classes.Contains("denseTableGroupName"));
-                    Assert.Equal(group.Label, ToolTip.GetTip(heading));
-                    Assert.Equal(group.Label, AutomationProperties.GetName(heading));
-                });
-
-                var columnHeader = Assert.Single(standaloneHost.GetVisualDescendants().OfType<Border>(),
-                    border => border.Classes.Contains("denseTableColumnHeader"));
-                var headerGrid = Assert.Single(columnHeader.GetVisualDescendants().OfType<Grid>(),
-                    grid => DenseTable.GetColumns(grid) is not null);
-
-                var allActionIds = standaloneHost.GetVisualDescendants().OfType<Button>()
-                    .Select(AutomationProperties.GetAutomationId).Where(id => id is not null).ToArray();
-                Assert.Equal(allActionIds.Length, allActionIds.Distinct(StringComparer.Ordinal).Count());
-
-                var readyCard = model.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/ready");
-                var initiallySelected = model.SelectedProposal;
-                Assert.Same(readyCard, initiallySelected);
-                var staleCard = model.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/stale");
-                var staleContainer = Assert.Single(table.GetVisualDescendants().OfType<ListBoxItem>(),
-                    item => ReferenceEquals(item.DataContext, staleCard));
-                var staleRow = Assert.Single(staleContainer.GetVisualDescendants().OfType<Border>(), border =>
-                    AutomationProperties.GetAutomationId(border) == staleCard.RowAutomationId);
-                var rowGrid = Assert.Single(staleRow.GetVisualDescendants().OfType<Grid>(),
-                    grid => DenseTable.GetColumns(grid) is not null);
-                var proposalCell = Assert.Single(rowGrid.Children.OfType<Grid>());
-                Assert.Equal(2, proposalCell.ColumnDefinitions.Count);
-                Assert.Equal(GridLength.Star, proposalCell.ColumnDefinitions[0].Width);
-                Assert.Equal(GridLength.Auto, proposalCell.ColumnDefinitions[1].Width);
-                var staleLabel = Assert.Single(proposalCell.Children.OfType<TextBlock>(), text =>
-                    text.Classes.Contains("denseTableItem"));
-                Assert.Equal(staleCard.Label, ToolTip.GetTip(staleLabel));
-                Assert.Equal(Avalonia.Media.FontWeight.Bold, staleLabel.FontWeight);
-                var tableWidthHost = page.FindControl<Grid>("ProposalsTableHost")!;
-                Assert.True(DenseTable.GetIsWidthHost(tableWidthHost));
-                Assert.Equal(DenseTable.GetColumns(headerGrid), DenseTable.GetColumns(rowGrid));
-                Assert.False(string.IsNullOrWhiteSpace(DenseTable.GetColumns(rowGrid)));
-                Assert.False(string.IsNullOrWhiteSpace(DenseTable.GetCompactColumns(headerGrid)));
-                Assert.Equal(DenseTable.GetCompactColumns(headerGrid), DenseTable.GetCompactColumns(rowGrid));
-                Assert.Equal(
-                    headerGrid.Children.OfType<Border>().Where(DenseTable.GetSecondary).Select(Grid.GetColumn).Order(),
-                    rowGrid.Children.OfType<Border>().Where(DenseTable.GetSecondary).Select(Grid.GetColumn).Order());
-                var staleTryAgain = Assert.Single(staleRow.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetAutomationId(button) == staleCard.TryAgainAutomationId);
-                var staleMenu = Assert.Single(staleRow.GetVisualDescendants().OfType<Button>(),
-                    button => button.Classes.Contains("denseTableMenu"));
-                var staleOpen = Assert.Single(staleRow.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetAutomationId(button) == staleCard.OpenAutomationId);
-                Assert.True(staleOpen.IsEffectivelyVisible);
-                Assert.Equal("View with This Proposal", staleOpen.Content);
-                Assert.True(staleTryAgain.IsEffectivelyVisible);
-                Assert.True(staleMenu.IsEffectivelyVisible);
-                Assert.Equal(staleCard.ActionsAutomationId, AutomationProperties.GetAutomationId(staleMenu));
-                standalone.Width = 1000;
-                PageScreenshots.Settle(standalone);
-                Assert.False(staleOpen.IsEffectivelyVisible);
-                Assert.True(staleMenu.IsEffectivelyVisible);
-                standalone.Width = 2400;
-                PageScreenshots.Settle(standalone);
-                RaiseLeftPointerPress(staleTryAgain, standalone);
-                Assert.Same(initiallySelected, model.SelectedProposal);
-
-                Assert.Equal(staleCard.Label, AutomationProperties.GetName(staleRow));
-                HeadlessClick.Click(standalone, staleRow, staleCard.Label);
-                PageScreenshots.Settle(standalone);
-                Assert.Same(staleCard, table.SelectedItem);
-                Assert.Same(staleCard, model.SelectedProposal);
-                Assert.Equal($"{staleCard.Label}, selected", AutomationProperties.GetName(staleRow));
-                Assert.DoesNotContain(standaloneHost.GetVisualDescendants().OfType<TextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Opened beside");
-                Assert.Contains(standaloneHost.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetAutomationId(button) == staleCard.InspectorOpenAutomationId &&
-                    Equals(button.Content, MotifAppStrings.OpenInReviewChanges));
-                Assert.Contains(standaloneHost.GetVisualDescendants().OfType<Button>(), button =>
-                    button.IsEffectivelyVisible && Equals(button.Content, MotifAppStrings.OpenInReviewChanges));
-
-                var staleFlyout = Assert.IsType<Flyout>(staleMenu.Flyout);
-                staleFlyout.ShowAt(staleMenu);
-                PageScreenshots.Settle(standalone);
-                var repeatedTryAgain = Assert.Single(Assert.IsAssignableFrom<Control>(staleFlyout.Content)
-                    .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, MotifAppStrings.TryAgain));
-                Assert.True(repeatedTryAgain.IsEffectivelyVisible);
-                var repeatedOpen = Assert.Single(Assert.IsAssignableFrom<Control>(staleFlyout.Content)
-                    .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "View with This Proposal"));
-                Assert.True(repeatedOpen.IsEffectivelyVisible);
-                var detailsAction = Assert.Single(Assert.IsAssignableFrom<Control>(staleFlyout.Content)
-                    .GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "Details"));
-                Assert.Equal(staleCard.DetailsAutomationId, AutomationProperties.GetAutomationId(detailsAction));
-                var inspectorPane = standaloneHost.FindControl<Border>("InspectorPane")!;
-                standaloneHost.FindControl<Button>("InspectorHideButton")!
-                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                PageScreenshots.Settle(standalone);
-                Assert.False(inspectorPane.IsVisible);
-                detailsAction.Command!.Execute(detailsAction.CommandParameter);
-                detailsAction.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                PageScreenshots.Settle(standalone);
-                Assert.True(inspectorPane.IsVisible);
-                Assert.True(standaloneHost.FindControl<ContentControl>("PageInspectorHost")!.IsVisible);
-                Assert.Same(staleCard, model.SelectedProposal);
-                staleFlyout.Hide();
-
-                var openInReview = Assert.Single(provider.InspectorActions!.GetVisualDescendants().OfType<Button>(), button =>
-                    AutomationProperties.GetAutomationId(button) == staleCard.InspectorOpenAutomationId);
-                standaloneHost.FindControl<Button>("InspectorHideButton")!
-                    .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                PageScreenshots.Settle(standalone);
-                Assert.False(inspectorPane.IsVisible);
-                openInReview.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                PageScreenshots.Settle(standalone);
-                Assert.True(inspectorPane.IsVisible);
-                Assert.True(standaloneHost.FindControl<ContentControl>("PageInspectorHost")!.IsVisible);
-
-                Assert.Same(model, sidePanel.DataContext);
-                Assert.Same(model, inspector.DataContext);
-                var filters = sidePanel.GetVisualDescendants().OfType<FilterChip>().ToArray();
-                Assert.Equal(["Your changes not applied yet", "Waiting for you", "Closed"], filters.Select(filter => filter.Label));
-                Assert.Equal([1, 3, 1], filters.Select(filter => filter.Count));
-                Assert.Contains(inspector.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.Text == staleCard.Label);
-
-                var waitingFilter = Assert.Single(filters, filter => filter.Label == "Waiting for you");
-                await Assert.IsAssignableFrom<IAsyncRelayCommand>(waitingFilter.Command)
-                    .ExecuteAsync(waitingFilter.CommandParameter);
-                Assert.Equal(["Nasal assimilation before /p/", "Reduplicated forms", "Try meN- before vowels"],
-                    model.Rows.OfType<ProposalCardViewModel>().Select(card => card.Label));
-
-                var pendingFilter = Assert.Single(model.GroupFilters,
-                    filter => filter.Filter == ProposalListFilter.YourChangesNotAppliedYet);
-                await Assert.IsAssignableFrom<IAsyncRelayCommand>(pendingFilter.SelectCommand)
-                    .ExecuteAsync(pendingFilter.Filter);
-                PageScreenshots.Settle(standalone);
-                Assert.Contains(inspector.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.Text == "Your changes");
-
-                var closedFilter = Assert.Single(model.GroupFilters,
-                    filter => filter.Filter == ProposalListFilter.Closed);
-                await Assert.IsAssignableFrom<IAsyncRelayCommand>(closedFilter.SelectCommand)
-                    .ExecuteAsync(closedFilter.Filter);
-                PageScreenshots.Settle(standalone);
-                Assert.True(fake.ProposalStandingsRequests[^1].IncludeSetAside);
-                Assert.Equal("Old nasal rule", Assert.Single(model.Rows.OfType<ProposalCardViewModel>()).Label);
-
-                var sidePanelParent = sidePanel.Parent;
-                var inspectorParent = inspector.Parent;
-                Assert.Same(sidePanel, provider.SidePanel);
-                Assert.Same(inspector, provider.InspectorContent);
-                Assert.Same(sidePanelParent, sidePanel.Parent);
-                Assert.Same(inspectorParent, inspector.Parent);
-
-                standalone.Content = null;
-                standalone.Content = standaloneHost;
-                PageScreenshots.Settle(standalone);
-                Assert.Contains(standaloneHost.GetVisualDescendants().OfType<FilterChip>(), chip => chip.IsEffectivelyVisible);
-                Assert.Contains(standaloneHost.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
-                    text.IsEffectivelyVisible && text.Text == "Old nasal rule");
-
-                window.Width = 1600;
-                workspace.CurrentPage = WorkspacePage.Proposals;
+                window.Show();
                 PageScreenshots.Settle(window);
-                var mainHost = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
-                var mainPage = window.PageView<ProposalsPage>();
-                var mainProvider = Assert.IsAssignableFrom<IWorkspacePaneProvider>(mainPage);
-                var mainSidePanel = Assert.IsAssignableFrom<Control>(mainProvider.SidePanel);
-                var mainInspector = Assert.IsAssignableFrom<Control>(mainProvider.InspectorContent);
-                Assert.Same(mainSidePanel, mainHost.FindControl<ContentControl>("SidePanelContent")!.Content);
-                Assert.Same(mainInspector, mainHost.FindControl<ContentControl>("PageInspectorHost")!.Content);
-                var mainSideParent = mainSidePanel.Parent;
-                var mainInspectorParent = mainInspector.Parent;
-                Assert.Same(mainSidePanel, mainProvider.SidePanel);
-                Assert.Same(mainInspector, mainProvider.InspectorContent);
-                Assert.Same(mainSideParent, mainSidePanel.Parent);
-                Assert.Same(mainInspectorParent, mainInspector.Parent);
+                await model.ReadMarkWriting;
+                Assert.Empty(fake.ReviewMarkRequests);
+                var table = Assert.Single(page.SidePanel.GetVisualDescendants().OfType<ListBox>(),
+                    list => list.Name == "ProposalsRowsItems");
+                var rows = model.Rows.OfType<ProposalCardViewModel>().ToArray();
+                var first = Assert.IsType<ListBoxItem>(table.ContainerFromItem(rows[0]));
+                HeadlessClick.Click(window, first, rows[0].Label);
+                await model.ReadMarkWriting;
+                Assert.Equal("p/one", Assert.Single(fake.ReviewMarkRequests).ProposalId);
+
+                first.Focus();
+                window.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
+                await model.DetailReading;
+                await model.ReadMarkWriting;
+                Assert.Equal("p/two", model.SelectedProposal!.ProposalId);
+                Assert.Contains(fake.ReviewMarkRequests, request => request.ProposalId == "p/two");
+
+                PageScreenshots.Settle(window);
+                var third = Assert.IsType<ListBoxItem>(table.ContainerFromItem(rows[2]));
+                HeadlessClick.Click(window, third, rows[2].Label);
+                await model.DetailReading;
+                await model.ReadMarkWriting;
+                Assert.Equal("p/three", model.SelectedProposal!.ProposalId);
+                Assert.Equal(3, fake.ReviewMarkRequests.Count);
+                Assert.All(fake.ReviewMarkRequests, request => Assert.Equal(ReviewMarkKeys.ProposalRead, request.EntryKey));
             }
-            finally
-            {
-                standalone.Close();
-                window.Close();
-            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void ProposalListHasOneParentWhileItsPageIsHosted()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            var page = new ProposalsPage(new ProposalsPageModel(WorkspaceContextTests.NewContext()));
+            var pane = page.SidePanel;
+            Assert.Null(pane.Parent);
+            var host = WorkspaceLayoutHost.ForPage(page);
+            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = host };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var parent = pane.Parent;
+                Assert.Same(pane, host.FindControl<ContentControl>("SidePanelContent")!.Content);
+                Assert.Same(pane, page.SidePanel);
+                window.Content = new Border();
+                PageScreenshots.Settle(window);
+                window.Content = host;
+                PageScreenshots.Settle(window);
+                Assert.Same(parent, pane.Parent);
+            }
+            finally { window.Close(); }
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void ALongProposalListKeepsItsViewportAndCanReachTheLastRow()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var cards = Enumerable.Range(0, 1000)
+                .Select(index => Card($"p/{index}", $"Change {index}", ProposalGroup.WaitingForYou)).ToArray();
+            fake.OnProposalStandings((_, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+                new ProposalStandings(cards, 0))));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProposalsPageModel(context);
+            await context.OpenProjectAsync("project.fwdata");
+            var page = new ProposalsPage(model);
+            var window = new MotifTestWindow { Width = 1600, Height = 780, Content = WorkspaceLayoutHost.ForPage(page) };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var rows = Assert.Single(page.SidePanel.GetVisualDescendants().OfType<ListBox>(),
+                    list => list.Name == "ProposalsRowsItems");
+                Assert.True(rows.ItemCount >= cards.Length);
+                Assert.InRange(rows.GetRealizedContainers().Count(), 1, 100);
+                rows.ScrollIntoView(rows.ItemCount - 1);
+                PageScreenshots.Settle(window);
+                Assert.NotNull(rows.ContainerFromIndex(rows.ItemCount - 1));
+                Assert.InRange(rows.GetRealizedContainers().Count(), 1, 100);
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public void UnreadableProposalsAreReportedInsteadOfShowingAnEmptyList()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.OnProposalStandings((_, _) => Task.FromResult(CommandOutcome<ProposalStandings>.Success(
+                new ProposalStandings([], 0) { Unreadable = [new UnreadableProposal("p/one", "First", "Unavailable")] })));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProposalsPageModel(context);
+            await context.OpenProjectAsync("project.fwdata");
+            var page = new ProposalsPage(model);
+            var window = new MotifTestWindow { Width = 1000, Height = 700, Content = page };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Assert.False(model.IsEmpty);
+                Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == model.UnreadableText);
+                Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), text =>
+                    text.IsEffectivelyVisible && text.Text == model.UnreadableNamesText &&
+                    text.Text?.Contains("p/one", StringComparison.Ordinal) == true);
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
@@ -537,18 +176,20 @@ public sealed class ProposalsWorkspacePaneTests
             fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
                 new ProposalDetailProjection(request.ProposalId, "proposed", "Label",
                     new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false), null, [])));
-            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProposalsPageModel(context);
+            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
             var standalone = new MotifTestWindow { Width = 2400, Height = 780 };
             try
             {
-                var model = workspace.PageModel<ProposalsPageModel>();
                 var page = new ProposalsPage(model);
                 var host = WorkspaceLayoutHost.ForPage(page);
                 standalone.Content = host;
                 standalone.Show();
                 PageScreenshots.Settle(standalone);
                 // The list is under test, not the rich field, so the field is kept out of the drawn frames.
-                var table = Assert.IsType<ListBox>(page.FindControl<ListBox>("ProposalsRowsItems"));
+                var table = Assert.Single(page.SidePanel.GetVisualDescendants().OfType<ListBox>(),
+                    list => list.Name == "ProposalsRowsItems");
                 var first = model.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/one");
                 var second = model.Rows.OfType<ProposalCardViewModel>().Single(card => card.ProposalId == "p/two");
                 model.SelectProposalCommand.Execute(first);
@@ -564,9 +205,9 @@ public sealed class ProposalsWorkspacePaneTests
 
                 var secondContainer = Assert.Single(table.GetVisualDescendants().OfType<ListBoxItem>(),
                     item => ReferenceEquals(item.DataContext, second));
-                var secondRow = Assert.Single(secondContainer.GetVisualDescendants().OfType<Border>(), border =>
+                Assert.Contains(secondContainer.GetVisualDescendants().OfType<StackPanel>(), border =>
                     AutomationProperties.GetAutomationId(border) == second.RowAutomationId);
-                HeadlessClick.Click(standalone, secondRow, second.Label);
+                HeadlessClick.Click(standalone, secondContainer, second.Label);
                 PageScreenshots.Settle(standalone);
                 Assert.Same(first, model.SelectedProposal);
                 Assert.Same(first, table.SelectedItem);
@@ -586,7 +227,7 @@ public sealed class ProposalsWorkspacePaneTests
             finally
             {
                 standalone.Close();
-                window.Close();
+                await context.StopProjectWorkAsync();
             }
         }, TimeSpan.FromMinutes(3));
     }
@@ -603,28 +244,29 @@ public sealed class ProposalsWorkspacePaneTests
                 new ProposalDetailProjection(request.ProposalId, "proposed", "Label", null, null, [], Comments:
                     Enumerable.Range(1, 25).Select(id => new CommentView(id, "person", null, "", "Comment", null,
                         "now", null, false, null)).ToArray())));
-            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProposalsPageModel(context);
+            await context.OpenProjectAsync(@"C:\projects\one.fwdata");
             var standalone = new MotifTestWindow { Width = 1600, Height = 780 };
             try
             {
-                var model = workspace.PageModel<ProposalsPageModel>();
                 var page = new ProposalsPage(model);
                 standalone.Content = WorkspaceLayoutHost.ForPage(page);
                 standalone.Show();
                 model.SelectProposalCommand.Execute(model.Rows.OfType<ProposalCardViewModel>().First());
                 await model.DetailReading;
                 PageScreenshots.Settle(standalone);
-                var button = Assert.Single(page.InspectorContent.GetVisualDescendants().OfType<Button>(),
+                var button = Assert.Single(page.GetVisualDescendants().OfType<Button>(),
                     item => Equals(item.Content, MotifAppStrings.CommentAdd));
                 button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 PageScreenshots.Settle(standalone);
                 var added = model.Comments.Last();
                 Assert.True(added.IsEditing);
-                var comments = Assert.Single(page.InspectorContent.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
+                var comments = Assert.Single(page.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
                     item => item.Name == "ProposalComments");
                 Assert.Contains(added, comments.Items.Cast<object>());
             }
-            finally { standalone.Close(); window.Close(); }
+            finally { standalone.Close(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(3));
     }
 
@@ -638,12 +280,4 @@ public sealed class ProposalsWorkspacePaneTests
             },
             null, []);
 
-    private static void RaiseLeftPointerPress(Control target, Window window)
-    {
-        using var pointer = new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, isPrimary: true);
-        var properties = new PointerPointProperties(RawInputModifiers.LeftMouseButton,
-            PointerUpdateKind.LeftButtonPressed);
-        target.RaiseEvent(new PointerPressedEventArgs(target, pointer, window, new Point(), 0, properties,
-            KeyModifiers.None));
-    }
 }

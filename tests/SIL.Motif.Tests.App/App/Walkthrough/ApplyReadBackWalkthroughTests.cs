@@ -19,7 +19,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void ApplyingFromReviewShowsTheReceiptClearsTheBadgeAndStalesTheNumbersUntilRefresh()
+    public void ApplyingMeasuredChangesRecordsTheReceiptAndRefreshesTheBaseline()
     {
         using var project = new WalkthroughProject(pristine);
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
@@ -27,7 +27,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             project.FwDataPath, project.ManagedRoot, "apply-read-back-word");
         var deadline = WalkthroughSteps.DeadlineIn(180);
 
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             using var walkthrough = new WalkthroughWindow(
                 project.ManagedRoot, project.FwDataPath, parserPath: parserPath);
@@ -52,7 +52,7 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             });
             var batchesBeforeManualAssessment = FakeParser.Invocations(parserPath).Count(command => command == "batch");
             walkthrough.TypePastedWords(SeededProject.AnalysedWordForm);
-            walkthrough.Click("Parse all words in the Selection");
+            walkthrough.Workspace.Assess.RunCommand.Execute(null);
             walkthrough.WaitUntil(
                 () => walkthrough.Workspace.Assess.State == RunState.Completed &&
                     walkthrough.Workspace.Context.EvidencePublication.IsCompleted &&
@@ -68,50 +68,13 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             var beforeRefreshSourceLastWrite = Assert.IsType<DateTimeOffset>(
                 walkthrough.Workspace.Baseline.SourceLastWriteUtc);
 
-            walkthrough.ShowPage(WorkspacePage.Review);
-            // Review's word card is not a tab stop: it is taller than the Inspector viewport can show.
-            InteractiveControlSweep.AssertScene(walkthrough, "pending change in Review",
-                InteractiveControlFamily.Action,
-                InteractiveControlFamily.Link,
-                InteractiveControlFamily.Disclosure,
-                InteractiveControlFamily.List,
-                InteractiveControlFamily.SelectableText,
-                InteractiveControlFamily.Collection);
-            var review = walkthrough.Workspace.PageModel<ReviewPageModel>();
-            var reviewEntry = walkthrough.Window.GetLogicalDescendants().OfType<ListBoxItem>()
-                .Single(item => Avalonia.Automation.AutomationProperties.GetName(item) == "Review Changes page");
-            var reviewBadge = reviewEntry.GetLogicalDescendants().OfType<Border>()
-                .Single(border => border.Classes.Contains("pageBadge"));
-            Assert.True(reviewBadge.IsEffectivelyVisible);
-            Assert.Equal("1", reviewBadge.GetLogicalDescendants().OfType<CopyableTextBlock>().Single().Text);
-
-            walkthrough.Click("Check what applying does to the numbers");
-            walkthrough.WaitUntil(
-                () => !review.IsMeasuring && review.ApplyCommand.CanExecute(null),
-                WalkthroughSteps.Remaining(deadline), "checking the pending change did not enable Apply");
-            Assert.True(walkthrough.Find<Button>("Apply to FieldWorks project").IsEffectivelyEnabled);
-
-            walkthrough.Click("Apply to FieldWorks project");
-            walkthrough.ClickAutomationId(AutomationIds.ApplyConfirm);
-            walkthrough.WaitUntil(
-                () => review.HasReceipt && review.Changes.Items.Count == 0,
-                WalkthroughSteps.Remaining(deadline), "Apply did not show its Receipt and clear the pending change");
-            InteractiveControlSweep.AssertScene(walkthrough, "Apply receipt",
-                InteractiveControlFamily.Action,
-                InteractiveControlFamily.Link,
-                InteractiveControlFamily.Disclosure,
-                InteractiveControlFamily.List,
-                InteractiveControlFamily.SelectableText,
-                InteractiveControlFamily.Collection);
-
-            Assert.False(reviewBadge.IsEffectivelyVisible);
-            Assert.Contains("Changes applied to", review.ReceiptText, StringComparison.Ordinal);
-            var receiptTitle = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
-                .Single(text => text.Text == MotifAppStrings.AppliedToTheFieldWorksProject);
-            Assert.True(receiptTitle.IsEffectivelyVisible);
-            var receipt = walkthrough.Window.GetLogicalDescendants().OfType<CopyableTextBlock>()
-                .Single(text => text.Text == review.ReceiptText);
-            Assert.True(receipt.IsEffectivelyVisible);
+            walkthrough.ShowPage(WorkspacePage.Proposals);
+            var context = walkthrough.Workspace.Context;
+            await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
+            Assert.True(context.ProposalApply.CanApply(null, null, null, null));
+            await context.ProposalApply.ApplyCurrentAsync(null);
+            Assert.NotNull(context.ProposalApply.Receipt);
+            Assert.Empty(context.Changes.Items);
 
             using (var cache = new FwDataProjectLoader().LoadScratchCache(project.FwDataPath))
             {
@@ -119,14 +82,6 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
                     .GetObject(change.WordformId);
                 Assert.Equal(2, wordform.SpellingStatus);
             }
-
-            InteractiveControlSweep.AssertScene(walkthrough, "stale Review values",
-                InteractiveControlFamily.Action,
-                InteractiveControlFamily.Link,
-                InteractiveControlFamily.Disclosure,
-                InteractiveControlFamily.List,
-                InteractiveControlFamily.SelectableText,
-                InteractiveControlFamily.Collection);
 
             var batchInvocationsBeforeRefresh = FakeParser.Invocations(parserPath)
                 .Count(command => command == "batch");
@@ -215,7 +170,6 @@ public sealed class ApplyReadBackWalkthroughTests(PristineProjectFixture pristin
             Assert.Equal("after-refresh", Assert.Single(
                 walkthrough.Workspace.Context.Evidence.Words,
                 word => word.Word == SeededProject.AnalysedWordForm).RawSignature);
-            return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
 }

@@ -43,7 +43,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
         var reads = new WorkspaceSelection(client);
         var texts = new TextWordsViewModel(client, selection, reads);
         var assess = new AssessViewModel(client, selection) { ProjectPath = project.FwDataPath };
-        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, _ => { }, new ChangesViewModel(client), client, reads);
+        var inText = new ResultsInTextViewModel(texts, assess, _ => { }, new ChangesViewModel(client), client, reads);
         Assert.Single(selection.Texts, text => text.Title == SeededProject.TextTitle).IsChecked = true;
         await texts.SetProjectAsync(project.FwDataPath);
         await reads.ReloadAsync(project.FwDataPath, [project.Text.TextId], []);
@@ -216,11 +216,9 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             await workspace.Assess.RunCommand.ExecuteAsync(null);
             Assert.Equal(RunState.Completed, workspace.Assess.State);
 
-            page.Tab = TextsTab.Lists;
-
-            var lists = page.TextsLists;
-            Assert.False(lists.Lists[0].HasWords);
-            Assert.Equal("New: PanGloss proposes", lists.SelectedList?.Name);
+            var compare = page.Assess.Compare;
+            Assert.Equal(0, compare.Presets[0].Count);
+            compare.SelectPresetCommand.Execute(compare.Presets.Single(preset => preset.Label == "New: PanGloss proposes"));
             Assert.Equal([SeededProject.FirstForm], page.Assess.Compare.Words.Select(word => word.Word));
         }, TimeSpan.FromMinutes(1));
     }
@@ -274,7 +272,7 @@ public sealed class TextsRealClientTests(PristineProjectFixture pristine)
             await compare.ProposeCommand.ExecuteAsync(ChangeKinds.IncorrectSpelling);
 
             Assert.Null(compare.Changes.LastRefusal);
-            var reviewed = workspace.PageModel<ReviewPageModel>().ReviewGroups.SelectMany(group => group.Items).ToArray();
+            var reviewed = workspace.Context.Changes.Items.ToArray();
             Assert.All(reviewed, change => Assert.Equal(SeededProject.AnalysedWordForm, change.Word));
             Assert.Contains(reviewed, change => change.Kind == ChangeKinds.AddCandidate);
             Assert.Contains(reviewed, change => change.Kind == ChangeKinds.IncorrectSpelling);

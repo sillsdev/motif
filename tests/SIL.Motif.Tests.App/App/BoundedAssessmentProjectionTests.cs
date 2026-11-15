@@ -24,7 +24,6 @@ public sealed class BoundedAssessmentProjectionTests
                 word.Word, word.Word, null, null), word);
         };
         compare.LoadSources(words);
-        var lists = new TextsListsViewModel(compare);
         Assert.Equal(3000, compare.TotalCount);
         Assert.Equal(0, compare.MaterializedRowCount);
         foreach (var cell in compare.Cells.Where(cell => cell.WordCount > 0))
@@ -37,7 +36,6 @@ public sealed class BoundedAssessmentProjectionTests
             _ = compare.ListSummary;
             _ = compare.ShowsMeaning;
         }
-        foreach (var list in lists.Lists) _ = list.CountText;
         Assert.Equal(0, compare.MaterializedRowCount);
         Assert.Equal(0, cards);
         compare.ClearSelectionCommand.Execute(null);
@@ -92,7 +90,7 @@ public sealed class BoundedAssessmentProjectionTests
     }
 
     [Fact]
-    public void HiddenMatrixHostReleasesRowsAndRestoresCheckedWords()
+    public void ReleasingProjectedRowsRestoresCheckedWords()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -121,43 +119,17 @@ public sealed class BoundedAssessmentProjectionTests
     {
         var weak = new List<WeakReference<object>>();
         using var observation = compare.ObserveRowCreation(weak.Add);
-        var lists = new TextsListsViewModel(compare);
-        lists.ShowCells([]);
-        var panel = new TextsListsPanel(lists);
-        var rows = panel.FindControl<ListBox>("TextsListsPanelWordsItems")!;
-        var host = new Border { Child = panel };
-        var window = new MotifTestWindow { Width = 1440, Height = 900, Content = host };
-        try
+        compare.ShowVisibleRows();
+        compare.Words[0].IsChecked = true;
+        for (var offset = 0; offset < compare.Words.Count; offset += 10)
         {
-            window.Show();
-            PageScreenshots.Settle(window);
-            compare.Words[0].IsChecked = true;
-            for (var offset = 0; offset < compare.Words.Count; offset += 10)
-            {
-                rows.ScrollIntoView(compare.Words[offset]);
-                PageScreenshots.Settle(window);
-                Assert.InRange(compare.MaterializedRowCount, 1, 128);
-                Assert.InRange(rows.GetVisualDescendants().OfType<SIL.Motif.App.Controls.WordPresentation.WordRow>().Count(), 1, 64);
-            }
-            rows.ScrollIntoView(compare.Words[^1]);
-            PageScreenshots.Settle(window);
-            rows.ScrollIntoView(compare.Words[0]);
-            PageScreenshots.Settle(window);
-            Assert.True(compare.Words[0].IsChecked);
-            var oldSource = compare.Words;
-            host.IsVisible = false;
-            PageScreenshots.Settle(window);
-            Assert.Equal(0, compare.MaterializedRowCount);
-            Assert.Empty(oldSource);
-            host.IsVisible = true;
-            PageScreenshots.Settle(window);
-            Assert.True(compare.Words[0].IsChecked);
-            window.Content = null;
-            PageScreenshots.Settle(window);
-            // A dropped panel stays bound to the longer-lived model, so unbind it before counting.
-            panel.DataContext = null;
+            _ = compare.Words[offset].Word;
+            Assert.InRange(compare.MaterializedRowCount, 1, 128);
+            compare.ReleaseVisibleRows();
+            compare.ShowVisibleRows();
         }
-        finally { window.Close(); }
+        Assert.True(compare.Words[0].IsChecked);
+        compare.ReleaseVisibleRows();
         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, Avalonia.Threading.DispatcherPriority.Background);
         return weak;
     }

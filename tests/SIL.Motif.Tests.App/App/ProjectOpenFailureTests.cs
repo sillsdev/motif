@@ -187,18 +187,21 @@ public sealed class ProjectOpenFailureTests
         var workspace = new WorkspaceShellViewModel(new ProjectViewModel(fake, new FakeProjectPicker()),
             new BaselineViewModel(fake), selection, new AssessViewModel(fake, selection),
             new FakeFolderPicker(), new FakeDragSource(), fake);
-        var handoff = workspace.PageModel<AiHandoffPageModel>().Handoff;
-        var statistics = workspace.PageModel<TimingPageModel>().Statistics;
+        var handoff = workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
+        workspace.Context.Diagnostics = true;
+        var diagnostics = workspace.PageModel<DiagnosticsPageModel>();
 
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectA));
         Assert.Equal(ProjectA, handoff.ProjectPath);
-        Assert.Equal(ProjectA, statistics.ProjectPath);
+        Assert.Equal(ProjectA, workspace.Context.ProjectPath);
 
         await workspace.OpenRecentProjectCommand.ExecuteAsync(new RecentProjectViewModel(ProjectB));
 
         Assert.NotNull(workspace.OpenRefusal);
         Assert.Null(handoff.ProjectPath);
-        Assert.Null(statistics.ProjectPath);
+        Assert.Null(workspace.Context.ProjectPath);
+        Assert.Empty(diagnostics.Warnings.Rows);
+        Assert.Empty(diagnostics.SpeedByRule.Rows);
         Assert.False(workspace.HasProject);
         Assert.False(workspace.RefreshCommand.CanExecute(null));
         Assert.Null(workspace.Project.OpenUnlistedPath);

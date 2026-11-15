@@ -15,12 +15,8 @@ public sealed class ProposalWorkflowDecisionsTests
         AssertProposalText("Rationale");
 
     [Fact]
-    public void SelectedProposalNamesWhatItChangesInTheCentrePane() =>
-        AssertProposalText("What It Changes");
-
-    [Fact]
-    public void SelectedProposalOffersOptionalChecks() =>
-        AssertProposalText("More checks (optional)");
+    public void SelectedProposalShowsCommentsInTheCentrePane() =>
+        AssertProposalText("Comments");
 
     [Fact]
     public void AReadyProposalOffersDecisionsOnTheProposalsPage()

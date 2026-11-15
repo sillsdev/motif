@@ -21,6 +21,29 @@ public sealed class ProposalsPageModelTests
         "2026-09-05T11:02:00Z", "sha256:" + new string('b', 64));
 
     [Fact]
+    public async Task StoppingProjectWorkCancelsAndJoinsProposalDetailReads()
+    {
+        var (fake, _, page) = await OpenAsync(Standings(
+            Card("p/one", "One", ProposalGroup.WaitingForYou),
+            Card("p/two", "Two", ProposalGroup.WaitingForYou)));
+        var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fake.ShowProposalHandler = async (_, cancellationToken) =>
+        {
+            started.SetResult(cancellationToken);
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException();
+        };
+        page.SelectedProposal = page.Groups.SelectMany(group => group.Cards).Single(card => card.ProposalId == "p/two");
+        var token = await started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        await page.StopWorkAsync().WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(token.IsCancellationRequested);
+        Assert.True(page.DetailReading.IsCompletedSuccessfully);
+        Assert.Null(page.Detail);
+    }
+
+    [Fact]
     public async Task GroupsFollowTheResponse()
     {
         var (fake, context, page) = await OpenAsync(Standings(
@@ -29,12 +52,12 @@ public sealed class ProposalsPageModelTests
             Card("p/new", "New one", ProposalGroup.NotTried),
             Card("p/mine", "Pending", ProposalGroup.NotAppliedYet, pending: true)));
 
-        Assert.Equal(["Waiting for you", "Needs another try", "Not tried yet", "Your changes not applied yet"],
+        Assert.Equal(["Waiting for You", "Needs Another Try", "Not Tried Yet", "Your Changes Not Applied Yet"],
             page.Groups.Select(group => group.Title));
         Assert.Equal("Waiting one", Assert.Single(page.Groups[0].Cards).Label);
         Assert.False(page.IsEmpty);
         Assert.Equal(ProjectPath, Assert.Single(fake.ProposalStandingsRequests).ProjectPath);
-        Assert.Equal(WorkspacePage.Overview, context.CurrentPage);
+        Assert.Equal(WorkspacePage.Progress, context.CurrentPage);
     }
 
     [Fact]
@@ -56,7 +79,7 @@ public sealed class ProposalsPageModelTests
         var page = new ProposalsPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal(["Your changes not applied yet", "Waiting for you"],
+        Assert.Equal(["Your Changes Not Applied Yet", "Waiting for You"],
             page.ListGroups.Select(group => group.Title));
         Assert.Equal("p/ready", page.SelectedProposal?.ProposalId);
         Assert.Equal(["1 proposal", "3 proposals"],
@@ -64,7 +87,7 @@ public sealed class ProposalsPageModelTests
         Assert.Equal("5 proposals", page.TotalProposalCountText);
         await page.ShowSetAsideCommand.ExecuteAsync(null);
 
-        Assert.Equal(["Your changes not applied yet", "Waiting for you", "Closed"],
+        Assert.Equal(["Your Changes Not Applied Yet", "Waiting for You", "Closed"],
             page.ListGroups.Select(group => group.Title));
         Assert.Equal(["p/mine"], page.ListGroups[0].Cards.Select(card => card.ProposalId));
         Assert.Equal(["p/ready", "p/stale", "p/new"],
@@ -76,7 +99,7 @@ public sealed class ProposalsPageModelTests
 
         await page.SelectGroupFilterCommand.ExecuteAsync(ProposalListFilter.WaitingForYou);
 
-        Assert.Equal(["Waiting for you"], page.ListGroups.Select(group => group.Title));
+        Assert.Equal(["Waiting for You"], page.ListGroups.Select(group => group.Title));
     }
 
     [Fact]
@@ -88,7 +111,7 @@ public sealed class ProposalsPageModelTests
         var page = new ProposalsPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
 
-        Assert.Equal(["Your changes not applied yet", "Waiting for you"],
+        Assert.Equal(["Your Changes Not Applied Yet", "Waiting for You"],
             page.ListGroups.Select(group => group.Title));
         Assert.Equal([1, 3], page.ListGroups.Select(group => group.Cards.Count));
         var selected = Assert.IsType<ProposalCardViewModel>(page.SelectedProposal);
@@ -106,7 +129,7 @@ public sealed class ProposalsPageModelTests
 
         await page.ShowSetAsideCommand.ExecuteAsync(null);
 
-        Assert.Equal(["Your changes not applied yet", "Waiting for you", "Closed"],
+        Assert.Equal(["Your Changes Not Applied Yet", "Waiting for You", "Closed"],
             page.ListGroups.Select(group => group.Title));
         Assert.Equal([1, 3, 4], page.ListGroups.Select(group => group.Cards.Count));
         Assert.Equal(ProposalsCaptureFixture.SelectedProposalId, page.SelectedProposal?.ProposalId);
@@ -226,11 +249,11 @@ public sealed class ProposalsPageModelTests
         await page.OpenCommand.ExecuteAsync(page.Groups[0].Cards[0]);
 
         Assert.Equal("p/waiting", context.Lens?.ProposalId);
-        Assert.Equal(WorkspacePage.Overview, context.CurrentPage);
+        Assert.Equal(WorkspacePage.Proposals, context.CurrentPage);
     }
 
     [Fact]
-    public async Task InspectorActionOpensTheProposalInReviewChanges()
+    public async Task ReviewActionOpensTheProposalOnItsPage()
     {
         var (fake, context, page) = await OpenAsync(Standings(Card("p/waiting", "Waiting one",
             ProposalGroup.WaitingForYou)));
@@ -239,7 +262,7 @@ public sealed class ProposalsPageModelTests
         await page.OpenInReviewCommand.ExecuteAsync(page.SelectedProposal);
 
         Assert.Equal("p/waiting", context.Lens?.ProposalId);
-        Assert.Equal(WorkspacePage.Review, context.CurrentPage);
+        Assert.Equal(WorkspacePage.Proposals, context.CurrentPage);
     }
 
     [Fact]
@@ -430,7 +453,7 @@ public sealed class ProposalsPageModelTests
     }
 
     [Fact]
-    public async Task AClosedProposalWithTrialNumbersDoesNotSayNoTrialFinished()
+    public async Task SelectingAProposalDoesNotStartDiagnosticParsimonyReads()
     {
         var card = Card("p/closed", "Closed", ProposalGroup.SetAside,
             trial: Summary(TrialFreshness.Current), standing: TrialStanding.Current) with { Status = "rejected" };
@@ -441,10 +464,8 @@ public sealed class ProposalsPageModelTests
         var page = new ProposalsPageModel(context);
 
         await context.OpenProjectAsync(ProjectPath);
-        await page.ParsimonyWatching;
-
         Assert.True(page.SelectedProposal!.HasNumbers);
-        Assert.DoesNotContain("No Trial has finished yet", page.Parsimony.Sentence);
+        Assert.Empty(fake.ProposalParsimonyStatusRequests);
     }
 
     [Theory]
@@ -610,7 +631,7 @@ public sealed class ProposalsPageModelTests
 
         var card = page.Groups[0].Cards[0];
 
-        Assert.Equal("Not tried yet", page.Groups[0].Title);
+        Assert.Equal("Not Tried Yet", page.Groups[0].Title);
         Assert.False(card.HasStatus);
         Assert.Equal(MotifAppStrings.TryIt, card.TryText);
         Assert.True(card.CanTry);
@@ -1012,15 +1033,15 @@ public sealed class ProposalsPageModelTests
     public async Task ShowClosedTogglesTheClosedProposals()
     {
         var (fake, _, page) = await OpenAsync(new ProposalStandings([], 2));
-        Assert.Equal("Show closed (2)", page.SetAsideLinkText);
+        Assert.Equal("Show Closed (2)", page.SetAsideLinkText);
 
         await page.ShowSetAsideCommand.ExecuteAsync(null);
         Assert.True(fake.ProposalStandingsRequests[^1].IncludeSetAside);
-        Assert.Equal("Hide closed", page.SetAsideLinkText);
+        Assert.Equal("Hide Closed", page.SetAsideLinkText);
 
         await page.ShowSetAsideCommand.ExecuteAsync(null);
         Assert.False(fake.ProposalStandingsRequests[^1].IncludeSetAside);
-        Assert.Equal("Show closed (2)", page.SetAsideLinkText);
+        Assert.Equal("Show Closed (2)", page.SetAsideLinkText);
     }
 
     [Fact]
@@ -1044,7 +1065,7 @@ public sealed class ProposalsPageModelTests
         Assert.True(fake.ProposalStandingsRequests[^1].IncludeSetAside);
         Assert.Null(page.SelectedGroupFilter);
         Assert.Contains(page.Rows.OfType<ProposalCardViewModel>(), card => card.Card.Group == ProposalGroup.SetAside);
-        Assert.Equal("Hide closed", page.SetAsideLinkText);
+        Assert.Equal("Hide Closed", page.SetAsideLinkText);
     }
 
     [Fact]

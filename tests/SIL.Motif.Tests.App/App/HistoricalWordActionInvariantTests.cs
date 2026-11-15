@@ -51,7 +51,7 @@ public sealed class HistoricalWordActionInvariantTests(AvaloniaHeadlessFixture a
                 Assert.False(row.State.IsOpen);
                 var context = new LayoutFindingContext("word/closed", $"{width}x{height}", zoom, "light");
                 var findings = ReachabilityAssertions.InspectReachabilityAndTitleBar(window, context);
-                foreach (var name in new[] { "Open kitabu in Analyze texts", "Try kitabu in Try a Word" })
+                foreach (var name in new[] { "Open kitabu in Texts" })
                 {
                     var action = Assert.Single(row.GetVisualDescendants().OfType<Button>(),
                         button => AutomationProperties.GetName(button) == name);

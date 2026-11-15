@@ -21,7 +21,7 @@ namespace SIL.Motif.Tests.App.Walkthrough;
 public sealed class WorkerParseProgressWalkthroughTests(PristineProjectFixture pristine)
 {
     [Fact]
-    public void ShippedWorkerWritesWordProgressAndTheWindowAdvancesBeforeCompletion()
+    public void ShippedWorkerWritesWordProgressAndMeasurementAdvancesBeforeCompletion()
     {
         using var project = new WalkthroughProject(pristine);
         var words = new[] { "a-fast", "b-slow", "c-held" };
@@ -51,9 +51,9 @@ public sealed class WorkerParseProgressWalkthroughTests(PristineProjectFixture p
                 words = new[] { new { word = words[0], outcome = "complete", elapsedMs = 2500 },
                     new { word = words[1], outcome = "complete", elapsedMs = 54000 } },
             });
-            window.ShowPage(WorkspacePage.Review);
-            var review = window.Workspace.PageModel<ReviewPageModel>();
-            var running = review.MeasureCommand.ExecuteAsync(null);
+            window.ShowPage(WorkspacePage.Proposals);
+            var measurement = window.Workspace.Context.PendingMeasurement;
+            var running = measurement.MeasureCommand.ExecuteAsync(null);
             window.WaitUntil(() => JobProgress.LatestJobId(project.FwDataPath, JobCommands.TrialKind) is not null,
                 TimeSpan.FromSeconds(30), "the App did not queue the worker parse");
             var jobId = JobProgress.LatestJobId(project.FwDataPath, JobCommands.TrialKind)!;
@@ -76,28 +76,19 @@ public sealed class WorkerParseProgressWalkthroughTests(PristineProjectFixture p
                     TimeSpan.FromSeconds(20), "the worker did not persist its first completed word while still running");
                 Assert.False(JobStateMachine.IsTerminal(JobProgress.Read(project.FwDataPath, jobId).Status));
                 Assert.False(running.IsCompleted);
-                var indicator = window.Find<ProgressBar>("Parse all words progress");
-                window.WaitUntil(() => indicator.IsEffectivelyVisible && indicator.Value > 0,
-                    TimeSpan.FromSeconds(5), "the worker store advanced but the window's indicator stayed at zero");
-                Assert.Equal(1.0 / 3, indicator.Value, 5);
-                Assert.Contains("1 of 3", Details(window));
+                window.WaitUntil(() => measurement.ParseProgress.Fraction > 0,
+                    TimeSpan.FromSeconds(5), "the worker store advanced but measurement progress stayed at zero");
+                Assert.Equal(1.0 / 3, measurement.ParseProgress.Fraction, 5);
                 File.WriteAllText(release + ".1", string.Empty);
-                window.WaitUntil(() => Details(window).Contains("2 of 3", StringComparison.Ordinal),
-                    TimeSpan.FromSeconds(20), "the next worker completion never reached the indicator");
+                window.WaitUntil(() => measurement.ParseProgress.Fraction >= 2.0 / 3,
+                    TimeSpan.FromSeconds(20), "the next worker completion never reached measurement progress");
                 Assert.Equal(new ParseWordTiming("b-slow", 54000), ReadProgress()!.SlowestWord);
                 Assert.False(running.IsCompleted);
-                InteractiveControlSweep.AssertScene(window, "worker parse progress",
-                    InteractiveControlFamily.Progress, InteractiveControlFamily.Action);
-                if (Environment.GetEnvironmentVariable("MOTIF_SCREENSHOTS") is { Length: > 0 } folder)
-                {
-                    PageScreenshots.Settle(window.Window);
-                    PageScreenshots.Save(window.Window, Path.Combine(folder, "worker-parse-progress.png"));
-                }
-                window.Click("Cancel parsing all words");
+                measurement.CancelCommand.Execute(null);
             }
             finally
             {
-                review.CancelMeasureCommand.Execute(null);
+                measurement.CancelCommand.Execute(null);
                 for (var index = 0; index < words.Length; index++) File.WriteAllText(release + "." + index, string.Empty);
                 await running.WaitAsync(TimeSpan.FromSeconds(30));
                 if (!worker.HasExited) worker.Kill(entireProcessTree: true);

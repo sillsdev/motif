@@ -7,11 +7,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:SIL.Motif.App.Views">
   <Styles.Resources>
-    <StaticResource x:Key="Component.StatusBar.Height" ResourceKey="Primitive.Size.24" />
+    <StaticResource x:Key="Component.StatusBar.Height" ResourceKey="Primitive.Size.28" />
     <StaticResource x:Key="Component.StatusBar.Padding" ResourceKey="Primitive.Inset.12_0_8_0" />
     <StaticResource x:Key="Component.StatusBar.CompactWidth" ResourceKey="Primitive.Size.1100" />
     <StaticResource x:Key="Component.StatusBar.ActionPadding" ResourceKey="Primitive.Inset.6_0_6_0" />
-    <StaticResource x:Key="Component.StatusBar.ActionHeight" ResourceKey="Primitive.Size.22" />
+    <StaticResource x:Key="Component.StatusBar.ActionHeight" ResourceKey="Primitive.Size.24" />
     <StaticResource x:Key="Component.StatusBar.ProgressWidth" ResourceKey="Primitive.Size.60" />
     <StaticResource x:Key="Component.StatusBar.ProgressTextWidth" ResourceKey="Primitive.Size.150" />
     <StaticResource x:Key="Component.StatusBar.ProgressHeight" ResourceKey="Primitive.Size.4" />

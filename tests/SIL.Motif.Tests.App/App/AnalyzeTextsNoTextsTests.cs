@@ -40,7 +40,7 @@ public sealed class AnalyzeTextsNoTextsTests
             var reads = new WorkspaceSelection(client);
             var words = new TextWordsViewModel(client, selection, reads);
             var assess = new AssessViewModel(client, selection);
-            var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, new ChangesViewModel(client),
+            var owner = new ResultsInTextViewModel(words, assess, _ => { }, new ChangesViewModel(client),
                 client, reads);
             try
             {
@@ -104,7 +104,7 @@ public sealed class AnalyzeTextsNoTextsTests
             var reads = new WorkspaceSelection(client);
             var words = new TextWordsViewModel(client, selection, reads);
             var assess = new AssessViewModel(client, selection);
-            var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { }, new ChangesViewModel(client),
+            var owner = new ResultsInTextViewModel(words, assess, _ => { }, new ChangesViewModel(client),
                 client, reads);
             try
             {

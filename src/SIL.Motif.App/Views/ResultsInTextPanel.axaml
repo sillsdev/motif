@@ -26,7 +26,7 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
         <TextBox x:Name="ReaderWordSearch" Grid.Column="1" Text="{Binding InText.SearchText}"
-                 PlaceholderText="Search words..." MinWidth="{DynamicResource Component.TextsPage.ReaderSearchMinWidth}"
+                 PlaceholderText="{x:Static app:MotifAppStrings.SearchWordsPlaceholder}" MinWidth="{DynamicResource Component.TextsPage.ReaderSearchMinWidth}"
                  MaxWidth="{DynamicResource Component.TextsPage.ReaderSearchMaxWidth}"
                  IsVisible="{Binding InText.HasTexts}" AutomationProperties.Name="{x:Static app:MotifAppStrings.SearchWordsInAnalyzeTextsAccessibleName}" />
         <Button x:Name="ReaderSelectMenu" Grid.Column="3" Classes="menuButton" Content="{Binding InText.SelectMenuLabel}" VerticalAlignment="Center"
@@ -133,29 +133,29 @@
         </Button>
         <WrapPanel x:Name="ResultsInTextFilterChips" Grid.Column="4" VerticalAlignment="Center"
                    IsVisible="{Binding InText.HasResults}">
-          <views:FilterChip Classes="compact" Label="All" Count="{Binding InText.AllCount}"
+          <views:FilterChip Classes="compact" Label="{x:Static app:MotifAppStrings.FilterAll}" Count="{Binding InText.AllCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.All}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.All}" />
-          <views:FilterChip Classes="compact" Label="Unread" Count="{Binding InText.UnreadCount}"
+          <views:FilterChip Classes="compact" Label="{x:Static app:MotifAppStrings.FilterUnread}" Count="{Binding InText.UnreadCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Unread}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Unread}" />
-          <views:FilterChip Classes="compact" Label="Different" Count="{Binding InText.DiffersCount}"
+          <views:FilterChip Classes="compact" Label="{x:Static app:MotifAppStrings.FilterDifferent}" Count="{Binding InText.DiffersCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Differs}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Differs}" />
-          <views:FilterChip Classes="compact" Label="Not in FieldWorks" Count="{Binding InText.NewCount}"
+          <views:FilterChip Classes="compact" Label="{x:Static app:MotifAppStrings.FilterNotInFieldWorks}" Count="{Binding InText.NewCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.New}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.New}" />
-          <views:FilterChip Classes="compact" Label="No parse" Count="{Binding InText.NoParseCount}"
+          <views:FilterChip Classes="compact" Label="{x:Static app:MotifAppStrings.FilterNoParse}" Count="{Binding InText.NoParseCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NoParse}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NoParse}" />
-          <views:FilterChip Classes="compact" Label="Stopped" Count="{Binding InText.LimitCount}"
+          <views:FilterChip Classes="compact" Label="{x:Static app:MotifAppStrings.FilterStopped}" Count="{Binding InText.LimitCount}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.Limit}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.Limit}" />
-          <views:FilterChip Classes="compact" Label="Not parsed" Count="{Binding InText.NotAssessedCount}"
+          <views:FilterChip Classes="compact" Label="{x:Static app:MotifAppStrings.FilterNotParsed}" Count="{Binding InText.NotAssessedCount}"
                             IsVisible="{Binding InText.HasNotAssessed}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NotAssessed}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NotAssessed}" />
-          <views:FilterChip Classes="compact" Label="Named in a warning" Count="{Binding InText.NamedInWarningCount}"
+          <views:FilterChip Classes="compact" Label="{x:Static app:MotifAppStrings.FilterNamedInWarning}" Count="{Binding InText.NamedInWarningCount}"
                             IsVisible="{Binding InText.HasWarningEvidence}"
                             IsActive="{Binding InText.Filter, Converter={x:Static conv:ObjectConverters.Equal}, ConverterParameter={x:Static vm:ResultsInTextFilter.NamedInWarning}}"
                             Command="{Binding InText.SetFilterCommand}" CommandParameter="{x:Static vm:ResultsInTextFilter.NamedInWarning}" />
@@ -235,7 +235,6 @@
                     <word:WordCard Host="{Binding $parent[views:ResultsInTextPanel].WordHost}"
                                    Key="{Binding PresentationKey}" EvidenceRevision="{Binding EvidenceRevision}"
                                    HandlesTextReaderShortcuts="True" Focusable="True"
-                                   views:InspectLink.From="{Binding Text}"
                                    AutomationProperties.Name="{Binding Text, StringFormat='Word card for {0}'}">
                       <word:WordCard.Header>
                         <Border Classes="wordPresentationCardHeader hoverReveal">
@@ -250,11 +249,6 @@
                               <views:CopyableTextBlock Classes="muted" Text="{Binding PendingChangeStatus, StringFormat='· {0}'}"
                                                        IsVisible="{Binding IsPending}" VerticalAlignment="Center"
                                                        Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                              <views:CopyableTextBlock Classes="muted" VerticalAlignment="Center"
-                                                       Text="{x:Static app:MotifAppStrings.InspectorKeyHint}" TextWrapping="Wrap"
-                                                       Margin="{DynamicResource Component.TextsPage.ShortLabelMargin}" />
-                              <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.TryAWord}"
-                                      Command="{Binding TryWordForTokenCommand}" CommandParameter="{Binding Form}" />
                               <Button Classes="wordPresentationCardAction" Content="{x:Static app:MotifAppStrings.MarkAsUnread}"
                                       Command="{Binding Actions.MarkTokenUnreadCommand}" CommandParameter="{Binding}"
                                       AutomationProperties.Name="{x:Static app:MotifAppStrings.MarkThisOccurrenceAsUnreadAccessibleName}"

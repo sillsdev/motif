@@ -81,15 +81,15 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 .Select(property => property.Name).Order(StringComparer.Ordinal));
 
         var rows = KeyboardShortcutRegistry.Entries.ToHashSet();
-        var wordMotion = new KeyboardShortcutEntry("← or →", "← or →", "Analyze Texts", "Move Between Words");
+        var wordMotion = new KeyboardShortcutEntry("← or →", "← or →", "Texts", "Move Between Words");
         Assert.Contains(wordMotion, rows);
         Assert.Equal("Move Between Words (← or →)", KeyboardShortcutRegistry.TooltipFor(wordMotion));
-        Assert.Contains(new KeyboardShortcutEntry("↑", "↑", "Analyze Texts",
+        Assert.Contains(new KeyboardShortcutEntry("↑", "↑", "Texts",
             "Move Focus to the First Word on the Previous Line"), rows);
-        Assert.Contains(new KeyboardShortcutEntry("↓", "↓", "Analyze Texts",
+        Assert.Contains(new KeyboardShortcutEntry("↓", "↓", "Texts",
             "Move Focus to the First Word on the Next Line"), rows);
         foreach (var (key, action) in new[] { ("A", "Stage Approve"), ("D", "Stage Disapprove"), ("U", "Stage Unknown") })
-        foreach (var scope in new[] { "Analyze Texts", "Word List", "Lists" })
+        foreach (var scope in new[] { "Texts", "Words" })
             Assert.Contains(new KeyboardShortcutEntry(key, key, scope, action), rows);
 
         var expectedSettingsKeys = new List<(string Key, string Gesture, string Scope)>
@@ -98,15 +98,15 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             ("Home", "Home", "Tables"), ("End", "End", "Tables"),
             ("Tab", "Tab", "Tables"), ("Tab", "Shift+Tab", "Tables"),
             ("Menu key or ↓", "Menu key or Alt+↓", "Tables"), ("Enter", "Enter", "Tables"),
-            ("← or →", "← or →", "Analyze Texts"),
-            ("↑", "↑", "Analyze Texts"), ("↓", "↓", "Analyze Texts"),
-            ("Enter or Space", "Enter or Space", "Analyze Texts"),
-            ("Page Up", "Page Up", "Analyze Texts"), ("Page Down", "Page Down", "Analyze Texts"),
-            ("Home", "Home", "Analyze Texts"), ("End", "End", "Analyze Texts"),
-            ("Enter", "Enter", "Analyze Texts"), ("Escape", "Esc", "Analyze Texts"),
+            ("← or →", "← or →", "Texts"),
+            ("↑", "↑", "Texts"), ("↓", "↓", "Texts"),
+            ("Enter or Space", "Enter or Space", "Texts"),
+            ("Page Up", "Page Up", "Texts"), ("Page Down", "Page Down", "Texts"),
+            ("Home", "Home", "Texts"), ("End", "End", "Texts"),
+            ("Enter", "Enter", "Texts"), ("Escape", "Esc", "Texts"),
         };
         var primarySearchGesture = PrimarySearchGesture;
-        foreach (var scope in new[] { "Word List", "Lists" })
+        foreach (var scope in new[] { "Words" })
         {
             expectedSettingsKeys.AddRange(new[]
             {
@@ -119,20 +119,12 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
         }
         expectedSettingsKeys.AddRange(new[]
         {
+            ("Escape", "Esc", "Texts"), ("F", primarySearchGesture, "Texts"),
+            ("A", "A", "Texts"), ("D", "D", "Texts"), ("U", "U", "Texts"),
+            ("Delete", "Delete", "Texts"), ("S", "S", "Texts"), ("P", "P", "Texts"),
+            ("F10", "Shift+F10", "Texts"),
             ("↑", "↑", "Diagnostic Tree"), ("↓", "↓", "Diagnostic Tree"),
-            ("Escape", "Esc", "Analyze Texts"), ("F", primarySearchGesture, "Analyze Texts"),
-            ("A", "A", "Analyze Texts"), ("D", "D", "Analyze Texts"), ("U", "U", "Analyze Texts"),
-            ("Delete", "Delete", "Analyze Texts"), ("S", "S", "Analyze Texts"), ("P", "P", "Analyze Texts"),
-            ("F10", "Shift+F10", "Analyze Texts"),
-            ("Enter or Space", "Enter or Space", "Review Changes"),
-            ("↑", "↑", "Review Changes"), ("↓", "↓", "Review Changes"),
-            ("Page Up", "Page Up", "Review Changes"), ("Page Down", "Page Down", "Review Changes"),
-            ("Home", "Home", "Review Changes"), ("End", "End", "Review Changes"),
-            ("Escape", "Esc", "Review Changes"),
-            ("↑", "Alt+↑", "Review Changes"), ("↓", "Alt+↓", "Review Changes"),
-            ("K", "Alt+K", "Review Changes"), ("U", "Alt+Shift+U", "Review Changes"),
             ("Space", "Space", "Menus"),
-            ("Enter or Space", "Enter or Space", "Morpheme"),
             ("Enter or Space", "Enter or Space", "Pages Rail"),
             ("F1", "F1", "Window"), ("Escape", "Esc", "Window"), ("?", "Shift+/", "Window"),
             ("F or E or V or T or H", "Alt+F or Alt+E or Alt+V or Alt+T or Alt+H", "Window"),
@@ -459,12 +451,10 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
                 };
                 await CopyFromAsync(matrixRow, matrixRow);
 
-                var changes = new ChangesViewModel(new FakeCommandClient());
                 var reviewChange = new ChangeViewModel("approve", "review form", "reading", "change/one");
-                var reviewGroup = new ReviewChangeGroupViewModel("Approve", [reviewChange], changes);
                 var reviewButton = new Button
                 {
-                    DataContext = new ReviewListEntryViewModel(reviewGroup, reviewChange, isLastChange: true),
+                    DataContext = reviewChange,
                     Content = "review form",
                 };
                 await CopyFromAsync(reviewButton, reviewButton);
@@ -634,33 +624,29 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
     }
 
     [Fact]
-    public void ControlFocusingSearchReachesEachTextsView()
+    public void ControlFocusingSearchReachesTextsAndWords()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (workspace, window) = await AnalyzeTextsLayoutTests.OpenAnalyzeTexts();
             try
             {
-                var page = workspace.PageModel<TextsPageModel>();
-                var targets = new (TextsTab Tab, AnalyzeTextsView View, string Name)[]
+                var targets = new (WorkspacePage Page, string Name)[]
                 {
-                    (TextsTab.AnalyzeTexts, AnalyzeTextsView.TextReader, "ReaderWordSearch"),
-                    (TextsTab.AnalyzeTexts, AnalyzeTextsView.WordList, "WordListSearch"),
-                    (TextsTab.Lists, AnalyzeTextsView.TextReader, "ListsWordSearch"),
+                    (WorkspacePage.Texts, "ReaderWordSearch"),
+                    (WorkspacePage.Words, "WordListSearch"),
                 };
                 var primaryModifier = CurrentPlatform == ShortcutPlatform.MacOS
                     ? RawInputModifiers.Meta
                     : RawInputModifiers.Control;
-                foreach (var (tab, view, name) in targets)
+                foreach (var (page, name) in targets)
                 {
-                    page.Tab = tab;
-                    page.AnalyzeView = view;
-                    workspace.CurrentPage = WorkspacePage.Texts;
+                    workspace.CurrentPage = page;
                     PageScreenshots.Settle(window);
                     window.KeyPress(Key.F, primaryModifier, PhysicalKey.None, null);
                     PageScreenshots.Settle(window);
                     var search = Assert.Single(window.GetVisualDescendants().OfType<TextBox>(), box => box.Name == name);
-                    Assert.True(search.IsFocused, $"{PrimarySearchGesture} focuses {name} on {tab}.");
+                    Assert.True(search.IsFocused, $"{PrimarySearchGesture} focuses {name} on {page}.");
                     window.KeyRelease(Key.F, primaryModifier, PhysicalKey.None, null);
                 }
             }
@@ -721,15 +707,6 @@ public sealed class KeyboardInteractionContractTests(AvaloniaHeadlessFixture ava
             Assert.True(File.Exists(source), $"{generated.Key} source is missing: {generated.Source}.");
             Assert.Contains(generated.Marker, File.ReadAllText(source), StringComparison.Ordinal);
         }
-    }
-
-    [Fact]
-    public void TimingKindBarIsDisplayOnlyAndDoesNotTakeKeyboardFocus()
-    {
-        var bar = new TimingKindBar();
-
-        Assert.False(bar.Focusable);
-        Assert.False(bar.IsTabStop);
     }
 
     [Fact]

@@ -15,7 +15,7 @@ using SIL.Motif.App.Views.Shell;
 namespace SIL.Motif.App.Views;
 
 /// <summary>
-/// The workspace frame: navigation rail, page host, notice band, Inspector and status bar. A host window supplies
+/// The workspace frame: navigation rail, page host, notice band, page panes and status bar. A host window supplies
 /// its <see cref="MotifWorkspaceHost"/> to <see cref="Attach"/>, which builds the pages; the view reads its model
 /// from the inherited DataContext and stays minimal until then. Attachment is available within the App assembly.
 /// </summary>
@@ -26,9 +26,8 @@ public sealed partial class MotifWorkspaceView : UserControl
     private Panel? _pageHost;
     private readonly WorkspaceLayoutHost? _layoutHost;
     private MotifWorkspaceHost? _host;
-    private Control? _inspectedFrom;
     private string? _helpAutomationId;
-    private WorkspacePage _settingsReturnPage = WorkspacePage.Overview;
+    private WorkspacePage _settingsReturnPage = WorkspacePage.Progress;
 
     private HelpPopupView? HelpPopup =>
         this.FindControl<Button>("HelpButton")?.Flyout is Flyout flyout ? flyout.Content as HelpPopupView : null;
@@ -79,7 +78,7 @@ public sealed partial class MotifWorkspaceView : UserControl
         (target ?? page as InputElement)?.Focus();
     }
 
-    /// <summary>The layout host that places the rail, page and Inspector.</summary>
+    /// <summary>The layout host that places the rail, page and its panes.</summary>
     internal WorkspaceLayoutHost? Layout => _layoutHost;
 
     private TopLevel Owner => _host?.Owner ?? throw new InvalidOperationException("The workspace view has no host yet.");
@@ -127,18 +126,15 @@ public sealed partial class MotifWorkspaceView : UserControl
             }
             UpdateNoticeBand();
         };
-        workspace.PageModel<TextsPageModel>().PropertyChanged += (_, changed) =>
+        workspace.Context.PropertyChanged += (_, changed) =>
         {
-            if (changed.PropertyName == nameof(TextsPageModel.Tab)) MotifTrace.EndAtFirstFrame(host.Owner);
+            if (changed.PropertyName == nameof(WorkspaceContext.Diagnostics) && !workspace.Context.Diagnostics &&
+                _pageViews.Remove(WorkspacePage.Diagnostics, out var diagnostics))
+                _pageHost?.Children.Remove(diagnostics);
         };
         workspace.Project.PropertyChanged += (_, _) => UpdateNoticeBand();
         workspace.Context.TextStyles.MissingFontNotices.CollectionChanged += (_, _) => UpdateNoticeBand();
         UpdateNoticeBand();
-        workspace.Inspector.PropertyChanged += (_, changed) =>
-        {
-            if (changed.PropertyName == nameof(InspectorViewModel.IsOpen))
-                _layoutHost?.SetObjectInspectorOpen(workspace.Inspector.IsOpen);
-        };
         if (this.FindControl<ListBox>("PageList") is { } rail)
         {
             rail.Selection.LostSelection += (_, _) =>
@@ -160,18 +156,10 @@ public sealed partial class MotifWorkspaceView : UserControl
             rail.AddHandler(InputElement.KeyDownEvent, OnRailKeyDown, RoutingStrategies.Tunnel);
         }
         UpdatePagePanels();
-        _layoutHost?.SetObjectInspectorOpen(workspace.Inspector.IsOpen);
-        if (this.FindControl<Button>("StatusChanges") is { } changesStatus)
-            changesStatus.DataContext = workspace.PageOf(WorkspacePage.Review);
-        if (this.FindControl<Button>("StatusWarnings") is { } warningsStatus)
-            warningsStatus.DataContext = workspace.PageOf(WorkspacePage.Warnings);
+        this.FindControl<ContentControl>("HealthStripHost")!.Content = new HealthStrip(workspace.Context.Health);
 
-        AddHandler(InspectLink.RequestedEvent, (_, e) => OnInspectRequested(workspace, e));
         AddHandler(AskAssistantButton.AskedEvent, async (_, e) =>
             ShowKeyboardStatus(await AskAssistantAction.RunAsync(workspace.Context, e.Target)));
-        AddHandler(WorkspaceLayoutHost.PageInspectorRequestedEvent,
-            (_, e) => OnPageInspectorRequested(workspace, e), RoutingStrategies.Bubble);
-        workspace.Inspector.Closed += (_, _) => ReturnFocusFromInspector();
     }
 
     /// <summary>Gives the layout host the window's width, or reports false while the host is not in <paramref name="window"/>.</summary>
@@ -247,43 +235,6 @@ public sealed partial class MotifWorkspaceView : UserControl
             await host.ShowProblemReportAsync(ProblemReport.ForWindowAction(host.ApplicationFacts)).ConfigureAwait(true);
     }
 
-    // Names inside object details extend the breadcrumb; other names begin a fresh inspection.
-    private void OnInspectRequested(WorkspaceShellViewModel workspace, InspectRequestedEventArgs e)
-    {
-        e.Handled = true;
-        if (e.Origin.FindAncestorOfType<Inspector>() is not null)
-        {
-            workspace.Inspector.Push(e.Subject);
-            return;
-        }
-        _inspectedFrom = e.Origin;
-        workspace.Context.OpenInspector(e.Subject, InspectLink.GetFrom(e.Origin), InspectLink.GetTrace(e.Origin), e.Captured);
-        _layoutHost?.ShowInspector();
-    }
-
-    private void OnPageInspectorRequested(WorkspaceShellViewModel workspace, RoutedEventArgs e)
-    {
-        _inspectedFrom = null;
-        workspace.Inspector.Close();
-        e.Handled = true;
-    }
-
-    private void ReturnFocusFromInspector()
-    {
-        if (_inspectedFrom is { } origin && TopLevel.GetTopLevel(origin) is not null && origin.IsEffectivelyVisible)
-            origin.Focus(NavigationMethod.Tab);
-        _inspectedFrom = null;
-    }
-
-    /// <summary>Steps the Inspector back when it is open and showing; reports whether it did.</summary>
-    internal bool TryStepInspectorBack()
-    {
-        if (DataContext is not WorkspaceShellViewModel { Inspector.IsOpen: true } shell ||
-            this.FindControl<Inspector>("Inspector") is not { IsEffectivelyVisible: true }) return false;
-        shell.Inspector.Back();
-        return true;
-    }
-
     private void OpenPanGlossGuide()
     {
         if (this.FindControl<Button>("HelpButton") is not { } button ||
@@ -325,12 +276,10 @@ public sealed partial class MotifWorkspaceView : UserControl
     internal KeyboardShortcutScope SearchScope()
     {
         if (DataContext is not WorkspaceShellViewModel shell) return KeyboardShortcutScope.Window;
-        if (shell.CurrentPage != WorkspacePage.Texts) return KeyboardShortcutScope.Window;
-        return shell.PageModel<TextsPageModel>().Tab switch
+        return shell.CurrentPage switch
         {
-            TextsTab.AnalyzeTexts when shell.PageModel<TextsPageModel>().AnalyzeView == AnalyzeTextsView.TextReader => KeyboardShortcutScope.TextReader,
-            TextsTab.AnalyzeTexts => KeyboardShortcutScope.WordList,
-            TextsTab.Lists => KeyboardShortcutScope.Lists,
+            WorkspacePage.Texts => KeyboardShortcutScope.TextReader,
+            WorkspacePage.Words => KeyboardShortcutScope.WordList,
             _ => KeyboardShortcutScope.Window,
         };
     }
@@ -342,7 +291,6 @@ public sealed partial class MotifWorkspaceView : UserControl
             {
                 KeyboardShortcutScope.TextReader => box.Name == "ReaderWordSearch",
                 KeyboardShortcutScope.WordList => box.Name == "WordListSearch",
-                KeyboardShortcutScope.Lists => box.Name == "ListsWordSearch",
                 _ => false,
             }));
 
@@ -355,6 +303,8 @@ public sealed partial class MotifWorkspaceView : UserControl
     /// <summary>Builds <paramref name="page"/>'s view on its first visit; a page nobody opens costs nothing at startup.</summary>
     internal Control EnsurePageView(WorkspaceShellViewModel workspace, WorkspacePage page)
     {
+        if (!workspace.Context.CanOpenPage(page))
+            throw new InvalidOperationException($"The page {page} is not available.");
         if (_pageViews.TryGetValue(page, out var existing)) return existing;
         var host = _host!;
         var entry = workspace.Pages.First(candidate => candidate.Page == page);
@@ -365,9 +315,11 @@ public sealed partial class MotifWorkspaceView : UserControl
         view.Bind(IsVisibleProperty, new Binding(nameof(PageViewModel.IsCurrent)) { Source = entry });
         _pageHost!.Children.Add(view);
         _pageViews[page] = view;
-        if (view is SettingsPage settingsPage) ConfigureSettingsPage(settingsPage, host);
-        if (view is AssistantConnectionsPage assistants)
-            assistants.ConfigureHandoff(host.Settings, workspace.PageModel<AiHandoffPageModel>());
+        if (view is SettingsPage settingsPage)
+        {
+            settingsPage.ConfigureHandoff(workspace.PageModel<SettingsPageModel>().Handoff);
+            ConfigureSettingsPage(settingsPage, host);
+        }
         return view;
     }
 
@@ -424,7 +376,7 @@ public sealed partial class MotifWorkspaceView : UserControl
     {
         if (DataContext is not WorkspaceShellViewModel workspace) return;
         var destination = workspace.Context.CanOpenPage(_settingsReturnPage)
-            ? _settingsReturnPage : WorkspacePage.Overview;
+            ? _settingsReturnPage : WorkspacePage.Progress;
         workspace.ShowPageCommand.Execute(destination);
         this.FindControl<Button>("SettingsButton")?.Focus(NavigationMethod.Tab);
     }
@@ -451,7 +403,7 @@ public sealed partial class MotifWorkspaceView : UserControl
     private void RefreshHelpContent()
     {
         if (HelpPopup?.DataContext is not HelpPopupViewModel help) return;
-        var page = (DataContext as WorkspaceShellViewModel)?.CurrentPage ?? WorkspacePage.Overview;
+        var page = (DataContext as WorkspaceShellViewModel)?.CurrentPage ?? WorkspacePage.Progress;
         help.ShowForPage(page, _helpAutomationId);
     }
 }

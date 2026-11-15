@@ -15,43 +15,23 @@ Motif is a desktop window and a command line for linguists who build grammars in
 When you build a FieldWorks grammar, three questions come back again and again.
 
 - **Which of my words parse, and which don't?** Motif parses the texts you choose and shows the results word by word, with Text Coverage, how many of your approved analyses the grammar still builds, how long each word takes, and what the grammar check found.
-- **Why did this word fail?** Try a Word shows the parser's reasoning for one word, step by step, including where it gave up.
+- **Why did this word fail?** The trace command can show the parser's recorded reasoning for one word, including where it gave up.
 - **If I change the grammar, will it help or hurt?** A Proposal is a set of changes. A Trial applies it to a throwaway copy of your project and parses again, so the new numbers sit beside today's. Your FieldWorks project is not touched.
 
-Motif reads your saved FieldWorks project and writes nothing to it until you open **Review Changes**, look over each change, and choose **Apply to FieldWorks project**.
+Motif reads your saved FieldWorks project and writes changes only when you explicitly choose to apply them.
 
 ## How it works
 
 **PanGloss measures, Motif shows, an AI assistant drafts, and a person decides.**
 
 1. **Measure.** PanGloss, the parser, parses the words you select. Motif keeps the results of each run.
-2. **Show.** The Overview, Texts, Timing and Warnings pages put those results where you can read them.
+2. **Show.** Texts and Words show the current Selection. Optional Diagnostics shows recorded grammar warnings and rule work.
 3. **Draft.** Motif can hand the whole picture to an AI assistant, as a folder of files to drag into a chat or through a connected assistant. The assistant can propose changes. It cannot apply them.
-4. **Decide.** You review each change, **Keep** or **Undo** it, and apply the ones you want.
+4. **Decide.** You review a Proposal and decide which changes to apply.
 
-## See it
+## The window
 
-![The Overview page for a Swahili grammar after a parse: 604 of 865 words parse, with the speed, grammar warnings and slowest words beside it](docs/media/readme/overview.png)
-
-*Overview: of the 865 words in the Selection, 604 parse, 253 do not parse and 8 cannot be read. Speed and the grammar warnings sit beside the coverage, and the slowest words are listed.*
-
-![Analyze texts showing the first line of a Swahili text, with each word's FieldWorks and PanGloss analyses under it](docs/media/readme/analyze-texts.png)
-
-*Analyze texts: a Text read in place, each word with what FieldWorks has and what PanGloss builds, and Add where PanGloss proposes an analysis.*
-
-![Try a Word showing alipojitenga parsed with one analysis, its morphemes and glosses, and the parser's recorded trace](docs/media/readme/try-a-word.png)
-
-*Try a Word: one Swahili word, the analysis the parser built and the steps it recorded on the way.*
-
-![Warnings listing the grammar check's three findings, one error and two warnings, under Phonological rules](docs/media/readme/warnings.png)
-
-*Warnings: the problems the grammar check found, to fix in FieldWorks.*
-
-![Review Changes listing one added analysis with Keep and Undo, and Apply to FieldWorks project disabled](docs/media/readme/review-changes.png)
-
-*Review Changes: each change has Keep and Undo, and Apply to FieldWorks project stays off until you have looked at them.*
-
-These images come from a real Swahili grammar project, parsed by PanGloss with no analyses approved by a person. The window shows a frame with a page rail on the left, a side panel, the Inspector on the right and a status bar. The one change in Review Changes was staged in a scratch copy for the picture.
+**Progress** shows available next actions and stored project facts. **Texts** opens the reader, **Words** lists words in the current Selection, **Grammar Guide** reads the project's saved records, and **Proposals** lists changes and their discussions. Turn on **Diagnostics** to inspect recorded warnings and rule work. **Settings** contains display choices and assistant connections. Opening a project reads stored results; it does not start a parse.
 
 ## Who it is for
 

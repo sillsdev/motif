@@ -251,8 +251,6 @@ public sealed class TextWordsViewModelTests : IAsyncLifetime
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             var (fake, _, words) = NewViewModel();
-            var tried = new List<string>();
-            words.WordRowRoutes = new WordRowRoutes { TryWord = tried.Add };
             await words.SetProjectAsync(ProjectPath);
             await PublishAsync(fake, new TextWordsResponse(
                 [new TextWord("kitabu", null,
@@ -273,8 +271,6 @@ public sealed class TextWordsViewModelTests : IAsyncLifetime
             Assert.Equal("×2", kitabu.Row.PlacesText);
             Assert.False(kitabu.HasCard);
             Assert.Equal("Parse all words to link kitabu to Word Analyses", kitabu.Row.WordAnalysesTip);
-            kitabu.Row.TryWordCommand.Execute(null);
-            Assert.Equal(["kitabu"], tried);
 
             var na = words.Rows.Single(row => row.Form == "na").Listed;
             Assert.Equal(assessed.Find("na")!.WordRow.Outcome, na.Row.Outcome);

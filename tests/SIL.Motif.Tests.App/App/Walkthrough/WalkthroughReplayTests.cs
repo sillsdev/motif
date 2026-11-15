@@ -139,43 +139,29 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
     }
 
     [Fact]
-    public async Task ReplayTypesAWordAndShowsTheRecordedTraceResult()
+    public async Task ReplayOpensTheProjectAndTheSharedTraceKeepsItsRecordedResult()
     {
-        var managedRoot = WalkthroughTestFiles.EngineRoot("try-word-replay");
+        var managedRoot = WalkthroughTestFiles.EngineRoot("trace-session-replay");
         WalkthroughTestFiles.DeleteDirectory(managedRoot);
         using var project = new WalkthroughProject(pristine, managedRoot);
         var parserPath = FakeParser.CopyRecordingInvocations(project.ManagedRoot);
         var clock = new FixedClock(WalkthroughReplayTestSupport.CaptureTime, TimeZoneInfo.Utc);
-        var projectContext = new WalkthroughProjectContext(
-            project.ManagedRoot, project.FwDataPath, project.TextId, null);
+        var projectContext = new WalkthroughProjectContext(project.ManagedRoot, project.FwDataPath, project.TextId, null);
         await WalkthroughFixtureSeeder.SeedAsync("try-word-ready", projectContext, clock, parserPath);
         FakeParser.BehaveBesideExecutable(parserPath,
             FakeParser.TraceBehavior("motifa", "motifa-trace", "SeededRule"));
-        var script = new WalkthroughScript("try-word-replay",
+        var script = new WalkthroughScript("trace-session-replay",
         [
-            new WalkthroughStep("open-project-menu", WalkthroughStepKind.Click,
-                AutomationId: AutomationIds.ProjectMenu),
-            new WalkthroughStep("select-project", WalkthroughStepKind.Click,
-                AutomationId: AutomationIds.SelectNewProject),
+            new WalkthroughStep("open-project-menu", WalkthroughStepKind.Click, AutomationId: AutomationIds.ProjectMenu),
+            new WalkthroughStep("select-project", WalkthroughStepKind.Click, AutomationId: AutomationIds.SelectNewProject),
             new WalkthroughStep("wait-for-project", WalkthroughStepKind.WaitFor,
-                AutomationId: AutomationIds.OverviewSelectionWordCount, Condition: "text", ExpectedText: "2",
+                AutomationId: AutomationIds.ProgressHeading, Condition: "visible",
                 TimeoutMs: 30_000),
-            new WalkthroughStep("open-try-word", WalkthroughStepKind.Click,
-                AutomationId: AutomationIds.ForPage(WorkspacePage.TryAWord)),
-            new WalkthroughStep("type-word", WalkthroughStepKind.Type,
-                AutomationId: AutomationIds.TryWordInput, Text: "motifa"),
-            new WalkthroughStep("wait-for-run", WalkthroughStepKind.WaitFor,
-                AutomationId: AutomationIds.TryWordRun, Condition: "enabled", TimeoutMs: 30_000),
-            new WalkthroughStep("run-trace", WalkthroughStepKind.Click,
-                AutomationId: AutomationIds.TryWordRun),
-            new WalkthroughStep("show-result", WalkthroughStepKind.WaitFor,
-                AutomationId: AutomationIds.TryWordResult, Condition: "visible", TimeoutMs: 30_000),
         ]);
-        var help = new WalkthroughHelpContent("en", "Try a word", "",
+        var help = new WalkthroughHelpContent("en", "Open a project", "",
             new Dictionary<string, string>(), new Dictionary<string, IReadOnlyDictionary<string, string>>());
         var deadline = WalkthroughSteps.DeadlineIn(90);
-
-        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             WalkthroughFonts.Register();
             using var walkthrough = new WalkthroughWindow(
@@ -183,32 +169,17 @@ public sealed class WalkthroughReplayTests(PristineProjectFixture pristine)
             walkthrough.Show();
             WalkthroughReplay.Run(walkthrough, script, help, clock, [], [], deadline,
                 WalkthroughReplayTestSupport.FindRepositoryRoot());
-
-            Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordInput));
-            Assert.Equal("motifa", walkthrough.TextByAutomationId(AutomationIds.TryWordResult));
-            var trace = walkthrough.Workspace.PageModel<TryWordPageModel>().Trace;
-            var traceResponse = Assert.IsType<SIL.Motif.Contract.Responses.WordTraceResponse>(trace.Result);
+            var trace = walkthrough.Workspace.Context.WordTraceSession.Trace;
+            trace.WordToTry = "motifa";
+            await trace.TryCommand.ExecuteAsync(null);
+            var response = Assert.IsType<WordTraceResponse>(trace.Result);
+            Assert.Equal("motifa", response.Word);
             Assert.Equal("Parsed", trace.AnswerText);
-            var displayedAnalysis = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
-                .SingleOrDefault(control => control.Text == "Analysis 1");
-            Assert.NotNull(displayedAnalysis);
-            Assert.True(displayedAnalysis.IsEffectivelyVisible);
-            var displayedGloss = walkthrough.Window.GetLogicalDescendants().OfType<TextBlock>()
-                .SingleOrDefault(control => control.Text == "seeded gloss");
-            Assert.NotNull(displayedGloss);
-            Assert.True(displayedGloss.IsEffectivelyVisible);
-            Assert.False(trace.IsExpert);
-            var page = walkthrough.Window.GetLogicalDescendants().OfType<TryWordPanel>().Single();
-            var diagnosticHost = page.FindControl<ContentControl>("RichDiagnosticHost")!;
-            Assert.True(diagnosticHost.IsVisible);
-            Assert.False(diagnosticHost.GetLogicalDescendants().OfType<Expander>().Single(expander =>
-                Avalonia.Automation.AutomationProperties.GetName(expander) == "Full derivation tree").IsEffectivelyVisible);
-            Assert.Contains("motifa-trace", traceResponse.DiagnosticJson);
+            Assert.Contains("motifa-trace", response.DiagnosticJson);
             Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
-            Assert.Contains("parse", FakeParser.Invocations(parserPath));
-            return Task.CompletedTask;
         }, WalkthroughSteps.Remaining(deadline));
     }
+
 }
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
@@ -537,7 +508,7 @@ internal static class WalkthroughReplayTestRunner
     private static async Task AssertExplainedWordCardAsync(WalkthroughWindow walkthrough)
     {
         var page = walkthrough.Workspace.PageModel<TextsPageModel>();
-        page.AnalyzeView = AnalyzeTextsView.TextReader;
+        page.ResultsInText.ShowReader();
         await AnalyzeTextsLayoutTests.SettleReaderAsync(walkthrough.Workspace, walkthrough.Window);
         var panel = walkthrough.Window.GetLogicalDescendants().OfType<ResultsInTextPanel>().Single();
         var tokens = new List<ResultsTokenViewModel>();
@@ -653,30 +624,25 @@ internal static class WalkthroughReplay
                         clickId = fixtureTarget;
                     if (parserPath is not null && script.Id == "review-apply-refresh-parse" &&
                         step.Id is "refresh-baseline" or "parse-all-words")
-                        Assert.Equal(2, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+                        Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
                     var clickBounds = window.BoundsByAutomationId(clickId);
                     window.ClickAutomationId(clickId);
                     if (step.AutomationId == AutomationIds.SelectNewProject && script.Id is
                         "explained-word-card" or "parsimony-findings" or "review-apply-refresh-parse")
                     {
-                        var grammar = window.Workspace.PageModel<WarningsPageModel>().Grammar;
-                        var parsimony = window.Workspace.PageModel<ParsimonyPageModel>();
+                        var grammar = window.Workspace.Context.GrammarCheck;
                         var openRemaining = WalkthroughSteps.Remaining(deadline);
                         window.WaitUntil(() => !window.Workspace.IsProjectOpening &&
                             !window.Workspace.Context.IsOpeningProject &&
-                            window.Workspace.Context.EvidencePublication.IsCompleted &&
-                            (!window.Workspace.Baseline.HasBaseline || grammar.HasChecked && !grammar.IsLoading) &&
-                            parsimony.AutomaticWork.IsCompleted,
+                            window.Workspace.Context.EvidencePublication.IsCompleted && !grammar.IsLoading,
                             openRemaining < TimeSpan.FromSeconds(60) ? openRemaining : TimeSpan.FromSeconds(60),
-                            "the prepared project's automatic grammar answer or retained Parsimony read did not finish",
+                            "the prepared project's stored evidence did not finish loading",
                             () => $"Grammar.HasChecked={grammar.HasChecked}; Grammar.IsLoading={grammar.IsLoading}; " +
-                                $"Parsimony.State={parsimony.State}; Parsimony.Work={parsimony.AutomaticWork.Status}; " +
                                 $"EvidencePublication={window.Workspace.Context.EvidencePublication.Status}");
                         window.Workspace.Context.EvidencePublication.GetAwaiter().GetResult();
-                        parsimony.AutomaticWork.GetAwaiter().GetResult();
                         invocationsAtOpen = parserPath is not null ? FakeParser.Invocations(parserPath).ToArray() : [];
                         if (parserPath is not null && script.Id == "explained-word-card")
-                            Assert.Equal(["describe", "batch", "describe", "grammar-health"], invocationsAtOpen);
+                            Assert.Equal(["describe", "batch"], invocationsAtOpen);
                     }
                     if (parserPath is not null && script.Id == "review-apply-refresh-parse" && step.Id == "refresh-baseline")
                     {
@@ -688,9 +654,9 @@ internal static class WalkthroughReplay
                             "the explicit Refresh command did not finish before opening its project card",
                             () => $"RefreshTask={refresh.Status}; " +
                                 $"EvidencePublication={window.Workspace.Context.EvidencePublication.Status}; " +
-                                $"Grammar.IsLoading={window.Workspace.PageModel<WarningsPageModel>().Grammar.IsLoading}");
+                                $"Grammar.IsLoading={window.Workspace.Context.GrammarCheck.IsLoading}");
                         refresh.GetAwaiter().GetResult();
-                        Assert.Equal(2, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+                        Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
                     }
                     if (preparation?.ReadyMarkers.TryGetValue(clickId, out var readyMarker) == true)
                         window.WaitUntil(() => File.Exists(readyMarker), WalkthroughSteps.Remaining(deadline),
@@ -923,11 +889,9 @@ internal static class WalkthroughReplay
         Assert.DoesNotContain(controls, ToolTip.GetIsOpen);
     }
 
-    // Open on a Proposal row enters Proposal mode: the lens is set and the Overview has read the Trial too.
     private static bool EntersProposalMode(WalkthroughWindow window, WalkthroughScript script, WalkthroughStep step) =>
         (script.Id, step.Id) != ("proposals-open", "wait-for-overview") ||
-        window.Workspace.Context is { Lens: not null, EvidencePublication.IsCompleted: true } &&
-        window.Workspace.PageModel<OverviewPageModel>().ProposalOverview is not null;
+        window.Workspace.Context is { Lens: not null, EvidencePublication.IsCompleted: true };
 
     private static bool Satisfies(WalkthroughWindow window, WalkthroughStep step)
     {
@@ -965,10 +929,8 @@ internal static class WalkthroughReplay
 
     private static bool AssessmentIsPublished(WalkthroughWindow window, Control coverage)
     {
-        var assessment = window.FindByAutomationId(AutomationIds.OverviewSpeed);
-        var overview = window.Workspace.PageModel<OverviewPageModel>().Overview;
+        var overview = window.Workspace.Context.Health.Overview;
         return coverage.IsEffectivelyVisible && coverage.Bounds.Width > 0 && coverage.Bounds.Height > 0 &&
-            assessment.IsEffectivelyVisible && assessment.Bounds.Width > 0 && assessment.Bounds.Height > 0 &&
             window.Workspace.Assess.State == RunState.Completed &&
             window.Workspace.Context.EvidencePublication.IsCompleted &&
             !window.Workspace.Context.NeedsAssessment &&
@@ -989,51 +951,34 @@ internal static class WalkthroughReplay
                     word => word.Word == SeededProject.FirstForm).RawSignature);
                 Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
                 break;
-            case "try-word-typing":
-                var trace = window.Workspace.PageModel<TryWordPageModel>().Trace;
-                var traceResponse = Assert.IsType<SIL.Motif.Contract.Responses.WordTraceResponse>(trace.Result);
-                Assert.Equal("geldi", window.TextByAutomationId(AutomationIds.TryWordInput));
-                Assert.Equal("geldi", window.TextByAutomationId(AutomationIds.TryWordResult));
-                Assert.True(traceResponse.Parsed && traceResponse.Complete);
-                Assert.Contains("geldi-trace", traceResponse.DiagnosticJson);
-                Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "parse"));
-                break;
             case "review-apply-refresh-parse":
-                window.WaitUntil(() => window.Workspace.Assess.State == RunState.Completed &&
-                    window.Workspace.Context.EvidencePublication.IsCompleted,
-                    WalkthroughSteps.Remaining(deadline), "the explicit post-Refresh Parse did not finish");
-                var refreshed = Assert.IsType<AssessCommandResponse>(window.Workspace.Assess.Result);
-                Assert.Equal("after-refresh", Assert.Single(refreshed.Words,
-                    word => word.Word == SeededProject.AnalysedWordForm).RawSignature);
-                Assert.Equal(3, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
+                window.WaitUntil(() => window.Workspace.Context.EvidencePublication.IsCompleted,
+                    WalkthroughSteps.Remaining(deadline), "the stored evidence did not finish publishing");
+                Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "batch"));
                 Assert.False(window.Workspace.Context.NeedsAssessment);
                 break;
             case "parsimony-findings":
-                var parsimony = window.Workspace.PageModel<ParsimonyPageModel>();
-                Assert.Equal(ParsimonyPageState.Listed, parsimony.State);
-                Assert.Equal("2 findings to review", parsimony.AxisSummary);
-                var findingRows = parsimony.Rows.Where(row => !row.IsHeader).ToArray();
-                Assert.Equal(2, findingRows.Length);
-                var shown = ParsimonyCommands.Show(new ShowParsimonyReportRequest(window.ProjectPath,
-                    MotifProductVersion.CurrentText, Assert.Single(findingRows.Select(row => row.Link!.ReportId).Distinct())));
-                Assert.True(shown.Succeeded, shown.Refusal?.Message);
-                Assert.Equal(window.Workspace.Baseline.Token, shown.Value!.Inputs.BaselineToken);
-                Assert.Equal(shown.Value.Findings.Select(finding => finding.FindingId).Order(StringComparer.Ordinal),
-                    findingRows.Select(row => row.Link!.FindingId).Order(StringComparer.Ordinal));
-                Assert.All(shown.Value.Findings, finding => Assert.All(finding.EvidenceRefs,
-                    reference => Assert.Equal(shown.Value.Inputs.BundleId, reference.BundleId)));
-                Assert.NotNull(parsimony.Evidence);
-                Assert.Contains(parsimony.Evidence.Details,
-                    detail => detail.Label == "Counted" && detail.Value == "2 of 3 prohibitions");
+                var reportSet = window.Workspace.Context.Commands.ReadLatestParsimonyReportSetAsync(
+                    new ReadLatestParsimonyReportRequest(window.ProjectPath, MotifProductVersion.CurrentText),
+                    CancellationToken.None).GetAwaiter().GetResult();
+                Assert.True(reportSet.Succeeded, reportSet.Refusal?.Message);
+                var reports = Assert.IsType<ParsimonyReportSetResponse>(reportSet.Value).Reports;
+                var findings = reports.SelectMany(report => report.Findings).ToArray();
+                Assert.Equal(2, findings.Length);
+                Assert.All(reports, report =>
+                {
+                    Assert.Equal(window.Workspace.Baseline.Token, report.Inputs.BaselineToken);
+                    Assert.All(report.Findings, finding => Assert.All(finding.EvidenceRefs,
+                        reference => Assert.Equal(report.Inputs.BundleId, reference.BundleId)));
+                });
                 break;
             case "no-longer-fits":
-                var review = window.Workspace.PageModel<ReviewPageModel>();
-                window.WaitUntil(() => review.ReviewGroups.Any(group => group.IsNoLongerFits),
-                    WalkthroughSteps.Remaining(deadline), "the changed word did not appear in No longer fits");
-                Assert.NotEmpty(review.ReviewGroups.Single(group => group.IsNoLongerFits).Items);
+                window.WaitUntil(() => window.Workspace.Context.Changes.Items.Any(change => change.IsNoLongerFits),
+                    WalkthroughSteps.Remaining(deadline), "the changed word did not appear as no longer fitting");
+                Assert.Contains(window.Workspace.Context.Changes.Items, change => change.IsNoLongerFits);
                 break;
             case "handoff-cancel-retry":
-                var handoff = window.Workspace.PageModel<AiHandoffPageModel>().Handoff;
+                var handoff = window.Workspace.PageModel<SettingsPageModel>().Handoff.Handoff;
                 window.WaitUntil(() => handoff.State == RunState.Completed && handoff.Files.Count > 0,
                     WalkthroughSteps.Remaining(deadline), "the retried AI Handoff did not finish");
                 Assert.Equal(1, FakeParser.Invocations(parserPath).Count(command => command == "import"));
@@ -1239,8 +1184,8 @@ internal static class WalkthroughFixtureSeeder
         return new WalkthroughFixturePreparation(new Dictionary<string, string>(StringComparer.Ordinal),
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [AutomationIds.ForParsimonyFinding("finding-1")] =
-                    AutomationIds.ForParsimonyFinding(report.Findings[0].FindingId),
+                ["motif-parsimony-finding-finding-1"] =
+                    "motif-parsimony-finding-" + report.Findings[0].FindingId,
             });
     }
 

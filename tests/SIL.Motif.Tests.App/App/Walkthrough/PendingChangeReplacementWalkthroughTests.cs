@@ -32,14 +32,14 @@ public sealed class PendingChangeReplacementWalkthroughTests(PristineProjectFixt
         {
             using var walkthrough = new WalkthroughWindow(project.ManagedRoot, project.FwDataPath);
             WalkthroughSteps.ChooseProjectAndCaptureBaseline(walkthrough, deadline);
-            var changes = walkthrough.Workspace.PageModel<ReviewPageModel>().Changes;
+            var changes = walkthrough.Workspace.Context.Changes;
 
-            await changes.ApproveStoredAnalysisAsync(Word, storedId, "stored reading", WorkspacePage.TryAWord);
+            await changes.ApproveStoredAnalysisAsync(Word, storedId, "stored reading", WorkspacePage.Words);
             Assert.Null(changes.LastRefusal?.Message);
             var first = Assert.Single(changes.Items).ChangeId;
             Assert.Null(changes.CollectionNotice);
 
-            await changes.ApproveStoredAnalysisAsync(Word, storedId, "stored reading", WorkspacePage.TryAWord);
+            await changes.ApproveStoredAnalysisAsync(Word, storedId, "stored reading", WorkspacePage.Words);
 
             Assert.Null(changes.LastRefusal?.Message);
             var second = Assert.Single(changes.Items);

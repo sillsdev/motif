@@ -2,14 +2,13 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
 /// <summary>
-/// Pins when the Proposals page asks for a Proposal's Parsimony status, that a finishing Trial hands over to it with no
-/// click, and that nothing couples a status to Apply or Readiness: those tests show no accidental link, they are not
-/// a check of Proposal-mode Review.
+/// Pins explicit Proposal Parsimony reads, their lifecycle and their independence from Apply and readiness.
 /// </summary>
 public sealed class ProposalParsimonyPageTests
 {
@@ -20,13 +19,15 @@ public sealed class ProposalParsimonyPageTests
     {
         var (fake, _, page) = await OpenAsync(Card("p/one"), Card("p/two"));
 
-        await page.ParsimonyWatching;
+        Assert.Empty(fake.ProposalParsimonyStatusRequests);
+        await page.Parsimony.Watch(ProjectPath, "p/one");
         Assert.Equal(["p/one"], fake.ProposalParsimonyStatusRequests.Select(request => request.ProposalId));
         Assert.True(page.Parsimony.IsVisible);
         Assert.Equal("Not Yet Run", page.Parsimony.StateLabel);
 
         page.SelectProposalCommand.Execute(page.Groups.SelectMany(group => group.Cards).Single(card => card.ProposalId == "p/two"));
-        await page.ParsimonyWatching;
+        Assert.Single(fake.ProposalParsimonyStatusRequests);
+        await page.Parsimony.Watch(ProjectPath, "p/two");
 
         Assert.Equal(["p/one", "p/two"], fake.ProposalParsimonyStatusRequests.Select(request => request.ProposalId));
         Assert.Equal("p/two", page.Parsimony.ProposalId);
@@ -59,11 +60,12 @@ public sealed class ProposalParsimonyPageTests
         var context = WorkspaceContextTests.NewContext(fake);
         var page = new ProposalsPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
-        while (reads == 0) await Task.Yield();
+        var watching = page.Parsimony.Watch(ProjectPath, "p/one");
+        await Wait.UntilAsync(() => reads > 0, "The explicit Parsimony watch did not start.");
         Assert.Equal("Running", page.Parsimony.StateLabel);
 
         page.ProjectCleared();
-        await page.ParsimonyWatching;
+        await watching.WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.False(page.Parsimony.IsVisible);
         Assert.Null(page.Parsimony.ProposalId);
@@ -96,20 +98,19 @@ public sealed class ProposalParsimonyPageTests
             "job/one", "revision/one", FakeCommandClient.CompleteNumbers));
         fake.ProposalStandingsCompleteWith(new ProposalStandings([Card("p/one")], 0));
         var context = WorkspaceContextTests.NewContext(fake);
-        var review = new ReviewPageModel(context);
         var proposals = new ProposalsPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
-        await review.MeasureCommand.ExecuteAsync(null);
+        await context.PendingMeasurement.MeasureCommand.ExecuteAsync(null);
         await proposals.ParsimonyWatching;
-        var before = ApplyFacts(review);
+        var before = ApplyFacts(context);
         Assert.StartsWith("True|", before);
 
         fake.ProposalParsimonyStatusIs(ProposalParsimonyStatusFixtures.Failed("p/one", category));
         await proposals.Parsimony.Watch(ProjectPath, "p/one");
 
         Assert.Equal("Did Not Finish", proposals.Parsimony.StateLabel);
-        Assert.Equal(before, ApplyFacts(review));
-        Assert.True(review.ApplyCommand.CanExecute(null));
+        Assert.Equal(before, ApplyFacts(context));
+        Assert.True(context.ProposalApply.CanApply(null, null, null, null));
     }
 
     [Fact]
@@ -119,23 +120,22 @@ public sealed class ProposalParsimonyPageTests
         fake.PendingChangesIs(Snapshot("kept"));
         fake.ProposalStandingsCompleteWith(new ProposalStandings([Card("p/one")], 0));
         var context = WorkspaceContextTests.NewContext(fake);
-        var review = new ReviewPageModel(context);
         var proposals = new ProposalsPageModel(context);
         await context.OpenProjectAsync(ProjectPath);
-        var before = ApplyFacts(review);
+        var before = ApplyFacts(context);
         Assert.StartsWith("False|", before);
-        Assert.NotEmpty(review.ApplyBlockers);
+        Assert.NotEmpty(context.ProposalApply.Blockers(null, null, null, null));
 
         fake.ProposalParsimonyStatusIs(ProposalParsimonyStatusFixtures.Failed(
             "p/one", ProposalParsimonyFailureCategory.TimedOut, code: "status-skipped-timeout"));
         await proposals.Parsimony.Watch(ProjectPath, "p/one");
 
         Assert.Equal("Did Not Finish", proposals.Parsimony.StateLabel);
-        Assert.Equal(before, ApplyFacts(review));
+        Assert.Equal(before, ApplyFacts(context));
     }
 
     [Fact]
-    public async Task ATrialThatFinishesHandsOverToTheSectionThroughQueuedAndRunningToReadyWithNoClick()
+    public async Task AnExplicitWatchAfterATrialShowsQueuedRunningAndReady()
     {
         // The section is single-thread by design; on pool threads two watch continuations can interleave.
         await SingleThreadPump.RunAsync(async () =>
@@ -164,7 +164,7 @@ public sealed class ProposalParsimonyPageTests
                     (seen.Count == 0 || seen[^1] != page.Parsimony.StateLabel)) seen.Add(page.Parsimony.StateLabel);
             };
             await context.OpenProjectAsync(ProjectPath);
-            await page.ParsimonyWatching;
+            await page.Parsimony.Watch(ProjectPath, "p/one");
             Assert.Equal("Not Yet Run", page.Parsimony.StateLabel);
             Assert.Contains("no Trial", page.Parsimony.Sentence, StringComparison.OrdinalIgnoreCase);
 
@@ -173,7 +173,7 @@ public sealed class ProposalParsimonyPageTests
             finishing.SetResult(Contract.Commands.CommandOutcome<JobStatusResponse>.Success(
                 new JobStatusResponse("job/test", "project/test", true, "trial", JobStatus.Completed, 1, null, false, null, 1)));
             await trying;
-            await page.ParsimonyWatching;
+            await page.Parsimony.Watch(ProjectPath, "p/one");
 
             Assert.Equal(["Not Yet Run", "Queued", "Running", "Ready"], seen);
             Assert.Equal("Ready", page.Parsimony.StateLabel);
@@ -197,10 +197,9 @@ public sealed class ProposalParsimonyPageTests
         Assert.Empty(users);
     }
 
-    // Everything Review changes says about Apply, as one string so a change anywhere shows in a comparison.
-    private static string ApplyFacts(ReviewPageModel review) => string.Join("|", review.CanApply,
-        string.Join(",", review.ApplyBlockers.Select(blocker => blocker.Kind)), review.ApplyBlockReason,
-        review.ApplyDisabledReason, string.Join(",", review.ApplyChecks.Select(check => check.Text)));
+    private static string ApplyFacts(WorkspaceContext context) => string.Join("|",
+        context.ProposalApply.CanApply(null, null, null, null),
+        string.Join(",", context.ProposalApply.Blockers(null, null, null, null).Select(blocker => blocker.Kind)));
 
     private static async Task<(FakeCommandClient Fake, WorkspaceContext Context, ProposalsPageModel Page)> OpenAsync(
         params ProposalCard[] cards)

@@ -44,11 +44,9 @@
   <Color x:Key="Primitive.Color.Blue900">#1D3354</Color>
 
   <Color x:Key="Primitive.Color.Green300">#6FCF87</Color>
-  <Color x:Key="Primitive.Color.Green700">#2B8A3E</Color>
   <Color x:Key="Primitive.Color.Green800">#1A6B2C</Color>
 
   <Color x:Key="Primitive.Color.Amber300">#E3B55E</Color>
-  <Color x:Key="Primitive.Color.Amber700">#B06A00</Color>
   <Color x:Key="Primitive.Color.Amber800">#8A5A00</Color>
 
   <Color x:Key="Primitive.Color.Clear">#00FFFFFF</Color>
@@ -77,8 +75,6 @@
 
   <Color x:Key="Primitive.Color.Violet25">#F6F0FF</Color>
   <Color x:Key="Primitive.Color.Violet200">#D9C2FF</Color>
-  <Color x:Key="Primitive.Color.Violet300">#B99CFF</Color>
-  <Color x:Key="Primitive.Color.Violet600">#7A4FD1</Color>
   <Color x:Key="Primitive.Color.Violet800">#54278F</Color>
   <Color x:Key="Primitive.Color.Violet975">#2B1C3B</Color>
   <Color x:Key="Primitive.Color.Purple25">#FAF0FC</Color>
@@ -111,9 +107,9 @@
   <StaticResource x:Key="Primitive.Space.2" ResourceKey="SemiSpacingSuperTight" />
   <StaticResource x:Key="Primitive.Space.4" ResourceKey="SemiSpacingExtraTight" />
   <x:Double x:Key="Primitive.Space.6">6</x:Double>
-  <StaticResource x:Key="Primitive.Space.8" ResourceKey="SemiSpacingTight" />
   <StaticResource x:Key="Primitive.Space.12" ResourceKey="SemiSpacingBaseTight" />
   <x:Double x:Key="Primitive.Space.14">14</x:Double>
+  <x:Double x:Key="Primitive.Space.16">16</x:Double>
   <x:Double x:Key="Primitive.Space.1">1</x:Double>
   <x:Double x:Key="Primitive.Space.10">10</x:Double>
   <x:Double x:Key="Primitive.Space.20">20</x:Double>
@@ -127,11 +123,7 @@
   <Thickness x:Key="Primitive.Inset.8_0_0_0">8,0,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_6_0_0">0,6,0,0</Thickness>
   <Thickness x:Key="Primitive.Inset.6_0_0_0">6,0,0,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.0_0_0_8">0,0,0,8</Thickness>
   <Thickness x:Key="Primitive.Inset.1_1_1_1">1</Thickness>
-  <Thickness x:Key="Primitive.Inset.1_1_1_0">1,1,1,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.1_0_1_0">1,0,1,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.1_0_1_1">1,0,1,1</Thickness>
   <Thickness x:Key="Primitive.Inset.2_2_2_2">2</Thickness>
   <Thickness x:Key="Primitive.Inset.1p2_1p2_1p2_1p2">1.2</Thickness>
   <Thickness x:Key="Primitive.Inset.16_16_16_16">16</Thickness>
@@ -151,7 +143,6 @@
   <Thickness x:Key="Primitive.Inset.76_0_18_0">76,0,18,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_8_0_8">0,8</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_8_0">0,0,8,0</Thickness>
-  <Thickness x:Key="Primitive.Inset.0_0_8_8">0,0,8,8</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_20_0">0,0,20,0</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_0_2">0,0,0,2</Thickness>
   <Thickness x:Key="Primitive.Inset.0_0_4_4">0,0,4,4</Thickness>
@@ -189,14 +180,17 @@
 
   <x:Double x:Key="Primitive.Type.10p5">10.5</x:Double>
   <x:Double x:Key="Primitive.Type.11">11</x:Double>
-  <FontFamily x:Key="Primitive.Font.UI">fonts:Motif#Andika</FontFamily>
+  <FontFamily x:Key="Primitive.Font.UI">fonts:Motif#Source Sans 3</FontFamily>
+  <FontFamily x:Key="Primitive.Font.Mark">fonts:Motif#Andika</FontFamily>
+  <FontFamily x:Key="Primitive.Font.Display">fonts:Motif#Lora</FontFamily>
   <FontWeight x:Key="Primitive.FontWeight.Bold">Bold</FontWeight>
-  <FontWeight x:Key="Primitive.FontWeight.Normal">Normal</FontWeight>
   <FontWeight x:Key="Primitive.FontWeight.SemiBold">SemiBold</FontWeight>
   <StaticResource x:Key="Primitive.Type.12" ResourceKey="SemiFontSizeSmall" />
   <FontFamily x:Key="Primitive.Font.Mono">Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace</FontFamily>
   <x:Double x:Key="Primitive.Type.13">13</x:Double>
+  <x:Double x:Key="Primitive.Type.14">14</x:Double>
   <x:Double x:Key="Primitive.Type.15">15</x:Double>
+  <x:Double x:Key="Primitive.Type.28">28</x:Double>
   <StaticResource x:Key="Primitive.Type.16" ResourceKey="SemiFontSizeHeader6" />
   <x:Double x:Key="Primitive.Type.8">8</x:Double>
   <x:Double x:Key="Primitive.Type.8p5">8.5</x:Double>
@@ -207,7 +201,6 @@
   <x:Double x:Key="Primitive.Size.1">1</x:Double>
   <x:Double x:Key="Primitive.Size.5">5</x:Double>
   <x:Double x:Key="Primitive.Size.8">8</x:Double>
-  <x:Double x:Key="Primitive.Size.Unset">NaN</x:Double>
   <x:Double x:Key="Primitive.Size.9">9</x:Double>
   <x:Double x:Key="Primitive.Size.18">18</x:Double>
   <x:Double x:Key="Primitive.Size.22">22</x:Double>
@@ -226,7 +219,8 @@
   <x:Double x:Key="Primitive.Size.140">140</x:Double>
   <x:Double x:Key="Primitive.Size.150">150</x:Double>
   <x:Double x:Key="Primitive.Size.170">170</x:Double>
-  <x:Double x:Key="Primitive.Size.189">189</x:Double>
+  <x:Double x:Key="Primitive.Size.175">175</x:Double>
+  <x:Double x:Key="Primitive.Size.176">176</x:Double>
   <x:Double x:Key="Primitive.Size.190">190</x:Double>
   <x:Double x:Key="Primitive.Size.204">204</x:Double>
   <x:Double x:Key="Primitive.Size.220">220</x:Double>
@@ -238,7 +232,8 @@
   <x:Double x:Key="Primitive.Size.360">360</x:Double>
   <x:Double x:Key="Primitive.Size.600">600</x:Double>
   <x:Double x:Key="Primitive.Size.780">780</x:Double>
-  <x:Double x:Key="Primitive.Size.1240">1240</x:Double>
+  <x:Double x:Key="Primitive.Size.800">800</x:Double>
+  <x:Double x:Key="Primitive.Size.1280">1280</x:Double>
   <x:Double x:Key="Primitive.Size.10">10</x:Double>
   <x:Double x:Key="Primitive.Size.14">14</x:Double>
   <x:Double x:Key="Primitive.Size.48">48</x:Double>

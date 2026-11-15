@@ -78,7 +78,7 @@ public sealed class PreferenceWriteFailureTests
                 var (workspace, window) = await PageScreenshots.OpenOverSampleData(parse: false, preferencesStore: store);
                 try
                 {
-                    var overview = workspace.PageModel<OverviewPageModel>();
+                    var overview = workspace.Context.Health;
                     overview.Overview = overview.Overview! with
                     {
                         WritingSystems = [Ws("v1", WritingSystemKind.Vernacular), Ws("a1", WritingSystemKind.Analysis)],

@@ -34,11 +34,10 @@ public sealed class ResultsInTextVirtualizationTests
                 var page = workspace.PageModel<TextsPageModel>();
                 var cardAnchor = page.ResultsInText.SelectedToken!.Occurrence!;
                 if (!openCard) page.ResultsInText.CloseTokenCard();
-                page.Tab = TextsTab.Lists;
+
                 workspace.CurrentPage = WorkspacePage.Texts;
                 PageScreenshots.Settle(window);
 
-                page.Tab = TextsTab.AnalyzeTexts;
                 window.UpdateLayout();
                 var panel = AnalyzeTextsLayoutTests.Panel(window);
                 if (openCard) page.ResultsInText.SelectToken((await page.ResultsInText.ReadOccurrenceAsync(cardAnchor))!);
@@ -261,7 +260,7 @@ public sealed class ResultsInTextVirtualizationTests
             var selection = new SelectionViewModel(client);
             var words = new TextWordsViewModel(client, selection, client.ReaderOwner);
             var assess = new AssessViewModel(client, selection);
-            var owner = new ResultsInTextViewModel(words, assess, _ => { }, _ => { },
+            var owner = new ResultsInTextViewModel(words, assess, _ => { },
                 new ChangesViewModel(client), client, client.ReaderOwner);
             var fixture = new SelectionModelFixture(client);
             await fixture.PublishAsync(new TextWordsResponse([], [new TextLines(Guid.NewGuid(), "Long Text",

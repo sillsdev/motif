@@ -77,11 +77,11 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
             {
                 window.Show();
                 PageScreenshots.Settle(window);
-                Assert.Equal(34, window.FindInWindowOrWorkspace<Border>("TopBar")!.Bounds.Height);
-                Assert.Equal(190, window.FindInWindowOrWorkspace<Border>("Sidebar")!.Bounds.Width);
+                Assert.Equal(56, window.FindInWindowOrWorkspace<Border>("TopBar")!.Bounds.Height);
+                Assert.Equal(176, window.FindInWindowOrWorkspace<Border>("Sidebar")!.Bounds.Width);
                 var status = window.FindInWindowOrWorkspace<Border>("StatusBar");
                 Assert.NotNull(status);
-                Assert.Equal(24, status.Bounds.Height);
+                Assert.Equal(28, status.Bounds.Height);
                 Assert.NotNull(window.FindInWindowOrWorkspace<Button>("StatusTechDemo"));
                 Assert.Contains(status.GetVisualDescendants().OfType<Button>(), button =>
                     AutomationProperties.GetName(button) == "Report a problem");
@@ -98,7 +98,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
     {
         avalonia.Invoke(() =>
         {
-            var host = new WorkspaceLayoutHost { Page = new Border(), ObjectInspector = new TextBlock { Text = "Object details" } };
+            var host = new WorkspaceLayoutHost { Page = new Border() };
             var window = new MotifTestWindow { Width = 1920, Height = 1080, Content = host };
             var side = new TextBlock { Text = "Texts" };
             var footer = new Button { Content = "Apply" };
@@ -106,13 +106,12 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
             {
                 window.Show();
                 host.UpdateViewport(1920);
-                host.SetObjectInspectorOpen(true);
                 host.SetPagePanels(new PaneProvider(side, footer));
                 PageScreenshots.Settle(window);
                 Assert.Equal(248, host.FindControl<Border>("SidePanelBorder")!.Bounds.Width);
                 var inspector = host.FindControl<Border>("InspectorPane")!;
                 Assert.Equal(360, inspector.Bounds.Width);
-                Assert.True(host.FindControl<ContentControl>("ObjectInspectorHost")!.IsVisible);
+                Assert.Null(host.FindControl<ContentControl>("ObjectInspectorHost"));
                 Assert.Same(footer, host.FindControl<ContentControl>("InspectorFooterHost")!.Content);
                 var hide = host.GetVisualDescendants().OfType<Button>().Single(button =>
                     AutomationProperties.GetName(button) == "Hide Inspector");
@@ -207,9 +206,8 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 PageScreenshots.Settle(window);
                 var host = window.FindInWindowOrWorkspace<WorkspaceLayoutHost>("WorkspaceLayout")!;
                 var side = host.FindControl<Border>("SidePanelBorder")!;
-                var selection = Assert.IsType<ContentControl>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
-                Assert.Equal("SelectionHost", selection.Name);
-                Assert.NotNull(selection.Content);
+                var selection = Assert.IsType<SelectionPanel>(host.FindControl<ContentControl>("SidePanelContent")!.Content);
+                Assert.Same(workspace.Selection, selection.Selection);
                 Assert.False(side.IsVisible);
                 var item = window.GetVisualDescendants().OfType<ListBoxItem>().Single(control =>
                     control.DataContext is PageViewModel { Page: WorkspacePage.Texts });
@@ -219,7 +217,7 @@ public sealed class HFrameTests(AvaloniaHeadlessFixture avalonia)
                 PageScreenshots.Settle(window);
                 Assert.True(side.IsVisible);
                 Assert.Equal(248, side.Bounds.Width);
-                workspace.CurrentPage = WorkspacePage.Overview;
+                workspace.CurrentPage = WorkspacePage.Progress;
                 Assert.Null(host.FindControl<ContentControl>("SidePanelContent")!.Content);
                 Assert.Null(selection.Parent);
             }

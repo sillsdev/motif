@@ -19,9 +19,9 @@
     { "id": "wait-for-first-run-button", "kind": "waitFor", "automationId": "motif-setup-finish", "condition": "enabled", "timeoutMs": 30000 },
     { "id": "start-first-run", "kind": "click", "automationId": "motif-setup-finish" },
     { "id": "wait-for-setup-close", "kind": "waitFor", "automationId": "motif-setup-finish", "condition": "hidden", "timeoutMs": 30000 },
-    { "id": "open-overview", "kind": "click", "automationId": "motif-page-overview" },
-    { "id": "wait-for-results", "kind": "waitFor", "automationId": "motif-overview-text-coverage", "condition": "assessmentPublished", "timeoutMs": 30000 },
-    { "id": "highlight-count", "kind": "highlight", "automationId": "motif-overview-selection-word-count" },
-    { "id": "parsed", "kind": "capture", "durationMs": 1600, "callouts": [ { "automationId": "motif-overview-selection-word-count" } ] }
+    { "id": "open-progress", "kind": "click", "automationId": "motif-page-progress" },
+    { "id": "wait-for-results", "kind": "waitFor", "automationId": "motif-progress-heading", "condition": "assessmentPublished", "timeoutMs": 30000 },
+    { "id": "highlight-count", "kind": "highlight", "automationId": "motif-progress-heading" },
+    { "id": "parsed", "kind": "capture", "durationMs": 1600, "callouts": [ { "automationId": "motif-progress-heading" } ] }
   ]
 }
