@@ -10,6 +10,8 @@ namespace SIL.Motif.Mcp;
 /// </summary>
 internal static class CommentsNotice
 {
+    internal static Action<string>? BeforeReadForTests;
+
     public static ToolOutcome Apply(ServerContext context, JsonObject args, ToolOutcome outcome)
     {
         if (outcome.Refusal is not null || outcome.Value is not JsonObject value ||
@@ -17,6 +19,7 @@ internal static class CommentsNotice
         var selector = Text(args, "proposal") ?? Text(args, "draft") ?? Text(value, "proposalId") ??
             Text(value, "proposal");
         if (selector is null) return outcome;
+        BeforeReadForTests?.Invoke(context.ProjectPath);
         if (ProposalTexts.CommentsChangedFor(context.ProjectPath, context.ProductVersion, selector) is not { } found)
             return outcome;
         value["commentsChanged"] = found.CommentsChanged;

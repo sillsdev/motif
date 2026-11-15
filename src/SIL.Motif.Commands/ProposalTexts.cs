@@ -9,10 +9,12 @@ using SIL.Motif.Commands.Store;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Projection.Store;
 using SIL.Motif.Projection;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Projects;
 using SIL.Motif.Worker.Store;
+using Microsoft.Data.Sqlite;
 
 namespace SIL.Motif.Commands;
 
@@ -72,23 +74,51 @@ public static class ProposalTexts
     public static NoteFinding? CommentsChangedFor(
         string fwDataPath, string productVersion, string selector)
     {
-        var outcome = ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
+        var absent = CommandOutcome<NoteFinding?>.Success(null);
+        var outcome = ProjectStoreCommand.ReadExisting(fwDataPath, absent, (connection, transaction, _) =>
         {
-            var repository = new ProposalRepository(database);
-            ProposalRecord record;
-            try
+            var proposalId = CanonicalId.TryParse(selector, out var id);
+            using var proposal = connection.CreateCommand();
+            proposal.Transaction = transaction;
+            proposal.CommandText = proposalId
+                ? "SELECT ProposalId, Rationale, RationaleUpdatedUtc FROM Proposals WHERE ProposalId = $selector;"
+                : "SELECT ProposalId, Rationale, RationaleUpdatedUtc FROM Proposals WHERE DraftName = $selector;";
+            proposal.Parameters.AddWithValue("$selector", proposalId ? id.Value : selector);
+            string selectedId;
+            string? rationale;
+            string? rationaleUpdatedUtc;
+            using (var reader = proposal.ExecuteReader())
             {
-                record = CanonicalId.TryParse(selector, out var id)
-                    ? repository.Get(id)
-                    : repository.DraftNameExists(selector) ? repository.GetDraft(selector)
-                    : throw new KeyNotFoundException(selector);
+                if (!reader.Read()) return CommandOutcome<NoteFinding?>.Success(null);
+                selectedId = reader.GetString(0);
+                rationale = reader.IsDBNull(1) ? null : reader.GetString(1);
+                rationaleUpdatedUtc = reader.IsDBNull(2) ? null : reader.GetString(2);
             }
-            catch (KeyNotFoundException)
+
+            var comments = new List<ManifestComment>();
+            using (var command = connection.CreateCommand())
             {
-                return CommandOutcome<NoteFinding?>.Success(null);
+                command.Transaction = transaction;
+                command.CommandText = "SELECT CommentId, Kind, AuthorLabel, PersonName, Text, IntentDigest, " +
+                    "CreatedUtc, EditedUtc FROM ProposalComments WHERE ProposalId = $id ORDER BY CommentId;";
+                command.Parameters.AddWithValue("$id", selectedId);
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                    comments.Add(new ManifestComment(reader.GetInt64(0), reader.GetString(1),
+                        reader.IsDBNull(2) ? null : reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                        reader.IsDBNull(5) ? null : reader.GetString(5), reader.GetString(6),
+                        reader.IsDBNull(7) ? null : reader.GetString(7)));
             }
-            return CommandOutcome<NoteFinding?>.Success(new NoteFinding(record.ProposalId.Value,
-                CommentsChanged(database, record)));
+
+            var manifest = new ManifestDocument
+            {
+                ProposalId = selectedId,
+                Rationale = rationale,
+                RationaleUpdatedUtc = rationaleUpdatedUtc,
+                Comments = comments,
+            };
+            return CommandOutcome<NoteFinding?>.Success(new NoteFinding(selectedId,
+                ProposalDetailProjectionBuilder.PersonCommentIsNewer(manifest)));
         });
         return outcome.Succeeded ? outcome.Value : null;
     }

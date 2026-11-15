@@ -1116,6 +1116,79 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     [Fact]
+    public async Task ProposalCommentsNoticeDoesNotRecreateAUseLeaseRemovedAfterTheToolRead()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "lease-notice"),
+            ("label", "Lease notice"), ("rationale", "Check the Comments notice read."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        var noted = ProposalComments.Add(new AddCommentRequest(project.FwDataPath,
+            MotifProductVersion.CurrentText, proposalId, "Please explain this change.", "John"));
+        Assert.True(noted.Succeeded, noted.Refusal?.Message);
+
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        var useLock = store + ".use.lock";
+        Assert.True(File.Exists(useLock));
+        File.Delete(useLock);
+        var files = CaptureStoreFiles(store);
+        var projectBytes = File.ReadAllBytes(project.FwDataPath);
+        var intercepted = false;
+        var prior = CommentsNotice.BeforeReadForTests;
+        CommentsNotice.BeforeReadForTests = path =>
+        {
+            if (!SamePath(project.FwDataPath, path)) return;
+            Assert.True(File.Exists(useLock));
+            File.Delete(useLock);
+            intercepted = true;
+        };
+        try
+        {
+            var response = await session.CallAsync("motif_proposals", ("proposal", proposalId));
+            Assert.True(response.GetProperty("ok").GetBoolean(), response.ToString());
+        }
+        finally
+        {
+            CommentsNotice.BeforeReadForTests = prior;
+        }
+
+        Assert.True(intercepted);
+        AssertStoreFilesUnchanged(store, files);
+        Assert.Equal(projectBytes, File.ReadAllBytes(project.FwDataPath));
+    }
+
+    [Fact]
+    public async Task ProposalCommentsNoticeIgnoresACorruptStoreAfterTheToolRead()
+    {
+        using var project = new WalkthroughProject(pristine);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var started = await session.CallAsync("motif_start_proposal", ("draft", "corrupt-notice"),
+            ("label", "Corrupt notice"), ("rationale", "Keep the tool result if the notice store is corrupt."));
+        var proposalId = started.GetProperty("result").GetProperty("proposalId").GetString()!;
+        var noted = ProposalComments.Add(new AddCommentRequest(project.FwDataPath,
+            MotifProductVersion.CurrentText, proposalId, "Please explain this change.", "John"));
+        Assert.True(noted.Succeeded, noted.Refusal?.Message);
+
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        var prior = CommentsNotice.BeforeReadForTests;
+        CommentsNotice.BeforeReadForTests = path =>
+        {
+            if (!SamePath(project.FwDataPath, path)) return;
+            File.WriteAllBytes(store, [0x4d, 0x4f, 0x54, 0x49, 0x46]);
+        };
+        try
+        {
+            var response = await session.CallAsync("motif_proposals", ("proposal", proposalId));
+            Assert.True(response.GetProperty("ok").GetBoolean(), response.ToString());
+            Assert.DoesNotContain("left a Comment", response.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            CommentsNotice.BeforeReadForTests = prior;
+        }
+    }
+
+    [Fact]
     public async Task AnAgentAddsAnAttributedCommentWhichDoesNotRaiseTheFlagAndCannotBeEditedOrDeletedByTool()
     {
         using var project = new WalkthroughProject(pristine);
@@ -2166,6 +2239,9 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     private static string HashProject(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+
+    private static bool SamePath(string left, string right) => string.Equals(Path.GetFullPath(left),
+        Path.GetFullPath(right), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     private static Dictionary<string, byte[]> CaptureStoreFiles(string store)
     {
