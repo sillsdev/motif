@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SIL.Motif.Contract.Query;
 using System.Text.Json.Nodes;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Requests;
@@ -59,8 +60,15 @@ public sealed class GrammarHealthSingleImportTests(PristineProjectFixture pristi
             var lightWs = QueryFactsReader.DefaultWritingSystem(combined.Facts.Path);
             var fullWs = QueryFactsReader.DefaultWritingSystem(full.Facts!.Path);
             Assert.Equal(fullWs, lightWs);
-            Assert.Equal(JsonSerializer.Serialize(QueryFactsReader.Read(full.Facts.Path, fullWs)),
-                JsonSerializer.Serialize(QueryFactsReader.Read(combined.Facts.Path, lightWs)));
+            var fullRows = QueryFactsReader.Read(full.Facts.Path, fullWs);
+            var lightRows = QueryFactsReader.Read(combined.Facts.Path, lightWs);
+            Assert.Equal(JsonSerializer.Serialize(fullRows with { Uses = null, Objects = null }),
+                JsonSerializer.Serialize(lightRows with { Uses = null, Objects = null }));
+            // A light file keeps only environment and natural-class statement references.
+            static IEnumerable<QueryRow> Kept(IReadOnlyList<QueryRow>? rows) =>
+                (rows ?? []).Where(row => row.Values[0][0] is "environment" or "natural-class");
+            Assert.Equal(JsonSerializer.Serialize(Kept(fullRows.Uses)), JsonSerializer.Serialize(Kept(lightRows.Uses)));
+            Assert.Equal(JsonSerializer.Serialize(Kept(fullRows.Objects)), JsonSerializer.Serialize(Kept(lightRows.Objects)));
             var snapshotBytes = File.ReadAllBytes(newSnapshot);
             var snapshot = PanGlossImportedSnapshot.Capture(cache.ProjectId.Path, newSnapshot) with { TransferOwnership = true };
             var words = new[] { SeededProject.FirstForm, "mofita" };

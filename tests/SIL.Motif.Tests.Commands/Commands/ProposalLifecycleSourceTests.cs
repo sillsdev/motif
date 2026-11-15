@@ -26,6 +26,8 @@ public sealed class ProposalLifecycleSourceTests
         ["SIL.Motif.Host/Parsimony/ParsimonyDispositionQuery.cs"] = "a Parsimony judgment state",
         ["SIL.Motif.Worker.Runtime/Store/HypothesisRepository.cs"] = "a hypothesis ledger status, not a Proposal's",
         ["SIL.Motif.Contract/Responses/ProjectStanding.cs"] = "a form's standing in the project, not a Proposal's",
+        ["SIL.Motif.Contract/Query/QuerySources.cs"] = "the applied-count column name of the objects query source",
+        ["SIL.Motif.Contract/Query/SavedQueries.cs"] = "the applied-count column of a saved objects query",
     };
 
     [Fact]
