@@ -182,6 +182,12 @@ public sealed class PendingChangeOccurrenceTests(PristineProjectFixture pristine
             "{}", now);
         var claims = new JobClaims(database);
         var claimed = claims.Claim(projectKey, "legacy-dry-run-test", now, TimeSpan.FromMinutes(5));
+        // Capture queues the Source index job ahead of this Dry Run; finish it so the claim reaches the Dry Run.
+        while (claimed is not null && claimed.JobId != oldDryRun.JobId)
+        {
+            Assert.True(claims.Finish(claimed.JobId, claimed.ClaimToken!, JobStatus.Completed, JobFailureCategory.None, "{}"));
+            claimed = claims.Claim(projectKey, "legacy-dry-run-test", now, TimeSpan.FromMinutes(5));
+        }
         Assert.NotNull(claimed);
         jobs.PublishDryRun(oldDryRun.JobId, "{}", claimed.Version);
         Assert.True(claims.Finish(oldDryRun.JobId, claimed.ClaimToken!, JobStatus.CompletedDryRunOnly,
