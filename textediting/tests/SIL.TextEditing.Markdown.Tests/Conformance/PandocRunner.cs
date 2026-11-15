@@ -14,6 +14,7 @@ namespace SIL.TextEditing.Markdown.Tests.Conformance
     {
         /// <summary>The format the profile is read with: every other Pandoc extension stays at its default (spec 6.4).</summary>
         public const string Format = "markdown-smart-implicit_figures-implicit_header_references-task_lists";
+        public const string MissingSkipReason = "pandoc 3.9.0.2 is missing from PATH. Install it from https://github.com/jgm/pandoc/releases/tag/3.9.0.2 and add its folder to PATH.";
 
         static string? _version;
         static bool _probed;
@@ -88,7 +89,7 @@ namespace SIL.TextEditing.Markdown.Tests.Conformance
     {
         public PandocTheoryAttribute()
         {
-            if (!PandocRunner.Available && !PandocRunner.InCi) Skip = "pandoc is not on the PATH (it is required in CI)";
+            if (!PandocRunner.Available && !PandocRunner.InCi) Skip = PandocRunner.MissingSkipReason;
         }
     }
 
@@ -97,7 +98,7 @@ namespace SIL.TextEditing.Markdown.Tests.Conformance
     {
         public PandocFactAttribute()
         {
-            if (!PandocRunner.Available && !PandocRunner.InCi) Skip = "pandoc is not on the PATH (it is required in CI)";
+            if (!PandocRunner.Available && !PandocRunner.InCi) Skip = PandocRunner.MissingSkipReason;
         }
     }
 }
