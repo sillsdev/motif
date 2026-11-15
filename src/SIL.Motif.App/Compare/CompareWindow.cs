@@ -294,7 +294,9 @@ public sealed partial class CompareWindow : Window
     {
         _summary.Text = _comparison.SummaryFor(_labels.OtherName);
         AutomationProperties.SetName(_summary, _comparison.SummaryFor(_labels.OtherName));
-        _waiting.Text = _comparison.Waiting is not { } waiting ? "" : IsSideBySide ? waiting + SideBySideWaiting : waiting;
+        _waiting.Text = _comparison.Waiting is not { } waiting ? "" : !IsSideBySide ? waiting
+            : _comparison.Undecided.Any(change => change.Kind == ChangeKind.ParagraphMoved)
+                ? string.Format(MotifAppStrings.CompareChooseParagraphOrderWaitingFormat, waiting) : waiting + SideBySideWaiting;
         _done.IsEnabled = _comparison.IsDecided;
         if (IsSideBySide) MarkRowsThatNeedAChoice();
         AutomationProperties.SetName(_textScroll, ReadableText);
@@ -305,7 +307,7 @@ public sealed partial class CompareWindow : Window
         var focusedId = (FocusManager?.GetFocusedElement() as Control)?.Tag is TextChange focused ? focused.Id : (int?)null;
         _text.Children.Clear();
         _marks.Clear();
-        foreach (var paragraph in _comparison.Sorted.Paragraphs) _text.Children.Add(ShowParagraph(paragraph));
+        foreach (var paragraph in _comparison.OrderedParagraphs()) _text.Children.Add(ShowParagraph(paragraph));
         RenderList();
         UpdateFooter();
         if (_selected is not null) Select(_comparison.Sorted.Changes[_selected.Id]);
@@ -313,6 +315,15 @@ public sealed partial class CompareWindow : Window
     }
 
     private Control ShowParagraph(SortedParagraph paragraph)
+    {
+        if (ShowResult || paragraph.Move is not { } move) return ShowParagraphContent(paragraph);
+        var moved = new StackPanel { Spacing = 2 };
+        moved.Children.Add(Mark(move));
+        moved.Children.Add(ShowParagraphContent(paragraph));
+        return moved;
+    }
+
+    private Control ShowParagraphContent(SortedParagraph paragraph)
     {
         if (_comparison.RewrittenAt(paragraph.Index) is { } rewritten)
         {
@@ -386,7 +397,22 @@ public sealed partial class CompareWindow : Window
         var choice = _comparison.ChoiceFor(change);
         var content = new StackPanel { Orientation = Orientation.Horizontal };
         var words = new TextBlock { TextWrapping = TextWrapping.Wrap };
-        if (change.Author == ChangeAuthor.Both)
+        if (!change.CanUseMine)
+        {
+            words.Inlines!.Add(new Run(ChangeWords.Describe(change, _writingSystemName, _labels.OtherName)));
+            content.Children.Add(words);
+            content.Children.Add(AuthorTag(_labels.OtherTag, FieldWorksBrush));
+        }
+        else if (change.Kind == ChangeKind.ParagraphMoved)
+        {
+            words.Inlines!.Add(new Run(ChangeWords.Describe(change, _writingSystemName, _labels.OtherName)));
+            content.Children.Add(words);
+            if (change.Author != ChangeAuthor.FieldWorks) content.Children.Add(AuthorTag(ChangeWords.MineTag, MineBrush));
+            if (change.Author != ChangeAuthor.Mine) content.Children.Add(AuthorTag(_labels.OtherTag, FieldWorksBrush));
+            if (change.Initial is { } initial && choice != initial)
+                content.Children.Add(new TextBlock { Text = MotifAppStrings.CompareChangeNotUsed, FontStyle = FontStyle.Italic, Foreground = Brushes.DimGray });
+        }
+        else if (change.Author == ChangeAuthor.Both)
         {
             words.Inlines!.Add(new Run(ChangeWords.BothChanged) { FontWeight = FontWeight.SemiBold });
             if (choice is { } chosen)
@@ -427,7 +453,7 @@ public sealed partial class CompareWindow : Window
             }
             content.Children.Add(words);
             content.Children.Add(AuthorTag(mine ? ChangeWords.MineTag : _labels.OtherTag, inUse ? brush : Brushes.Gray));
-            if (!inUse) content.Children.Add(new TextBlock { Text = "not used", FontStyle = FontStyle.Italic, Foreground = Brushes.DimGray, VerticalAlignment = VerticalAlignment.Center });
+            if (!inUse) content.Children.Add(new TextBlock { Text = MotifAppStrings.CompareChangeNotUsed, FontStyle = FontStyle.Italic, Foreground = Brushes.DimGray, VerticalAlignment = VerticalAlignment.Center });
         }
         var mark = new Button
         {
@@ -467,7 +493,7 @@ public sealed partial class CompareWindow : Window
         var buttons = new WrapPanel();
         foreach (var (label, choice) in Choices(change))
         {
-            var button = new Button { Content = label, Margin = new Thickness(0, 0, 6, 6), IsEnabled = choice != Choice.Both || change.CanUseBoth };
+            var button = new Button { Content = label, Margin = new Thickness(0, 0, 6, 6), IsEnabled = Offered(change, choice) };
             button.Click += (_, _) =>
             {
                 _comparison.Choose(change, choice);
@@ -499,10 +525,14 @@ public sealed partial class CompareWindow : Window
         return line;
     }
 
+    private static bool Offered(TextChange change, Choice choice) =>
+        (choice != Choice.Mine || change.CanUseMine) && (choice != Choice.Both || change.CanUseBoth);
+
     private IEnumerable<(string Label, Choice Choice)> Choices(TextChange change)
     {
-        yield return (ChangeWords.UseMine, Choice.Mine);
-        yield return (_labels.UseOther, Choice.FieldWorks);
+        var moved = change.Kind == ChangeKind.ParagraphMoved;
+        yield return (moved ? MotifAppStrings.CompareUseYourOrder : ChangeWords.UseMine, Choice.Mine);
+        yield return (moved ? string.Format(MotifAppStrings.CompareUseOtherOrderFormat, _labels.OtherName) : _labels.UseOther, Choice.FieldWorks);
         if (change.Author == ChangeAuthor.Both && !change.IsWholeParagraph && change.Kind != ChangeKind.ParagraphFormatting)
             yield return (ChangeWords.UseBoth, Choice.Both);
     }
@@ -534,7 +564,7 @@ public sealed partial class CompareWindow : Window
                 {
                     Content = label,
                     IsChecked = choice == option,
-                    IsEnabled = option != Choice.Both || change.CanUseBoth,
+                    IsEnabled = Offered(change, option),
                     Margin = new Thickness(0, 0, 4, 4),
                     Tag = change,
                 };

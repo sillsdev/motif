@@ -4967,4 +4967,14 @@ public static class MotifAppStrings
     public static string ChatGptKeyNotSaved => Text("MotifApp.ChatGptKeyNotSaved");
     public static string ChatGptInstructions => Text("MotifApp.ChatGptInstructions");
     public static string ChatGptKeyHelp => Text("MotifApp.ChatGptKeyHelp");
+    public static string CompareParagraphMovedMineFormat => Text("MotifApp.CompareParagraphMovedMineFormat");
+    public static string CompareParagraphMovedOtherFormat => Text("MotifApp.CompareParagraphMovedOtherFormat");
+    public static string CompareParagraphMovedBothFormat => Text("MotifApp.CompareParagraphMovedBothFormat");
+    public static string CompareChooseParagraphOrderWaitingFormat => Text("MotifApp.CompareChooseParagraphOrderWaitingFormat");
+    public static string CompareChangeNotUsed => Text("MotifApp.CompareChangeNotUsed");
+    public static string CompareParagraphOnePosition => Text("MotifApp.CompareParagraphOnePosition");
+    public static string CompareParagraphRemovedUnavailableFormat => Text("MotifApp.CompareParagraphRemovedUnavailableFormat");
+    public static string CompareUseYourOrder => Text("MotifApp.CompareUseYourOrder");
+    public static string CompareUseOtherOrderFormat => Text("MotifApp.CompareUseOtherOrderFormat");
+    public static string CompareParagraphRemovedUnavailableAccessibleFormat => Text("MotifApp.CompareParagraphRemovedUnavailableAccessibleFormat");
 }
