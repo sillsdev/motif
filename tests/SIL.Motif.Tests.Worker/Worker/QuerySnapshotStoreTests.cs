@@ -112,6 +112,9 @@ public sealed class QuerySnapshotStoreTests(ITestOutputHelper output)
             var result = OpenReadAndQuery(path);
             Assert.Equal(31000, result.SnapshotFormCount);
             Assert.Equal(31000, result.MatchCount);
+            output.WriteLine($"query_snapshot_read_sql_statements={result.ReadStatementCount}");
+            Assert.True(result.ReadStatementCount <= 3,
+                $"QuerySnapshotStore.Read used {result.ReadStatementCount} SQL statements; the budget is 3.");
         }
         finally { File.Delete(path); }
     }
@@ -158,18 +161,25 @@ public sealed class QuerySnapshotStoreTests(ITestOutputHelper output)
         write.Commit();
     }
 
-    private static (int SnapshotFormCount, int MatchCount) OpenReadAndQuery(string path)
+    private static (int SnapshotFormCount, int MatchCount, int ReadStatementCount) OpenReadAndQuery(string path)
     {
         QuerySnapshotStore.Stored snapshot;
+        int readStatementCount;
         using (var connection = new SqliteConnection($"Data Source={path};Mode=ReadOnly;Pooling=False"))
         {
             connection.Open();
             using var read = connection.BeginTransaction();
+            var readStatements = 0;
+            SQLitePCL.raw.sqlite3_trace(connection.Handle, (_, sql) =>
+            {
+                if (!sql.StartsWith("--", StringComparison.Ordinal)) readStatements++;
+            }, null);
             snapshot = QuerySnapshotStore.Read(connection, read, includeStems: false)!;
+            readStatementCount = readStatements;
         }
         var result = FormQuery.Run(new QueryRecord("forms", [new("change", "is", "d>r")], ["change.right"]),
             snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes);
-        return (snapshot.Snapshot.Forms.Count, Assert.Single(result.Groups).Count);
+        return (snapshot.Snapshot.Forms.Count, Assert.Single(result.Groups).Count, readStatementCount);
     }
 
 }

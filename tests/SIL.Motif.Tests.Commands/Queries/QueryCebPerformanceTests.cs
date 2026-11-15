@@ -15,6 +15,7 @@ public sealed class QueryCebPerformanceTests(ITestOutputHelper output)
     [Trait("Category", "SlowScale")]
     public void MeasureCommand()
     {
+        // This timing check is hand-run because its private CEB facts copy is supplied outside the repository.
         var root = Environment.GetEnvironmentVariable("MOTIF_QUERY_CEB_COPY")!;
         var path = Path.Combine(root, "sample.fwdata");
         File.WriteAllText(path, "sample");
