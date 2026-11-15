@@ -85,8 +85,7 @@ public sealed class SavedQueryEquivalenceTests(PristineProjectFixture pristine) 
             Entry(connection, G(entry), entry);
             Allomorph(connection, G(entry + 1000), G(entry), 0, "stem", form);
         }
-        // Where the saved query differs from the Measure: a form outside the project's writing system, an entry whose
-        // only variant link is unresolved, and an entry that is a variant of two bases.
+        // Divergences: another writing system, an unresolved variant link, a variant of two bases.
         WritingSystem(connection, "qab");
         Entry(connection, G(87), 87);
         Insert(connection, "INSERT INTO allomorph(guid, entry_guid, ordinal, morph_type, form_class, is_abstract) VALUES ($p0, $p1, 0, 'stem', 'stem', 0);", G(1087), G(87));
@@ -159,12 +158,11 @@ public sealed class SavedQueryEquivalenceTests(PristineProjectFixture pristine) 
                 g.Examples.Select(e => e.Entry).Distinct().Order(StringComparer.Ordinal).ToArray())).ToHashSet(StringComparer.Ordinal);
             string Group(params int[] entries) => ParsimonyFindingIdentity.NearDuplicateLexemesIdentity(
                 entries.Select(G).Order(StringComparer.Ordinal).ToArray());
-            // Pinned differences: the Measure reads each entry's first form in any writing system and sees an entry whose
-            // variant link is unresolved; the query reads the project's writing system and drops that entry.
+            // Pinned differences: see SavedQueries.
             Assert.Equal(near.Except(expected).Order(), new[] { Group(87, 88), Group(89, 90) }.Order());
             Assert.Empty(expected.Except(near));
             Assert.Equal(3, expected.Count);
-            // An entry that is a variant of two bases is two rows of the query, so its group counts three where the Measure counts two.
+            // A variant of two bases is two rows, so its group counts three.
             var boro = Group(91, 94);
             Assert.Contains(boro, near);
             Assert.Equal(3, nearGroups.Single(g => g.Examples.Any(e => e.Entry == G(94))).Count);

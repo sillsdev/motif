@@ -98,7 +98,7 @@ public static class FormsQueryCommand
 
     private static readonly string[] AllKinds = ["environment", "natural-class", "exception-feature", "category", "slot", "inflection-class"];
 
-    // The values of a column the selectors can still select, from its is, in and not selectors; other operators select all.
+    // Values the is, in and not selectors of a column leave selectable.
     private static HashSet<string> Selected(QueryRecord query, string column)
     {
         var selected = new HashSet<string>(AllKinds, StringComparer.Ordinal);
