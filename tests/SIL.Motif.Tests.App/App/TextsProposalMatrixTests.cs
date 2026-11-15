@@ -50,6 +50,7 @@ public sealed class TextsProposalMatrixTests
         fake.OnReadTrial((request, _) => Task.FromResult(CommandOutcome<TrialRecord?>.Success(
             TimingProposalViewTests.TrialFor(request.ProposalId, true) with { WordResults = reads.Trials(request.ProposalId) })));
         await context.OpenProjectAsync(ProjectPath);
+        await Wait.UntilAsync(() => !context.ViewMemory.IsPending);
         var evidence = new WorkspaceEvidence(TimingProposalViewTests.Assessment() with { Words = today ?? TodayWords },
             DateTimeOffset.UtcNow, false);
         context.Assess.Restore(evidence);
