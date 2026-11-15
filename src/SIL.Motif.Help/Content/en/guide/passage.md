@@ -12,6 +12,6 @@ The panel also holds **Ask Claude**, which asks about the word, and **Not a Word
 
 ## Keys
 
-Enter keeps the focused word's analysis. Shift+Enter keeps it at all the places like this one. Tab moves to the next gap, Space opens the word card and Escape closes it. [Keyboard Shortcuts](guide:keyboard-shortcuts) lists them all.
+Enter keeps the focused word's analysis. Shift+Enter keeps it at all the places like this one; when you have chosen a reading in the word panel, it keeps that reading at the focused word and the places ticked in the panel. Tab moves to the next gap, Space opens the word card and Escape closes it. [Keyboard Shortcuts](guide:keyboard-shortcuts) lists them all.
 
 ![A pending choice shown on its word card](shot:explained-word-card/unknown-staged)

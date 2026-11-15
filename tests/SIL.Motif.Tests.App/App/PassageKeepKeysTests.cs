@@ -104,6 +104,43 @@ public sealed class PassageKeepKeysTests
     }
 
     [Fact]
+    public void EnterAtAParserOnlyGuessStagesTheExactReadingIdentityTheComposerNeeds()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (workspace, window, inText, fake) = await OpenAsync();
+            try
+            {
+                var panel = AnalyzeTextsLayoutTests.Panel(window);
+                var chakula = Token(inText, "chakula");
+                var anchor = chakula.Occurrence!;
+                // The only parser reading the word offers is the one a keep must carry, with its position.
+                var parser = Assert.Single(chakula.Readings, reading => !reading.IsDisapproved && reading.Analysis is not null);
+                var cardTarget = chakula.CaptureActionTarget(null);
+                var expectedContext = cardTarget.ExpectedContext;
+                var assessmentId = cardTarget.AssessmentId;
+                Assert.NotNull(expectedContext);
+                Assert.False(string.IsNullOrEmpty(assessmentId));
+                Assert.True(AnalyzeTextsLayoutTests.StripOf(panel, "chakula").Focus());
+
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.None, null);
+                Assert.True(await Wait.ForAsync(() => Status(window) == Staged(1), Wait.Default,
+                    () => PageScreenshots.Settle(window)), $"status='{Status(window)}'");
+
+                var put = Assert.Single(fake.PendingPutRequests);
+                Assert.Equal(ChangeKinds.Approve, put.Change.Kind);
+                Assert.Equal(parser.Analysis, put.Change.Reading);
+                Assert.Equal(parser.Index, put.Change.ReadingIndex);
+                Assert.Equal(assessmentId, put.Change.AssessmentId);
+                Assert.Equal(anchor, put.Change.Occurrence);
+                Assert.Null(put.Change.StoredAnalysisId);
+                Assert.Equal(expectedContext, put.ExpectedContext);
+            }
+            finally { window.Close(); await workspace.DisposeAsync(); }
+        }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
     public void TabMovesToTheNextGapAndSkipsApprovedAndStagedWords()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

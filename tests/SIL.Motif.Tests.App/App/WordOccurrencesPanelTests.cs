@@ -1,4 +1,5 @@
 using Avalonia;
+using CommunityToolkit.Mvvm.Input;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -84,6 +85,67 @@ public sealed class WordOccurrencesPanelTests
 
     private static string AutomationProperties_Id(Control control) =>
         Avalonia.Automation.AutomationProperties.GetAutomationId(control) ?? string.Empty;
+
+    private sealed class RefusingActions : IWordOccurrenceActions
+    {
+        public Task<IReadOnlyList<OccurrenceAnchor>> StageKeepAsync(WordReadingOption reading,
+            IReadOnlyList<OccurrenceChoiceViewModel> places, CancellationToken token) =>
+            throw new InvalidOperationException("The reader refused.");
+
+        public Task<bool> StageNotAWordAsync(string form, CancellationToken token) => Task.FromResult(true);
+
+        public Task<string> AskAsync(string form, CancellationToken token) => Task.FromResult("asked");
+    }
+
+    private sealed class RefusingSource(int count) : IWordOccurrenceSource
+    {
+        private readonly Source _inner = new(count);
+        public bool Refuse { get; set; }
+        public int Count => _inner.Count;
+
+        public Task<IReadOnlyList<OccurrenceChoiceViewModel>> ReadPageAsync(int offset, int size, CancellationToken token) =>
+            Refuse ? throw new InvalidOperationException("The reader refused.") : _inner.ReadPageAsync(offset, size, token);
+    }
+
+    [Fact]
+    public void ARefusedKeepLeavesTheAppRunningAndShowsTheSentence()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var model = new WordOccurrencesViewModel("wa", [new WordReadingOption("a1", "one", true)], new Source(3),
+                new RefusingActions());
+            await model.LoadPageAsync(0);
+            model.CheckShownGaps();
+
+            // ExecuteAsync would surface any exception the command let out; none may.
+            await ((AsyncRelayCommand)model.ApproveCommand).ExecuteAsync(null);
+
+            Assert.Equal(MotifAppStrings.OccurrencesNotStaged, model.StatusSentence);
+            Assert.False(model.IsBusy);
+            Assert.Equal(3, model.SelectedCount);
+        }, TimeSpan.FromSeconds(45));
+    }
+
+    [Fact]
+    public void AReaderRefusalWhileReadingCheckedPlacesOrPagingShowsTheSentenceAndNeverEscapesTheCommand()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var source = new RefusingSource(30);
+            var model = new WordOccurrencesViewModel("wa", [new WordReadingOption("a1", "one", true)], source, new Actions());
+            await model.LoadPageAsync(0);
+            model.SetChecked(Anchor(25), true);
+            source.Refuse = true;
+
+            await ((AsyncRelayCommand)model.ApproveCommand).ExecuteAsync(null);
+            Assert.Equal(MotifAppStrings.OccurrencesNotStaged, model.StatusSentence);
+
+            model.StatusSentence = null;
+            await ((AsyncRelayCommand)model.NextPageCommand).ExecuteAsync(null);
+            Assert.Equal("The reader refused.", model.StatusSentence);
+            Assert.Equal(0, model.PageOffset);
+        }, TimeSpan.FromSeconds(45));
+    }
 
     [Fact]
     public void ClickingOneTickOffStagesTheOtherAnchorsThroughTheRenderedPanel()

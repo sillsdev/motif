@@ -126,6 +126,44 @@ public sealed class PassageKeepScopeTests
         }, TimeSpan.FromMinutes(2));
     }
 
+    [Fact]
+    public void ShiftEnterWithAPanelChoiceStagesThatReadingAtTheFocusedAndTickedPlacesOnly()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var store = Fixture((StoryId,
+            [
+                new Place("wa", "unapproved", AnalysisA),   // 0: focused, guess A
+                new Place("wa", "unapproved", AnalysisA),   // 1: shares the focused guess but is not ticked
+                new Place("wa", "unapproved", AnalysisB),   // 2: ticked in the panel
+                new Place("wa", "approved", AnalysisB),     // 3: ticked, but already approved
+                new Place("wa", "unapproved", AnalysisA),   // 4: ticked
+                new Place("wa", "unapproved", AnalysisB),   // 5: not ticked
+            ]));
+            var (inText, changes, client, models, _) = await OpenAsync(store, StoryId);
+            try
+            {
+                OccurrenceAnchor At(int offset) => AnchorOf(StoryId, 1, offset);
+                var focused = Assert.IsType<ResultsTokenViewModel>(await inText.ReadOccurrenceAsync(At(0)));
+                inText.SelectToken(focused);
+                var panel = Assert.IsType<WordOccurrencesViewModel>(inText.OccurrencePanel);
+                await panel.LoadPageAsync(0);
+                var b = CanonicalId.FromGuid(AnalysisB).Value;
+                panel.ChosenReading = panel.Readings.Single(reading => reading.Id == b);
+                foreach (var offset in new[] { 2, 3, 4 }) panel.SetChecked(At(offset), true);
+
+                var result = await inText.KeepAllLikeThisAsync(At(0), CancellationToken.None, focused);
+
+                Assert.True(result.Handled, result.Message);
+                // Reading B is what is staged, so it goes where the person focused and ticked, not to every guess A.
+                Assert.Equal([0, 2, 4], result.Staged.Select(anchor => anchor.Index).Order());
+                Assert.Equal([0, 2, 4], Approves(changes).Select(anchor => anchor.Index).Order());
+                Assert.All(client.PendingPutRequests, request => Assert.Equal(b, request.Change.StoredAnalysisId));
+            }
+            finally { await CloseAsync(inText, client, models, store); }
+        }, TimeSpan.FromMinutes(2));
+    }
+
     private enum PassageKeepResultKind { Handled, Refused }
 
     private static PassageKeepResultKind Kind(PassageKeepResult result) =>

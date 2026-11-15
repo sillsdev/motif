@@ -71,8 +71,8 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
         _source = source;
         _actions = actions;
         if (readings.Count == 1) _chosenReading = readings[0];
-        PreviousPageCommand = new AsyncRelayCommand(() => LoadPageAsync(Math.Max(0, PageOffset - PageSize)), () => HasPreviousPage && !IsBusy);
-        NextPageCommand = new AsyncRelayCommand(() => LoadPageAsync(PageOffset + PageSize), () => HasNextPage && !IsBusy);
+        PreviousPageCommand = new AsyncRelayCommand(() => ShowPageAsync(Math.Max(0, PageOffset - PageSize)), () => HasPreviousPage && !IsBusy);
+        NextPageCommand = new AsyncRelayCommand(() => ShowPageAsync(PageOffset + PageSize), () => HasNextPage && !IsBusy);
         CheckGapsCommand = new RelayCommand(CheckShownGaps);
         ApproveCommand = new AsyncRelayCommand(ApproveAsync, () => CanApprove);
         NotAWordCommand = new AsyncRelayCommand(NotAWordAsync, () => !IsBusy);
@@ -118,6 +118,9 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
     /// <summary>The places checked, across every page.</summary>
     public int SelectedCount => _checked.Count;
 
+    /// <summary>The anchors of the checked places, on any page.</summary>
+    public IReadOnlyCollection<OccurrenceAnchor> CheckedAnchors => _checked.ToArray();
+
     /// <summary>The places that were really staged by this panel.</summary>
     public IReadOnlyCollection<OccurrenceAnchor> StagedAnchors => _staged;
 
@@ -145,6 +148,15 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
 
     partial void OnChosenReadingChanged(WordReadingOption? value) => RefreshCommands();
     partial void OnIsBusyChanged(bool value) => RefreshCommands();
+
+    /// <summary>Loads a page for a command; a failure becomes the status sentence.</summary>
+    private async Task ShowPageAsync(int offset)
+    {
+        try { await LoadPageAsync(offset).ConfigureAwait(true); }
+        catch (OperationCanceledException) { }
+        catch (InvalidOperationException refusal) { StatusSentence = refusal.Message; }
+        catch (Exception) { StatusSentence = MotifAppStrings.OccurrencesNotStaged; }
+    }
 
     public async Task LoadPageAsync(int offset, CancellationToken cancellationToken = default)
     {
@@ -248,8 +260,8 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
         {
             // The written list is lost with the exception, so reload from the source, which reads what is staged.
             try { await LoadPageAsync(PageOffset).ConfigureAwait(true); } catch (Exception) { }
+            // A refusal or failure is a sentence, never an exception out of the command (it would reach the UI thread).
             StatusSentence = MotifAppStrings.OccurrencesNotStaged;
-            throw;
         }
         finally
         {

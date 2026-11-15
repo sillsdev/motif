@@ -46,7 +46,7 @@ public sealed partial class ResultsInTextViewModel
     private (KeepReading? Reading, string? Refusal) ChooseKeepReading(SelectionSourcePosition position,
         ResultsTokenViewModel? token)
     {
-        if (OccurrencePanel is { ChosenReading: { } chosen } && _panelTarget is { } target && _panelKey == position.Word)
+        if (PanelChoiceApplies(position) && OccurrencePanel is { ChosenReading: { } chosen } && _panelTarget is { } target)
             return (target.ParserReadings.TryGetValue(chosen.Id, out var parser)
                 ? new KeepReading(new WordActionReading(parser.Analysis, chosen.Label, parser.Index), null)
                 : new KeepReading(new WordActionReading(null, chosen.Label, null), chosen.Id), null);
@@ -66,6 +66,10 @@ public sealed partial class ResultsInTextViewModel
             _ => (null, MotifAppStrings.PassageSeveralReadingsStatus),
         };
     }
+
+    /// <summary>Whether a keep here stages the word panel's chosen reading.</summary>
+    private bool PanelChoiceApplies(SelectionSourcePosition position) =>
+        OccurrencePanel is { ChosenReading: not null } && _panelTarget is not null && _panelKey == position.Word;
 
     private static IReadOnlyList<ResultsReadingViewModel> ParserKeepReadings(ResultsTokenViewModel token)
     {
@@ -110,6 +114,13 @@ public sealed partial class ResultsInTextViewModel
         var (reading, refusal) = ChooseKeepReading(position, token ?? TokenAt(anchor));
         if (reading is not { } keep) return new PassageKeepResult(false, refusal, []);
         var places = EligibleLikeThis(position).ToArray();
+        if (PanelChoiceApplies(position) && OccurrencePanel is { } open)
+        {
+            // The panel's reading goes to the focused place and the ticked ones.
+            var ticked = open.CheckedAnchors.ToHashSet();
+            places = (_nativeSummary?.SourcePositions ?? []).Where(other => other.Word == position.Word &&
+                IsKeepGap(other) && (other.Location.Anchor == anchor || ticked.Contains(other.Location.Anchor))).ToArray();
+        }
         if (places.Length == 0)
             return new PassageKeepResult(true, MotifAppStrings.OccurrencesNothingToKeepStatus, []);
         return await StageKeepAsync(places, keep, cancellationToken).ConfigureAwait(true);
