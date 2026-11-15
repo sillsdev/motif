@@ -41,7 +41,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         {
             var all = RecordFixtures.All();
             var missing = new List<string>();
-            foreach (string id in RecordDiagnosticIds.All)
+            foreach (string id in RecordDiagnosticIds.All.Concat(new[] { MarkdownDiagnosticIds.WsUnknown, MarkdownDiagnosticIds.UnknownAttribute, "fwmd.env.unknown-class" }))
             {
                 bool positive = all.Any(c => c.IsRead && c.Findings.Any(f => f.Id == id));
                 bool negative = all.Any(c => c.IsRead && !c.Findings.Any(f => f.Id == id) && NegativeIds(c.Name).Contains(id));

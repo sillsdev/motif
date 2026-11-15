@@ -65,8 +65,7 @@ namespace SIL.TextEditing.Markdown.Records
             var result = new YamlParse();
             var parser = new Parser(new StringReader(text));
             var stack = new List<YamlFrameNode>();
-            int documents = 0;
-            int skipDepth = 0;
+            int documents = 0, depth = 0;
             long events = 0, limit = Limit(text.Length);
             int lastEnd = 0;
             try
@@ -84,7 +83,7 @@ namespace SIL.TextEditing.Markdown.Records
                             if (documents > 1) result.LaterDocuments.Add((int)start.Start.Index);
                             break;
                         case Scalar s:
-                            if (documents > 1 || skipDepth > 0) break;
+                            if (documents > 1) break;
                             Add(result, stack, new YamlFrameNode
                             {
                                 Kind = YamlFrameKind.Scalar, Start = (int)s.Start.Index, End = (int)s.End.Index, Value = s.Value, Style = s.Style,
@@ -92,19 +91,19 @@ namespace SIL.TextEditing.Markdown.Records
                             });
                             break;
                         case AnchorAlias a:
-                            if (documents > 1 || skipDepth > 0) break;
+                            if (documents > 1) break;
                             Add(result, stack, new YamlFrameNode { Kind = YamlFrameKind.Alias, Start = (int)a.Start.Index, End = (int)a.End.Index, Value = a.Value.Value });
                             break;
                         case MappingStart m:
                         case SequenceStart q:
                         {
-                            if (documents > 1) break;
-                            if (skipDepth > 0 || stack.Count >= MaxDepth)
+                            if (++depth > MaxDepth)
                             {
-                                if (skipDepth == 0) result.TooDeepAt = (int)e.Start.Index;
-                                skipDepth++;
-                                break;
+                                result.TooDeepAt = (int)e.Start.Index;
+                                foreach (var open in stack) open.End = Math.Max(open.End, (int)e.Start.Index);
+                                return result;
                             }
+                            if (documents > 1) break;
                             var node = new YamlFrameNode { Start = (int)e.Start.Index, End = (int)e.End.Index };
                             if (e is MappingStart ms)
                             {
@@ -127,8 +126,8 @@ namespace SIL.TextEditing.Markdown.Records
                         }
                         case MappingEnd _:
                         case SequenceEnd _:
+                            depth--;
                             if (documents > 1) break;
-                            if (skipDepth > 0) { skipDepth--; break; }
                             if (stack.Count > 0)
                             {
                                 var done = stack[stack.Count - 1];

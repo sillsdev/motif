@@ -38,6 +38,13 @@ namespace SIL.TextEditing.Markdown.Records
                     error = "A " + kind.Name + " record's path has " + kind.PathSegments + " segments; '" + root + "' has " + path.Segments.Count + ".";
                     return null;
                 }
+                string folder = kind.Name.Split('/')[0];
+                var first = path.Segments[0];
+                if (first.Name != folder || first.Homograph != null || first.GuidSuffix != null)
+                {
+                    error = "A " + kind.Name + " record's path starts with /" + folder + ".";
+                    return null;
+                }
                 var type = kind.Root;
                 int i = kind.PathSegments;
                 while (i < path.Segments.Count)

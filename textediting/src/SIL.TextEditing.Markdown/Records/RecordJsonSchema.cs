@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -14,13 +15,25 @@ namespace SIL.TextEditing.Markdown.Records
 
         public static string Write(RecordSchema schema)
         {
+            var names = new Dictionary<RecordField, string>();
+            var used = new HashSet<string>(schema.ObjectTypes.Select(t => t.Name), StringComparer.Ordinal);
+            foreach (var kind in schema.Kinds)
+            {
+                if (kind.BodyField == null || names.ContainsKey(kind.BodyField)) continue;
+                string basis = kind.Root.Name + "--frame", name = basis;
+                int suffix = 2;
+                while (!used.Add(name)) name = basis + "-" + (suffix++).ToString(CultureInfo.InvariantCulture);
+                names.Add(kind.BodyField, name);
+            }
+            string DefinitionName(RecordKind kind) => kind.BodyField == null ? kind.Root.Name : names[kind.BodyField];
+
             var root = new J.Obj()
                 .Add("$schema", "http://json-schema.org/draft-07/schema#")
                 .Add("$id", schema.Id)
                 .Add("title", "FieldWorks record file front matter")
                 .Add("type", "object");
             var props = new J.Obj()
-                .Add("fwmd", new J.Obj().Add("const", new J.Raw("1")))
+                .Add("fwmd", new J.Obj().Add("const", new J.Raw(MarkdownFrontMatter.CurrentVersion.ToString(CultureInfo.InvariantCulture))))
                 .Add("record", new J.Obj().Add("enum", new J.Arr(schema.Kinds.Select(k => (J.Node)new J.Str(k.Name)))))
                 .Add("schema", new J.Obj().Add("const", schema.Id))
                 .Add("root", new J.Obj().Add("type", "string"))
@@ -50,24 +63,24 @@ namespace SIL.TextEditing.Markdown.Records
                     .Add("if", new J.Obj().Add("properties", new J.Obj()
                         .Add("record", new J.Obj().Add("const", kind.Name))
                         .Add("root", new J.Obj().Add("pattern", "^(/[^/#]+){" + kind.PathSegments.ToString(CultureInfo.InvariantCulture) + "}$"))))
-                    .Add("then", new J.Obj().Add("properties", new J.Obj().Add("record-data", Ref(DefinitionName(kind.Root, kind.BodyField)))));
+                    .Add("then", new J.Obj().Add("properties", new J.Obj().Add("record-data", Ref(DefinitionName(kind)))));
                 all.Items.Add(whole);
             }
             if (all.Items.Count > 0) root.Add("allOf", all);
 
             var defs = new J.Obj();
             foreach (var type in schema.ObjectTypes) defs.Add(type.Name, ObjectType(type, null));
+            var written = new HashSet<string>(StringComparer.Ordinal);
             foreach (var kind in schema.Kinds)
             {
-                if (kind.BodyField != null) defs.Add(DefinitionName(kind.Root, kind.BodyField), ObjectType(kind.Root, kind.BodyField));
+                if (kind.BodyField != null && written.Add(DefinitionName(kind)))
+                    defs.Add(DefinitionName(kind), ObjectType(kind.Root, kind.BodyField));
             }
             root.Add("definitions", defs);
             var sb = new StringBuilder();
             root.Write(sb, 0);
             return sb.Append('\n').ToString();
         }
-
-        static string DefinitionName(RecordObjectType type, RecordField? body) => body == null ? type.Name : type.Name + "--frame";
 
         static J.Obj Ref(string definition) => new J.Obj().Add("$ref", "#/definitions/" + definition);
 
