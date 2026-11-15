@@ -46,6 +46,7 @@ public static class CommandCatalog
 
     private static CommandDescriptor[] HandWritten() => new[]
     {
+        new CommandDescriptor("query forms", typeof(FormsQueryRequest), typeof(FormsQueryResponse), CommandSurface.Released, AgentClass.Read),
         // ProposalCommands
         new CommandDescriptor("open", typeof(OpenRequest), typeof(ProjectSummaryProjection), CommandSurface.Released, AgentClass.Read),
         new CommandDescriptor("analyses", typeof(ManualAnalysesRequest), typeof(AnalysisAggregateProjection), CommandSurface.Released, AgentClass.Read),

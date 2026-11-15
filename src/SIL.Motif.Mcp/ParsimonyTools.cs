@@ -1,4 +1,7 @@
 using System.Text.Json.Nodes;
+using System.Text.Json;
+using SIL.Motif.Contract.Query;
+using SIL.Motif.Commands.Queries;
 using ModelContextProtocol.Protocol;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
@@ -16,6 +19,38 @@ internal static class ParsimonyTools
 
     internal static IReadOnlyList<AgentTool> All { get; } =
     [
+        new("motif_query", "Reads and groups forms from available Trial evidence.", AgentClass.Read,
+            Schema.Object(
+                ("from", Schema.String("Query source.", "forms"), true),
+                ("where", Schema.Array("ANDed selectors.", Schema.Object(
+                    ("col", Schema.String("Column name."), true),
+                    ("op", Schema.String("Selector operator.", "is", "in", "not", "~", "has", "<", ">"), true),
+                    ("value", Schema.String("Selector value."), true))), true),
+                ("group", Schema.StringArray("Columns to group by."), true),
+                ("minCount", Schema.Integer("Minimum group count.", 1, int.MaxValue), false),
+                ("examples", Schema.Integer("Maximum examples per group.", 0, 1000), false),
+                ("ids", Schema.Boolean("Include canonical ids."), false),
+                ("rawLetters", Schema.Boolean("Use characters instead of graphemes."), false),
+                ("trialId", Schema.String("Trial id; only the latest Trial has query rows."), false)),
+            true, true, false, true,
+            (c, a, ct) =>
+            {
+                try
+                {
+                    var input = a.Copy();
+                    input.Remove("project");
+                    var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                        { UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow };
+                    var record = JsonSerializer.Deserialize<QueryRecord>(input, options);
+                    if (record is null) throw new JsonException("A query is required.");
+                    return Task.FromResult(ToolOutcome.From(FormsQueryCommand.Run(
+                        new FormsQueryRequest(c.ProjectPath, c.ProductVersion, record), c.QueryCache)));
+                }
+                catch (JsonException error)
+                {
+                    throw new ToolArgumentException("tool.invalid-argument", error.Message);
+                }
+            }) { Requests = [typeof(FormsQueryRequest)], FieldNames = new Dictionary<string, string?> { ["Query"] = null } },
         new("motif_parsimony_measures",
             string.Empty,
             AgentClass.Read,

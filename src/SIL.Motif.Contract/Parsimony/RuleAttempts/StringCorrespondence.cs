@@ -64,4 +64,13 @@ public sealed record StringCorrespondence(string Removed, string Inserted, Corre
         }
         return builder.ToString();
     }
+
+    /// <summary>Abstracts an already segmented difference without changing its boundaries.</summary>
+    public static string AbstractChange(string removed, string inserted, string anchor, bool hyphen)
+    {
+        var a = removed.Normalize(NormalizationForm.FormC).ToLowerInvariant();
+        var b = inserted.Normalize(NormalizationForm.FormC).ToLowerInvariant();
+        if (hyphen && b.EndsWith('-')) b = b[..^1];
+        return $"{Abstract(a)}>{Abstract(b)}@{anchor}{(hyphen ? "+hyphen" : "")}";
+    }
 }

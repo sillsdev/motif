@@ -26,6 +26,7 @@ public static class MotifStoreUpgrade
         "PendingChangeFits", "PhonologyAssessmentBindings", "PhonologyAssessmentDependencies", "PhonologyAssessmentRows",
         "ProposalDifferenceBuckets", "ProposalDifferenceCases", "ProposalDifferenceOccurrences",
         "Reports", "RetainedInvocationMembers", "RetainedInvocations",
+        "query_snapshot", "query_forms", "query_stems",
         "ReviewReportCases", "ReviewReportMemberships", "ReviewReportEvents"
     };
 

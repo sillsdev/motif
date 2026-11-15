@@ -4,6 +4,7 @@
   "instructions": "This profile exposes experimental Parsimony evidence and Draft actions, including creating category-owned affix slots and alternative templates, editing existing slots, template order, inflectional affix membership, allomorph conditions and alternate-form order. It can disable one confirmed duplicate ad hoc prohibition, retire a duplicate affix alternate form, author a simple ordered sound rule, and create, edit or selectively relink natural classes. It does not provide Apply or human-confirmed negative writes; only a person can Apply a Proposal. A pending keep does not suppress findings; read the Active, Suppressed and history views to see the captured judgment state and evidence freshness.",
   "defaultDetail": "detailed",
   "tools": [
+    { "tool": "motif_query" },
     { "tool": "motif_parsimony_measures" },
     { "tool": "motif_run_parsimony_measure" },
     { "tool": "motif_parsimony_report" },

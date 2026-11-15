@@ -2507,5 +2507,10 @@
     "title": "List the hypotheses",
     "description": "Lists hypotheses in id order with their tests, Proposals, GDR link and graded numbers, or shows one by id.",
     "source": "Hand-written from command behavior."
+  },
+  "query forms": {
+    "title": "Query forms",
+    "description": "Filters and groups forms from available Trial evidence. Compare each form with its base and inspect the changes.",
+    "source": "Hand-written from the query contract."
   }
 }

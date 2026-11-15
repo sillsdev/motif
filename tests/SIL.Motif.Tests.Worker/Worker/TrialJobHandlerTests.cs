@@ -16,6 +16,7 @@ using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Contract.Parsing;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Review;
 using SIL.Motif.Host.Assess;
@@ -2050,6 +2051,28 @@ public sealed class TrialJobHandlerTests : IDisposable
         _ = RunAndFinish(handler, CreateTrialJob(proposalJson, createdUtc: "2026-08-29T00:05:00Z"));
 
         Assert.Single(CandidateJobs());
+    }
+
+    [Fact]
+    public void RepeatedTrialsKeepRetainedRowsWhenEvidenceEnqueueFailsOrIsSkipped()
+    {
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            QuerySnapshotStore.Replace(connection, transaction, new("earlier", "grammar", "retained", "ws",
+                new QueryFactsReader.Snapshot([new QueryForm("form", "a", "a", "lexeme", "e", "", "", [], [])], [], 0)));
+            transaction.Commit();
+        }
+        var (handler, _, proposalJson, lanes) = AutoParsimonyHandler((_, _) =>
+            throw new InvalidOperationException("follow-on failed"));
+        using var keepLanes = lanes;
+        Assert.Equal(JobStatus.Completed, RunAndFinish(handler, CreateTrialJob(proposalJson)).Status);
+        handler.AfterCommit = (_, _) => { };
+        Assert.Equal(JobStatus.Completed, RunAndFinish(handler,
+            CreateTrialJob(proposalJson, createdUtc: "2026-08-29T00:05:00Z")).Status);
+        using var readConnection = _database.OpenConnection();
+        using var read = readConnection.BeginTransaction();
+        Assert.Equal(("earlier", "retained"), QuerySnapshotStore.ReadIdentity(readConnection, read));
     }
 
     [Theory]

@@ -5,7 +5,9 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Contract.Phonology;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Jobs;
 using SIL.Motif.Worker.Store;
@@ -36,6 +38,30 @@ public sealed class DiscardTrialedDraftTests : IDisposable
         Assert.Throws<KeyNotFoundException>(() => new AssessmentRepository(fixture.Database).Get("draft-assessment"));
         Assert.Equal(0, Count(fixture, "SELECT COUNT(*) FROM ProposalDifferences;"));
         Assert.Equal(0, Count(fixture, "SELECT COUNT(*) FROM Proposals;"));
+    }
+
+    [Fact]
+    public void DiscardingAnOlderDraftPreventsItsPendingEvidenceFromReplacingNewerRows()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root);
+        Trialed(fixture, "older", "trial-a", "assessment-a");
+        Trialed(fixture, "newer", "trial-b", "assessment-b");
+        Sql(fixture, "UPDATE Jobs SET CreatedUtc='2026-09-24T10:00:00.0000000Z' WHERE JobId='trial-a';");
+        static QuerySnapshotStore.Stored Rows(string trial) => new(trial, "hash", trial + "-bundle", "ws",
+            new QueryFactsReader.Snapshot([new QueryForm(trial, trial, trial, "lexeme", "e", "", "", [], [])], [], 0));
+        using (var connection = fixture.Database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            QuerySnapshotStore.ReplaceIfNewer(connection, transaction, Rows("trial-b"));
+            transaction.Commit();
+        }
+        var discarded = Discard(fixture, "older");
+        Assert.True(discarded.Succeeded, discarded.Refusal?.Message);
+        Assert.Null(new JobRepository(fixture.Database).Get("trial-a"));
+        using var readConnection = fixture.Database.OpenConnection();
+        using var read = readConnection.BeginTransaction();
+        QuerySnapshotStore.ReplaceIfNewer(readConnection, read, Rows("trial-a"));
+        Assert.Equal("trial-b", QuerySnapshotStore.Read(readConnection, read)!.TrialId);
     }
 
     [Fact]

@@ -564,8 +564,12 @@ _Avoid_: gained words (unqualified), coverage gain
 **Measure**:
 One fixed Parsimony check registered in a Motif build, such as repeated ad hoc prohibitions or a reviewed
 negative that still parses. It names the axis it serves, the evidence it needs, and its Recipe; the
-`parsimony measures` command lists them. Not the verb "measure" for what an Assessment or a Trial does.
+`parsimony measures` command lists them. A Measure may be defined by a query record shipped in the build. Not the verb "measure" for what an Assessment or a Trial does.
 _Avoid_: rule, lint, check (alone), metric
+
+**Query**:
+One read-only run of the source → where → columns → group → score pipeline over the latest available Trial evidence.
+_Avoid_: view, search
 
 **Measure group**:
 One of the two sets the registered Measures fall into, chosen by what a Measure reads: the Grammar group or the Text

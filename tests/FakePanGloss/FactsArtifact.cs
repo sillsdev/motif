@@ -268,6 +268,8 @@ internal static class FactsArtifact
         Execute(connection, transaction, schema);
         InsertMetadata(connection, transaction, snapshot, context, sourceSha256, modelFingerprint,
             schemaVersion, compileStatus);
+        Execute(connection, transaction, "INSERT OR IGNORE INTO writing_system(tag) VALUES ('qaa');");
+        Execute(connection, transaction, "INSERT INTO project_writing_system VALUES ('vernacular',0,'qaa');");
         InsertSections(connection, transaction, sections);
         InsertSourceCensus(connection, transaction);
         InsertSyntheticInventoryFact(connection, transaction);

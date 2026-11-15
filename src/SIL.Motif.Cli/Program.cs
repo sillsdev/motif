@@ -31,6 +31,7 @@ using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Parsimony;
+using SIL.Motif.Contract.Query;
 using SIL.Motif.Contract.Phonology;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Review;
@@ -1903,6 +1904,57 @@ try
                     return Usage(UsageLineFor("current get") + " OR " + UsageLineFor("current set") + " OR " + UsageLineFor("current set --clear"), asJson);
             }
             break;
+
+        case "query":
+        {
+            if (positionals.Count != 1 || positionals[0] != "forms" ||
+                !flags.TryGetValue("project", out var queryProject)) return Usage(UsageLineFor("query forms"), asJson);
+            if (flags.Keys.Any(key => key is not ("project" or "where" or "group" or "min-count" or "examples" or
+                    "ids" or "raw-letters" or "json" or "trial"))) return Usage(UsageLineFor("query forms"), asJson);
+            var selectors = new List<QueryCondition>();
+            for (var i = 0; i < rest.Length; i++)
+                if (rest[i] == "--where")
+                {
+                    if (++i >= rest.Length || rest[i].StartsWith("--", StringComparison.Ordinal))
+                        return Usage(UsageLineFor("query forms"), asJson);
+                    try { selectors.Add(QueryConditionParser.Parse(rest[i])); }
+                    catch (ArgumentException) { return Usage(UsageLineFor("query forms"), asJson); }
+                }
+            if (!int.TryParse(flags.GetValueOrDefault("min-count", "1"), out var minCount) || minCount < 1 ||
+                !int.TryParse(flags.GetValueOrDefault("examples", "5"), out var examples) || examples is < 0 or > 1000)
+                return Usage(UsageLineFor("query forms"), asJson);
+            var groups = flags.TryGetValue("group", out var groupColumns)
+                ? groupColumns.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : [];
+            var record = new QueryRecord("forms", selectors, groups, minCount, examples, flags.ContainsKey("ids"),
+                flags.ContainsKey("raw-letters"), flags.GetValueOrDefault("trial"));
+            var queryOutcome = FormsQueryCommand.Run(new FormsQueryRequest(queryProject, CliProductVersion(), record));
+            if (asJson || !queryOutcome.Succeeded) result = RenderCommand(queryOutcome);
+            else
+            {
+                alreadyRendered = true;
+                var response = queryOutcome.Value!;
+                var lines = new List<string>();
+                if (response.IsStale && record.Ids) Console.Error.WriteLine("This evidence is stale: a newer Trial or project save exists.");
+                if (!record.Ids) lines.Add($"Trial {response.TrialId} | grammar {response.GrammarHash}");
+                if (response.IsStale && !record.Ids) lines.Add("This evidence is stale: a newer Trial or project save exists.");
+                if (record.Ids)
+                    lines.AddRange(response.Result.Ids);
+                else if (groups.Length == 0)
+                    lines.AddRange(response.Result.Rows.Select(row =>
+                        $"{row.Form}\t{row.Base}\t{row.Kind}\t{row.Id}\t{row.Entry}\t{row.MorphType}\t" +
+                        $"{row.VariantType}\t{string.Join(",", row.Environments)}\t{string.Join(",", row.Category)}"));
+                else
+                    foreach (var group in response.Result.Groups)
+                    {
+                        lines.Add($"{string.Join(", ", group.Key)}\t{group.Count}\t{new string('█', Math.Min(group.Count, 40))}" +
+                            (group.Tokens is { } tokens ? $"\ttokens={tokens}" : ""));
+                        foreach (var example in group.Examples) lines.Add($"  {example.Form}" +
+                            (example.Tokens is { } exampleTokens ? $"\t{exampleTokens}" : ""));
+                    }
+                result = new CommandResult(0, string.Join(Environment.NewLine, lines) + Environment.NewLine);
+            }
+            break;
+        }
 
         case "word-context":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var contextProject) ||

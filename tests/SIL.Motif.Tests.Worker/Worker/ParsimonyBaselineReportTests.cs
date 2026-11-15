@@ -128,7 +128,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         var bundle = new ParsimonyBundleRepository(_database).Get(result.RootElement.GetProperty("bundleId").GetString()!)!;
         const string entry = "50000000-0000-0000-0000-000000000001";
         ExecuteFactsSql(bundle.GrammarFactsPath,
-            "INSERT INTO writing_system(tag) VALUES ('qaa');",
+            "INSERT OR IGNORE INTO writing_system(tag) VALUES ('qaa');",
             $"INSERT INTO lex_entry(guid, source_ordinal, lexeme_morph_type) VALUES ('{entry}', 0, 'stem');",
             $"INSERT INTO allomorph(guid, entry_guid, ordinal, morph_type, form_class, is_abstract) VALUES ('50000000-0000-0000-0000-000000000002', '{entry}', 0, 'stem', 'stem', 0);",
             "INSERT INTO allomorph_form(allomorph_guid, ordinal, writing_system, form) VALUES ('50000000-0000-0000-0000-000000000002', 0, 'qaa', 'alpha');",
@@ -1786,7 +1786,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
 
         var statements = new List<string>
         {
-            "INSERT INTO writing_system(tag) VALUES ('qaa');",
+            "INSERT OR IGNORE INTO writing_system(tag) VALUES ('qaa');",
             $"INSERT INTO lex_entry(guid, source_ordinal, lexeme_morph_type) VALUES ('{DuplicateEntry}', 0, 'stem');",
         };
         for (var index = 0; index < allomorphs.Length; index++)
@@ -2464,7 +2464,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         const string droppedEnvironment = "10000000-0000-0000-0000-000000000022";
         const string unusedNaturalClass = "10000000-0000-0000-0000-000000000031";
         const string droppedNaturalClass = "10000000-0000-0000-0000-000000000032";
-        Execute("INSERT INTO writing_system(tag) VALUES ('qaa');");
+        Execute("INSERT OR IGNORE INTO writing_system(tag) VALUES ('qaa');");
         Execute("INSERT INTO lex_entry(guid, source_ordinal, lexeme_morph_type) VALUES ($guid, 0, 'stem');",
             ("$guid", entry));
         foreach (var (guid, ordinal, isAbstract) in new[]
@@ -5915,7 +5915,7 @@ public sealed class ParsimonyBaselineReportTests : IDisposable
         const string allomorphC2 = "80000000-0000-0000-0000-000000000005";
 
         Execute("UPDATE allomorph SET is_abstract=1 WHERE entry_guid=$entry;", ("$entry", entryA));
-        Execute("INSERT INTO project_writing_system(role, ordinal, writing_system_tag) " +
+        Execute("INSERT OR IGNORE INTO project_writing_system(role, ordinal, writing_system_tag) " +
                 "VALUES ('vernacular', 0, 'qaa');");
         foreach (var (guid, ordinal) in new[] { (entryB, 1), (entryC, 2) })
             Execute("INSERT INTO lex_entry(guid, source_ordinal, lexeme_morph_type) " +

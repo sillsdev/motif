@@ -167,6 +167,21 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 prepared.DryRun.EffectDigest, Path.Combine(afterWorking, "facts"), claim, stages, "candidate",
                 timer, cancellationToken).ConfigureAwait(false);
 
+            QuerySnapshotStore.Stored? querySnapshot = null;
+            if (dryRun.Kind == TrialJobHandler.TrialKind)
+            {
+                string? ws;
+                try { ws = QueryFactsReader.DefaultWritingSystem(candidateFacts.Path); }
+                catch (InvalidDataException) { ws = null; }
+                if (ws is not null)
+                {
+                    var rows = timer.Time("query-rows", "candidate", () => QueryFactsReader.Read(candidateFacts.Path, ws));
+                    var baseline = new BaselineRepository(_database).GetCurrentPublished(_projectKey);
+                    querySnapshot = new QuerySnapshotStore.Stored(dryRun.JobId, candidateFacts.ModelFingerprint,
+                        afterBundleId, ws, rows, baseline?.Token == source.Token ? baseline.SourceLastWriteUtc.UtcTicks : 0);
+                }
+            }
+
             var judgmentDigest = CombineJudgmentDigests(prepared.BaselineJudgments, prepared.CandidateJudgments);
             var candidateIdentity = ComputeCandidateIdentity(dryRunInput.Proposal, prepared.Prerequisites,
                 source.Token, prepared.DryRun.EffectDigest, AnchorDigest(prepared.PublishedAnchor),
@@ -237,7 +252,7 @@ public sealed class ParsimonyCandidateEvidenceBuilder
                 _artifacts.Publish(after.Bundle, after.Report, cancellationToken,
                     () => _publisher.BeforeStoreCommit(after.FinalDirectory),
                     () => _publisher.AfterStoreCommit(after.FinalDirectory), moreReports: after.MoreReports,
-                    frozenViews: after.FrozenViews);
+                    frozenViews: after.FrozenViews, querySnapshot: querySnapshot);
                 afterFinal = null;
             });
             _ = _retention.Clean(_projectKey);
