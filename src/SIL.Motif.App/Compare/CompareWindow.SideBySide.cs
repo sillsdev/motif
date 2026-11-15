@@ -92,9 +92,10 @@ public sealed partial class CompareWindow
         var lockedHeading = $"\U0001F512 {_labels.OtherName}, read-only" + (_savedAt is null ? "" : $" (saved {_savedAt})");
         AddRow(grid, 0, new TextBlock { Text = lockedHeading, FontWeight = FontWeight.Bold },
             new TextBlock(), new TextBlock { Text = "Yours, editable: this becomes the result", FontWeight = FontWeight.Bold });
-        foreach (var paragraph in _comparison.Sorted.Paragraphs)
+        var row = 0;
+        foreach (var paragraph in _comparison.OrderedParagraphs())
         {
-            var row = paragraph.Index + 1;
+            row++;
             var left = Left(paragraph);
             var right = RightField(paragraph.Index);
             var gutter = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(8, 0) };

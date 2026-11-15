@@ -37,6 +37,185 @@ public sealed class TextSortTests
         Assert.True(comparison.IsDecided);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void TokensWithIdenticalFormattingIgnoreRunSplitsEvenWhenTheStartIsUnknown(bool unknown, bool preserveSpelling)
+    {
+        var start = P("p1", R("abcd", props: Italic));
+        var versions = One(start, P("p1", R("a", props: Italic), R("bcd", props: Italic)), start);
+        if (unknown) versions = versions with { Starting = [new StartingParagraph("p1", "abcd", "Normal", null)] };
+
+        var comparison = new TextComparison(TextSort.Sort(versions, preserveSpelling: preserveSpelling));
+
+        Assert.Empty(comparison.Sorted.Changes);
+        Assert.Equal("abcd", Text(comparison));
+        Assert.True(comparison.IsDecided);
+        Assert.Single(Assert.Single(comparison.Result()).Runs);
+    }
+
+    [Fact]
+    public void TokensStillDistinguishWhereFormattingChangesWithinAWord()
+    {
+        var start = P("p1", R("a", props: Italic), R("bcd"));
+        var comparison = Compared(One(start, P("p1", R("ab", props: Italic), R("cd")), start));
+
+        Assert.Equal(ChangeKind.Formatting, Assert.Single(comparison.Sorted.Changes).Kind);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AParagraphMovedOnOneSideHasASwitchableMoveWithoutChangingItsWords(bool otherMoved)
+    {
+        ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c")];
+        ParagraphVersion[] moved = [start[2], start[0], start[1]];
+        var comparison = Compared(Paragraphs(start, otherMoved ? start : moved, otherMoved ? moved : start));
+
+        var change = Assert.Single(comparison.Sorted.Changes);
+        Assert.Contains("moved", change.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(otherMoved ? ChangeAuthor.FieldWorks : ChangeAuthor.Mine, change.Author);
+        Assert.Equal("c\na\nb", Text(comparison));
+        Assert.False(change.CanUseBoth);
+        Assert.False(comparison.Choose(change, Choice.Both));
+        comparison.Choose(change, otherMoved ? Choice.Mine : Choice.FieldWorks);
+        Assert.Equal("a\nb\nc", Text(comparison));
+        comparison.Choose(change, otherMoved ? Choice.FieldWorks : Choice.Mine);
+        Assert.Equal("c\na\nb", Text(comparison));
+        Assert.Equal(3, comparison.Result().Select(paragraph => paragraph.Key).Distinct().Count());
+    }
+
+    [Fact]
+    public void TheSameParagraphOrderOnBothSidesNeedsNoMoveChoice()
+    {
+        ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c")];
+        ParagraphVersion[] moved = [start[2], start[0], start[1]];
+        var comparison = Compared(Paragraphs(start, moved, moved));
+
+        Assert.Empty(comparison.Sorted.Changes);
+        Assert.Equal("c\na\nb", Text(comparison));
+    }
+
+    [Fact]
+    public void MovesAndWordingAreSeparateChoicesAndChoosingEitherSideForAllGivesItsOrder()
+    {
+        ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c"), P("p4", "d")];
+        var comparison = Compared(Paragraphs(start, [start[3], start[0], P("p2", "x"), start[2]],
+            [start[1], start[2], start[3], start[0]]));
+
+        Assert.Contains(comparison.Sorted.Changes, change => change.Description.Contains("moved", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("d\nx\nc\na", Text(comparison));
+        comparison.ChooseAll(Choice.Mine);
+        Assert.Equal("d\na\nx\nc", Text(comparison));
+        comparison.ChooseAll(Choice.FieldWorks);
+        Assert.Equal("b\nc\nd\na", Text(comparison));
+    }
+
+    [Fact]
+    public void EachSidesOrderCanBeChosenAcrossAllPermutationsOfFourParagraphs()
+    {
+        ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c"), P("p4", "d")];
+        var orders = (from a in start from b in start from c in start from d in start
+                      let order = new[] { a, b, c, d }
+                      where order.Distinct().Count() == start.Length
+                      select order).ToArray();
+        foreach (var mine in orders)
+        foreach (var other in orders)
+        {
+            var comparison = Compared(Paragraphs(start, mine, other));
+            Assert.Equal(start.Select(paragraph => paragraph.Key).Order(), comparison.Result().Select(paragraph => paragraph.Key).Order());
+            comparison.ChooseAll(Choice.Mine);
+            Assert.Equal(mine.Select(paragraph => paragraph.Key), comparison.Result().Select(paragraph => paragraph.Key));
+            comparison.ChooseAll(Choice.FieldWorks);
+            Assert.Equal(other.Select(paragraph => paragraph.Key), comparison.Result().Select(paragraph => paragraph.Key));
+            foreach (var change in comparison.Sorted.Changes)
+                comparison.Choose(change, change.Paragraph % 2 == 0 ? Choice.Mine : Choice.FieldWorks);
+            Assert.Equal(start.Select(paragraph => paragraph.Key).Order(), comparison.Result().Select(paragraph => paragraph.Key).Order());
+            Assert.Equal(start.Length, comparison.Result().Select(paragraph => paragraph.Key).Distinct().Count());
+        }
+    }
+
+    [Fact]
+    public void AParagraphMovedToDifferentPlacesByBothNeedsAPositionChoiceEvenAfterItsWordsAreRewritten()
+    {
+        ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c"), P("p4", "d"), P("p5", "e")];
+        var comparison = Compared(Paragraphs(start, [start[0], start[4], start[1], start[2], start[3]],
+            [start[0], start[1], start[4], start[2], start[3]]));
+
+        var move = Assert.Single(comparison.Sorted.Changes);
+        Assert.Equal(ChangeAuthor.Both, move.Author);
+        Assert.False(move.CanUseBoth);
+        Assert.False(comparison.IsDecided);
+        comparison.Rewrite(move.Paragraph, [P("p5", "x")]);
+        Assert.False(comparison.IsDecided);
+        comparison.Choose(move, Choice.FieldWorks);
+        Assert.True(comparison.IsDecided);
+        Assert.Equal("a\nb\nx\nc\nd", Text(comparison));
+        comparison.Choose(move, Choice.Mine);
+        Assert.Equal("a\nx\nb\nc\nd", Text(comparison));
+    }
+
+    [Fact]
+    public void IndependentMovesInFiveParagraphsCanBeSwitchedOneAtATime()
+    {
+        ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c"), P("p4", "d"), P("p5", "e")];
+        var comparison = Compared(Paragraphs(start, [start[3], start[0], start[1], start[2], start[4]],
+            [start[1], start[2], start[3], start[0], start[4]]));
+        var mine = comparison.Sorted.Changes.Single(change => change.Author == ChangeAuthor.Mine);
+        var other = comparison.Sorted.Changes.Single(change => change.Author == ChangeAuthor.FieldWorks);
+
+        Assert.Equal("d\nb\nc\na\ne", Text(comparison));
+        comparison.Choose(other, Choice.Mine);
+        Assert.Equal("d\na\nb\nc\ne", Text(comparison));
+        comparison.Choose(mine, Choice.FieldWorks);
+        Assert.Equal("a\nb\nc\nd\ne", Text(comparison));
+        comparison.Choose(other, Choice.FieldWorks);
+        Assert.Equal("b\nc\nd\na\ne", Text(comparison));
+        Assert.Equal(5, comparison.Result().Select(paragraph => paragraph.Key).Distinct().Count());
+    }
+
+    [Fact]
+    public void DuplicateKeysInThePersonsTextPreserveBothParagraphs()
+    {
+        var original = P("p1", "a");
+        var comparison = Compared(Paragraphs([original], [original, P("p1", "b")], [original]));
+
+        Assert.Equal("a\nb", Text(comparison));
+        Assert.Equal(["p1", null], comparison.Result().Select(paragraph => paragraph.Key));
+        Assert.Equal(ChangeKind.ParagraphAdded, Assert.Single(comparison.Sorted.Changes).Kind);
+    }
+
+    [Fact]
+    public void DuplicateFieldWorksKeysPreserveBothParagraphsWithOnlyOneMovePerKey()
+    {
+        ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c")];
+        var comparison = Compared(Paragraphs(start, [start[2], start[0], start[1]],
+            [start[0], start[1], start[2], P("p3", "x")]));
+
+        Assert.Single(comparison.Sorted.Changes, change => change.Kind == ChangeKind.ParagraphMoved);
+        Assert.Equal(4, comparison.Result().Count);
+        Assert.Equal(new[] { "a", "b", "c", "x" }, comparison.Result().Select(paragraph => paragraph.Text).Order());
+    }
+
+    [Fact]
+    public void EmptyParagraphsCanBeMovedAndRestoredAfterRemoval()
+    {
+        ParagraphVersion[] start = [P("p1", "a"), P("p2", ""), P("p3", "c")];
+        var comparison = Compared(Paragraphs(start, [start[1], start[0], start[2]], start));
+        var move = Assert.Single(comparison.Sorted.Changes);
+        Assert.Equal(ChangeKind.ParagraphMoved, move.Kind);
+        Assert.Equal(["p2", "p1", "p3"], comparison.Result().Select(paragraph => paragraph.Key));
+        comparison.Choose(move, Choice.FieldWorks);
+        Assert.Equal(["p1", "p2", "p3"], comparison.Result().Select(paragraph => paragraph.Key));
+        var removal = Compared(Paragraphs(start, start, [start[0], start[2]]));
+        var removed = Assert.Single(removal.Sorted.Changes);
+        Assert.Equal(ChangeKind.ParagraphRemoved, removed.Kind);
+        removal.Choose(removed, Choice.Mine);
+        Assert.Equal(["a", "", "c"], removal.Result().Select(paragraph => paragraph.Text));
+    }
+
     [Fact]
     public void AChangeMadeOnlyByThePersonIsTheirsAndIncluded()
     {
@@ -251,6 +430,19 @@ public sealed class TextSortTests
     }
 
     [Fact]
+    public void ARunSplitDoesNotTurnAnOtherwiseUntouchedRemovalIntoAChoiceBothMade()
+    {
+        var start = P("p1", R("abcd", props: Italic));
+        var comparison = Compared(Paragraphs([start], [P("p1", R("a", props: Italic), R("bcd", props: Italic))], []));
+
+        var removal = Assert.Single(comparison.Sorted.Changes);
+        Assert.Equal(ChangeAuthor.FieldWorks, removal.Author);
+        Assert.True(comparison.IsDecided);
+        comparison.Choose(removal, Choice.Mine);
+        Assert.Equal("abcd", Text(comparison));
+    }
+
+    [Fact]
     public void AParagraphRemovedInFieldWorksThatThePersonChangedNeedsAChoice()
     {
         var comparison = Compared(Paragraphs([P("p1", "one"), P("p2", "two")], [P("p1", "one"), P("p2", "two more")], [P("p1", "one")]));
@@ -395,6 +587,107 @@ public sealed class ComparedPayloadsTests
         Assert.Equal("kolo rupa", versions.Mine.Single(paragraph => paragraph.Key == "p2").Text);
         var comparison = new TextComparison(TextSort.Sort(versions));
         Assert.Equal(["tavu sipa", "kolo rupa"], comparison.Result().Select(paragraph => paragraph.Text));
+    }
+
+    [Fact]
+    public void AnUntouchedParagraphRemovedFromFieldWorksCanBeRestoredFromTheEditingSession()
+    {
+        var first = Live("p1", Run("a"));
+        var removed = Live("p2", Run("b", "Emphasis"));
+        var last = Live("p3", Run("c"));
+        var edit = new TextParagraphsPayload("CmPossibility.Discussion", ["p1", "p2", "p3"], [], [],
+            new Dictionary<string, TextParagraphExpected>());
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(edit, [first, last],
+            new[] { first, removed, last }.Select(TextVersions.Paragraph))));
+
+        var change = Assert.Single(comparison.Sorted.Changes);
+        Assert.Equal((ChangeAuthor.FieldWorks, ChangeKind.ParagraphRemoved), (change.Author, change.Kind));
+        Assert.Equal(["a", "c"], comparison.Result().Select(paragraph => paragraph.Text));
+        comparison.Choose(change, Choice.Mine);
+        Assert.Equal(["a", "b", "c"], comparison.Result().Select(paragraph => paragraph.Text));
+        Assert.Equal("Emphasis", comparison.Result()[1].Runs[0].CharacterStyle);
+        var payload = ComparedPayloads.Paragraphs("CmPossibility.Discussion", comparison.Result(), [first, last])!;
+        Assert.Equal(["p1", null, "p3"], payload.Order);
+        Assert.Equal("b", Assert.Single(payload.Changed).Runs[0].Text);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AMissingRememberedParagraphIsListedAsAnUnavailableRemovalRatherThanDropped(bool partialSession)
+    {
+        var first = Live("p1", Run("a"));
+        var edit = new TextParagraphsPayload("CmPossibility.Discussion", ["p1", "p2"], [], [],
+            new Dictionary<string, TextParagraphExpected>());
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(edit, [first],
+            partialSession ? [TextVersions.Paragraph(first)] : null)));
+
+        var removal = Assert.Single(comparison.Sorted.Changes);
+        Assert.Equal(ChangeKind.ParagraphRemoved, removal.Kind);
+        Assert.Contains("unavailable", removal.Description, StringComparison.OrdinalIgnoreCase);
+        Assert.False(comparison.Choose(removal, Choice.Mine));
+        comparison.ChooseAll(Choice.Mine);
+        Assert.Equal(["a"], comparison.Result().Select(paragraph => paragraph.Text));
+        Assert.Equal(Choice.FieldWorks, comparison.ChoiceFor(removal));
+        Assert.Null(ComparedPayloads.Paragraphs("CmPossibility.Discussion", comparison.Result(), [first]));
+    }
+
+    [Fact]
+    public void MovesAndARememberedFieldWorksRemovalAreIndependentChoicesInOneRecord()
+    {
+        var start = new[] { Live("p1", Run("a")), Live("p2", Run("")), Live("p3", Run("c")), Live("p4", Run("d")) };
+        var edit = new TextParagraphsPayload("CmPossibility.Discussion", ["p4", "p1", "p2", "p3"], [], [],
+            new Dictionary<string, TextParagraphExpected>());
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(edit, [start[0], start[2], start[3]],
+            start.Select(TextVersions.Paragraph))));
+        var move = comparison.Sorted.Changes.Single(change => change.Kind == ChangeKind.ParagraphMoved);
+        var removal = comparison.Sorted.Changes.Single(change => change.Kind == ChangeKind.ParagraphRemoved);
+
+        Assert.Equal(["p4", "p1", "p3"], comparison.Result().Select(paragraph => paragraph.Key));
+        comparison.Choose(removal, Choice.Mine);
+        Assert.Equal(["p4", "p1", "p2", "p3"], comparison.Result().Select(paragraph => paragraph.Key));
+        comparison.Choose(move, Choice.FieldWorks);
+        Assert.Equal(["p1", "p2", "p3", "p4"], comparison.Result().Select(paragraph => paragraph.Key));
+        Assert.Equal(4, comparison.Result().Select(paragraph => paragraph.Key).Distinct().Count());
+        Assert.Equal("", comparison.Result()[1].Text);
+    }
+
+    [Fact]
+    public void WithoutRememberedOrderADifferentParagraphOrderRequiresAChoice()
+    {
+        var live = new[] { Live("p1", Run("a")), Live("p2", Run("b")), Live("p3", Run("c")) };
+        var edit = new TextParagraphsPayload("CmPossibility.Discussion", ["p3", "p1", "p2"], [], [],
+            new Dictionary<string, TextParagraphExpected>());
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(edit, live)));
+
+        var move = Assert.Single(comparison.Undecided);
+        Assert.Equal(ChangeKind.ParagraphMoved, move.Kind);
+        Assert.Equal(ChangeAuthor.Both, move.Author);
+        Assert.Equal(["p3", "p1", "p2"], comparison.Result().Select(paragraph => paragraph.Key));
+        comparison.Choose(move, Choice.FieldWorks);
+        Assert.Equal(["p1", "p2", "p3"], comparison.Result().Select(paragraph => paragraph.Key));
+    }
+
+    [Fact]
+    public void AKeyedMoveUsesTheRememberedOrderAndCanBeRestagedInTheChosenOrder()
+    {
+        var first = Live("p1", Run("a"));
+        var middle = Live("p2", Run("b"));
+        var last = Live("p3", Run("c"));
+        GdrParagraph[] live = [first, middle, last];
+        var edit = new TextParagraphsPayload("CmPossibility.Discussion", ["p3", "p1", "p2"], [], [],
+            new Dictionary<string, TextParagraphExpected>());
+        var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(edit, live,
+            live.Select(TextVersions.Paragraph))));
+
+        var move = Assert.Single(comparison.Sorted.Changes);
+        Assert.Equal(ChangeKind.ParagraphMoved, move.Kind);
+        Assert.Equal(["c", "a", "b"], comparison.Result().Select(paragraph => paragraph.Text));
+        var payload = ComparedPayloads.Paragraphs("CmPossibility.Discussion", comparison.Result(), live)!;
+        Assert.Equal(["p3", null, null], payload.Order);
+        Assert.Equal(["a", "b"], payload.Changed.Select(change => change.Runs[0].Text));
+        comparison.Choose(move, Choice.FieldWorks);
+        Assert.Null(ComparedPayloads.Paragraphs("CmPossibility.Discussion", comparison.Result(), live));
     }
 
     [Fact]
