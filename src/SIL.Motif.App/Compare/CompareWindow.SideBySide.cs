@@ -14,7 +14,6 @@ namespace SIL.Motif.App.Compare;
 public sealed partial class CompareWindow
 {
     private const double SideBySideWidth = 1600;
-    private const string SideBySideWaiting = ": type on the right, use Use this →, or go back to choose";
     private readonly Dictionary<int, RichTextField> _right = [];
     private readonly Dictionary<int, Control> _left = [];
     private readonly Dictionary<int, Stack<IReadOnlyList<ParagraphVersion>?>> _undo = [];
@@ -89,17 +88,18 @@ public sealed partial class CompareWindow
     private Control BuildSideBySide()
     {
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,*"), Margin = new Thickness(4) };
-        var lockedHeading = "\U0001F512 FieldWorks, read-only" + (_savedAt is null ? "" : $" (saved {_savedAt})");
+        var lockedHeading = $"\U0001F512 {_labels.OtherName}, read-only" + (_savedAt is null ? "" : $" (saved {_savedAt})");
         AddRow(grid, 0, new TextBlock { Text = lockedHeading, FontWeight = FontWeight.Bold },
             new TextBlock(), new TextBlock { Text = "Yours, editable: this becomes the result", FontWeight = FontWeight.Bold });
-        foreach (var paragraph in _comparison.Sorted.Paragraphs)
+        var row = 0;
+        foreach (var paragraph in _comparison.OrderedParagraphs())
         {
-            var row = paragraph.Index + 1;
+            row++;
             var left = Left(paragraph);
             var right = RightField(paragraph.Index);
             var gutter = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(8, 0) };
             var useThis = new Button { Content = ChangeWords.UseThis, Tag = paragraph.Index };
-            AutomationProperties.SetName(useThis, $"Use the FieldWorks version of paragraph {paragraph.Index + 1}");
+            AutomationProperties.SetName(useThis, $"Use the {_labels.OtherName} version of paragraph {paragraph.Index + 1}");
             useThis.Click += (_, _) => UseThis(paragraph.Index);
             var undo = new Button { Content = "Undo", Tag = paragraph.Index, IsVisible = false };
             undo.Click += (_, _) => UndoUseThis(paragraph.Index);
@@ -124,7 +124,7 @@ public sealed partial class CompareWindow
         top.Children.Add(new TextBlock { Text = Title, FontWeight = FontWeight.Bold, FontSize = 16 });
         top.Children.Add(new TextBlock
         {
-            Text = "The right side becomes the result. Use this → copies a FieldWorks paragraph across; anything typed on the right counts as yours.",
+            Text = $"The right side becomes the result. Use this → copies a paragraph from {_labels.OtherName} across; anything typed on the right counts as yours.",
             TextWrapping = TextWrapping.Wrap,
         });
         top.Children.Add(back);
@@ -151,13 +151,13 @@ public sealed partial class CompareWindow
     {
         if (paragraph.FieldWorks is not { } version)
         {
-            var gap = new TextBlock { Text = "Not in FieldWorks", FontStyle = FontStyle.Italic, Foreground = Brushes.DimGray, Focusable = true, Tag = paragraph.Index };
-            AutomationProperties.SetName(gap, $"FieldWorks, read-only, paragraph {paragraph.Index + 1}: not in FieldWorks");
+            var gap = new TextBlock { Text = $"Not in {_labels.OtherName}", FontStyle = FontStyle.Italic, Foreground = Brushes.DimGray, Focusable = true, Tag = paragraph.Index };
+            AutomationProperties.SetName(gap, $"{_labels.OtherName}, read-only, paragraph {paragraph.Index + 1}: not in {_labels.OtherName}");
             return gap;
         }
         var block = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, FlowDirection = Direction(version), Tag = paragraph.Index };
         foreach (var run in version.Runs) block.Inlines!.Add(Styled(run));
-        AutomationProperties.SetName(block, $"FieldWorks, read-only, paragraph {paragraph.Index + 1}");
+        AutomationProperties.SetName(block, $"{_labels.OtherName}, read-only, paragraph {paragraph.Index + 1}");
         return block;
     }
 

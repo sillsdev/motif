@@ -924,6 +924,21 @@ public static class MotifAppStrings
     /// <summary>The button that makes the Rationale editable.</summary>
     public static string RationaleEdit => Text("MotifApp.RationaleEdit");
 
+    /// <summary>Opens a comparison with the Rationale changed elsewhere.</summary>
+    public static string RationaleCompare => Text("MotifApp.RationaleCompare");
+
+    /// <summary>Explains how the comparison is shown and when its result is saved.</summary>
+    public static string RationaleCompareExplanation => Text("MotifApp.RationaleCompareExplanation");
+
+    /// <summary>Explains how to keep the text when the current Rationale cannot be identified for comparison.</summary>
+    public static string RationaleCompareReload => Text("MotifApp.RationaleCompareReload");
+
+    /// <summary>Instructions appended when a side-by-side comparison still needs a choice.</summary>
+    public static string SideBySideWaiting => Text("MotifApp.SideBySideWaiting");
+
+    /// <summary>Names a local unsaved edit kept for Restore when starting again from another Rationale.</summary>
+    public static string RationaleUnsavedRestoreFormat => Text("MotifApp.RationaleUnsavedRestoreFormat");
+
     /// <summary>Says the Rationale changed elsewhere during the edit.</summary>
     public static string RationaleChangedElsewhere => Text("MotifApp.RationaleChangedElsewhere");
 
@@ -4955,4 +4970,14 @@ public static class MotifAppStrings
     public static string ChatGptKeyNotSaved => Text("MotifApp.ChatGptKeyNotSaved");
     public static string ChatGptInstructions => Text("MotifApp.ChatGptInstructions");
     public static string ChatGptKeyHelp => Text("MotifApp.ChatGptKeyHelp");
+    public static string CompareParagraphMovedMineFormat => Text("MotifApp.CompareParagraphMovedMineFormat");
+    public static string CompareParagraphMovedOtherFormat => Text("MotifApp.CompareParagraphMovedOtherFormat");
+    public static string CompareParagraphMovedBothFormat => Text("MotifApp.CompareParagraphMovedBothFormat");
+    public static string CompareChooseParagraphOrderWaitingFormat => Text("MotifApp.CompareChooseParagraphOrderWaitingFormat");
+    public static string CompareChangeNotUsed => Text("MotifApp.CompareChangeNotUsed");
+    public static string CompareParagraphOnePosition => Text("MotifApp.CompareParagraphOnePosition");
+    public static string CompareParagraphRemovedUnavailableFormat => Text("MotifApp.CompareParagraphRemovedUnavailableFormat");
+    public static string CompareUseYourOrder => Text("MotifApp.CompareUseYourOrder");
+    public static string CompareUseOtherOrderFormat => Text("MotifApp.CompareUseOtherOrderFormat");
+    public static string CompareParagraphRemovedUnavailableAccessibleFormat => Text("MotifApp.CompareParagraphRemovedUnavailableAccessibleFormat");
 }

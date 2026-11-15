@@ -16,8 +16,8 @@ public enum TokenKind
 
 /// <summary>
 /// One unit the sort compares: a word (a run of grapheme clusters that form words), a stretch of white space, one
-/// other cluster or one embedded object, with the pieces of runs that make it up. Text is NFD, so a change of
-/// normalisation alone is no difference, and a base character is never parted from its combining marks.
+/// other cluster or one embedded object, with the pieces of runs that make it up. Text is NFD unless compared as
+/// written; a base character is never parted from its combining marks.
 /// </summary>
 public sealed class Token
 {
@@ -31,7 +31,7 @@ public sealed class Token
         FormatWithoutWritingSystem = string.Join("|", pieces.Select(piece => Tokens.FormatOf(piece with { Ws = "" }) + "#" + piece.Text.Length));
     }
 
-    /// <summary>The token's text, NFD.</summary>
+    /// <summary>The token's text, NFD unless its written spelling is being preserved.</summary>
     public string Text { get; }
 
     /// <summary>What the token is.</summary>
@@ -55,12 +55,11 @@ public static class Tokens
 {
     private const char ObjectCharacter = '￼';
 
-    /// <summary>The tokens of <paramref name="runs"/>, in order.</summary>
-    public static IReadOnlyList<Token> Of(IReadOnlyList<TextRun> runs)
+    /// <summary>The tokens of <paramref name="runs"/>, in order; preserve written spelling for source such as Markdown URLs.</summary>
+    public static IReadOnlyList<Token> Of(IReadOnlyList<TextRun> runs, bool preserveSpelling = false)
     {
-        var normalised = runs.Select(run => run with { Text = run.Text.Normalize(NormalizationForm.FormD) })
-            .Where(run => run.Text.Length > 0).ToArray();
-        var text = string.Concat(normalised.Select(run => run.Text));
+        var prepared = Join(runs.Select(run => preserveSpelling ? run : run with { Text = run.Text.Normalize(NormalizationForm.FormD) }));
+        var text = string.Concat(prepared.Select(run => run.Text));
         var starts = GraphemeClusters.Starts(text);
         var tokens = new List<Token>();
         var index = 0;
@@ -72,7 +71,7 @@ public static class Tokens
                 while (end < starts.Count && KindAt(text, starts[end]) == kind) end++;
             var from = starts[index];
             var to = end < starts.Count ? starts[end] : text.Length;
-            tokens.Add(new Token(text[from..to], kind, Slice(normalised, from, to)));
+            tokens.Add(new Token(text[from..to], kind, Slice(prepared, from, to)));
             index = end;
         }
         return tokens;

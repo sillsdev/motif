@@ -37,36 +37,48 @@ public static class ChangeWords
     /// What <paramref name="change"/> is, in a sentence without a full stop. <paramref name="writingSystemName"/> names a
     /// writing system by its tag; without it the tag is said.
     /// </summary>
-    public static string Describe(TextChange change, Func<string, string>? writingSystemName = null)
+    public static string Describe(TextChange change, Func<string, string>? writingSystemName = null, string otherName = "FieldWorks")
     {
         ArgumentNullException.ThrowIfNull(change);
         var who = change.Author switch
         {
             ChangeAuthor.Mine => "You",
-            ChangeAuthor.FieldWorks => "FieldWorks",
+            ChangeAuthor.FieldWorks => otherName,
             _ => BothChanged,
         };
+        if (!change.CanUseMine)
+            return string.Format(MotifAppStrings.CompareParagraphRemovedUnavailableFormat, otherName);
+        if (change.Kind == ChangeKind.ParagraphMoved)
+        {
+            var format = change.Author switch
+            {
+                ChangeAuthor.Mine => MotifAppStrings.CompareParagraphMovedMineFormat,
+                ChangeAuthor.FieldWorks => MotifAppStrings.CompareParagraphMovedOtherFormat,
+                _ => MotifAppStrings.CompareParagraphMovedBothFormat,
+            };
+            return string.Format(format, change.MinePosition + 1, otherName, change.FieldWorksPosition + 1);
+        }
         if (change.Author == ChangeAuthor.Both)
             return change.Kind switch
             {
                 ChangeKind.Rewritten => RewrittenInBoth,
                 ChangeKind.ParagraphRemoved => change.Mine.Count == 0
-                    ? "Removed by you, changed in FieldWorks"
-                    : "Changed by you, removed in FieldWorks",
+                    ? $"Removed by you, changed in {otherName}"
+                    : $"Changed by you, removed in {otherName}",
                 ChangeKind.ParagraphFormatting => $"{BothChanged}: the paragraph's style",
-                _ => $"{BothChanged}. Yours ‘{Text(change.Mine)}’, FieldWorks ‘{Text(change.FieldWorks)}’",
+                _ => $"{BothChanged}. Yours ‘{Text(change.Mine)}’, {otherName} ‘{Text(change.FieldWorks)}’",
             };
         var mine = change.Author == ChangeAuthor.Mine;
         var after = mine ? change.Mine : change.FieldWorks;
         var before = change.Starting;
         return change.Kind switch
         {
-            ChangeKind.ParagraphAdded => mine ? "Paragraph added by you" : "Paragraph added in FieldWorks",
-            ChangeKind.ParagraphRemoved => mine ? "Paragraph removed by you" : "Paragraph removed in FieldWorks",
-            ChangeKind.ParagraphFormatting => $"Formatting only: paragraph style changed {(mine ? "by you" : "in FieldWorks")}",
+            ChangeKind.ParagraphAdded => mine ? "Paragraph added by you" : $"Paragraph added in {otherName}",
+            ChangeKind.ParagraphRemoved => mine ? "Paragraph removed by you" : $"Paragraph removed in {otherName}",
+            ChangeKind.ParagraphFormatting => $"Formatting only: paragraph style changed {(mine ? "by you" : $"in {otherName}")}",
             ChangeKind.WritingSystem => $"Writing system changed: ‘{Text(after)}’ from {WritingSystems(before, writingSystemName)} to {WritingSystems(after, writingSystemName)}" +
-                (mine ? " by you" : " in FieldWorks"),
-            ChangeKind.Formatting => $"Formatting only: ‘{Text(after)}’ {Formatting(before, after)} {(mine ? "by you" : "in FieldWorks")}",
+                (mine ? " by you" : $" in {otherName}"),
+            ChangeKind.Formatting => $"Formatting only: ‘{Text(after)}’ {Formatting(before, after)} {(mine ? "by you" : $"in {otherName}")}",
             _ when before.Count == 0 => $"{who} added ‘{Text(after)}’",
             _ when after.Count == 0 => $"{who} removed ‘{Text(before)}’",
             _ => $"{who} changed ‘{Text(before)}’ to ‘{Text(after)}’",
@@ -76,20 +88,22 @@ public static class ChangeWords
     /// <summary>
     /// What a screen reader says on a change: what it is, where, and which version is in use, then the key that switches it.
     /// </summary>
-    public static string Announce(TextChange change, Choice? choice, Func<string, string>? writingSystemName = null)
+    public static string Announce(TextChange change, Choice? choice, Func<string, string>? writingSystemName = null, string otherName = "FieldWorks")
     {
         ArgumentNullException.ThrowIfNull(change);
+        if (!change.CanUseMine)
+            return string.Format(MotifAppStrings.CompareParagraphRemovedUnavailableAccessibleFormat, otherName, change.Location);
         if (change.Author == ChangeAuthor.Both)
-            return $"{Describe(change, writingSystemName)}, {change.Location}. " + choice switch
+            return $"{Describe(change, writingSystemName, otherName)}, {change.Location}. " + choice switch
             {
                 Choice.Mine => "Yours in use.",
-                Choice.FieldWorks => "FieldWorks in use.",
+                Choice.FieldWorks => $"{otherName} in use.",
                 Choice.Both => "Both in use.",
                 _ => "Needs a choice.",
             };
         var inUse = choice == change.Initial;
-        var other = change.Author == ChangeAuthor.Mine ? "Alt+F for FieldWorks." : "Alt+M for yours.";
-        return $"{Describe(change, writingSystemName)}, in {change.Location}. {(inUse ? "In use." : "Not in use.")} {(inUse ? other : change.Author == ChangeAuthor.Mine ? "Alt+M to use it." : "Alt+F to use it.")}";
+        var other = change.Author == ChangeAuthor.Mine ? $"Alt+F for {otherName}." : "Alt+M for yours.";
+        return $"{Describe(change, writingSystemName, otherName)}, in {change.Location}. {(inUse ? "In use." : "Not in use.")} {(inUse ? other : change.Author == ChangeAuthor.Mine ? "Alt+M to use it." : "Alt+F to use it.")}";
     }
 
     private static string WritingSystems(IReadOnlyList<Token> tokens, Func<string, string>? name) =>

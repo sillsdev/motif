@@ -28,6 +28,9 @@ public enum ChangeKind
     /// <summary>A whole paragraph removed, or removed on one side and changed on the other.</summary>
     ParagraphRemoved,
 
+    /// <summary>A paragraph placed elsewhere in the text, independently of its words and formatting.</summary>
+    ParagraphMoved,
+
     /// <summary>A paragraph's style or paragraph properties.</summary>
     ParagraphFormatting,
 
@@ -90,6 +93,9 @@ public sealed class TextChange
     /// <summary>Whether Use both is possible: both sides inserted at the same point, and nothing was replaced.</summary>
     public bool CanUseBoth => Author == ChangeAuthor.Both && WhyNotBoth is null;
 
+    /// <summary>Whether the person's version is available; false when its earlier paragraph content is missing.</summary>
+    public bool CanUseMine { get; internal set; } = true;
+
     /// <summary>Why Use both is not possible for a change both sides made; null for one-sided changes and when it is possible.</summary>
     public string? WhyNotBoth { get; }
 
@@ -102,7 +108,13 @@ public sealed class TextChange
     };
 
     /// <summary>Whether the change covers a whole paragraph rather than words inside one.</summary>
-    public bool IsWholeParagraph => Kind is ChangeKind.ParagraphAdded or ChangeKind.ParagraphRemoved or ChangeKind.Rewritten;
+    public bool IsWholeParagraph => Kind is ChangeKind.ParagraphAdded or ChangeKind.ParagraphRemoved or ChangeKind.Rewritten or ChangeKind.ParagraphMoved;
+
+    /// <summary>The paragraph's position in the person's text, from zero, for a move.</summary>
+    public int? MinePosition { get; internal set; }
+
+    /// <summary>The paragraph's position in the other version, from zero, for a move.</summary>
+    public int? FieldWorksPosition { get; internal set; }
 
     /// <summary>The change in words, as the changes list and a screen reader say it.</summary>
     public string Description => ChangeWords.Describe(this);
@@ -120,7 +132,7 @@ public sealed record UnchangedPiece(IReadOnlyList<Token> Tokens) : Piece;
 public sealed record ChangePiece(TextChange Change) : Piece;
 
 /// <summary>
-/// One paragraph of the combined text, in reading order: the person's and the FieldWorks version (either may be
+/// One stable paragraph slot of the combined text: the person's and the FieldWorks version (either may be
 /// absent), and either one whole-paragraph change or the pieces it reads as, with any paragraph formatting change.
 /// </summary>
 public sealed class SortedParagraph
@@ -145,6 +157,9 @@ public sealed class SortedParagraph
     /// <summary>A change of the whole paragraph, or null when the paragraph reads as <see cref="Pieces"/>.</summary>
     public TextChange? Whole { get; internal set; }
 
+    /// <summary>A choice of paragraph position, independent of the paragraph's content, or null.</summary>
+    public TextChange? Move { get; internal set; }
+
     /// <summary>A change of the paragraph's style or properties, or null.</summary>
     public TextChange? Format { get; internal set; }
 
@@ -152,18 +167,21 @@ public sealed class SortedParagraph
     public IReadOnlyList<Piece> Pieces { get; internal set; } = [];
 }
 
-/// <summary>The sort's answer: the combined text's paragraphs in reading order and every change in it.</summary>
+/// <summary>The sort's answer: stable paragraph slots and every change, including choices of paragraph position.</summary>
 public sealed class SortedText
 {
-    internal SortedText(IReadOnlyList<SortedParagraph> paragraphs, IReadOnlyList<TextChange> changes)
+    internal SortedText(IReadOnlyList<SortedParagraph> paragraphs, IReadOnlyList<TextChange> changes, IReadOnlyList<int> mineOrder)
     {
         Paragraphs = paragraphs;
         Changes = changes;
+        MineOrder = mineOrder;
     }
 
     public IReadOnlyList<SortedParagraph> Paragraphs { get; }
 
     public IReadOnlyList<TextChange> Changes { get; }
+
+    internal IReadOnlyList<int> MineOrder { get; }
 }
 
 /// <summary>
@@ -185,17 +203,22 @@ public static class TextSort
     /// <summary>
     /// Sorts <paramref name="versions"/>. <paramref name="location"/>, when given, names every change's place, for a
     /// field that is one formatted string; otherwise a change's place is its paragraph's number.
+    /// <paramref name="preserveSpelling"/> compares text as written, including the Unicode spelling of Markdown URLs.
     /// </summary>
-    public static SortedText Sort(TextVersions versions, string? location = null)
+    public static SortedText Sort(TextVersions versions, string? location = null, bool preserveSpelling = false)
     {
         ArgumentNullException.ThrowIfNull(versions);
-        var builder = new Builder(location);
+        versions = versions with { Mine = SeparateDuplicateKeys(versions.Mine), FieldWorks = SeparateDuplicateKeys(versions.FieldWorks) };
+        var builder = new Builder(location, preserveSpelling);
+        var moves = ParagraphMoves.Find(versions);
         var starting = versions.Starting.GroupBy(paragraph => paragraph.Key, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         foreach (var (mine, fieldWorks) in Slots(versions))
         {
             var key = mine?.Key ?? fieldWorks?.Key;
             var paragraph = builder.Paragraph(key, mine, fieldWorks);
+            if (key is not null && moves.TryGetValue(key, out var author))
+                builder.Move(paragraph, author, versions.Mine.ToList().IndexOf(mine!), versions.FieldWorks.ToList().IndexOf(fieldWorks!));
             var start = key is null ? null : starting.GetValueOrDefault(key);
             if (start is null)
             {
@@ -206,16 +229,26 @@ public static class TextSort
             {
                 var kept = mine ?? fieldWorks!;
                 var untouched = start.Exact is { } exact ? exact.SameContent(kept) : TextVersions.Same(kept.Text, start.Text) && kept.Style == start.Style;
+                if (preserveSpelling && kept.Text != start.Text) untouched = false;
                 builder.Whole(paragraph, untouched ? (mine is null ? ChangeAuthor.Mine : ChangeAuthor.FieldWorks) : ChangeAuthor.Both,
                     ChangeKind.ParagraphRemoved);
                 continue;
             }
             builder.Inside(paragraph, start, mine, fieldWorks);
         }
-        return builder.Done();
+        return builder.Done(versions);
     }
 
-    // FieldWorks' order, each paragraph only the person has following its predecessor in the person's order.
+    private static IReadOnlyList<ParagraphVersion> SeparateDuplicateKeys(IReadOnlyList<ParagraphVersion> paragraphs)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        return paragraphs.Select(paragraph => paragraph with
+        {
+            Key = paragraph.Key is { } key && seen.Add(key) ? key : null,
+        }).ToArray();
+    }
+
+    // Position choices are applied later; these slots give each paragraph one stable index.
     private static List<(ParagraphVersion? Mine, ParagraphVersion? FieldWorks)> Slots(TextVersions versions)
     {
         var mineByKey = versions.Mine.Where(paragraph => paragraph.Key is not null)
@@ -238,7 +271,7 @@ public static class TextSort
         return slots;
     }
 
-    private sealed class Builder(string? location)
+    private sealed class Builder(string? location, bool preserveSpelling)
     {
         private readonly List<SortedParagraph> _paragraphs = [];
         private readonly List<TextChange> _changes = [];
@@ -250,7 +283,16 @@ public static class TextSort
             return paragraph;
         }
 
-        public SortedText Done() => new(_paragraphs, _changes);
+        public SortedText Done(TextVersions versions) => new(_paragraphs, _changes,
+            versions.Mine.Select(mine => _paragraphs.First(paragraph => ReferenceEquals(paragraph.Mine, mine)).Index).ToArray());
+
+        public void Move(SortedParagraph paragraph, ChangeAuthor author, int minePosition, int fieldWorksPosition)
+        {
+            paragraph.Move = Add(author, ChangeKind.ParagraphMoved, paragraph, [], Of(paragraph.Mine!.Runs),
+                Of(paragraph.FieldWorks!.Runs), MotifAppStrings.CompareParagraphOnePosition);
+            paragraph.Move.MinePosition = minePosition;
+            paragraph.Move.FieldWorksPosition = fieldWorksPosition;
+        }
 
         private string Where(SortedParagraph paragraph) => location ?? $"paragraph {paragraph.Index + 1}";
 
@@ -263,19 +305,22 @@ public static class TextSort
             return change;
         }
 
+        private IReadOnlyList<Token> Of(IReadOnlyList<TextRun> runs) => Tokens.Of(runs, preserveSpelling);
+
         public void Whole(SortedParagraph paragraph, ChangeAuthor author, ChangeKind kind)
         {
-            var mine = paragraph.Mine is null ? [] : Tokens.Of(paragraph.Mine.Runs);
-            var fieldWorks = paragraph.FieldWorks is null ? [] : Tokens.Of(paragraph.FieldWorks.Runs);
+            var mine = paragraph.Mine is null ? [] : Of(paragraph.Mine.Runs);
+            var fieldWorks = paragraph.FieldWorks is null ? [] : Of(paragraph.FieldWorks.Runs);
             paragraph.Whole = Add(author, kind, paragraph, [], mine, fieldWorks, ParagraphWhole);
+            paragraph.Whole.CanUseMine = paragraph.Mine?.IsContentUnavailable != true;
         }
 
         public void Inside(SortedParagraph paragraph, StartingParagraph start, ParagraphVersion mine, ParagraphVersion fieldWorks)
         {
             var known = start.Exact is not null;
-            var baseTokens = known ? Tokens.Of(start.Exact!.Runs) : Tokens.Of([new TextRun(start.Text, "")]);
-            var mineTokens = Tokens.Of(mine.Runs);
-            var fieldWorksTokens = Tokens.Of(fieldWorks.Runs);
+            var baseTokens = known ? Of(start.Exact!.Runs) : Of([new TextRun(start.Text, "")]);
+            var mineTokens = Of(mine.Runs);
+            var fieldWorksTokens = Of(fieldWorks.Runs);
             var toMine = Alignment.Match(baseTokens, mineTokens);
             var toFieldWorks = Alignment.Match(baseTokens, fieldWorksTokens);
             var mineHunks = Hunk.From(Side.Mine, baseTokens, mineTokens, toMine, known);

@@ -1282,7 +1282,7 @@
   <data name="MotifApp.ProposalWhatItChanges" xml:space="preserve"><value>What It Changes</value><comment>Heading for a Proposal's operation descriptions.</comment></data>
   <data name="MotifApp.ProposalFilterPaused" xml:space="preserve"><value>Filter paused while you finish editing this Proposal.</value><comment>Shown beside Proposal filters when an edited Proposal no longer matches the selected filter.</comment></data>
   <data name="MotifApp.CommentChangedElsewhere" xml:space="preserve"><value>This Comment changed or was removed, or the Proposal was decided while you were editing. Your text stays here; Cancel shows the current discussion.</value><comment>Shown when a Comment edit cannot be saved because the Comment or Proposal changed elsewhere.</comment></data>
-  <data name="MotifApp.RationaleChangedElsewhere" xml:space="preserve"><value>This Rationale was changed somewhere else while you were editing it, so your text was not saved. It stays here; Cancel shows the current Rationale.</value><comment>Said under a Rationale being edited when the stored one changed meanwhile; the person's text is kept until Cancel.</comment></data>
+  <data name="MotifApp.RationaleChangedElsewhere" xml:space="preserve"><value>This Rationale changed while you were editing</value><comment>Said under a Rationale being edited when the stored one changed meanwhile; the person's text is kept until Cancel.</comment></data>
   <data name="MotifApp.RationaleSaveOrCancelFirst" xml:space="preserve"><value>Save or cancel your edit of this Rationale before leaving this Proposal.</value><comment>Said under a Rationale being edited when the person chose another Proposal; the choice was not made.</comment></data>
   <data name="MotifApp.RationaleEdit" xml:space="preserve"><value>Edit</value><comment>The button that makes a Proposal's Rationale editable.</comment></data>
   <data name="MotifApp.RationaleSave" xml:space="preserve"><value>Save</value><comment>The button that saves an edited Rationale.</comment></data>
@@ -9788,9 +9788,24 @@ Motif starts a check automatically when this project opens. Use Reload to read a
     <value>Back to Combined View</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
+  <data name="MotifApp.RationaleCompare" xml:space="preserve"><value>Compare…</value><comment>Opens the two versions of a Rationale changed during an edit.</comment></data>
+  <data name="MotifApp.SideBySideWaiting" xml:space="preserve"><value>: type on the right, use Use this →, or go back to choose</value><comment>Instructions appended when a side-by-side comparison still needs a choice.</comment></data>
+  <data name="MotifApp.RationaleCompareReload" xml:space="preserve"><value>Motif can't tell which version is current. Your text is kept; copy it, then Cancel to see the latest Rationale.</value><comment>Shown when saved revisions cannot identify a different current Rationale to compare.</comment></data>
+  <data name="MotifApp.RationaleUnsavedRestoreFormat" xml:space="preserve"><value>Your unsaved edit {0}</value><comment>Names an edit kept locally for Restore when starting again. The number distinguishes repeated edits in the same session.</comment></data>
+  <data name="MotifApp.RationaleCompareExplanation" xml:space="preserve"><value>Both sets of changes are shown in the Rationale's written Markdown. Choose where both changed the same words. Done saves the result; Cancel keeps your unsaved text. Start again keeps your unsaved edit under Restore.</value><comment>Explains comparing a Rationale and when its result is saved.</comment></data>
   <data name="MotifApp.CommentPlainText" xml:space="preserve"><value>This Comment does not read as formatted text, so it is shown as plain text.</value></data>
   <data name="MotifApp.CommentDelete" xml:space="preserve"><value>Delete</value></data>
   <data name="MotifApp.CommentAdd" xml:space="preserve"><value>Add Comment</value></data>
   <data name="MotifApp.CommentsHeading" xml:space="preserve"><value>Comments</value></data>
   <data name="MotifApp.CommentSaveOrCancelFirst" xml:space="preserve"><value>Save or cancel your edit of this Comment before leaving this Proposal.</value></data>
+  <data name="MotifApp.CompareParagraphMovedMineFormat" xml:space="preserve"><value>Paragraph moved by you: yours is paragraph {0}, {1} paragraph {2}</value><comment>{0} is your paragraph number, {1} the other author or FieldWorks, {2} their paragraph number.</comment></data>
+  <data name="MotifApp.CompareParagraphMovedOtherFormat" xml:space="preserve"><value>Paragraph moved in {1}: yours is paragraph {0}, {1} paragraph {2}</value><comment>{0} is your paragraph number, {1} the other author or FieldWorks, {2} their paragraph number.</comment></data>
+  <data name="MotifApp.CompareParagraphMovedBothFormat" xml:space="preserve"><value>Paragraph position differs: yours is paragraph {0}, {1} paragraph {2}</value><comment>{0} is your paragraph number, {1} the other author or FieldWorks, {2} their paragraph number.</comment></data>
+  <data name="MotifApp.CompareChooseParagraphOrderWaitingFormat" xml:space="preserve"><value>{0}: go back to choose the paragraph order</value></data>
+  <data name="MotifApp.CompareChangeNotUsed" xml:space="preserve"><value>not used</value></data>
+  <data name="MotifApp.CompareParagraphOnePosition" xml:space="preserve"><value>a paragraph has one position</value></data>
+  <data name="MotifApp.CompareParagraphRemovedUnavailableFormat" xml:space="preserve"><value>Paragraph removed in {0}; the original text is unavailable</value></data>
+  <data name="MotifApp.CompareUseYourOrder" xml:space="preserve"><value>Use your order</value></data>
+  <data name="MotifApp.CompareUseOtherOrderFormat" xml:space="preserve"><value>Use the order from {0}</value></data>
+  <data name="MotifApp.CompareParagraphRemovedUnavailableAccessibleFormat" xml:space="preserve"><value>Paragraph removed in {0}, {1}. The original text is unavailable.</value><comment>{0} is the other author or FieldWorks, {1} the paragraph location.</comment></data>
 </root>

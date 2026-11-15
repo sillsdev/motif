@@ -1,3 +1,5 @@
+using Avalonia.Controls;
+using SIL.Motif.App;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Responses;
@@ -35,6 +37,29 @@ public sealed class CommentEditorTests(AvaloniaHeadlessFixture avalonia)
             editor.EditCommand.Execute(null);
             Assert.False(view.Field!.IsReadOnly);
         });
+    }
+
+    [Fact]
+    public async Task AChangedCommentKeepsItsWarningWithoutOfferingRationaleCompare()
+    {
+        var comment = AgentComment();
+        var (fake, editor, _) = await OpenAsync(comment);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        editor.ReconcileComment(comment with { Markdown = "Changed elsewhere." },
+            new ProposalDetailProjection("p/one", "proposed", null, null, null, []), _ => { });
+
+        Assert.True(editor.IsChangedElsewhere);
+        Assert.Equal(MotifAppStrings.CommentChangedElsewhere, editor.ChangedElsewhereWarning);
+        Assert.False(editor.CanCompare);
+        avalonia.Invoke(() =>
+        {
+            var view = new RationaleEditor { DataContext = editor };
+            Assert.False(view.FindControl<Button>("RationaleCompareButton")!.IsVisible);
+        });
+        await editor.CompareAsync(_ => throw new InvalidOperationException("A Comment cannot compare Rationales."));
+        Assert.Empty(fake.SetRationaleRequests);
+        Assert.True(editor.IsEditing);
     }
 
     [Fact]

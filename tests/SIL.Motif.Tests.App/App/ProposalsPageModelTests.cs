@@ -1,5 +1,6 @@
 using System.Globalization;
 using SIL.Motif.App;
+using SIL.Motif.App.Compare;
 using SIL.Motif.App.ViewModels;
 using SIL.Motif.Contract.Assess;
 using SIL.Motif.Contract;
@@ -1135,6 +1136,46 @@ public sealed class ProposalsPageModelTests
         Assert.Equal(ProjectPath, context.ProjectPath);
         Assert.True(editor.IsSwitchRefused);
         editor.CancelCommand.Execute(null);
+        context.ClearProject();
+        Assert.Null(context.ProjectPath);
+    }
+
+    [Fact]
+    public async Task RationaleCompareKeepsTheWorkspaceGuardUntilTheCommentEditIsFinished()
+    {
+        var (fake, context, page) = await OpenAsync(Standings(Card("p/one", "One", ProposalGroup.WaitingForYou)));
+        var rationale = new RationaleView("Why.", null, "2026-11-11T00:00:00Z", false, null, false);
+        var comment = new CommentView(1, "agent", "Agent", "", "Old", null, "now", null, false, null);
+        fake.ShowProposalHandler = (request, _) => Task.FromResult(CommandOutcome<ProposalDetailProjection>.Success(
+            new ProposalDetailProjection(request.ProposalId, "proposed", "Label",
+                rationale with { Markdown = fake.StoredRationale ?? rationale.Markdown }, null, [], Comments: [comment])));
+        await context.PublishBaselineCapturedAsync(openFirstRunSetup: false);
+        await page.DetailReading;
+        var editor = page.RationaleEditor!;
+        var commentEditor = Assert.Single(page.Comments);
+        editor.EditCommand.Execute(null);
+        editor.Document.Paragraphs[0].Runs[0].Text += " mine";
+        commentEditor.EditCommand.Execute(null);
+        commentEditor.Document.Paragraphs[0].Runs[0].Text += " typed";
+        fake.StoredRationale = "Why elsewhere.";
+        fake.RationaleRevisions = [new RationaleRevisionView(2, fake.StoredRationale, "Agent", "", "now")];
+        await editor.SaveCommand.ExecuteAsync(null);
+
+        await editor.CompareAsync(comparison =>
+        {
+            context.ClearProject();
+            Assert.Equal(ProjectPath, context.ProjectPath);
+            Assert.True(editor.IsSwitchRefused);
+            comparison.Comparison.ChooseAll(Choice.Mine);
+            return Task.FromResult<CompareOutcome?>(new(CompareEnd.Done, comparison.Comparison.Result()));
+        });
+
+        Assert.False(editor.IsEditing);
+        Assert.Equal("Why. mine", fake.StoredRationale);
+        context.ClearProject();
+        Assert.Equal(ProjectPath, context.ProjectPath);
+        Assert.True(commentEditor.IsSwitchRefused);
+        commentEditor.CancelCommand.Execute(null);
         context.ClearProject();
         Assert.Null(context.ProjectPath);
     }
