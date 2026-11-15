@@ -15,6 +15,17 @@ namespace SIL.Motif.Tests.Cli;
 public sealed class HelpCatalogTests
 {
     [Fact]
+    public void GdrShowHelpExplainsTheMarkdownFormatAndAdvancedAiMode()
+    {
+        var entry = HelpCatalog.Load(System.Globalization.CultureInfo.GetCultureInfo("en"))
+            .Find(HelpEntryKind.Command, "gdr show")!;
+        Assert.Contains("--format fw-md", entry.Description, StringComparison.Ordinal);
+        Assert.Contains("Advanced AI mode", entry.Description, StringComparison.Ordinal);
+        Assert.Contains("--json", entry.HelpPage!, StringComparison.Ordinal);
+        Assert.Contains("--format fw-md", CliVerbCatalog.All.Single(verb => verb.CommandName == "gdr show").UsageLines.Single());
+    }
+
+    [Fact]
     public void HelpTextNormalizesWindowsLineEndings()
     {
         Assert.Equal("# Title\n\nText\nMore", HelpCatalog.NormalizeLineEndings("# Title\r\n\r\nText\rMore"));

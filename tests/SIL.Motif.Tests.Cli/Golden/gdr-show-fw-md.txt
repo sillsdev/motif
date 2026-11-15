@@ -1,0 +1,19 @@
+---
+fwmd: 1
+record: "/lists/GDR/GDR-2"
+guid: 00000000-0000-0000-0000-000000000000
+parent: ""
+position: 3
+---
+
+::: {field=title}
+title-2
+:::
+
+::: {field=description}
+abstract-2
+:::
+
+::: {field=discussion}
+
+:::

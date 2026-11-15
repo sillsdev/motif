@@ -10,6 +10,10 @@ using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host;
 using SIL.Motif.Runner.Operations;
 using SIL.Motif.Tests.TestFixtures;
+using SIL.Motif.App.Preview;
+using SIL.Motif.Contract.Ids;
+using System.Text;
+using System.Diagnostics;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -19,19 +23,113 @@ public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-gdr-argv-" + Guid.NewGuid().ToString("N"));
 
-    private string ProjectWithBaseline()
+    private string ProjectWithBaseline(bool unicode = false)
     {
         Directory.CreateDirectory(_root);
         string path;
         using (var cache = pristine.NewScratch())
         {
             SeededGdrs.Seed(cache);
+            if (unicode)
+                NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+                    SeededGdrs.Records(cache).PossibilitiesOS[0].Description.set_String(cache.DefaultAnalWs, "abstract-α"));
             new FwDataProjectLoader().Save(cache);
             path = cache.ProjectId.Path;
         }
         var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(path), _root);
         Assert.True(captured.Succeeded, captured.Refusal?.Message);
         return path;
+    }
+
+    [Theory]
+    [InlineData("GDR-1")]
+    [InlineData("GDR-1a")]
+    [InlineData("GDR-2")]
+    public async Task MarkdownIsByteForByteTheAppDocumentAndReadsWithoutChangingTheProject(string id)
+    {
+        var path = ProjectWithBaseline(unicode: id == "GDR-1");
+        var shown = GdrQuery.Show(new GdrShowRequest(path, id)).Value!;
+        var before = File.ReadAllBytes(path);
+        var pendingRequest = new PendingChangesRequest(path, MotifProductVersion.CurrentText);
+        var pending = ProjectionJson.Serialize(PendingChanges.Load(pendingRequest).Value);
+        var app = new GdrMarkdownDocument(shown, Path.GetFileNameWithoutExtension(path));
+
+        using var process = Process.Start(CliProcess.CreateStartInfo(_root, null, true,
+            "gdr", "show", "--project", path, id, "--format", "fw-md"))!;
+        using var bytes = new MemoryStream();
+        var copy = process.StandardOutput.BaseStream.CopyToAsync(bytes);
+        var stderr = process.StandardError.ReadToEndAsync();
+        try
+        {
+            await Task.WhenAll(copy, stderr, process.WaitForExitAsync()).WaitAsync(Wait.Scaled(TimeSpan.FromMinutes(2)));
+        }
+        finally
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+        }
+        Assert.True(process.ExitCode == 0, await stderr);
+        Assert.Empty(await stderr);
+        Assert.Equal(Encoding.UTF8.GetBytes(app.Text), bytes.ToArray());
+        var markdown = Encoding.UTF8.GetString(bytes.ToArray());
+        Assert.False(app.Read(markdown).HasErrors);
+        Assert.Empty(app.Read(markdown).Changes);
+        Assert.Equal(before, File.ReadAllBytes(path));
+        Assert.Equal(pending, ProjectionJson.Serialize(PendingChanges.Load(pendingRequest).Value));
+        Assert.Equal(ProjectionJson.Serialize(shown), ProjectionJson.Serialize(GdrQuery.Show(new GdrShowRequest(path, id)).Value));
+        if (id == "GDR-2")
+        {
+            var normalized = markdown.Replace(CanonicalId.Parse(shown.Record.Id).ToGuid().ToString("D"),
+                "00000000-0000-0000-0000-000000000000", StringComparison.Ordinal);
+            var repositoryRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+            var golden = Path.Combine(repositoryRoot, "tests", "SIL.Motif.Tests.Cli",
+                "Golden", "gdr-show-fw-md.txt");
+            Assert.Equal(File.ReadAllText(golden).Replace("\r\n", "\n", StringComparison.Ordinal), normalized);
+        }
+    }
+
+    [Theory]
+    [InlineData("show", "--format", "unknown")]
+    [InlineData("show", "--format", "fw-md", "--json")]
+    [InlineData("show", "--format")]
+    [InlineData("list", "--format", "fw-md")]
+    [InlineData("check", "--format", "fw-md")]
+    public async Task MarkdownFormatRejectsInvalidOptionsWithoutOutput(params string[] options)
+    {
+        var path = ProjectWithBaseline();
+        var arguments = new[] { "gdr", options[0], "--project", path }
+            .Concat(options[0] == "show" ? new[] { "GDR-1" } : [])
+            .Concat(options.Skip(1)).ToArray();
+        var cli = await CliProcess.RunAsync(_root, null, true, arguments);
+
+        Assert.True(cli.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.InvalidArgument), cli.Error);
+        Assert.Empty(cli.Output);
+        Assert.Contains("Use --format fw-md with gdr show, without --json.", cli.Error);
+    }
+
+    [Fact]
+    public async Task MarkdownKeepsUnknownRecordAndMissingBaselineRefusals()
+    {
+        var path = ProjectWithBaseline();
+        var unknown = await CliProcess.RunAsync(_root, null, true, "gdr", "show", "--project", path, "GDR-99", "--format", "fw-md");
+        Assert.True(unknown.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), unknown.Error);
+        Assert.Empty(unknown.Output);
+        var unknownRefusal = GdrQuery.Show(new GdrShowRequest(path, "GDR-99")).Refusal!;
+        Assert.Equal(RefusalCodes.GdrNotFound, unknownRefusal.Code);
+        Assert.Equal("error: " + unknownRefusal.Message + Environment.NewLine, unknown.Error);
+
+        string absentPath;
+        using (var cache = pristine.NewScratch())
+        {
+            new FwDataProjectLoader().Save(cache);
+            absentPath = cache.ProjectId.Path;
+        }
+        var absent = await CliProcess.RunAsync(Path.Combine(_root, "no-baseline"), null, true, "gdr", "show", "--project", absentPath,
+            "GDR-1", "--format", "fw-md");
+        Assert.True(absent.ExitCode == FailureEnvelope.ExitCodeFor(FailureReason.NotFound), absent.Error);
+        Assert.Empty(absent.Output);
+        var absentRefusal = GdrQuery.Show(new GdrShowRequest(absentPath, "GDR-1")).Refusal!;
+        Assert.Equal(RefusalCodes.GdrNoBaseline, absentRefusal.Code);
+        Assert.Equal("error: " + absentRefusal.Message + Environment.NewLine, absent.Error);
     }
 
     [Fact]

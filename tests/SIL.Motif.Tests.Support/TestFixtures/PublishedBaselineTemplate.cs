@@ -16,7 +16,7 @@ namespace SIL.Motif.Tests.TestFixtures;
 /// The folder is made from the pristine master by <c>prepare</c>, saved, published with
 /// <see cref="PublishedBaselineFixture"/>, and never opened for writing again. A copy is a plain file copy of about 100 KB
 /// on disk; the resident cost is one <see cref="TextWordsProjection"/> and <see cref="ProjectSummarySnapshot"/> per
-/// template, read once from the published project and shared as read-only values.
+/// template, read once from a private copy of the published project and shared as read-only values.
 /// </para>
 /// <para>
 /// The cache folder is keyed by the assembly that holds <c>prepare</c> as well as by <see cref="FixtureDiskCache"/>'s own
@@ -35,8 +35,17 @@ internal sealed class PublishedBaselineTemplate<T> where T : class
         Metadata = metadata;
         _evidence = new(() =>
         {
-            using var cache = new FwDataProjectLoader().LoadScratchCache(PublishedFwDataPathIn(_root));
-            return (TextWordsProjectionBuilder.Build(cache, CancellationToken.None), ProjectSummaryReader.Read(cache));
+            var privateRoot = Path.Combine(Path.GetTempPath(), "pbe", Guid.NewGuid().ToString("N"));
+            try
+            {
+                var path = CopyTo(privateRoot);
+                using var cache = new FwDataProjectLoader().LoadScratchCache(path);
+                return (TextWordsProjectionBuilder.Build(cache, CancellationToken.None), ProjectSummaryReader.Read(cache));
+            }
+            finally
+            {
+                if (Directory.Exists(privateRoot)) Directory.Delete(privateRoot, recursive: true);
+            }
         });
     }
 
@@ -95,7 +104,8 @@ internal sealed class PublishedBaselineTemplate<T> where T : class
     {
         Directory.CreateDirectory(destination);
         foreach (var file in Directory.GetFiles(source))
-            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
+            if (!file.EndsWith(".fwdata.lock", StringComparison.OrdinalIgnoreCase))
+                File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
         foreach (var directory in Directory.GetDirectories(source))
             CopyDirectory(directory, Path.Combine(destination, Path.GetFileName(directory)));
     }

@@ -1,6 +1,7 @@
 using SIL.Motif.Projection;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
+using SIL.Motif.Host.Gdr;
 using SIL.Motif.Host.Installation;
 using SIL.Motif.Host.Parsimony;
 using System;
@@ -76,6 +77,11 @@ public static int Main(string[] args)
         Console.WriteLine(MotifProductVersion.DisplayText);
         return 0;
     }
+
+    var formatIndex = Array.LastIndexOf(args, "--format");
+    if (args.Length > 0 && args[0] == "gdr" && formatIndex >= 0 && formatIndex + 1 < args.Length &&
+        args[formatIndex + 1] == "fw-md")
+        Console.OutputEncoding = new UTF8Encoding(false);
 
     var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
     foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
@@ -1806,6 +1812,16 @@ try
             if (!flags.TryGetValue("project", out var gdrProject) || positionals.Count is < 1 or > 2 ||
                 (positionals[0] is "list" or "check" ? positionals.Count != 1 : positionals[0] != "show" || positionals.Count != 2))
                 return Usage(UsageLineFor("gdr list") + " OR " + UsageLineFor("gdr show") + " OR " + UsageLineFor("gdr check"), asJson);
+            if (flags.TryGetValue("format", out var gdrFormat))
+            {
+                if (positionals[0] != "show" || gdrFormat != "fw-md" || asJson)
+                    return Usage("Use --format fw-md with gdr show, without --json.", asJson);
+                var shown = GdrQuery.Show(new GdrShowRequest(gdrProject, positionals[1]));
+                result = shown.Succeeded
+                    ? new CommandResult(0, new GdrMarkdownView(shown.Value!, Path.GetFileNameWithoutExtension(gdrProject)).Text)
+                    : RenderCommand(shown);
+                break;
+            }
             result = positionals[0] switch
             {
                 "list" => RenderCommand(GdrQuery.List(new GdrListRequest(gdrProject))),

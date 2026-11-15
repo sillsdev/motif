@@ -1,7 +1,5 @@
-using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
-using SIL.Motif.Contract.Ids;
+using SIL.Motif.Host.Gdr;
 using SIL.Motif.Contract.Responses;
 using SIL.TextEditing;
 using SIL.Motif.Runner.Operations;
@@ -34,42 +32,19 @@ public sealed class GdrMarkdownDocument
     /// <summary>Builds a document from the record as shown, using the project's Markdown options.</summary>
     public GdrMarkdownDocument(GdrShowResponse shown, string? projectName, IReadOnlyList<Paragraph>? discussion = null)
     {
-        var id = CanonicalId.Parse(shown.Record.Id).ToGuid();
-        _header = "---\nfwmd: 1\nrecord: " + JsonSerializer.Serialize("/lists/GDR/" + shown.Record.Abbreviation) +
-            "\nguid: " + id.ToString("D") + "\nparent: " + JsonSerializer.Serialize(shown.Record.ParentId ?? "") +
-            "\nposition: " + shown.Position + "\n---\n";
-        AddAlternatives("title", shown.TitleAlternatives);
-        AddAlternatives("description", shown.DescriptionAlternatives);
         var source = GdrDiscussion.From(shown);
-        Add("discussion", null, null, false, source, discussion ?? source.Document.Paragraphs);
-        var output = new StringBuilder(_header);
-        foreach (var field in _fields.Values)
+        var view = new GdrMarkdownView(shown, projectName, discussion?.Select(source.AsProject).ToArray());
+        _header = view.Header;
+        Text = view.Text;
+        foreach (var field in view.Fields)
         {
-            output.Append('\n').Append("::: {field=").Append(field.Name);
-            if (field.Ws is not null) output.Append(" ws=").Append(field.Ws);
-            output.Append("}\n").Append(field.Body).Append("\n:::\n");
-        }
-        Text = output.ToString();
-        return;
-
-        void AddAlternatives(string name, IReadOnlyList<RichStringAlternative> alternatives)
-        {
-            foreach (var alternative in alternatives.OrderBy(item => item.WritingSystem == shown.DefaultAnalysis ? 0 : 1))
-            {
-                var response = shown with { Discussion = [new GdrParagraph(null, false, alternative.WritingSystem,
-                    new GdrTextProperties(new Dictionary<int, GdrIntProperty>(), new Dictionary<int, string>()), alternative.Runs)] };
-                var source = GdrDiscussion.From(response);
-                Add(name, alternative.WritingSystem == shown.DefaultAnalysis ? null : alternative.WritingSystem,
-                    alternative.WritingSystem, true, source, source.Document.Paragraphs);
-            }
-        }
-
-        void Add(string name, string? ws, string? alternativeWs, bool inline, GdrDiscussion source, IReadOnlyList<Paragraph> paragraphs)
-        {
-            var form = new DiscussionSourceForm(source, projectName, richString: inline);
-            var copy = paragraphs.Select(paragraph => paragraph.Clone()).ToArray();
-            var body = form.Write(copy, inline) ?? throw new InvalidOperationException($"The {name} cannot be shown as Markdown.");
-            _fields.Add((name, ws), new Field(name, ws, alternativeWs, inline, form, source, copy, body));
+            var fieldSource = field.Inline ? GdrDiscussion.From(field.Response) : source;
+            var copy = (field.Inline || discussion is null ? fieldSource.Document.Paragraphs : discussion)
+                .Select(paragraph => paragraph.Clone()).ToArray();
+            var form = new DiscussionSourceForm(fieldSource, projectName, richString: field.Inline,
+                inlineShape: field.Inline ? copy[0] : null);
+            _fields.Add((field.Name, field.WritingSystem), new Field(field.Name, field.WritingSystem,
+                field.AlternativeWritingSystem, field.Inline, form, fieldSource, copy, field.Body));
         }
     }
 

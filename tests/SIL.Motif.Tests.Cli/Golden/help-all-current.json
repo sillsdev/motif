@@ -1669,6 +1669,19 @@
     },
     {
       "kind": "command",
+      "code": "gdr show",
+      "slug": "gdr-show",
+      "title": "Read a Grammar Design Record",
+      "description": "Reads one Grammar Design Record from the current Baseline. Use --format fw-md for the whole record as FieldWorks Markdown, or --json for its rich text runs; available in Advanced AI mode.",
+      "helpPage": "# Read a Grammar Design Record\n\n\u0060gdr show --project \u003Cfwdata\u003E \u003CGDR-n\u003E\u0060 reads one Grammar Design Record from the current Baseline. It is an Advanced AI command. The record can also be named by its canonical id.\n\nThe default text view shows the record and its Discussion. \u0060--json\u0060 returns the record\u0027s rich text runs, styles and writing systems. \u0060--format fw-md\u0060 instead prints the whole record as FieldWorks Markdown, exactly as the window\u0027s Markdown view opens it before edits: title and abstract alternatives, then Discussion. Choose either \u0060--json\u0060 or \u0060--format fw-md\u0060.\n\n\u0060\u0060\u0060text\nmotif gdr show --project Koro.fwdata GDR-1 --format fw-md\n\u0060\u0060\u0060\n\nThe Markdown starts with \u0060fwmd: 1\u0060, the record path, GUID, parent and position, followed by one fenced div per record field and writing system. The default analysis alternative has no \u0060ws\u0060 attribute. Reading changes no project text and stages no changes. A missing Baseline or unknown record is refused, as for the default view.\n\nMarkdown output uses UTF-8 without a byte-order mark and LF line endings.\n\nIn Advanced AI mode, the generated \u0060motif_gdr_show\u0060 MCP tool takes \u0060id\u0060 and \u0060project\u0060, with an optional \u0060format\u0060: \u0060json\u0060 (the default) returns the rich text response, and \u0060fw-md\u0060 returns the whole document as a string in \u0060result\u0060. It reads the Baseline and stages no changes. \u0060gdr list\u0060 remains a developer command.\n",
+      "usage": [
+        "Usage: motif gdr show --project \u003Cfwdata\u003E \u003CGDR-n\u003E [--json | --format fw-md]"
+      ],
+      "surface": "AdvancedAi",
+      "url": "https://motif-docs.pages.dev/reference/commands/gdr-show/"
+    },
+    {
+      "kind": "command",
       "code": "grammar check",
       "slug": "grammar-check",
       "title": "Check a grammar",

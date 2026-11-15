@@ -41,6 +41,63 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 {
     [Theory]
+    [InlineData(null)]
+    [InlineData("json")]
+    [InlineData("fw-md")]
+    public async Task GdrReadsPreserveJsonAndReturnTheSameMarkdownAsTheCliWithoutWriting(string? format)
+    {
+        using var project = new WalkthroughProject(pristine, configure: (cache, _, _) => SeededGdrs.Seed(cache));
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var before = File.ReadAllBytes(project.FwDataPath);
+        var pendingRequest = new PendingChangesRequest(project.FwDataPath, MotifProductVersion.CurrentText);
+        var pending = ProjectionJson.Serialize(PendingChanges.Load(pendingRequest).Value);
+        var arguments = new List<(string, object?)> { ("id", "GDR-1") };
+        if (format is not null) arguments.Add(("format", format));
+
+        var response = await session.CallAsync("motif_gdr_show", arguments.ToArray());
+
+        var value = response.GetProperty("result");
+        if (format == "fw-md")
+        {
+            var cli = await CliProcess.RunAsync(project.ManagedRoot, null, false, "gdr", "show", "--project",
+                project.FwDataPath, "GDR-1", "--format", "fw-md");
+            Assert.True(cli.ExitCode == 0, cli.Error);
+            Assert.Equal(Encoding.UTF8.GetBytes(cli.Output), Encoding.UTF8.GetBytes(value.GetString()!));
+        }
+        else
+        {
+            var shown = SIL.Motif.Commands.Queries.GdrQuery.Show(new GdrShowRequest(project.FwDataPath, "GDR-1"));
+            Assert.Equal(ProjectionJson.Serialize(shown.Value), ProjectionJson.Serialize(ProjectionJson.Deserialize<GdrShowResponse>(value.GetRawText())));
+        }
+        Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
+        Assert.Equal(pending, ProjectionJson.Serialize(PendingChanges.Load(pendingRequest).Value));
+    }
+
+    [Theory]
+    [InlineData("unknown")]
+    [InlineData(42)]
+    [InlineData(null)]
+    public async Task GdrReadRejectsAnInvalidFormatWithoutWriting(object? format)
+    {
+        using var project = new WalkthroughProject(pristine, configure: (cache, _, _) => SeededGdrs.Seed(cache));
+        var captured = BaselineCaptureCommand.Capture(new BaselineCaptureRequest(project.FwDataPath), project.ManagedRoot);
+        Assert.True(captured.Succeeded, captured.Refusal?.Message);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+        var before = File.ReadAllBytes(project.FwDataPath);
+
+        var response = await session.Client.CallToolAsync("motif_gdr_show", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath, ["id"] = "GDR-1", ["format"] = format,
+        });
+
+        Assert.True(response.IsError, response.StructuredContent?.ToString());
+        Assert.Equal("tool.invalid-argument", response.StructuredContent!.Value.GetProperty("code").GetString());
+        Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task UnderlyingFormToolsStageGuardedWritesWithoutApplying(bool citation)

@@ -31,7 +31,7 @@ public sealed class GdrDiscussion
     // The targets of links the project could not resolve, which this view marks as broken.
     private readonly HashSet<string> _brokenLinks;
 
-    private readonly ResponseCatalog _catalog;
+    private readonly GdrShowResponse _response;
 
     private GdrDiscussion(TextDocument document, IStyleResolver styles, WritingSystemRegistry writingSystems,
         IReadOnlyDictionary<(int Paragraph, int Offset), GdrLinkTarget> targets,
@@ -39,7 +39,7 @@ public sealed class GdrDiscussion
         HashSet<string> brokenLinks, GdrShowResponse response)
     {
         _brokenLinks = brokenLinks;
-        _catalog = new ResponseCatalog(response);
+        _response = response;
         Document = document;
         Styles = styles;
         WritingSystems = writingSystems;
@@ -196,7 +196,7 @@ public sealed class GdrDiscussion
     /// to an object keeps its GUID, since nothing here reads the project's paths. <paramref name="projectName"/> is the
     /// project a link names.
     /// </summary>
-    public MarkdownOptions MarkdownOptions(string? projectName) => MotifMarkdownOptions.Create(_catalog, _catalog, projectName: projectName);
+    public MarkdownOptions MarkdownOptions(string? projectName) => GdrMarkdownOptions.For(_response, projectName);
 
     /// <summary>
     /// <paramref name="paragraph"/> as the project holds it: without the broken-link markers this view adds, and with each
@@ -286,33 +286,6 @@ public sealed class GdrDiscussion
             if (original is { } kept) props.IntProps[number] = kept;
             else props.IntProps.Remove(number);
         }
-    }
-
-    // What the response says exists, as the Markdown reader asks it: an unknown tag or style name is a finding.
-    private sealed class ResponseCatalog(GdrShowResponse response) : IWritingSystemMapper, IKnownWritingSystems, IStyleCatalog, IKnownStyles
-    {
-        public string DefaultAnalysis { get; } = Default(response.DefaultAnalysis, response);
-
-        public string DefaultVernacular { get; } = Default(response.DefaultVernacular, response);
-
-        public IReadOnlyList<string> KnownTags { get; } = response.WritingSystems.Select(system => system.Tag).ToArray();
-
-        public IReadOnlyList<string> ParagraphStyleNames { get; } = Names(response, GdrStyleKind.Paragraph);
-
-        public IReadOnlyList<string> CharacterStyleNames { get; } = Names(response, GdrStyleKind.Character);
-
-        public bool IsKnown(string tag) => KnownTags.Contains(tag, StringComparer.Ordinal);
-
-        public bool IsParagraphStyle(string name) => ParagraphStyleNames.Contains(name, StringComparer.Ordinal);
-
-        public bool IsCharacterStyle(string name) => CharacterStyleNames.Contains(name, StringComparer.Ordinal);
-
-        // A response without defaults, such as one Definition alternative's, types in its first writing system.
-        private static string Default(string tag, GdrShowResponse response) =>
-            tag.Length > 0 ? tag : response.WritingSystems.FirstOrDefault()?.Tag ?? "en";
-
-        private static string[] Names(GdrShowResponse response, GdrStyleKind kind) =>
-            response.Styles.Where(style => style.Kind == kind).Select(style => style.Name).ToArray();
     }
 
     private sealed class ResponseStyles(IReadOnlyList<GdrStyle> styles) : IStyleResolver

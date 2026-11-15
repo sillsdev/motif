@@ -2000,6 +2000,91 @@
     "idempotentHint": true
   },
   {
+    "name": "motif_gdr_show",
+    "description": "Read a Grammar Design Record. Reads one Grammar Design Record from the current Baseline. Use --format fw-md for the whole record as FieldWorks Markdown, or --json for its rich text runs; available in Advanced AI mode.\nCommand: gdr show. Agent class: Read.\nId: The record\u0027s GDR-n abbreviation or its canonical id.\nExpectedBaseline: The required Baseline identity; null accepts the current Baseline.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Value for the request field."
+        },
+        "expectedBaseline": {
+          "type": "object",
+          "properties": {
+            "projectIdentity": {
+              "type": "string",
+              "description": "Value for the request field."
+            },
+            "semanticSnapshotDigest": {
+              "type": "string",
+              "description": "Value for the request field."
+            },
+            "projectionVersion": {
+              "type": "string",
+              "description": "Value for the request field."
+            },
+            "capturedUtc": {
+              "type": "string",
+              "description": "Value for the request field."
+            },
+            "bundleDigest": {
+              "type": "string",
+              "description": "Value for the request field."
+            },
+            "capturedHostSessionId": {
+              "type": "string",
+              "description": "Value for the request field."
+            },
+            "capturedEditGeneration": {
+              "type": "integer"
+            },
+            "semanticIdentity": {
+              "type": "object",
+              "properties": {
+                "projectIdentity": {
+                  "type": "string",
+                  "description": "Value for the request field."
+                },
+                "semanticSnapshotDigest": {
+                  "type": "string",
+                  "description": "Value for the request field."
+                },
+                "projectionVersion": {
+                  "type": "string",
+                  "description": "Value for the request field."
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "format": {
+          "type": "string",
+          "description": "json returns rich text runs; fw-md returns the whole record as FieldWorks Markdown.",
+          "enum": [
+            "json",
+            "fw-md"
+          ],
+          "default": "json"
+        },
+        "project": {
+          "type": "string",
+          "description": "Known project name or recorded .fwdata path."
+        }
+      },
+      "required": [
+        "id",
+        "project"
+      ],
+      "additionalProperties": false
+    },
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true
+  },
+  {
     "name": "motif_add_affix_process",
     "description": "Author an affix process. Research first: motif_guide topic workflow or conditioned-allomorphs; check best practice. Use for infixes, reduplication and stem-internal changes. Another pattern-based form of an existing entry: compose-author-affix-process-allomorph. Regular nasal assimilation is a phonological rule (guide nasal-assimilation). Stages a new affix entry whose ordered input pattern matches phonemes, a natural class or the remaining stem, and whose output copies named parts, inserts phonemes, inserts a segment of a natural class, or copies a part with the features of a feature class laid over it: an infix, a partial or full reduplication, or a substitution that deletes matched input by omitting it from the output (Cebuano paN- before p/b gives m). It refuses an output that copies nothing or drops the remaining stem. Dry Run and Trial before a person Applies the Proposal.\nCommand: compose-author-affix-process. Agent class: Draft.",
     "inputSchema": {
