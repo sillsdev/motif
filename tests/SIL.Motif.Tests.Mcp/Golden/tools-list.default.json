@@ -322,7 +322,7 @@
   },
   {
     "name": "motif_progress",
-    "description": "Read Progress. Counts approved and misspelled places in saved Texts, or eligible places in an indexed Source. Source approval counts are unavailable; read a summary or page through Passages.\nCommand: progress. Agent class: Read.\nScope: The Text population to count.\nDetail: Either summary or passages.\nLimit: Maximum Passage rows per page, from 1 to 200.\nCursor: A continuation from the same scope and Progress revision.\nSinceRevision: An optional checkpoint; changed-since evidence is currently unavailable.",
+    "description": "Read Progress. Counts approved and misspelled places in saved Texts, or eligible places in an indexed Source. Source approval counts are unavailable; read a summary or page through Passages.\nCommand: progress. Agent class: Read.\nScope: The Text or Source population to count.\nDetail: Either summary or passages.\nLimit: Maximum Passage rows per page, from 1 to 200.\nCursor: A continuation from the same scope and Progress revision.\nSinceRevision: An optional checkpoint; changed-since evidence is currently unavailable.",
     "inputSchema": {
       "type": "object",
       "properties": {
