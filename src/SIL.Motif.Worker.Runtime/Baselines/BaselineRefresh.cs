@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using SIL.LCModel;
 using SIL.Motif.Contract.Baselines;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.LiveHost.Baselines;
+using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Texts;
 using SIL.Motif.Worker.Projects;
 
@@ -41,6 +43,7 @@ public sealed class BaselineRefresh
     private readonly BaselineRepository _baselines;
     private readonly string _root;
     private readonly Func<DateTimeOffset> _now;
+    private readonly ConditionalWeakTable<LcmCache, ProgressSidecarIdentity> _loadedSidecars = new();
 
     /// <summary>Creates a refresh that publishes into one runner-owned Baseline root.</summary>
     internal BaselineRefresh(BaselineRepository baselines, string root, Func<DateTimeOffset>? now = null)
@@ -50,6 +53,14 @@ public sealed class BaselineRefresh
             throw new ArgumentException("A Baseline root is required.", nameof(root));
         _root = root;
         _now = now ?? (() => DateTimeOffset.UtcNow);
+    }
+
+    internal LcmCache LoadProject(ProjectLocator project)
+    {
+        var sidecars = ProgressSourceIdentity.CaptureSidecars(project.FullFwDataPath);
+        var cache = new FwDataProjectLoader().LoadCache(project.FullFwDataPath);
+        if (sidecars?.Current(project.FullFwDataPath) == true) _loadedSidecars.Add(cache, sidecars);
+        return cache;
     }
 
     /// <summary>Captures the open project and publishes the result, returning what was published.</summary>
@@ -81,8 +92,10 @@ public sealed class BaselineRefresh
                 cancellationToken).ConfigureAwait(false);
             // The caller saved the project before calling, so the file's own stamp is that save's time.
             var savedUtc = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
-            var sourceIdentity = ProgressSourceIdentity.CapturedCopy(publication.FwDataPath, project.FullFwDataPath,
-                sourceMetadata)?.Serialize();
+            var source = ProgressSourceIdentity.CapturedCopy(publication.FwDataPath, project.FullFwDataPath,
+                sourceMetadata);
+            var sourceIdentity = _loadedSidecars.TryGetValue(savedCache, out var loaded) &&
+                source?.SidecarDigest == loaded.Digest ? source.Serialize() : null;
             _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, _now(), savedUtc,
                 textWords, summary, sourceIdentity);
             return publication.Token;

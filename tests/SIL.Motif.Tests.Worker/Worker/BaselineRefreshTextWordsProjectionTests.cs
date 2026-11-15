@@ -49,7 +49,7 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
         var firstToken = await refresh.RefreshAsync(cache, project, CancellationToken.None);
         var progress = ProgressQuery.Query(new ProgressRequest(project.FullFwDataPath, new ProgressScope("texts")));
         Assert.True(progress.Succeeded, progress.Refusal?.Message);
-        Assert.True(progress.Value!.Freshness.JudgementsCurrent);
+        Assert.False(progress.Value!.Freshness.JudgementsCurrent);
 
         Assert.Equal(1, Count(database, "BaselineTextWords", projectKey));
         Assert.Equal(1, Count(database, "BaselineTextReadIndex", projectKey));
@@ -79,6 +79,48 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
         Assert.Equal(0, CountOtherDigest(database, "BaselineTextWords", projectKey, secondToken.BundleDigest));
         Assert.Equal(0, CountOtherDigest(database, "BaselineTextReadIndex", projectKey, secondToken.BundleDigest));
         Assert.Equal(0, CountOtherDigest(database, "BaselineTextWordforms", projectKey, secondToken.BundleDigest));
+    }
+
+    [Fact]
+    public async Task RefreshOfSuppliedCacheDoesNotCertifyChangedSidecars()
+    {
+        using var cache = _pristine.NewScratch();
+        SeededProject.SeedText(cache, _pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        var (project, database) = Open(cache);
+        using var owned = database;
+        var folder = Path.Combine(Path.GetDirectoryName(project.FullFwDataPath)!, "WritingSystemStore");
+        var ldml = Directory.EnumerateFiles(folder, "*.ldml").First();
+        File.AppendAllText(ldml, "\n");
+        var refresh = new BaselineRefresh(new BaselineRepository(database), Path.Combine(_root, "managed-sidecars"));
+        await refresh.RefreshAsync(cache, project, CancellationToken.None);
+        var result = ProgressQuery.Query(new ProgressRequest(project.FullFwDataPath, new ProgressScope("texts")));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.False(result.Value!.Freshness.JudgementsCurrent);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RefreshCertifiesOnlySidecarsUsedByItsLoad(bool changeSidecars)
+    {
+        var initial = _pristine.NewScratch();
+        SeededProject.SeedText(initial, _pristine.Seed);
+        new FwDataProjectLoader().Save(initial);
+        var (project, database) = Open(initial);
+        initial.Dispose();
+        using var owned = database;
+        var refresh = new BaselineRefresh(new BaselineRepository(database), Path.Combine(_root, "managed-loaded"));
+        using var cache = refresh.LoadProject(project);
+        if (changeSidecars)
+        {
+            var folder = Path.Combine(Path.GetDirectoryName(project.FullFwDataPath)!, "WritingSystemStore");
+            File.AppendAllText(Directory.EnumerateFiles(folder, "*.ldml").First(), "\n");
+        }
+        await refresh.RefreshAsync(cache, project, CancellationToken.None);
+        var result = ProgressQuery.Query(new ProgressRequest(project.FullFwDataPath, new ProgressScope("texts")));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.Equal(!changeSidecars, result.Value!.Freshness.JudgementsCurrent);
     }
 
     [Fact]

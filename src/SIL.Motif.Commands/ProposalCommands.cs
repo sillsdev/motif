@@ -1994,10 +1994,12 @@ public static partial class ProposalCommands
                 throw ProjectWritingSystemsUnavailableException.MissingStore(project.FullFwDataPath);
             var recordedSource = ProgressRepository.ReadSourceIdentity(database);
             var originalIdentity = ProgressSourceIdentity.Parse(recordedSource);
+            var loadedSidecars = ProgressSourceIdentity.CaptureSidecars(project.FullFwDataPath);
             cache = loader.LoadCache(project.FullFwDataPath);
             try
             {
                 FwDataProjectLoader.RequireProjectPath(cache, project.FullFwDataPath);
+                if (loadedSidecars?.Current(project.FullFwDataPath) != true) loadedSidecars = null;
                 var loadedSource = originalIdentity is null ? null : ProgressSourceIdentity.Capture(project.FullFwDataPath);
                 if (record.Status != ManifestStatus.Applied)
                 {
@@ -2120,9 +2122,10 @@ public static partial class ProposalCommands
                         contentRevision = "content/" + pending;
                     }
                     var saved = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
-                    var savedIdentity = ProgressSourceIdentity.Capture(project.FullFwDataPath)?.Serialize();
+                    var savedSource = ProgressSourceIdentity.Capture(project.FullFwDataPath);
+                    if (loadedSidecars is null || savedSource?.SidecarDigest != loadedSidecars.Digest) return;
                     ProgressRepository.PublishApplied(database, progress, pending, saved, contentRevision,
-                        incremental ? existing.Value.Projection : null, savedIdentity);
+                        incremental ? existing.Value.Projection : null, savedSource.Serialize());
                 });
 
                 TryPostApplyStep("post-receipt housekeeping", () =>

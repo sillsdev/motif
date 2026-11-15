@@ -91,7 +91,7 @@ public static class ProjectJobHandlers
         ArgumentNullException.ThrowIfNull(lanes);
         var publish = new BaselineRefresh(baselines, options.Root);
         var refresh = new BaselineRefreshJobHandler(
-            new BaselineRefreshBarrier(locator => new FwDataProjectLoader().LoadCache(locator.FullFwDataPath)),
+            new BaselineRefreshBarrier(publish.LoadProject),
             (cache, token) => publish.RefreshAsync(cache, project, token));
         var proposals = new ProposalRepository(database);
         var dryRun = new DryRunJobHandler(baselines, proposals, lanes, _ => null,

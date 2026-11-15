@@ -245,6 +245,39 @@ public sealed class ProgressQueryTests(PristineProjectFixture pristine) : IDispo
         Assert.Equal(2, after.Value.Coverage.ExcludedPlaces);
     }
 
+    [Fact]
+    public void SidecarChangeBeforePublicationRemainsStaleUntilRefresh()
+    {
+        var (path, proposal, writingSystem, _) = PrepareApproval();
+        try
+        {
+            ProposalCommands.BeforeProgressPublication.Value = () => ExcludeAFromExemplars(path, writingSystem);
+            var applied = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposal, Force: true));
+            Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        }
+        finally { ProposalCommands.BeforeProgressPublication.Value = null; }
+        var stale = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
+        Assert.True(!stale.Succeeded || !stale.Value!.Freshness.JudgementsCurrent);
+        var reapplied = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposal, Force: true));
+        Assert.True(reapplied.Succeeded, reapplied.Refusal?.Message);
+        var refreshed = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
+        Assert.True(refreshed.Succeeded, refreshed.Refusal?.Message);
+        Assert.True(refreshed.Value!.Freshness.JudgementsCurrent);
+        Assert.Equal(0, refreshed.Value.Totals!.Tokens.Total);
+        Assert.Equal(2, refreshed.Value.Coverage.ExcludedPlaces);
+    }
+
+    private static void ExcludeAFromExemplars(string path, string writingSystem)
+    {
+        var ldml = Path.Combine(Path.GetDirectoryName(path)!, "WritingSystemStore", writingSystem + ".ldml");
+        var document = System.Xml.Linq.XDocument.Load(ldml);
+        var exemplar = document.Descendants().Single(element => element.Name.LocalName == "exemplarCharacters" &&
+            element.Name.NamespaceName.Length == 0 && element.Attribute("type") is null);
+        exemplar.Value = "[b-z]";
+        document.Save(ldml);
+        File.SetLastWriteTimeUtc(ldml, File.GetLastWriteTimeUtc(ldml).AddSeconds(5));
+    }
+
     private (string Path, string Proposal, string WritingSystem, Guid OtherWordform) PrepareApproval()
     {
         var path = pristine.CopyProjectFile();
