@@ -71,34 +71,6 @@
     "control": "ItemsControl"
   },
   {
-    "view": "ExpertTracePanel",
-    "name": "ExpertTracePanelExpertAttemptsItems",
-    "source": "ExpertAttempts",
-    "mode": "popup",
-    "control": "ComboBox"
-  },
-  {
-    "view": "ExpertTracePanel",
-    "name": "ExpertTracePanelExpertEventsItems",
-    "source": "ExpertEvents",
-    "mode": "rows",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ExpertTracePanel",
-    "name": "ExpertTracePanelExpertPhonologicalEventsItems",
-    "source": "ExpertPhonologicalEvents",
-    "mode": "rows",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ExpertTracePanel",
-    "name": "ExpertTracePanelExpertEnvironmentTokensItems",
-    "source": "ExpertEnvironmentTokens",
-    "mode": "rows",
-    "control": "ItemsControl"
-  },
-  {
     "view": "HandoffPanel",
     "name": "HandoffPanelPlannedFilesItems",
     "source": "PlannedFiles",
@@ -645,5 +617,45 @@
     "mode": "finite",
     "control": "ComboBox",
     "reason": "W3: the stored and parser readings of one word."
+  }
+  ,
+  {
+    "view": "Diagnostics/WhyThisAnalysisPanel",
+    "name": "WhyAnalyses",
+    "source": "Analyses",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "w10: the parser's recorded analyses of one word."
+  },
+  {
+    "view": "Diagnostics/WhyThisAnalysisPanel",
+    "name": "WhyAnalysisParts",
+    "source": "Parts",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "w10: the morphs of one recorded analysis."
+  },
+  {
+    "view": "Diagnostics/WhyThisAnalysisPanel",
+    "name": "WhyRules",
+    "source": "Rules",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "w10: the rules on the best path, name and link only."
+  },
+  {
+    "view": "Diagnostics/WhyThisAnalysisPanel",
+    "name": "WhyFailed",
+    "source": "FailedRows",
+    "mode": "finite",
+    "control": "ItemsControl",
+    "reason": "w10: at most twenty failed attempts; the Full Trace holds the rest."
+  },
+  {
+    "view": "Diagnostics/WhyThisAnalysisPanel",
+    "name": "WhyTraceRows",
+    "source": "TraceRows",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   }
 ]

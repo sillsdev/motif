@@ -57,7 +57,7 @@ public sealed class ProgressiveDisplayTests
 
     private static readonly string[] ViewNames =
     [
-        "DiagnosticPanel", "ExpertTracePanel", "HandoffPanel",
+        "DiagnosticPanel", "HandoffPanel",
         "Assistant/ClaudePanel", "Settings/AssistantConnectionsPanel",
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage",
@@ -67,6 +67,8 @@ public sealed class ProgressiveDisplayTests
         "TraceAnalysesView", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
         // w8 proposal diagnostic row.
         "Diagnostics/ProposalDiagnosticsRow",
+        // w10
+        "Diagnostics/WhyThisAnalysisPanel",
         // W9-progress
         "Pages/ProgressPage",
         // Word panel
@@ -141,7 +143,7 @@ public sealed class ProgressiveDisplayTests
                     }
                     if (entry.Mode is "tree" or "grid") continue;
                     var isFragment = !ReferenceEquals(root, fragment);
-                    var externalScroll = isFragment || viewName is "DiagnosticPanel" or "ExpertTracePanel" or
+                    var externalScroll = isFragment || viewName is "DiagnosticPanel" or
                         "TraceAnalysesView";
                     window.Content = externalScroll ? new ScrollViewer { Content = fragment } : fragment;
                     foreach (var ancestor in items.GetLogicalAncestors().OfType<Control>())
@@ -950,6 +952,15 @@ public sealed class ProgressiveDisplayTests
         }, TimeSpan.FromSeconds(30));
     }
 
+    // w10: an open fold with its answer showing, so the Full Trace list is on screen to measure.
+    private static WhyThisAnalysisViewModel ReadyWhyFold(WorkspaceShellViewModel workspace)
+    {
+        var fold = new WhyThisAnalysisViewModel(workspace.Context, "scale") { IsExpanded = true };
+        fold.State = WhyThisAnalysisState.Ready;
+        fold.ShowFullTrace = true;
+        return fold;
+    }
+
     private void AssertBounded(ItemsControl items, InventoryEntry entry)
     {
         var realized = items.GetRealizedContainers().Count();
@@ -1006,8 +1017,10 @@ public sealed class ProgressiveDisplayTests
             {
                 DataContext = new ProposalDiagnosticsViewModel(workspace.Context) { IsVisible = true },
             },
+            // w10
+            "Diagnostics/WhyThisAnalysisPanel" => new SIL.Motif.App.Views.Diagnostics.WhyThisAnalysisPanel(
+                ReadyWhyFold(workspace)),
             "DiagnosticPanel" => new DiagnosticPanel(trace.Diagnostics),
-            "ExpertTracePanel" => new ExpertTracePanel { DataContext = trace.Trace },
             "HandoffPanel" => new HandoffPanel(workspace.PageModel<SettingsPageModel>().Handoff.Handoff),
             "SettingsPage" => BuildSettingsPage(workspace),
             "SettingsNavigation" => BuildSettingsPage(workspace).Navigation,

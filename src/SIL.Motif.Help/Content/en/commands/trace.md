@@ -1,6 +1,6 @@
 # Trace a word
 
-`trace` runs PanGloss for one word against the project's current Baseline and reads the diagnostic used by Try a Word. Add `--proposal <id>` to trace against that Proposal's Trial copy. It does not change the project or store a new Assessment.
+`trace` runs PanGloss for one word against the project's current Baseline and reads the diagnostic shown by Why This Analysis?. Add `--proposal <id>` to trace against that Proposal's Trial copy. It does not change the project or store a new Assessment.
 
 ## Trace a word now
 
@@ -26,7 +26,7 @@ A report-bound trace selects an exact case and side: `motif proposal trial --pro
 motif trace --load "C:\Temp\mirusi.trace.json"
 ```
 
-`--load` reads the saved PanGloss diagnostic without opening a project or running a parser. It uses the same reader as a live trace, so the returned word, analyses, attempts, and recorded tree share one interpretation. Try a Word translates the recorded refusal code into a sentence while retaining the code and the original evidence. A rule or required feature is named only when recorded; neighboring events do not establish which rule caused a failure. The window folds forward building events into Plain and keeps the full parser order in Expert.
+`--load` reads the saved PanGloss diagnostic without opening a project or running a parser. It uses the same reader as a live trace, so the returned word, analyses, attempts, and recorded tree share one interpretation. Why This Analysis? translates the recorded refusal code into a sentence while retaining the code and the original evidence. A rule or required feature is named only when recorded; neighboring events do not establish which rule caused a failure. The window folds forward building events into Plain and keeps the full parser order in Expert.
 
 ## Related commands
 

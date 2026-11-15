@@ -514,7 +514,7 @@ public sealed partial class ResultsInTextViewModelTests : IAsyncLifetime
 
         Assert.Equal("∅ No parse · the grammar builds nothing for this word · Lost", token.PanGlossCardSummary);
         Assert.Equal("Why it might not parse", token.WarningSectionHeading);
-        Assert.Equal("No grammar warning names this word. Try a Word shows where it stops.", token.NoNamedWarningText);
+        Assert.Equal("No grammar warning names this word. With Diagnostics on, Why This Analysis? shows where it stops.", token.NoNamedWarningText);
     }
     [Fact]
     public void OccurrenceFiltersFollowTheSharedMarkingClass()

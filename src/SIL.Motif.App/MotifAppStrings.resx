@@ -934,10 +934,6 @@
     <value>Open</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.TryAWord" xml:space="preserve">
-    <value>Try a Word</value>
-    <comment>Window text.</comment>
-  </data>
   <data name="MotifApp.Reading" xml:space="preserve">
     <value>Reading…</value>
     <comment>Window text.</comment>
@@ -2129,7 +2125,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Setup button that goes to the confirmation step when editing a selection.</comment>
   </data>
   <data name="MotifApp.WordCardNoParseWarning" xml:space="preserve">
-    <value>No grammar warning names this word. Try a Word shows where it stops.</value>
+    <value>No grammar warning names this word. With Diagnostics on, Why This Analysis? shows where it stops.</value>
     <comment>Shown for a word that did not parse and has no grammar warning naming it.</comment>
   </data>
   <data name="MotifApp.ReaderMarkLegend" xml:space="preserve">
@@ -7639,4 +7635,36 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.PassageNoPlaceStatus" xml:space="preserve"><value>This word is not at a place in a Text, so there is nothing to keep.</value></data>
   <data name="MotifApp.PassageSeveralReadingsStatus" xml:space="preserve"><value>This word has several readings. Choose one in the word panel and use Approve.</value></data>
   <data name="MotifApp.PassageKeyFailedFormat" xml:space="preserve"><value>That key could not finish, so nothing more was staged. {0}</value></data>
+  <!-- w10 -->
+  <data name="MotifApp.WhyThisAnalysisStepsFormat" xml:space="preserve"><value>Diagnostics · {0}</value></data>
+  <data name="MotifApp.WhyThisAnalysisStepsPattern" xml:space="preserve"><value>{0, plural, one {# parser step} other {# parser steps}}</value></data>
+  <data name="MotifApp.WhyThisAnalysisStepsNotRecorded" xml:space="preserve"><value>Diagnostics · Parser Steps Not Recorded</value></data>
+  <data name="MotifApp.WhyThisAnalysisCollapsedHint" xml:space="preserve"><value>Open this to ask the parser why it offered these readings. Nothing runs until you do.</value></data>
+  <data name="MotifApp.WhyThisAnalysisLoading" xml:space="preserve"><value>Asking the parser about this word.</value></data>
+  <data name="MotifApp.WhyThisAnalysisNoProject" xml:space="preserve"><value>Open a project to ask the parser.</value></data>
+  <data name="MotifApp.WhyThisAnalysisRefusedFormat" xml:space="preserve"><value>The parser could not trace this word. {0}</value></data>
+  <data name="MotifApp.WhyThisAnalysisMismatch" xml:space="preserve"><value>This trace read a different grammar capture than the one in use, so it is not shown.</value></data>
+  <data name="MotifApp.WhyThisAnalysisWrongWord" xml:space="preserve"><value>This trace answered for a different word, so it is not shown.</value></data>
+  <data name="MotifApp.WhyThisAnalysisNotRecorded" xml:space="preserve"><value>No trace was recorded for this word.</value></data>
+  <data name="MotifApp.WhyThisAnalysisBuilt" xml:space="preserve"><value>Analyses the Parser Built</value></data>
+  <data name="MotifApp.WhyThisAnalysisNoAnalysis" xml:space="preserve"><value>The parser recorded no analysis for this word.</value></data>
+  <data name="MotifApp.WhyThisAnalysisRules" xml:space="preserve"><value>Rules on the Best Path</value></data>
+  <data name="MotifApp.WhyThisAnalysisFailedFormat" xml:space="preserve"><value>Tried and Failed · {0}</value></data>
+  <data name="MotifApp.WhyThisAnalysisFailedAtLeastFormat" xml:space="preserve"><value>Tried and Failed · At Least {0}</value></data>
+  <data name="MotifApp.WhyThisAnalysisFailedUnknown" xml:space="preserve"><value>Tried and Failed · Not Known</value></data>
+  <data name="MotifApp.WhyThisAnalysisFailedNoneRecorded" xml:space="preserve"><value>Tried and Failed · None Recorded</value></data>
+  <data name="MotifApp.WhyThisAnalysisCappedFormat" xml:space="preserve"><value>The search stopped before it finished ({0}), so failed analyses may be missing. This does not show that nothing else failed.</value></data>
+  <data name="MotifApp.WhyThisAnalysisAttemptsNotRecorded" xml:space="preserve"><value>This trace recorded no attempts, so it cannot say which analyses failed.</value></data>
+  <data name="MotifApp.WhyThisAnalysisMoreFailedFormat" xml:space="preserve"><value>{0} more failed analyses are in the Full Trace.</value></data>
+  <data name="MotifApp.WhyThisAnalysisOpenInFieldWorks" xml:space="preserve"><value>Open in FieldWorks</value></data>
+  <data name="MotifApp.WhyThisAnalysisOpenNameFormat" xml:space="preserve"><value>Open {0} in FieldWorks</value></data>
+  <data name="MotifApp.WhyThisAnalysisFullTrace" xml:space="preserve"><value>Full Trace…</value></data>
+  <data name="MotifApp.WhyThisAnalysisHideFullTrace" xml:space="preserve"><value>Hide Full Trace</value></data>
+  <data name="MotifApp.WhyThisAnalysisFullTraceName" xml:space="preserve"><value>Full Trace Steps</value></data>
+  <data name="MotifApp.WhyThisAnalysisFullTraceCountFormat" xml:space="preserve"><value>{0} recorded parser events, in the order the parser recorded them.</value></data>
+  <data name="MotifApp.WhyThisAnalysisCopyTrace" xml:space="preserve"><value>Copy Trace</value></data>
+  <data name="MotifApp.WhyThisAnalysisCopyFailed" xml:space="preserve"><value>The trace could not be copied.</value></data>
+  <data name="MotifApp.WhyThisAnalysisOpenFailed" xml:space="preserve"><value>FieldWorks could not be opened.</value></data>
+  <data name="MotifApp.WhyThisAnalysisRulesNote" xml:space="preserve"><value>Shown only with Diagnostics on. Rules are read and edited in FieldWorks.</value></data>
+  <data name="MotifApp.WhyThisAnalysisFoldName" xml:space="preserve"><value>Why This Analysis? Fold</value></data>
 </root>

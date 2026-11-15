@@ -37,7 +37,7 @@ public sealed class ReaderWarningNoteScreenshots
                 PageScreenshots.Settle(window);
                 note = Assert.Single(window.GetVisualDescendants().OfType<CopyableTextBlock>(), text =>
                     text.IsEffectivelyVisible && text.Text is "No stored warning names this word." or
-                        "No grammar warning names this word. Try a Word shows where it stops.");
+                        "No grammar warning names this word. With Diagnostics on, Why This Analysis? shows where it stops.");
                 originalWrapping = note.TextWrapping;
                 note.BringIntoView();
                 PageScreenshots.Settle(window);

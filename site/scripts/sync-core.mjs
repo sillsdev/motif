@@ -16,7 +16,7 @@ const guideSections = [
 	},
 	{
 		title: 'Pages of the window',
-		pages: ['the-window', 'overview', 'proposals', 'texts', 'passage', 'keyboard-shortcuts', 'settings', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
+		pages: ['the-window', 'overview', 'proposals', 'texts', 'passage', 'keyboard-shortcuts', 'settings', 'why-this-analysis', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	},
 	{
 		title: 'Everyday tasks',
@@ -54,7 +54,7 @@ const learnSidebarOrder = [
 	'working-with-an-ai-consultant',
 ];
 const learnOrderByCode = new Map(learnSidebarOrder.map((slug, index) => [`learn/${slug}`, index]));
-const homeFeatureCodes = ['overview', 'texts', 'try-a-word', 'timing', 'warnings', 'review-changes', 'ai-handoff'];
+const homeFeatureCodes = ['overview', 'texts', 'why-this-analysis', 'timing', 'warnings', 'review-changes', 'ai-handoff'];
 const sampleIdByLearnPrefix = new Map([['turkish', 'synthetic-turkic']]);
 
 function yamlString(value) {

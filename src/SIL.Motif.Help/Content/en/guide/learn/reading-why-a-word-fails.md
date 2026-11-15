@@ -1,6 +1,6 @@
 # Reading why a word fails
 
-**Try a Word** records the parser's search for one word. Enter it in **Type any word...**, choose **Try it**, and read the result. The word can be new; it does not have to occur in the project's texts or lexicon.
+**Why This Analysis?** records the parser's search for the selected word. Turn on **View → Diagnostics**, select a word in **Texts**, open the grey fold in the word panel, and read the result.
 
 Start with the result and search status:
 

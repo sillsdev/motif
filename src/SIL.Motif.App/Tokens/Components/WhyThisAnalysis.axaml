@@ -1,0 +1,47 @@
+<!--
+  The Why This Analysis fold in the word panel: a grey, bordered fold of recorded parser evidence.
+  Colours, sizes and gaps come from Intent or Component keys only.
+-->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.WhyThisAnalysis.Radius" ResourceKey="Primitive.Radius.3" />
+    <StaticResource x:Key="Component.WhyThisAnalysis.CardGap" ResourceKey="Primitive.Inset.0_0_0_4" />
+    <StaticResource x:Key="Component.WhyThisAnalysis.PartGap" ResourceKey="Primitive.Inset.0_0_8_0" />
+    <StaticResource x:Key="Component.WhyThisAnalysis.TraceMaxHeight" ResourceKey="Primitive.Size.280" />
+  </Styles.Resources>
+  <Style Selector="Border.whyFold">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Neutral}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WhyThisAnalysis.Radius}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Row}" />
+  </Style>
+  <Style Selector="Border.whyCard">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Component.WhyThisAnalysis.Radius}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Row}" />
+  </Style>
+  <Style Selector="StackPanel.whyBody">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector=":is(TextBlock).whyHeading">
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Strong}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector=":is(TextBlock).whyMuted">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector=":is(TextBlock).whyWarn">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Warning.Text}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="Button.whyLink">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Link.Text}" />
+  </Style>
+  <Style Selector="ScrollViewer.whyTrace">
+    <Setter Property="MaxHeight" Value="{DynamicResource Component.WhyThisAnalysis.TraceMaxHeight}" />
+  </Style>
+</Styles>

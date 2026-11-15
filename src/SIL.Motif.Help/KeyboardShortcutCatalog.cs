@@ -148,8 +148,8 @@ public enum ShortcutScope
     MiniMatrix,
     /// <summary>A morpheme row.</summary>
     Morpheme,
-    /// <summary>The Try a Word page.</summary>
-    TryWord,
+    /// <summary>The Why This Analysis? fold in the word panel.</summary>
+    WhyThisAnalysis,
     /// <summary>The Review changes page.</summary>
     ReviewChanges,
     /// <summary>The keyboard-navigable diagnostic tree.</summary>
@@ -350,7 +350,7 @@ public static class KeyboardShortcutCatalog
         ShortcutScope.TextReader => "analyze-texts",
         ShortcutScope.WordList => "word-list",
         ShortcutScope.MiniMatrix => "matrix-preview",
-        ShortcutScope.TryWord => "try-a-word",
+        ShortcutScope.WhyThisAnalysis => "why-this-analysis",
         ShortcutScope.ReviewChanges => "review-changes",
         _ => ToKebabCase(scope.ToString()),
     }}";

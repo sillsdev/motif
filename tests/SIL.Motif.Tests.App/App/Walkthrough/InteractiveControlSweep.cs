@@ -269,6 +269,9 @@ internal static class InteractiveControlSweep
             InteractiveControlFamily.Container,
         ContentControl content when AutomationProperties.GetAutomationId(content) == AutomationIds.DiagnosticsWarningDetails =>
             InteractiveControlFamily.Container,
+        // w10: the word panel's diagnostic slot, which holds the Why This Analysis fold.
+        ContentControl content when AutomationProperties.GetAutomationId(content) == AutomationIds.WordOccurrencesDiagnostics =>
+            InteractiveControlFamily.Container,
         UserControl panel when AutomationProperties.GetAutomationId(panel) == AutomationIds.Sources =>
             InteractiveControlFamily.Container,
         Border { Classes: var classes } when classes.Contains("handoffFile") => InteractiveControlFamily.FocusableSurface,

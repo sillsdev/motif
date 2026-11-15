@@ -99,4 +99,29 @@ public sealed class ExpertTraceReadingTests
         Assert.DoesNotContain("children", trace.ExpertRawRecord);
         Assert.Contains(TraceFailureSentences.Explain(null), trace.ExpertReadableText);
     }
+
+    [Fact]
+    public void TheModeSwitchKeepsTheSelectedOccurrence()
+    {
+        var trace = TraceWordViewModel.FromDiagnosticJson(NotationDiagnostic);
+        trace.SelectedCandidate = trace.Candidates[0];
+        var attempt = trace.SelectedCandidate;
+        var selected = FindInspectable(trace.RecordedRoots[0]);
+        trace.SelectedStep = selected;
+
+        trace.SetExpertCommand.Execute(true);
+        Assert.True(trace.IsExpert);
+        Assert.Same(attempt, trace.SelectedCandidate);
+        Assert.Equal(selected.RecordedStep.StepId, trace.SelectedStep!.RecordedStep.StepId);
+        trace.SetExpertCommand.Execute(false);
+        Assert.False(trace.IsExpert);
+        Assert.Same(attempt, trace.SelectedCandidate);
+        Assert.Equal(selected.RecordedStep.StepId, trace.SelectedStep!.RecordedStep.StepId);
+    }
+
+    private static TraceStepViewModel FindInspectable(TraceStepViewModel root) => root.CanInspect ? root
+        : root.Children.Select(FindInspectableOrNull).First(step => step is not null)!;
+
+    private static TraceStepViewModel? FindInspectableOrNull(TraceStepViewModel root) => root.CanInspect ? root
+        : root.Children.Select(FindInspectableOrNull).FirstOrDefault(step => step is not null);
 }

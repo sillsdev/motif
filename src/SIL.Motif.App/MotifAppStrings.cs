@@ -985,7 +985,6 @@ public static class MotifAppStrings
 
     public static string Open => Text("MotifApp.Open");
 
-    public static string TryAWord => Text("MotifApp.TryAWord");
 
     public static string Reading => Text("MotifApp.Reading");
 
@@ -4075,5 +4074,38 @@ public static class MotifAppStrings
     public static string PassageNoPlaceStatus => Text("MotifApp.PassageNoPlaceStatus");
     public static string PassageSeveralReadingsStatus => Text("MotifApp.PassageSeveralReadingsStatus");
     public static string PassageKeyFailedFormat => Text("MotifApp.PassageKeyFailedFormat");
+    #endregion
+    #region w10
+    public static string WhyThisAnalysisStepsFormat => Text("MotifApp.WhyThisAnalysisStepsFormat");
+    public static string WhyThisAnalysisStepsPattern => Text("MotifApp.WhyThisAnalysisStepsPattern");
+    public static string WhyThisAnalysisStepsNotRecorded => Text("MotifApp.WhyThisAnalysisStepsNotRecorded");
+    public static string WhyThisAnalysisCollapsedHint => Text("MotifApp.WhyThisAnalysisCollapsedHint");
+    public static string WhyThisAnalysisLoading => Text("MotifApp.WhyThisAnalysisLoading");
+    public static string WhyThisAnalysisNoProject => Text("MotifApp.WhyThisAnalysisNoProject");
+    public static string WhyThisAnalysisRefusedFormat => Text("MotifApp.WhyThisAnalysisRefusedFormat");
+    public static string WhyThisAnalysisMismatch => Text("MotifApp.WhyThisAnalysisMismatch");
+    public static string WhyThisAnalysisWrongWord => Text("MotifApp.WhyThisAnalysisWrongWord");
+    public static string WhyThisAnalysisNotRecorded => Text("MotifApp.WhyThisAnalysisNotRecorded");
+    public static string WhyThisAnalysisBuilt => Text("MotifApp.WhyThisAnalysisBuilt");
+    public static string WhyThisAnalysisNoAnalysis => Text("MotifApp.WhyThisAnalysisNoAnalysis");
+    public static string WhyThisAnalysisRules => Text("MotifApp.WhyThisAnalysisRules");
+    public static string WhyThisAnalysisFailedFormat => Text("MotifApp.WhyThisAnalysisFailedFormat");
+    public static string WhyThisAnalysisFailedAtLeastFormat => Text("MotifApp.WhyThisAnalysisFailedAtLeastFormat");
+    public static string WhyThisAnalysisFailedUnknown => Text("MotifApp.WhyThisAnalysisFailedUnknown");
+    public static string WhyThisAnalysisFailedNoneRecorded => Text("MotifApp.WhyThisAnalysisFailedNoneRecorded");
+    public static string WhyThisAnalysisCappedFormat => Text("MotifApp.WhyThisAnalysisCappedFormat");
+    public static string WhyThisAnalysisAttemptsNotRecorded => Text("MotifApp.WhyThisAnalysisAttemptsNotRecorded");
+    public static string WhyThisAnalysisMoreFailedFormat => Text("MotifApp.WhyThisAnalysisMoreFailedFormat");
+    public static string WhyThisAnalysisOpenInFieldWorks => Text("MotifApp.WhyThisAnalysisOpenInFieldWorks");
+    public static string WhyThisAnalysisOpenNameFormat => Text("MotifApp.WhyThisAnalysisOpenNameFormat");
+    public static string WhyThisAnalysisFullTrace => Text("MotifApp.WhyThisAnalysisFullTrace");
+    public static string WhyThisAnalysisHideFullTrace => Text("MotifApp.WhyThisAnalysisHideFullTrace");
+    public static string WhyThisAnalysisFullTraceName => Text("MotifApp.WhyThisAnalysisFullTraceName");
+    public static string WhyThisAnalysisFullTraceCountFormat => Text("MotifApp.WhyThisAnalysisFullTraceCountFormat");
+    public static string WhyThisAnalysisCopyTrace => Text("MotifApp.WhyThisAnalysisCopyTrace");
+    public static string WhyThisAnalysisCopyFailed => Text("MotifApp.WhyThisAnalysisCopyFailed");
+    public static string WhyThisAnalysisOpenFailed => Text("MotifApp.WhyThisAnalysisOpenFailed");
+    public static string WhyThisAnalysisRulesNote => Text("MotifApp.WhyThisAnalysisRulesNote");
+    public static string WhyThisAnalysisFoldName => Text("MotifApp.WhyThisAnalysisFoldName");
     #endregion
 }

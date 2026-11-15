@@ -154,7 +154,7 @@ internal static class CommandContractCases
         new(typeof(SetupViewModel), nameof(SetupViewModel.FinishCommand), null, null, false,
             "WorkspaceShellViewModelTests.FirstRunSavesTheSelectionAndUsesItWithTheChosenParserWorkLimit"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.SetExpertCommand), typeof(bool), false, true,
-            "ExpertTracePanelTests.TheModeSwitchKeepsTheSelectedOccurrenceAndOpenInspector"),
+            "ExpertTraceReadingTests.TheModeSwitchKeepsTheSelectedOccurrence"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.SelectExpertStepCommand), typeof(TraceStepViewModel), null, true,
             "ExpertTraceReadingTests.SelectedRawRecordPreservesUnknownProducerFieldsAndExcludesChildren"),
         new(typeof(TraceWordViewModel), nameof(TraceWordViewModel.CancelCommand), null, null, false,

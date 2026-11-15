@@ -24,7 +24,7 @@ Our own suggestion, which has no source: Motif measures only the Default Selecti
 
 **Why.** Black §3.1.3 says environments for allomorphs are defined "once the set of phonemes and natural classes are defined", and §3.1.1 says you need a list of all the phonemes to use environments or natural classes. For the rule-based parser, §6.2.1 says every phoneme used in the orthography must be defined, and a word with even one undefined phoneme is "guaranteed to not give an analysis"; §6.2.2 says features must give each phoneme a distinct set of values; §6.2.3 and §6.2.4 say to be as specific as practical. Black's worked example in §6.1.2.1.4.1 (Figure 51) runs: create the features, make sure every phoneme is defined, assign the features, then write ordered rules. The fieldwork textbooks also take sounds first: Bowern's chapter 5 is titled "Fieldwork on Phonetics and Phonology", before chapters 6 and 7 on morphology and syntax.
 
-**In Motif.** A word PanGloss cannot read shows **PanGloss can’t read it** with its recorded reason. If the reason names the project’s phonemes, inspect the phoneme inventory before parsing again (see [Texts](guide:texts)). **Try a Word** accepts any word, even one that is not in a Text (see [Try a Word](guide:try-a-word)).
+**In Motif.** A word PanGloss cannot read shows **PanGloss can’t read it** with its recorded reason. If the reason names the project’s phonemes, inspect the phoneme inventory before parsing again (see [Texts](guide:texts)). **Why This Analysis?** traces the selected word (see [Why This Analysis?](guide:why-this-analysis)).
 
 ## Words and their parts
 
@@ -40,7 +40,7 @@ Our own suggestion, which has no source: Motif measures only the Default Selecti
 
 **Why.** Black §2.1.2.1 to §2.1.2.5 cover templates, optional slots, multiple templates, discontinuous morphemes and the interaction with categories. Black's Morphotactics section (§2) opens by saying morphotactics controls the order of morphemes and which can co-occur.
 
-**In Motif.** After a change in FieldWorks, parse again and use **Try a Word** on a word that should contain the affix. It shows what the parser built and where it stopped.
+**In Motif.** After a change in FieldWorks, parse again and open **Why This Analysis?** on a word that should contain the affix. It shows what the parser built and where it stopped.
 
 ## Allomorphs
 
@@ -78,7 +78,7 @@ Our own suggestion, which has no source: Motif measures only the Default Selecti
 
 **Why.** Black §6.1.2 notes that these rules are ordered, so that the output of one is the input to the next, and §6.2 lists the checks that make the rule-based parser work. The sequence "once there are stems and affixes to test them on" is ours.
 
-**In Motif.** **Try a Word** lists the **Phonological rules applied** in a trace, and says that **Tried** does not mean **Applied** (see [Try a Word](guide:try-a-word)).
+**In Motif.** **Why This Analysis?** lists the rules on the best path of a trace, and says that **Tried** does not mean **Applied** (see [Why This Analysis?](guide:why-this-analysis)).
 
 ## Ad hoc rules, last
 
@@ -96,7 +96,7 @@ Motif has no typology setting, and FieldWorks has none either. A language's type
 
 ## Optional checks
 
-You may also list a whole closed class, such as all the demonstratives or all the pronouns, and check that each parses. You may also lay out a paradigm table for one stem and look for empty cells. Motif does not measure either one; the checks are yours to run with **Try a Word**.
+You may also list a whole closed class, such as all the demonstratives or all the pronouns, and check that each parses. You may also lay out a paradigm table for one stem and look for empty cells. Motif does not measure either one; the checks are yours to run with **Why This Analysis?**.
 
 ## Going back
 

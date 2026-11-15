@@ -794,6 +794,8 @@ public sealed partial class ComponentStyleTests
             Border.BorderThicknessProperty, "Intent.Stroke.Box");
         yield return new("TryWord", "a failed diagnostic", host => Add(host, Text("failed")),
             TextBlock.ForegroundProperty, "Intent.Danger.Text");
+        yield return new("WhyThisAnalysis", "a recorded card", host => Add(host, Box("whyCard")),
+            Border.BackgroundProperty, "Intent.Surface");
         yield return new("TryWordScoped", "the input edge", host => Add(host, Box("tryWordInput")),
             Border.PaddingProperty, "Component.TryWord.PageInset");
         yield return new("Selection", "a text count", host => Add(host, Text("textCount")),

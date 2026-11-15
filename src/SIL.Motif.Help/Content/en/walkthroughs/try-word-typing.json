@@ -1,6 +1,6 @@
 {
   "id": "try-word-typing",
-  "title": "Try a word",
+  "title": "Diagnostics",
   "description": "Open Diagnostics, where a project's recorded grammar evidence is read.",
   "steps": {
     "trace": "Diagnostics shows the recorded warnings and speed by rule for the current grammar."

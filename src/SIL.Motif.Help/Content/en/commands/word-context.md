@@ -1,6 +1,6 @@
 # Read one word's context
 
-`word-context` reads one word's captured FieldWorks presence and all of its stored analyses, including Approved, Disapproved and Unknown opinions. It uses the same query as Try a Word and does not require an Assessment or membership in a Selection.
+`word-context` reads one word's captured FieldWorks presence and all of its stored analyses, including Approved, Disapproved and Unknown opinions. It uses the same query as the word panel and does not require an Assessment or membership in a Selection.
 
 ## Example
 

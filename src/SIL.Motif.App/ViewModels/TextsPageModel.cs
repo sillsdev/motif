@@ -41,6 +41,7 @@ public sealed class TextsPageModel : PageModel
         ResultsInText.AskAboutWord = (form, _) =>
             AskAssistantAction.RunAsync(context, new AskAssistantTarget("word", form, form, null));
         Words.WordCardActions = ResultsInText;
+        WhyThisAnalysis = new Views.Diagnostics.WhyThisAnalysisHost(context, ResultsInText);
         context.RegisterOccurrenceLocationProvider(ResultsInText.LocateOccurrence);
         context.RegisterOccurrenceNavigator(anchor =>
         {
@@ -60,6 +61,9 @@ public sealed class TextsPageModel : PageModel
     }
 
     public SourcesViewModel Sources { get; }
+
+    /// <summary>Fills the word panel's diagnostic slot while Diagnostics is on.</summary>
+    internal Views.Diagnostics.WhyThisAnalysisHost WhyThisAnalysis { get; }
 
     public AssessViewModel Assess => Context.Assess;
     public SelectionViewModel Selection => Context.Selection;
@@ -90,7 +94,7 @@ public sealed class TextsPageModel : PageModel
     protected override Task OnBaselineCapturedAsync(CancellationToken cancellationToken) =>
         Context.ProjectPath is { } project ? Sources.LoadAsync(project, cancellationToken) : Task.CompletedTask;
 
-    protected override Task OnStopWorkAsync() => Task.WhenAll(Words.StopAsync(), ResultsInText.StopAsync(), Sources.StopAsync());
+    protected override Task OnStopWorkAsync() => Task.WhenAll(Words.StopAsync(), ResultsInText.StopAsync(), Sources.StopAsync(), WhyThisAnalysis.StopAsync());
 
     protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
     {

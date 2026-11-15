@@ -362,4 +362,14 @@ public static class AutomationIds
     public const string ProposalCompareRemeasure = "motif-proposal-compare-remeasure";
     public const string ProposalCompareDifferences = "motif-proposal-compare-differences";
     #endregion
+    #region w10
+    public const string WhyThisAnalysisFold = "motif-why-this-analysis";
+    public const string WhyThisAnalysisStatus = "motif-why-this-analysis-status";
+    public const string WhyThisAnalysisAnalyses = "motif-why-this-analysis-analyses";
+    public const string WhyThisAnalysisRules = "motif-why-this-analysis-rules";
+    public const string WhyThisAnalysisFailed = "motif-why-this-analysis-failed";
+    public const string WhyThisAnalysisFullTrace = "motif-why-this-analysis-full-trace";
+    public const string WhyThisAnalysisFullTraceToggle = "motif-why-this-analysis-full-trace-toggle";
+    public const string WhyThisAnalysisCopy = "motif-why-this-analysis-copy";
+    #endregion
 }

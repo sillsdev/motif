@@ -1,0 +1,129 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Diagnostics.WhyThisAnalysisPanel" x:DataType="vm:WhyThisAnalysisViewModel"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyThisAnalysisFoldName}"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.WhyThisAnalysisFold}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WhyThisAnalysis.axaml" />
+  </UserControl.Styles>
+  <Border Classes="whyFold">
+    <Expander x:Name="WhyFold" IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardWhyThisAnalysis}">
+      <Expander.Header>
+        <StackPanel>
+          <TextBlock Classes="whyHeading" Text="{x:Static app:MotifAppStrings.BoardWhyThisAnalysis}" />
+          <TextBlock Classes="whyMuted" Text="{Binding Subtitle}" />
+        </StackPanel>
+      </Expander.Header>
+      <StackPanel Classes="whyBody">
+        <TextBlock Classes="whyMuted" Text="{Binding StatusText}" IsVisible="{Binding HasStatus}"
+                   AutomationProperties.LiveSetting="Polite"
+                   AutomationProperties.AutomationId="{x:Static app:AutomationIds.WhyThisAnalysisStatus}" />
+        <StackPanel Classes="whyBody" IsVisible="{Binding IsReady}">
+          <TextBlock Classes="whyHeading" Text="{x:Static app:MotifAppStrings.WhyThisAnalysisBuilt}" />
+          <TextBlock Classes="whyMuted" Text="{x:Static app:MotifAppStrings.WhyThisAnalysisNoAnalysis}" IsVisible="{Binding HasNoAnalyses}" />
+          <ItemsControl x:Name="WhyAnalyses" ItemsSource="{Binding Analyses}"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyThisAnalysisBuilt}"
+                        AutomationProperties.AutomationId="{x:Static app:AutomationIds.WhyThisAnalysisAnalyses}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:WhyAnalysisRow">
+                <Border Classes="whyCard" Margin="{DynamicResource Component.WhyThisAnalysis.CardGap}">
+                  <StackPanel>
+                    <TextBlock Classes="whyHeading" Text="{Binding Title}" />
+                    <ItemsControl ItemsSource="{Binding Parts}" x:Name="WhyAnalysisParts">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:WhyNameRow">
+                          <WrapPanel>
+                            <TextBlock Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="{DynamicResource Component.WhyThisAnalysis.PartGap}" />
+                            <TextBlock Classes="whyMuted" Text="{Binding Detail}" IsVisible="{Binding HasDetail}" VerticalAlignment="Center" Margin="{DynamicResource Component.WhyThisAnalysis.PartGap}" />
+                            <Button Classes="whyLink" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding HasLink}"
+                                    Command="{Binding $parent[UserControl].((vm:WhyThisAnalysisViewModel)DataContext).OpenInFieldWorksCommand}"
+                                    CommandParameter="{Binding Link}" AutomationProperties.Name="{Binding LinkName}">
+                              <TextBlock Text="{x:Static app:MotifAppStrings.WhyThisAnalysisOpenInFieldWorks}" />
+                            </Button>
+                          </WrapPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <StackPanel Classes="whyBody" IsVisible="{Binding HasRules}">
+            <TextBlock Classes="whyHeading" Text="{x:Static app:MotifAppStrings.WhyThisAnalysisRules}" />
+            <ItemsControl x:Name="WhyRules" ItemsSource="{Binding Rules}"
+                          AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyThisAnalysisRules}"
+                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.WhyThisAnalysisRules}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:WhyNameRow">
+                  <WrapPanel>
+                    <TextBlock Text="{Binding Name}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="{DynamicResource Component.WhyThisAnalysis.PartGap}" />
+                    <Button Classes="whyLink" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding HasLink}"
+                            Command="{Binding $parent[UserControl].((vm:WhyThisAnalysisViewModel)DataContext).OpenInFieldWorksCommand}"
+                            CommandParameter="{Binding Link}" AutomationProperties.Name="{Binding LinkName}">
+                      <TextBlock Text="{x:Static app:MotifAppStrings.WhyThisAnalysisOpenInFieldWorks}" />
+                    </Button>
+                  </WrapPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+          <TextBlock Classes="whyHeading" Text="{Binding FailedHeading}"
+                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.WhyThisAnalysisFailed}" />
+          <TextBlock Classes="whyWarn" Text="{Binding FailedNote}" IsVisible="{Binding HasFailedNote}" />
+          <ItemsControl x:Name="WhyFailed" ItemsSource="{Binding FailedRows}" IsVisible="{Binding HasFailedRows}"
+                        AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyThisAnalysisFailedNoneRecorded}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:WhyFailedRow">
+                <WrapPanel>
+                  <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="{DynamicResource Component.WhyThisAnalysis.PartGap}" />
+                  <TextBlock Classes="whyMuted" Text="{Binding Stopped}" />
+                </WrapPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Classes="whyMuted" Text="{Binding MoreFailedText}" IsVisible="{Binding HasMoreFailed}" />
+          <WrapPanel>
+            <Button Command="{Binding ToggleFullTraceCommand}" Margin="{DynamicResource Component.WhyThisAnalysis.PartGap}"
+                    AutomationProperties.Name="{Binding FullTraceToggleText}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.WhyThisAnalysisFullTraceToggle}">
+              <TextBlock Text="{Binding FullTraceToggleText}" />
+            </Button>
+            <Button Content="{x:Static app:MotifAppStrings.WhyThisAnalysisCopyTrace}" Command="{Binding CopyTraceCommand}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.WhyThisAnalysisCopy}" />
+          </WrapPanel>
+          <StackPanel Classes="whyBody" IsVisible="{Binding ShowFullTrace}"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WhyThisAnalysisFullTrace}">
+            <TextBlock Classes="whyMuted" Text="{Binding FullTraceCountText}" />
+            <ScrollViewer Classes="whyTrace" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <views:ProgressiveItemsControl x:Name="WhyTraceRows" FullItemsSource="{Binding TraceRows}"
+                                             AutomationProperties.Name="{x:Static app:MotifAppStrings.WhyThisAnalysisFullTraceName}">
+                <views:ProgressiveItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:WhyTraceRow">
+                    <WrapPanel>
+                      <TextBlock Text="{Binding Kind}" TextWrapping="Wrap" Margin="{DynamicResource Component.WhyThisAnalysis.PartGap}" />
+                      <TextBlock Text="{Binding Name}" IsVisible="{Binding HasName}" TextWrapping="Wrap" Margin="{DynamicResource Component.WhyThisAnalysis.PartGap}" />
+                      <TextBlock Classes="whyMuted" Text="{Binding Outcome}" Margin="{DynamicResource Component.WhyThisAnalysis.PartGap}" />
+                      <Button Classes="whyLink" Theme="{DynamicResource BorderlessButton}" IsVisible="{Binding HasLink}"
+                              Command="{Binding $parent[UserControl].((vm:WhyThisAnalysisViewModel)DataContext).OpenInFieldWorksCommand}"
+                              CommandParameter="{Binding Link}" AutomationProperties.Name="{Binding LinkName}">
+                        <TextBlock Text="{x:Static app:MotifAppStrings.WhyThisAnalysisOpenInFieldWorks}" />
+                      </Button>
+                    </WrapPanel>
+                  </DataTemplate>
+                </views:ProgressiveItemsControl.ItemTemplate>
+              </views:ProgressiveItemsControl>
+            </ScrollViewer>
+          </StackPanel>
+          <TextBlock Classes="whyMuted" Text="{x:Static app:MotifAppStrings.WhyThisAnalysisRulesNote}" />
+        </StackPanel>
+        <TextBlock Classes="whyMuted" Text="{x:Static app:MotifAppStrings.WhyThisAnalysisCollapsedHint}"
+                   IsVisible="{Binding !IsExpanded}" />
+      </StackPanel>
+    </Expander>
+  </Border>
+</UserControl>

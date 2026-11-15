@@ -63,6 +63,8 @@
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/ProposalEvidence.axaml" />
     <!-- W3 -->
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WordOccurrences.axaml" />
+    <!-- w10 -->
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/WhyThisAnalysis.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>

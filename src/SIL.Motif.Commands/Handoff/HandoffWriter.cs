@@ -313,7 +313,7 @@ public static class HandoffWriter
             ? $"- `{traceFileName}` — the {(selectedTrace ? "selected" : "recorded")} cost-free trace projection for `{sampleWord}`."
             : string.Empty;
         var traceEvidenceDescription = selectedTrace
-            ? "This projects the diagnostic selected from Try a Word into cost-free linguistic evidence. " +
+            ? "This projects the diagnostic selected in Why This Analysis? into cost-free linguistic evidence. " +
               "No Assessment or replacement trace was run for this Handoff."
             : "The matching `trace.summary` in `parse-results.json` gives recorded analysis attempts and failure reasons. " +
               "Completion is `complete` when the diagnostic records a finished search, `incomplete` when it records " +

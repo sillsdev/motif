@@ -1365,6 +1365,14 @@ public sealed class TraceStepViewModel : ObservableObject
 
     public TraceStep RecordedStep { get; private init; } = null!;
     public TraceRef? Reference { get; private init; }
+    /// <summary>
+    /// Where the rule or entry this step names opens in FieldWorks. It is present only when the trace's own
+    /// reference holds a verified FieldWorks target; a step is never linked from its display name.
+    /// </summary>
+    public Uri? FieldWorksLink => Reference?.FieldWorks is { Link: { Length: > 0 } link } &&
+        Uri.TryCreate(link, UriKind.Absolute, out var uri) &&
+        string.Equals(uri.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? uri : null;
+
     public string? ProducerSourceText => RecordedStep.Source is { Length: > 0 } source ? TraceText.Format(MotifAppStrings.TraceProducerFormat, source) : null;
     public string? CapturedSourceText => Reference?.CapturedFieldWorksLabel is { Length: > 0 } captured &&
         !string.Equals(captured, RecordedStep.Source, StringComparison.Ordinal) ? TraceText.Format(MotifAppStrings.TraceCapturedFieldWorksFormat, captured) : null;

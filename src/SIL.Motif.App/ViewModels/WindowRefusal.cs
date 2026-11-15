@@ -398,7 +398,7 @@ public sealed partial record WindowRefusal
         code.StartsWith("baseline.", StringComparison.Ordinal) ? "refresh the project" :
         code.StartsWith("apply.", StringComparison.Ordinal) ? "apply pending changes" :
         code.StartsWith("grammarcheck.", StringComparison.Ordinal) ? "check grammar" :
-        code.StartsWith("wordtrace.", StringComparison.Ordinal) ? "try a word" :
+        code.StartsWith("wordtrace.", StringComparison.Ordinal) ? "trace the word" :
         code.StartsWith("stats.", StringComparison.Ordinal) ? "read statistics" :
         code.StartsWith("project.", StringComparison.Ordinal) || code.StartsWith("store.", StringComparison.Ordinal)
             ? "open or read a project" : "window action";

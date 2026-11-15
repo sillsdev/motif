@@ -546,7 +546,6 @@ internal enum TooltipScene
     TryAWordEarlierTiming,
     TryAWordRecordedDetails,
     TryAWordRepeatedRecords,
-    ExpertTrace,
     Timing,
     Statistics,
     StatisticsObjects,
@@ -752,16 +751,6 @@ internal static class TooltipOwners
                 control.FindAncestorOfType<TextWordsPanel>() is not null),
         new("cancel parsing", "Views/MotifWorkspaceView.axaml", "Cancel keeps the previous results.", TooltipScene.ParseProgress,
             control => control is Button && Name(control) == "Cancel parsing all words"),
-        new("expert tree scope", "Views/ExpertTracePanel.axaml", "Turn off to show only the chosen attempt's recorded ancestors and terminal event.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Turn off to show only the chosen attempt's recorded ancestors and terminal event.")
-        {
-            Pending = "the standalone trace page is retired",
-        },
-        new("expert event occurrence", "Views/ExpertTracePanel.axaml", "Select this occurrence to read its recorded details.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "Select this occurrence to read its recorded details.")
-        {
-            Pending = "the standalone trace page is retired",
-        },
         new("trimmed trace notation", "Views/DiagnosticPanel.axaml", "{Binding Notation}", TooltipScene.TryAWordRecordedDetails,
             control => control is CopyableTextBlock && control.Classes.Contains("traceNotation") &&
                 control.FindAncestorOfType<DiagnosticPanel>() is not null && ToolTip.GetTip(control) is string)
@@ -773,46 +762,6 @@ internal static class TooltipOwners
                 control.FindAncestorOfType<DiagnosticPanel>() is not null && ToolTip.GetTip(control) is string)
         {
             Pending = "the recorded step's notation is trimmed only when wider than its column; screenshot states capture it",
-        },
-        new("expert input shape", "Views/ExpertTracePanel.axaml", "{Binding InputTip}", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
-                control.FindAncestorOfType<Expander>() is null &&
-                ToolTip.GetTip(control) is string inputTip && inputTip.Contains("input", StringComparison.OrdinalIgnoreCase))
-        {
-            Pending = "the standalone trace page is retired",
-        },
-        new("expert output shape", "Views/ExpertTracePanel.axaml", "{Binding OutputTip}", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
-                control.FindAncestorOfType<Expander>() is null &&
-                ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase))
-        {
-            Pending = "the standalone trace page is retired",
-        },
-        new("expert phonological input shape", "Views/ExpertTracePanel.axaml", "{Binding InputTip}", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
-                control.FindAncestorOfType<Expander>() is { } expander &&
-                AutomationProperties.GetName(expander) == "Expert phonological rules" &&
-                ToolTip.GetTip(control) is string inputTip && inputTip.Contains("input", StringComparison.OrdinalIgnoreCase))
-        {
-            Pending = "the standalone trace page is retired",
-        },
-        new("expert phonological output shape", "Views/ExpertTracePanel.axaml", "{Binding OutputTip}", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null &&
-                control.FindAncestorOfType<Expander>() is { } expander &&
-                AutomationProperties.GetName(expander) == "Expert phonological rules" &&
-                ToolTip.GetTip(control) is string outputTip && outputTip.Contains("output", StringComparison.OrdinalIgnoreCase))
-        {
-            Pending = "the standalone trace page is retired",
-        },
-        new("expert subrule index", "Views/ExpertTracePanel.axaml", "The producer's subrule index. No allomorph identity is inferred from it.", TooltipScene.ExpertTrace,
-            control => control.FindAncestorOfType<ExpertTracePanel>() is not null && ToolTip.GetTip(control) as string == "The producer's subrule index. No allomorph identity is inferred from it.")
-        {
-            Pending = "the standalone trace page is retired",
-        },
-        new("expert environment token", "Views/ExpertTracePanel.axaml", "{Binding Explanation}", TooltipScene.ExpertTrace,
-            control => control is TraceNotationToken { DataContext: EnvironmentToken })
-        {
-            Pending = "the standalone trace page is retired",
         },
         new("parser's morphemes", "Views/TraceAnalysesView.axaml", "{Binding LegacyMorphemesTip}", TooltipScene.TryAWordRecordedDetails,
             control => control is CopyableTextBlock { DataContext: TraceAnalysisViewModel analysis } text && text.Text == analysis.Surface)

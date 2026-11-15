@@ -3273,7 +3273,7 @@ static void PrintUsage(TextWriter writer, CommandSurfacePolicy policy)
         "Assess (a synchronous PanGloss run over a Selection, stored as Assessments; no queue):", policy);
     PrintSection(
         writer, "Trace",
-        "Trace (one word through the Baseline grammar, attempt by attempt, as Try a Word reads it):", policy);
+        "Trace (one word through the Baseline grammar, attempt by attempt, as Why This Analysis? reads it):", policy);
     PrintSection(
         writer, "Handoff",
         "AI Handoff (the self-explaining folder a chat model reads, written atomically):", policy);

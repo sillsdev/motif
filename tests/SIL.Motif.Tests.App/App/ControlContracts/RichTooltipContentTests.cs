@@ -396,7 +396,6 @@ internal sealed class TooltipScenes
                 break;
             case TooltipScene.TryAWordEarlierTiming:
             case TooltipScene.TryAWordRecordedDetails:
-            case TooltipScene.ExpertTrace:
             case TooltipScene.TryAWordRepeatedRecords:
                 Show(WorkspacePage.Progress);
                 break;
@@ -497,7 +496,6 @@ internal sealed class TooltipScenes
             case TooltipScene.AnalyzeWordList:
                 Show(WorkspacePage.Texts);
                 break;
-            case TooltipScene.ExpertTrace: Workspace.Assess.Trace.IsExpert = false; Window.Height = 780; break;
 
             case TooltipScene.FrameKeyboardStatus:
                 Window.ShowKeyboardStatus(null);
