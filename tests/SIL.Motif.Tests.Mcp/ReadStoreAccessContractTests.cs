@@ -2,6 +2,9 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using SIL.Motif.Commands;
+using SIL.Motif.Commands.Requests;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Contract.Review;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Host.Store;
@@ -25,9 +28,13 @@ public sealed class ReadStoreAccessContractTests
             .Select(tool => (Name: tool.Name, Method: (MethodBase)tool.Run.Method))
             .Concat(CommandCatalog.All.Where(command => command.Agent == AgentClass.Read)
                 .SelectMany(command => Handlers(command).Select(method => (Name: command.Name, Method: (MethodBase)method))));
-        var violations = roots.SelectMany(root => Violations(root.Method)
+        var reached = new HashSet<string>(StringComparer.Ordinal);
+        var violations = roots.SelectMany(root => Violations(root.Method, reached: reached)
             .Select(path => root.Name + ": " + path)).ToArray();
         Assert.True(violations.Length == 0, string.Join(Environment.NewLine, violations));
+        // An exception no Read root reaches any more is dead weight that would silently exempt a future caller.
+        var unreached = ExplicitWrites.Keys.Where(identity => !reached.Contains(identity)).ToArray();
+        Assert.True(unreached.Length == 0, "Unreached exceptions: " + string.Join(", ", unreached));
     }
 
     private static MethodInfo[] Handlers(CommandDescriptor command)
@@ -40,45 +47,96 @@ public sealed class ReadStoreAccessContractTests
         return methods;
     }
 
-    internal static readonly IReadOnlyDictionary<string, (Type Type, string Method)> StoreWritingTools =
-        new Dictionary<string, (Type, string)>
+    /// <summary>Read-class tools whose action may write, with the one method that holds the writing open.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> StoreWritingTools =
+        new Dictionary<string, string>
         {
-            ["motif_compare"] = (typeof(CompareCommands), "ProduceStored"),
-            ["motif_report"] = (typeof(ReportCommands), "ProduceStored"),
-            ["motif_parsimony_view"] = (typeof(ParsimonyViewsCommand), "ReadWithArtifactLease"),
+            ["motif_compare"] = Identity(typeof(CompareCommands), "ProduceStored", typeof(ProduceComparisonRequest)),
+            ["motif_report"] = Identity(typeof(ReportCommands), "ProduceStored", typeof(ProduceReportRequest)),
+            ["motif_parsimony_view"] = Identity(typeof(ParsimonyViewsCommand), "ReadWithArtifactLease",
+                typeof(ReadParsimonyViewRequest), typeof(CancellationToken)),
         };
+
+    private static readonly Dictionary<string, string> ExplicitWrites = new()
+    {
+        [StoreWritingTools["motif_compare"]] = "Persists a newly computed Difference Assessment.",
+        [StoreWritingTools["motif_report"]] = "Persists the generated report rendering.",
+        [StoreWritingTools["motif_parsimony_view"]] = "Maintains a persisted artifact reader lease.",
+        [Identity(typeof(ReadStateCommands), "Change", typeof(WordReadStateRequest))] =
+            "Explicit IsRead requests change saved occurrence marks.",
+        [Identity(typeof(JobWait), "CancelJobAsync", typeof(string), typeof(string), typeof(string))] =
+            "A cancelled wait explicitly cancels its durable job.",
+        [Identity(typeof(TrialReviewTools), "ReadTrace", typeof(ServerContext), typeof(ReviewReadRequest))] =
+            "Explicit trace=true retains a new diagnostic trace.",
+    };
+
+    internal static string Identity(Type type, string name, params Type[] parameters) =>
+        type.FullName + "." + name + "(" + string.Join(",", parameters.Select(parameter => parameter.FullName)) + ")";
+
+    private static string Identity(MethodBase method) => method.DeclaringType!.FullName + "." + method.Name + "(" +
+        string.Join(",", method.GetParameters().Select(parameter => parameter.ParameterType.FullName)) + ")";
 
     [Fact]
     public void StoreWritingReadToolsHaveAnExplicitWriterException()
     {
-        foreach (var (name, method) in StoreWritingTools)
+        foreach (var (name, identity) in StoreWritingTools)
         {
             Assert.Equal(AgentClass.Read, AgentTools.All.Single(tool => tool.Name == name).Class);
-            Assert.True(ExplicitWrites.ContainsKey(method));
+            Assert.True(ExplicitWrites.ContainsKey(identity));
         }
     }
 
     [Fact]
-    public void ExplicitWriteExceptionsNameExistingPrivateWriterMethods()
+    public void ExplicitWriteExceptionsNameExistingPrivateWritersThatPrecheckTheStore()
     {
-        foreach (var ((type, name), reason) in ExplicitWrites)
+        foreach (var (identity, reason) in ExplicitWrites)
         {
-            var method = type.GetMethod(name, BindingFlags.Static | BindingFlags.NonPublic);
-            Assert.NotNull(method);
+            var method = Writers().SingleOrDefault(candidate => Identity(candidate) == identity);
+            Assert.True(method is not null, identity + " names no private static method.");
             Assert.True(method.IsPrivate);
             Assert.False(string.IsNullOrWhiteSpace(reason));
-            Assert.NotEmpty(Violations(method, allowExplicitWrites: false));
+            var reachable = Walk(method, allowExplicitWrites: false, reached: null).Select(step => step.Method).ToArray();
+            Assert.Contains(reachable, CreatesStore);
+            // The writing open is valid only behind the existing-store pre-check.
+            Assert.True(reachable.Any(called => called.DeclaringType == typeof(ProjectStoreCommand) &&
+                called.Name == nameof(ProjectStoreCommand.RefuseUnlessStoreIsCurrent)),
+                identity + " opens a writing store without ProjectStoreCommand.RefuseUnlessStoreIsCurrent.");
         }
     }
 
+    private static IEnumerable<MethodInfo> Writers() => new[]
+        {
+            typeof(CompareCommands), typeof(ReportCommands), typeof(ParsimonyViewsCommand), typeof(ReadStateCommands),
+            typeof(JobWait), typeof(TrialReviewTools),
+        }.SelectMany(type => type.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public));
+
     [Fact]
-    public void GuardFollowsHelperDelegatesAndAsyncStateMachines()
+    public void ExceptionsAreKeyedByFullMethodIdentityNotByName()
+    {
+        // A second overload with the same name must not inherit the exemption.
+        Assert.NotEqual(Identity(typeof(ReadStateCommands), "Change", typeof(WordReadStateRequest)),
+            Identity(typeof(ReadStateCommands), "Change", typeof(WordReadStateRequest), typeof(int)));
+    }
+
+    [Fact]
+    public void GuardFollowsHelperDelegatesAsyncStateMachinesAndInterfaceImplementations()
     {
         Assert.Contains(Violations(typeof(ReadStoreAccessContractTests).GetMethod(nameof(IndirectCreatingRead),
             BindingFlags.Static | BindingFlags.NonPublic)!), path => path.Contains("ProjectStoreCommand.Run"));
+        Assert.Contains(Violations(typeof(ReadStoreAccessContractTests).GetMethod(nameof(ThroughInterface),
+            BindingFlags.Static | BindingFlags.NonPublic)!), path => path.Contains("CreatingImplementation"));
         Assert.Empty(Violations(typeof(ReadStoreAccessContractTests).GetMethod(nameof(ExistingRead),
             BindingFlags.Static | BindingFlags.NonPublic)!));
     }
+
+    private interface IProbeReader { object Read(); }
+
+    private sealed class CreatingImplementation : IProbeReader
+    {
+        public object Read() => CreatingHelper();
+    }
+
+    private static object ThroughInterface(IProbeReader reader) => reader.Read();
 
     private static async Task IndirectCreatingRead()
     {
@@ -92,7 +150,12 @@ public sealed class ReadStoreAccessContractTests
     private static object ExistingRead() => ProjectStoreCommand.ReadExisting("unused",
         CommandOutcome<object>.Success(new object()), (_, _) => CommandOutcome<object>.Success(new object()));
 
-    private static IEnumerable<string> Violations(MethodBase root, bool allowExplicitWrites = true)
+    private static IEnumerable<string> Violations(MethodBase root, bool allowExplicitWrites = true,
+        HashSet<string>? reached = null) =>
+        Walk(root, allowExplicitWrites, reached).Where(step => CreatesStore(step.Method)).Select(step => step.Path);
+
+    private static IEnumerable<(MethodBase Method, string Path)> Walk(MethodBase root, bool allowExplicitWrites,
+        HashSet<string>? reached)
     {
         var seen = new HashSet<MethodBase>();
         var queue = new Queue<(MethodBase Method, string Path)>();
@@ -101,12 +164,14 @@ public sealed class ReadStoreAccessContractTests
         {
             var method = current.Method;
             if (!seen.Add(method)) continue;
-            if (CreatesStore(method))
+            yield return current;
+            if (CreatesStore(method)) continue;
+            if (allowExplicitWrites && ExplicitWrites.ContainsKey(Identity(method)))
             {
-                yield return current.Path;
+                reached?.Add(Identity(method));
                 continue;
             }
-            if (IsReadBoundary(method) || allowExplicitWrites && IsExplicitWrite(method)) continue;
+            if (IsReadBoundary(method)) continue;
             if (method.GetCustomAttribute<AsyncStateMachineAttribute>() is { } asyncState)
             {
                 var move = asyncState.StateMachineType.GetMethod("MoveNext", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -127,19 +192,6 @@ public sealed class ReadStoreAccessContractTests
         method.DeclaringType == typeof(MotifDatabase) && method.Name is "ReadExisting" or "OpenExistingReadOnly" ||
         method.DeclaringType == typeof(CatalogTools) && method.Name == "Invoke";
 
-    private static readonly Dictionary<(Type Type, string Method), string> ExplicitWrites = new()
-    {
-        [(typeof(CompareCommands), "ProduceStored")] = "Persists a newly computed Difference Assessment.",
-        [(typeof(ReportCommands), "ProduceStored")] = "Persists the generated report rendering.",
-        [(typeof(ParsimonyViewsCommand), "ReadWithArtifactLease")] = "Maintains a persisted artifact reader lease.",
-        [(typeof(ReadStateCommands), "Change")] = "Explicit IsRead requests change saved occurrence marks.",
-        [(typeof(JobWait), "CancelJobAsync")] = "A cancelled wait explicitly cancels its durable job.",
-        [(typeof(TrialReviewTools), "ReadTrace")] = "Explicit trace=true retains a new diagnostic trace.",
-    };
-
-    private static bool IsExplicitWrite(MethodBase method) =>
-        method.DeclaringType is { } type && ExplicitWrites.ContainsKey((type, method.Name));
-
     private static bool IsMotifCode(MethodBase method) =>
         method.DeclaringType?.Assembly.GetName().Name?.StartsWith("SIL.Motif.", StringComparison.Ordinal) == true;
 
@@ -157,7 +209,9 @@ public sealed class ReadStoreAccessContractTests
             {
                 var called = method.Module.ResolveMethod(BitConverter.ToInt32(il, offset),
                     method.DeclaringType?.GetGenericArguments(), method.IsGenericMethod ? method.GetGenericArguments() : null);
-                if (called is not null) yield return called;
+                if (called is null) continue;
+                yield return called;
+                foreach (var implementation in Implementations(called)) yield return implementation;
             }
             offset += code.OperandType switch
             {
@@ -169,5 +223,43 @@ public sealed class ReadStoreAccessContractTests
                 _ => 4,
             };
         }
+    }
+
+    private static readonly Dictionary<MethodBase, MethodBase[]> ImplementationCache = new();
+
+    /// <summary>Motif implementations a call through an interface or virtual member can dispatch to.</summary>
+    private static MethodBase[] Implementations(MethodBase declared)
+    {
+        if (declared is not MethodInfo { DeclaringType: { } owner } method || !IsMotifCode(method) ||
+            !owner.IsInterface && !(method.IsVirtual && !method.IsFinal) || method.IsStatic)
+            return [];
+        lock (ImplementationCache)
+        {
+            if (ImplementationCache.TryGetValue(declared, out var cached)) return cached;
+            var found = new List<MethodBase>();
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies()
+                .Where(candidate => candidate.GetName().Name?.StartsWith("SIL.Motif.", StringComparison.Ordinal) == true))
+            foreach (var type in Types(assembly).Where(type => !type.IsAbstract && !type.IsInterface && owner.IsAssignableFrom(type)))
+            {
+                if (owner.IsInterface)
+                {
+                    var map = type.GetInterfaceMap(owner);
+                    var index = Array.IndexOf(map.InterfaceMethods, method);
+                    if (index >= 0 && map.TargetMethods[index].DeclaringType?.Assembly == assembly)
+                        found.Add(map.TargetMethods[index]);
+                }
+                else if (type.GetMethod(method.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic |
+                    BindingFlags.DeclaredOnly, null, method.GetParameters().Select(p => p.ParameterType).ToArray(), null)
+                    is { } overriding && overriding.GetBaseDefinition() == method.GetBaseDefinition())
+                    found.Add(overriding);
+            }
+            return ImplementationCache[declared] = found.Distinct().ToArray();
+        }
+    }
+
+    private static IEnumerable<Type> Types(Assembly assembly)
+    {
+        try { return assembly.GetTypes(); }
+        catch (ReflectionTypeLoadException exception) { return exception.Types.OfType<Type>(); }
     }
 }

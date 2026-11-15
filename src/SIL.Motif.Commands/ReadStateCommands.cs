@@ -50,6 +50,18 @@ public static class ReadStateCommands
 
     private static CommandOutcome<WordReadStateResponse> Change(WordReadStateRequest request)
     {
+        // Marks live in the store and need a current Baseline there, so any other store has nothing to change.
+        if (ProjectStoreCommand.RefuseUnlessStoreIsCurrent(request.ProjectPath, _ =>
+                request.ExpectedContext is not null ? ContextChanged()
+                : request.IsRead == true ? Invalid("A current Baseline is required before marking a word Read.")
+                : Success([], hasBaseline: false),
+            (database, project) => new BaselineRepository(database).GetCurrentTextWords(
+                ProjectWorkspaceKey.Compute(project), [request.TextId]) is null
+                ? request.ExpectedContext is not null ? ContextChanged()
+                    : request.IsRead == true ? Invalid("A current Baseline is required before marking a word Read.")
+                    : Success([], hasBaseline: false)
+                : null) is { } refused)
+            return refused;
         return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText,
             (database, project) => ReadOrChange(database, project, request));
     }

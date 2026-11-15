@@ -108,7 +108,10 @@ public static class JobWait
 
     private static Task<CommandOutcome<JobStatusResponse>> CancelJobAsync(
         string projectPath, string jobId, string productVersion) => Task.Run(() =>
-            JobCommands.Cancel(new CancelJobRequest(projectPath, jobId, productVersion)));
+            // A store that is not current holds no job to cancel.
+            ProjectStoreCommand.RefuseUnlessStoreIsCurrent(projectPath, _ => CommandOutcome<JobStatusResponse>.Refused(
+                JobCommands.JobNotFound(jobId)))
+            ?? JobCommands.Cancel(new CancelJobRequest(projectPath, jobId, productVersion)));
 
     private static async Task<CommandOutcome<JobStatusResponse>> CancelAndRefuseAsync(
         string projectPath, string jobId, string productVersion, IProgress<JobStatusResponse>? progress)

@@ -10,6 +10,7 @@ using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Assess;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands;
@@ -38,8 +39,35 @@ public static class CompareCommands
     public static CommandOutcome<CompareResponse> Produce(ProduceComparisonRequest request) =>
         ProduceStored(request);
 
+    private static CommandOutcome<CompareResponse>? HoldsInputs(MotifDatabase database, ProduceComparisonRequest request)
+    {
+        var repository = new AssessmentRepository(database);
+        try
+        {
+            repository.Get(request.FromAssessmentId);
+            repository.Get(request.ToAssessmentId);
+            return null;
+        }
+        catch (Exception exception) when (exception is KeyNotFoundException or ArgumentException)
+        {
+            return CommandOutcome<CompareResponse>.Refused(new Refusal(
+                "comparison.assessment-not-found",
+                exception is KeyNotFoundException ? FailureReason.NotFound : FailureReason.InvalidArgument,
+                exception.Message,
+                Fact(("fromAssessmentId", request.FromAssessmentId), ("toAssessmentId", request.ToAssessmentId))));
+        }
+    }
+
     private static CommandOutcome<CompareResponse> ProduceStored(ProduceComparisonRequest request)
     {
+        // A store that is not current cannot hold the inputs, so refuse before opening.
+        if (ProjectStoreCommand.RefuseUnlessStoreIsCurrent(request.FwDataPath, _ =>
+                CommandOutcome<CompareResponse>.Refused(new Refusal(
+                    "comparison.assessment-not-found", FailureReason.NotFound,
+                    "The Assessments to compare were not found in this project.",
+                    Fact(("fromAssessmentId", request.FromAssessmentId), ("toAssessmentId", request.ToAssessmentId)))),
+            (database, _) => HoldsInputs(database, request)) is { } refused)
+            return refused;
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             var repository = new AssessmentRepository(database);

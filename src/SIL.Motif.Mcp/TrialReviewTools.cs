@@ -42,6 +42,9 @@ internal static class TrialReviewTools
 
     private static ToolOutcome ReadTrace(ServerContext context, ReviewReadRequest request)
     {
+        // The trace is retained in the store, so a store that is not current has nothing to trace.
+        if (ProjectStoreCommand.RefuseUnlessStoreIsCurrent(context.ProjectPath, _ => AbsentRead(request)) is { } refused)
+            return Render(refused);
         var outcome = ProjectStoreCommand.Run<TrialReviewResult>(context.ProjectPath, context.ProductVersion,
             (database, project) => new TrialReviewCommands(database).Read(
                 request with { ProjectKey = ProjectWorkspaceKey.Compute(project) }));

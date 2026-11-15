@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Json.Schema;
@@ -5,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Mcp;
@@ -61,18 +63,7 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
             outcome = await tool.Run(context, new ToolArgs(arguments, tool.ArgumentNames), CancellationToken.None));
         var after = Snapshot(projectRoot);
 
-        if (ReadStoreAccessContractTests.StoreWritingTools.ContainsKey(toolName))
-        {
-            var relativeProject = Path.GetRelativePath(projectRoot, projectPath);
-            Assert.Equal(before[relativeProject], after[relativeProject]);
-        }
-        else
-        {
-            Assert.Equal(before.Keys.Order(StringComparer.Ordinal), after.Keys.Order(StringComparer.Ordinal));
-            foreach (var (path, bytes) in before)
-                Assert.True(bytes.AsSpan().SequenceEqual(after[path]),
-                    $"{toolName}/{branch} changed {path} with a {state} store.");
-        }
+        AssertUnchanged(before, after, $"{toolName}/{branch}", state);
         Assert.True(exception is null or ToolArgumentException,
             $"{toolName}/{branch} threw with a {state} store: {exception}");
         if (exception is ToolArgumentException argument)
@@ -88,6 +79,52 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
                 _ => "project.operation-io",
             }, outcome!.Refusal!.Code);
         }
+    }
+
+    private static void AssertUnchanged(Dictionary<string, byte[]> before, Dictionary<string, byte[]> after,
+        string label, string state)
+    {
+        Assert.Equal(before.Keys.Order(StringComparer.Ordinal), after.Keys.Order(StringComparer.Ordinal));
+        foreach (var (path, bytes) in before)
+            Assert.True(bytes.AsSpan().SequenceEqual(after[path]), $"{label} changed {path} with a {state} store.");
+    }
+
+    public static IEnumerable<object[]> ExceptionBranches()
+    {
+        foreach (var state in new[] { "missing", "empty", "empty-without-lease", "older" })
+        foreach (var branch in new[] { "read-state-set", "read-state-clear", "read-state-expected", "wait-cancel" })
+            yield return [state, branch];
+    }
+
+    /// <summary>The conditionally writing branches never create, initialise or upgrade a store that is not current.</summary>
+    [Theory]
+    [MemberData(nameof(ExceptionBranches))]
+    public async Task ConditionalWritingBranchesPreserveStoresThatAreNotCurrent(string state, string branch)
+    {
+        var projectPath = pristine.CopyProjectFile();
+        var projectRoot = Path.GetDirectoryName(projectPath)!;
+        var project = new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath));
+        PrepareStore(project, state);
+        using var privateRoot = PrivateManagedRoot.UseTemporary("SIL.Motif.Tests.ReadTools");
+
+        var before = Snapshot(projectRoot);
+        switch (branch)
+        {
+            case "wait-cancel":
+                var cancel = typeof(JobWait).GetMethod("CancelJobAsync", BindingFlags.Static | BindingFlags.NonPublic)!;
+                var cancelled = await (Task<CommandOutcome<SIL.Motif.Contract.Jobs.JobStatusResponse>>)cancel.Invoke(
+                    null, [projectPath, UnknownId, "1.0"])!;
+                Assert.False(cancelled.Succeeded);
+                break;
+            default:
+                var request = new WordReadStateRequest(projectPath, Guid.NewGuid(), null, branch != "read-state-clear")
+                {
+                    ExpectedContext = branch == "read-state-expected" ? new ExpectedContext(default!) : null,
+                };
+                ReadStateCommands.Execute(request);
+                break;
+        }
+        AssertUnchanged(before, Snapshot(projectRoot), branch, state);
     }
 
     private static void PrepareStore(ProjectLocator project, string state)
@@ -130,7 +167,7 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
         "motif_sources" => ["default", "source", "chapter"],
         "motif_current" => ["default", "source"],
         "motif_decision_evidence" => ["default", "subject"],
-        "motif_difference" => ["legacy", "report"],
+        "motif_difference" => ["legacy", "report", "trace"],
         "motif_proposal_difference" => ["proposal", "difference"],
         "motif_report" => ["coverage", "correctness", "difference", "parsimony"],
         "motif_find_composer" => ["goal", "subject"],
@@ -157,6 +194,11 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
             case "motif_difference" when branch == "report":
                 Set("report", UnknownId);
                 Set("proposal", UnknownId);
+                break;
+            case "motif_difference" when branch == "trace":
+                Set("report", UnknownId);
+                Set("proposal", UnknownId);
+                arguments["trace"] = true;
                 break;
             case "motif_difference": Set("difference", UnknownId); Set("category", "positives-lost"); break;
             case "motif_proposal_difference": Set(branch, UnknownId); break;

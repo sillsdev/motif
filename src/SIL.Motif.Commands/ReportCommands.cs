@@ -54,6 +54,41 @@ public static class ReportCommands
 
     private static CommandOutcome<ReportResponse> ProduceStored(ProduceReportRequest request)
     {
+        // A store that is not current cannot hold the Assessment, so refuse before opening.
+        if (ProjectStoreCommand.RefuseUnlessStoreIsCurrent(request.FwDataPath, _ =>
+            {
+                try
+                {
+                    Catalog.Resolve(request.Kind);
+                }
+                catch (KeyNotFoundException exception)
+                {
+                    return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                        "report.invalid-kind", FailureReason.InvalidArgument, exception.Message,
+                        Fact(("kind", request.Kind))));
+                }
+                return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                    "report.assessment-not-found", FailureReason.NotFound,
+                    "The Assessment to report on was not found in this project.",
+                    Fact(("assessmentId", request.AssessmentId))));
+            },
+            (database, _) =>
+            {
+                if (request.AssessmentId is null) return null;
+                try
+                {
+                    new AssessmentRepository(database).Get(request.AssessmentId);
+                    return null;
+                }
+                catch (Exception exception) when (exception is KeyNotFoundException or ArgumentException)
+                {
+                    return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                        "report.assessment-not-found",
+                        exception is KeyNotFoundException ? FailureReason.NotFound : FailureReason.InvalidArgument,
+                        exception.Message, Fact(("assessmentId", request.AssessmentId))));
+                }
+            }) is { } refused)
+            return refused;
         return ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, _) =>
         {
             IReportProducer producer;

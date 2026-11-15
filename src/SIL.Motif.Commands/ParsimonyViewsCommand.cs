@@ -46,6 +46,27 @@ public static class ParsimonyViewsCommand
     }
 
     private static CommandOutcome<ParsimonyNamedViewResponse> ReadWithArtifactLease(
+        ReadParsimonyViewRequest request, CancellationToken leaseLoss)
+    {
+        // Only a current store may take the writing lease.
+        if (ProjectStoreCommand.RefuseUnlessStoreIsCurrent(request.FwDataPath, project =>
+                CanListSavedDecisions(request.Query)
+                    ? ReadSavedDecisions(project, request.Query)
+                    : Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.BundleNotFound, FailureReason.NotFound,
+                        $"Parsimony bundle '{request.Query.BundleId}' was not found in this project."),
+                (database, project) => new EvidenceArtifactRepository(database)
+                    .Get(ProjectWorkspaceKey.Compute(project), request.Query.BundleId) is not null
+                    ? null
+                    : CanListSavedDecisions(request.Query)
+                        ? ReadSavedDecisions(project, request.Query)
+                        : Refused<ParsimonyNamedViewResponse>(ParsimonyRefusalCodes.BundleNotFound,
+                            FailureReason.NotFound,
+                            $"Parsimony bundle '{request.Query.BundleId}' was not found in this project.")) is { } refused)
+            return refused;
+        return ReadLeasedView(request, leaseLoss);
+    }
+
+    private static CommandOutcome<ParsimonyNamedViewResponse> ReadLeasedView(
         ReadParsimonyViewRequest request, CancellationToken leaseLoss) =>
         ProjectStoreCommand.Run(request.FwDataPath, request.ProductVersion, (database, project) =>
         {

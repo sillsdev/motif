@@ -1087,7 +1087,7 @@ public static class JobCommands
     }
 
 
-    private static Refusal JobNotFound(string jobId) =>
+    internal static Refusal JobNotFound(string jobId) =>
         new("job.not-found", FailureReason.NotFound,
             "No job '" + jobId + "' is recorded for this project.", Fact(("jobId", jobId)));
 

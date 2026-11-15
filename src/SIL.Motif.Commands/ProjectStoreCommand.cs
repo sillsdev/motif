@@ -91,6 +91,39 @@ public static class ProjectStoreCommand
         });
     }
 
+    private static readonly object CurrentStoreAbsent = new();
+
+    /// <summary>
+    /// The pre-check a writing path inside a Read-class action must pass before it may open with <see cref="Run{T}"/>.
+    /// </summary>
+    /// <param name="fwDataPath">The path to the FieldWorks project data file.</param>
+    /// <param name="absent">The outcome for a missing store, built from the located project.</param>
+    /// <returns>
+    /// The outcome to return when the store is missing, empty, older, newer or unreadable, so nothing is created or
+    /// upgraded; <see langword="null"/> when the store is current and the writing path may run.
+    /// </returns>
+    /// <param name="holdsInputs">
+    /// Optional read-only check run against the current store; returns the outcome to give when the store does not
+    /// hold what the writing path needs, or <see langword="null"/> when it does.
+    /// </param>
+    public static CommandOutcome<T>? RefuseUnlessStoreIsCurrent<T>(string fwDataPath,
+        Func<ProjectLocator, CommandOutcome<T>> absent,
+        Func<MotifDatabase, ProjectLocator, CommandOutcome<T>?>? holdsInputs = null) where T : class?
+    {
+        ArgumentNullException.ThrowIfNull(absent);
+        var located = LocateProject(fwDataPath);
+        if (!located.Succeeded) return CommandOutcome<T>.Refused(located.Refusal!);
+        CommandOutcome<T>? missingInput = null;
+        var probe = ReadExistingCore<object>(fwDataPath, CommandOutcome<object>.Success(CurrentStoreAbsent),
+            (database, project) =>
+            {
+                missingInput = holdsInputs?.Invoke(database, project);
+                return CommandOutcome<object>.Success(new object());
+            }, retainDatabase: false);
+        if (!probe.Succeeded) return CommandOutcome<T>.Refused(probe.Refusal!);
+        return ReferenceEquals(probe.Value, CurrentStoreAbsent) ? absent(located.Value!) : missingInput;
+    }
+
     /// <summary>A successful result owns the database lease and must release it when its session is disposed.</summary>
     internal static CommandOutcome<T> OpenSession<T>(string fwDataPath, string productVersion,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act) where T : class? =>
