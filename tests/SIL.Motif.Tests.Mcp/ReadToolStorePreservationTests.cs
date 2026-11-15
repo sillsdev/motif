@@ -4,6 +4,7 @@ using Json.Schema;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands;
 using SIL.Motif.Commands.Catalog;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Mcp;
@@ -55,8 +56,9 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
         Assert.True(validation.IsValid, $"{toolName}/{branch} arguments violate its schema: {arguments}");
 
         var before = Snapshot(projectRoot);
+        ToolOutcome? outcome = null;
         var exception = await Record.ExceptionAsync(async () =>
-            await tool.Run(context, new ToolArgs(arguments, tool.ArgumentNames), CancellationToken.None));
+            outcome = await tool.Run(context, new ToolArgs(arguments, tool.ArgumentNames), CancellationToken.None));
         var after = Snapshot(projectRoot);
 
         if (ReadStoreAccessContractTests.StoreWritingTools.ContainsKey(toolName))
@@ -75,6 +77,17 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
             $"{toolName}/{branch} threw with a {state} store: {exception}");
         if (exception is ToolArgumentException argument)
             Assert.NotEqual("tool.missing-argument", argument.Code);
+        if (toolName == "motif_source_passage")
+        {
+            Assert.Null(exception);
+            Assert.Equal(state switch
+            {
+                "missing" or "current" => RefusalCodes.SourceIndexMissing,
+                "older" => RefusalCodes.StoreUnsupported,
+                "empty" => RefusalCodes.StoreInconsistent,
+                _ => "project.operation-io",
+            }, outcome!.Refusal!.Code);
+        }
     }
 
     private static void PrepareStore(ProjectLocator project, string state)
@@ -138,6 +151,7 @@ public sealed class ReadToolStorePreservationTests(PristineProjectFixture pristi
             case "motif_proposals" when branch == "proposal": Set("proposal", UnknownId); break;
             case "motif_sources" when branch == "source": Set("id", "unknown-source"); break;
             case "motif_sources" when branch == "chapter": Set("ref", "MAT 5"); break;
+            case "motif_source_passage": Set("source", "unknown-source"); Set("ref", "MAT 5"); break;
             case "motif_current" when branch == "source": Set("source", "unknown-source"); break;
             case "motif_decision_evidence" when branch == "subject": Set("subject", UnknownId); break;
             case "motif_difference" when branch == "report":
