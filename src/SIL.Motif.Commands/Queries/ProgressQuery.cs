@@ -14,6 +14,9 @@ namespace SIL.Motif.Commands.Queries;
 public static class ProgressQuery
 {
     private sealed record Cursor(string Revision, string ScopeDigest, string LastText, string? SinceRevision);
+    private sealed record ScopeAggregate(SIL.Motif.Worker.Baselines.ProgressCounts Counts, IReadOnlyDictionary<string, int> Excluded, int Passages);
+    private static readonly object ScopeLock = new();
+    private static readonly Dictionary<(string Project, string Revision, string Digest), ScopeAggregate> ScopeCache = new();
 
     /// <summary>Reads one summary or a revision-bound page of Texts.</summary>
     public static CommandOutcome<ProgressResponse> Query(ProgressRequest request)
@@ -35,10 +38,10 @@ public static class ProgressQuery
             return Refused(RefusalCodes.ProgressInvalidCursor, FailureReason.InvalidArgument,
                 "The cursor is invalid or belongs to another Text scope.");
 
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        var absent = Refused(RefusalCodes.ProgressIndexNotReady, FailureReason.Refused,
+            "Progress is not ready. Refresh the saved project to rebuild it.");
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath, absent, (connection, transaction, project) =>
         {
-            using var connection = database.OpenConnection();
-            using var transaction = connection.BeginTransaction(deferred: true);
             var state = ProgressRepository.ReadState(connection, transaction);
             if (state is null || state.PendingReceiptId is not null)
                 return Refused(RefusalCodes.ProgressIndexNotReady, FailureReason.Refused,
@@ -48,22 +51,37 @@ public static class ProgressQuery
                     "Progress changed since this page was requested. Reload the summary.");
 
             IReadOnlySet<Guid>? selected = ids.Length == 0 ? null : ids.ToHashSet();
-            var scopeRows = selected is null ? null : ProgressRepository.ReadTexts(connection, transaction,
-                selected, null, null, includeIncidence: true);
-            if (scopeRows is not null && scopeRows.Count != selected!.Count)
-                return Refused(RefusalCodes.ProgressTextNotFound, FailureReason.NotFound,
-                    "One or more requested Texts are absent from the saved Progress projection.");
-            var counts = scopeRows is null ? state.Totals : ProgressProjectionBuilder.Aggregate(scopeRows.Select(row => row.Text));
-            var excluded = scopeRows is null ? state.Excluded : Excluded(scopeRows.Select(row => row.Text));
-            int passages;
-            if (scopeRows is not null) passages = scopeRows.Count;
-            else
+            ScopeAggregate aggregate;
+            if (selected is null)
             {
                 using var count = connection.CreateCommand();
                 count.Transaction = transaction;
                 count.CommandText = "SELECT COUNT(*) FROM ProgressTexts;";
-                passages = Convert.ToInt32(count.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
+                aggregate = new ScopeAggregate(state.Totals, state.Excluded,
+                    Convert.ToInt32(count.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture));
             }
+            else
+            {
+                var key = (project.FullFwDataPath, state.Revision, digest);
+                lock (ScopeLock) ScopeCache.TryGetValue(key, out aggregate!);
+                if (aggregate is null)
+                {
+                    var scopeRows = ProgressRepository.ReadTexts(connection, transaction, selected, null, null, true);
+                    if (scopeRows.Count != selected.Count)
+                        return Refused(RefusalCodes.ProgressTextNotFound, FailureReason.NotFound,
+                            "One or more requested Texts are absent from the saved Progress projection.");
+                    aggregate = new ScopeAggregate(ProgressProjectionBuilder.Aggregate(scopeRows.Select(row => row.Text)),
+                        Excluded(scopeRows.Select(row => row.Text)), scopeRows.Count);
+                    lock (ScopeLock)
+                    {
+                        if (ScopeCache.Count >= 128) ScopeCache.Clear();
+                        ScopeCache[key] = aggregate;
+                    }
+                }
+            }
+            var counts = aggregate.Counts;
+            var excluded = aggregate.Excluded;
+            var passages = aggregate.Passages;
             var page = request.Detail == "passages"
                 ? ProgressRepository.ReadTexts(connection, transaction, selected, cursor?.LastText, request.Limit + 1, false)
                 : [];
@@ -73,7 +91,7 @@ public static class ProgressQuery
             var changed = new ProgressChangedSince(request.SinceRevision);
             var rows = page.Take(request.Limit).Select(row => new ProgressPassage(row.Text.Id, row.Text.Title,
                 ToWire(row.Counts.Tokens), ToWire(row.Counts.Types), changed)).ToArray();
-            var current = File.GetLastWriteTimeUtc(project.FullFwDataPath) <= state.SourceLastWriteUtc.UtcDateTime;
+            var current = File.GetLastWriteTimeUtc(project.FullFwDataPath) == state.SourceLastWriteUtc.UtcDateTime;
             var limitations = new List<string> { "checked-unavailable", "changed-since-unavailable", "parser-evidence-unavailable" };
             if (!current) limitations.Add("judgements-stale");
             var coverage = new ProgressCoverage("fieldworks-segments-v1", "ws-valid-characters-v1",

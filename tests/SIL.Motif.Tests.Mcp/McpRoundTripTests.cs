@@ -43,6 +43,41 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProgressLeavesMissingAndOlderStoresUnchanged(bool older)
+    {
+        using var project = new WalkthroughProject(pristine);
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        if (older)
+        {
+            using var database = ProjectMotifDatabase.Open(project.FwDataPath);
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+            command.ExecuteNonQuery();
+        }
+        string[] StoreFiles() => Directory.GetFiles(Path.GetDirectoryName(store)!, Path.GetFileName(store) + "*")
+            .Where(file => !file.EndsWith("-wal", StringComparison.Ordinal) && !file.EndsWith("-shm", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal).ToArray();
+        var files = StoreFiles().ToDictionary(file => file, File.ReadAllBytes);
+        var before = File.ReadAllBytes(project.FwDataPath);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(), openStore: false);
+        var response = await session.Client.CallToolAsync("motif_progress", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            ["scope"] = new Dictionary<string, object?> { ["kind"] = "texts" },
+        });
+        Assert.True(response.IsError, response.StructuredContent?.ToString());
+        Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.ProgressIndexNotReady,
+            response.StructuredContent!.Value.GetProperty("code").GetString());
+        Assert.Equal(files.Keys.Order(StringComparer.Ordinal), StoreFiles());
+        foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
+        Assert.Equal(older, File.Exists(store));
+    }
+
+    [Theory]
     [InlineData(false, null)]
     [InlineData(false, "json")]
     [InlineData(false, "fw-md")]

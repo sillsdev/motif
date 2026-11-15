@@ -29,7 +29,11 @@ public sealed class ProgressCapacityTests(PristineProjectFixture pristine, ITest
     [Trait("Category", "SlowScale")]
     public Task CebScaleCopyServesSummaryAndPageWithinOneSecond() => RunCapacityCase(enforceTimeLimit: true);
 
-    private async Task RunCapacityCase(bool enforceTimeLimit)
+    [ProgressSlowScaleFact]
+    [Trait("Category", "SlowScale")]
+    public Task SixtyTwoThousandTypesUpdateWithinOneSecond() => RunCapacityCase(enforceTimeLimit: true, large: true);
+
+    private async Task RunCapacityCase(bool enforceTimeLimit, bool large = false)
     {
         var path = pristine.CopyProjectFile();
         var root = Path.Combine(Path.GetTempPath(), "motif-progress-capacity", Guid.NewGuid().ToString("N"));
@@ -50,7 +54,7 @@ public sealed class ProgressCapacityTests(PristineProjectFixture pristine, ITest
                 {
                     new(common, seededText.ApprovedAnalysisId, "ceb", "common", "unmeasured", "parser-evidence-unavailable", 1),
                 };
-                for (var j = i; j < 21499; j += 2378)
+                for (var j = i; j < (large ? 61999 : 21499); j += 2378)
                     incidence.Add(new ProgressIncidence(Guid.NewGuid(), null, "ceb", "word" + j,
                         "unmeasured", "parser-evidence-unavailable", j < 3658 ? 37 : 36));
                 texts.Add(new ProgressText(Guid.NewGuid(), "Text " + i, incidence, new Dictionary<string, int>()));
@@ -80,12 +84,12 @@ public sealed class ProgressCapacityTests(PristineProjectFixture pristine, ITest
                 Assert.Equal(detail == "summary" ? 0 : 51, rowsRead);
                 if (detail == "summary")
                 {
-                    Assert.Equal(21500, result.Value!.Totals!.Types.Total);
-                    Assert.Equal(780000, result.Value.Totals.Tokens.Total);
+                    Assert.Equal(large ? 62000 : 21500, result.Value!.Totals!.Types.Total);
+                    Assert.Equal(large ? 2238000 : 780000, result.Value.Totals.Tokens.Total);
                 }
                 else Assert.Equal(50, result.Value!.Rows.Count);
                 output.WriteLine($"{detail} in-process: {watch.Elapsed.TotalMilliseconds:F1} ms");
-                if (enforceTimeLimit)
+                if (enforceTimeLimit && !large)
                     Assert.True(watch.ElapsedMilliseconds <= 1000, $"{detail} in-process took {watch.ElapsedMilliseconds} ms");
 
                 var start = CliProcess.CreateStartInfo(root, null, false,
@@ -96,9 +100,22 @@ public sealed class ProgressCapacityTests(PristineProjectFixture pristine, ITest
                 watch.Stop();
                 Assert.True(cli.ExitCode == 0, cli.Error + cli.Output);
                 output.WriteLine($"{detail} cold CLI: {watch.Elapsed.TotalMilliseconds:F1} ms");
-                if (enforceTimeLimit)
+                if (enforceTimeLimit && !large)
                     Assert.True(watch.ElapsedMilliseconds <= 1000, $"{detail} cold CLI took {watch.ElapsedMilliseconds} ms");
             }
+
+            var selectedRows = 0;
+            var selectedQueries = 0;
+            ProgressRepository.TextRowsRead.Value = count => { selectedQueries++; selectedRows += count; };
+            try
+            {
+                var scope = new ProgressScope("texts", [texts[^1].Id]);
+                Assert.True(ProgressQuery.Query(new ProgressRequest(path, scope, "passages", 1)).Succeeded);
+                Assert.True(ProgressQuery.Query(new ProgressRequest(path, scope, "passages", 1)).Succeeded);
+            }
+            finally { ProgressRepository.TextRowsRead.Value = null; }
+            Assert.Equal(3, selectedQueries);
+            Assert.Equal(3, selectedRows);
 
             using var updatedCache = new FwDataProjectLoader().LoadScratchCache(path);
             var analysis = updatedCache.ServiceLocator.GetInstance<IWfiAnalysisRepository>()
@@ -124,7 +141,7 @@ public sealed class ProgressCapacityTests(PristineProjectFixture pristine, ITest
                         target: CanonicalId.FromGuid(analysis.Guid))]);
                 Assert.NotNull(updated);
                 ProgressRepository.PublishApplied(database, updated, "receipt/capacity", File.GetLastWriteTimeUtc(path),
-                    pending.Value.State.ContentRevision);
+                    pending.Value.State.ContentRevision, pending.Value.Projection);
                 return CommandOutcome<string>.Success("published");
             });
             deltaWatch.Stop();
@@ -132,7 +149,7 @@ public sealed class ProgressCapacityTests(PristineProjectFixture pristine, ITest
             var after = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
             Assert.True(after.Succeeded, after.Refusal?.Message);
             Assert.Equal(2378, after.Value!.Totals!.Tokens.Approved);
-            Assert.Equal(780000, after.Value.Totals.Tokens.Total);
+            Assert.Equal(large ? 2238000 : 780000, after.Value.Totals.Tokens.Total);
             output.WriteLine($"common-word delta and publication: {deltaWatch.Elapsed.TotalMilliseconds:F1} ms");
             if (enforceTimeLimit)
                 Assert.True(deltaWatch.ElapsedMilliseconds <= 1000,

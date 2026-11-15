@@ -1992,6 +1992,7 @@ public static partial class ProposalCommands
             var loader = ApplyLoaderFactory();
             if (IsTestTarget("MOTIF_TEST_FAIL_LIVE_APPLY_WRITING_SYSTEM_FOR", project.FullFwDataPath))
                 throw ProjectWritingSystemsUnavailableException.MissingStore(project.FullFwDataPath);
+            var progressSourceTime = File.GetLastWriteTimeUtc(project.FullFwDataPath);
             cache = loader.LoadCache(project.FullFwDataPath);
             try
             {
@@ -2103,7 +2104,11 @@ public static partial class ProposalCommands
                     BeforeProgressPublication.Value?.Invoke();
                     var existing = ProgressRepository.ReadPending(database, pending);
                     if (existing is null) return;
-                    var progress = ProgressDeltaBuilder.Apply(cache, existing.Value.Projection, envelope.Operations);
+                    var sourceMatches = !receipt.AlreadyApplied &&
+                        progressSourceTime == existing.Value.State.SourceLastWriteUtc.UtcDateTime;
+                    var progress = sourceMatches
+                        ? ProgressDeltaBuilder.Apply(cache, existing.Value.Projection, envelope.Operations) : null;
+                    var incremental = progress is not null;
                     var contentRevision = existing.Value.State.ContentRevision;
                     if (progress is null)
                     {
@@ -2112,7 +2117,8 @@ public static partial class ProposalCommands
                         contentRevision = "content/" + pending;
                     }
                     var saved = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
-                    ProgressRepository.PublishApplied(database, progress, pending, saved, contentRevision);
+                    ProgressRepository.PublishApplied(database, progress, pending, saved, contentRevision,
+                        incremental ? existing.Value.Projection : null);
                 });
 
                 TryPostApplyStep("post-receipt housekeeping", () =>

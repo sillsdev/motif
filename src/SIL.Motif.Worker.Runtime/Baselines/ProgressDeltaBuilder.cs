@@ -35,11 +35,17 @@ internal static class ProgressDeltaBuilder
         Parallel.For(0, texts.Length, new ParallelOptions { MaxDegreeOfParallelism = 2 }, i =>
         {
             var text = original.Texts[i];
-            texts[i] = text with
+            ProgressIncidence[]? incidence = null;
+            for (var j = 0; j < text.Incidence.Count; j++)
             {
-                Incidence = text.Incidence.Select(row => !changed.TryGetValue(row.WordformId, out var standing) ? row
-                    : Update(row, standing)).ToArray(),
-            };
+                var row = text.Incidence[j];
+                if (!changed.TryGetValue(row.WordformId, out var standing)) continue;
+                var updated = Update(row, standing);
+                if (updated == row) continue;
+                incidence ??= text.Incidence.ToArray();
+                incidence[j] = updated;
+            }
+            texts[i] = incidence is null ? text : text with { Incidence = incidence };
         });
         return new ProgressProjection(texts);
     }

@@ -14,6 +14,7 @@ internal sealed record ProgressState(string Revision, string ContentRevision, st
 internal static class ProgressRepository
 {
     internal static readonly AsyncLocal<Action<int>?> TextRowsRead = new();
+    internal static readonly AsyncLocal<Action<Guid>?> TextSerialized = new();
     private static readonly JsonSerializerOptions Json = CreateJsonOptions();
 
     private static JsonSerializerOptions CreateJsonOptions()
@@ -64,18 +65,19 @@ internal static class ProgressRepository
     }
 
     public static void PublishApplied(MotifDatabase database, ProgressProjection projection,
-        string receiptId, DateTimeOffset sourceLastWriteUtc, string contentRevision)
+        string receiptId, DateTimeOffset sourceLastWriteUtc, string contentRevision,
+        ProgressProjection? original = null)
     {
         using var connection = database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         Publish(connection, transaction, projection, contentRevision, "judgement/" + receiptId,
-            sourceLastWriteUtc, receiptId);
+            sourceLastWriteUtc, receiptId, original);
         transaction.Commit();
     }
 
     public static void Publish(SqliteConnection connection, SqliteTransaction transaction,
         ProgressProjection projection, string contentRevision, string judgementRevision,
-        DateTimeOffset sourceLastWriteUtc, string? expectedReceiptId = null)
+        DateTimeOffset sourceLastWriteUtc, string? expectedReceiptId = null, ProgressProjection? original = null)
     {
         if (expectedReceiptId is not null)
         {
@@ -88,14 +90,18 @@ internal static class ProgressRepository
         var excluded = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var pair in projection.Texts.SelectMany(text => text.Excluded))
             excluded[pair.Key] = excluded.GetValueOrDefault(pair.Key) + pair.Value;
-        var serialized = new (string Counts, string Incidence, string Excluded)[projection.Texts.Count];
-        Parallel.For(0, projection.Texts.Count, new ParallelOptions { MaxDegreeOfParallelism = 4 }, i =>
+        var previous = original?.Texts.ToDictionary(text => text.Id);
+        var changedTexts = previous is null ? projection.Texts : projection.Texts
+            .Where(text => !previous.TryGetValue(text.Id, out var old) || !ReferenceEquals(text, old)).ToArray();
+        var serialized = new (string Counts, string Incidence, string Excluded)[changedTexts.Count];
+        Parallel.For(0, changedTexts.Count, new ParallelOptions { MaxDegreeOfParallelism = 4 }, i =>
         {
-            var text = projection.Texts[i];
+            var text = changedTexts[i];
+            TextSerialized.Value?.Invoke(text.Id);
             serialized[i] = (Serialize(ProgressProjectionBuilder.Aggregate([text])), Serialize(text.Incidence),
                 Serialize(text.Excluded));
         });
-        using (var delete = connection.CreateCommand())
+        if (previous is null) using (var delete = connection.CreateCommand())
         {
             delete.Transaction = transaction;
             delete.CommandText = "DELETE FROM ProgressTexts;";
@@ -105,15 +111,17 @@ internal static class ProgressRepository
         {
             row.Transaction = transaction;
             row.CommandText = "INSERT INTO ProgressTexts (TextId, Title, CountsJson, IncidenceJson, ExcludedJson) " +
-                "VALUES ($id, $title, $counts, $incidence, $excluded);";
+                "VALUES ($id, $title, $counts, $incidence, $excluded) " +
+                "ON CONFLICT(TextId) DO UPDATE SET Title=excluded.Title, CountsJson=excluded.CountsJson, " +
+                "IncidenceJson=excluded.IncidenceJson, ExcludedJson=excluded.ExcludedJson;";
             var id = row.Parameters.Add("$id", SqliteType.Text);
             var title = row.Parameters.Add("$title", SqliteType.Text);
             var counts = row.Parameters.Add("$counts", SqliteType.Text);
             var incidence = row.Parameters.Add("$incidence", SqliteType.Text);
             var excludedJson = row.Parameters.Add("$excluded", SqliteType.Text);
-            for (var i = 0; i < projection.Texts.Count; i++)
+            for (var i = 0; i < changedTexts.Count; i++)
             {
-                var text = projection.Texts[i];
+                var text = changedTexts[i];
                 id.Value = text.Id.ToString("D");
                 title.Value = text.Title;
                 counts.Value = serialized[i].Counts;
@@ -159,9 +167,27 @@ internal static class ProgressRepository
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
+        var predicates = new List<string>();
+        if (after is not null)
+        {
+            predicates.Add("TextId > $after");
+            command.Parameters.AddWithValue("$after", after);
+        }
+        if (ids is not null)
+        {
+            var parameters = new List<string>();
+            foreach (var id in ids)
+            {
+                var name = "$id" + parameters.Count;
+                parameters.Add(name);
+                command.Parameters.AddWithValue(name, id.ToString("D"));
+            }
+            predicates.Add(parameters.Count == 0 ? "0" : "TextId IN (" + string.Join(",", parameters) + ")");
+        }
         command.CommandText = "SELECT TextId, Title, CountsJson, " + (includeIncidence ? "IncidenceJson" : "'[]'") +
-            ", ExcludedJson FROM ProgressTexts WHERE ($after IS NULL OR TextId > $after) ORDER BY TextId;";
-        command.Parameters.AddWithValue("$after", (object?)after ?? DBNull.Value);
+            ", ExcludedJson FROM ProgressTexts" + (predicates.Count == 0 ? "" : " WHERE " + string.Join(" AND ", predicates)) +
+            " ORDER BY TextId" + (limit is null ? "" : " LIMIT $limit") + ";";
+        if (limit is not null) command.Parameters.AddWithValue("$limit", limit.Value);
         var rows = new List<(ProgressText, ProgressCounts)>();
         var examined = 0;
         using var reader = command.ExecuteReader();
@@ -169,7 +195,6 @@ internal static class ProgressRepository
         {
             examined++;
             var id = Guid.Parse(reader.GetString(0));
-            if (ids is not null && !ids.Contains(id)) continue;
             var text = new ProgressText(id, reader.GetString(1),
                 Deserialize<ProgressIncidence[]>(reader.GetString(3)),
                 Deserialize<Dictionary<string, int>>(reader.GetString(4)));

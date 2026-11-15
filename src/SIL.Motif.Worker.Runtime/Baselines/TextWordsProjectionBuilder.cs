@@ -162,10 +162,29 @@ public static class TextWordsProjectionBuilder
             var text = wordform.Form.get_String(ws.Handle)?.Text?.Trim();
             if (string.IsNullOrEmpty(text)) continue;
             sawVernacular = true;
-            if (text.All(char.IsDigit)) continue;
-            if (!text.EnumerateRunes().Any(rune => ws.get_IsWordForming(rune.Value)))
-                return (null, null, "not-a-word");
-            return (text.Normalize(System.Text.NormalizationForm.FormD),
+            var normalized = text.Normalize(NormalizationForm.FormD);
+            var exemplars = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var name in new[] { "main", "auxiliary" })
+                if (ws.CharacterSets.TryGet(name, out var set))
+                    foreach (var character in set.Characters)
+                        exemplars.Add(character.Normalize(NormalizationForm.FormD));
+            var positions = new bool[normalized.Length + 1];
+            positions[0] = true;
+            var farthest = 0;
+            for (var i = 0; i < normalized.Length; i++)
+            {
+                if (!positions[i]) continue;
+                farthest = i;
+                foreach (var exemplar in exemplars)
+                    if (exemplar.Length > 0 && normalized.AsSpan(i).StartsWith(exemplar, StringComparison.Ordinal))
+                        positions[i + exemplar.Length] = true;
+            }
+            if (!positions[normalized.Length])
+            {
+                var offending = Rune.GetRuneAt(normalized, farthest).ToString();
+                return (null, null, "not-a-word:" + offending);
+            }
+            return (normalized,
                 cache.WritingSystemFactory.GetStrFromWs(ws.Handle), null);
         }
         return (null, null, sawVernacular ? "digit-only" : "other-writing-system");

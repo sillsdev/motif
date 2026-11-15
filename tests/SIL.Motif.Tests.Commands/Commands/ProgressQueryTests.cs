@@ -14,6 +14,7 @@ using SIL.Motif.Host.Analysis;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Tests.TestFixtures;
 using SIL.Motif.Worker.Baselines;
+using SIL.WritingSystems;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -134,6 +135,11 @@ public sealed class ProgressQueryTests(PristineProjectFixture pristine) : IDispo
         using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
         {
             text = SeededProject.SeedText(cache, pristine.Seed);
+            var ws = cache.ServiceLocator.WritingSystems.VernacularWritingSystems.First();
+            ws.CharacterSets.Clear();
+            var main = new CharacterSetDefinition("main");
+            foreach (var character in "abcdefghijklmnopqrstuvwxyz") main.Characters.Add(character.ToString());
+            ws.CharacterSets.Add(main);
             var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().GetObject(text.ApprovedAnalysisId);
             NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
                 () => cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.noopinion));
@@ -178,6 +184,53 @@ public sealed class ProgressQueryTests(PristineProjectFixture pristine) : IDispo
     }
 
     [Fact]
+    public void ApprovalPublicationWritesAndSerializesOnlyChangedTexts()
+    {
+        var path = pristine.CopyProjectFile();
+        var changedId = Guid.NewGuid();
+        var unchangedId = Guid.NewGuid();
+        var word = Guid.NewGuid();
+        var incidence = new ProgressIncidence(word, null, "en", "word", "unmeasured", "parser-evidence-unavailable", 1);
+        var first = new ProgressText(changedId, "Changed", [incidence], new Dictionary<string, int>());
+        var second = new ProgressText(unchangedId, "Unchanged", [incidence], new Dictionary<string, int>());
+        var original = new ProgressProjection([first, second]);
+        var updated = new ProgressProjection([first with { Incidence = [incidence with { Bucket = "approved", Reason = null }] }, second]);
+        var serialized = new System.Collections.Concurrent.ConcurrentBag<Guid>();
+        var outcome = ProjectStoreCommand.Run(path, MotifProductVersion.CurrentText, (database, _) =>
+        {
+            using (var connection = database.OpenConnection())
+            using (var transaction = connection.BeginTransaction())
+            {
+                ProgressRepository.Publish(connection, transaction, original, "content/test", "judgement/test", DateTimeOffset.UtcNow);
+                transaction.Commit();
+            }
+            using (var connection = database.OpenConnection())
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "CREATE TABLE Audit (Id TEXT); CREATE TRIGGER AuditUpdate AFTER UPDATE ON ProgressTexts " +
+                    "BEGIN INSERT INTO Audit VALUES (new.TextId); END; " +
+                    "UPDATE ProgressState SET PendingReceiptId = 'receipt/test' WHERE Id = 1;";
+                command.ExecuteNonQuery();
+            }
+            try
+            {
+                ProgressRepository.TextSerialized.Value = id => serialized.Add(id);
+                ProgressRepository.PublishApplied(database, updated, "receipt/test", DateTimeOffset.UtcNow, "content/test", original);
+            }
+            finally { ProgressRepository.TextSerialized.Value = null; }
+            using var read = database.OpenConnection();
+            using var query = read.CreateCommand();
+            query.CommandText = "SELECT Id FROM Audit;";
+            Assert.Equal(changedId.ToString("D"), query.ExecuteScalar());
+            query.CommandText = "SELECT COUNT(*) FROM Audit;";
+            Assert.Equal(1L, query.ExecuteScalar());
+            return CommandOutcome<string>.Success("published");
+        });
+        Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+        Assert.Equal([changedId], serialized);
+    }
+
+    [Fact]
     public void AFailedSaveDoesNotPublishAProgressRevision()
     {
         var path = pristine.CopyProjectFile();
@@ -207,9 +260,29 @@ public sealed class ProgressQueryTests(PristineProjectFixture pristine) : IDispo
     public void ReceiptRecoveryPublishesOnceAfterAnInterruptedPublication()
     {
         var path = pristine.CopyProjectFile();
+        SeededText text;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            text = SeededProject.SeedText(cache, pristine.Seed);
+            var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().GetObject(text.ApprovedAnalysisId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
+                () => cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.noopinion));
+            new FwDataProjectLoader().Save(cache);
+        }
         Capture(path);
-        var proposal = ApplyReconciliationTests.CreateMeasuredProposal(path, "progress-recovery",
-            CanonicalId.FromGuid(pristine.Seed.FirstSenseId).Value, SeededProject.FirstGloss + " recovery");
+        var pending = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
+        Assert.True(pending.Succeeded, pending.Refusal?.Message);
+        var staged = PendingChanges.Put(new PutPendingChangeRequest(path, "1.0", pending.Value!.Revision,
+            new ChangeIntent("recovery-approve", AnalysisChangeKinds.Approve,
+                CanonicalId.FromGuid(text.AnalysedWordformId).Value, SeededProject.AnalysedWordForm,
+                StoredAnalysisId: CanonicalId.FromGuid(text.ApprovedAnalysisId).Value)));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        DraftRationale.Author(path, PendingChanges.DraftName, "Approve a reading", "The reading is supported.");
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, "1.0", PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var proposal = finalized.Value!.ProposalId;
+        var measured = DryRunJobRunner.Run(path, "1.0", proposal);
+        Assert.True(measured.Succeeded, measured.Refusal?.Message);
         try
         {
             ProposalCommands.BeforeProgressPublication.Value = () => throw new IOException("Publication interrupted.");
@@ -219,11 +292,18 @@ public sealed class ProgressQueryTests(PristineProjectFixture pristine) : IDispo
                 new ProgressRequest(path, new ProgressScope("texts"))).Refusal?.Code);
         }
         finally { ProposalCommands.BeforeProgressPublication.Value = null; }
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            SeededProject.SeedText(cache, pristine.Seed);
+            new FwDataProjectLoader().Save(cache);
+        }
         var retry = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposal, Force: true));
         Assert.True(retry.Succeeded, retry.Refusal?.Message);
         Assert.True(retry.Value!.AlreadyApplied);
         var recovered = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
         Assert.True(recovered.Succeeded, recovered.Refusal?.Message);
+        Assert.True(recovered.Value!.Freshness.JudgementsCurrent);
+        Assert.Equal(2, recovered.Value.Totals!.Passages);
         var again = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposal, Force: true));
         Assert.True(again.Succeeded, again.Refusal?.Message);
         var final = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));

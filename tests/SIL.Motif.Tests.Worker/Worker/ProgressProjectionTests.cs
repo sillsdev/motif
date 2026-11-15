@@ -8,6 +8,7 @@ using SIL.Motif.Worker.Baselines;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
 using SIL.LCModel.Infrastructure;
+using SIL.WritingSystems;
 using Xunit;
 
 namespace SIL.Motif.Tests.Worker;
@@ -79,10 +80,33 @@ public sealed class ProgressProjectionTests
 public sealed class ProgressDeltaTests(PristineProjectFixture pristine)
 {
     [Fact]
+    public void CoverageRequiresEveryCharacterToBeDeclaredInMainOrAuxiliary()
+    {
+        using var cache = pristine.NewScratch();
+        var seeded = SeededProject.SeedText(cache, pristine.Seed);
+        var ws = cache.ServiceLocator.WritingSystems.VernacularWritingSystems.First();
+        ws.CharacterSets.Clear();
+        ws.CharacterSets.Add(new CharacterSetDefinition("main") { Characters = { "a" } });
+        ws.CharacterSets.Add(new CharacterSetDefinition("auxiliary") { Characters = { "é" } });
+        var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(seeded.AnalysedWordformId);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => wordform.Form.set_String(ws.Handle, "aé"));
+        var valid = TextWordsProjectionBuilder.ReadWordform(cache, wordform, includeCoverage: true);
+        Assert.Null(valid.CoverageExclusion);
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () => wordform.Form.set_String(ws.Handle, "a9"));
+        var invalid = TextWordsProjectionBuilder.ReadWordform(cache, wordform, includeCoverage: true);
+        Assert.Equal("not-a-word:9", invalid.CoverageExclusion);
+    }
+
+    [Fact]
     public void ApprovalAndSpellingChangeOnlyTheAffectedWordformPlaces()
     {
         using var cache = pristine.NewScratch();
         var seeded = SeededProject.SeedText(cache, pristine.Seed);
+        var ws = cache.ServiceLocator.WritingSystems.VernacularWritingSystems.First();
+        ws.CharacterSets.Clear();
+        var main = new CharacterSetDefinition("main");
+        foreach (var character in "abcdefghijklmnopqrstuvwxyz") main.Characters.Add(character.ToString());
+        ws.CharacterSets.Add(main);
         var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().GetObject(seeded.ApprovedAnalysisId);
         var wordform = cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(seeded.AnalysedWordformId);
         NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
