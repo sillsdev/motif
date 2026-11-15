@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SIL.LCModel;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Jobs;
 using SIL.Motif.Host.Baselines;
@@ -40,6 +41,18 @@ public static class SourceIndexRefresh
                 pending.Parameters.AddWithValue("$anchor", ParatextPassages.AnchorVersion);
                 pending.ExecuteNonQuery();
             }
+            using (var texts = connection.CreateCommand())
+            {
+                texts.Transaction = transaction;
+                texts.CommandText = "INSERT OR IGNORE INTO SourceIndexState VALUES " +
+                    "($source,$kind,$generation,'','{}','pending',$tokenizer,$anchor);";
+                texts.Parameters.AddWithValue("$source", FieldWorksTextsIndex.SourceId);
+                texts.Parameters.AddWithValue("$kind", FieldWorksTextsIndex.Kind);
+                texts.Parameters.AddWithValue("$generation", Guid.NewGuid().ToString("N"));
+                texts.Parameters.AddWithValue("$tokenizer", FieldWorksTextsIndex.TokenizerVersion);
+                texts.Parameters.AddWithValue("$anchor", FieldWorksTextsIndex.AnchorVersion);
+                texts.ExecuteNonQuery();
+            }
             transaction.Commit();
         }
         var now = JobTimestamp.FormatUtc(DateTimeOffset.UtcNow);
@@ -70,11 +83,14 @@ public static class SourceIndexRefresh
         if (ProgressSourceIdentity.Capture(reader.Cache.ProjectId.Path)?.Digest != projectIdentity.Digest ||
             !projectIdentity.Current(project.FullFwDataPath))
             throw new IOException("The saved project changed while its Source index was being prepared.");
-        var sources = SourceList.Read(reader.Cache);
+        IReadOnlyList<SourceListEntry> sources;
+        try { sources = SourceList.Read(reader.Cache); }
+        catch (SourceListAmbiguousException) { sources = []; }
         var ws = reader.Cache.WritingSystemFactory.GetStrFromWs(reader.Cache.DefaultVernWs);
         var local = ScriptureLocalStore.ForInstallation().Read(key);
         var retry = false;
-        foreach (var source in sources)
+        foreach (var source in sources.Where(source =>
+                     !string.Equals(source.Id, FieldWorksTextsIndex.SourceId, StringComparison.OrdinalIgnoreCase)))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var folder = local.SourcePaths.GetValueOrDefault(source.Id);
@@ -94,27 +110,45 @@ public static class SourceIndexRefresh
                 retry |= !PublishUnavailable(database, source, folder, ws, projectIdentity, exception.Message, before);
             }
         }
+        retry |= !BuildTexts(database, reader.Cache, ws, projectIdentity, cancellationToken);
         if (!retry) return JobOutcome.Completed;
         Enqueue(database);
         return new(JobStatus.Failed, JobFailureCategory.Infrastructure,
             JsonSerializer.Serialize(new { message = "Source inputs changed during indexing; a fresh job was queued." }));
     }
 
+    private static bool BuildTexts(MotifDatabase database, LcmCache cache, string writingSystem,
+        ProgressSourceIdentity projectIdentity, CancellationToken cancellationToken)
+    {
+        try { return FieldWorksTextsIndex.Build(database, cache, writingSystem, projectIdentity, cancellationToken); }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            return PublishUnavailable(database, FieldWorksTextsIndex.SourceId, FieldWorksTextsIndex.Kind, "", "", "Active",
+                null, writingSystem, projectIdentity, exception.Message, null);
+        }
+    }
+
     private static bool PublishUnavailable(MotifDatabase database, SourceListEntry source, string? folder,
-        string writingSystem, ProgressSourceIdentity projectIdentity, string? error, SourceFileStamp[]? before)
+        string writingSystem, ProgressSourceIdentity projectIdentity, string? error, SourceFileStamp[]? before) =>
+        PublishUnavailable(database, source.Id, source.Kind.ToString(), source.ContextText, source.VersificationName,
+            source.Status.ToString(), folder, writingSystem, projectIdentity, error, before);
+
+    private static bool PublishUnavailable(MotifDatabase database, string sourceId, string kind, string contextText,
+        string versification, string status, string? folder, string writingSystem, ProgressSourceIdentity projectIdentity,
+        string? error, SourceFileStamp[]? before)
     {
         var repository = new SourceIndexRepository(database);
-        var previous = repository.ReadState(source.Id);
+        var previous = repository.ReadState(sourceId);
         var files = before ?? [];
-        var identity = new SourceIndexIdentity(folder is null ? "" : Path.GetFullPath(folder), source.ContextText,
-            source.VersificationName, source.Status.ToString(), writingSystem, projectIdentity.Serialize(), files, error);
-        var currentFolder = ScriptureLocalStore.ForInstallation().ReadExisting(ProjectWorkspaceKey.Compute(database.Project))
-            .SourcePaths.GetValueOrDefault(source.Id);
+        var identity = new SourceIndexIdentity(folder is null ? "" : Path.GetFullPath(folder), contextText,
+            versification, status, writingSystem, projectIdentity.Serialize(), files, error);
+        var currentFolder = SourceProviders.Versions(kind).Folder(ProjectWorkspaceKey.Compute(database.Project), sourceId);
         if (!identity.ProjectCurrent(database.Project.FullFwDataPath) ||
             (currentFolder is null ? "" : Path.GetFullPath(currentFolder)) != identity.Folder) return false;
         if (before is not null && !identity.FolderCurrent(currentFolder)) return false;
-        return repository.Publish(new(source.Id, source.Kind.ToString(), Guid.NewGuid().ToString("N"), "",
-                identity.Serialize(), "stale", ParatextPassages.TokenizerVersion, ParatextPassages.AnchorVersion),
+        var versions = SourceProviders.Versions(kind);
+        return repository.Publish(new(sourceId, kind, Guid.NewGuid().ToString("N"), "",
+                identity.Serialize(), "stale", versions.TokenizerVersion, versions.AnchorVersion),
             [], [], [], previous?.Generation ?? "");
     }
 
@@ -130,14 +164,15 @@ public static class SourceIndexRefresh
         var states = new List<(string Id, string Kind, string Identity, string Tokenizer, string Anchor, string Status)>();
         using (var rows = command.ExecuteReader())
             while (rows.Read()) states.Add((rows.GetString(0), rows.GetString(1), rows.GetString(2), rows.GetString(3), rows.GetString(4), rows.GetString(5)));
-        var local = ScriptureLocalStore.ForInstallation().ReadExisting(ProjectWorkspaceKey.Compute(database.Project));
+        var workspace = ProjectWorkspaceKey.Compute(database.Project);
         foreach (var state in states)
         {
             var identity = SourceIndexIdentity.Parse(state.Identity);
+            var provider = SourceProviders.Versions(state.Kind);
             try
             {
-                if (state.Status != "pending" && identity is not null && identity.Current(database.Project.FullFwDataPath, local.SourcePaths.GetValueOrDefault(state.Id)) &&
-                    state.Tokenizer == ParatextPassages.TokenizerVersion && state.Anchor == ParatextPassages.AnchorVersion)
+                if (state.Status != "pending" && identity is not null && identity.Current(database.Project.FullFwDataPath, provider.Folder(workspace, state.Id)) &&
+                    state.Tokenizer == provider.TokenizerVersion && state.Anchor == provider.AnchorVersion)
                     continue;
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { continue; }

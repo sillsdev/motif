@@ -258,7 +258,7 @@
   },
   {
     "name": "motif_source_passage",
-    "description": "Read a Source Passage. Reads a bounded page of word places from a published Paratext Source index. Missing or stale indexes require a refresh; reads never rebuild them and approved state is unavailable.\nCommand: source passage. Agent class: Read.\nSource: The Source id, matched ignoring case.\nRef: The Passage locator, such as MAT 5.\nLimit: The number of places, from 1 to 200; defaults to 100.\nCursor: The opaque continuation for this Source, Passage and generation.",
+    "description": "Read a Source Passage. Reads a bounded page of word places from a published Source index: a Paratext chapter or a FieldWorks Text. Missing or stale indexes require a refresh; reads never rebuild them and approved state is unavailable.\nCommand: source passage. Agent class: Read.\nSource: The Source id, matched ignoring case.\nRef: The Passage locator, such as MAT 5.\nLimit: The number of places, from 1 to 200; defaults to 100.\nCursor: The opaque continuation for this Source, Passage and generation.",
     "inputSchema": {
       "type": "object",
       "properties": {

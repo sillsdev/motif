@@ -7,6 +7,18 @@ public readonly record struct ChapterRef(string Book, int Chapter)
 {
     /// <summary>The chapter written as <c>MAT 5</c>.</summary>
     public override string ToString() => $"{Book} {Chapter}";
+
+    /// <summary>Reads a chapter written as a book ID, a space and a chapter number, such as <c>MAT 5</c>.</summary>
+    public static bool TryParse(string? text, out ChapterRef chapter)
+    {
+        chapter = default;
+        var parts = (text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2 || !int.TryParse(parts[1], out var number) || number < 1) return false;
+        var book = parts[0].ToUpperInvariant();
+        if (Canon.BookIdToNumber(book) <= 0) return false;
+        chapter = new ChapterRef(book, number);
+        return true;
+    }
 }
 
 /// <summary>What Motif knows about a Paratext project folder: its identity, versification and the chapters it holds.</summary>

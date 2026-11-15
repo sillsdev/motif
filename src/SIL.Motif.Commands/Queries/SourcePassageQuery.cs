@@ -19,12 +19,12 @@ public static class SourcePassageQuery
     {
         ArgumentNullException.ThrowIfNull(request);
         if (string.IsNullOrWhiteSpace(request.Source)) return SourceQuery.EmptyId<SourcePassageResponse>();
-        if (!SourceQuery.TryParseChapter(request.Ref, out var chapter))
-            return Refused(RefusalCodes.SourceRefInvalid, FailureReason.InvalidArgument, "Name a chapter, for example MAT 5.");
+        var named = SourceProviders.Paratext.TryPassageId(request.Ref, out var passage) ||
+            SourceProviders.FieldWorksTexts.TryPassageId(request.Ref, out passage);
+        if (!named) return InvalidRef();
         if (request.Limit is < 1 or > 200)
             return Refused(RefusalCodes.SourcePassageLimitInvalid, FailureReason.InvalidArgument, "Choose a limit from 1 to 200.");
         var source = request.Source.Trim().ToUpperInvariant();
-        var passage = chapter.ToString();
         Cursor? cursor = null;
         if (request.Cursor is not null && (!TryCursor(request.Cursor, out cursor) ||
             cursor!.Source != source || cursor.Passage != passage))
@@ -52,17 +52,18 @@ public static class SourcePassageQuery
                 if (state.Status == "pending") return Stale();
                 var identity = SourceIndexIdentity.Parse(state.IdentityJson);
                 if (identity is null || !identity.ProjectCurrent(project.FullFwDataPath)) return Stale();
-                if (state.Kind != "Paratext")
-                    return Refused(RefusalCodes.SourceKindUnsupported, FailureReason.InvalidArgument, "Only Paratext Passages are supported.");
+                var provider = SourceProviders.For(state.Kind);
+                if (provider is null)
+                    return Refused(RefusalCodes.SourceKindUnsupported, FailureReason.InvalidArgument, "This kind of Source has no indexed Passages.");
+                if (!provider.TryPassageId(request.Ref, out var named) || named != passage) return InvalidRef();
                 if (identity.SourceStatus == "Removed")
                     return Refused(RefusalCodes.SourceIdRemoved, FailureReason.Refused, "This Source was removed.");
-                var folder = ScriptureLocalStore.ForInstallation().ReadExisting(key).SourcePaths.GetValueOrDefault(state.SourceId);
-                if (folder is null || !Directory.Exists(folder) || !File.Exists(Path.Combine(folder, "Settings.xml")))
-                    return Refused(RefusalCodes.SourceFolderMissing, FailureReason.NotFound, "The Source folder is unavailable on this machine.");
+                var folder = provider.Folder(key, state.SourceId);
+                if (provider.Unavailable(folder) is { } unavailable) return CommandOutcome<SourcePassageResponse>.Refused(unavailable);
                 if (identity.Error is not null) return Refused(RefusalCodes.SourceIndexStale, FailureReason.Refused,
                     "The Source could not be indexed: " + identity.Error);
-                if (state.Status != "ready" || state.TokenizerVersion != ParatextPassages.TokenizerVersion ||
-                    state.AnchorVersion != ParatextPassages.AnchorVersion || !identity.Current(project.FullFwDataPath, folder))
+                if (state.Status != "ready" || state.TokenizerVersion != provider.TokenizerVersion ||
+                    state.AnchorVersion != provider.AnchorVersion || !identity.Current(project.FullFwDataPath, folder))
                     return Stale();
                 var stored = SourceIndexRepository.ReadPassage(connection, transaction, source, passage);
                 if (stored is null) return Refused(RefusalCodes.SourceChapterNotInSource, FailureReason.InvalidArgument,
@@ -92,6 +93,8 @@ public static class SourcePassageQuery
         catch (Exception exception) when (exception is FormatException or JsonException) { return false; }
     }
 
+    private static CommandOutcome<SourcePassageResponse> InvalidRef() => Refused(RefusalCodes.SourceRefInvalid,
+        FailureReason.InvalidArgument, "Name a Passage: a chapter such as MAT 5 for a Paratext Source, or a Text id for FieldWorks Texts.");
     private static CommandOutcome<SourcePassageResponse> Stale() => Refused(RefusalCodes.SourceIndexStale,
         FailureReason.Refused, "The Source index is stale or pending. Capture the saved project to queue a refresh.");
     private static CommandOutcome<SourcePassageResponse> InvalidCursor() => Refused(RefusalCodes.SourcePassageCursorInvalid,

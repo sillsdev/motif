@@ -43,11 +43,11 @@ public static class SourceProgressQuery
                 if (continuation is not null && continuation.Generation != state.Generation)
                     return Refuse(RefusalCodes.SourceGenerationChanged, FailureReason.Refused, "The Source generation changed.");
                 var identity = SourceIndexIdentity.Parse(state.IdentityJson);
-                var folder = ScriptureLocalStore.ForInstallation().ReadExisting(key).SourcePaths.GetValueOrDefault(state.SourceId);
-                bool Current() => state.Status == "ready" && state.Kind == "Paratext" && identity is not null &&
-                    identity.SourceStatus != "Removed" && identity.Error is null && folder is not null &&
-                    Directory.Exists(folder) && File.Exists(Path.Combine(folder, "Settings.xml")) &&
-                    state.TokenizerVersion == ParatextPassages.TokenizerVersion && state.AnchorVersion == ParatextPassages.AnchorVersion &&
+                var provider = SourceProviders.For(state.Kind);
+                var folder = provider?.Folder(key, state.SourceId);
+                bool Current() => provider is not null && state.Status == "ready" && identity is not null &&
+                    identity.SourceStatus != "Removed" && identity.Error is null && provider.Unavailable(folder) is null &&
+                    state.TokenizerVersion == provider.TokenizerVersion && state.AnchorVersion == provider.AnchorVersion &&
                     identity.Current(project.FullFwDataPath, folder);
                 if (!Current()) return Refuse(RefusalCodes.SourceIndexStale, FailureReason.Refused, "The Source index is stale or pending.");
                 using var total = connection.CreateCommand();

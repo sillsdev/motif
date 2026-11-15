@@ -151,7 +151,7 @@ public static class BaselineCaptureCommand
                         "baseline.busy", FailureReason.Busy, ex.Message, facts));
                 }
 
-                if (sources.Count > 0) SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
+                SIL.Motif.Worker.Sources.SourceIndexRefresh.Enqueue(database, sources);
                 var registrationFailure = RecordKnownProject(managedRoot, project);
 
                 var held = File.Exists(project.FullFwDataPath + ".lock");

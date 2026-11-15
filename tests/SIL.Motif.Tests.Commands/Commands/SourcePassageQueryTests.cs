@@ -183,6 +183,79 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
         Assert.Equal(RefusalCodes.SourceIndexStale, Query(project).Refusal?.Code);
     }
 
+    [Fact]
+    public void FieldWorksTextsPagesAndTotalsUseTheSameQueriesWithoutAFolderOrKindBranching()
+    {
+        var project = Project();
+        using var database = Open(project);
+        var textId = Guid.NewGuid().ToString("D");
+        PublishTexts(database, textId, 450);
+        var counts = new List<int>();
+        SourceIndexRepository.RowsRead.Value = counts.Add;
+        ProgressSourceIdentity.BeforeHash.Value = () => throw new InvalidOperationException("Read hashed project content.");
+        try
+        {
+            var first = SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId.ToLowerInvariant(),
+                textId.ToUpperInvariant(), 200));
+            Assert.True(first.Succeeded, first.Refusal?.Message);
+            Assert.Equal(200, first.Value!.Places.Count);
+            Assert.Equal("seg#0", first.Value.Places[0].Anchor);
+            Assert.Equal("fw:word", first.Value.Places[0].WordformKey);
+            Assert.Equal("fw-word-id", first.Value.Places[0].FieldWorksWordformId);
+            Assert.Equal("unavailable", first.Value.ApprovedState);
+            Assert.Equal(textId, first.Value.Ref);
+            var second = SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, textId, 200,
+                first.Value.NextCursor));
+            Assert.Equal(201, second.Value!.Places[0].Ordinal);
+            var last = SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, textId, 200,
+                second.Value.NextCursor));
+            Assert.Equal(50, last.Value!.Places.Count);
+            Assert.Null(last.Value.NextCursor);
+            Assert.Equal([201, 201, 50], counts);
+            var work = new List<(int Statements, int Rows)>();
+            SourceProgressQuery.ReadWork.Value = (statements, rows) => work.Add((statements, rows));
+            SourceIndexRepository.RowsRead.Value = _ => throw new InvalidOperationException("Read word places.");
+            var total = SourceProgressQuery.Query(project.FullFwDataPath, FieldWorksTextsIndex.SourceId);
+            Assert.True(total.Succeeded, total.Refusal?.Message);
+            Assert.Equal(440, total.Value!.EligiblePlaces);
+            Assert.Equal("unavailable", total.Value.ApprovedState);
+            Assert.Equal([(1, 0)], work);
+            Assert.Equal(RefusalCodes.SourceRefInvalid,
+                SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, "MAT 1")).Refusal?.Code);
+            Assert.Equal(RefusalCodes.SourceChapterNotInSource,
+                SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, Guid.NewGuid().ToString())).Refusal?.Code);
+        }
+        finally
+        {
+            SourceIndexRepository.RowsRead.Value = null;
+            SourceProgressQuery.ReadWork.Value = null;
+            ProgressSourceIdentity.BeforeHash.Value = null;
+        }
+    }
+
+    [Fact]
+    public void FieldWorksTextsAreExplicitlyMissingOrStaleAndAParatextSourceRefusesATextId()
+    {
+        var project = Project();
+        using var database = Open(project);
+        var textId = Guid.NewGuid().ToString("D");
+        Assert.Equal(RefusalCodes.SourceIndexMissing,
+            SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, textId)).Refusal?.Code);
+        PublishTexts(database, textId, 3);
+        Publish(database, 1);
+        Assert.Equal(RefusalCodes.SourceRefInvalid,
+            SourcePassageQuery.Query(new(project.FullFwDataPath, "WEB", textId)).Refusal?.Code);
+        new SourceIndexRepository(database).MarkPending(FieldWorksTextsIndex.SourceId);
+        Assert.Equal(RefusalCodes.SourceIndexStale,
+            SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, textId)).Refusal?.Code);
+        Assert.Equal(RefusalCodes.SourceIndexStale, SourceProgressQuery.Query(project.FullFwDataPath, FieldWorksTextsIndex.SourceId).Refusal?.Code);
+        PublishTexts(database, textId, 3);
+        File.AppendAllText(project.FullFwDataPath, "changed");
+        Assert.Equal(RefusalCodes.SourceIndexStale,
+            SourcePassageQuery.Query(new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, textId)).Refusal?.Code);
+        Assert.Equal(RefusalCodes.SourceIndexStale, SourceProgressQuery.Query(project.FullFwDataPath, FieldWorksTextsIndex.SourceId).Refusal?.Code);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(201)]
@@ -276,6 +349,17 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
         new SourceIndexRepository(database).Publish(state, [new("MAT 1", "MAT 1", "hash", count, count)],
             [new("word", "en", "word", "Word")], Enumerable.Range(1, count)
                 .Select(i => new SourceWordPlace("MAT 1", i, "MAT 1:1#" + i, "MAT 1:1", "Word", "word")));
+    }
+
+    private static void PublishTexts(MotifDatabase database, string textId, int count)
+    {
+        var identity = new SourceIndexIdentity("", "", "", "Active", "en",
+            ProgressSourceIdentity.Capture(database.Project.FullFwDataPath)!.Serialize(), []);
+        var state = new SourceIndexState(FieldWorksTextsIndex.SourceId, FieldWorksTextsIndex.Kind, Guid.NewGuid().ToString("N"),
+            "digest", identity.Serialize(), "ready", FieldWorksTextsIndex.TokenizerVersion, FieldWorksTextsIndex.AnchorVersion);
+        new SourceIndexRepository(database).Publish(state, [new(textId, textId, "hash", count, count - Math.Min(count, 10))],
+            [new("fw:word", "en", "word", "Word", "fw-word-id")], Enumerable.Range(1, count)
+                .Select(i => new SourceWordPlace(textId, i, "seg#" + (i - 1), "1", "Word", "fw:word")));
     }
 
     public void Dispose()

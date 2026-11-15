@@ -133,16 +133,7 @@ public static class SourceQuery
             "This project has no Baseline yet. Capture one to read its Sources."));
     }
 
-    internal static bool TryParseChapter(string? text, out ChapterRef chapter)
-    {
-        chapter = default;
-        var parts = (text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length != 2 || !int.TryParse(parts[1], out var number) || number < 1) return false;
-        var book = parts[0].ToUpperInvariant();
-        if (Canon.BookIdToNumber(book) <= 0) return false;
-        chapter = new ChapterRef(book, number);
-        return true;
-    }
+    internal static bool TryParseChapter(string? text, out ChapterRef chapter) => ChapterRef.TryParse(text, out chapter);
 
     internal static CommandOutcome<T> EmptyId<T>() where T : class => CommandOutcome<T>.Refused(new Refusal(
         RefusalCodes.SourceIdInvalid, FailureReason.InvalidArgument, "Name a Source, for example WEB."));

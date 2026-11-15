@@ -2327,7 +2327,7 @@
   },
   "source passage": {
     "title": "Read a Source Passage",
-    "description": "Reads a bounded page of word places from a published Paratext Source index. Missing or stale indexes require a refresh; reads never rebuild them and approved state is unavailable.",
+    "description": "Reads a bounded page of word places from a published Source index: a Paratext chapter or a FieldWorks Text. Missing or stale indexes require a refresh; reads never rebuild them and approved state is unavailable.",
     "source": "Hand-written from the Source Passage read contract."
   },
   "source list": {
