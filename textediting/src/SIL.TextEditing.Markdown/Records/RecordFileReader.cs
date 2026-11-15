@@ -112,7 +112,7 @@ namespace SIL.TextEditing.Markdown.Records
                 Error(RecordDiagnosticIds.LineSeparator, "U+" + ((int)_text[at]).ToString("X4", CultureInfo.InvariantCulture) + " is a line break to some YAML readers and not to others; write it as a character reference.",
                     at, at + 1, inRich ? "&#x" + ((int)_text[at]).ToString("X4", CultureInfo.InvariantCulture) + ";" : null);
             }
-            if (parse.Error == null) foreach (var comment in YamlTree.Comments(yamlText)) ReportComment(comment[0], comment[1]);
+            if (parse.Error == null && parse.TooDeepAt == null) foreach (var comment in YamlTree.Comments(yamlText)) ReportComment(comment[0], comment[1]);
             foreach (int at in parse.LaterDocuments)
                 // The reader reads the first document only, so the fix that makes the file say what was read removes the rest of the front matter.
                 Error(RecordDiagnosticIds.SecondDocument, "A second YAML document starts here; a record file's front matter is one document, and the rest is not read.", LineStartOf(at), closeStart, string.Empty);
@@ -343,6 +343,17 @@ namespace SIL.TextEditing.Markdown.Records
                 foreach (var pair in node.Pairs)
                 {
                     var key = pair.Key;
+                    if (!node.Flow && key.IsScalar)
+                    {
+                        int colon = key.End;
+                        int next = colon + 1;
+                        if (colon < _text.Length && _text[colon] == ':')
+                        {
+                            while (next < _text.Length && (_text[next] == ' ' || _text[next] == '\t')) next++;
+                            if (next > colon + 1 && next < LineEnd(colon) && next == pair.Value.Start && (next != colon + 2 || _text[colon + 1] != ' '))
+                                Info(RecordDiagnosticIds.ScalarStyle, "A value follows its colon with one space.", colon + 1, next, " ");
+                        }
+                    }
                     if (key.Kind != YamlFrameKind.Scalar)
                     {
                         if (key.Kind != YamlFrameKind.Alias) Error(RecordDiagnosticIds.WrongShape, "A key is a single value.", key.Start, Math.Max(key.End, key.Start + 1));
@@ -1048,8 +1059,11 @@ namespace SIL.TextEditing.Markdown.Records
                 int s = LanguageText.StartOffset(value, d.Range), e = LanguageText.EndOffset(value, d.Range);
                 string? replacement = null;
                 if (d.Fix != null && d.Fix.Edits.Count == 1 && d.Fix.Edits[0].Range.Equals(d.Range)) replacement = d.Fix.Edits[0].NewText;
+                string message = d.Message;
+                if (d.Fix != null && d.Fix.Edits.Count > 0 && replacement == null)
+                    message += " The suggested fix has " + d.Fix.Edits.Count.ToString(CultureInfo.InvariantCulture) + " edits outside a single replacement; apply them together in the notation editor.";
                 var severity = d.Severity == DiagnosticSeverity.Error ? MarkdownSeverity.Error : d.Severity == DiagnosticSeverity.Warning ? MarkdownSeverity.Warning : MarkdownSeverity.Suggestion;
-                Report(d.Code ?? RecordDiagnosticIds.Notation, severity, d.Message, Map(map, s), MapEnd(map, s, e), replacement);
+                Report(d.Code ?? RecordDiagnosticIds.Notation, severity, message, Map(map, s), MapEnd(map, s, e), replacement);
             }
         }
 
