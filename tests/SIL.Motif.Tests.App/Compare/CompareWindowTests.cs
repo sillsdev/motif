@@ -9,6 +9,7 @@ using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.Compare;
+using SIL.Motif.Contract.Responses;
 using SIL.Motif.Runner.Operations;
 using Xunit;
 
@@ -81,6 +82,142 @@ public sealed class CompareWindowTests(AvaloniaHeadlessFixture avalonia)
                 block => AutomationProperties.GetName(block) == $"{name}, read-only, paragraph 1");
             Assert.Contains(window.GetVisualDescendants().OfType<Button>(),
                 button => AutomationProperties.GetName(button) == $"Use the {name} version of paragraph 1");
+        });
+    }
+
+    [Theory]
+    [InlineData("FieldWorks")]
+    [InlineData("author-1")]
+    public void AParagraphMoveHasAMarkAndSwitchesTheVisibleResultOrder(string other)
+    {
+        avalonia.Invoke(() =>
+        {
+            ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c")];
+            var comparison = new TextComparison(TextSort.Sort(new TextVersions(
+                start.Select(paragraph => S(paragraph.Key!, paragraph.Text)).ToArray(), [start[2], start[0], start[1]], start)));
+            var window = new CompareWindow("Text", comparison, labels: new CompareLabels(other, other));
+            using var closer = window.CloseOnExit();
+            window.Show();
+
+            var change = Assert.Single(comparison.Sorted.Changes);
+            Assert.Equal(string.Format(MotifAppStrings.CompareParagraphMovedMineFormat, 1, other, 3),
+                ChangeWords.Describe(change, otherName: other));
+            Assert.Contains(window.GetVisualDescendants().OfType<ToggleButton>(), button => Equals(button.Content, MotifAppStrings.CompareUseYourOrder));
+            Assert.Contains(window.GetVisualDescendants().OfType<ToggleButton>(), button =>
+                Equals(button.Content, string.Format(MotifAppStrings.CompareUseOtherOrderFormat, other)));
+            Assert.Contains("moved", change.Description, StringComparison.OrdinalIgnoreCase);
+            Assert.Single(window.Marks);
+            Assert.Contains(other, AutomationProperties.GetName(window.MarkOf(change)!), StringComparison.Ordinal);
+            Assert.StartsWith("c\na\nb", window.ReadableText, StringComparison.Ordinal);
+            window.MarkOf(change)!.Focus();
+            Press(window, Key.F, RawInputModifiers.Alt);
+            Assert.StartsWith("a\nb\nc", window.ReadableText, StringComparison.Ordinal);
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == MotifAppStrings.CompareChangeNotUsed);
+            window.ShowResult = true;
+            Assert.Empty(window.Marks);
+            var clean = window.GetVisualDescendants().OfType<TextBlock>()
+                .Select(block => string.Concat(block.Inlines?.OfType<Run>().Select(run => run.Text) ?? []))
+                .Where(text => text is "a" or "b" or "c");
+            Assert.Equal(["a", "b", "c"], clean);
+            window.ShowResult = false;
+            window.Select(change);
+            Press(window, Key.M, RawInputModifiers.Alt);
+            Assert.StartsWith("c\na\nb", window.ReadableText, StringComparison.Ordinal);
+            window.OpenSideBySide();
+            Assert.True(window.Finish());
+            Assert.Equal(["c", "a", "b"], window.Outcome!.Result.Select(paragraph => paragraph.Text));
+        });
+    }
+
+    [Fact]
+    public void AMoveAndWordingInTheSameParagraphHaveSeparateMarksInReadingOrder()
+    {
+        avalonia.Invoke(() =>
+        {
+            ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c")];
+            var comparison = new TextComparison(TextSort.Sort(new TextVersions(
+                start.Select(paragraph => S(paragraph.Key!, paragraph.Text)).ToArray(), [P("p3", "x"), start[0], start[1]], start)));
+            var window = Opened(comparison, out var closer);
+            using var _ = closer;
+
+            Assert.Equal([ChangeKind.ParagraphMoved, ChangeKind.Wording], window.Marks.Select(mark => ((TextChange)mark.Tag!).Kind));
+            Assert.Equal("x\na\nb", Result(window));
+            comparison.Choose(comparison.Sorted.Changes.Single(change => change.Kind == ChangeKind.ParagraphMoved), Choice.FieldWorks);
+            Assert.Equal("a\nb\nx", Result(window));
+        });
+    }
+
+    [Fact]
+    public void AnUntouchedFieldWorksRemovalHasAMarkAndCanRestoreTheRememberedParagraph()
+    {
+        avalonia.Invoke(() =>
+        {
+            var props = new GdrTextProperties(
+                new Dictionary<int, GdrIntProperty>(), new Dictionary<int, string>());
+            var first = new GdrParagraph("Normal", false, "en", props,
+                [new GdrRun("a", "en", null, props)], "p1");
+            var removed = first with { Key = "p2", Runs = [new GdrRun("b", "en", null, props)] };
+            var edit = new TextParagraphsPayload("CmPossibility.Discussion", ["p1", "p2"], [], [],
+                new Dictionary<string, TextParagraphExpected>());
+            var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(edit, [first],
+                new[] { first, removed }.Select(TextVersions.Paragraph))));
+            var window = Opened(comparison, out var closer);
+            using var _ = closer;
+
+            var change = Assert.Single(comparison.Sorted.Changes);
+            Assert.Equal(ChangeKind.ParagraphRemoved, change.Kind);
+            Assert.Single(window.Marks);
+            window.MarkOf(change)!.Focus();
+            Press(window, Key.M, RawInputModifiers.Alt);
+            Assert.Equal("a\nb", Result(window));
+            Assert.True(window.Finish());
+            Assert.Equal(["p1", "p2"], window.Outcome!.Result.Select(paragraph => paragraph.Key));
+        });
+    }
+
+    [Fact]
+    public void AnUnavailableRemovalHasAnExplanationAndCannotRestoreInventedEmptyText()
+    {
+        avalonia.Invoke(() =>
+        {
+            var edit = new TextParagraphsPayload("CmPossibility.Discussion", ["p1"], [], [], new Dictionary<string, TextParagraphExpected>());
+            var comparison = new TextComparison(TextSort.Sort(TextVersions.FromParagraphs(edit, [])));
+            var window = Opened(comparison, out var closer);
+            using var _ = closer;
+            var removal = Assert.Single(comparison.Sorted.Changes);
+
+            Assert.Single(window.Marks);
+            Assert.Equal(string.Format(MotifAppStrings.CompareParagraphRemovedUnavailableAccessibleFormat, "FieldWorks", removal.Location),
+                AutomationProperties.GetName(window.MarkOf(removal)!));
+            Assert.DoesNotContain("Alt+M", AutomationProperties.GetName(window.MarkOf(removal)!), StringComparison.Ordinal);
+            var mine = Assert.Single(window.GetVisualDescendants().OfType<ToggleButton>(), button => Equals(button.Content, ChangeWords.UseMine));
+            Assert.False(mine.IsEnabled);
+            window.Select(removal);
+            Press(window, Key.M, RawInputModifiers.Alt);
+            Assert.Equal(Choice.FieldWorks, comparison.ChoiceFor(removal));
+            Assert.True(window.Finish());
+            Assert.Empty(window.Outcome!.Result);
+        });
+    }
+
+    [Fact]
+    public void AnUndecidedMoveUsesTheCataloguedSideBySideWaitingMessage()
+    {
+        avalonia.Invoke(() =>
+        {
+            ParagraphVersion[] start = [P("p1", "a"), P("p2", "b"), P("p3", "c"), P("p4", "d"), P("p5", "e")];
+            var comparison = new TextComparison(TextSort.Sort(new TextVersions(
+                start.Select(paragraph => S(paragraph.Key!, paragraph.Text)).ToArray(),
+                [start[0], start[4], start[1], start[2], start[3]], [start[0], start[1], start[4], start[2], start[3]])));
+            var window = Opened(comparison, out var closer);
+            using var _ = closer;
+            var move = Assert.Single(comparison.Undecided);
+
+            Assert.Equal(string.Format(MotifAppStrings.CompareParagraphMovedBothFormat, 2, "FieldWorks", 3), move.Description);
+            window.OpenSideBySide();
+            Assert.Equal(string.Format(MotifAppStrings.CompareChooseParagraphOrderWaitingFormat, comparison.Waiting), window.WaitingText);
+            Assert.False(window.IsDoneEnabled);
+            Assert.False(window.Finish());
         });
     }
 

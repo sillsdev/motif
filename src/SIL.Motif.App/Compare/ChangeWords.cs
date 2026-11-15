@@ -46,6 +46,18 @@ public static class ChangeWords
             ChangeAuthor.FieldWorks => otherName,
             _ => BothChanged,
         };
+        if (!change.CanUseMine)
+            return string.Format(MotifAppStrings.CompareParagraphRemovedUnavailableFormat, otherName);
+        if (change.Kind == ChangeKind.ParagraphMoved)
+        {
+            var format = change.Author switch
+            {
+                ChangeAuthor.Mine => MotifAppStrings.CompareParagraphMovedMineFormat,
+                ChangeAuthor.FieldWorks => MotifAppStrings.CompareParagraphMovedOtherFormat,
+                _ => MotifAppStrings.CompareParagraphMovedBothFormat,
+            };
+            return string.Format(format, change.MinePosition + 1, otherName, change.FieldWorksPosition + 1);
+        }
         if (change.Author == ChangeAuthor.Both)
             return change.Kind switch
             {
@@ -79,6 +91,8 @@ public static class ChangeWords
     public static string Announce(TextChange change, Choice? choice, Func<string, string>? writingSystemName = null, string otherName = "FieldWorks")
     {
         ArgumentNullException.ThrowIfNull(change);
+        if (!change.CanUseMine)
+            return string.Format(MotifAppStrings.CompareParagraphRemovedUnavailableAccessibleFormat, otherName, change.Location);
         if (change.Author == ChangeAuthor.Both)
             return $"{Describe(change, writingSystemName, otherName)}, {change.Location}. " + choice switch
             {

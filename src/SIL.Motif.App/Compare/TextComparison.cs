@@ -32,24 +32,26 @@ public sealed class TextComparison
     public bool Choose(TextChange change, Choice choice)
     {
         ArgumentNullException.ThrowIfNull(change);
-        if (choice == Choice.Both && !change.CanUseBoth) return false;
+        if (choice == Choice.Mine && !change.CanUseMine || choice == Choice.Both && !change.CanUseBoth) return false;
         if (_choices.TryGetValue(change.Id, out var was) && was == choice) return true;
         _choices[change.Id] = choice;
         Changed?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
-    /// <summary>Takes one side for every change, both-made ones included.</summary>
+    /// <summary>Takes one side for each available choice; a missing earlier paragraph retains the other version.</summary>
     public void ChooseAll(Choice side)
     {
         if (side == Choice.Both) throw new ArgumentOutOfRangeException(nameof(side));
-        foreach (var change in Sorted.Changes) _choices[change.Id] = side;
+        foreach (var change in Sorted.Changes)
+            if (side != Choice.Mine || change.CanUseMine) _choices[change.Id] = side;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>The changes both made that still wait for a choice, in reading order, outside paragraphs rewritten side by side.</summary>
     public IReadOnlyList<TextChange> Undecided => Sorted.Changes
-        .Where(change => !_choices.ContainsKey(change.Id) && !_rewritten.ContainsKey(change.Paragraph)).ToArray();
+        .Where(change => !_choices.ContainsKey(change.Id) &&
+            (change.Kind == ChangeKind.ParagraphMoved || !_rewritten.ContainsKey(change.Paragraph))).ToArray();
 
     /// <summary>Whether every change both made has a choice, so Done can make the result.</summary>
     public bool IsDecided => Undecided.Count == 0;
@@ -100,6 +102,24 @@ public sealed class TextComparison
         }
     }
 
+    /// <summary>The paragraph slots in the order their position choices select; content choices keep the same slot.</summary>
+    public IReadOnlyList<SortedParagraph> OrderedParagraphs()
+    {
+        if (!Sorted.Changes.Any(change => change.Kind == ChangeKind.ParagraphMoved)) return Sorted.Paragraphs;
+        var placedFromMine = Sorted.Paragraphs.Where(paragraph => paragraph.Mine is not null &&
+            (paragraph.FieldWorks is null || paragraph.Move is { } move && ChoiceFor(move) != Choice.FieldWorks)).ToHashSet();
+        var ordered = Sorted.Paragraphs.Where(paragraph => !placedFromMine.Contains(paragraph)).ToList();
+        var insertAt = 0;
+        foreach (var index in Sorted.MineOrder)
+        {
+            var paragraph = Sorted.Paragraphs[index];
+            if (placedFromMine.Contains(paragraph)) ordered.Insert(insertAt++, paragraph);
+            // A choice uses unchanged anchors so switching another move cannot drag it along.
+            else if (paragraph.Move is null) insertAt = ordered.IndexOf(paragraph) + 1;
+        }
+        return ordered;
+    }
+
     /// <summary>
     /// The text the choices make, paragraph by paragraph. A paragraph's key is the one it had on the side it comes
     /// from; a change both made that waits counts as the person's version.
@@ -107,7 +127,7 @@ public sealed class TextComparison
     public IReadOnlyList<ParagraphVersion> Result(IReadOnlyDictionary<int, IReadOnlyList<ParagraphVersion>>? rows = null)
     {
         var result = new List<ParagraphVersion>();
-        foreach (var paragraph in Sorted.Paragraphs)
+        foreach (var paragraph in OrderedParagraphs())
         {
             if (rows is not null && rows.TryGetValue(paragraph.Index, out var row))
             {
@@ -193,6 +213,7 @@ public static class ComparedPayloads
         var changed = new List<TextParagraphChange>();
         foreach (var paragraph in result)
         {
+            if (paragraph.IsContentUnavailable) throw new InvalidOperationException("Unavailable paragraph content cannot be restaged.");
             // A key kept twice, out of FieldWorks' order, or gone from FieldWorks makes a new paragraph.
             var key = paragraph.Key is { } candidate && liveVersions.ContainsKey(candidate) && liveOrder.IndexOf(candidate) > lastKept &&
                       seen.Add(candidate) ? candidate : null;

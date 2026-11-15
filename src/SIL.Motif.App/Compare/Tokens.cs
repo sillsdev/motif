@@ -58,8 +58,7 @@ public static class Tokens
     /// <summary>The tokens of <paramref name="runs"/>, in order; preserve written spelling for source such as Markdown URLs.</summary>
     public static IReadOnlyList<Token> Of(IReadOnlyList<TextRun> runs, bool preserveSpelling = false)
     {
-        var prepared = runs.Select(run => preserveSpelling ? run : run with { Text = run.Text.Normalize(NormalizationForm.FormD) })
-            .Where(run => run.Text.Length > 0).ToArray();
+        var prepared = Join(runs.Select(run => preserveSpelling ? run : run with { Text = run.Text.Normalize(NormalizationForm.FormD) }));
         var text = string.Concat(prepared.Select(run => run.Text));
         var starts = GraphemeClusters.Starts(text);
         var tokens = new List<Token>();

@@ -9798,4 +9798,14 @@ Motif starts a check automatically when this project opens. Use Reload to read a
   <data name="MotifApp.CommentAdd" xml:space="preserve"><value>Add Comment</value></data>
   <data name="MotifApp.CommentsHeading" xml:space="preserve"><value>Comments</value></data>
   <data name="MotifApp.CommentSaveOrCancelFirst" xml:space="preserve"><value>Save or cancel your edit of this Comment before leaving this Proposal.</value></data>
+  <data name="MotifApp.CompareParagraphMovedMineFormat" xml:space="preserve"><value>Paragraph moved by you: yours is paragraph {0}, {1} paragraph {2}</value><comment>{0} is your paragraph number, {1} the other author or FieldWorks, {2} their paragraph number.</comment></data>
+  <data name="MotifApp.CompareParagraphMovedOtherFormat" xml:space="preserve"><value>Paragraph moved in {1}: yours is paragraph {0}, {1} paragraph {2}</value><comment>{0} is your paragraph number, {1} the other author or FieldWorks, {2} their paragraph number.</comment></data>
+  <data name="MotifApp.CompareParagraphMovedBothFormat" xml:space="preserve"><value>Paragraph position differs: yours is paragraph {0}, {1} paragraph {2}</value><comment>{0} is your paragraph number, {1} the other author or FieldWorks, {2} their paragraph number.</comment></data>
+  <data name="MotifApp.CompareChooseParagraphOrderWaitingFormat" xml:space="preserve"><value>{0}: go back to choose the paragraph order</value></data>
+  <data name="MotifApp.CompareChangeNotUsed" xml:space="preserve"><value>not used</value></data>
+  <data name="MotifApp.CompareParagraphOnePosition" xml:space="preserve"><value>a paragraph has one position</value></data>
+  <data name="MotifApp.CompareParagraphRemovedUnavailableFormat" xml:space="preserve"><value>Paragraph removed in {0}; the original text is unavailable</value></data>
+  <data name="MotifApp.CompareUseYourOrder" xml:space="preserve"><value>Use your order</value></data>
+  <data name="MotifApp.CompareUseOtherOrderFormat" xml:space="preserve"><value>Use the order from {0}</value></data>
+  <data name="MotifApp.CompareParagraphRemovedUnavailableAccessibleFormat" xml:space="preserve"><value>Paragraph removed in {0}, {1}. The original text is unavailable.</value><comment>{0} is the other author or FieldWorks, {1} the paragraph location.</comment></data>
 </root>

@@ -8,6 +8,7 @@ using SIL.Motif.App.ViewModels;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Runner.Operations;
 using Xunit;
 
 namespace SIL.Motif.Tests.App;
@@ -20,6 +21,30 @@ public sealed class RationaleCompareTests
     private const string Mine = "The new reason is clear. The second reason is sound.";
     private const string Theirs = "The other reason is clear. The second reason is checked.";
     private const string Merged = "The new reason is clear. The second reason is checked.";
+
+    [Fact]
+    public void RunSplitsAreIgnoredByTheRationaleComparisonWithoutChangingWrittenSpelling()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(() =>
+        {
+            const string markdown = "[x](https://example.org/café)";
+            var rationale = new RationaleComparison(markdown, markdown,
+                new RationaleRevisionView(2, markdown, "author-1", "", "2026-11-12T00:00:00Z"));
+            var paragraph = Assert.Single(rationale.Comparison.Sorted.Paragraphs).Mine!;
+            Assert.Equal("rationale", paragraph.Key);
+            var split = paragraph with { Runs = [new TextRun("[x](https://example.org/caf", "en"), new TextRun("é)", "en")] };
+            var comparison = RationaleComparison.Compare(paragraph, split, paragraph);
+            var window = new CompareWindow("Rationale", comparison, labels: rationale.Labels);
+            using var closer = window.CloseOnExit();
+            window.Show();
+
+            Assert.Empty(comparison.Sorted.Changes);
+            Assert.Empty(window.Marks);
+            Assert.Equal(markdown, RationaleComparison.Text(comparison.Result()));
+            Assert.True(window.IsDoneEnabled);
+            return Task.CompletedTask;
+        }, TimeSpan.FromSeconds(30));
+    }
 
     [Fact]
     public void AnAgentRevisesDuringAnEditSaveWarnsCompareDecidesAndDoneSavesTheMerge()
