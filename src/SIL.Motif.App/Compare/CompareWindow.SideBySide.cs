@@ -14,7 +14,6 @@ namespace SIL.Motif.App.Compare;
 public sealed partial class CompareWindow
 {
     private const double SideBySideWidth = 1600;
-    private const string SideBySideWaiting = ": type on the right, use Use this →, or go back to choose";
     private readonly Dictionary<int, RichTextField> _right = [];
     private readonly Dictionary<int, Control> _left = [];
     private readonly Dictionary<int, Stack<IReadOnlyList<ParagraphVersion>?>> _undo = [];

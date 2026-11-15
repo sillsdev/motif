@@ -930,8 +930,11 @@ public static class MotifAppStrings
     /// <summary>Explains how the comparison is shown and when its result is saved.</summary>
     public static string RationaleCompareExplanation => Text("MotifApp.RationaleCompareExplanation");
 
-    /// <summary>Asks to reload when a saved revision cannot identify the current Rationale to compare.</summary>
+    /// <summary>Explains how to keep the text when the current Rationale cannot be identified for comparison.</summary>
     public static string RationaleCompareReload => Text("MotifApp.RationaleCompareReload");
+
+    /// <summary>Instructions appended when a side-by-side comparison still needs a choice.</summary>
+    public static string SideBySideWaiting => Text("MotifApp.SideBySideWaiting");
 
     /// <summary>Names a local unsaved edit kept for Restore when starting again from another Rationale.</summary>
     public static string RationaleUnsavedRestoreFormat => Text("MotifApp.RationaleUnsavedRestoreFormat");

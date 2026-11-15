@@ -294,7 +294,7 @@ public sealed partial class CompareWindow : Window
     {
         _summary.Text = _comparison.SummaryFor(_labels.OtherName);
         AutomationProperties.SetName(_summary, _comparison.SummaryFor(_labels.OtherName));
-        _waiting.Text = _comparison.Waiting is not { } waiting ? "" : IsSideBySide ? waiting + SideBySideWaiting : waiting;
+        _waiting.Text = _comparison.Waiting is not { } waiting ? "" : IsSideBySide ? waiting + MotifAppStrings.SideBySideWaiting : waiting;
         _done.IsEnabled = _comparison.IsDecided;
         if (IsSideBySide) MarkRowsThatNeedAChoice();
         AutomationProperties.SetName(_textScroll, ReadableText);
