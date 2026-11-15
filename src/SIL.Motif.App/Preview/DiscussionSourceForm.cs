@@ -20,13 +20,15 @@ public sealed class DiscussionSourceForm : ISourceForm, ISourceFormFingerprint
     /// The form for a field showing <paramref name="discussion"/>, whose links name the project
     /// <paramref name="projectName"/>. A <paramref name="richString"/> field, such as a Definition, has no paragraph of
     /// its own in the project, so while it holds one paragraph its Markdown is that paragraph's text alone, and what is
-    /// read keeps the shown paragraph's direction.
+    /// read keeps the shown paragraph's direction. An <paramref name="inlineShape"/> supplies that paragraph when the
+    /// Markdown was written by the shared whole-record view.
     /// </summary>
-    public DiscussionSourceForm(GdrDiscussion discussion, string? projectName, bool richString = false)
+    public DiscussionSourceForm(GdrDiscussion discussion, string? projectName, bool richString = false, Paragraph? inlineShape = null)
     {
         _discussion = discussion ?? throw new ArgumentNullException(nameof(discussion));
         _markdown = new FieldWorksMarkdownSourceForm(discussion.MarkdownOptions(projectName));
         _richString = richString;
+        _writtenInline = inlineShape;
     }
 
     /// <inheritdoc/>

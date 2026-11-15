@@ -24,6 +24,9 @@
       "tool": "motif_current"
     },
     {
+      "tool": "motif_gdr_show"
+    },
+    {
       "tool": "motif_start_proposal"
     },
     {

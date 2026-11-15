@@ -1,4 +1,9 @@
 {
+  "gdr show": {
+    "title": "Read a Grammar Design Record",
+    "description": "Reads one Grammar Design Record from the current Baseline. Use format fw-md for the whole record as FieldWorks Markdown, or json for its rich text runs; available in Advanced AI mode.",
+    "source": "Hand-written from the GDR read command and shared Markdown view."
+  },
   "open": {
     "title": "Open a project",
     "description": "Reads the saved FieldWorks language project and reports its identity and key counts. Use it to confirm a project path before measuring it.",

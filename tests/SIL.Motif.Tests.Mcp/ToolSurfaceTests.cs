@@ -20,6 +20,24 @@ namespace SIL.Motif.Tests.Mcp;
 public sealed class ToolSurfaceTests
 {
     [Fact]
+    public void TheGeneratedGdrReadToolHasAClosedOptionalFormatChoice()
+    {
+        var tool = Assert.Single(AgentTools.All, candidate => candidate.Name == "motif_gdr_show");
+        Assert.Equal(AgentClass.Read, tool.Class);
+        Assert.True(tool.ReadOnly);
+        Assert.True(tool.Idempotent);
+        Assert.Contains("format fw-md", tool.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("--format", tool.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("--json", tool.Description, StringComparison.Ordinal);
+        Assert.Equal(["expectedBaseline", "format", "id", "project"], tool.ArgumentNames.Order(StringComparer.Ordinal));
+        var format = tool.InputSchema["properties"]!["format"]!;
+        Assert.Equal(["json", "fw-md"], format["enum"]!.AsArray().Select(node => node!.GetValue<string>()));
+        Assert.Equal("json", format["default"]!.GetValue<string>());
+        Assert.DoesNotContain(tool.InputSchema["required"]!.AsArray(), node => node!.GetValue<string>() == "format");
+        Assert.False(tool.InputSchema["additionalProperties"]!.GetValue<bool>());
+    }
+
+    [Fact]
     public void EveryEligibleCommandHasAToolAndNoOtherCommandDoes()
     {
         foreach (var command in CommandCatalog.All.Where(command =>

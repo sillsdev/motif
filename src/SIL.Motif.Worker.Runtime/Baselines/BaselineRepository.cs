@@ -105,6 +105,13 @@ public sealed class BaselineRepository
         RequireProjectKey(projectKey);
         using var connection = _database.OpenConnection();
         using var transaction = connection.BeginTransaction(deferred: true);
+        return ReadCurrent(connection, transaction, projectKey);
+    }
+
+    /// <summary>Reads the current Baseline within the caller's existing transaction.</summary>
+    internal static BaselineRecord? ReadCurrent(SqliteConnection connection, SqliteTransaction transaction, string projectKey)
+    {
+        RequireProjectKey(projectKey);
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = SelectSql + " WHERE ProjectKey = $project;";

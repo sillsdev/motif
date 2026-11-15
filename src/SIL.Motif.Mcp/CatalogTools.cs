@@ -8,6 +8,8 @@ using SIL.Motif.Commands.Catalog;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Requests;
+using SIL.Motif.Host.Gdr;
 using SIL.Motif.Help;
 using SIL.Motif.Worker.Store;
 
@@ -139,6 +141,12 @@ internal static class CatalogTools
             limit["maximum"] = page.Maximum;
             limit["default"] = page.Default;
         }
+        if (command.RequestType == typeof(GdrShowRequest))
+        {
+            var format = Schema.String("json returns rich text runs; fw-md returns the whole record as FieldWorks Markdown.", "json", "fw-md");
+            format["default"] = "json";
+            schema["properties"]!["format"] = format;
+        }
         return new AgentTool(Name(command), Describe([command]), command.Agent, schema,
             command.Agent == AgentClass.Read, command.Agent == AgentClass.Read, false, true,
             (context, args, cancellation) => Invoke(command, context, args, cancellation))
@@ -190,6 +198,13 @@ internal static class CatalogTools
     {
         var json = args.Copy();
         json.Remove("project");
+        var gdrFormat = "json";
+        if (command.RequestType == typeof(GdrShowRequest) && json.Remove("format", out var format))
+        {
+            if (format is not JsonValue choice || !choice.TryGetValue<string>(out var selected) || selected is not ("json" or "fw-md"))
+                throw new ToolArgumentException("tool.invalid-argument", "format must be json or fw-md.");
+            gdrFormat = selected;
+        }
         if (PageLimits.TryGetValue(command.RequestType, out var page) && !json.ContainsKey("limit"))
             json["limit"] = page.Default;
         foreach (var property in command.RequestType.GetProperties().Where(p => IsContext(p.Name)))
@@ -211,6 +226,8 @@ internal static class CatalogTools
         var refusal = outcome.GetType().GetProperty("Refusal")!.GetValue(outcome) as Refusal;
         if (refusal is not null) return ToolOutcome.Refused(refusal);
         var value = outcome.GetType().GetProperty("Value")!.GetValue(outcome);
+        if (value is GdrShowResponse shown && gdrFormat == "fw-md")
+            return ToolOutcome.Ok(JsonValue.Create(new GdrMarkdownView(shown, Path.GetFileNameWithoutExtension(context.ProjectPath)).Text)!);
         if (value is JobEnqueuedResponse job)
         {
             context.StartRunner();

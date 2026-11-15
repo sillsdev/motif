@@ -10,6 +10,28 @@ namespace SIL.Motif.Tests.Mcp;
 [Trait("MotifTestLevel", "Unit")]
 public sealed class ExposurePolicyTests
 {
+    [Fact]
+    public void GdrShowAloneIsAnAdvancedAiReadAndTheOtherGdrCommandsStayDeveloperOnly()
+    {
+        var commands = CommandCatalog.All.Where(command => command.Name.StartsWith("gdr ", StringComparison.Ordinal)).ToArray();
+        Assert.Equal(["gdr check", "gdr list", "gdr show"], commands.Select(command => command.Name).Order(StringComparer.Ordinal));
+        foreach (var command in commands)
+        {
+            Assert.Equal(AgentClass.Read, command.Agent);
+            Assert.Equal(command.Name == "gdr show" ? CommandSurface.AdvancedAi : CommandSurface.Developer, command.Surface);
+            Assert.Equal(command.Name == "gdr show", command.IsAgentTool);
+        }
+        var routes = AgentTools.All.SelectMany(tool => tool.Routes).Where(route => route.Command.StartsWith("gdr ", StringComparison.Ordinal));
+        Assert.Equal("gdr show", Assert.Single(routes).Command);
+        foreach (var profile in new[] { ToolProfile.Builtin, ToolProfile.Load("phonology") })
+        {
+            Assert.True(PolicyFor(profile).Exposes("gdr show"));
+            Assert.False(PolicyFor(profile, advancedAi: false).Exposes("gdr show"));
+            Assert.False(PolicyFor(profile).Exposes("gdr list"));
+            Assert.False(PolicyFor(profile).Exposes("gdr check"));
+        }
+    }
+
     private static ExposurePolicy PolicyFor(ToolProfile profile, bool advancedAi = true) =>
         ExposurePolicy.Create(new ExposureSettings(new CommandSurfacePolicy(false, advancedAi), profile), AgentTools.All);
 

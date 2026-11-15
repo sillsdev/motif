@@ -14,6 +14,7 @@ using SIL.Motif.Host.Store;
 using SIL.Motif.Worker.Baselines;
 using SIL.Motif.Worker.Store;
 using SIL.Motif.Host.LcmUtils;
+using Microsoft.Data.Sqlite;
 
 namespace SIL.Motif.Commands;
 
@@ -52,25 +53,42 @@ public static class ProjectStoreCommand
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act) where T : class? =>
         RunCore(fwDataPath, productVersion, act, null, null, retainDatabase: true);
 
+    /// <summary>Reads a validated existing store without creating or upgrading it.</summary>
+    internal static CommandOutcome<T> ReadExisting<T>(string fwDataPath, CommandOutcome<T> absent,
+        Func<SqliteConnection, SqliteTransaction, ProjectLocator, CommandOutcome<T>> read) where T : class?
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        var located = LocateProject(fwDataPath);
+        if (!located.Succeeded) return CommandOutcome<T>.Refused(located.Refusal!);
+        var project = located.Value!;
+        var path = ProjectDatabaseCatalog.DatabasePathFor(project);
+        return RunOperation(fwDataPath, () =>
+        {
+            if (!File.Exists(path)) return absent;
+            try
+            {
+                return MotifDatabase.ReadExisting(path, project, (connection, transaction) => read(connection, transaction, project));
+            }
+            catch (SqliteException exception) when (exception.SqliteErrorCode is 11 or 26)
+            {
+                throw new InvalidDataException("The Motif database is corrupt or is not a database.", exception);
+            }
+            catch (SqliteException exception)
+            {
+                throw new IOException("The Motif database is unavailable.", exception);
+            }
+        });
+    }
+
     private static CommandOutcome<T> RunCore<T>(string fwDataPath, string productVersion,
         Func<MotifDatabase, ProjectLocator, CommandOutcome<T>> act,
         TimeSpan? ownershipPatience, TimeProvider? timeProvider, bool retainDatabase) where T : class?
     {
         ArgumentNullException.ThrowIfNull(act);
 
-        ProjectLocator project;
-        try
-        {
-            project = Locate(fwDataPath);
-        }
-        catch (Exception exception) when (exception is ArgumentException or IOException)
-        {
-            return CommandOutcome<T>.Refused(new Refusal(
-                exception is FileNotFoundException ? "project.not-found" : "project.invalid",
-                FailureReason.InvalidArgument, exception is FileNotFoundException
-                    ? $"Project file not found: '{Path.GetFileName(fwDataPath)}'."
-                    : "The project path is invalid.", OperationFacts(fwDataPath, exception)));
-        }
+        var located = LocateProject(fwDataPath);
+        if (!located.Succeeded) return CommandOutcome<T>.Refused(located.Refusal!);
+        var project = located.Value!;
 
         var catalog = new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, ParseVersion(productVersion));
         MotifDatabase database;
@@ -285,6 +303,22 @@ public static class ProjectStoreCommand
     /// </summary>
     public static Refusal BusyBeforeSave(string fwDataPath) => new("project.busy", FailureReason.Busy,
         "Another Motif task is writing to this project's data. Try again in a moment.", Fact(fwDataPath));
+
+    private static CommandOutcome<ProjectLocator> LocateProject(string fwDataPath)
+    {
+        try
+        {
+            return CommandOutcome<ProjectLocator>.Success(Locate(fwDataPath));
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException)
+        {
+            return CommandOutcome<ProjectLocator>.Refused(new Refusal(
+                exception is FileNotFoundException ? "project.not-found" : "project.invalid",
+                FailureReason.InvalidArgument, exception is FileNotFoundException
+                    ? $"Project file not found: '{Path.GetFileName(fwDataPath)}'."
+                    : "The project path is invalid.", OperationFacts(fwDataPath, exception)));
+        }
+    }
 
     internal static ProjectLocator Locate(string fwDataPath)
     {
