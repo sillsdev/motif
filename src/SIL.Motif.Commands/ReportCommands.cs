@@ -54,7 +54,7 @@ public static class ReportCommands
 
     private static CommandOutcome<ReportResponse> ProduceStored(ProduceReportRequest request)
     {
-        // The producer refuses a missing Assessment with no store involved.
+        // No store is read when no Assessment is named.
         if (request.AssessmentId is null)
         {
             try
