@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.Text;
-using System.Text.RegularExpressions;
 using SIL.Motif.Contract.Parsimony.RuleAttempts;
 
 namespace SIL.Motif.Contract.Query;
@@ -8,7 +6,7 @@ namespace SIL.Motif.Contract.Query;
 /// <summary>A grouping request exceeded its bounded result size.</summary>
 public sealed class QueryTooManyGroupsException(string columns) : ArgumentException($"Too many groups for columns: {columns}.");
 
-/// <summary>Evaluates the forms query over a caller-owned immutable snapshot.</summary>
+/// <summary>Evaluates a query over a caller-owned immutable snapshot of one Trial's sources.</summary>
 public static class FormQuery
 {
     /// <summary>The maximum accepted regular expression length.</summary>
@@ -21,6 +19,8 @@ public static class FormQuery
     };
     private static readonly HashSet<string> Sets = new(StringComparer.Ordinal)
         { "environments", "category", "letters.dropped", "letters.gained" };
+    private static readonly QuerySpec FormSpec = new(
+        c => Columns.Contains(c) || QuerySources.IsTextColumn(c), Sets.Contains, c => QuerySources.IsNumeric(QuerySources.Forms, c));
 
     /// <summary>Validates the complete record, then returns matching rows or grouped counts.</summary>
     public static QueryResult Run(QueryRecord query, IReadOnlyList<QueryForm> rows, IReadOnlyList<string> graphemes)
@@ -28,138 +28,96 @@ public static class FormQuery
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(graphemes);
-        if (query.From != "forms" || query.Where is null || query.Group is null || query.MinCount < 1 ||
-            query.Examples < 0 || query.Examples > 1000 || query.Group.Count > 8)
-            throw new ArgumentException("Invalid forms query.");
-        if (query.Group.Any(c => !Columns.Contains(c)) || query.Group.Distinct(StringComparer.Ordinal).Count() != query.Group.Count)
-            throw new ArgumentException("Unknown or repeated grouping column.");
-        var conditions = query.Where.Select(Compile).ToArray();
-        var segments = graphemes.Where(g => !string.IsNullOrEmpty(g)).Distinct(StringComparer.Ordinal)
-            .OrderByDescending(g => g.Length).ThenBy(g => g, StringComparer.Ordinal).ToArray();
-        var segmentIndex = (query.RawLetters ? [] : segments).GroupBy(g => g[0]).ToDictionary(g => g.Key, g => g.ToArray());
-        var selected = new List<QueryForm>();
-        var ids = new List<string>();
-        var groups = new Dictionary<string, GroupBuilder>(StringComparer.Ordinal);
-        foreach (var row in rows)
-        {
-            var values = new FormValues(row, segmentIndex);
-            if (conditions.Any(c => !c(values))) continue;
-            if (query.Group.Count == 0)
-            {
-                if (query.Ids) ids.Add(row.Id);
-                if (!query.Ids) selected.Add(values.Project());
-                continue;
-            }
-            var dimensions = new List<string[]>();
-            long combinations = 1;
-            foreach (var col in query.Group)
-            {
-                var parts = values.Get(col).Distinct(StringComparer.Ordinal).ToArray();
-                dimensions.Add(parts);
-                combinations *= parts.Length;
-                if (combinations > 1000) throw new QueryTooManyGroupsException(string.Join(", ", query.Group));
-            }
-            var keys = new List<string[]> { Array.Empty<string>() };
-            foreach (var parts in dimensions)
-            {
-                keys = keys.SelectMany(key => parts.Select(part => key.Append(part).ToArray())).ToList();
-            }
-            foreach (var key in keys)
-            {
-                var encoded = System.Text.Json.JsonSerializer.Serialize(key);
-                if (!groups.TryGetValue(encoded, out var group))
-                {
-                    if (groups.Count >= 100000) throw new QueryTooManyGroupsException(string.Join(", ", query.Group));
-                    groups.Add(encoded, group = new GroupBuilder(key));
-                }
-                group.Count++;
-                group.Tokens = group.Tokens is { } total && row.Tokens is { } count ? total + count : null;
-                if (query.Ids) group.Ids.Add(row.Id);
-                if (query.Examples > 0)
-                {
-                    group.Examples.Enqueue(values, (row.Form, row.Id));
-                    if (group.Examples.Count > query.Examples) group.Examples.Dequeue();
-                }
-            }
-        }
-        if (query.Ids) ids.AddRange(groups.Values.Where(g => g.Count >= query.MinCount).SelectMany(g => g.Ids));
-        var result = groups.Values.Where(g => g.Count >= query.MinCount)
-            .OrderByDescending(g => g.Count).ThenBy(g => string.Join("\0", g.Key), StringComparer.Ordinal)
-            .Select(g => new QueryGroup(g.Key, g.Count, g.Tokens, g.Examples.UnorderedItems.Select(x => x.Element.Project())
-                .OrderBy(x => x.Form, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).ToArray())).ToArray();
-        return new QueryResult(selected, result, ids.Distinct(StringComparer.Ordinal).ToArray());
+        if (query.From != QuerySources.Forms) throw new ArgumentException("Invalid forms query.");
+        var fold = QueryFold.Compile(query.Fold);
+        var segmentIndex = Index(query.RawLetters ? [] : graphemes);
+        var outcome = QueryEngine.Execute(query, rows.Select(row => (IQueryRowView)new FormValues(row, segmentIndex, fold)), FormSpec);
+        return new QueryResult([.. outcome.Selected.Select(v => ((FormValues)v).Project())],
+            [.. outcome.Groups.Select(g => new QueryGroup(g.Key, g.Count, g.Tokens,
+                [.. g.Examples.Select(v => ((FormValues)v).Project())]))], outcome.Ids);
     }
 
-    private static Func<FormValues, bool> Compile(QueryCondition condition)
+    /// <summary>Evaluates a query over the stems, uses or objects source.</summary>
+    /// <param name="query">The record; its <c>From</c> names the source.</param>
+    /// <param name="rows">The stored rows of that source.</param>
+    /// <param name="graphemes">The project's grapheme table, used by the text columns of stems.</param>
+    public static QueryResult RunRows(QueryRecord query, IReadOnlyList<QueryRow> rows, IReadOnlyList<string> graphemes)
     {
-        if (condition is null || condition.Col is null || condition.Op is null || condition.Value is null ||
-            !Columns.Contains(condition.Col)) throw new ArgumentException("Unknown query column.");
-        if (condition.Op == "has" && !Sets.Contains(condition.Col))
-            throw new ArgumentException("The has operator requires a set column.");
-        if (condition.Op is "<" or ">" && condition.Col != "tokens")
-            throw new ArgumentException("Numeric comparison requires a numeric column.");
-        Regex? regex = null;
-        if (condition.Op == "~")
-        {
-            if (condition.Col == "tokens") throw new ArgumentException("Regular expressions require a string column.");
-            if (condition.Value.Length > MaximumRegexLength) throw new ArgumentException("Regular expression is too long.");
-            try { regex = new Regex(condition.Value, RegexOptions.NonBacktracking | RegexOptions.CultureInvariant); }
-            catch (Exception e) when (e is ArgumentException or NotSupportedException)
-            { throw new ArgumentException("Invalid non-backtracking regular expression.", e); }
-        }
-        if (condition.Op is not ("is" or "in" or "not" or "~" or "has" or "<" or ">"))
-            throw new ArgumentException("Unknown query operator.");
-        var targets = condition.Value.Split(',', StringSplitOptions.TrimEntries);
-        if (condition.Op is "<" or ">" && !long.TryParse(condition.Value, NumberStyles.Integer,
-                CultureInfo.InvariantCulture, out _)) throw new ArgumentException("Expected an integer.");
-        return values =>
-        {
-            var items = values.Get(condition.Col);
-            return condition.Op switch
-            {
-                "is" => items.Contains(condition.Value, StringComparer.Ordinal),
-                "not" => !items.Contains(condition.Value, StringComparer.Ordinal),
-                "in" or "has" => items.Any(x => targets.Contains(x, StringComparer.Ordinal)),
-                "~" => items.Any(x => regex!.IsMatch(x)),
-                "<" => values.Row.Tokens < long.Parse(condition.Value, CultureInfo.InvariantCulture),
-                ">" => values.Row.Tokens > long.Parse(condition.Value, CultureInfo.InvariantCulture),
-                _ => false
-            };
-        };
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(rows);
+        ArgumentNullException.ThrowIfNull(graphemes);
+        var source = query.From;
+        if (source is not (QuerySources.Stems or QuerySources.Uses or QuerySources.Objects)) throw new ArgumentException("Invalid query source.");
+        var fold = QueryFold.Compile(query.Fold);
+        var segmentIndex = Index(query.RawLetters ? [] : graphemes);
+        var stored = QuerySources.StoredColumns(source);
+        var spec = new QuerySpec(c => QuerySources.IsColumn(source, c), c => QuerySources.IsStoredSet(source, c),
+            c => QuerySources.IsNumeric(source, c));
+        var outcome = QueryEngine.Execute(query, rows.Select(row => (IQueryRowView)new StoredValues(source, stored, row, segmentIndex, fold)), spec);
+        QueryItem Item(IQueryRowView view) => ((StoredValues)view).Project();
+        return new QueryResult([], [.. outcome.Groups.Select(g => new QueryGroup(g.Key, g.Count, g.Tokens, [])
+            { Samples = [.. g.Examples.Select(Item)] })], outcome.Ids) { Items = [.. outcome.Selected.Select(Item)] };
     }
 
-    private sealed class GroupBuilder(string[] key)
+    private static IReadOnlyDictionary<char, string[]> Index(IReadOnlyList<string> graphemes) => graphemes
+        .Where(g => !string.IsNullOrEmpty(g)).Distinct(StringComparer.Ordinal)
+        .OrderByDescending(g => g.Length).ThenBy(g => g, StringComparer.Ordinal)
+        .GroupBy(g => g[0]).ToDictionary(g => g.Key, g => g.ToArray());
+
+    private sealed class StoredValues(string source, IReadOnlyList<string> columns, QueryRow row,
+        IReadOnlyDictionary<char, string[]> graphemes, Func<string, string> fold) : IQueryRowView
     {
-        public string[] Key { get; } = key;
-        public int Count { get; set; }
-        public long? Tokens { get; set; } = 0;
-        public List<string> Ids { get; } = [];
-        public PriorityQueue<FormValues, (string, string)> Examples { get; } = new(
-            Comparer<(string, string)>.Create((a, b) => StringComparer.Ordinal.Compare(b.Item1, a.Item1) is var c && c != 0
-                ? c : StringComparer.Ordinal.Compare(b.Item2, a.Item2)));
+        private TextColumns? _text;
+        public string Id => row.Id;
+        public string SortKey => Get(QuerySources.SortColumn(source)) is { Count: > 0 } sort ? sort[0] : "";
+        public long? Tokens => null;
+        public IReadOnlyList<string> Get(string column)
+        {
+            if (column == "id") return [row.Id];
+            var at = IndexOf(column);
+            if (at >= 0) return row.Values[at];
+            _text ??= new TextColumns(Get("form")[0], graphemes, fold);
+            return _text.Get(column);
+        }
+        private int IndexOf(string column)
+        {
+            for (var i = 0; i < columns.Count; i++) if (columns[i] == column) return i;
+            return -1;
+        }
+        public QueryItem Project()
+        {
+            var values = new Dictionary<string, string[]>(StringComparer.Ordinal);
+            for (var i = 0; i < columns.Count; i++) values[columns[i]] = row.Values[i];
+            return new QueryItem(row.Id, values);
+        }
     }
 
-    private sealed class FormValues
+    private sealed class FormValues : IQueryRowView
     {
         private string[] _dropped = [], _gained = [];
         private string _at = "", _left = "", _right = "";
         private readonly IReadOnlyDictionary<char, string[]> _graphemes;
+        private readonly TextColumns _text;
         private bool _changed;
         private string? _abstract;
         private string Abstract => _abstract ??= StringCorrespondence.AbstractChange(string.Concat(_dropped),
             string.Concat(_gained), _at, Row.Form.EndsWith('-') && !Row.Base.EndsWith('-'));
         public QueryForm Row { get; }
-        public FormValues(QueryForm row, IReadOnlyDictionary<char, string[]> graphemes)
+        public string Id => Row.Id;
+        public string SortKey => Row.Form;
+        public long? Tokens => Row.Tokens;
+        public FormValues(QueryForm row, IReadOnlyDictionary<char, string[]> graphemes, Func<string, string> fold)
         {
             Row = row;
             _graphemes = graphemes;
+            _text = new TextColumns(row.Form, graphemes, fold);
         }
         private void EnsureChange()
         {
             if (_changed) return;
             _changed = true;
-            var a = Tokenize(Row.Base, _graphemes);
-            var b = Tokenize(Row.Form, _graphemes);
+            var a = TextColumns.Tokenize(Row.Base, _graphemes);
+            var b = _text.Segments;
             var prefix = 0;
             while (prefix < a.Count && prefix < b.Count && a[prefix] == b[prefix]) prefix++;
             var suffix = 0;
@@ -186,35 +144,17 @@ public static class FormQuery
                 EnsureChange();
             return name switch
             {
-            "id" => [Row.Id], "form" => [Row.Form], "base" => [Row.Base], "kind" => [Row.Kind],
-            "entry" => [Row.Entry], "morph-type" => [Row.MorphType], "variant-type" => [Row.VariantType],
-            "environments" => Row.Environments, "category" => Row.Category,
-            "tokens" => Row.Tokens is { } tokens ? [tokens.ToString(CultureInfo.InvariantCulture)] : [],
-            "change" => [string.Concat(_dropped) + ">" + string.Concat(_gained)],
-            "change.dropped" => [string.Concat(_dropped)], "change.gained" => [string.Concat(_gained)],
-            "change.at" => [_at], "change.left" => [_left], "change.right" => [_right],
-            "change.abstract" => [Abstract], "letters.dropped" => _dropped, "letters.gained" => _gained,
+                "id" => [Row.Id], "form" => [Row.Form], "base" => [Row.Base], "kind" => [Row.Kind],
+                "entry" => [Row.Entry], "morph-type" => [Row.MorphType], "variant-type" => [Row.VariantType],
+                "environments" => Row.Environments, "category" => Row.Category,
+                "tokens" => Row.Tokens is { } tokens ? [tokens.ToString(CultureInfo.InvariantCulture)] : [],
+                "change" => [string.Concat(_dropped) + ">" + string.Concat(_gained)],
+                "change.dropped" => [string.Concat(_dropped)], "change.gained" => [string.Concat(_gained)],
+                "change.at" => [_at], "change.left" => [_left], "change.right" => [_right],
+                "change.abstract" => [Abstract], "letters.dropped" => _dropped, "letters.gained" => _gained,
+                _ when QuerySources.IsTextColumn(name) => _text.Get(name),
                 _ => throw new ArgumentException("Unknown query column.")
             };
-        }
-        private static List<string> Tokenize(string text, IReadOnlyDictionary<char, string[]> graphemes)
-        {
-            var result = new List<string>();
-            for (var i = 0; i < text.Length;)
-            {
-                string? match = null;
-                if (graphemes.TryGetValue(text[i], out var candidates))
-                    foreach (var candidate in candidates)
-                        if (text.AsSpan(i).StartsWith(candidate, StringComparison.Ordinal)) { match = candidate; break; }
-                if (match is null)
-                {
-                    var rune = Rune.GetRuneAt(text, i);
-                    match = rune.ToString();
-                }
-                result.Add(match);
-                i += match.Length;
-            }
-            return result;
         }
     }
 }

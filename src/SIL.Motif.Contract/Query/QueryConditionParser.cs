@@ -8,7 +8,7 @@ public static class QueryConditionParser
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expression);
         var end = 0;
-        while (end < expression.Length && (char.IsLetterOrDigit(expression[end]) || expression[end] is '.' or '-' or '_')) end++;
+        while (end < expression.Length && (char.IsLetterOrDigit(expression[end]) || expression[end] is '.' or '-' or '_' or ':')) end++;
         var col = expression[..end];
         var remainder = expression[end..].TrimStart();
         foreach (var (marker, op) in new[] { ("is ", "is"), ("in ", "in"), ("not ", "not"), ("has ", "has"),
