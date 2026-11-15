@@ -15,7 +15,7 @@ public static class MotifSchema
     public const int ApplicationId = 0x4D4F5446;
 
     /// <summary>The schema generation this assembly creates and requires.</summary>
-    public const int CurrentSchema = 73;
+    public const int CurrentSchema = 74;
 
     /// <summary>The worker version an open at the given schema ceiling requires.</summary>
     internal static Version MinimumWorkerVersion(int schema) => schema is >= 1 and <= CurrentSchema
@@ -72,7 +72,7 @@ public static class MotifSchema
             "PhonologyAssessmentBindings", "PhonologyAssessmentRows", "PhonologyAssessmentDependencies", "BeforeAssessmentBinding",
             "Requests", "Hypotheses", "HypothesisProposals", "HypothesisTests",
             "SourceIndexState", "SourcePassages", "SourceWordforms", "SourceWordPlaces",
-            "query_snapshot", "query_forms", "query_stems"
+            "query_snapshot", "query_forms", "query_stems", "query_uses", "query_objects"
         };
         var expectedIndexes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -514,7 +514,8 @@ public static class MotifSchema
             C("GrammarHash", "TEXT", true), C("BundleId", "TEXT", true), C("WritingSystem", "TEXT", true),
             C("GraphemesJson", "TEXT", true), C("UnresolvedVariants", "INTEGER", true), C("SourceWriteTicks", "INTEGER", true),
             C("TrialCreatedUtc", "TEXT", true), C("TrialQueueOrder", "REAL", true)],
-        "query_forms" or "query_stems" => [C("Ordinal", "INTEGER", false, 1), C("RowJson", "TEXT", true)],
+        "query_uses" => [C("Ordinal", "INTEGER", false, 1), C("TargetKind", "TEXT", true), C("RowJson", "TEXT", true)],
+        "query_forms" or "query_stems" or "query_objects" => [C("Ordinal", "INTEGER", false, 1), C("RowJson", "TEXT", true)],
         "MotifMetadata" =>
         [C("Id", "INTEGER", false, 1), C("FullFwDataPath", "TEXT", true),
             C("FieldWorksProjectIdentity", "TEXT", true), C("MinimumWorkerVersion", "TEXT", true),
@@ -1682,6 +1683,8 @@ public static class MotifSchema
         );
         CREATE TABLE query_forms (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
         CREATE TABLE query_stems (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
+        CREATE TABLE query_uses (Ordinal INTEGER PRIMARY KEY, TargetKind TEXT NOT NULL, RowJson TEXT NOT NULL);
+        CREATE TABLE query_objects (Ordinal INTEGER PRIMARY KEY, RowJson TEXT NOT NULL);
         """;
 
 }

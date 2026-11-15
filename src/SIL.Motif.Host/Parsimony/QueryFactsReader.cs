@@ -9,10 +9,8 @@ public static class QueryFactsReader
 {
     /// <summary>One decoded snapshot, including unresolved variant links omitted from the rows.</summary>
     public sealed record Snapshot(IReadOnlyList<QueryForm> Forms, IReadOnlyList<string> Graphemes,
-        int UnresolvedVariants, IReadOnlyList<Stem>? Stems = null);
-
-    /// <summary>One stem MSA retained for subsequent query sources.</summary>
-    public sealed record Stem(string Id, string Entry, IReadOnlyList<string> Categories);
+        int UnresolvedVariants, IReadOnlyList<QueryRow>? Stems = null, IReadOnlyList<QueryRow>? Uses = null,
+        IReadOnlyList<QueryRow>? Objects = null);
 
     /// <summary>Returns the first vernacular writing system recorded in the artifact.</summary>
     public static string DefaultWritingSystem(string factsPath)
@@ -58,10 +56,10 @@ public static class QueryFactsReader
             "FROM msa m JOIN msa_category mc ON mc.msa_guid=m.msa_guid LEFT JOIN category c ON c.guid=mc.category_guid";
         using (var reader = command.ExecuteReader())
             while (reader.Read()) Add(categories, reader.GetString(0), reader.GetString(1));
-        var stems = new List<Stem>();
-        command.CommandText = "SELECT msa_guid, entry_guid FROM msa WHERE kind='stem'";
-        using (var reader = command.ExecuteReader())
-            while (reader.Read()) stems.Add(new Stem(reader.GetString(0), reader.GetString(1), Values(categories, reader.GetString(1))));
+        var stems = QuerySourceRows.ReadStems(connection, forms, lexemes.ToDictionary(l => l.Key, l => l.Value.Id, StringComparer.Ordinal),
+            allomorphs.GroupBy(a => a.Entry, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal));
+        var uses = QuerySourceRows.ReadUses(connection);
+        var objects = QuerySourceRows.ReadObjects(connection);
         var rows = new List<QueryForm>(allomorphs.Count);
         foreach (var item in allomorphs)
         {
@@ -95,7 +93,7 @@ public static class QueryFactsReader
         command.Parameters.AddWithValue("$ws", writingSystem);
         var graphemes = new List<string>();
         using (var reader = command.ExecuteReader()) while (reader.Read()) graphemes.Add(reader.GetString(0));
-        return new Snapshot(rows, graphemes, unresolved, stems);
+        return new Snapshot(rows, graphemes, unresolved, stems, uses, objects);
     }
 
     private static string Id(string value) => Guid.TryParse(value, out var guid) ? CanonicalId.FromGuid(guid).Value : value;

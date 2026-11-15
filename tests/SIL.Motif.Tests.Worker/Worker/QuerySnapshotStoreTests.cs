@@ -23,6 +23,8 @@ public sealed class QuerySnapshotStoreTests(ITestOutputHelper output)
                     TrialCreatedUtc TEXT, TrialQueueOrder REAL);
                 CREATE TABLE query_forms(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
                 CREATE TABLE query_stems(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
+                CREATE TABLE query_uses(Ordinal INTEGER PRIMARY KEY, TargetKind TEXT, RowJson TEXT);
+                CREATE TABLE query_objects(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
                 """;
             command.ExecuteNonQuery();
         }
@@ -76,6 +78,8 @@ public sealed class QuerySnapshotStoreTests(ITestOutputHelper output)
                     TrialCreatedUtc TEXT, TrialQueueOrder REAL);
                 CREATE TABLE query_forms(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
                 CREATE TABLE query_stems(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
+                CREATE TABLE query_uses(Ordinal INTEGER PRIMARY KEY, TargetKind TEXT, RowJson TEXT);
+                CREATE TABLE query_objects(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
                 CREATE TABLE Jobs(JobId TEXT, CreatedUtc TEXT, QueueOrder REAL, Kind TEXT);
                 INSERT INTO Jobs VALUES ('older','2026-01-01',1,'trial'),('newer','2026-01-02',2,'trial');
                 """;
@@ -150,6 +154,8 @@ public sealed class QuerySnapshotStoreTests(ITestOutputHelper output)
                     TrialCreatedUtc TEXT, TrialQueueOrder REAL);
                 CREATE TABLE query_forms(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
                 CREATE TABLE query_stems(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
+                CREATE TABLE query_uses(Ordinal INTEGER PRIMARY KEY, TargetKind TEXT, RowJson TEXT);
+                CREATE TABLE query_objects(Ordinal INTEGER PRIMARY KEY, RowJson TEXT);
                 """;
             command.ExecuteNonQuery();
         }
@@ -174,7 +180,7 @@ public sealed class QuerySnapshotStoreTests(ITestOutputHelper output)
             {
                 if (!sql.StartsWith("--", StringComparison.Ordinal)) readStatements++;
             }, null);
-            snapshot = QuerySnapshotStore.Read(connection, read, includeStems: false)!;
+            snapshot = QuerySnapshotStore.Read(connection, read, [QuerySources.Forms])!;
             readStatementCount = readStatements;
         }
         var result = FormQuery.Run(new QueryRecord("forms", [new("change", "is", "d>r")], ["change.right"]),

@@ -21,7 +21,7 @@ public static class QuerySnapshotStore
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = "DELETE FROM query_forms; DELETE FROM query_stems; DELETE FROM query_snapshot;";
+        command.CommandText = "DELETE FROM query_forms; DELETE FROM query_stems; DELETE FROM query_uses; DELETE FROM query_objects; DELETE FROM query_snapshot;";
         command.ExecuteNonQuery();
     }
 
@@ -101,7 +101,10 @@ public static class QuerySnapshotStore
         var graphemes = JsonSerializer.Serialize(snapshot.Snapshot.Graphemes);
         var encoded = snapshot.Snapshot.Forms.Select(row => JsonSerializer.Serialize(row)).ToArray();
         var encodedStems = (snapshot.Snapshot.Stems ?? []).Select(row => JsonSerializer.Serialize(row)).ToArray();
-        var size = encodedStems.Sum(EstimatedBytes) + encoded.Sum(EstimatedBytes) + EstimatedBytes(graphemes);
+        var encodedUses = (snapshot.Snapshot.Uses ?? []).Select(row => JsonSerializer.Serialize(row)).ToArray();
+        var encodedObjects = (snapshot.Snapshot.Objects ?? []).Select(row => JsonSerializer.Serialize(row)).ToArray();
+        var size = encoded.Sum(EstimatedBytes) + EstimatedBytes(graphemes) +
+            encodedStems.Sum(CompactBytes) + encodedUses.Sum(CompactBytes) + encodedObjects.Sum(CompactBytes);
         if (size > MaximumBytes) throw new InvalidDataException("The query snapshot exceeds the 100 MB limit.");
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -127,16 +130,61 @@ public static class QuerySnapshotStore
             rowValue.Value = encoded[i];
             command.ExecuteNonQuery();
         }
-        command.CommandText = "INSERT INTO query_stems VALUES ($ordinal,$row)";
-        for (var i = 0; i < encodedStems.Length; i++)
+        command.CommandText = "INSERT INTO query_uses VALUES ($ordinal,$kind,$row)";
+        var kind = command.Parameters.Add("$kind", SqliteType.Text);
+        for (var i = 0; i < encodedUses.Length; i++)
         {
             ordinal.Value = i;
-            rowValue.Value = encodedStems[i];
+            kind.Value = snapshot.Snapshot.Uses![i].Values[0][0];
+            rowValue.Value = encodedUses[i];
             command.ExecuteNonQuery();
+        }
+        command.Parameters.Remove(kind);
+        foreach (var (table, rows) in new[] { ("query_stems", encodedStems), ("query_objects", encodedObjects) })
+        {
+            command.CommandText = $"INSERT INTO {table} VALUES ($ordinal,$row)";
+            for (var i = 0; i < rows.Length; i++)
+            {
+                ordinal.Value = i;
+                rowValue.Value = rows[i];
+                command.ExecuteNonQuery();
+            }
         }
     }
 
+    // Rows number in the tens of thousands, so they are read without the general-purpose deserializer.
+    private static QueryRow ParseRow(string json)
+    {
+        var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json));
+        string? id = null;
+        var values = new List<string[]>();
+        if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) throw new InvalidDataException("Invalid query row.");
+        while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+        {
+            var name = reader.GetString();
+            reader.Read();
+            if (name == "Id") id = reader.GetString();
+            else if (name == "Values" && reader.TokenType == JsonTokenType.StartArray)
+                while (reader.Read() && reader.TokenType == JsonTokenType.StartArray)
+                {
+                    reader.Read();
+                    if (reader.TokenType != JsonTokenType.String) { values.Add([]); continue; }
+                    var first = reader.GetString()!;
+                    reader.Read();
+                    if (reader.TokenType != JsonTokenType.String) { values.Add([first]); continue; }
+                    var column = new List<string> { first };
+                    do column.Add(reader.GetString()!); while (reader.Read() && reader.TokenType == JsonTokenType.String);
+                    values.Add([.. column]);
+                }
+            else throw new InvalidDataException("Invalid query row.");
+        }
+        return new QueryRow(id ?? throw new InvalidDataException("Invalid query row."), values);
+    }
+
     private static long EstimatedBytes(string json) => (long)Encoding.UTF8.GetByteCount(json) * 3 + 384;
+
+    // Positional rows carry no field names.
+    private static long CompactBytes(string json) => (long)Encoding.UTF8.GetByteCount(json) + 96;
 
     /// <summary>Returns the current Trial and bundle identities without decoding their rows.</summary>
     public static (string TrialId, string BundleId)? ReadIdentity(SqliteConnection connection, SqliteTransaction transaction)
@@ -149,7 +197,12 @@ public static class QuerySnapshotStore
     }
 
     /// <summary>Reads the current snapshot in the caller's read transaction, or null when no evidence job published one.</summary>
-    public static Stored? Read(SqliteConnection connection, SqliteTransaction transaction, bool includeStems = true)
+    /// <param name="connection">The open store connection.</param>
+    /// <param name="transaction">The caller's read transaction.</param>
+    /// <param name="sources">The sources to decode (see <see cref="QuerySources"/>); null decodes all of them.</param>
+    /// <param name="useTargetKinds">The <c>target-kind</c> values the uses source is limited to; null keeps every kind.</param>
+    public static Stored? Read(SqliteConnection connection, SqliteTransaction transaction, IReadOnlyCollection<string>? sources = null,
+        IReadOnlyCollection<string>? useTargetKinds = null)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -172,9 +225,12 @@ public static class QuerySnapshotStore
             trialCreated = reader.GetString(7);
             trialOrder = reader.GetDouble(8);
         }
-        command.CommandText = "SELECT RowJson FROM query_forms ORDER BY Ordinal";
+        bool Wants(string source) => sources is null || sources.Contains(source);
         var rows = new List<QueryForm>();
-        using (var reader = command.ExecuteReader())
+        if (Wants(QuerySources.Forms))
+        {
+            command.CommandText = "SELECT RowJson FROM query_forms ORDER BY Ordinal";
+            using var reader = command.ExecuteReader();
             while (reader.Read())
             {
                 var json = reader.GetString(0);
@@ -182,16 +238,30 @@ public static class QuerySnapshotStore
                 if (bytes > MaximumBytes) throw new InvalidDataException("The query snapshot exceeds the 100 MB limit.");
                 rows.Add(JsonSerializer.Deserialize<QueryForm>(json) ?? throw new InvalidDataException("Invalid form row."));
             }
-        command.CommandText = "SELECT RowJson FROM query_stems ORDER BY Ordinal";
-        var stems = new List<QueryFactsReader.Stem>();
-        if (includeStems) using (var reader = command.ExecuteReader())
+        }
+        List<QueryRow> ReadRows(string source, string table)
+        {
+            var list = new List<QueryRow>();
+            if (!Wants(source)) return list;
+            var limited = table == "query_uses" && useTargetKinds is not null;
+            command.Parameters.Clear();
+            command.CommandText = limited
+                ? $"SELECT RowJson FROM {table} WHERE TargetKind IN ({string.Join(",", useTargetKinds!.Select((_, i) => "$k" + i))}) ORDER BY Ordinal"
+                : $"SELECT RowJson FROM {table} ORDER BY Ordinal";
+            if (limited) { var n = 0; foreach (var value in useTargetKinds!) command.Parameters.AddWithValue("$k" + n++, value); }
+            using var reader = command.ExecuteReader();
             while (reader.Read())
             {
                 var json = reader.GetString(0);
-                bytes += EstimatedBytes(json);
+                bytes += CompactBytes(json);
                 if (bytes > MaximumBytes) throw new InvalidDataException("The query snapshot exceeds the 100 MB limit.");
-                stems.Add(JsonSerializer.Deserialize<QueryFactsReader.Stem>(json) ?? throw new InvalidDataException("Invalid stem row."));
+                list.Add(ParseRow(json));
             }
-        return new Stored(trial, hash, bundle, ws, new QueryFactsReader.Snapshot(rows, graphemes, unresolved, stems), sourceTicks, trialCreated, trialOrder);
+            return list;
+        }
+        var stems = ReadRows(QuerySources.Stems, "query_stems");
+        var uses = ReadRows(QuerySources.Uses, "query_uses");
+        var objects = ReadRows(QuerySources.Objects, "query_objects");
+        return new Stored(trial, hash, bundle, ws, new QueryFactsReader.Snapshot(rows, graphemes, unresolved, stems, uses, objects), sourceTicks, trialCreated, trialOrder);
     }
 }

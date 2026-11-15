@@ -20,9 +20,9 @@ public sealed class QueryFactsReaderTests
                     CREATE TABLE allomorph(guid TEXT, entry_guid TEXT, ordinal INTEGER, morph_type TEXT);
                     CREATE TABLE allomorph_form(allomorph_guid TEXT, ordinal INTEGER, writing_system TEXT, form TEXT);
                     CREATE TABLE allomorph_environment(allomorph_guid TEXT, environment_guid TEXT);
-                    CREATE TABLE environment(guid TEXT, representation TEXT);
+                    CREATE TABLE environment(guid TEXT, name TEXT, representation TEXT, parse_status TEXT);
                     CREATE TABLE msa(msa_guid TEXT, entry_guid TEXT, kind TEXT);
-                    CREATE TABLE msa_category(msa_guid TEXT, category_guid TEXT);
+                    CREATE TABLE msa_category(msa_guid TEXT, role TEXT, ordinal INTEGER, category_guid TEXT);
                     CREATE TABLE category(guid TEXT, name TEXT, abbreviation TEXT);
                     CREATE TABLE sense(sense_guid TEXT, entry_guid TEXT);
                     CREATE TABLE entry_variant(variant_entry_guid TEXT, ref_guid TEXT, component_kind TEXT, component_guid TEXT);
@@ -52,7 +52,7 @@ public sealed class QueryFactsReaderTests
                 Insert("allomorph_form", "lex2", 0, "x", "different");
                 Insert("allomorph_form", "lex", 1, "other", "wrong");
                 Insert("msa", "msa", "main", "stem");
-                Insert("msa_category", "msa", "category");
+                Insert("msa_category", "msa", "pos", 0, "category");
                 Insert("category", "category", "Verb", "v");
                 Insert("sense", "sense", "main");
                 Insert("sense", "sense2", "main");
@@ -74,6 +74,16 @@ public sealed class QueryFactsReaderTests
             Assert.Equal(1, snapshot.UnresolvedVariants);
             Assert.DoesNotContain(snapshot.Forms, f => f.Form == "unresolved");
             Assert.Equal(["ng"], snapshot.Graphemes);
+            var stem = Assert.Single(snapshot.Stems!);
+            Assert.Equal(["dana"], stem.Values[0]);
+            Assert.Equal(["v"], stem.Values[2]);
+            Assert.Equal(["1"], stem.Values[5]);
+            Assert.Equal(["1"], stem.Values[6]);
+            Assert.Empty(snapshot.Uses!);
+            var category = Assert.Single(snapshot.Objects!);
+            Assert.Equal(["category"], category.Values[0]);
+            Assert.Equal(["Verb"], category.Values[1]);
+            Assert.Equal(["0"], category.Values[2]);
         }
         finally { File.Delete(path); }
     }
