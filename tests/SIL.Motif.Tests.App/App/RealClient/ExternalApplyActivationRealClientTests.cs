@@ -265,11 +265,9 @@ public sealed class ExternalApplyActivationRealClientTests(PristineProjectFixtur
     private static WorkspaceShellViewModel CreateWorkspace(ICommandClient client)
     {
         var selection = new SelectionViewModel(client);
-        var workspace = new WorkspaceShellViewModel(new ProjectViewModel(client, new ProjectPicker()),
+        return new WorkspaceShellViewModel(new ProjectViewModel(client, new ProjectPicker()),
             new BaselineViewModel(client), selection, new AssessViewModel(client, selection),
             new FolderPicker(), new DragSource(), client);
-        workspace.PageModel<ParsimonyPageModel>().AutomaticProduction = false;
-        return workspace;
     }
 
     private static string ProjectSha256(string path) =>
