@@ -173,6 +173,50 @@ namespace SIL.TextEditing.Playground.Tests
             }
         });
 
+        [Fact]
+        public void Equivalent_normalisation_makes_no_undo_step() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.MixedBidi))
+            {
+                s.View.MarkdownText = "fi\n";
+                Assert.True(s.View.ApplyMarkdown());
+                s.Editor.Document.Normalization = System.Text.NormalizationForm.FormKC;
+                s.View.MarkdownText = "\ufb01\n";
+                int done = s.View.Undo.Done.Count;
+                Assert.False(s.View.ApplyMarkdown());
+                Assert.Equal(done, s.View.Undo.Done.Count);
+            }
+        });
+
+        [Fact]
+        public void Moving_a_paragraph_up_keeps_the_keys_of_every_unchanged_paragraph() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.MixedBidi))
+            {
+                s.View.MarkdownText = "Alpha\n\nBeta\n\nGamma\n\nDelta\n";
+                Assert.True(s.View.ApplyMarkdown());
+                var keys = s.Editor.Document.Paragraphs.Select(p => p.Key).ToList();
+                s.View.MarkdownText = "Gamma\n\nAlpha\n\nBeta\n\nDelta\n";
+                Assert.True(s.View.ApplyMarkdown());
+                Assert.Equal(new[] { keys[2], keys[0], keys[1], keys[3] }, s.Editor.Document.Paragraphs.Select(p => p.Key));
+            }
+        });
+
+        [Fact]
+        public void Moving_duplicate_paragraphs_never_reuses_a_key() => Headless.Run(() =>
+        {
+            using (var s = new Session(Scenarios.MixedBidi))
+            {
+                s.View.MarkdownText = "Alpha\n\nBeta\n\nAlpha\n\nGamma\n";
+                Assert.True(s.View.ApplyMarkdown());
+                s.View.MarkdownText = "Gamma\n\nAlpha\n\nBeta\n\nAlpha\n";
+                Assert.True(s.View.ApplyMarkdown());
+                var keys = s.Editor.Document.Paragraphs.Select(p => p.Key).Where(k => k != null).ToList();
+                Assert.NotEmpty(keys);
+                Assert.Equal(keys.Count, keys.Distinct().Count());
+            }
+        });
+
         [Theory]
         [MemberData(nameof(ScenarioNames))]
         public void Applying_the_markdown_unchanged_makes_no_undo_step(string name) => Headless.Run(() =>
