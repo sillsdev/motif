@@ -234,6 +234,18 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
     }
 
     [Fact]
+    public void FieldWorksTextsWithoutARowYetAreMissingEvenWhenOtherSourcesAreIndexed()
+    {
+        var project = Project();
+        using var database = Open(project);
+        Publish(database, 1);
+        Assert.Equal(RefusalCodes.SourceIndexMissing, SourcePassageQuery.Query(
+            new(project.FullFwDataPath, FieldWorksTextsIndex.SourceId, Guid.NewGuid().ToString())).Refusal?.Code);
+        Assert.Equal(RefusalCodes.SourceNotFound,
+            SourcePassageQuery.Query(new(project.FullFwDataPath, "NOPE", "MAT 1")).Refusal?.Code);
+    }
+
+    [Fact]
     public void FieldWorksTextsAreExplicitlyMissingOrStaleAndAParatextSourceRefusesATextId()
     {
         var project = Project();

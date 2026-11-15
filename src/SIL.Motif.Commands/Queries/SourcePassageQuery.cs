@@ -41,7 +41,7 @@ public static class SourcePassageQuery
                     using var known = connection.CreateCommand();
                     known.Transaction = transaction;
                     known.CommandText = "SELECT 1 FROM SourceIndexState LIMIT 1;";
-                    return known.ExecuteScalar() is null
+                    return known.ExecuteScalar() is null || SourceProviders.IsBuiltIn(source)
                         ? Refused(RefusalCodes.SourceIndexMissing, FailureReason.NotFound,
                             "The Source index is missing. Capture the saved project to queue it.")
                         : SourceQuery.NotFound<SourcePassageResponse>(request.Source);

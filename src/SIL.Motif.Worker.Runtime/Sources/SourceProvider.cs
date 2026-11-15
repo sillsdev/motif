@@ -18,6 +18,9 @@ internal interface ISourceProvider
 
     string AnchorVersion { get; }
 
+    /// <summary>The fixed Source id a provider indexes without a Motif Sources list item, or null.</summary>
+    string? BuiltInSourceId { get; }
+
     /// <summary>Normalizes a caller's Passage reference to the stored Passage id; false when it cannot name one here.</summary>
     bool TryPassageId(string? reference, out string passageId);
 
@@ -39,6 +42,10 @@ internal static class SourceProviders
         kind == Paratext.Kind ? Paratext : kind == FieldWorksTexts.Kind ? FieldWorksTexts : null;
 
     /// <summary>The versions a stored row of any kind is compared with; an unindexed kind is bound like Paratext.</summary>
+    /// <summary>Whether the id names a Source that exists in every project and only awaits its index.</summary>
+    public static bool IsBuiltIn(string sourceId) => new[] { Paratext, FieldWorksTexts }
+        .Any(provider => string.Equals(provider.BuiltInSourceId, sourceId, StringComparison.OrdinalIgnoreCase));
+
     public static ISourceProvider Versions(string kind) => For(kind) ?? Paratext;
 }
 
@@ -47,6 +54,7 @@ internal sealed class ParatextSourceProvider : ISourceProvider
     public string Kind => nameof(SourceKind.Paratext);
     public string TokenizerVersion => ParatextPassages.TokenizerVersion;
     public string AnchorVersion => ParatextPassages.AnchorVersion;
+    public string? BuiltInSourceId => null;
 
     public bool TryPassageId(string? reference, out string passageId)
     {
@@ -71,6 +79,7 @@ internal sealed class FieldWorksTextsSourceProvider : ISourceProvider
     public string Kind => FieldWorksTextsIndex.Kind;
     public string TokenizerVersion => FieldWorksTextsIndex.TokenizerVersion;
     public string AnchorVersion => FieldWorksTextsIndex.AnchorVersion;
+    public string? BuiltInSourceId => FieldWorksTextsIndex.SourceId;
 
     public bool TryPassageId(string? reference, out string passageId)
     {
