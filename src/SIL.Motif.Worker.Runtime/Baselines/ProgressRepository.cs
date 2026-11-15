@@ -9,7 +9,7 @@ namespace SIL.Motif.Worker.Baselines;
 
 internal sealed record ProgressState(string Revision, string ContentRevision, string JudgementRevision,
     DateTimeOffset SourceLastWriteUtc, string? PendingReceiptId, ProgressCounts Totals,
-    IReadOnlyDictionary<string, int> Excluded);
+    IReadOnlyDictionary<string, int> Excluded, string? SourceIdentityJson);
 
 internal static class ProgressRepository
 {
@@ -31,6 +31,14 @@ internal static class ProgressRepository
         command.CommandText = "SELECT s.PendingReceiptId FROM ProgressState s JOIN Receipts r " +
             "ON r.ReceiptId = s.PendingReceiptId WHERE s.Id = 1 AND r.ProposalId = $proposal;";
         command.Parameters.AddWithValue("$proposal", proposalId);
+        return command.ExecuteScalar() as string;
+    }
+
+    public static string? ReadSourceIdentity(MotifDatabase database)
+    {
+        using var connection = database.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT SourceIdentityJson FROM ProgressState WHERE Id = 1 AND PendingReceiptId IS NULL;";
         return command.ExecuteScalar() as string;
     }
 
@@ -66,18 +74,19 @@ internal static class ProgressRepository
 
     public static void PublishApplied(MotifDatabase database, ProgressProjection projection,
         string receiptId, DateTimeOffset sourceLastWriteUtc, string contentRevision,
-        ProgressProjection? original = null)
+        ProgressProjection? original = null, string? sourceIdentityJson = null)
     {
         using var connection = database.OpenConnection();
         using var transaction = connection.BeginTransaction();
         Publish(connection, transaction, projection, contentRevision, "judgement/" + receiptId,
-            sourceLastWriteUtc, receiptId, original);
+            sourceLastWriteUtc, receiptId, original, sourceIdentityJson);
         transaction.Commit();
     }
 
     public static void Publish(SqliteConnection connection, SqliteTransaction transaction,
         ProgressProjection projection, string contentRevision, string judgementRevision,
-        DateTimeOffset sourceLastWriteUtc, string? expectedReceiptId = null, ProgressProjection? original = null)
+        DateTimeOffset sourceLastWriteUtc, string? expectedReceiptId = null, ProgressProjection? original = null,
+        string? sourceIdentityJson = null)
     {
         if (expectedReceiptId is not null)
         {
@@ -134,11 +143,12 @@ internal static class ProgressRepository
         state.Transaction = transaction;
         state.CommandText = """
             INSERT INTO ProgressState (Id, Revision, ContentRevision, JudgementRevision, SourceLastWriteUtc,
-                PendingReceiptId, TotalsJson, ExcludedJson)
-            VALUES (1, $revision, $content, $judgement, $saved, NULL, $totals, $excluded)
+                PendingReceiptId, TotalsJson, ExcludedJson, SourceIdentityJson)
+            VALUES (1, $revision, $content, $judgement, $saved, NULL, $totals, $excluded, $sourceIdentity)
             ON CONFLICT(Id) DO UPDATE SET Revision = excluded.Revision, ContentRevision = excluded.ContentRevision,
                 JudgementRevision = excluded.JudgementRevision, SourceLastWriteUtc = excluded.SourceLastWriteUtc,
-                PendingReceiptId = NULL, TotalsJson = excluded.TotalsJson, ExcludedJson = excluded.ExcludedJson;
+                PendingReceiptId = NULL, TotalsJson = excluded.TotalsJson, ExcludedJson = excluded.ExcludedJson,
+                SourceIdentityJson = excluded.SourceIdentityJson;
             """;
         state.Parameters.AddWithValue("$revision", "progress/" + Guid.NewGuid().ToString("N"));
         state.Parameters.AddWithValue("$content", contentRevision);
@@ -146,6 +156,7 @@ internal static class ProgressRepository
         state.Parameters.AddWithValue("$saved", sourceLastWriteUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
         state.Parameters.AddWithValue("$totals", Serialize(totals));
         state.Parameters.AddWithValue("$excluded", Serialize(excluded));
+        state.Parameters.AddWithValue("$sourceIdentity", (object?)sourceIdentityJson ?? DBNull.Value);
         state.ExecuteNonQuery();
     }
 
@@ -154,11 +165,12 @@ internal static class ProgressRepository
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = "SELECT Revision, ContentRevision, JudgementRevision, SourceLastWriteUtc, " +
-            "PendingReceiptId, TotalsJson, ExcludedJson FROM ProgressState WHERE Id = 1;";
+            "PendingReceiptId, TotalsJson, ExcludedJson, SourceIdentityJson FROM ProgressState WHERE Id = 1;";
         using var reader = command.ExecuteReader();
         return !reader.Read() ? null : new ProgressState(reader.GetString(0), reader.GetString(1), reader.GetString(2),
             DateTimeOffset.Parse(reader.GetString(3), CultureInfo.InvariantCulture), reader.IsDBNull(4) ? null : reader.GetString(4),
-            Deserialize<ProgressCounts>(reader.GetString(5)), Deserialize<Dictionary<string, int>>(reader.GetString(6)));
+            Deserialize<ProgressCounts>(reader.GetString(5)), Deserialize<Dictionary<string, int>>(reader.GetString(6)),
+            reader.IsDBNull(7) ? null : reader.GetString(7));
     }
 
     public static IReadOnlyList<(ProgressText Text, ProgressCounts Counts)> ReadTexts(

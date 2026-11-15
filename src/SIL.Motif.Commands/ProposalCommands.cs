@@ -1992,11 +1992,13 @@ public static partial class ProposalCommands
             var loader = ApplyLoaderFactory();
             if (IsTestTarget("MOTIF_TEST_FAIL_LIVE_APPLY_WRITING_SYSTEM_FOR", project.FullFwDataPath))
                 throw ProjectWritingSystemsUnavailableException.MissingStore(project.FullFwDataPath);
-            var progressSourceTime = File.GetLastWriteTimeUtc(project.FullFwDataPath);
+            var recordedSource = ProgressRepository.ReadSourceIdentity(database);
+            var originalIdentity = ProgressSourceIdentity.Parse(recordedSource);
             cache = loader.LoadCache(project.FullFwDataPath);
             try
             {
                 FwDataProjectLoader.RequireProjectPath(cache, project.FullFwDataPath);
+                var loadedSource = originalIdentity is null ? null : ProgressSourceIdentity.Capture(project.FullFwDataPath);
                 if (record.Status != ManifestStatus.Applied)
                 {
                     var currentBaseline = new BaselineRepository(database)
@@ -2104,8 +2106,9 @@ public static partial class ProposalCommands
                     BeforeProgressPublication.Value?.Invoke();
                     var existing = ProgressRepository.ReadPending(database, pending);
                     if (existing is null) return;
-                    var sourceMatches = !receipt.AlreadyApplied &&
-                        progressSourceTime == existing.Value.State.SourceLastWriteUtc.UtcDateTime;
+                    var sourceMatches = !receipt.AlreadyApplied && loadedSource is not null &&
+                        originalIdentity is not null && loadedSource.Digest == originalIdentity.Digest &&
+                        existing.Value.State.SourceIdentityJson == recordedSource;
                     var progress = sourceMatches
                         ? ProgressDeltaBuilder.Apply(cache, existing.Value.Projection, envelope.Operations) : null;
                     var incremental = progress is not null;
@@ -2117,8 +2120,9 @@ public static partial class ProposalCommands
                         contentRevision = "content/" + pending;
                     }
                     var saved = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
+                    var savedIdentity = ProgressSourceIdentity.Capture(project.FullFwDataPath)?.Serialize();
                     ProgressRepository.PublishApplied(database, progress, pending, saved, contentRevision,
-                        incremental ? existing.Value.Projection : null);
+                        incremental ? existing.Value.Projection : null, savedIdentity);
                 });
 
                 TryPostApplyStep("post-receipt housekeeping", () =>

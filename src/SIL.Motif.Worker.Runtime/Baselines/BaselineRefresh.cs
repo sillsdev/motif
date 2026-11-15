@@ -64,6 +64,7 @@ public sealed class BaselineRefresh
         ArgumentNullException.ThrowIfNull(project);
 
         // Read before publishing, so a failure here cannot leave a published bundle that nothing records.
+        var sourceMetadata = ProgressSourceIdentity.Metadata(project.FullFwDataPath);
         var summary = ProjectSummaryReader.Read(savedCache);
         var textWords = TextWordsProjectionBuilder.Build(savedCache, cancellationToken, includeCoverage: true);
         var staging = Path.Combine(_root, "captures");
@@ -80,8 +81,10 @@ public sealed class BaselineRefresh
                 cancellationToken).ConfigureAwait(false);
             // The caller saved the project before calling, so the file's own stamp is that save's time.
             var savedUtc = new DateTimeOffset(File.GetLastWriteTimeUtc(project.FullFwDataPath), TimeSpan.Zero);
+            var sourceIdentity = ProgressSourceIdentity.CapturedCopy(publication.FwDataPath, project.FullFwDataPath,
+                sourceMetadata)?.Serialize();
             _baselines.Record(ProjectWorkspaceKey.Compute(project), publication, _now(), savedUtc,
-                textWords, summary);
+                textWords, summary, sourceIdentity);
             return publication.Token;
         }
         finally

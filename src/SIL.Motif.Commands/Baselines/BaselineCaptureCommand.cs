@@ -67,6 +67,7 @@ public static class BaselineCaptureCommand
             var bundlePath = captureDirectory + ".zip";
             try
             {
+                var sourceMetadata = ProgressSourceIdentity.Metadata(project.FullFwDataPath);
                 SavedProjectFilesCopy copy;
                 try
                 {
@@ -81,6 +82,8 @@ public static class BaselineCaptureCommand
                         Fact(("projectPath", request.ProjectPath))));
                 }
 
+                var sourceIdentity = ProgressSourceIdentity.CapturedCopy(copy.FwDataPath, project.FullFwDataPath,
+                    sourceMetadata)?.Serialize();
                 string projectIdentity;
                 string semanticDigest;
                 ProjectSummarySnapshot projectSummary;
@@ -128,7 +131,7 @@ public static class BaselineCaptureCommand
 
                     publication = new BaselineCapturePublisher(database, managedRoot)
                         .PublishAsync(project, bundlePath, declaredToken, copy.SourceLastWriteUtc,
-                            textWordsProjection, CancellationToken.None, projectSummary)
+                            textWordsProjection, CancellationToken.None, projectSummary, sourceIdentity)
                         .GetAwaiter().GetResult();
                 }
                 catch (InvalidDataException ex)

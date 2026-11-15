@@ -581,7 +581,7 @@ public static class MotifSchema
             C("BundleDigest", "TEXT", true), C("IndexJson", "TEXT", true)],
         "ProgressState" => [C("Id", "INTEGER", false, 1), C("Revision", "TEXT", true), C("ContentRevision", "TEXT", true),
             C("JudgementRevision", "TEXT", true), C("SourceLastWriteUtc", "TEXT", true), C("PendingReceiptId", "TEXT"),
-            C("TotalsJson", "TEXT", true), C("ExcludedJson", "TEXT", true)],
+            C("TotalsJson", "TEXT", true), C("ExcludedJson", "TEXT", true), C("SourceIdentityJson", "TEXT")],
         "ProgressTexts" => [C("TextId", "TEXT", false, 1), C("Title", "TEXT", true), C("CountsJson", "TEXT", true),
             C("IncidenceJson", "TEXT", true), C("ExcludedJson", "TEXT", true)],
         "ParsimonyBundles" => [C("BundleId", "TEXT", false, 1), C("BaselineTokenJson", "TEXT", true),
@@ -1146,7 +1146,8 @@ public static class MotifSchema
             SourceLastWriteUtc TEXT NOT NULL,
             PendingReceiptId TEXT NULL,
             TotalsJson TEXT NOT NULL,
-            ExcludedJson TEXT NOT NULL
+            ExcludedJson TEXT NOT NULL,
+            SourceIdentityJson TEXT NULL
         );
         CREATE TABLE ProgressTexts (
             TextId TEXT PRIMARY KEY,

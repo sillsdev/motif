@@ -54,7 +54,8 @@ public sealed class BaselineCapturePublisher
         DateTimeOffset sourceLastWriteUtc,
         TextWordsProjection textWordsProjection,
         CancellationToken cancellationToken,
-        ProjectSummarySnapshot? projectSummary = null)
+        ProjectSummarySnapshot? projectSummary = null,
+        string? progressSourceIdentity = null)
     {
         ArgumentNullException.ThrowIfNull(project);
         ArgumentNullException.ThrowIfNull(declaredToken);
@@ -70,7 +71,8 @@ public sealed class BaselineCapturePublisher
         var baselines = new BaselineRepository(_database);
         var workspaceKey = ProjectWorkspaceKey.Compute(project);
         var recorded = baselines.Record(
-            workspaceKey, outcome.Publication, _now(), sourceLastWriteUtc, textWordsProjection, projectSummary);
+            workspaceKey, outcome.Publication, _now(), sourceLastWriteUtc, textWordsProjection, projectSummary,
+            progressSourceIdentity);
 
         return new BaselineCapturePublication(recorded.Token, recorded.FwDataPath, !outcome.Created);
     }

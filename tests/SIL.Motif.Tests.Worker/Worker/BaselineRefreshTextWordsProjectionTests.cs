@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using SIL.LCModel;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract;
+using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Projects;
 using SIL.Motif.Host.LcmUtils;
 using SIL.Motif.Host.Store;
@@ -45,6 +47,9 @@ public sealed class BaselineRefreshTextWordsProjectionTests : IDisposable
         var projectKey = ProjectWorkspaceKey.Compute(project);
 
         var firstToken = await refresh.RefreshAsync(cache, project, CancellationToken.None);
+        var progress = ProgressQuery.Query(new ProgressRequest(project.FullFwDataPath, new ProgressScope("texts")));
+        Assert.True(progress.Succeeded, progress.Refusal?.Message);
+        Assert.True(progress.Value!.Freshness.JudgementsCurrent);
 
         Assert.Equal(1, Count(database, "BaselineTextWords", projectKey));
         Assert.Equal(1, Count(database, "BaselineTextReadIndex", projectKey));

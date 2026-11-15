@@ -169,18 +169,115 @@ public sealed class ProgressQueryTests(PristineProjectFixture pristine) : IDispo
         var measured = DryRunJobRunner.Run(path, "1.0", finalized.Value!.ProposalId);
         Assert.True(measured.Succeeded, measured.Refusal?.Message);
         occurrenceReads = 0;
+        var fingerprints = 0;
         try
         {
             TextWordsProjectionBuilder.BeforeOccurrenceRead.Value = () => occurrenceReads++;
+            ProgressSourceIdentity.BeforeHash.Value = () => fingerprints++;
             var applied = ProposalCommands.Apply(new ApplyRequest(path, "1.0", finalized.Value.ProposalId, Force: true));
             Assert.True(applied.Succeeded, applied.Refusal?.Message);
         }
-        finally { TextWordsProjectionBuilder.BeforeOccurrenceRead.Value = null; }
+        finally
+        {
+            TextWordsProjectionBuilder.BeforeOccurrenceRead.Value = null;
+            ProgressSourceIdentity.BeforeHash.Value = null;
+        }
         Assert.Equal(0, occurrenceReads);
+        Assert.Equal(2, fingerprints);
         var after = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
         Assert.True(after.Succeeded, after.Refusal?.Message);
         Assert.Equal(1, after.Value!.Totals!.Tokens.Approved);
         Assert.True(after.Value.Freshness.JudgementsCurrent);
+    }
+
+    [Fact]
+    public void FreshApprovalRebuildsWhenProjectBytesChangedAtTheSameTimestamp()
+    {
+        var (path, proposal, _, otherWordform) = PrepareApproval();
+        var capturedTime = File.GetLastWriteTimeUtc(path);
+        var original = File.ReadAllBytes(path);
+        var document = System.Text.Encoding.UTF8.GetString(original);
+        var start = document.IndexOf($"<rt class=\"WfiWordform\" guid=\"{otherWordform:D}\"", StringComparison.OrdinalIgnoreCase);
+        Assert.True(start >= 0);
+        var end = document.IndexOf("</rt>", start, StringComparison.Ordinal);
+        Assert.True(end > start);
+        var record = document[start..end];
+        var changed = record.Replace("<SpellingStatus val=\"0\" />", "<SpellingStatus val=\"2\" />", StringComparison.Ordinal);
+        Assert.NotEqual(record, changed);
+        var updated = System.Text.Encoding.UTF8.GetBytes(document[..start] + changed + document[end..]);
+        Assert.Equal(original.Length, updated.Length);
+        File.WriteAllBytes(path, updated);
+        File.SetLastWriteTimeUtc(path, capturedTime);
+        Assert.Equal(capturedTime, File.GetLastWriteTimeUtc(path));
+        var applied = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposal, Force: true));
+        Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        var result = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
+        Assert.True(result.Succeeded, result.Refusal?.Message);
+        Assert.True(result.Value!.Freshness.JudgementsCurrent);
+        Assert.Equal(1, result.Value.Totals!.Tokens.Misspelled);
+        Assert.Equal(1, result.Value.Totals.Tokens.Approved);
+    }
+
+    [Fact]
+    public void ExemplarOnlyChangeIsStaleAndApprovalRebuildsEligibility()
+    {
+        var (path, proposal, writingSystem, _) = PrepareApproval();
+        var before = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
+        Assert.Equal(2, before.Value!.Totals!.Tokens.Total);
+        var fwdata = File.ReadAllBytes(path);
+        var ldml = Path.Combine(Path.GetDirectoryName(path)!, "WritingSystemStore", writingSystem + ".ldml");
+        var document = System.Xml.Linq.XDocument.Load(ldml);
+        var exemplar = document.Descendants().Single(element => element.Name.LocalName == "exemplarCharacters" &&
+            element.Name.NamespaceName.Length == 0 && element.Attribute("type") is null);
+        exemplar.Value = "[b-z]";
+        document.Save(ldml);
+        File.SetLastWriteTimeUtc(ldml, File.GetLastWriteTimeUtc(ldml).AddSeconds(5));
+        Assert.Equal(fwdata, File.ReadAllBytes(path));
+        var stale = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
+        Assert.True(stale.Succeeded, stale.Refusal?.Message);
+        Assert.False(stale.Value!.Freshness.JudgementsCurrent);
+        var applied = ProposalCommands.Apply(new ApplyRequest(path, "1.0", proposal, Force: true));
+        Assert.True(applied.Succeeded, applied.Refusal?.Message);
+        var after = ProgressQuery.Query(new ProgressRequest(path, new ProgressScope("texts")));
+        Assert.True(after.Succeeded, after.Refusal?.Message);
+        Assert.True(after.Value!.Freshness.JudgementsCurrent);
+        Assert.Equal(0, after.Value.Totals!.Tokens.Total);
+        Assert.Equal(2, after.Value.Coverage.ExcludedPlaces);
+    }
+
+    private (string Path, string Proposal, string WritingSystem, Guid OtherWordform) PrepareApproval()
+    {
+        var path = pristine.CopyProjectFile();
+        SeededText text;
+        string writingSystem;
+        using (var cache = new FwDataProjectLoader().LoadScratchCache(path))
+        {
+            text = SeededProject.SeedText(cache, pristine.Seed);
+            var ws = cache.ServiceLocator.WritingSystems.VernacularWritingSystems.First();
+            writingSystem = ws.Id;
+            ws.CharacterSets.Clear();
+            var main = new CharacterSetDefinition("main");
+            foreach (var character in "abcdefghijklmnopqrstuvwxyz") main.Characters.Add(character.ToString());
+            ws.CharacterSets.Add(main);
+            var analysis = cache.ServiceLocator.GetInstance<IWfiAnalysisRepository>().GetObject(text.ApprovedAnalysisId);
+            NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor,
+                () => cache.LangProject.DefaultUserAgent.SetEvaluation(analysis, Opinions.noopinion));
+            new FwDataProjectLoader().Save(cache);
+        }
+        Capture(path);
+        var pending = PendingChanges.Load(new PendingChangesRequest(path, "1.0"));
+        Assert.True(pending.Succeeded, pending.Refusal?.Message);
+        var staged = PendingChanges.Put(new PutPendingChangeRequest(path, "1.0", pending.Value!.Revision,
+            new ChangeIntent("identity-approve", AnalysisChangeKinds.Approve,
+                CanonicalId.FromGuid(text.AnalysedWordformId).Value, SeededProject.AnalysedWordForm,
+                StoredAnalysisId: CanonicalId.FromGuid(text.ApprovedAnalysisId).Value)));
+        Assert.True(staged.Succeeded, staged.Refusal?.Message);
+        DraftRationale.Author(path, PendingChanges.DraftName, "Approve a reading", "The reading is supported.");
+        var finalized = ProposalCommands.Finalize(new FinalizeRequest(path, "1.0", PendingChanges.DraftName));
+        Assert.True(finalized.Succeeded, finalized.Refusal?.Message);
+        var measured = DryRunJobRunner.Run(path, "1.0", finalized.Value!.ProposalId);
+        Assert.True(measured.Succeeded, measured.Refusal?.Message);
+        return (path, finalized.Value.ProposalId, writingSystem, text.UnanalysedWordformId);
     }
 
     [Fact]

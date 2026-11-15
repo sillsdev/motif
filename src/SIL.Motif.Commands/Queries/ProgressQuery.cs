@@ -91,7 +91,8 @@ public static class ProgressQuery
             var changed = new ProgressChangedSince(request.SinceRevision);
             var rows = page.Take(request.Limit).Select(row => new ProgressPassage(row.Text.Id, row.Text.Title,
                 ToWire(row.Counts.Tokens), ToWire(row.Counts.Types), changed)).ToArray();
-            var current = File.GetLastWriteTimeUtc(project.FullFwDataPath) == state.SourceLastWriteUtc.UtcDateTime;
+            // Identical lengths and write times can conceal byte changes until Apply or refresh hashes the inputs.
+            var current = ProgressSourceIdentity.Parse(state.SourceIdentityJson)?.Current(project.FullFwDataPath) == true;
             var limitations = new List<string> { "checked-unavailable", "changed-since-unavailable", "parser-evidence-unavailable" };
             if (!current) limitations.Add("judgements-stale");
             var coverage = new ProgressCoverage("fieldworks-segments-v1", "ws-valid-characters-v1",

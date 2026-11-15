@@ -549,7 +549,7 @@ public sealed class BaselineRepository
     internal BaselineRecord Record(
         string projectKey, BaselinePublication publication, DateTimeOffset publishedUtc,
         DateTimeOffset sourceLastWriteUtc, TextWordsProjection textWordsProjection,
-        ProjectSummarySnapshot? projectSummary = null)
+        ProjectSummarySnapshot? projectSummary = null, string? progressSourceIdentity = null)
     {
         RequireProjectKey(projectKey);
         ArgumentNullException.ThrowIfNull(publication);
@@ -638,7 +638,7 @@ public sealed class BaselineRepository
             projectKey, publication.Token.BundleDigest, indexRows);
         if (progress is not null)
             ProgressRepository.Publish(connection, transaction, progress, publication.Token.BundleDigest,
-                publication.Token.BundleDigest, sourceLastWriteUtc);
+                publication.Token.BundleDigest, sourceLastWriteUtc, sourceIdentityJson: progressSourceIdentity);
         else
         {
             using var clearProgress = connection.CreateCommand();
