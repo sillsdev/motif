@@ -54,6 +54,25 @@ public static class ReportCommands
 
     private static CommandOutcome<ReportResponse> ProduceStored(ProduceReportRequest request)
     {
+        // The producer refuses a missing Assessment with no store involved.
+        if (request.AssessmentId is null)
+        {
+            try
+            {
+                Catalog.Resolve(request.Kind).Produce(ReportInput.MissingCapability("Assessment"),
+                    new ReportQuery(request.Word, request.Text), AssessorCatalog.Empty);
+            }
+            catch (ReportRefusalException exception)
+            {
+                return CommandOutcome<ReportResponse>.Refused(new Refusal(
+                    "report.refused", FailureReason.Refused, exception.Message,
+                    Fact(("assessmentId", request.AssessmentId), ("kind", request.Kind))));
+            }
+            catch (KeyNotFoundException)
+            {
+                // An unregistered kind is refused below with the same message every other path gives.
+            }
+        }
         // A store that is not current cannot hold the Assessment, so refuse before opening.
         if (ProjectStoreCommand.RefuseUnlessStoreIsCurrent(request.FwDataPath, _ =>
             {
