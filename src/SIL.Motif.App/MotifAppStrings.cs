@@ -924,6 +924,18 @@ public static class MotifAppStrings
     /// <summary>The button that makes the Rationale editable.</summary>
     public static string RationaleEdit => Text("MotifApp.RationaleEdit");
 
+    /// <summary>Opens a comparison with the Rationale changed elsewhere.</summary>
+    public static string RationaleCompare => Text("MotifApp.RationaleCompare");
+
+    /// <summary>Explains how the comparison is shown and when its result is saved.</summary>
+    public static string RationaleCompareExplanation => Text("MotifApp.RationaleCompareExplanation");
+
+    /// <summary>Asks to reload when a saved revision cannot identify the current Rationale to compare.</summary>
+    public static string RationaleCompareReload => Text("MotifApp.RationaleCompareReload");
+
+    /// <summary>Names a local unsaved edit kept for Restore when starting again from another Rationale.</summary>
+    public static string RationaleUnsavedRestoreFormat => Text("MotifApp.RationaleUnsavedRestoreFormat");
+
     /// <summary>Says the Rationale changed elsewhere during the edit.</summary>
     public static string RationaleChangedElsewhere => Text("MotifApp.RationaleChangedElsewhere");
 

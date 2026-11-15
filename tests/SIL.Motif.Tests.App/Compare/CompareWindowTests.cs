@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
@@ -47,6 +48,40 @@ public sealed class CompareWindowTests(AvaloniaHeadlessFixture avalonia)
         window.KeyPress(key, modifiers, PhysicalKey.None, null);
 
     private static string Result(CompareWindow window) => string.Join("\n", window.Comparison.Result().Select(paragraph => paragraph.Text));
+
+    [Theory]
+    [InlineData("FieldWorks", "FW")]
+    [InlineData("agent-1", "agent-1")]
+    public void TheOtherVersionIsNamedThroughoutBothViewsAndTheirAccessibleText(string name, string tag)
+    {
+        avalonia.Invoke(() =>
+        {
+            var labels = new CompareLabels(name, tag) { Explanation = "Compare the two versions." };
+            var window = new CompareWindow("Rationale", TwoParagraphs(), labels: labels);
+            using var closer = window.CloseOnExit();
+            window.Show();
+
+            Assert.Contains($"from {name}", window.SummaryText, StringComparison.Ordinal);
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == tag);
+            Assert.Contains(window.GetVisualDescendants().OfType<ToggleButton>(), button => Equals(button.Content, $"Use {name}"));
+            var both = BothChange(window);
+            Assert.Contains(name, AutomationProperties.GetName(window.MarkOf(both)!), StringComparison.Ordinal);
+            if (name != "FieldWorks")
+            {
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(), block => block.Text?.Contains("FieldWorks", StringComparison.Ordinal) == true);
+                Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == "FW");
+            }
+
+            window.OpenSideBySide();
+            PageScreenshots.SettleLayout(window);
+
+            Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), block => block.Text?.StartsWith($"\U0001F512 {name}, read-only", StringComparison.Ordinal) == true);
+            Assert.Contains(window.GetVisualDescendants().OfType<SelectableTextBlock>(),
+                block => AutomationProperties.GetName(block) == $"{name}, read-only, paragraph 1");
+            Assert.Contains(window.GetVisualDescendants().OfType<Button>(),
+                button => AutomationProperties.GetName(button) == $"Use the {name} version of paragraph 1");
+        });
+    }
 
     [Fact]
     public void EveryChangeHasAMarkAndDoneWaitsForTheOneBothMade()

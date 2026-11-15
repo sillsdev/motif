@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Interactivity;
+using SIL.Motif.App.Compare;
 using SIL.Motif.App.ViewModels;
 using SIL.TextEditing.Avalonia;
 
@@ -37,8 +39,16 @@ public sealed partial class RationaleEditor : UserControl
     private void OnModelChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(RationaleEditorModel.Document)) Rebuild();
-        else if (e.PropertyName == nameof(RationaleEditorModel.IsEditing) && Field is { } field)
-            field.IsReadOnly = !_model!.IsEditing;
+        else if (e.PropertyName is nameof(RationaleEditorModel.IsEditing) or nameof(RationaleEditorModel.IsSaving) && Field is { } field)
+            field.IsReadOnly = !_model!.IsEditing || _model.IsSaving;
+    }
+
+    private async void CompareClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_model is not { } model || TopLevel.GetTopLevel(this) is not Window owner) return;
+        await model.CompareAsync(comparison => new CompareWindow(MotifAppStrings.ProposalRationale,
+            comparison.Comparison, savedAt: comparison.Other.CreatedUtc, labels: comparison.Labels)
+            .ShowDialog<CompareOutcome?>(owner));
     }
 
     // The field edits the model's document in place, so Save reads what the person typed.
@@ -53,7 +63,7 @@ public sealed partial class RationaleEditor : UserControl
         var field = new RichTextField(model.Document)
         {
             StyleResolver = model.Styles,
-            IsReadOnly = !model.IsEditing,
+            IsReadOnly = !model.IsEditing || model.IsSaving,
         };
         field.SetValue(Avalonia.Automation.AutomationProperties.NameProperty, model.IsComment ? MotifAppStrings.CommentsHeading : MotifAppStrings.ProposalRationale);
         field.ContextMenuRequested += (_, e) =>

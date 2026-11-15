@@ -33,11 +33,7 @@ internal sealed class PublishedBaselineTemplate<T> where T : class
     {
         _root = root;
         Metadata = metadata;
-        _evidence = new(() =>
-        {
-            using var cache = new FwDataProjectLoader().LoadScratchCache(PublishedFwDataPathIn(_root));
-            return (TextWordsProjectionBuilder.Build(cache, CancellationToken.None), ProjectSummaryReader.Read(cache));
-        });
+        _evidence = new(ReadEvidence);
     }
 
     /// <summary>What <c>prepare</c> returned: identities the tests need to name what it wrote.</summary>
@@ -58,6 +54,23 @@ internal sealed class PublishedBaselineTemplate<T> where T : class
     {
         CopyDirectory(_root, destination);
         return PublishedFwDataPathIn(destination);
+    }
+
+    private (TextWordsProjection Projection, ProjectSummarySnapshot Summary) ReadEvidence()
+    {
+        // Keep transient project locks out of the shared copy source.
+        var copy = Path.Combine(Path.GetTempPath(), "baseline-evidence-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var cache = new FwDataProjectLoader().LoadScratchCache(CopyTo(copy));
+            return (TextWordsProjectionBuilder.Build(cache, CancellationToken.None), ProjectSummaryReader.Read(cache));
+        }
+        finally
+        {
+            try { Directory.Delete(copy, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     private static PublishedBaselineTemplate<T> Build(string name, PristineProjectFixture pristine, Func<LcmCache, T> prepare)
@@ -95,7 +108,8 @@ internal sealed class PublishedBaselineTemplate<T> where T : class
     {
         Directory.CreateDirectory(destination);
         foreach (var file in Directory.GetFiles(source))
-            File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
+            if (!file.EndsWith(".fwdata.lock", StringComparison.OrdinalIgnoreCase))
+                File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
         foreach (var directory in Directory.GetDirectories(source))
             CopyDirectory(directory, Path.Combine(destination, Path.GetFileName(directory)));
     }

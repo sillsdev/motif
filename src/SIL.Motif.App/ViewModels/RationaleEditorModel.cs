@@ -1,6 +1,7 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.App.Compare;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Responses;
@@ -33,6 +34,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     private readonly KnownPaths _paths = new();
     private string _markdown;
     private string? _began;
+    private readonly List<RationaleRevisionChoice> _unsavedVersions = [];
     private bool _isComment;
     private long? _commentId;
     private Action<RationaleEditorModel>? _deleted;
@@ -120,6 +122,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
 
     /// <summary>Whether the field is being edited.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCompare))]
     [NotifyPropertyChangedFor(nameof(CanStartEdit))]
     [NotifyCanExecuteChangedFor(nameof(EditCommand), nameof(SaveCommand), nameof(CancelCommand), nameof(RestoreCommand), nameof(DeleteCommentCommand))]
     [NotifyPropertyChangedFor(nameof(CanDeleteComment))]
@@ -127,7 +130,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
 
     /// <summary>Whether a save is under way.</summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(CancelCommand))]
+    [NotifyPropertyChangedFor(nameof(CanCompare))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand), nameof(CancelCommand), nameof(RestoreCommand))]
     private bool _isSaving;
 
     /// <summary>What a reader would see as wrong in the last save, one per line with its line and column.</summary>
@@ -141,13 +145,15 @@ public sealed partial class RationaleEditorModel : ObservableObject
 
     /// <summary>Whether the stored Rationale was changed elsewhere while this edit was being made.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCompare))]
+    [NotifyPropertyChangedFor(nameof(IsRationaleChangedElsewhere))]
     private bool _isChangedElsewhere;
 
     /// <summary>Whether choosing another Proposal was refused because this edit is not saved.</summary>
     [ObservableProperty]
     private bool _isSwitchRefused;
 
-    /// <summary>The kept earlier versions, newest first, once read.</summary>
+    /// <summary>The local unsaved edits kept for Restore, then the saved earlier versions, newest first.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRevisions))]
     private IReadOnlyList<RationaleRevisionChoice> _revisions = [];
@@ -161,6 +167,12 @@ public sealed partial class RationaleEditorModel : ObservableObject
     /// <summary>Whether Edit is offered now.</summary>
     public bool CanStartEdit => CanEdit && !IsEditing;
 
+    /// <summary>Whether the unsaved text can be compared with the Rationale that changed elsewhere.</summary>
+    public bool CanCompare => IsEditing && IsRationaleChangedElsewhere && !IsSaving;
+
+    /// <summary>Whether the stale edit is a Rationale, which offers comparison rather than Comment reconciliation.</summary>
+    public bool IsRationaleChangedElsewhere => !_isComment && IsChangedElsewhere;
+
     /// <summary>Whether the last save had findings to show.</summary>
     public bool HasFindings => Findings.Count > 0;
 
@@ -173,8 +185,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
     /// <summary>The Rationale as it is stored.</summary>
     public string Markdown => _markdown;
 
-    /// <summary>Whether the field holds an edit that is not saved.</summary>
-    public bool HasUnsavedChanges => IsEditing && Text() != _began;
+    /// <summary>Whether this editing session holds unsaved text, including an edit kept for Restore.</summary>
+    public bool HasUnsavedChanges => IsEditing && (Text() != _began || _unsavedVersions.Count > 0);
 
     /// <summary>The latest save, reload or version read, which tests await.</summary>
     public Task Working { get; private set; } = Task.CompletedTask;
@@ -191,6 +203,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
         IsSwitchRefused = false;
         IsEditing = true;
         _began = Text();
+        _unsavedVersions.Clear();
         if (!_isComment) Working = ReadRevisionsAsync();
     }
 
@@ -200,6 +213,80 @@ public sealed partial class RationaleEditorModel : ObservableObject
     /// <summary>Writes the field's text as the Rationale; on a refusal the text stays in the field.</summary>
     [RelayCommand(CanExecute = nameof(CanSave))]
     private Task Save() => Working = SaveAsync();
+
+    /// <summary>Compares with the latest attributed revision; Done saves with that revision as the expected text.</summary>
+    public Task CompareAsync(Func<RationaleComparison, Task<CompareOutcome?>> show) => Working = CompareCoreAsync(show);
+
+    private async Task CompareCoreAsync(Func<RationaleComparison, Task<CompareOutcome?>> show)
+    {
+        if (!CanCompare || _context.ProjectPath is not { } path) return;
+        IsSaving = true;
+        try
+        {
+            var read = await _context.Commands.ListRationaleRevisionsAsync(
+                new RationaleRevisionsRequest(path, MotifProductVersion.CurrentText, ProposalId), CancellationToken.None)
+                .ConfigureAwait(true);
+            if (!read.Succeeded)
+            {
+                Refusal = WindowRefusal.From(read.Refusal!);
+                return;
+            }
+            var latest = read.Value!.MaxBy(revision => revision.RevisionId);
+            if (latest is null)
+            {
+                Refusal = WindowRefusal.Plain(MotifAppStrings.RationaleCompareReload);
+                return;
+            }
+            var shown = await _context.Commands.ShowProposalAsync(
+                new ShowProposalRequest(path, MotifProductVersion.CurrentText, ProposalId), CancellationToken.None)
+                .ConfigureAwait(true);
+            if (!shown.Succeeded)
+            {
+                Refusal = WindowRefusal.From(shown.Refusal!);
+                return;
+            }
+            var mine = Text();
+            if (latest.Markdown != (shown.Value!.Rationale?.Markdown ?? string.Empty) ||
+                latest.Markdown == _markdown || latest.Markdown == mine)
+            {
+                Refusal = WindowRefusal.Plain(MotifAppStrings.RationaleCompareReload);
+                return;
+            }
+            var comparison = new RationaleComparison(_markdown, mine, latest);
+            var outcome = await show(comparison).ConfigureAwait(true);
+            if (outcome?.End is not (CompareEnd.Done or CompareEnd.StartAgain)) return;
+            _markdown = latest.Markdown;
+            OnPropertyChanged(nameof(Markdown));
+            Document = Read(_markdown, out var plain, editable: true);
+            IsPlainText = plain;
+            _began = Text();
+            if (outcome.End == CompareEnd.StartAgain)
+            {
+                var kept = new RationaleRevisionChoice(mine, string.Format(CultureInfo.CurrentCulture,
+                    MotifAppStrings.RationaleUnsavedRestoreFormat, _unsavedVersions.Count + 1));
+                _unsavedVersions.Insert(0, kept);
+                Revisions = [kept, .. Revisions];
+                IsChangedElsewhere = false;
+                Findings = [];
+                Refusal = null;
+                return;
+            }
+            var merged = RationaleComparison.Text(outcome.Result);
+            if (merged == latest.Markdown)
+            {
+                IsChangedElsewhere = false;
+                Cancel();
+                return;
+            }
+            Document = Read(merged, out plain, editable: true);
+            IsPlainText = plain;
+            await SaveAsync(compared: true).ConfigureAwait(true);
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
 
     /// <summary>Discards the edit and shows the stored Rationale, read anew if it changed elsewhere.</summary>
     [RelayCommand(CanExecute = nameof(CanSaveOrCancel))]
@@ -213,6 +300,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
         Findings = _isComment ? _storedCommentFindings : [];
         Refusal = null;
         Revisions = [];
+        _unsavedVersions.Clear();
         IsEditing = false;
         if (_isComment && !_commentId.HasValue) _deleted?.Invoke(this);
         else if (_isComment && _afterCancel is { } refresh) refresh(this);
@@ -221,7 +309,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     }
 
     /// <summary>Puts an earlier version into the field; it is saved only when the person saves.</summary>
-    [RelayCommand(CanExecute = nameof(IsEditing))]
+    [RelayCommand(CanExecute = nameof(CanSaveOrCancel))]
     private void Restore(RationaleRevisionChoice? revision)
     {
         if (revision is null) return;
@@ -256,11 +344,11 @@ public sealed partial class RationaleEditorModel : ObservableObject
     public Task<bool> OpenLinkAsync(string? objData) =>
         LinkOf(objData) is { } uri && _context.UriLauncher is { } launcher ? launcher.LaunchAsync(uri) : Task.FromResult(false);
 
-    private async Task SaveAsync()
+    private async Task SaveAsync(bool compared = false)
     {
         if (_context.ProjectPath is not { } path) return;
         var text = Text();
-        if (text == _began && !_isComment)
+        if (!compared && text == _began && !_isComment)
         {
             // Nothing was changed: the stored text stays exactly as it is, and no revision is written.
             Cancel();
@@ -306,6 +394,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
             Refusal = null;
             Findings = saved.Value!.Findings.Select(Describe).ToArray();
             Revisions = [];
+            _unsavedVersions.Clear();
             Document = Read(_markdown, out var plain);
             IsPlainText = plain;
             IsEditing = false;
@@ -337,8 +426,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
             new RationaleRevisionsRequest(path, MotifProductVersion.CurrentText, ProposalId), CancellationToken.None)
             .ConfigureAwait(true);
         if (!read.Succeeded || !IsEditing) return;
-        Revisions = read.Value!.Where(revision => revision.Markdown != _markdown)
-            .Select(revision => new RationaleRevisionChoice(revision)).ToArray();
+        Revisions = [.. _unsavedVersions, .. read.Value!.Where(revision => revision.Markdown != _markdown)
+            .Select(revision => new RationaleRevisionChoice(revision))];
     }
 
     private static IReadOnlyList<string> FindingsOf(Refusal refusal) =>
@@ -524,15 +613,27 @@ public sealed partial class RationaleEditorModel : ObservableObject
     }
 }
 
-/// <summary>An earlier version of a Rationale offered to restore, named by when it was saved and who wrote it.</summary>
-public sealed class RationaleRevisionChoice(RationaleRevisionView revision)
+/// <summary>A saved Rationale or a local unsaved edit offered to restore.</summary>
+public sealed class RationaleRevisionChoice
 {
-    /// <summary>The version's text.</summary>
-    public string Markdown { get; } = revision.Markdown;
+    /// <summary>A saved Rationale, named by when it was saved and who wrote it.</summary>
+    public RationaleRevisionChoice(RationaleRevisionView revision) : this(revision.Markdown,
+        string.Format(CultureInfo.CurrentCulture, MotifAppStrings.RationaleRevisionFormat,
+            DateTimeOffset.TryParse(revision.CreatedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var when)
+                ? when.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) : revision.CreatedUtc,
+            revision.AuthorLabel ?? (revision.PersonName.Length > 0 ? revision.PersonName : MotifAppStrings.RationaleRevisionAPerson)))
+    {
+    }
 
-    /// <summary>When it was saved and by whom, as the list shows it.</summary>
-    public string Label { get; } = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.RationaleRevisionFormat,
-        DateTimeOffset.TryParse(revision.CreatedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var when)
-            ? when.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) : revision.CreatedUtc,
-        revision.AuthorLabel ?? (revision.PersonName.Length > 0 ? revision.PersonName : MotifAppStrings.RationaleRevisionAPerson));
+    internal RationaleRevisionChoice(string markdown, string label)
+    {
+        Markdown = markdown;
+        Label = label;
+    }
+
+    /// <summary>The version's text.</summary>
+    public string Markdown { get; }
+
+    /// <summary>The saved version's time and author, or the name of the local unsaved edit.</summary>
+    public string Label { get; }
 }
