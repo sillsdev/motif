@@ -80,8 +80,9 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>For <see cref="RecordFieldKind.Sequence"/>: what each item is.</summary>
         public RecordField? Item { get; internal set; }
 
-        /// <summary>The media type of a text value, as the JSON Schema gives it: <c>text/plain</c>, <c>text/x-fieldworks-markdown</c> (rich text and
-        /// references) or <c>text/x-fieldworks-&lt;notation&gt;</c>; null for a value that is not text.</summary>
+        /// <summary>The media type of a text value: <c>text/plain</c> for plain text, <c>text/x-fieldworks-markdown</c> for rich fields of paragraphs,
+        /// <c>text/x-fieldworks-markdown-inline</c> for inline rich values and references, or <c>text/x-fieldworks-&lt;notation&gt;</c> for notation;
+        /// null for a value that is not text.</summary>
         public string? ContentMediaType
         {
             get

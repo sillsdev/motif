@@ -244,19 +244,22 @@ namespace SIL.TextEditing.Avalonia.Tests
             r.Close();
         });
 
-        [Fact]
-        public void A_service_that_keeps_cancelling_what_nobody_cancelled_is_asked_a_few_times_not_for_ever() => Headless.Run(() =>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void A_service_that_keeps_cancelling_what_nobody_cancelled_is_asked_a_few_times_not_for_ever(bool repaintBetweenRequests) => Headless.Run(() =>
         {
             var r = new LanguageRig("a b", new FakeLanguageService { CancelsItself = true, Analysis = FakeLanguageService.Words("word") }, attach: false);
             var timer = new ManualTimer();
             r.Field.LanguageScheduler = timer.Schedule;
             r.Field.LanguageDebounce = TimeSpan.FromMilliseconds(200);
             r.Field.LanguageService = r.Service;
-            Drain(r);
+            Drain(r, repaintBetweenRequests);
             Assert.Equal(4, r.Service.AnalyzedTexts.Count);      // once, and three more
+            timer.Advance(TimeSpan.FromDays(1));
             Drain(r);
             Assert.Equal(4, r.Service.AnalyzedTexts.Count);
-            // A repaint is not a reason to ask again. The test paints on purpose: when the headless renderer paints by itself is a matter of timing (issue 145).
+            // Force repaints rather than depending on the headless renderer's timing.
             for (int i = 0; i < 3; i++)
             {
                 Fixtures.Render(r.Field);
@@ -327,7 +330,7 @@ namespace SIL.TextEditing.Avalonia.Tests
             r.Close();
         });
 
-        static void Drain(LanguageRig r)
+        static void Drain(LanguageRig r, bool repaintBetweenRequests = false)
         {
             int remaining = 50;
             while (r.Posts.Count > 0 && remaining-- > 0)
@@ -335,6 +338,7 @@ namespace SIL.TextEditing.Avalonia.Tests
                 var next = r.Posts[0];
                 r.Posts.RemoveAt(0);
                 next();
+                if (repaintBetweenRequests) Fixtures.Render(r.Field);
             }
             Assert.Empty(r.Posts);
         }
