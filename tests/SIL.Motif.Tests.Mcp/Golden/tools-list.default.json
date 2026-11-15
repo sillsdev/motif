@@ -322,7 +322,7 @@
   },
   {
     "name": "motif_progress",
-    "description": "Read Text Progress. Counts approved and misspelled places in saved Texts and reports the remainder as unmeasured. Read a summary or page through individual Texts.\nCommand: progress. Agent class: Read.\nScope: The Text population to count.\nDetail: Either summary or passages.\nLimit: Maximum Passage rows per page, from 1 to 200.\nCursor: A continuation from the same scope and Progress revision.\nSinceRevision: An optional checkpoint; changed-since evidence is currently unavailable.",
+    "description": "Read Progress. Counts approved and misspelled places in saved Texts, or eligible places in an indexed Source. Source approval counts are unavailable; read a summary or page through Passages.\nCommand: progress. Agent class: Read.\nScope: The Text population to count.\nDetail: Either summary or passages.\nLimit: Maximum Passage rows per page, from 1 to 200.\nCursor: A continuation from the same scope and Progress revision.\nSinceRevision: An optional checkpoint; changed-since evidence is currently unavailable.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -333,7 +333,8 @@
               "type": "string",
               "description": "The population kind.",
               "enum": [
-                "texts"
+                "texts",
+                "source"
               ]
             },
             "texts": {
@@ -344,6 +345,10 @@
                 "format": "uuid"
               },
               "description": "Text GUIDs; omit or leave empty to select every Text."
+            },
+            "source": {
+              "type": "string",
+              "description": "Source identifier for Source progress."
             }
           },
           "required": [
@@ -353,7 +358,7 @@
         },
         "detail": {
           "type": "string",
-          "description": "Return the summary or a page of Texts.",
+          "description": "Return the summary or a page of Passages.",
           "enum": [
             "summary",
             "passages"
@@ -361,7 +366,7 @@
         },
         "limit": {
           "type": "integer",
-          "description": "Maximum Text rows in a page; default 50.",
+          "description": "Maximum Passage rows in a page; default 50.",
           "minimum": 1,
           "maximum": 200
         },

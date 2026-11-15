@@ -20,7 +20,9 @@ internal static class ProgressToolSchema
             ["oneOf"] = new JsonArray(
                 new JsonObject { ["type"] = "object", ["required"] = new JsonArray("ok", "result"),
                     ["properties"] = new JsonObject { ["ok"] = new JsonObject { ["const"] = true },
-                        ["result"] = new JsonObject { ["$ref"] = "#/$defs/Response" },
+                        ["result"] = new JsonObject { ["oneOf"] = new JsonArray(
+                            new JsonObject { ["$ref"] = "#/$defs/Response" },
+                            new JsonObject { ["$ref"] = "#/$defs/SourceResponse" }) },
                         ["next"] = new JsonObject { ["type"] = "string" } }, ["additionalProperties"] = false },
                 new JsonObject { ["type"] = "object", ["required"] = new JsonArray("ok", "code", "reason", "message", "facts", "next"),
                     ["properties"] = new JsonObject { ["ok"] = new JsonObject { ["const"] = false },

@@ -10,7 +10,10 @@
       ],
       "properties": {
         "kind": {
-          "const": "texts"
+          "enum": [
+            "texts",
+            "source"
+          ]
         },
         "texts": {
           "type": "array",
@@ -19,6 +22,10 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
@@ -398,6 +405,75 @@
           }
         }
       }
+    },
+    "SourcePassage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "locator",
+        "eligiblePlaces",
+        "approvedPlaces"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "locator": {
+          "type": "string"
+        },
+        "eligiblePlaces": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "approvedPlaces": {
+          "type": "null"
+        }
+      }
+    },
+    "SourceResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "evidenceRevision",
+        "eligiblePlaces",
+        "passages",
+        "nextCursor",
+        "approvedPlaces",
+        "approvedState"
+      ],
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "evidenceRevision": {
+          "type": "string"
+        },
+        "eligiblePlaces": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "passages": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "$ref": "#/$defs/SourcePassage"
+          }
+        },
+        "nextCursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "approvedPlaces": {
+          "type": "null"
+        },
+        "approvedState": {
+          "const": "unavailable"
+        }
+      }
     }
   },
   "oneOf": [
@@ -412,7 +488,14 @@
           "const": true
         },
         "result": {
-          "$ref": "#/$defs/Response"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Response"
+            },
+            {
+              "$ref": "#/$defs/SourceResponse"
+            }
+          ]
         },
         "next": {
           "type": "string"

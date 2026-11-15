@@ -104,6 +104,7 @@ public static class CommandTextRenderer
                 : "Setup remains open." + Environment.NewLine,
             TextInventoryResponse r => RenderTextInventory(r),
             ProgressResponse r => RenderProgress(r),
+            SourceProgressResponse r => RenderSourceProgress(r),
             OverviewResponse r => RenderOverview(r),
             GrammarCheckResponse r => RenderGrammarCheck(r),
             WarningsResponse r => RenderWarnings(r),
@@ -856,6 +857,15 @@ public static class CommandTextRenderer
         if (response.Texts.Count == 0) return "This Baseline has no Texts." + Environment.NewLine;
         return string.Join(Environment.NewLine, response.Texts.Select(text =>
             $"{text.Title}  {text.InterlinearizationPercent:0}% interlinearized  {text.Id:D}")) + Environment.NewLine;
+    }
+
+    private static string RenderSourceProgress(SourceProgressResponse response)
+    {
+        var lines = new List<string> { $"Source {response.Source}: {response.EligiblePlaces:N0} eligible places",
+            "Approved places: unavailable", "Evidence revision: " + response.EvidenceRevision };
+        lines.AddRange(response.Passages.Select(row => $"{row.Locator}: {row.EligiblePlaces:N0} eligible places; approved unavailable"));
+        if (response.NextCursor is { } cursor) lines.Add("Next cursor: " + cursor);
+        return string.Join(Environment.NewLine, lines) + Environment.NewLine;
     }
 
     private static string RenderProgress(ProgressResponse response)

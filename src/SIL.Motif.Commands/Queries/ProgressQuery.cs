@@ -22,7 +22,7 @@ public static class ProgressQuery
     public static CommandOutcome<ProgressResponse> Query(ProgressRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.Scope is null || request.Scope.Kind != "texts" || request.Scope.Texts?.Count > 200 ||
+        if (request.Scope is null || request.Scope.Kind != "texts" || request.Scope.Source is not null || request.Scope.Texts?.Count > 200 ||
             request.Detail is not ("summary" or "passages") || request.Limit is < 1 or > 200 ||
             request.Detail == "summary" && request.Cursor is not null)
             return Refused(RefusalCodes.ProgressInvalidRequest, FailureReason.InvalidArgument,

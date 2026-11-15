@@ -80,6 +80,56 @@ public sealed class SourcePassageQueryTests(ITestOutputHelper output) : IDisposa
     }
 
     [Fact]
+    public void SourceProgressReadsDenominatorsWithoutReadingPlacesAndRefusesStaleGenerations()
+    {
+        var project = Project();
+        Assert.Equal(RefusalCodes.SourceIndexMissing, SourceProgressQuery.Query(project.FullFwDataPath, "WEB").Refusal?.Code);
+        using var database = Open(project);
+        Publish(database, 501);
+        using (var connection = database.OpenConnection())
+        using (var insert = connection.CreateCommand())
+        {
+            insert.CommandText = "INSERT INTO SourcePassages VALUES ('WEB','MAT 2','MAT 2','hash',7,5);";
+            insert.ExecuteNonQuery();
+        }
+        var work = new List<(int Statements, int Rows)>();
+        SourceProgressQuery.ReadWork.Value = (statements, rows) => work.Add((statements, rows));
+        SourceIndexRepository.RowsRead.Value = _ => throw new InvalidOperationException("Read word places.");
+        ProgressSourceIdentity.BeforeHash.Value = () => throw new InvalidOperationException("Read hashed project content.");
+        try
+        {
+            var summary = SourceProgressQuery.Query(project.FullFwDataPath, "web");
+            Assert.True(summary.Succeeded, summary.Refusal?.Message);
+            Assert.Equal(506, summary.Value!.EligiblePlaces);
+            Assert.Null(summary.Value.ApprovedPlaces);
+            Assert.Equal("unavailable", summary.Value.ApprovedState);
+            var page = SourceProgressQuery.Query(project.FullFwDataPath, "WEB", "passages", 1);
+            Assert.True(page.Succeeded, page.Refusal?.Message);
+            Assert.Equal(501, Assert.Single(page.Value!.Passages).EligiblePlaces);
+            Assert.Null(page.Value.Passages[0].ApprovedPlaces);
+            Assert.Equal(summary.Value.EvidenceRevision, page.Value.EvidenceRevision);
+            Assert.NotNull(page.Value.NextCursor);
+            var next = SourceProgressQuery.Query(project.FullFwDataPath, "WEB", "passages", 1, page.Value.NextCursor);
+            Assert.True(next.Succeeded, next.Refusal?.Message);
+            Assert.Equal(5, Assert.Single(next.Value!.Passages).EligiblePlaces);
+            Assert.Null(next.Value.NextCursor);
+            Assert.Equal([(1, 0), (2, 2), (2, 1)], work);
+            Assert.Equal(RefusalCodes.ProgressInvalidCursor,
+                SourceProgressQuery.Query(project.FullFwDataPath, "OTHER", "passages", 1, page.Value.NextCursor).Refusal?.Code);
+            new SourceIndexRepository(database).MarkPending("WEB");
+            Assert.Equal(RefusalCodes.SourceIndexStale, SourceProgressQuery.Query(project.FullFwDataPath, "WEB").Refusal?.Code);
+            Assert.Equal(RefusalCodes.SourceGenerationChanged,
+                SourceProgressQuery.Query(project.FullFwDataPath, "WEB", "passages", 1, page.Value.NextCursor).Refusal?.Code);
+        }
+        finally
+        {
+            SourceProgressQuery.ReadWork.Value = null;
+            SourceIndexRepository.RowsRead.Value = null;
+            ProgressSourceIdentity.BeforeHash.Value = null;
+        }
+    }
+
+    [Fact]
     public void UnicodeSourceIdsUseTheSameCaseInsensitiveIdentityAsTheSourceList()
     {
         var project = Project();

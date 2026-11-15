@@ -71,6 +71,14 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.True(response.IsError, response.StructuredContent?.ToString());
         Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.ProgressIndexNotReady,
             response.StructuredContent!.Value.GetProperty("code").GetString());
+        var sourceResponse = await session.Client.CallToolAsync("motif_progress", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            ["scope"] = new Dictionary<string, object?> { ["kind"] = "source", ["source"] = "WEB" },
+        });
+        Assert.True(sourceResponse.IsError, sourceResponse.StructuredContent?.ToString());
+        Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.SourceIndexMissing,
+            sourceResponse.StructuredContent!.Value.GetProperty("code").GetString());
         Assert.Equal(files.Keys.Order(StringComparer.Ordinal), StoreFiles());
         foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
         Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));

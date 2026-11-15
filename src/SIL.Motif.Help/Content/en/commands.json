@@ -5,9 +5,9 @@
     "source": "Hand-written from the GDR read command and shared Markdown view."
   },
   "progress": {
-    "title": "Read Text Progress",
-    "description": "Counts approved and misspelled places in saved Texts and reports the remainder as unmeasured. Read a summary or page through individual Texts.",
-    "source": "Hand-written from the Text Progress counting contract."
+    "title": "Read Progress",
+    "description": "Counts approved and misspelled places in saved Texts, or eligible places in an indexed Source. Source approval counts are unavailable; read a summary or page through Passages.",
+    "source": "Hand-written from the Progress counting contract."
   },
   "open": {
     "title": "Open a project",

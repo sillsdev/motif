@@ -48,6 +48,18 @@ public sealed class ProgressArgvTests(PristineProjectFixture pristine) : IDispos
     }
 
     [Fact]
+    public async Task SourceScopeReportsMissingIndexWithoutCreatingStore()
+    {
+        Directory.CreateDirectory(_root);
+        var path = pristine.CopyProjectFile();
+        var start = CliProcess.CreateStartInfo(_root, null, false, "progress", "--project", path, "--source", "WEB", "--json");
+        CliProcess.EnableAdvancedAiMode(start, _root);
+        var result = await CliProcess.RunAsync(start);
+        Assert.Equal(RefusalCodes.SourceIndexMissing, ProjectionJson.Deserialize<FailureEnvelope>(result.Error)!.Code);
+        Assert.False(File.Exists(Path.ChangeExtension(path, ".motif.db")));
+    }
+
+    [Fact]
     public async Task SummaryAndPageMatchTheSharedHandlerAndUnknownOptionsFail()
     {
         Directory.CreateDirectory(_root);

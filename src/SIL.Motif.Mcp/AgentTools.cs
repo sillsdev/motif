@@ -195,10 +195,11 @@ internal static class AgentTools
 
         new("motif_progress", string.Empty, AgentClass.Read,
             Schema.Object(("scope", Schema.Object(
-                    ("kind", Schema.String("The population kind.", "texts"), true),
-                    ("texts", ProgressTextIds(), false)), true),
-                ("detail", Schema.String("Return the summary or a page of Texts.", "summary", "passages"), false),
-                ("limit", Schema.Integer("Maximum Text rows in a page; default 50.", 1, 200), false),
+                    ("kind", Schema.String("The population kind.", "texts", "source"), true),
+                    ("texts", ProgressTextIds(), false),
+                    ("source", Schema.String("Source identifier for Source progress."), false)), true),
+                ("detail", Schema.String("Return the summary or a page of Passages.", "summary", "passages"), false),
+                ("limit", Schema.Integer("Maximum Passage rows in a page; default 50.", 1, 200), false),
                 ("cursor", Schema.String("Continuation from the same Progress revision and scope."), false),
                 ("sinceRevision", Schema.String("Optional changed-reading checkpoint."), false)),
             true, true, false, true,
@@ -1113,9 +1114,12 @@ internal static class AgentTools
         }
         catch (JsonException)
         {
-            throw new ToolArgumentException("tool.invalid-argument", "Scope must contain Text GUIDs and no unknown fields.");
+            throw new ToolArgumentException("tool.invalid-argument", "Scope must contain valid fields and no unknown fields.");
         }
-        if (scope is null) throw new ToolArgumentException("tool.invalid-argument", "A Text scope is required.");
+        if (scope is null) throw new ToolArgumentException("tool.invalid-argument", "A Progress scope is required.");
+        if (scope.Kind == "source" && scope.Source is not null && scope.Texts is null && arguments.Optional("sinceRevision") is null)
+            return ToolOutcome.From(SourceProgressQuery.Query(project, scope.Source, arguments.Optional("detail") ?? "summary",
+                arguments.Int("limit", 50), arguments.Optional("cursor")));
         return ToolOutcome.From(ProgressQuery.Query(new ProgressRequest(project, scope,
             arguments.Optional("detail") ?? "summary", arguments.Int("limit", 50), arguments.Optional("cursor"),
             arguments.Optional("sinceRevision"))));

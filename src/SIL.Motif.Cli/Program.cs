@@ -2537,7 +2537,7 @@ try
 
         case "progress":
             if (positionals.Count != 0 || !flags.TryGetValue("project", out var progressProject) ||
-                flags.Keys.Any(key => key is not ("project" or "texts" or "detail" or "limit" or "cursor" or "since-revision" or "json")))
+                flags.Keys.Any(key => key is not ("project" or "texts" or "source" or "detail" or "limit" or "cursor" or "since-revision" or "json")))
                 return Usage(UsageLineFor("progress"), asJson);
             var progressIds = new List<Guid>();
             if (flags.TryGetValue("texts", out var progressTexts))
@@ -2549,6 +2549,13 @@ try
             var progressLimit = 50;
             if (flags.TryGetValue("limit", out var progressLimitText) && !int.TryParse(progressLimitText, out progressLimit))
                 return Usage(UsageLineFor("progress"), asJson);
+            if (flags.TryGetValue("source", out var progressSource))
+            {
+                if (flags.ContainsKey("texts") || flags.ContainsKey("since-revision")) return Usage(UsageLineFor("progress"), asJson);
+                result = RenderCommand(SourceProgressQuery.Query(progressProject, progressSource,
+                    flags.GetValueOrDefault("detail") ?? "summary", progressLimit, flags.GetValueOrDefault("cursor")));
+                break;
+            }
             result = RenderCommand(ProgressQuery.Query(new ProgressRequest(progressProject,
                 new ProgressScope("texts", progressIds), flags.GetValueOrDefault("detail") ?? "summary", progressLimit,
                 flags.GetValueOrDefault("cursor"), flags.GetValueOrDefault("since-revision"))));
