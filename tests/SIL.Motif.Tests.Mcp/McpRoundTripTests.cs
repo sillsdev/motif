@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Data.Sqlite;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using SIL.LCModel;
@@ -78,6 +79,86 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
         Assert.True(response.IsError, response.StructuredContent?.ToString());
         Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.GdrNoBaseline,
             response.StructuredContent!.Value.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task GdrShowDoesNotInitializeAnEmptyStoreForTheNotice()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        File.WriteAllBytes(store, []);
+        var files = CaptureStoreFiles(store);
+        var before = File.ReadAllBytes(project.FwDataPath);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(), openStore: false);
+
+        var response = await session.Client.CallToolAsync("motif_gdr_show", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            ["id"] = "GDR-1",
+        });
+
+        AssertStoreFilesUnchanged(store, files);
+        Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
+        Assert.DoesNotContain(response.Content.OfType<TextContentBlock>(), block => block.Text.Contains("open Motif Request"));
+        Assert.False(response.StructuredContent!.Value.TryGetProperty("openRequestsCount", out _));
+    }
+
+    [Fact]
+    public async Task GdrShowDoesNotCreateAStoreLeaseForAnOlderStoreNoticeRead()
+    {
+        using var project = new WalkthroughProject(pristine);
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        using (var database = ProjectMotifDatabase.Open(project.FwDataPath))
+        using (var connection = database.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+            command.ExecuteNonQuery();
+        }
+        File.Delete(store + ".use.lock");
+        var files = CaptureStoreFiles(store);
+        var before = File.ReadAllBytes(project.FwDataPath);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(), openStore: false);
+
+        var response = await session.Client.CallToolAsync("motif_gdr_show", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            ["id"] = "GDR-1",
+        });
+
+        AssertStoreFilesUnchanged(store, files);
+        Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
+        Assert.DoesNotContain(response.Content.OfType<TextContentBlock>(), block => block.Text.Contains("open Motif Request"));
+        Assert.False(response.StructuredContent!.Value.TryGetProperty("openRequestsCount", out _));
+        using var check = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = store,
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false,
+        }.ToString());
+        check.Open();
+        using var version = check.CreateCommand();
+        version.CommandText = "PRAGMA user_version;";
+        Assert.Equal((long)MotifSchema.CurrentSchema - 1, version.ExecuteScalar());
+    }
+
+    [Fact]
+    public async Task GdrShowCarriesTheOpenRequestNoticeForACurrentStore()
+    {
+        using var project = new WalkthroughProject(pristine);
+        Assert.True(RequestCommands.Create(new CreateRequestRequest(project.FwDataPath,
+            MotifProductVersion.CurrentText, "word", "wordform", "wordform", "Check this word.")).Succeeded);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions());
+
+        var response = await session.Client.CallToolAsync("motif_gdr_show", new Dictionary<string, object?>
+        {
+            ["project"] = project.FwDataPath,
+            ["id"] = "GDR-1",
+        });
+
+        Assert.Equal(1, response.StructuredContent!.Value.GetProperty("openRequestsCount").GetInt32());
+        Assert.Contains(response.Content.OfType<TextContentBlock>(), block =>
+            block.Text == "You have 1 open Motif Request. Call motif_list_requests to review it.");
     }
 
     [Theory]
@@ -2085,6 +2166,23 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
     }
 
     private static string HashProject(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+
+    private static Dictionary<string, byte[]> CaptureStoreFiles(string store)
+    {
+        var directory = Path.GetDirectoryName(store)!;
+        return Directory.GetFiles(directory, Path.GetFileName(store) + "*")
+            .Where(file => !file.EndsWith("-wal", StringComparison.Ordinal) &&
+                !file.EndsWith("-shm", StringComparison.Ordinal))
+            .ToDictionary(file => file, File.ReadAllBytes, StringComparer.Ordinal);
+    }
+
+    private static void AssertStoreFilesUnchanged(string store, IReadOnlyDictionary<string, byte[]> expected)
+    {
+        var actual = CaptureStoreFiles(store);
+        Assert.Equal(expected.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName),
+            actual.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName));
+        foreach (var (file, bytes) in expected) Assert.Equal(bytes, actual[file]);
+    }
 
     private static DraftState ReadDraftState(string projectPath, string draftName)
     {

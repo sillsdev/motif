@@ -4,6 +4,7 @@ using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Projection.Store;
 using SIL.Motif.Worker.Store;
+using System.Globalization;
 
 namespace SIL.Motif.Commands;
 
@@ -155,13 +156,15 @@ public static class RequestCommands
     /// </summary>
     public static int OpenCount(string fwDataPath, string productVersion)
     {
-        try
+        var absent = CommandOutcome<OpenCountBox>.Success(new OpenCountBox(0));
+        var outcome = ProjectStoreCommand.ReadExisting(fwDataPath, absent, (connection, transaction, _) =>
         {
-            if (!File.Exists(ProjectDatabaseCatalog.DatabasePathFor(ProjectStoreCommand.Locate(fwDataPath)))) return 0;
-        }
-        catch (Exception exception) when (exception is ArgumentException or IOException) { return 0; }
-        var outcome = ProjectStoreCommand.Run(fwDataPath, productVersion, (database, _) =>
-            CommandOutcome<OpenCountBox>.Success(new OpenCountBox(new RequestRepository(database).OpenCount())));
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = "SELECT COUNT(*) FROM Requests WHERE Status = 'open';";
+            return CommandOutcome<OpenCountBox>.Success(new OpenCountBox(
+                Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture)));
+        });
         return outcome.Succeeded ? outcome.Value!.Count : 0;
     }
 
