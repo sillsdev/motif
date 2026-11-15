@@ -24,6 +24,7 @@ using SIL.Motif.Contract.Retirement;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host;
 using SIL.Motif.Host.LcmUtils;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Mcp;
 using SIL.Motif.Commands.Preferences;
 using SIL.Motif.Projection.HumanJudgments;
@@ -40,6 +41,45 @@ namespace SIL.Motif.Tests.Mcp;
 [Collection(LcmCacheParallelCollections.Group3)]
 public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 {
+    [Theory]
+    [InlineData(false, null)]
+    [InlineData(false, "json")]
+    [InlineData(false, "fw-md")]
+    [InlineData(true, null)]
+    [InlineData(true, "json")]
+    [InlineData(true, "fw-md")]
+    public async Task GdrShowLeavesMissingAndOlderStoresUnchanged(bool older, string? format)
+    {
+        using var project = new WalkthroughProject(pristine);
+        var store = Path.ChangeExtension(project.FwDataPath, ".motif.db");
+        if (older)
+        {
+            using var database = ProjectMotifDatabase.Open(project.FwDataPath);
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+            command.ExecuteNonQuery();
+        }
+        string[] StoreFiles() => Directory.GetFiles(Path.GetDirectoryName(store)!, Path.GetFileName(store) + "*")
+            .Where(file => !file.EndsWith("-wal", StringComparison.Ordinal) && !file.EndsWith("-shm", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal).ToArray();
+        var files = StoreFiles().ToDictionary(file => file, File.ReadAllBytes);
+        var before = File.ReadAllBytes(project.FwDataPath);
+        await using var session = await Session.StartAsync(project.FwDataPath, new McpLaunchOptions(), openStore: false);
+        var arguments = new Dictionary<string, object?> { ["project"] = project.FwDataPath, ["id"] = "GDR-1" };
+        if (format is not null) arguments["format"] = format;
+
+        var response = await session.Client.CallToolAsync("motif_gdr_show", arguments);
+
+        Assert.Equal(files.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName), StoreFiles().Select(Path.GetFileName));
+        foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        Assert.Equal(before, File.ReadAllBytes(project.FwDataPath));
+        Assert.Equal(older, File.Exists(store));
+        Assert.True(response.IsError, response.StructuredContent?.ToString());
+        Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.GdrNoBaseline,
+            response.StructuredContent!.Value.GetProperty("code").GetString());
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("json")]
@@ -1860,9 +1900,9 @@ public sealed class McpRoundTripTests(PristineProjectFixture pristine)
 
         public string ProjectPath => _project;
 
-        public static async Task<Session> StartAsync(string project, McpLaunchOptions options)
+        public static async Task<Session> StartAsync(string project, McpLaunchOptions options, bool openStore = true)
         {
-            Assert.True(ProposalCommands.Open(new OpenRequest(project)).Succeeded);
+            if (openStore) Assert.True(ProposalCommands.Open(new OpenRequest(project)).Succeeded);
             KnownProjectTestSetup.AssignUniqueTag(RunnerOptions.ResolveRoot(), project,
                 Path.GetFileNameWithoutExtension(project));
             var advancedAiMode = FileAdvancedAiModePreferenceStore.ForInstallation();

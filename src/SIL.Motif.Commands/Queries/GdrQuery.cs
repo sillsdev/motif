@@ -87,9 +87,10 @@ public static class GdrQuery
         if (string.IsNullOrWhiteSpace(request.Id))
             return EmptyId<GdrShowResponse>();
         var id = request.Id.Trim();
-        return ProjectStoreCommand.Run(request.ProjectPath, MotifProductVersion.CurrentText, (database, project) =>
+        var absent = request.ExpectedBaseline is null ? NoBaseline<GdrShowResponse>() : BaselineChanged<GdrShowResponse>();
+        return ProjectStoreCommand.ReadExisting(request.ProjectPath, absent, (connection, transaction, project) =>
         {
-            var baseline = new BaselineRepository(database).GetCurrent(ProjectWorkspaceKey.Compute(project));
+            var baseline = BaselineRepository.ReadCurrent(connection, transaction, ProjectWorkspaceKey.Compute(project));
             if (request.ExpectedBaseline is { } expected && expected != baseline?.Token) return BaselineChanged<GdrShowResponse>();
             if (baseline is null) return NoBaseline<GdrShowResponse>();
             if (!File.Exists(baseline.FwDataPath)) return BaselineUnavailable<GdrShowResponse>();

@@ -15,6 +15,7 @@ using SIL.Motif.Contract.Ids;
 using System.Text;
 using System.Diagnostics;
 using SIL.TextEditing.Markdown;
+using SIL.Motif.Host.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Cli;
@@ -23,6 +24,52 @@ namespace SIL.Motif.Tests.Cli;
 public sealed class GdrArgvTests(PristineProjectFixture pristine) : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "motif-gdr-argv-" + Guid.NewGuid().ToString("N"));
+
+    [Theory]
+    [InlineData(false, null)]
+    [InlineData(false, "json")]
+    [InlineData(false, "fw-md")]
+    [InlineData(true, null)]
+    [InlineData(true, "json")]
+    [InlineData(true, "fw-md")]
+    public async Task GdrShowLeavesMissingAndOlderStoresUnchanged(bool older, string? format)
+    {
+        Directory.CreateDirectory(_root);
+        string path;
+        using (var cache = pristine.NewScratch())
+        {
+            new FwDataProjectLoader().Save(cache);
+            path = cache.ProjectId.Path;
+        }
+        var store = Path.ChangeExtension(path, ".motif.db");
+        if (older)
+        {
+            using var database = ProjectMotifDatabase.Open(path);
+            using var connection = database.OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema - 1};";
+            command.ExecuteNonQuery();
+        }
+        string[] StoreFiles() => Directory.GetFiles(Path.GetDirectoryName(store)!, Path.GetFileName(store) + "*")
+            .Where(file => !file.EndsWith("-wal", StringComparison.Ordinal) && !file.EndsWith("-shm", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal).ToArray();
+        var files = StoreFiles().ToDictionary(file => file, File.ReadAllBytes);
+        var before = File.ReadAllBytes(path);
+        var options = format switch { "json" => new[] { "--json" }, "fw-md" => ["--format", "fw-md"], _ => [] };
+
+        var cli = await CliProcess.RunAsync(_root, null, true,
+            ["gdr", "show", "--project", path, "GDR-1", .. options]);
+
+        Assert.Equal(files.Keys.Order(StringComparer.Ordinal).Select(Path.GetFileName), StoreFiles().Select(Path.GetFileName));
+        foreach (var (file, bytes) in files) Assert.Equal(bytes, File.ReadAllBytes(file));
+        Assert.Equal(before, File.ReadAllBytes(path));
+        Assert.Equal(older, File.Exists(store));
+        Assert.Empty(cli.Output);
+        Assert.True(cli.ExitCode == FailureEnvelope.ExitCodeFor(older ? FailureReason.Refused : FailureReason.NotFound), cli.Error);
+        if (format == "json")
+            Assert.Equal(older ? RefusalCodes.StoreUnsupported : RefusalCodes.GdrNoBaseline,
+                ProjectionJson.Deserialize<FailureEnvelope>(cli.Error)!.Code);
+    }
 
     private string ProjectWithBaseline(bool unicode = false, bool links = false)
     {
