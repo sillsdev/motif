@@ -663,6 +663,9 @@ public sealed partial class ComponentStyleTests
             new StackPanel { Classes = { "proposalEvidenceColumn" } }),
             StackPanel.WidthProperty, "Component.ProposalEvidence.ColumnWidth");
 
+        yield return new("ProposalCompareScoped", "a difference row", host => Add(host, Stack("proposalCompareRow")),
+            StackPanel.SpacingProperty, "Intent.Space.Compact");
+
         yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.BackgroundProperty, "Intent.Emphasis.Fill");
         yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.MinWidthProperty, "Component.Handoff.StepMarkSize");
         yield return new("HandoffScoped", "a file's kind", host => Inside(host, Box("handoffKind")), TextBlock.ForegroundProperty, "Intent.Emphasis.Text");

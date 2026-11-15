@@ -7574,4 +7574,36 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalSelectedNameFormat" xml:space="preserve"><value>{0}, selected</value></data>
   <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Receipt: {0}. Recorded: {1}.</value></data>
   <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve"><value>Checking these changes…</value></data>
+  <!-- W6 -->
+  <data name="MotifApp.ProposalCompareBack" xml:space="preserve"><value>Back to Proposals</value></data>
+  <data name="MotifApp.ProposalCompareHeading" xml:space="preserve"><value>Compare Proposals</value></data>
+  <data name="MotifApp.ProposalCompareFirstHeading" xml:space="preserve"><value>First Proposal</value></data>
+  <data name="MotifApp.ProposalCompareSecondHeading" xml:space="preserve"><value>Second Proposal</value></data>
+  <data name="MotifApp.ProposalCompareBasisFormat" xml:space="preserve"><value>Both Measured Against {0}, With the Same Baseline Grammar and the Same Decisions.</value></data>
+  <data name="MotifApp.ProposalCompareReading" xml:space="preserve"><value>Reading Both Proposals…</value></data>
+  <data name="MotifApp.ProposalCompareOutdatedTitle" xml:space="preserve"><value>Outdated</value></data>
+  <data name="MotifApp.ProposalCompareUnavailableTitle" xml:space="preserve"><value>Comparison Unavailable</value></data>
+  <data name="MotifApp.ProposalCompareReasonNoEvidence" xml:space="preserve"><value>A Proposal Has No Saved Comparison Evidence Yet.</value></data>
+  <data name="MotifApp.ProposalCompareReasonOutdated" xml:space="preserve"><value>A Proposal’s Evidence Is Out of Date. The Project or a Proposal Changed After It Was Measured.</value></data>
+  <data name="MotifApp.ProposalCompareReasonText" xml:space="preserve"><value>The Two Proposals Were Measured on Different Texts.</value></data>
+  <data name="MotifApp.ProposalCompareReasonBaseline" xml:space="preserve"><value>The Two Proposals Were Measured Against Different Baseline Grammars.</value></data>
+  <data name="MotifApp.ProposalCompareReasonWords" xml:space="preserve"><value>The Two Proposals Were Measured With Different Words, Parser or Tokenizer.</value></data>
+  <data name="MotifApp.ProposalCompareReasonDecisions" xml:space="preserve"><value>The Two Proposals Were Measured Against Different Decisions.</value></data>
+  <data name="MotifApp.ProposalCompareReasonDecisionsMissing" xml:space="preserve"><value>The Decisions Behind a Measurement Were Not Recorded, so They Cannot Be Matched.</value></data>
+  <data name="MotifApp.ProposalCompareReasonAssessor" xml:space="preserve"><value>The Two Proposals Were Measured by Different Assessors.</value></data>
+  <data name="MotifApp.ProposalCompareReasonIncomplete" xml:space="preserve"><value>Not Every Word Has a Complete Search, so Nothing Is Subtracted.</value></data>
+  <data name="MotifApp.ProposalCompareReasonUnreadable" xml:space="preserve"><value>A Proposal Could Not Be Read.</value></data>
+  <data name="MotifApp.ProposalCompareRemeasure" xml:space="preserve"><value>Measure Both Again</value></data>
+  <data name="MotifApp.ProposalCompareRemeasuring" xml:space="preserve"><value>Measuring Again…</value></data>
+  <data name="MotifApp.ProposalCompareDiffer" xml:space="preserve"><value>Where They Differ</value></data>
+  <data name="MotifApp.ProposalCompareNoDifference" xml:space="preserve"><value>No Word Differs Between the Two Proposals.</value></data>
+  <data name="MotifApp.ProposalCompareNoChange" xml:space="preserve"><value>No Change</value></data>
+  <data name="MotifApp.ProposalCompareShowInTexts" xml:space="preserve"><value>Show in Texts</value></data>
+  <data name="MotifApp.ProposalCompareShowInTextsFormat" xml:space="preserve"><value>Show {0} in Texts</value></data>
+  <data name="MotifApp.ProposalCompareOverlap" xml:space="preserve"><value>These Proposals Change Some of the Same Words. That Alone Does Not Show How They Compare.</value></data>
+  <data name="MotifApp.ProposalCompareOperationsFormat" xml:space="preserve"><value>Changes to the Grammar ({0})</value></data>
+  <data name="MotifApp.ProposalCompareCommentsFormat" xml:space="preserve"><value>Comments: {0}</value></data>
+  <data name="MotifApp.ProposalCompareApplyNote" xml:space="preserve"><value>Applying One Marks the Other Out of Date Until Its Evidence Is Refreshed.</value></data>
+  <data name="MotifApp.ProposalCompareSideNameFormat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="MotifApp.ProposalCompareDifferentResult" xml:space="preserve"><value>{0}, With a Different Result</value></data>
 </root>

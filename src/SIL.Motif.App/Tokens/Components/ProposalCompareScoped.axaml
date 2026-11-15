@@ -1,0 +1,14 @@
+<!-- Proposal comparison styles that only its own panel uses. The panel includes this file, so no other control tries these selectors. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="WrapPanel.proposalCompareSides">
+    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Group}" />
+    <Setter Property="LineSpacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
+  <Style Selector="UserControl.proposalCompareSide">
+    <Setter Property="Width" Value="{DynamicResource Primitive.Size.320}" />
+  </Style>
+  <Style Selector="StackPanel.proposalCompareRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Compact}" />
+  </Style>
+</Styles>

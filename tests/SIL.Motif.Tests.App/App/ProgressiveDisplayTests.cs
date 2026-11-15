@@ -61,7 +61,7 @@ public sealed class ProgressiveDisplayTests
         "Assistant/ClaudePanel", "Settings/AssistantConnectionsPanel",
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage",
-        "Proposals/ProposalDocument", "Proposals/ProposalEvidenceColumns",
+        "Proposals/ProposalComparePanel", "Proposals/ProposalCompareSide", "Proposals/ProposalDocument", "Proposals/ProposalEvidenceColumns",
         "ProposalParsimonyDetails", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "Texts/SourcesPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel",
         "TraceAnalysesView", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
@@ -1022,6 +1022,8 @@ public sealed class ProgressiveDisplayTests
                             new WordCardSentenceToken($"sentence-{index}", null, index == 499)).ToArray(),
                         "Check again", "Undo")),
             },
+            "Proposals/ProposalComparePanel" => new ProposalComparePanel(),
+            "Proposals/ProposalCompareSide" => new ProposalCompareSide(),
             "Proposals/ProposalDocument" => new ProposalDocument
             {
                 DataContext = workspace.PageModel<ProposalsPageModel>().SelectedDocument,

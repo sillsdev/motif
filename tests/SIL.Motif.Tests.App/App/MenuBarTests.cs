@@ -31,6 +31,7 @@ public sealed class MenuBarTests
         ["Views/HandoffPanel.axaml"] = 1,
         ["Views/HandoffSection.axaml"] = 1,
         ["Views/Pages/ProposalsPage.axaml"] = 4,
+        ["Views/Proposals/ProposalCompareSide.axaml"] = 1,
         ["Views/Proposals/ProposalDocument.axaml"] = 1,
         ["Views/ParsePrompt.axaml"] = 1,
         ["Views/RefusalBlock.axaml"] = 1,

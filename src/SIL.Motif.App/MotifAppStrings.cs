@@ -3999,4 +3999,37 @@ public static class MotifAppStrings
     public static string ProposalReceiptFormat => Text("MotifApp.ProposalReceiptFormat");
     public static string ReviewApplyMeasuring => Text("MotifApp.ReviewApplyMeasuring");
     #endregion
+    #region W6
+    public static string ProposalCompareBack => Text("MotifApp.ProposalCompareBack");
+    public static string ProposalCompareHeading => Text("MotifApp.ProposalCompareHeading");
+    public static string ProposalCompareFirstHeading => Text("MotifApp.ProposalCompareFirstHeading");
+    public static string ProposalCompareSecondHeading => Text("MotifApp.ProposalCompareSecondHeading");
+    public static string ProposalCompareBasisFormat => Text("MotifApp.ProposalCompareBasisFormat");
+    public static string ProposalCompareReading => Text("MotifApp.ProposalCompareReading");
+    public static string ProposalCompareOutdatedTitle => Text("MotifApp.ProposalCompareOutdatedTitle");
+    public static string ProposalCompareUnavailableTitle => Text("MotifApp.ProposalCompareUnavailableTitle");
+    public static string ProposalCompareReasonNoEvidence => Text("MotifApp.ProposalCompareReasonNoEvidence");
+    public static string ProposalCompareReasonOutdated => Text("MotifApp.ProposalCompareReasonOutdated");
+    public static string ProposalCompareReasonText => Text("MotifApp.ProposalCompareReasonText");
+    public static string ProposalCompareReasonBaseline => Text("MotifApp.ProposalCompareReasonBaseline");
+    public static string ProposalCompareReasonWords => Text("MotifApp.ProposalCompareReasonWords");
+    public static string ProposalCompareReasonDecisions => Text("MotifApp.ProposalCompareReasonDecisions");
+    public static string ProposalCompareReasonDecisionsMissing => Text("MotifApp.ProposalCompareReasonDecisionsMissing");
+    public static string ProposalCompareReasonAssessor => Text("MotifApp.ProposalCompareReasonAssessor");
+    public static string ProposalCompareReasonIncomplete => Text("MotifApp.ProposalCompareReasonIncomplete");
+    public static string ProposalCompareReasonUnreadable => Text("MotifApp.ProposalCompareReasonUnreadable");
+    public static string ProposalCompareRemeasure => Text("MotifApp.ProposalCompareRemeasure");
+    public static string ProposalCompareRemeasuring => Text("MotifApp.ProposalCompareRemeasuring");
+    public static string ProposalCompareDiffer => Text("MotifApp.ProposalCompareDiffer");
+    public static string ProposalCompareNoDifference => Text("MotifApp.ProposalCompareNoDifference");
+    public static string ProposalCompareNoChange => Text("MotifApp.ProposalCompareNoChange");
+    public static string ProposalCompareShowInTexts => Text("MotifApp.ProposalCompareShowInTexts");
+    public static string ProposalCompareShowInTextsFormat => Text("MotifApp.ProposalCompareShowInTextsFormat");
+    public static string ProposalCompareOverlap => Text("MotifApp.ProposalCompareOverlap");
+    public static string ProposalCompareOperationsFormat => Text("MotifApp.ProposalCompareOperationsFormat");
+    public static string ProposalCompareCommentsFormat => Text("MotifApp.ProposalCompareCommentsFormat");
+    public static string ProposalCompareApplyNote => Text("MotifApp.ProposalCompareApplyNote");
+    public static string ProposalCompareSideNameFormat => Text("MotifApp.ProposalCompareSideNameFormat");
+    public static string ProposalCompareDifferentResult => Text("MotifApp.ProposalCompareDifferentResult");
+    #endregion
 }

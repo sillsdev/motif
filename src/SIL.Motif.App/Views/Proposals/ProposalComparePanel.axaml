@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalComparePanel"
+             x:DataType="vm:ProposalCompareViewModel"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalComparePanel}"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalCompareHeading}">
+  <UserControl.Styles>
+    <StyleInclude Source="/Tokens/Components/ProposalCompareScoped.axaml" />
+  </UserControl.Styles>
+  <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
+    <Button AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalCompareBack}"
+            Content="{x:Static app:MotifAppStrings.ProposalCompareBack}" Command="{Binding BackCommand}"
+            HorizontalAlignment="Left" />
+    <views:CopyableTextBlock Classes="displayTitle" Text="{x:Static app:MotifAppStrings.ProposalCompareHeading}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding BasisText}" IsVisible="{Binding IsComparable}" TextWrapping="Wrap" />
+    <StackPanel IsVisible="{Binding ShowsNotice}" Spacing="{DynamicResource Intent.Space.Related}">
+      <views:CopyableTextBlock Classes="section-title" Text="{Binding NoticeTitle}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding NoticeText}" TextWrapping="Wrap" />
+      <Button AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalCompareRemeasure}"
+              Content="{x:Static app:MotifAppStrings.ProposalCompareRemeasure}" Command="{Binding RemeasureCommand}"
+              IsVisible="{Binding CanRemeasure}" HorizontalAlignment="Left" />
+    </StackPanel>
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalCompareOverlap}" IsVisible="{Binding HasOverlap}"
+                             TextWrapping="Wrap" />
+    <WrapPanel Classes="proposalCompareSides">
+      <views:ProposalCompareSide Classes="proposalCompareSide" DataContext="{Binding First}" />
+      <views:ProposalCompareSide Classes="proposalCompareSide" DataContext="{Binding Second}" />
+    </WrapPanel>
+    <StackPanel IsVisible="{Binding IsComparable}" Spacing="{DynamicResource Intent.Space.Related}">
+      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalCompareDiffer}" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalCompareNoDifference}"
+                               IsVisible="{Binding ShowsNoDifference}" TextWrapping="Wrap" />
+      <views:ProgressiveItemsControl x:Name="ProposalCompareDifferences" FullItemsSource="{Binding Rows}"
+                                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalCompareDifferences}">
+        <views:ProgressiveItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProposalComparisonRow">
+            <StackPanel Classes="proposalCompareRow">
+              <controls:WritingSystemTextBlock Text="{Binding Word}" TextWrapping="Wrap"
+                                               controls:WritingSystemText.Id="{Binding WritingSystemId}"
+                                               controls:WritingSystemText.StyleName="Normal" />
+              <views:CopyableTextBlock Text="{Binding FirstEffect}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Text="{Binding SecondEffect}" TextWrapping="Wrap" />
+              <Button Content="{x:Static app:MotifAppStrings.ProposalCompareShowInTexts}"
+                      Command="{Binding ShowInTextsCommand}" HorizontalAlignment="Left"
+                      AutomationProperties.Name="{Binding ShowInTextsName}" />
+            </StackPanel>
+          </DataTemplate>
+        </views:ProgressiveItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+    </StackPanel>
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalEvidencePlacesUnavailable}" IsVisible="{Binding IsComparable}"
+                             TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalCompareApplyNote}" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

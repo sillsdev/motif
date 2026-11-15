@@ -1,0 +1,47 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalCompareSide"
+             x:DataType="vm:ProposalComparisonSide"
+             AutomationProperties.Name="{Binding Name}">
+  <UserControl.Styles>
+    <StyleInclude Source="/Tokens/Components/ProposalCompareScoped.axaml" />
+  </UserControl.Styles>
+  <UserControl.Resources>
+    <DataTemplate x:Key="CompareWord" x:DataType="vm:ProposalEvidenceWord">
+      <controls:WritingSystemTextBlock Text="{Binding Word}" TextWrapping="Wrap"
+                                       controls:WritingSystemText.Id="{Binding WritingSystemId}"
+                                       controls:WritingSystemText.StyleName="Normal" />
+    </DataTemplate>
+  </UserControl.Resources>
+  <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+    <views:CopyableTextBlock Classes="section-title" Text="{Binding Heading}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="displayTitle" Text="{Binding Label}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding StatusText}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding BuiltByText}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding ModelText}" TextWrapping="Wrap" />
+    <StackPanel IsVisible="{Binding ShowsEffects}" Spacing="{DynamicResource Intent.Space.Related}">
+      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardWillFillIn}" />
+      <views:CopyableTextBlock Text="{Binding FillInCount}" />
+      <views:ProgressiveItemsControl x:Name="ProposalCompareFillInWords" FullItemsSource="{Binding WillFillIn}"
+                                     ItemTemplate="{StaticResource CompareWord}" />
+      <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardWillChange}" />
+      <views:CopyableTextBlock Text="{Binding ChangeCount}" />
+      <views:ProgressiveItemsControl x:Name="ProposalCompareChangedWords" FullItemsSource="{Binding WillChange}"
+                                     ItemTemplate="{StaticResource CompareWord}" />
+    </StackPanel>
+    <views:CopyableTextBlock Classes="section-title" Text="{Binding OperationsText}" TextWrapping="Wrap" />
+    <views:ProgressiveItemsControl x:Name="ProposalCompareOperations" FullItemsSource="{Binding OperationDescriptions}">
+      <views:ProgressiveItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+      </views:ProgressiveItemsControl.ItemTemplate>
+    </views:ProgressiveItemsControl>
+    <views:CopyableTextBlock Text="{Binding CommentsText}" TextWrapping="Wrap" />
+    <ContentControl x:Name="ProposalCompareDiagnosticsSlot" Content="{Binding Document.DiagnosticsContent}"
+                    IsVisible="{Binding Document.DiagnosticsVisible}" />
+    <views:ProposalApplyPanel DataContext="{Binding Document}" />
+  </StackPanel>
+</UserControl>

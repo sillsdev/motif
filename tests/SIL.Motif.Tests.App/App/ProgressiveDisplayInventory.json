@@ -601,5 +601,33 @@
     "source": "TextChoices",
     "mode": "rows",
     "control": "ComboBox"
+  },
+  {
+    "view": "Proposals/ProposalComparePanel",
+    "name": "ProposalCompareDifferences",
+    "source": "Rows",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalCompareSide",
+    "name": "ProposalCompareFillInWords",
+    "source": "WillFillIn",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalCompareSide",
+    "name": "ProposalCompareChangedWords",
+    "source": "WillChange",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalCompareSide",
+    "name": "ProposalCompareOperations",
+    "source": "OperationDescriptions",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
   }
 ]

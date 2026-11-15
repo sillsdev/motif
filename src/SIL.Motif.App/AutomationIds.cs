@@ -337,4 +337,10 @@ public static class AutomationIds
     public const string ProposalConfirmApply = "motif-proposal-confirm-apply";
     public const string ProposalReceipt = "motif-proposal-receipt";
     #endregion
+    #region W6
+    public const string ProposalComparePanel = "motif-proposal-compare-panel";
+    public const string ProposalCompareBack = "motif-proposal-compare-back";
+    public const string ProposalCompareRemeasure = "motif-proposal-compare-remeasure";
+    public const string ProposalCompareDifferences = "motif-proposal-compare-differences";
+    #endregion
 }
