@@ -39,7 +39,7 @@ namespace SIL.TextEditing.Markdown
             int cp = text[i];
             if (back && char.IsLowSurrogate(text[i]) && i >= 1 && char.IsHighSurrogate(text[i - 1])) cp = char.ConvertToUtf32(text[i - 1], text[i]);
             else if (!back && char.IsHighSurrogate(text[i]) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1])) cp = char.ConvertToUtf32(text[i], text[i + 1]);
-            return (cp >= 0x1F000 && cp <= 0x1FAFF) || (cp >= 0x2600 && cp <= 0x27BF) || (cp >= 0x2300 && cp <= 0x23FF) || (cp >= 0x2B00 && cp <= 0x2BFF);
+            return ExtendedPictographic.Contains(cp);
         }
     }
 }
