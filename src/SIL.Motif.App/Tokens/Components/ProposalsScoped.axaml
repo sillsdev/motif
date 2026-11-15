@@ -6,7 +6,7 @@
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Section}" />
   </Style>
   <Style Selector="StackPanel.proposalTitleRow">
-    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="MaxWidth" Value="{DynamicResource Primitive.Size.240}" />
     <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
   </Style>
   <Style Selector="StackPanel.proposalsHeading">

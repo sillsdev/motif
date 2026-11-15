@@ -7544,4 +7544,34 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProgressOpenRequestsPattern" xml:space="preserve"><value>{0, plural, one {# open Request awaiting an answer} other {# open Requests awaiting an answer}}</value></data>
   <data name="MotifApp.ProgressReadingNext" xml:space="preserve"><value>Reading next actions…</value></data>
   <data name="MotifApp.ProgressNextUnavailable" xml:space="preserve"><value>Some next actions are unavailable. Refresh the project or try again.</value></data>
+  <!-- W5 -->
+  <data name="MotifApp.ProposalDocumentOutdated" xml:space="preserve"><value>The Project or Proposal Changed. Refresh Its Evidence Before Applying.</value></data>
+  <data name="MotifApp.ProposalDocumentUnreadable" xml:space="preserve"><value>The Proposal Could Not Be Read. Your Unsaved Text Is Kept.</value></data>
+  <data name="MotifApp.ProposalEvidenceUnavailable" xml:space="preserve"><value>Evidence Is Unavailable for This Proposal.</value></data>
+  <data name="MotifApp.ProposalEvidenceScope" xml:space="preserve"><value>Evidence for {0} Only. Other Texts Have Not Been Checked.</value></data>
+  <data name="MotifApp.ProposalEvidencePartial" xml:space="preserve"><value>Only Listed Words With Complete Searches Are Shown. Counts Are Unavailable.</value></data>
+  <data name="MotifApp.ProposalEvidencePlacesUnavailable" xml:space="preserve"><value>Approved Places Are Unavailable.</value></data>
+  <data name="MotifApp.ProposalEvidenceNoWords" xml:space="preserve"><value>No Words in This Text.</value></data>
+  <data name="MotifApp.ProposalCloseDocument" xml:space="preserve"><value>Close Proposal</value></data>
+  <data name="MotifApp.ProposalComparisonHint" xml:space="preserve"><value>Check Two Proposals to Compare Their Evidence.</value></data>
+  <data name="MotifApp.ProposalComparisonLimit" xml:space="preserve"><value>Two Proposals Are Already Checked. Uncheck One First.</value></data>
+  <data name="MotifApp.ProposalApplyConfirm" xml:space="preserve"><value>Apply This Proposal to FieldWorks?</value></data>
+  <data name="MotifApp.ProposalApplyPrepare" xml:space="preserve"><value>Apply…</value></data>
+  <data name="MotifApp.ProposalRefreshEvidence" xml:space="preserve"><value>Refresh Evidence</value></data>
+  <data name="MotifApp.ProposalCheckForComparison" xml:space="preserve"><value>Compare {0}</value></data>
+  <data name="MotifApp.ProposalReading" xml:space="preserve"><value>Reading Proposal…</value></data>
+  <data name="MotifApp.ProposalReadingChanged" xml:space="preserve"><value>Reading Changed</value></data>
+  <data name="MotifApp.ProposalSpellingChanged" xml:space="preserve"><value>Spelling Acceptance Changed</value></data>
+  <data name="MotifApp.ProposalEvidenceListedCount" xml:space="preserve"><value>Listed Words: {0}</value></data>
+  <data name="MotifApp.ProposalEvidenceCompleteCount" xml:space="preserve"><value>Words in This Text: {0}</value></data>
+  <data name="MotifApp.ProposalDraft" xml:space="preserve"><value>Draft</value></data>
+  <data name="MotifApp.ProposalReady" xml:space="preserve"><value>Ready</value></data>
+  <data name="MotifApp.ProposalDeferred" xml:space="preserve"><value>Deferred</value></data>
+  <data name="MotifApp.ProposalDeclined" xml:space="preserve"><value>Declined</value></data>
+  <data name="MotifApp.ProposalSuperseded" xml:space="preserve"><value>Superseded</value></data>
+  <data name="MotifApp.ProposalWithdrawn" xml:space="preserve"><value>Withdrawn</value></data>
+  <data name="MotifApp.ProposalActivateForApply" xml:space="preserve"><value>Choose Apply… to Check This Proposal’s Readiness.</value></data>
+  <data name="MotifApp.ProposalSelectedNameFormat" xml:space="preserve"><value>{0}, selected</value></data>
+  <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Receipt: {0}. Recorded: {1}.</value></data>
+  <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve"><value>Checking these changes…</value></data>
 </root>

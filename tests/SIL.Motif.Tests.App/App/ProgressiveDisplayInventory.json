@@ -71,20 +71,6 @@
     "control": "ItemsControl"
   },
   {
-    "view": "DifferencePanel",
-    "name": "DifferencePanelMovesItems",
-    "source": "Difference.Moves",
-    "mode": "rows",
-    "control": "ListBox"
-  },
-  {
-    "view": "DifferencePanel",
-    "name": "DifferencePanelWordsItems",
-    "source": "Difference.Words",
-    "mode": "rows",
-    "control": "ListBox"
-  },
-  {
     "view": "ExpertTracePanel",
     "name": "ExpertTracePanelExpertAttemptsItems",
     "source": "ExpertAttempts",
@@ -427,20 +413,6 @@
   },
   {
     "view": "Pages/ProposalsPage",
-    "name": "ProposalComments",
-    "source": "Comments",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "Pages/ProposalsPage",
-    "name": "ProposalOperationDescriptions",
-    "source": "OperationDescriptions",
-    "mode": "paged",
-    "control": "ProgressiveItemsControl"
-  },
-  {
-    "view": "Pages/ProposalsPage",
     "name": "ProposalsRequestsItems",
     "source": "Rows",
     "mode": "paged",
@@ -478,69 +450,6 @@
     "view": "ProposalParsimonyDetails",
     "name": "ParsimonyFindings",
     "source": "Findings",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferenceCheckChips",
-    "source": "CheckChips",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferenceImprovedChips",
-    "source": "ImprovedChips",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferenceMovedChips",
-    "source": "MovedChips",
-    "mode": "inline",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferenceLimitationChips",
-    "source": "LimitationChips",
-    "mode": "finite",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferenceWordChips",
-    "source": "Words",
-    "mode": "inline",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferencePlaces",
-    "source": "Places",
-    "mode": "inline",
-    "control": "ItemsControl"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferenceText",
-    "source": "TextChoices",
-    "mode": "popup",
-    "control": "ComboBox"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferenceSaved",
-    "source": "SavedChoices",
-    "mode": "popup",
-    "control": "ComboBox"
-  },
-  {
-    "view": "ProposalDifferencePanel",
-    "name": "DifferenceNotes",
-    "source": "Notes",
     "mode": "finite",
     "control": "ItemsControl"
   },
@@ -643,5 +552,54 @@
     "mode": "finite",
     "control": "ItemsControl",
     "reason": "W9: one aggregate row for waiting Proposals and one for open Requests, at most two rows."
+  },
+  {
+    "view": "Pages/ProposalsPage",
+    "name": "OpenProposalTabs",
+    "source": "Documents.Items",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalDocument",
+    "name": "ProposalComments",
+    "source": "Comments",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalEvidenceColumns",
+    "name": "ProposalFillInWords",
+    "source": "WillFillIn",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalEvidenceColumns",
+    "name": "ProposalChangedWords",
+    "source": "WillChange",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalEvidenceColumns",
+    "name": "ProposalWordPlaces",
+    "source": "Places",
+    "mode": "paged",
+    "control": "ProgressiveItemsControl"
+  },
+  {
+    "view": "Proposals/ProposalEvidenceColumns",
+    "name": "ProposalSavedEvidence",
+    "source": "SavedChoices",
+    "mode": "rows",
+    "control": "ComboBox"
+  },
+  {
+    "view": "Proposals/ProposalEvidenceColumns",
+    "name": "ProposalEvidenceText",
+    "source": "TextChoices",
+    "mode": "rows",
+    "control": "ComboBox"
   }
 ]

@@ -92,6 +92,7 @@ public sealed class RefusalDefaultReasonTests
         ["window.refresh-unavailable"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
         ["window.open-failed"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
         ["window.open-proposal-failed"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
+        ["window.proposal-document-read"] = "reason not determinable statically: a window-only code, which carries no FailureReason",
     };
 
     private static readonly Regex CodeToken = new(

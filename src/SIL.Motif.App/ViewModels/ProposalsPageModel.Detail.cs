@@ -1,181 +1,147 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using SIL.Motif.Commands;
-using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
-using SIL.Motif.Host;
 
 namespace SIL.Motif.App.ViewModels;
 
 public sealed partial class ProposalsPageModel
 {
-    private int _detailGeneration;
-    private CancellationTokenSource? _detailCancellation;
-    private readonly List<Task> _detailReads = [];
-    private RationaleEditorModel? _lastRationaleEditor;
-    private ObservableCollection<RationaleEditorModel>? _lastComments;
-
-    /// <summary>The selected Proposal's Comments in rich fields.</summary>
-    [ObservableProperty]
-    private ObservableCollection<RationaleEditorModel> _comments = [];
-
-    /// <summary>Whether a Comment can be added to the selected Proposal.</summary>
-    public bool CanAddComment => Detail is { } detail && (detail.DraftName is not null ||
-        detail.Status is not ("applied" or "rejected" or "superseded" or "withdrawn"));
-
-    /// <summary>Starts a new Comment.</summary>
-    [RelayCommand(CanExecute = nameof(CanAddComment))]
-    private void AddComment()
-    {
-        if (Detail is not { } detail) return;
-        var editor = new RationaleEditorModel(Context, detail, null, RemoveComment);
-        Comments.Add(editor);
-        TrackPausedEditor(editor);
-    }
-
-    private void RemoveComment(RationaleEditorModel editor) => Comments.Remove(editor);
-
-    partial void OnDetailChanged(ProposalDetailProjection? value)
-    {
-        OnPropertyChanged(nameof(CanAddComment));
-        AddCommentCommand.NotifyCanExecuteChanged();
-    }
-
+    private readonly ProposalDocumentViewModel _emptyDocument;
+    private readonly HashSet<ProposalDocumentViewModel> _watchedDocuments = [];
     private string? _markingReadId;
     private string? _pendingUserSelectionId;
     private bool _selectionByUser;
+    private IRelayCommand? _addCommentCommand;
+    private object? _comparisonContent;
+    private string _comparisonNotice = string.Empty;
+    public string ComparisonNotice { get => _comparisonNotice; private set => SetProperty(ref _comparisonNotice, value); }
 
-    /// <summary>The selected Proposal's stored detail, if it could be read.</summary>
-    [ObservableProperty]
-    private ProposalDetailProjection? _detail;
-
-    /// <summary>The selected Proposal's Rationale in the rich field, editable while the Proposal is open.</summary>
-    [ObservableProperty]
-    private RationaleEditorModel? _rationaleEditor;
-
-    /// <summary>The selected Proposal's operation descriptions.</summary>
-    [ObservableProperty]
-    private IReadOnlyList<string> _operationDescriptions = [];
-
-    /// <summary>The outcome of reading the selected Proposal's detail.</summary>
-    [ObservableProperty]
-    private WindowRefusal? _detailRefusal;
-
-    /// <summary>The number of review entries looked at for the selected Proposal.</summary>
-    [ObservableProperty]
-    private string _reviewProgress = string.Empty;
-
-    /// <summary>The most recent selected Proposal detail read.</summary>
+    public OpenProposalDocuments Documents { get; }
+    public ProposalDocumentViewModel? SelectedDocument => Documents.Selected;
+    private ProposalDocumentViewModel ActiveDocument => SelectedDocument ?? _emptyDocument;
+    public ProposalDetailProjection? Detail => SelectedDocument?.Detail;
+    public RationaleEditorModel? RationaleEditor => SelectedDocument?.RationaleEditor;
+    public ObservableCollection<RationaleEditorModel> Comments => ActiveDocument.Comments;
+    public IReadOnlyList<string> OperationDescriptions => ActiveDocument.OperationDescriptions;
+    public WindowRefusal? DetailRefusal => SelectedDocument?.DetailRefusal;
+    public string ReviewProgress => ActiveDocument.ReviewProgress;
+    public bool CanAddComment => SelectedDocument?.CanAddComment == true;
+    public IRelayCommand AddCommentCommand => _addCommentCommand ??= new RelayCommand(() =>
+        SelectedDocument?.AddCommentCommand.Execute(null), () => CanAddComment);
     public Task DetailReading { get; private set; } = Task.CompletedTask;
-
-    /// <summary>The latest request to record that a Proposal was viewed.</summary>
     public Task ReadMarkWriting { get; private set; } = Task.CompletedTask;
+    public IAsyncRelayCommand<ProposalDocumentViewModel> CloseDocumentCommand { get; }
+    public IRelayCommand<ProposalDocumentViewModel> SelectDocumentCommand { get; }
+    public IRelayCommand CompareCommand { get; }
+
+    /// <summary>The selected, explicitly checked pair, supplied to the comparison host.</summary>
+    private Action<IReadOnlyList<ProposalDocumentViewModel>>? _comparisonRequested;
+    public event Action<IReadOnlyList<ProposalDocumentViewModel>> ComparisonRequested
+    {
+        add
+        {
+            _comparisonRequested += value;
+            OnPropertyChanged(nameof(HasComparisonHost));
+            CompareCommand.NotifyCanExecuteChanged();
+        }
+        remove
+        {
+            _comparisonRequested -= value;
+            OnPropertyChanged(nameof(HasComparisonHost));
+            CompareCommand.NotifyCanExecuteChanged();
+        }
+    }
+    public bool HasComparisonHost => _comparisonRequested is not null;
+    private void ComparePair() => _comparisonRequested?.Invoke(Documents.ComparisonPair);
+
+    /// <summary>The comparison view provided by the Proposal comparison feature.</summary>
+    public object? ComparisonContent
+    {
+        get => _comparisonContent;
+        set
+        {
+            if (SetProperty(ref _comparisonContent, value)) OnPropertyChanged(nameof(IsComparing));
+        }
+    }
+
+    public bool IsComparing => ComparisonContent is not null;
+
+    private bool CheckComparison(ProposalCardViewModel card, bool value)
+    {
+        var document = Documents.Open(card.ProposalId, select: false);
+        document.Card = card;
+        var accepted = Documents.Check(document, value);
+        ComparisonNotice = accepted ? string.Empty : MotifAppStrings.ProposalComparisonLimit;
+        if (accepted) ComparisonContent = null;
+        if (accepted && document.Detail is null) _ = document.EnsureLoadedAsync();
+        return accepted;
+    }
+
+    private void UnwatchDocuments()
+    {
+        foreach (var document in _watchedDocuments) document.PropertyChanged -= OnDocumentChanged;
+        _watchedDocuments.Clear();
+    }
 
     private void ReadDetail(ProposalCardViewModel? card)
     {
-        var generation = ++_detailGeneration;
-        _detailCancellation?.Cancel();
-        _detailCancellation = null;
-        Detail = null;
-        RationaleEditor = null;
-        Comments = [];
-        DetailRefusal = null;
-        OperationDescriptions = [];
-        ReviewProgress = string.Empty;
-        if (card is null || Context.ProjectPath is not { } path) return;
-        var cancellation = _detailCancellation = new CancellationTokenSource();
-        DetailReading = ReadDetailUntilStoppedAsync(path, card.ProposalId, generation, cancellation);
-        _detailReads.RemoveAll(task => task.IsCompleted);
-        _detailReads.Add(DetailReading);
+        if (card is null || Context.ProjectPath is null) return;
+        var document = Documents.Open(card.ProposalId);
+        document.Card = card;
+        if (_watchedDocuments.Add(document)) document.PropertyChanged += OnDocumentChanged;
+        NotifyDocument();
+        DetailReading = ReadDocumentAsync(document, _rereading);
     }
 
-    private async Task ReadDetailUntilStoppedAsync(string path, string proposalId, int generation,
-        CancellationTokenSource cancellation)
+    private async Task ReadDocumentAsync(ProposalDocumentViewModel document, bool refresh)
     {
-        try
-        {
-            await ReadDetailAsync(path, proposalId, generation, cancellation.Token).ConfigureAwait(true);
-        }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-        {
-        }
-        finally
-        {
-            if (ReferenceEquals(_detailCancellation, cancellation)) _detailCancellation = null;
-            cancellation.Dispose();
-        }
-    }
-
-    private async Task ReadDetailAsync(string path, string proposalId, int generation, CancellationToken cancellationToken)
-    {
-        var shown = await Context.Commands.ShowProposalAsync(
-            new ShowProposalRequest(path, MotifProductVersion.CurrentText, proposalId), cancellationToken)
-            .ConfigureAwait(true);
-        if (generation != _detailGeneration || Context.ProjectPath != path) return;
-        if (!shown.Succeeded)
-        {
-            DetailRefusal = WindowRefusal.From(shown.Refusal!);
-            return;
-        }
-        Detail = shown.Value;
-        // A re-read of the list keeps a Rationale the person is editing, and says so if it changed meanwhile.
-        if (_lastRationaleEditor is { IsEditing: true } editing && editing.ProposalId == proposalId)
-        {
-            if (editing.Markdown != (shown.Value!.Rationale?.Markdown ?? string.Empty)) editing.MarkChangedElsewhere();
-            RationaleEditor = editing;
-        }
-        else RationaleEditor = new RationaleEditorModel(Context, shown.Value!);
-        _lastRationaleEditor = RationaleEditor;
-        var detail = shown.Value!;
-        var edits = _lastComments?.Where(editor => editor.ProposalId == proposalId && editor.IsEditing).ToArray() ?? [];
-        var fresh = detail.Comments ?? [];
-        var reconciled = new List<RationaleEditorModel>();
-        foreach (var comment in fresh)
-        {
-            var editingComment = edits.FirstOrDefault(editor => editor.CommentId == comment.CommentId);
-            if (editingComment is null) reconciled.Add(new RationaleEditorModel(Context, detail, comment, RemoveComment));
-            else
-            {
-                editingComment.ReconcileComment(comment, detail, ReplaceAfterCancel);
-                reconciled.Add(editingComment);
-            }
-        }
-        foreach (var editingComment in edits.Where(editor => !editor.CommentId.HasValue ||
-                     fresh.All(comment => comment.CommentId != editor.CommentId)))
-        {
-            editingComment.ReconcileComment(null, detail, ReplaceAfterCancel);
-            reconciled.Add(editingComment);
-        }
-        Comments = new ObservableCollection<RationaleEditorModel>(reconciled);
-        _lastComments = Comments;
+        await (refresh ? document.RefreshAsync() : document.EnsureLoadedAsync()).ConfigureAwait(true);
+        if (SelectedDocument != document) return;
+        DifferenceReading = document.DifferenceReading;
+        PicturesLoading = document.PicturesLoading;
         TrackPausedEditors();
-
-        void ReplaceAfterCancel(RationaleEditorModel editor)
-        {
-            var index = Comments.IndexOf(editor);
-            if (index < 0) return;
-            var current = fresh.FirstOrDefault(comment => comment.CommentId == editor.CommentId);
-            if (current is null) Comments.RemoveAt(index);
-            else Comments[index] = new RationaleEditorModel(Context, detail, current, RemoveComment);
-        }
+        NotifyDocument();
         MarkSelectedRead();
-        var review = await Context.Commands.ReadProposalReviewAsync(new ProposalReviewRequest(path, proposalId),
-            cancellationToken).ConfigureAwait(true);
-        if (generation != _detailGeneration || Context.ProjectPath != path) return;
-        var words = review.Succeeded ? review.Value!.Entries.OfType<WordChangeEntry>().ToArray() : [];
-        if (review.Succeeded)
-            ReviewProgress = string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalReviewProgressFormat,
-                review.Value!.LookedAtCount, review.Value.Entries.Count);
-        OperationDescriptions = Detail!.Operations.Select(operation =>
+    }
+
+    private void NotifyDocument()
+    {
+        foreach (var name in new[] { nameof(SelectedDocument), nameof(Detail), nameof(RationaleEditor), nameof(Comments),
+            nameof(OperationDescriptions), nameof(DetailRefusal), nameof(ReviewProgress), nameof(CanAddComment),
+            nameof(Difference), nameof(Pictures), nameof(Parsimony) }) OnPropertyChanged(name);
+        AddCommentCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OnDocumentChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (ReferenceEquals(sender, SelectedDocument)) NotifyDocument();
+    }
+
+    private void SelectDocument(ProposalDocumentViewModel? document)
+    {
+        if (document is null) return;
+        var card = Groups.SelectMany(group => group.Cards).FirstOrDefault(card => card.ProposalId == document.ProposalId);
+        if (card is not null) SelectByUser(card);
+        else
         {
-            var count = words.Where(word => word.OperationIds.Contains(operation.OperationId))
-                .Select(word => word.Change.WordformId).Distinct(StringComparer.Ordinal).Count();
-            return ProposalOperationSentence.For(operation, count);
-        }).ToArray();
+            Documents.Select(document);
+            NotifyDocument();
+        }
+    }
+
+    private async Task CloseDocumentAsync(ProposalDocumentViewModel? document)
+    {
+        if (document is null || !await Documents.CloseAsync(document).ConfigureAwait(true)) return;
+        ComparisonContent = null;
+        document.PropertyChanged -= OnDocumentChanged;
+        _watchedDocuments.Remove(document);
+        if (SelectedDocument is { } selected) SelectDocument(selected);
+        else SetSelectedProposal(null);
+        NotifyDocument();
     }
 
     private void MarkSelectedRead()
@@ -205,6 +171,7 @@ public sealed partial class ProposalsPageModel
             card.MarkRead();
             if (SelectedProposal?.ProposalId == card.ProposalId) SelectedProposal.MarkRead();
         }
-        else if (SelectedProposal?.ProposalId == card.ProposalId) DetailRefusal = WindowRefusal.From(mark.Refusal!);
+        else if (SelectedProposal?.ProposalId == card.ProposalId && SelectedDocument is { } document)
+            document.DetailRefusal = WindowRefusal.From(mark.Refusal!);
     }
 }

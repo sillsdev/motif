@@ -107,13 +107,14 @@ internal sealed class ProposalDifferenceFixture
         CancellationToken cancellationToken)
     {
         Requests.Add(request);
+        var summary = Summary with { ProposalId = request.ProposalId ?? Summary.ProposalId };
         if (BeforeRead is { } before) await before(request, cancellationToken);
         if (EveryDifferenceDamaged is { } damaged && request.DifferenceId is null)
             return CommandOutcome<ProposalDifferenceResponse>.Refused(new Refusal(RefusalCodes.DifferenceUnreadable,
                 FailureReason.StoreInconsistent, "None of the Proposal's saved Differences can be read.",
                 ProposalDifferenceDamagedFacts.ToFacts("proposal/one", damaged)));
         if (WordRowsDamaged)
-            return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(Summary, [], 0, null,
+            return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(summary, [], 0, null,
                 false, null, null, [new ProposalDifferenceSaved("difference/one", TextId, TextTitle, Reference,
                     "2026-10-31T00:00:00Z", false)], 1, 0, null, 0, true));
         var matching = WordDetailKept && !NoWordsMatch ? _words.Where(word => Matches(request, word)).ToList() : [];
@@ -134,7 +135,7 @@ internal sealed class ProposalDifferenceFixture
                 PlacesCounted is null ? null : all.Count);
         }
         return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
-            Summary, page, matching.Count, next, WordDetailKept, places, page.Count > 0 ? Unreadable : null,
+            summary, page, matching.Count, next, WordDetailKept, places, page.Count > 0 ? Unreadable : null,
             SavedOthers.Prepend(new ProposalDifferenceSaved("difference/one", TextId, TextTitle, Reference,
                 "2026-10-31T00:00:00Z", WordDetailKept)).ToList(), SavedOthers.Count + 1 + SavedNotListed + SavedUnreadable + SavedDamaged.Count,
                 SavedUnreadable + SavedDamaged.Count, SavedDamaged.Count == 0 ? null : SavedDamaged,

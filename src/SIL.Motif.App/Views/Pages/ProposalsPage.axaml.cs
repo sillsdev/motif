@@ -1,8 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Controls.Templates;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
@@ -33,6 +33,7 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
         list.AddHandler(InputElement.PointerPressedEvent, (_, args) =>
         {
             if (!args.GetCurrentPoint(list).Properties.IsLeftButtonPressed || args.Source is not Visual source ||
+                source.GetSelfAndVisualAncestors().OfType<CheckBox>().Any() ||
                 source.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault()?.DataContext
                     is not ProposalCardViewModel card) return;
             if (!SelectRow(card)) args.Handled = true;
@@ -43,6 +44,12 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
             if (Page.SelectedProposal is { } kept && list.SelectedItem is ProposalCardViewModel chosen &&
                 !ReferenceEquals(chosen, kept)) list.SelectedItem = kept;
         });
+    }
+
+    private void OnComparisonClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox { DataContext: ProposalCardViewModel card } check)
+            check.SetCurrentValue(CheckBox.IsCheckedProperty, card.IsCheckedForComparison);
     }
 
     /// <summary>The page's Proposal state.</summary>
@@ -59,12 +66,5 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
         if (row is not ProposalCardViewModel card) return false;
         Page.SelectProposalCommand.Execute(card);
         return ReferenceEquals(Page.SelectedProposal, card);
-    }
-
-    private void OnAddComment(object? sender, RoutedEventArgs e)
-    {
-        Page.AddCommentCommand.Execute(null);
-        if (Page.Comments.LastOrDefault() is { } added)
-            this.FindControl<ProgressiveItemsControl>("ProposalComments")?.ShowItem(added);
     }
 }

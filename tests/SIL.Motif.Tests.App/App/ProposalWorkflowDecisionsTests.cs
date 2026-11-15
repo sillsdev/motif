@@ -41,37 +41,6 @@ public sealed class ProposalWorkflowDecisionsTests
         }, TimeSpan.FromMinutes(3));
     }
 
-    [Fact]
-    public void ALongChangeListDisplaysOnePageAtATime()
-    {
-        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
-        {
-            var fake = new FakeCommandClient();
-            fake.ProposalStandingsCompleteWith(new ProposalStandings(
-                [new ProposalCard("proposal/ready", "Sound change", "proposed", ProposalGroup.WaitingForYou,
-                    false, [], TrialStanding.Current, null, [])], 0));
-            var (workspace, window) = await ReviewScreenshots.OpenAsync(fake);
-            try
-            {
-                workspace.CurrentPage = WorkspacePage.Proposals;
-                var page = workspace.PageModel<ProposalsPageModel>();
-                await page.DetailReading;
-                page.OperationDescriptions = Enumerable.Range(0, 60).Select(i => $"Change {i}.").ToArray();
-                PageScreenshots.Settle(window);
-                var list = Assert.Single(window.GetVisualDescendants().OfType<ProgressiveItemsControl>(),
-                    control => control.Name == "ProposalOperationDescriptions");
-                Assert.Equal(21, list.Items.Count);
-
-                await list.ShowSourceIndexAsync(20);
-                PageScreenshots.Settle(window);
-
-                Assert.Contains(list.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Change 20.");
-                Assert.Equal(22, list.Items.Count);
-            }
-            finally { window.Close(); await workspace.DisposeAsync(); }
-        }, TimeSpan.FromMinutes(3));
-    }
-
     private static void AssertProposalText(string expected)
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>

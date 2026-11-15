@@ -53,6 +53,7 @@ public sealed partial class ProposalDifferenceViewModel
         SetSaved(response);
         Summary = response.Summary;
         WordDetailKept = response.WordDetailKept;
+        if (!WordDetailKept) EvidenceWords = [];
         WordDetailUnreadable = response.WordDetailUnreadable;
         BuildChips(response.Summary, response.WordDetailKept);
         ApplyWords(response, replace: true);
@@ -87,6 +88,7 @@ public sealed partial class ProposalDifferenceViewModel
         _nextWordOffset = _nextPlaceOffset = null;
         ShownRefusal = null;
         Summary = null;
+        EvidenceWords = [];
         UnreadableEvidence = [];
         WordDetailKept = true;
         WordDetailUnreadable = false;
@@ -143,6 +145,7 @@ public sealed partial class ProposalDifferenceViewModel
 
     private void ApplyWords(ProposalDifferenceResponse response, bool replace)
     {
+        EvidenceWords = replace ? response.Words.ToArray() : [.. EvidenceWords, .. response.Words];
         var added = response.Words.Select(word => new DifferenceChipViewModel(DifferenceChipKind.Word, word.Word,
             word.Occurrences, word.Word, true, Chosen) { IsActive = word.Word == SelectedWord?.Word });
         Words = replace ? [.. added] : [.. Words, .. added];
@@ -164,6 +167,7 @@ public sealed partial class ProposalDifferenceViewModel
         ClearSelectedWord();
         Summary = response.Summary;
         WordDetailKept = response.WordDetailKept;
+        if (!WordDetailKept) EvidenceWords = [];
         WordDetailUnreadable = response.WordDetailUnreadable;
         BuildChips(response.Summary, response.WordDetailKept);
         Words = [];
@@ -255,15 +259,46 @@ public sealed partial class ProposalDifferenceViewModel
         old.Dispose();
     }
 
+    // One read, tracked so StopAsync can join it even when it ignores cancellation.
+    private Task<CommandOutcome<ProposalDifferenceResponse>?> ReadAsync(
+        ProposalDifferenceShowRequest request, CancellationToken cancellationToken)
+    {
+        if (_stopped) return Task.FromResult<CommandOutcome<ProposalDifferenceResponse>?>(null);
+        var task = ReadCoreAsync(request, cancellationToken);
+        lock (_inFlight) _inFlight.Add(task);
+        _ = task.ContinueWith(done => { lock (_inFlight) _inFlight.Remove(done); },
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        return task;
+    }
+
+    private async Task JoinReadsAsync()
+    {
+        while (true)
+        {
+            Task[] pending;
+            lock (_inFlight) pending = [.. _inFlight];
+            if (pending.Length == 0) return;
+            try { await Task.WhenAll(pending).ConfigureAwait(true); }
+            catch (Exception exception) when (exception is not OutOfMemoryException) { }
+            lock (_inFlight) foreach (var task in pending) _inFlight.Remove(task);
+        }
+    }
+
     // One read: null when cancelled, a refusal when it threw, and IsReadingMore holds while it runs.
-    private async Task<CommandOutcome<ProposalDifferenceResponse>?> ReadAsync(
+    private async Task<CommandOutcome<ProposalDifferenceResponse>?> ReadCoreAsync(
         ProposalDifferenceShowRequest request, CancellationToken cancellationToken)
     {
         _reads++;
         OnPropertyChanged(nameof(IsReadingMore));
         try
         {
-            return await _read(request, cancellationToken).ConfigureAwait(true);
+            var read = await _read(request, cancellationToken).ConfigureAwait(true);
+            if (read.Succeeded && ((request.ProposalId is { } proposal && read.Value!.Summary.ProposalId != proposal) ||
+                (request.DifferenceId is { } difference && read.Value!.Summary.DifferenceId != difference)))
+                return CommandOutcome<ProposalDifferenceResponse>.Refused(new Refusal(
+                    RefusalCodes.WindowDifferenceReadFailed, FailureReason.Refused,
+                    MotifAppStrings.ProposalDocumentUnreadable));
+            return read;
         }
         catch (OperationCanceledException)
         {

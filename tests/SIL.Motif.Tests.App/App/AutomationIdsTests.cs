@@ -148,6 +148,7 @@ public sealed class AutomationIdsTests
             nameof(AutomationIds.DiagnosticsWarningDetails), nameof(AutomationIds.ProgressChapters),
             // w8 diagnostic identifiers.
             nameof(AutomationIds.ProposalParsimonyParserWork), nameof(AutomationIds.ProposalParsimonyWallTime),
+            nameof(AutomationIds.ProposalDifferenceClear),
         };
         Assert.All(reserved, name => Assert.Contains(name, constants.Keys));
         Assert.All(constants.Keys.Except(reserved), name => Assert.Contains(name, references));

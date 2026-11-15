@@ -85,6 +85,49 @@ public sealed partial class ProposalDifferenceViewModel
         _ = ShowSavedAsync(value);
     }
 
+    /// <summary>
+    /// Re-reads the Proposal's list of saved Differences without touching the one shown, its filters or its pages, so a
+    /// Difference made elsewhere appears. Absent loads the new one; a shown Difference that is gone is read again.
+    /// </summary>
+    /// <param name="offer">Whether a Difference can be made for the Proposal at all.</param>
+    public async Task RefreshSavedAsync(DifferenceOffer offer)
+    {
+        if (_stopped || _projectPath is not { } project || _proposalId is not { } proposal) return;
+        SetOffer(offer);
+        if (Maker.IsActive) return;
+        if (State == ProposalDifferenceState.Absent)
+        {
+            await LoadAsync(project, proposal, offer: offer).ConfigureAwait(true);
+            return;
+        }
+        if (State != ProposalDifferenceState.Shown || _differenceId is not { } shown) return;
+        var generation = _generation;
+        var read = await ReadAsync(new ProposalDifferenceShowRequest(project, proposal, shown, Limit: 1),
+            Restart(ref _loadCancellation)).ConfigureAwait(true);
+        if (generation != _generation || read is null || !read.Succeeded || read.Value!.Saved is not { } saved) return;
+        var response = read.Value;
+        var choices = Choices(saved);
+        if (choices.All(choice => choice.DifferenceId != shown))
+        {
+            await LoadAsync(project, proposal, offer: offer).ConfigureAwait(true);
+            return;
+        }
+        _settingSaved = true;
+        try
+        {
+            SavedChoices = choices;
+            SavedUnreadable = response.SavedUnreadable;
+            SavedDamaged = response.SavedDamaged ?? [];
+            SavedNotListed = Math.Max(0, response.SavedTotal - saved.Count - response.SavedUnreadable);
+            SelectedSaved = choices.First(choice => choice.DifferenceId == shown);
+        }
+        finally
+        {
+            _settingSaved = false;
+        }
+        OnPropertyChanged(nameof(MakeLabel));
+    }
+
     private void SetSaved(ProposalDifferenceResponse? response)
     {
         _settingSaved = true;

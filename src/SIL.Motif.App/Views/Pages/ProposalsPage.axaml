@@ -5,6 +5,7 @@
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
              x:Class="SIL.Motif.App.Views.ProposalsPage"
              x:DataType="vm:ProposalsPageModel">
+  <UserControl.Styles><StyleInclude Source="/Tokens/Components/ProposalsScoped.axaml" /></UserControl.Styles>
   <UserControl.Resources>
     <DataTemplate x:Key="ProposalListPane" x:DataType="vm:ProposalsPageModel">
       <Grid RowDefinitions="Auto,*,Auto" RowSpacing="{DynamicResource Intent.Space.Related}">
@@ -20,8 +21,10 @@
             <DataTemplate DataType="vm:ProposalCardViewModel" x:DataType="vm:ProposalCardViewModel">
               <StackPanel AutomationProperties.AutomationId="{Binding RowAutomationId}"
                           AutomationProperties.Name="{Binding AccessibleRowName}">
+                <CheckBox IsChecked="{Binding IsCheckedForComparison, Mode=TwoWay}" Click="OnComparisonClick"
+                          AutomationProperties.Name="{Binding ComparisonAccessibleName}" />
                 <views:CopyableTextBlock Text="{Binding Label}" TextWrapping="Wrap" />
-                <views:CopyableTextBlock Classes="muted" Text="{Binding TableStatusText}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Classes="muted" Text="{Binding StatusWord}" TextWrapping="Wrap" />
               </StackPanel>
             </DataTemplate>
           </ListBox.DataTemplates>
@@ -65,26 +68,39 @@
                 Command="{Binding $parent[UserControl].((vm:ProposalsPageModel)DataContext).ShowMoreRequestsCommand}"
                 HorizontalAlignment="Left" />
       </StackPanel>
+      <views:ProgressiveItemsControl x:Name="OpenProposalTabs" FullItemsSource="{Binding Documents.Items}"
+                                     AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDocuments}">
+        <views:ProgressiveItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></views:ProgressiveItemsControl.ItemsPanel>
+        <views:ProgressiveItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProposalDocumentViewModel">
+            <StackPanel Classes="proposalTitleRow">
+              <Button HorizontalAlignment="Stretch"
+                      Command="{Binding $parent[ItemsControl].((vm:ProposalsPageModel)DataContext).SelectDocumentCommand}"
+                      CommandParameter="{Binding}">
+                <TextBlock Text="{Binding Label}" TextWrapping="Wrap" />
+              </Button>
+              <Button Content="{x:Static app:MotifAppStrings.ProposalCloseDocument}"
+                      Command="{Binding $parent[ItemsControl].((vm:ProposalsPageModel)DataContext).CloseDocumentCommand}"
+                      CommandParameter="{Binding}" />
+            </StackPanel>
+          </DataTemplate>
+        </views:ProgressiveItemsControl.ItemTemplate>
+      </views:ProgressiveItemsControl>
+      <Button AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalComparePair}"
+              AutomationProperties.Name="{x:Static app:MotifAppStrings.BoardCompareProposals}"
+              Command="{Binding CompareCommand}" IsVisible="{Binding HasComparisonHost}"
+              HorizontalAlignment="Left">
+        <TextBlock Text="{x:Static app:MotifAppStrings.BoardCompareProposals}" TextWrapping="Wrap" />
+      </Button>
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalComparisonHint}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding ComparisonNotice}" TextWrapping="Wrap" />
+      <ContentControl x:Name="ProposalCompareSlot" Content="{Binding ComparisonContent}" />
+      <ContentControl Content="{Binding SelectedDocument}" IsVisible="{Binding !IsComparing}">
+        <ContentControl.DataTemplates>
+          <DataTemplate DataType="vm:ProposalDocumentViewModel"><views:ProposalDocument /></DataTemplate>
+        </ContentControl.DataTemplates>
+      </ContentControl>
       <StackPanel IsVisible="{Binding HasSelectedProposal}" Spacing="{DynamicResource Intent.Space.Related}">
-        <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedProposal.Label}" TextWrapping="Wrap" />
-        <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedProposal.DetailsStatusText}" TextWrapping="Wrap" />
-        <views:CopyableTextBlock Classes="muted" Text="{Binding SelectedProposal.BuiltByText}" TextWrapping="Wrap" />
-        <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalRationale}" />
-        <views:RationaleEditor x:Name="ProposalRationaleEditor" DataContext="{Binding RationaleEditor}" />
-        <views:RefusalBlock DataContext="{Binding DetailRefusal}" />
-        <views:ProgressiveItemsControl x:Name="ProposalOperationDescriptions" FullItemsSource="{Binding OperationDescriptions}">
-          <views:ProgressiveItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
-          </views:ProgressiveItemsControl.ItemTemplate>
-        </views:ProgressiveItemsControl>
-        <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardComments}" />
-        <views:ProgressiveItemsControl x:Name="ProposalComments" FullItemsSource="{Binding Comments}">
-          <views:ProgressiveItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:RationaleEditorModel"><views:RationaleEditor /></DataTemplate>
-          </views:ProgressiveItemsControl.ItemTemplate>
-        </views:ProgressiveItemsControl>
-        <Button Content="{x:Static app:MotifAppStrings.CommentAdd}" Click="OnAddComment"
-                IsVisible="{Binding CanAddComment}" HorizontalAlignment="Left" />
         <Button IsVisible="{Binding SelectedProposal.CanTry}" AutomationProperties.Name="{Binding SelectedProposal.TryText}"
                 AutomationProperties.AutomationId="{Binding SelectedTryAgainAutomationId}"
                 Command="{Binding TryAgainCommand}" CommandParameter="{Binding SelectedProposal}"

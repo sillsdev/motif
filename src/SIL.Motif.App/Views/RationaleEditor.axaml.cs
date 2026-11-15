@@ -39,8 +39,9 @@ public sealed partial class RationaleEditor : UserControl
     private void OnModelChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(RationaleEditorModel.Document)) Rebuild();
-        else if (e.PropertyName is nameof(RationaleEditorModel.IsEditing) or nameof(RationaleEditorModel.IsSaving) && Field is { } field)
-            field.IsReadOnly = !_model!.IsEditing || _model.IsSaving;
+        else if (e.PropertyName is nameof(RationaleEditorModel.IsEditing) or nameof(RationaleEditorModel.IsSaving) or
+                 nameof(RationaleEditorModel.CanEdit) && Field is { } field)
+            field.IsReadOnly = !_model!.CanEdit || !_model.IsEditing || _model.IsSaving;
     }
 
     private async void CompareClicked(object? sender, RoutedEventArgs e)
@@ -63,7 +64,7 @@ public sealed partial class RationaleEditor : UserControl
         var field = new RichTextField(model.Document)
         {
             StyleResolver = model.Styles,
-            IsReadOnly = !model.IsEditing || model.IsSaving,
+            IsReadOnly = !model.CanEdit || !model.IsEditing || model.IsSaving,
         };
         field.SetValue(Avalonia.Automation.AutomationProperties.NameProperty, model.IsComment ? MotifAppStrings.CommentsHeading : MotifAppStrings.ProposalRationale);
         field.ContextMenuRequested += (_, e) =>

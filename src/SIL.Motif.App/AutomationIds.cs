@@ -331,4 +331,10 @@ public static class AutomationIds
     public const string ProgressNextRequests = "motif-progress-next-requests";
     public const string ProgressNextRetry = "motif-progress-next-retry";
 
+    #region W5
+    public const string ProposalComparePair = "motif-proposal-compare-pair";
+    public const string ProposalPrepareApply = "motif-proposal-prepare-apply";
+    public const string ProposalConfirmApply = "motif-proposal-confirm-apply";
+    public const string ProposalReceipt = "motif-proposal-receipt";
+    #endregion
 }

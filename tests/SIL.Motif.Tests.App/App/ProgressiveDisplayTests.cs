@@ -57,11 +57,12 @@ public sealed class ProgressiveDisplayTests
 
     private static readonly string[] ViewNames =
     [
-        "DiagnosticPanel", "DifferencePanel", "ExpertTracePanel", "HandoffPanel",
+        "DiagnosticPanel", "ExpertTracePanel", "HandoffPanel",
         "Assistant/ClaudePanel", "Settings/AssistantConnectionsPanel",
         "MotifWorkspaceView",
         "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage",
-        "ProposalDifferencePanel", "ProposalParsimonyDetails", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
+        "Proposals/ProposalDocument", "Proposals/ProposalEvidenceColumns",
+        "ProposalParsimonyDetails", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "Texts/SourcesPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel",
         "TraceAnalysesView", "WarningsInspectorPanel", "WordCard", "WordDispositionButtons",
         // w8 proposal diagnostic row.
@@ -1004,7 +1005,6 @@ public sealed class ProgressiveDisplayTests
                 DataContext = new ProposalDiagnosticsViewModel(workspace.Context) { IsVisible = true },
             },
             "DiagnosticPanel" => new DiagnosticPanel(trace.Diagnostics),
-            "DifferencePanel" => new DifferencePanel(workspace.Assess.Difference),
             "ExpertTracePanel" => new ExpertTracePanel { DataContext = trace.Trace },
             "HandoffPanel" => new HandoffPanel(workspace.PageModel<SettingsPageModel>().Handoff.Handoff),
             "SettingsPage" => BuildSettingsPage(workspace),
@@ -1022,11 +1022,13 @@ public sealed class ProgressiveDisplayTests
                             new WordCardSentenceToken($"sentence-{index}", null, index == 499)).ToArray(),
                         "Check again", "Undo")),
             },
-            "ProposalDifferencePanel" => new ProposalDifferencePanel
+            "Proposals/ProposalDocument" => new ProposalDocument
             {
-                DataContext = new ProposalDifferenceViewModel(
-                    (_, _) => Task.FromResult(CommandOutcome<ProposalDifferenceResponse>.Refused(
-                        new Refusal("difference.none", FailureReason.NotFound, "None."))), _ => { }),
+                DataContext = workspace.PageModel<ProposalsPageModel>().SelectedDocument,
+            },
+            "Proposals/ProposalEvidenceColumns" => new ProposalEvidenceColumns
+            {
+                DataContext = workspace.PageModel<ProposalsPageModel>().SelectedDocument?.Evidence,
             },
             "ProposalParsimonyDetails" => new ProposalParsimonyDetails { DataContext = new ProposalParsimonyViewModel(
                 (_, _) => Task.FromResult(CommandOutcome<SIL.Motif.Contract.Parsimony.ProposalParsimonyStatus>.Success(

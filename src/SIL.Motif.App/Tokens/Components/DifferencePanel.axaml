@@ -1,21 +1,8 @@
-<!-- The two-run moves view keeps its layout and tone across themes. -->
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Styles.Resources>
-    <StaticResource x:Key="Component.DifferencePanel.PanelInset" ResourceKey="Intent.Inset.Page" />
-    <StaticResource x:Key="Component.DifferencePanel.MoveRowPadding" ResourceKey="Intent.Inset.Row" />
-    <StaticResource x:Key="Component.DifferencePanel.MoveListHeight" ResourceKey="Primitive.Size.230" />
-    <StaticResource x:Key="Component.DifferencePanel.WordsListHeight" ResourceKey="Primitive.Size.320" />
-  </Styles.Resources>
   <Style Selector=":is(TextBlock).columnHeader">
     <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Label}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
-  </Style>
-  <Style Selector="ListBox.dense ListBoxItem">
-    <Setter Property="Padding" Value="{DynamicResource Component.DifferencePanel.MoveRowPadding}" />
-    <Setter Property="MinHeight" Value="{DynamicResource Intent.Space.None}" />
-    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
   </Style>
 </Styles>

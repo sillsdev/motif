@@ -158,12 +158,12 @@ public sealed class ProposalParsimonyPageTests
             var context = WorkspaceContextTests.NewContext(fake);
             var page = new ProposalsPageModel(context, (_, _) => Task.CompletedTask);
             var seen = new List<string>();
+            await context.OpenProjectAsync(ProjectPath);
             page.Parsimony.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(ProposalParsimonyViewModel.StateLabel) && page.Parsimony.StateLabel.Length > 0 &&
                     (seen.Count == 0 || seen[^1] != page.Parsimony.StateLabel)) seen.Add(page.Parsimony.StateLabel);
             };
-            await context.OpenProjectAsync(ProjectPath);
             await page.Parsimony.Watch(ProjectPath, "p/one");
             Assert.Equal("Not Yet Run", page.Parsimony.StateLabel);
             Assert.Contains("no Trial", page.Parsimony.Sentence, StringComparison.OrdinalIgnoreCase);
@@ -188,7 +188,7 @@ public sealed class ProposalParsimonyPageTests
         var root = new DirectoryInfo(AppContext.BaseDirectory);
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "Motif.sln"))) root = root.Parent;
         Assert.NotNull(root);
-        var allowed = new[] { "ProposalParsimony", "ProposalDiagnostics", "ProposalsPageModel", "ICommandClient", "CommandClient", "MotifAppStrings", "AutomationIds" };
+        var allowed = new[] { "ProposalDocumentViewModel", "ProposalParsimony", "ProposalDiagnostics", "ProposalsPageModel", "ICommandClient", "CommandClient", "MotifAppStrings", "AutomationIds" };
         var users = Directory.EnumerateFiles(Path.Combine(root.FullName, "src", "SIL.Motif.App"), "*.cs", SearchOption.AllDirectories)
             .Where(path => File.ReadAllText(path).Contains("ProposalParsimony", StringComparison.Ordinal))
             .Select(Path.GetFileName)

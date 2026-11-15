@@ -65,10 +65,11 @@ public sealed partial class RationaleEditorModel : ObservableObject
 
     internal void ReconcileComment(CommentView? current, ProposalDetailProjection detail, Action<RationaleEditorModel> afterCancel)
     {
+        CanEdit = !IsDecided(detail.Status);
         _afterCancel = afterCancel;
         _commentUnavailable = (current is null && _commentId.HasValue) ||
             (current is not null && current.Markdown != _markdown) ||
-            (detail.DraftName is null && IsDecided(detail.Status));
+            IsDecided(detail.Status);
         IsChangedElsewhere = IsEditing && _commentUnavailable;
         SaveCommand.NotifyCanExecuteChanged();
     }
@@ -108,7 +109,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
         _context = context;
         ProposalId = detail.ProposalId;
         _markdown = detail.Rationale?.Markdown ?? string.Empty;
-        CanEdit = detail.DraftName is not null || !IsDecided(detail.Status);
+        CanEdit = !IsDecided(detail.Status);
         _document = Read(_markdown, out _isPlainText);
     }
 
@@ -161,14 +162,39 @@ public sealed partial class RationaleEditorModel : ObservableObject
     /// <summary>The Proposal whose Rationale this is.</summary>
     public string ProposalId { get; }
 
+    private bool _canEdit;
+
     /// <summary>Whether the Proposal is open, so its Rationale may be edited.</summary>
-    public bool CanEdit { get; }
+    public bool CanEdit
+    {
+        get => _canEdit;
+        private set
+        {
+            if (!SetProperty(ref _canEdit, value)) return;
+            OnPropertyChanged(nameof(CanStartEdit));
+            OnPropertyChanged(nameof(CanDeleteComment));
+            OnPropertyChanged(nameof(CanCompare));
+            EditCommand.NotifyCanExecuteChanged();
+            SaveCommand.NotifyCanExecuteChanged();
+            RestoreCommand.NotifyCanExecuteChanged();
+            DeleteCommentCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    internal void ReconcileRationale(ProposalDetailProjection detail)
+    {
+        CanEdit = !IsDecided(detail.Status);
+        if (_markdown != (detail.Rationale?.Markdown ?? string.Empty) || !CanEdit) MarkChangedElsewhere();
+        SaveCommand.NotifyCanExecuteChanged();
+    }
+
+    internal void Freeze() => CanEdit = false;
 
     /// <summary>Whether Edit is offered now.</summary>
     public bool CanStartEdit => CanEdit && !IsEditing;
 
     /// <summary>Whether the unsaved text can be compared with the Rationale that changed elsewhere.</summary>
-    public bool CanCompare => IsEditing && IsRationaleChangedElsewhere && !IsSaving;
+    public bool CanCompare => CanEdit && IsEditing && IsRationaleChangedElsewhere && !IsSaving;
 
     /// <summary>Whether the stale edit is a Rationale, which offers comparison rather than Comment reconciliation.</summary>
     public bool IsRationaleChangedElsewhere => !_isComment && IsChangedElsewhere;
@@ -195,7 +221,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanStartEdit))]
     private void Edit()
     {
-        Document = Read(_markdown, out var plain, editable: true);
+        Document = Read(_markdown, out var plain);
         IsPlainText = plain;
         Findings = [];
         Refusal = null;
@@ -208,7 +234,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
     }
 
     private bool CanSaveOrCancel() => IsEditing && !IsSaving;
-    private bool CanSave() => CanSaveOrCancel() && !_commentUnavailable;
+    private bool CanSave() => CanEdit && CanSaveOrCancel() && !_commentUnavailable;
+    private bool CanRestore() => CanEdit && CanSaveOrCancel();
 
     /// <summary>Writes the field's text as the Rationale; on a refusal the text stays in the field.</summary>
     [RelayCommand(CanExecute = nameof(CanSave))]
@@ -254,10 +281,10 @@ public sealed partial class RationaleEditorModel : ObservableObject
             }
             var comparison = new RationaleComparison(_markdown, mine, latest);
             var outcome = await show(comparison).ConfigureAwait(true);
-            if (outcome?.End is not (CompareEnd.Done or CompareEnd.StartAgain)) return;
+            if (!CanEdit || outcome?.End is not (CompareEnd.Done or CompareEnd.StartAgain)) return;
             _markdown = latest.Markdown;
             OnPropertyChanged(nameof(Markdown));
-            Document = Read(_markdown, out var plain, editable: true);
+            Document = Read(_markdown, out var plain);
             IsPlainText = plain;
             _began = Text();
             if (outcome.End == CompareEnd.StartAgain)
@@ -278,7 +305,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
                 Cancel();
                 return;
             }
-            Document = Read(merged, out plain, editable: true);
+            Document = Read(merged, out plain);
             IsPlainText = plain;
             await SaveAsync(compared: true).ConfigureAwait(true);
         }
@@ -309,11 +336,11 @@ public sealed partial class RationaleEditorModel : ObservableObject
     }
 
     /// <summary>Puts an earlier version into the field; it is saved only when the person saves.</summary>
-    [RelayCommand(CanExecute = nameof(CanSaveOrCancel))]
+    [RelayCommand(CanExecute = nameof(CanRestore))]
     private void Restore(RationaleRevisionChoice? revision)
     {
         if (revision is null) return;
-        Document = Read(revision.Markdown, out var plain, editable: true);
+        Document = Read(revision.Markdown, out var plain);
         IsPlainText = plain;
         Findings = [];
         Refusal = null;
@@ -346,7 +373,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
 
     private async Task SaveAsync(bool compared = false)
     {
-        if (_context.ProjectPath is not { } path) return;
+        if (!CanEdit || _context.ProjectPath is not { } path) return;
         var text = Text();
         if (!compared && text == _began && !_isComment)
         {
@@ -445,7 +472,7 @@ public sealed partial class RationaleEditorModel : ObservableObject
     private MarkdownOptions Options() =>
         MotifMarkdownOptions.Create(new FixedWritingSystems(UnmarkedAnalysis, UnmarkedVernacular), paths: _paths);
 
-    private TextDocument Read(string markdown, out bool plainText, bool editable = false)
+    private TextDocument Read(string markdown, out bool plainText)
     {
         var withoutPaths = Options();
         withoutPaths.Paths = null;
@@ -456,8 +483,8 @@ public sealed partial class RationaleEditorModel : ObservableObject
         plainText = parsed.HasErrors || !ProposalTextChecker.Check(markdown, null, null).IsClean || !Segment(markdown);
         if (!plainText)
         {
-            // An empty Rationale being edited has one empty paragraph, so what is typed first is unmarked analysis text.
-            if (editable && parsed.Document.Paragraphs.Count == 0)
+            // The rich field requires a paragraph even when an empty discussion is read-only.
+            if (parsed.Document.Paragraphs.Count == 0)
                 parsed.Document.Paragraphs.Add(new Paragraph
                 {
                     Style = "Normal",

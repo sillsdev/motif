@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalDocument"
+             x:DataType="vm:ProposalDocumentViewModel">
+  <UserControl.Styles>
+    <StyleInclude Source="/Tokens/Components/ProposalsScoped.axaml" />
+  </UserControl.Styles>
+  <StackPanel Spacing="{DynamicResource Intent.Space.Group}">
+    <views:CopyableTextBlock Classes="displayTitle" Text="{Binding Label}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding StatusText}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.BuiltByText}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.ModelText}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Classes="muted" Text="{Binding Card.QuestionText}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalReading}" IsVisible="{Binding IsLoading}" />
+    <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDocumentOutdated}" IsVisible="{Binding IsOutdated}" TextWrapping="Wrap" />
+    <views:RefusalBlock DataContext="{Binding DetailRefusal}" />
+    <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProposalRationale}" />
+    <views:RationaleEditor x:Name="ProposalRationaleEditor" DataContext="{Binding RationaleEditor}" />
+    <views:ProposalPicturesPanel DataContext="{Binding Pictures}" />
+    <views:ProposalEvidenceColumns DataContext="{Binding Evidence}" />
+    <ContentControl x:Name="ProposalDiagnosticsSlot" Content="{Binding DiagnosticsContent}"
+                    IsVisible="{Binding DiagnosticsVisible}" />
+    <views:ProposalApplyPanel />
+    <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardComments}" />
+    <views:ProgressiveItemsControl x:Name="ProposalComments" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalComments}" FullItemsSource="{Binding Comments}">
+      <views:ProgressiveItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:RationaleEditorModel"><views:RationaleEditor /></DataTemplate>
+      </views:ProgressiveItemsControl.ItemTemplate>
+    </views:ProgressiveItemsControl>
+    <Button Content="{x:Static app:MotifAppStrings.CommentAdd}"
+            IsVisible="{Binding CanAddComment}" HorizontalAlignment="Left" Click="OnAddComment" />
+  </StackPanel>
+</UserControl>

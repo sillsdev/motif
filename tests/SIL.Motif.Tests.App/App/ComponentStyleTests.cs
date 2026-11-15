@@ -657,10 +657,11 @@ public sealed partial class ComponentStyleTests
         yield return new("WordMorphology", "a named mark's words", NamedMarkWords,
             TextBlock.FontSizeProperty, "Intent.Type.Small");
 
-        yield return new("DifferencePanel", "a move row", DenseListRow,
-            ListBoxItem.PaddingProperty, "Component.DifferencePanel.MoveRowPadding");
         yield return new("DifferencePanel", "a move column heading", host => Add(host, Text("columnHeader")),
             TextBlock.ForegroundProperty, "Intent.TextMuted");
+        yield return new("ProposalEvidence", "a supported effect column", host => Add(host,
+            new StackPanel { Classes = { "proposalEvidenceColumn" } }),
+            StackPanel.WidthProperty, "Component.ProposalEvidence.ColumnWidth");
 
         yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.BackgroundProperty, "Intent.Emphasis.Fill");
         yield return new("Handoff", "a step mark", host => Add(host, Box("stepMark")), Border.MinWidthProperty, "Component.Handoff.StepMarkSize");

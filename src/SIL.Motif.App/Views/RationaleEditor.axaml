@@ -6,11 +6,11 @@
              x:Class="SIL.Motif.App.Views.RationaleEditor"
              x:DataType="vm:RationaleEditorModel">
   <StackPanel Spacing="{DynamicResource Intent.Space.Minimal}">
-    <TextBlock Text="{Binding Author}" IsVisible="{Binding IsComment}" />
+    <TextBlock Text="{Binding Author}" IsVisible="{Binding IsComment}" TextWrapping="Wrap" />
     <ContentControl x:Name="FieldHost" />
     <TextBlock Classes="muted" Text="{Binding PlainTextNotice}" TextWrapping="Wrap"
                IsVisible="{Binding IsPlainText}" />
-    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+    <WrapPanel>
       <Button x:Name="RationaleEditButton" Content="{x:Static app:MotifAppStrings.RationaleEdit}"
               Command="{Binding EditCommand}" IsVisible="{Binding CanStartEdit}" />
       <Button x:Name="RationaleSaveButton" Content="{x:Static app:MotifAppStrings.RationaleSave}"
@@ -18,7 +18,7 @@
       <Button Content="{x:Static app:MotifAppStrings.CommentDelete}" Command="{Binding DeleteCommentCommand}" IsVisible="{Binding CanDeleteComment}" />
       <Button x:Name="RationaleCancelButton" Content="{x:Static app:MotifAppStrings.Cancel}"
               Command="{Binding CancelCommand}" IsVisible="{Binding IsEditing}" />
-    </StackPanel>
+    </WrapPanel>
     <TextBlock Classes="error" Text="{Binding ChangedElsewhereWarning}" TextWrapping="Wrap"
                IsVisible="{Binding IsChangedElsewhere}" />
     <Button x:Name="RationaleCompareButton" Content="{x:Static app:MotifAppStrings.RationaleCompare}"
@@ -39,12 +39,12 @@
       <ItemsControl x:Name="RationaleRevisions" ItemsSource="{Binding Revisions}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:RationaleRevisionChoice">
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Minimal}">
+            <WrapPanel>
               <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
               <Button Content="{x:Static app:MotifAppStrings.RationaleRestore}"
                       Command="{Binding $parent[views:RationaleEditor].((vm:RationaleEditorModel)DataContext).RestoreCommand}"
                       CommandParameter="{Binding}" />
-            </StackPanel>
+            </WrapPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

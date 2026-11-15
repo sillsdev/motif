@@ -1,0 +1,18 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <StaticResource x:Key="Component.ProposalEvidence.ColumnWidth" ResourceKey="Primitive.Size.240" />
+    <StaticResource x:Key="Component.ProposalEvidence.PlaceListHeight" ResourceKey="Primitive.Size.230" />
+  </Styles.Resources>
+  <Style Selector="StackPanel.proposalEvidenceColumn">
+    <Setter Property="Width" Value="{StaticResource Component.ProposalEvidence.ColumnWidth}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="ScrollViewer.proposalEvidencePlaces">
+    <Setter Property="MaxHeight" Value="{StaticResource Component.ProposalEvidence.PlaceListHeight}" />
+  </Style>
+  <Style Selector="WrapPanel.proposalEvidenceColumns">
+    <Setter Property="ItemSpacing" Value="{DynamicResource Intent.Space.Group}" />
+    <Setter Property="LineSpacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
+</Styles>

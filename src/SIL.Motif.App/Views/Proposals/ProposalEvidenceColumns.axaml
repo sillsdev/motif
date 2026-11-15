@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:controls="clr-namespace:SIL.Motif.App.Controls"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.ProposalEvidenceColumns"
+             x:DataType="vm:ProposalEvidenceColumnsViewModel"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferencePanel}">
+  <UserControl.Styles><StyleInclude Source="/Tokens/Components/ProposalEvidence.axaml" /></UserControl.Styles>
+  <UserControl.Resources>
+    <DataTemplate x:Key="EvidenceWord" x:DataType="vm:ProposalEvidenceWord">
+      <StackPanel Spacing="{DynamicResource Intent.Space.Compact}">
+        <Button Command="{Binding ShowPlacesCommand}" HorizontalAlignment="Stretch">
+          <controls:WritingSystemTextBlock Text="{Binding Word}" TextWrapping="Wrap"
+                                           controls:WritingSystemText.Id="{Binding WritingSystemId}"
+                                           controls:WritingSystemText.StyleName="Normal" />
+        </Button>
+        <views:CopyableTextBlock Text="{Binding Effect}" TextWrapping="Wrap" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+  <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
+    <views:CopyableTextBlock Text="{Binding Scope}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding Availability}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding NotesText}" IsVisible="{Binding HasNotes}" TextWrapping="Wrap" />
+    <WrapPanel Classes="proposalEvidenceColumns">
+      <StackPanel Classes="proposalEvidenceColumn" IsVisible="{Binding HasFillIn}">
+        <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardWillFillIn}" />
+        <views:CopyableTextBlock Text="{Binding FillInCount}" />
+        <views:ProgressiveItemsControl x:Name="ProposalFillInWords" FullItemsSource="{Binding WillFillIn}"
+                                       ItemTemplate="{StaticResource EvidenceWord}" />
+      </StackPanel>
+      <StackPanel Classes="proposalEvidenceColumn" IsVisible="{Binding HasChange}">
+        <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.BoardWillChange}" />
+        <views:CopyableTextBlock Text="{Binding ChangeCount}" />
+        <views:ProgressiveItemsControl x:Name="ProposalChangedWords" FullItemsSource="{Binding WillChange}"
+                                       ItemTemplate="{StaticResource EvidenceWord}" />
+      </StackPanel>
+    </WrapPanel>
+    <views:CopyableTextBlock Text="{Binding ApprovedPlacesNotice}" TextWrapping="Wrap" />
+    <StackPanel DataContext="{Binding Difference}" Spacing="{DynamicResource Intent.Space.Related}">
+      <views:RefusalBlock DataContext="{Binding ShownRefusal}" />
+      <views:CopyableTextBlock Text="{Binding UnboundText}" IsVisible="{Binding HasUnbound}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding OutsideText}" IsVisible="{Binding HasOutside}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding ReferenceNoteText}" IsVisible="{Binding HasReferenceNote}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding UnreadableEvidenceText}" IsVisible="{Binding HasUnreadableEvidence}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDifferenceNotTried}"
+                               IsVisible="{Binding ShowsNotTriedNote}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDifferenceNoTexts}"
+                               IsVisible="{Binding ShowsNoTextsNote}" TextWrapping="Wrap" />
+      <ComboBox x:Name="ProposalSavedEvidence" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceSaved}" ItemsSource="{Binding SavedChoices}" SelectedItem="{Binding SelectedSaved}"
+                IsVisible="{Binding ShowsSavedChoices}"
+                AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalDifferenceSavedAccessibleName}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:DifferenceSavedChoice"><TextBlock Text="{Binding Label}" TextWrapping="Wrap" /></DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <views:CopyableTextBlock Text="{Binding SavedNoteText}" IsVisible="{Binding HasSavedNote}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDifferenceDetailRemoved}"
+                               IsVisible="{Binding ShowsDetailRemoved}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProposalDifferenceDetailUnreadable}"
+                               IsVisible="{Binding ShowsDetailUnreadable}" TextWrapping="Wrap" />
+      <views:CopyableTextBlock Text="{Binding ListedNoteText}" IsVisible="{Binding HasListedNote}" TextWrapping="Wrap" />
+      <Button Content="{x:Static app:MotifAppStrings.ProposalDifferenceMoreWords}" Command="{Binding ShowMoreWordsCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMoreWords}"
+              IsVisible="{Binding CanShowMoreWords}" HorizontalAlignment="Left" />
+      <StackPanel IsVisible="{Binding ShowsMakeControls}" Spacing="{DynamicResource Intent.Space.Related}">
+        <ComboBox x:Name="ProposalEvidenceText" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceText}" ItemsSource="{Binding TextChoices}" SelectedItem="{Binding SelectedText}"
+                  IsEnabled="{Binding !Maker.IsActive}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.ProposalDifferenceTextAccessibleName}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:DifferenceTextChoice"><TextBlock Text="{Binding Title}" TextWrapping="Wrap" /></DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Command="{Binding Maker.RunCommand}" HorizontalAlignment="Stretch"
+                AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMake}">
+          <TextBlock Text="{Binding MakeLabel}" TextWrapping="Wrap" />
+        </Button>
+        <Button Content="{x:Static app:MotifAppStrings.Cancel}" Command="{Binding Maker.CancelCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceCancel}"
+                IsVisible="{Binding Maker.IsActive}" HorizontalAlignment="Left" />
+        <views:CopyableTextBlock AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceProgress}" Text="{Binding Maker.ProgressText}" IsVisible="{Binding Maker.IsActive}" TextWrapping="Wrap" />
+        <views:RefusalBlock DataContext="{Binding Maker.FailureShown}" />
+      </StackPanel>
+      <StackPanel IsVisible="{Binding HasSelectedWord}" Spacing="{DynamicResource Intent.Space.Related}">
+        <views:CopyableTextBlock Text="{Binding SelectedWordTitle}" TextWrapping="Wrap" />
+        <ScrollViewer Classes="proposalEvidencePlaces">
+        <views:ProgressiveItemsControl x:Name="ProposalWordPlaces" FullItemsSource="{Binding Places}">
+          <views:ProgressiveItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String"><views:CopyableTextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+          </views:ProgressiveItemsControl.ItemTemplate>
+        </views:ProgressiveItemsControl>
+        </ScrollViewer>
+        <views:CopyableTextBlock Text="{Binding PlacesStatusText}" IsVisible="{Binding ShowsPlacesStatus}" TextWrapping="Wrap" />
+        <Button Content="{x:Static app:MotifAppStrings.ProposalDifferenceMorePlaces}" Command="{Binding ShowMorePlacesCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceMorePlaces}"
+                IsVisible="{Binding CanShowMorePlaces}" HorizontalAlignment="Left" />
+        <Button Content="{x:Static app:MotifAppStrings.ProposalDifferenceOpenWord}" Command="{Binding OpenWordCommand}" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProposalDifferenceOpenWord}"
+                HorizontalAlignment="Left" />
+      </StackPanel>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

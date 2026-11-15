@@ -756,6 +756,8 @@ public static class RefusalCodes
     public const string WindowOpenFailed = "window.open-failed";
     /// <summary>The window could not open a Proposal.</summary>
     public const string WindowOpenProposalFailed = "window.open-proposal-failed";
+    /// <summary>The window could not read an open Proposal document's evidence.</summary>
+    public const string WindowProposalDocumentReadFailed = "window.proposal-document-read";
 
     /// <summary>The Baseline changed before the word was read.</summary>
     public const string WordContextBaselineChanged = "word-context.baseline-changed";

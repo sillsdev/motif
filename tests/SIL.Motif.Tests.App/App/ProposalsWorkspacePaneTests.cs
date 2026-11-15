@@ -161,7 +161,7 @@ public sealed class ProposalsWorkspacePaneTests
     }
 
     [Fact]
-    public void ARowClickOrArrowKeyKeepsTheListOnTheProposalWhoseRationaleEditIsUnsaved()
+    public void ARowClickOrArrowKeyCanSwitchWhileTheOpenDocumentKeepsItsUnsavedRationale()
     {
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
@@ -209,9 +209,9 @@ public sealed class ProposalsWorkspacePaneTests
                     AutomationProperties.GetAutomationId(border) == second.RowAutomationId);
                 HeadlessClick.Click(standalone, secondContainer, second.Label);
                 PageScreenshots.Settle(standalone);
-                Assert.Same(first, model.SelectedProposal);
-                Assert.Same(first, table.SelectedItem);
-                Assert.Same(editor, model.RationaleEditor);
+                Assert.Same(second, model.SelectedProposal);
+                Assert.Same(second, table.SelectedItem);
+                Assert.Same(editor, model.Documents.Items.Single(document => document.ProposalId == "p/one").RationaleEditor);
                 Assert.Equal("Why. Typed.", editor.Text());
 
                 var firstContainer = Assert.Single(table.GetVisualDescendants().OfType<ListBoxItem>(),
@@ -219,9 +219,9 @@ public sealed class ProposalsWorkspacePaneTests
                 firstContainer.Focus();
                 standalone.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.None, null);
                 PageScreenshots.Settle(standalone);
-                Assert.Same(first, model.SelectedProposal);
-                Assert.Same(first, table.SelectedItem);
-                Assert.Same(editor, model.RationaleEditor);
+                Assert.Same(second, model.SelectedProposal);
+                Assert.Same(second, table.SelectedItem);
+                Assert.Same(editor, model.Documents.Items.Single(document => document.ProposalId == "p/one").RationaleEditor);
                 Assert.Equal("Why. Typed.", editor.Text());
             }
             finally
@@ -268,6 +268,57 @@ public sealed class ProposalsWorkspacePaneTests
             }
             finally { standalone.Close(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(3));
+    }
+
+    [Fact]
+    public void CheckingWithThePointerOrSpaceKeepsSelectionAndCannotSilentlyChangeThePair()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.ProposalStandingsCompleteWith(new ProposalStandings(
+                Enumerable.Range(1, 3).Select(index => Card($"p/{index}", $"Change {index}",
+                    ProposalGroup.WaitingForYou)).ToArray(), 0));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProposalsPageModel(context);
+            await context.OpenProjectAsync("project.fwdata");
+            var page = new ProposalsPage(model);
+            var window = new MotifTestWindow { Width = 1600, Height = 780,
+                Content = WorkspaceLayoutHost.ForPage(page) };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var selected = model.SelectedProposal;
+                var checks = page.SidePanel.GetVisualDescendants().OfType<CheckBox>().ToArray();
+                Assert.Equal(3, checks.Length);
+                HeadlessClick.Click(window, checks[1], "Second comparison choice");
+                PageScreenshots.Settle(window);
+                Assert.Same(selected, model.SelectedProposal);
+                Assert.True(checks[1].IsChecked);
+                checks[0].Focus();
+                window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.None, null);
+                window.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.None, null);
+                PageScreenshots.Settle(window);
+                Assert.Same(selected, model.SelectedProposal);
+                Assert.True(model.Documents.CanCompare);
+                var pair = model.Documents.ComparisonPair.ToArray();
+                HeadlessClick.Click(window, checks[2], "Third comparison choice");
+                PageScreenshots.Settle(window);
+                Assert.False(checks[2].IsChecked);
+                Assert.Equal(pair, model.Documents.ComparisonPair);
+                Assert.False(string.IsNullOrEmpty(model.ComparisonNotice));
+                var secondDocument = model.Documents.Items.Single(document => document.ProposalId == "p/2");
+                var returnButton = Assert.Single(page.GetVisualDescendants().OfType<Button>(), button =>
+                    ReferenceEquals(button.Command, model.SelectDocumentCommand) &&
+                    ReferenceEquals(button.CommandParameter, secondDocument));
+                HeadlessClick.Click(window, returnButton, "Open document");
+                PageScreenshots.Settle(window);
+                Assert.Same(secondDocument, model.SelectedDocument);
+                Assert.Equal(pair, model.Documents.ComparisonPair);
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromMinutes(2));
     }
 
     private static ProposalCard Card(string id, string label, ProposalGroup group, bool pending = false) =>

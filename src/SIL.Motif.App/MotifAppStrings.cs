@@ -3968,4 +3968,35 @@ public static class MotifAppStrings
     public static string ProgressReadingNext => Text("MotifApp.ProgressReadingNext");
     public static string ProgressNextUnavailable => Text("MotifApp.ProgressNextUnavailable");
 
+    #region W5
+    public static string ProposalDocumentOutdated => Text("MotifApp.ProposalDocumentOutdated");
+    public static string ProposalDocumentUnreadable => Text("MotifApp.ProposalDocumentUnreadable");
+    public static string ProposalEvidenceUnavailable => Text("MotifApp.ProposalEvidenceUnavailable");
+    public static string ProposalEvidenceScope => Text("MotifApp.ProposalEvidenceScope");
+    public static string ProposalEvidencePartial => Text("MotifApp.ProposalEvidencePartial");
+    public static string ProposalEvidencePlacesUnavailable => Text("MotifApp.ProposalEvidencePlacesUnavailable");
+    public static string ProposalEvidenceNoWords => Text("MotifApp.ProposalEvidenceNoWords");
+    public static string ProposalCloseDocument => Text("MotifApp.ProposalCloseDocument");
+    public static string ProposalComparisonHint => Text("MotifApp.ProposalComparisonHint");
+    public static string ProposalComparisonLimit => Text("MotifApp.ProposalComparisonLimit");
+    public static string ProposalApplyConfirm => Text("MotifApp.ProposalApplyConfirm");
+    public static string ProposalApplyPrepare => Text("MotifApp.ProposalApplyPrepare");
+    public static string ProposalRefreshEvidence => Text("MotifApp.ProposalRefreshEvidence");
+    public static string ProposalCheckForComparison => Text("MotifApp.ProposalCheckForComparison");
+    public static string ProposalReading => Text("MotifApp.ProposalReading");
+    public static string ProposalReadingChanged => Text("MotifApp.ProposalReadingChanged");
+    public static string ProposalSpellingChanged => Text("MotifApp.ProposalSpellingChanged");
+    public static string ProposalEvidenceListedCount => Text("MotifApp.ProposalEvidenceListedCount");
+    public static string ProposalEvidenceCompleteCount => Text("MotifApp.ProposalEvidenceCompleteCount");
+    public static string ProposalDraft => Text("MotifApp.ProposalDraft");
+    public static string ProposalReady => Text("MotifApp.ProposalReady");
+    public static string ProposalDeferred => Text("MotifApp.ProposalDeferred");
+    public static string ProposalDeclined => Text("MotifApp.ProposalDeclined");
+    public static string ProposalSuperseded => Text("MotifApp.ProposalSuperseded");
+    public static string ProposalWithdrawn => Text("MotifApp.ProposalWithdrawn");
+    public static string ProposalActivateForApply => Text("MotifApp.ProposalActivateForApply");
+    public static string ProposalSelectedNameFormat => Text("MotifApp.ProposalSelectedNameFormat");
+    public static string ProposalReceiptFormat => Text("MotifApp.ProposalReceiptFormat");
+    public static string ReviewApplyMeasuring => Text("MotifApp.ReviewApplyMeasuring");
+    #endregion
 }

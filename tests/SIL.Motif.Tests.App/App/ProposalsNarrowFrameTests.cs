@@ -56,7 +56,7 @@ public sealed class ProposalsNarrowFrameTests
                 Assert.False(firstRow.IsSelected);
                 Assert.True(secondRow.IsEffectivelyVisible);
                 var status = Assert.Single(secondRow.GetVisualDescendants().OfType<TextBlock>(),
-                    text => text.Text == second.TableStatusText);
+                    text => text.Text == second.StatusWord);
                 Assert.Equal(Avalonia.Media.TextWrapping.Wrap, status.TextWrapping);
             }
             finally

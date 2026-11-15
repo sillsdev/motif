@@ -49,6 +49,9 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     /// </summary>
     public const int MostShown = 100;
 
+    [ObservableProperty]
+    private IReadOnlyList<ProposalDifferenceWord> _evidenceWords = [];
+
     private readonly Func<ProposalDifferenceShowRequest, CancellationToken,
         Task<CommandOutcome<ProposalDifferenceResponse>>> _read;
     private readonly Action<string> _openWord;
@@ -70,6 +73,8 @@ public sealed partial class ProposalDifferenceViewModel : ObservableObject
     private int _placesTotal;
     private int _placesListed;
     private int _reads;
+    private bool _stopped;
+    private readonly List<Task> _inFlight = [];
     private CancellationTokenSource? _loadCancellation;
     private CancellationTokenSource? _wordsCancellation;
     private CancellationTokenSource? _placesCancellation;

@@ -73,8 +73,22 @@ public sealed partial class ProposalDifferenceViewModel
 
     private static bool KeepsNoWords(DifferenceOffer offer) => offer is DifferenceOffer.Decided or DifferenceOffer.Deferred;
 
-    /// <summary>Cancels a run in progress and returns once it has ended, so no command outlives the project.</summary>
-    public Task StopAsync() => Maker.DisposeAsync().AsTask();
+    /// <summary>
+    /// Cancels every read generation and a run in progress and returns once they have ended, so no command outlives
+    /// the project. A read that ignores cancellation is joined and its late result is dropped.
+    /// </summary>
+    public async Task StopAsync()
+    {
+        _stopped = true;
+        _generation++;
+        _wordsGeneration++;
+        _placesGeneration++;
+        Stop(ref _loadCancellation);
+        Stop(ref _wordsCancellation);
+        Stop(ref _placesCancellation);
+        await Maker.DisposeAsync().ConfigureAwait(true);
+        await JoinReadsAsync().ConfigureAwait(true);
+    }
 
     /// <summary>Reads the Texts the Baseline lists now, keeping the chosen one when it is still there.</summary>
     public void RefreshTexts()
@@ -103,6 +117,12 @@ public sealed partial class ProposalDifferenceViewModel
     // The made Difference replaces what the section showed, with filters and the open word cleared.
     private void AdoptMade(ProposalDifferenceResponse response)
     {
+        if (response.Summary.ProposalId != _proposalId)
+        {
+            ShownRefusal = WindowRefusal.Plain(MotifAppStrings.ProposalDocumentUnreadable);
+            State = ProposalDifferenceState.Refused;
+            return;
+        }
         Reset();
         Adopt(response);
     }

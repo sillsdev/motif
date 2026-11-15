@@ -194,6 +194,7 @@ public sealed class ProposalWorkflowModelTests
     public async Task AProposalBecomesReadOnlyWhenAPersonSelectsItNotWhenTheListSelectsIt()
     {
         var fake = new FakeCommandClient();
+        fake.Review = fake.Review with { ProposalId = Id };
         fake.ProposalStandingsCompleteWith(new ProposalStandings(
             [new ProposalCard(Id, "Sound change", "proposed", ProposalGroup.WaitingForYou,
                 false, [], TrialStanding.Current, null, []) { IsUnread = true }], 0));
@@ -217,6 +218,7 @@ public sealed class ProposalWorkflowModelTests
     public async Task AListReloadThatReselectsTheProposalDoesNotMarkItRead()
     {
         var fake = new FakeCommandClient();
+        fake.Review = fake.Review with { ProposalId = Id };
         fake.ProposalStandingsCompleteWith(new ProposalStandings(
             [new ProposalCard(Id, "Sound change", "proposed", ProposalGroup.WaitingForYou,
                 false, [], TrialStanding.Current, null, []) { IsUnread = true }], 0));
@@ -315,6 +317,7 @@ public sealed class ProposalWorkflowModelTests
     private static FakeCommandClient NewFake()
     {
         var fake = new FakeCommandClient();
+        fake.Review = fake.Review with { ProposalId = Id };
         fake.ProposalStandingsCompleteWith(new ProposalStandings(
             [new ProposalCard(Id, "Sound change", "proposed", ProposalGroup.WaitingForYou,
                 false, [], TrialStanding.Current, null, [])], 0));

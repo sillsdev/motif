@@ -98,6 +98,27 @@ public sealed class ProposalCardViewModel : ObservableObject
 {
     private bool _isSelected;
     private bool _isUnread;
+    private bool _isCheckedForComparison;
+    internal Func<ProposalCardViewModel, bool, bool>? CheckComparison { get; set; }
+
+    public bool IsCheckedForComparison
+    {
+        get => _isCheckedForComparison;
+        set
+        {
+            if (_isCheckedForComparison == value) return;
+            if (CheckComparison?.Invoke(this, value) == false)
+            {
+                OnPropertyChanged();
+                return;
+            }
+            SetProperty(ref _isCheckedForComparison, value);
+        }
+    }
+    internal void SetComparisonChecked(bool value) =>
+        SetProperty(ref _isCheckedForComparison, value, nameof(IsCheckedForComparison));
+    public string ComparisonAccessibleName => string.Format(CultureInfo.CurrentCulture,
+        MotifAppStrings.ProposalCheckForComparison, Label);
     private readonly TimeProvider _clock;
 
     public ProposalCardViewModel(ProposalCard card, IReadOnlyDictionary<string, string>? labels = null,
@@ -224,17 +245,18 @@ public sealed class ProposalCardViewModel : ObservableObject
     public bool CanAskAgain => !Card.IsDraft && Card.Status == "rejected" && Card.RequestId is not null;
 
     /// <summary>
-    /// The Proposal's status in the window's words: Draft, Ready, Deferred, Applied, Declined, Superseded or
-    /// Withdrawn. Empty for the pending changes, which the window never names as a Proposal.
+    /// The Proposal's status in the window's words: Draft, Ready, Deferred, Applied, Declined, Superseded or Withdrawn.
     /// </summary>
-    public string StatusWord => Card.IsPendingDraft ? string.Empty : Card.IsDraft ? "Draft" : Card.Status switch
+    public string StatusWord => (Card.IsPendingDraft || Card.IsDraft) &&
+        Card.Status is not ("applied" or "rejected" or "superseded" or "withdrawn")
+        ? MotifAppStrings.ProposalDraft : Card.Status switch
     {
-        "proposed" => "Ready",
-        "deferred" => "Deferred",
-        "applied" => "Applied",
-        "rejected" => "Declined",
-        "superseded" => "Superseded",
-        "withdrawn" => "Withdrawn",
+        "proposed" => MotifAppStrings.ProposalReady,
+        "deferred" => MotifAppStrings.ProposalDeferred,
+        "applied" => MotifAppStrings.ProposalApplied,
+        "rejected" => MotifAppStrings.ProposalDeclined,
+        "superseded" => MotifAppStrings.ProposalSuperseded,
+        "withdrawn" => MotifAppStrings.ProposalWithdrawn,
         _ => string.Empty,
     };
 
@@ -290,8 +312,7 @@ public sealed class ProposalCardViewModel : ObservableObject
     public string TableWorkText => Work?.Value ?? TrialStandingWords.NotTried.Status;
 
     /// <summary>
-    /// Whether Open in Review Changes is the one Primary button: nothing to try and nothing to reopen, so looking
-    /// through the changes is the next step.
+    /// Whether opening the Proposal is the primary action when no Trial or Reopen action is available.
     /// </summary>
     public bool IsOpenPrimary => !CanTry && !CanReopen;
 
@@ -360,7 +381,7 @@ public sealed class ProposalCardViewModel : ObservableObject
     }
 
     /// <summary>The Proposal's accessible name, including its selection state.</summary>
-    public string AccessibleRowName => IsSelected ? $"{Label}, selected" : Label;
+    public string AccessibleRowName => IsSelected ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalSelectedNameFormat, Label) : Label;
 
     /// <summary>The person shown as the author of this row.</summary>
     public string AuthorText => Card.IsPendingDraft ? MotifAppStrings.ProposalBuilderYou :
@@ -489,17 +510,14 @@ public enum ProposalsPageState
 }
 
 /// <summary>
-/// The Proposals page's model: every Proposal grouped by what to do next, with its numbers before and after its
-/// Trial. Opening a row enters Proposal mode; Try again goes through the window's one Try again, and nothing else
-/// runs on its own.
+/// Groups Proposal standings and retains independently open documents. Apply preparation activates a Proposal
+/// through the workspace, and Try Again uses the workspace's shared Trial command.
 /// </summary>
 public sealed partial class ProposalsPageModel : PageModel
 {
     private int _readGeneration;
     private bool _rereading;
     private ProposalCard? _rereadCard;
-    private string? _differenceProposalId;
-    private string? _differenceProject;
     private bool _includeSetAside;
     private bool _retainedClosedCard;
     private string? _retainedRowId;
@@ -515,6 +533,8 @@ public sealed partial class ProposalsPageModel : PageModel
     internal ProposalsPageModel(WorkspaceContext context, Func<TimeSpan, CancellationToken, Task>? parsimonyDelay)
         : base(context)
     {
+        Documents = new OpenProposalDocuments(context, parsimonyDelay);
+        Documents.PropertyChanged += (_, _) => OnPropertyChanged(nameof(SelectedDocument));
         OpenCommand = new AsyncRelayCommand<ProposalCardViewModel>(OpenAsync);
         OpenInReviewCommand = new AsyncRelayCommand<ProposalCardViewModel>(OpenInReviewAsync);
         TryAgainCommand = new AsyncRelayCommand<ProposalCardViewModel>(TryAgainAsync);
@@ -530,22 +550,17 @@ public sealed partial class ProposalsPageModel : PageModel
         DecideLaterCommand = new AsyncRelayCommand<ProposalCardViewModel>(DecideLaterAsync);
         SelectGroupFilterCommand = new AsyncRelayCommand<ProposalListFilter>(SelectGroupFilterAsync);
         SelectProposalCommand = new RelayCommand<ProposalCardViewModel>(SelectProposal);
-        Difference = new ProposalDifferenceViewModel(
-            (request, cancellationToken) => Context.Commands.ReadProposalDifferenceAsync(request, cancellationToken),
-            word => Context.OpenWord(word),
-            (request, progress, cancellationToken) =>
-                Context.Commands.ProduceProposalDifferenceAsync(request, progress, cancellationToken),
-            () => [.. Context.Selection.AllTexts.Select(text => new DifferenceTextChoice(text.Id, text.Title))]);
-        Parsimony = new ProposalParsimonyViewModel(
-            (request, cancellationToken) => Context.Commands.ReadProposalParsimonyStatusAsync(request, cancellationToken),
-            parsimonyDelay,
-            (request, cancellationToken) => Context.Commands.ReadParsimonyReportAsync(request, cancellationToken),
-            (request, cancellationToken) => Context.Commands.ReadParsimonyViewAsync(request, cancellationToken));
-        Pictures = new ProposalPicturesViewModel(
-            (request, cancellationToken) => Context.Commands.ShowProposalPicturesAsync(request, cancellationToken),
-            (request, cancellationToken) => Context.Commands.AddProposalPictureAsync(request, cancellationToken),
-            (request, cancellationToken) => Context.Commands.RemoveProposalPictureAsync(request, cancellationToken),
-            Context.PictureIntake);
+        _emptyDocument = new ProposalDocumentViewModel(context, string.Empty, string.Empty, parsimonyDelay);
+        CloseDocumentCommand = new AsyncRelayCommand<ProposalDocumentViewModel>(CloseDocumentAsync);
+        SelectDocumentCommand = new RelayCommand<ProposalDocumentViewModel>(SelectDocument);
+        CompareCommand = new RelayCommand(ComparePair,
+            () => Documents.CanCompare && HasComparisonHost);
+        Documents.PropertyChanged += (_, _) =>
+        {
+            CompareCommand.NotifyCanExecuteChanged();
+            foreach (var card in Groups.SelectMany(group => group.Cards))
+                card.SetComparisonChecked(Documents.ComparisonPair.Any(document => document.ProposalId == card.ProposalId));
+        };
         Context.Selection.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(SelectionViewModel.TextCount)) Difference.RefreshTexts();
@@ -567,18 +582,15 @@ public sealed partial class ProposalsPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(GroupFilters), nameof(ListGroups), nameof(TotalProposalCountText))]
     private IReadOnlyList<ProposalGroupViewModel> _groups = [];
 
-    /// <summary>The page's dense table: each shared heading row followed by its Proposals.</summary>
+    /// <summary>The grouped list of Proposals.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFilteredEmpty), nameof(IsNoProposalsToShow), nameof(ShowSelectProposalPrompt))]
     private IReadOnlyList<object> _rows = [];
 
     private ProposalCardViewModel? _selectedProposal;
-    private bool _selectingInCode;
 
     /// <summary>
-    /// The selected Proposal whose details and actions appear beside the list. A person's choice of another one, by a
-    /// row click or an arrow key, is refused while the selected one's Rationale edit is unsaved, and the list is told
-    /// the selection stayed; a re-read, Finalize or Delete reselects through.
+    /// The selected row; selecting another Proposal retains the earlier document and its unsaved edits.
     /// </summary>
     public ProposalCardViewModel? SelectedProposal
     {
@@ -586,11 +598,7 @@ public sealed partial class ProposalsPageModel : PageModel
         set
         {
             if (ReferenceEquals(_selectedProposal, value)) return;
-            if (!_selectingInCode && KeepsUnsavedEdit(value?.ProposalId))
-            {
-                OnPropertyChanged();
-                return;
-            }
+            if (!_rereading) ComparisonContent = null;
             OnSelectedProposalChanging(value);
             OnPropertyChanging();
             _selectedProposal = value;
@@ -620,37 +628,16 @@ public sealed partial class ProposalsPageModel : PageModel
         return true;
     }
 
-    private RationaleEditorModel? UnsavedEditor => UnsavedRationaleEditor ?? UnsavedCommentEditor;
-
-    private RationaleEditorModel? UnsavedCommentEditor
-    {
-        get
-        {
-            var editors = DetailRefusal is null && (_selectedProposal is null ? _rereading :
-                _lastComments?.FirstOrDefault()?.ProposalId == _selectedProposal.ProposalId) ? _lastComments : Comments;
-            return editors?.FirstOrDefault(editor => editor.HasUnsavedChanges);
-        }
-    }
-
-    // The editor holding an unsaved edit, also while a re-read has cleared RationaleEditor until the detail loads.
-    private RationaleEditorModel? UnsavedRationaleEditor
-    {
-        get
-        {
-            var kept = DetailRefusal is null && (_selectedProposal is null ? _rereading : _lastRationaleEditor?.ProposalId == _selectedProposal.ProposalId);
-            var editor = RationaleEditor ?? (kept ? _lastRationaleEditor : null);
-            return editor is { HasUnsavedChanges: true } ? editor : null;
-        }
-    }
+    private RationaleEditorModel? UnsavedEditor => Documents.UnsavedEditor;
 
     /// <summary>The selected Proposal's saved Difference, or the offer to make one.</summary>
-    public ProposalDifferenceViewModel Difference { get; }
+    public ProposalDifferenceViewModel Difference => ActiveDocument.Difference;
 
-    /// <summary>The selected Proposal's automatic Parsimony advice, kept current while its job runs.</summary>
-    public ProposalParsimonyViewModel Parsimony { get; }
+    /// <summary>The selected Proposal's Diagnostics helper, activated by the Diagnostics host.</summary>
+    public ProposalParsimonyViewModel Parsimony => ActiveDocument.Parsimony;
 
     /// <summary>The selected Proposal's pictures, which a person adds to and removes while it is open.</summary>
-    public ProposalPicturesViewModel Pictures { get; }
+    public ProposalPicturesViewModel Pictures => ActiveDocument.Pictures;
 
     /// <summary>The read of the selected Proposal's pictures that is under way, or the last one that ended.</summary>
     public Task PicturesLoading { get; private set; } = Task.CompletedTask;
@@ -868,8 +855,8 @@ public sealed partial class ProposalsPageModel : PageModel
         Requests.Show([], Context.Clock.GetUtcNow());
         _rereading = false;
         _rereadCard = null;
-        _lastRationaleEditor = null;
-        _lastComments = null;
+        UnwatchDocuments();
+        _ = Documents.StopAsync();
         _includeSetAside = false;
         _retainedClosedCard = false;
         _retainedRowId = null;
@@ -923,17 +910,18 @@ public sealed partial class ProposalsPageModel : PageModel
             var standings = read.Value!;
             _retainedClosedCard = false;
             _retainedRowId = null;
-            if (selectedCard is not null && UnsavedEditor is { } editing &&
-                editing.ProposalId == selectedCard.ProposalId &&
+            var selectedDocument = Documents.Items.FirstOrDefault(document => document.ProposalId == keepSelected);
+            if (selectedCard is not null && selectedDocument is not null &&
                 standings.Proposals.All(card => card.ProposalId != selectedCard.ProposalId))
             {
                 var detail = await Context.Commands.ShowProposalAsync(
                     new ShowProposalRequest(projectPath, MotifProductVersion.CurrentText, selectedCard.ProposalId),
                     cancellationToken).ConfigureAwait(true);
                 if (generation != _readGeneration || projectPath != Context.ProjectPath) return;
-                if (detail.Succeeded)
+                if (detail.Succeeded && detail.Value!.ProposalId == selectedCard.ProposalId &&
+                    (PicturesFrozen(detail.Value.Status) || selectedDocument.UnsavedEditor is not null))
                 {
-                    var decided = PicturesFrozen(detail.Value!.Status) && detail.Value.DraftName is null;
+                    var decided = PicturesFrozen(detail.Value.Status);
                     var retained = selectedCard with
                     {
                         Status = detail.Value.Status,
@@ -957,6 +945,8 @@ public sealed partial class ProposalsPageModel : PageModel
             }
             Apply(standings, keepSelected);
             await LoadRequestsAsync(projectPath, cancellationToken).ConfigureAwait(true);
+            _ = Task.WhenAll(Documents.Items.Where(document => document != SelectedDocument)
+                .Select(document => document.RefreshAsync(cancellationToken)));
         }
         finally
         {
@@ -972,6 +962,10 @@ public sealed partial class ProposalsPageModel : PageModel
         var labels = standings.Proposals.ToDictionary(card => card.ProposalId, card => card.Label,
             StringComparer.Ordinal);
         var cards = standings.Proposals.Select(card => CardFor(card, labels)).ToArray();
+        foreach (var document in Documents.Items)
+            if (cards.FirstOrDefault(card => card.ProposalId == document.ProposalId) is { } currentCard)
+                document.Card = currentCard;
+            else document.InvalidateEvidence();
         Groups = new (ProposalGroup, string)[]
             {
                 (ProposalGroup.WaitingForYou, MotifAppStrings.ProposalsWaitingForYou),
@@ -1003,10 +997,14 @@ public sealed partial class ProposalsPageModel : PageModel
     {
         var run = Context.TrialRun.StateFor(card.ProposalId);
         var standing = run.IsRunning ? TrialStanding.Trying : card.Standing;
-        return new ProposalCardViewModel(card, labels, standing, run.IsRunning ? null : run.ShownRefusal,
+        var row = new ProposalCardViewModel(card, labels, standing, run.IsRunning ? null : run.ShownRefusal,
             run.IsRunning ? null : run.BaselineNotice,
             run.IsRunning ? null : run.JobId is not null && run.JobId == card.Trial?.JobId
                 ? run.WorkNotice : TrialWorkNotice.For(card.Trial?.Work), Context.Clock);
+        row.IsCheckedForComparison = Documents.Items.Any(document => document.ProposalId == card.ProposalId &&
+            document.IsCheckedForComparison);
+        row.CheckComparison = CheckComparison;
+        return row;
     }
 
     private async Task SelectGroupFilterAsync(ProposalListFilter filter)
@@ -1043,10 +1041,9 @@ public sealed partial class ProposalsPageModel : PageModel
         SelectByUser(card);
     }
 
-    // A person's choice marks a row read and is refused (false) while another Proposal's Rationale edit is unsaved.
+    // Only an explicit choice marks the Proposal read; opening another document preserves unsaved fields.
     private bool SelectByUser(ProposalCardViewModel card)
     {
-        if (KeepsUnsavedEdit(card.ProposalId)) return false;
         _pendingUserSelectionId = card.ProposalId;
         SetSelectedProposal(card);
         _pendingUserSelectionId = null;
@@ -1079,16 +1076,7 @@ public sealed partial class ProposalsPageModel : PageModel
     private void SetSelectedProposal(ProposalCardViewModel? proposal)
     {
         if (ReferenceEquals(SelectedProposal, proposal)) return;
-        var outer = _selectingInCode;
-        _selectingInCode = true;
-        try
-        {
-            SelectedProposal = proposal;
-        }
-        finally
-        {
-            _selectingInCode = outer;
-        }
+        SelectedProposal = proposal;
     }
 
     private void OnSelectedProposalChanging(ProposalCardViewModel? value) => _selectedProposal?.SetSelected(false);
@@ -1102,38 +1090,10 @@ public sealed partial class ProposalsPageModel : PageModel
         if (value?.ProposalId != _deleteQuestionId) SetDeleteQuestion(null);
         else OnPropertyChanged(nameof(IsConfirmingDelete));
         OnPropertyChanged(nameof(DeleteQuestion));
-        if (value is null || value.Card.IsPendingDraft || Context.ProjectPath is not { } path)
-        {
-            // A re-read of the list deselects for a moment; it settles the Difference when it finishes.
-            if (!_rereading) ClearDifference();
-            // Only the brief empty selection of a re-read keeps a watch; any other end closes it.
-            if (value is not null || !_rereading)
-            {
-                Parsimony.Stop();
-                Pictures.Clear();
-            }
-            return;
-        }
-        PicturesLoading = Pictures.LoadAsync(path, value.ProposalId, !value.Card.IsDraft && !PicturesFrozen(value.Card.Status));
-        // The same Proposal chosen again, as when the list was re-read, only refreshes what its card offers.
-        if (value.ProposalId == _differenceProposalId && path == _differenceProject)
-        {
-            var offer = DifferenceOfferFor(value.Card);
-            // Its word detail goes when it is decided, so a change of that state reads again, never mid-run.
-            if (Difference.IsDecidedChangedBy(offer) && !Difference.Maker.IsActive)
-                DifferenceReading = Difference.LoadAsync(path, value.ProposalId, offer: offer);
-            else
-                Difference.SetOffer(offer);
-            return;
-        }
-        _differenceProposalId = value.ProposalId;
-        _differenceProject = path;
-        DifferenceReading = Difference.LoadAsync(path, value.ProposalId, offer: DifferenceOfferFor(value.Card));
     }
 
     private void ClearDifference()
     {
-        _differenceProposalId = _differenceProject = null;
         Difference.Clear();
         DifferenceReading = Task.CompletedTask;
     }
@@ -1155,8 +1115,8 @@ public sealed partial class ProposalsPageModel : PageModel
     private void TrackPausedEditors()
     {
         if (_pausedGroupFilter is null) return;
-        if (_lastRationaleEditor is { } rationale) TrackPausedEditor(rationale);
-        if (_lastComments is { } comments)
+        if (RationaleEditor is { } rationale) TrackPausedEditor(rationale);
+        if (Comments is { } comments)
             foreach (var editor in comments) TrackPausedEditor(editor);
     }
 
@@ -1190,13 +1150,11 @@ public sealed partial class ProposalsPageModel : PageModel
     // A decided Proposal keeps its pictures as they were; Deferred is still open.
     private static bool PicturesFrozen(string status) => status is "applied" or "rejected" or "withdrawn" or "superseded";
 
-    protected override Task OnStopWorkAsync()
+    protected override async Task OnStopWorkAsync()
     {
-        Parsimony.Stop();
-        Pictures.Clear();
-        ++_detailGeneration;
-        _detailCancellation?.Cancel();
-        return Task.WhenAll(_detailReads.Append(Difference.StopAsync()));
+        UnwatchDocuments();
+        await Task.WhenAll(Documents.StopAsync(), _emptyDocument.StopAsync(), DetailReading).ConfigureAwait(true);
+        NotifyDocument();
     }
 
     // Decided keeps no new Difference, untried has no Trial, and deferred can make its words again.
@@ -1220,6 +1178,7 @@ public sealed partial class ProposalsPageModel : PageModel
         }
         try
         {
+            SelectByUser(card);
             await Context.OpenProposalAsync(card.ProposalId, CancellationToken.None, card.Label).ConfigureAwait(true);
             Context.OpenPage(page);
         }

@@ -57,7 +57,7 @@ public sealed class ProposalDifferenceRunTests
         public async Task<Task> StartAsync()
         {
             var run = Page.Difference.Maker.RunCommand.ExecuteAsync(null);
-            await Started.Task;
+            await Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
             Assert.Equal(RunState.Running, Page.Difference.Maker.State);
             return run;
         }
@@ -159,19 +159,20 @@ public sealed class ProposalDifferenceRunTests
     }
 
     [Fact]
-    public async Task ChoosingAnotherProposalCancelsTheRunAndNeverShowsItsResult()
+    public async Task ChoosingAnotherDocumentKeepsTheOriginalRunAndNeverMixesItsResult()
     {
         var scene = new Running();
         await scene.OpenAsync();
+        var original = scene.Page.SelectedDocument!;
         var run = await scene.StartAsync();
-
         scene.Page.SelectProposalCommand.Execute(scene.Page.Groups.SelectMany(group => group.Cards)
             .Single(card => card.ProposalId == "p/two"));
-
-        Assert.True(scene.Token.IsCancellationRequested);
-        Assert.Equal(RunState.Idle, scene.Page.Difference.Maker.State);
+        Assert.False(scene.Token.IsCancellationRequested);
+        Assert.True(original.Difference.Maker.IsActive);
+        Assert.NotSame(original.Difference, scene.Page.Difference);
         await scene.FinishAsync(run);
-        Assert.Equal(RunState.Idle, scene.Page.Difference.Maker.State);
+        Assert.Equal(RunState.Completed, original.Difference.Maker.State);
+        Assert.Equal("p/one", original.Difference.Summary!.ProposalId);
         Assert.Null(scene.Page.Difference.Summary);
     }
 
