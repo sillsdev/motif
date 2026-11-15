@@ -7,6 +7,7 @@ using Microsoft.Data.Sqlite;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Projects;
+using SIL.Motif.Host;
 using SIL.Motif.Host.Store;
 using SIL.Motif.Tests.App;
 using SIL.Motif.Tests.TestFixtures;
@@ -103,8 +104,7 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
                     !walkthrough.Workspace.ConfirmStoreDeletionCommand.IsRunning,
                 WalkthroughSteps.Remaining(deadline), "confirming deletion did not reopen the project");
 
-            Assert.True(File.Exists(storePath));
-            Assert.Equal(MotifSchema.CurrentSchema, UserVersion(storePath));
+            Assert.False(File.Exists(storePath));
             Assert.Equal(projectBytes, File.ReadAllBytes(project.FwDataPath));
 
             return Task.CompletedTask;
@@ -116,6 +116,9 @@ public sealed class StoreRefusalWalkthroughTests(PristineProjectFixture pristine
     {
         using var project = new WalkthroughProject(pristine);
         var storePath = StorePath(project.FwDataPath);
+        using (new ProjectDatabaseCatalog(MotifSchema.CurrentSchema, MotifProductVersion.Current)
+            .OpenOwned(new ProjectLocator(Path.GetFullPath(project.FwDataPath),
+                Path.GetFileNameWithoutExtension(project.FwDataPath)))) { }
         var corruptBytes = Enumerable.Repeat((byte)'x', 4096).ToArray();
         File.WriteAllBytes(storePath, corruptBytes);
         var deadline = WalkthroughSteps.DeadlineIn(60);

@@ -259,6 +259,12 @@ public static class ProjectStoreCommand
     // BUSY, LOCKED and IOERR clear when storage recovers, so a caller may retry them.
     private static Refusal StoreRefusal(Exception exception, string ioCode, string fwDataPath) => exception switch
     {
+        MotifStoreVersionException version => new Refusal(
+            "store.other-version", FailureReason.Refused, version.Message, new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["fwDataPath"] = fwDataPath,
+                [RefusalFactNames.StorePath] = version.StorePath,
+            }),
         IOException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 or 10 } } => new Refusal(
             ioCode, FailureReason.Busy, StorageFailureMessage, OperationFacts(fwDataPath, exception)),
         IOException or UnauthorizedAccessException => new Refusal(

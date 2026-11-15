@@ -94,6 +94,8 @@ public sealed class SetupRealClientTests(PristineProjectFixture pristine)
             Assert.True(skippedAgain.Value!.SetupSkipped);
 
             SetupWalkthroughActions.SelectProject(reopened, projectA.FwDataPath);
+            reopened.WaitUntilProjectIsQuiet(WalkthroughSteps.Remaining(deadline),
+                "opening the other project did not finish its initial Baseline capture");
             var beforeRefresh = await commands.ReadDefaultSelectionAsync(
                 new ReadDefaultSelectionRequest(projectA.FwDataPath), CancellationToken.None);
             Assert.True(beforeRefresh.Succeeded, beforeRefresh.Refusal?.Message);

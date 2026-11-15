@@ -1,7 +1,13 @@
 using System;
 using System.IO;
+using System.Linq;
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Commands;
+using SIL.Motif.Contract.Commands;
+using SIL.Motif.Contract.Projects;
 using SIL.Motif.Contract.Responses;
+using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Store;
 using Xunit;
 
 namespace SIL.Motif.Tests.Commands;
@@ -12,6 +18,47 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
         Path.Combine(Path.GetTempPath(), "motif-project-store-operation-facts-" + Guid.NewGuid().ToString("N"));
 
     public ProjectStoreOperationFactsTests() => Directory.CreateDirectory(_root);
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public void ExistingReadRefusesAnotherSchemaVersionWithItsStorePathAndPreservesStoredFiles(int schemaOffset)
+    {
+        var projectPath = CreateProject("schema-version");
+        var created = ProjectStoreCommand.Run(projectPath, "1.0",
+            (_, _) => CommandOutcome<string>.Success("created"));
+        Assert.True(created.Succeeded);
+        var project = new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath));
+        var storePath = ProjectDatabaseCatalog.DatabasePathFor(project);
+        using (var connection = new SqliteConnection($"Data Source={storePath};Pooling=False"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema + schemaOffset};";
+            command.ExecuteNonQuery();
+        }
+        string[] StoredFiles() => Directory.GetFiles(_root).Where(path =>
+            !path.EndsWith("-wal", StringComparison.Ordinal) && !path.EndsWith("-shm", StringComparison.Ordinal)).ToArray();
+        var before = StoredFiles().ToDictionary(path => path, File.ReadAllBytes);
+        var invoked = false;
+
+        var outcome = ProjectStoreCommand.ReadExisting(projectPath,
+            CommandOutcome<string>.Success("absent"), (_, _) =>
+            {
+                invoked = true;
+                return CommandOutcome<string>.Success("read");
+            });
+
+        Assert.False(invoked);
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("store.other-version", outcome.Refusal!.Code);
+        Assert.Equal(FailureReason.Refused, outcome.Refusal.Reason);
+        Assert.Equal(storePath, outcome.Refusal.Facts[RefusalFactNames.StorePath]);
+        Assert.Equal(projectPath, outcome.Refusal.Facts["fwDataPath"]);
+        Assert.Equal(before.Keys.Order(), StoredFiles().Order());
+        foreach (var file in before)
+            Assert.Equal(file.Value, File.ReadAllBytes(file.Key));
+    }
 
     [Fact]
     public void AnnotatedIOExceptionKeepsOperationIoRefusalAndAddsItsDiagnostics()

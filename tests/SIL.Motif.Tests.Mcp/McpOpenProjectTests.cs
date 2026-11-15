@@ -142,7 +142,8 @@ public sealed class McpOpenProjectTests
             var projectBytes = File.ReadAllBytes(project);
             var result = await client.CallToolAsync("motif_proposals", new Dictionary<string, object?> { ["project"] = project });
             Assert.True(result.IsError, ErrorText(result));
-            Assert.Equal("store.unsupported", result.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal("store.other-version", result.StructuredContent!.Value.GetProperty("code").GetString());
+            Assert.Equal(store, result.StructuredContent.Value.GetProperty("facts").GetProperty("storePath").GetString());
             Assert.Equal(storeBytes, File.ReadAllBytes(store));
             Assert.Equal(projectBytes, File.ReadAllBytes(project));
             Assert.False(File.Exists(store + $".schema{MotifSchema.CurrentSchema - 1}.bak"));
