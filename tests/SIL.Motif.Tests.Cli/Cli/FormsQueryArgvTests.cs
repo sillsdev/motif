@@ -63,4 +63,15 @@ public sealed class FormsQueryArgvTests
         }
         finally { Directory.Delete(root, recursive: true); }
     }
+
+    [Fact]
+    public async Task HypothesisFlagsReachTheReleasedExecutableAndAWordSetIsRequired()
+    {
+        var result = await CliProcess.RunAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")),
+            null, false, "query", "stems", "--project", "unused.fwdata", "--change", "d>r", "--at", "final",
+            "--affixes", "an,un", "--score", "reliability", "--test-result");
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.DoesNotContain("cli.unexpected", result.Output + result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("Unknown option", result.Output + result.Error, StringComparison.OrdinalIgnoreCase);
+    }
 }
