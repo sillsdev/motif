@@ -43,9 +43,9 @@ namespace SIL.TextEditing.Playground
         Popup BuildSelectionBar()
         {
             var simple = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
-            simple.Children.Add(BarTool(Names.BarBold, new TextBlock { Text = "B", FontWeight = FontWeight.Bold }, "Bold (Ctrl+B)", () => ToggleBold()));
-            simple.Children.Add(BarTool(Names.BarItalic, new TextBlock { Text = "I", FontStyle = FontStyle.Italic }, "Italic (Ctrl+I)", () => ToggleItalic()));
-            simple.Children.Add(BarTool(Names.BarUnderline, new TextBlock { Text = "U", TextDecorations = TextDecorations.Underline }, "Underline (Ctrl+U)", () => ToggleUnderline()));
+            simple.Children.Add(FormatTool(Names.BarBold, new TextBlock { Text = "B", FontWeight = FontWeight.Bold }, "Bold (Ctrl+B)", () => ToggleBold()));
+            simple.Children.Add(FormatTool(Names.BarItalic, new TextBlock { Text = "I", FontStyle = FontStyle.Italic }, "Italic (Ctrl+I)", () => ToggleItalic()));
+            simple.Children.Add(FormatTool(Names.BarUnderline, new TextBlock { Text = "U", TextDecorations = TextDecorations.Underline }, "Underline (Ctrl+U)", () => ToggleUnderline()));
             _selectionWs = new ComboBox
             {
                 Name = Names.BarWritingSystem,

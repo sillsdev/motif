@@ -126,6 +126,7 @@ namespace SIL.TextEditing.Playground
         readonly SamplePictures _pictures = new SamplePictures();
         readonly List<Session> _sessions = new List<Session>();
         readonly List<string> _log = new List<string>();
+        readonly List<ToggleButton> _formatButtons = new List<ToggleButton>();
         readonly StackPanel _fieldStack = new StackPanel();
         readonly ComboBox _picker;
         readonly ComboBox _countPicker;
@@ -300,9 +301,9 @@ namespace SIL.TextEditing.Playground
             toolbar.Children.Add(Label("Fields:"));
             toolbar.Children.Add(_countPicker);
             toolbar.Children.Add(Spacer());
-            toolbar.Children.Add(Tool(Names.Bold, new TextBlock { Text = "B", FontWeight = FontWeight.Bold }, "Bold on the selection (Ctrl+B)", () => ToggleBold()));
-            toolbar.Children.Add(Tool(Names.Italic, new TextBlock { Text = "I", FontStyle = FontStyle.Italic }, "Italic on the selection (Ctrl+I)", () => ToggleItalic()));
-            toolbar.Children.Add(Tool(Names.Underline, new TextBlock { Text = "U", TextDecorations = TextDecorations.Underline }, "Underline on the selection (Ctrl+U)", () => ToggleUnderline()));
+            toolbar.Children.Add(FormatTool(Names.Bold, new TextBlock { Text = "B", FontWeight = FontWeight.Bold }, "Bold on the selection (Ctrl+B)", () => ToggleBold()));
+            toolbar.Children.Add(FormatTool(Names.Italic, new TextBlock { Text = "I", FontStyle = FontStyle.Italic }, "Italic on the selection (Ctrl+I)", () => ToggleItalic()));
+            toolbar.Children.Add(FormatTool(Names.Underline, new TextBlock { Text = "U", TextDecorations = TextDecorations.Underline }, "Underline on the selection (Ctrl+U)", () => ToggleUnderline()));
             toolbar.Children.Add(Spacer());
             toolbar.Children.Add(Label("Character style:"));
             toolbar.Children.Add(StyleBox(Names.CharStyle, SampleStyles.CharacterStyles, "Apply a character style to the selection (the host's stylesheet decides how it looks)", name => ApplyCharacterStyle(name)));
@@ -1246,7 +1247,33 @@ namespace SIL.TextEditing.Playground
             _wsLabel.Text = "ws: " + tag + (ws != null ? " - " + ws.Name + " (" + ws.Kind + ")" : string.Empty);
         }
 
-        void RefreshInspector() => _inspector.Text = Inspector.Describe(_active.Field.Editor, _active.Undo);
+        void RefreshInspector()
+        {
+            _inspector.Text = Inspector.Describe(_active.Field.Editor, _active.Undo);
+            UpdateFormatButtons();
+        }
+
+        ToggleButton FormatTool(string name, object content, string tip, Action click)
+        {
+            var button = new ToggleButton { Name = name, Content = content, Focusable = false, Margin = new Thickness(2), Padding = new Thickness(8, 3) };
+            ToolTip.SetTip(button, tip);
+            button.Click += (s, e) => { click(); UpdateFormatButtons(); };
+            _formatButtons.Add(button);
+            return button;
+        }
+
+        void UpdateFormatButtons()
+        {
+            if (_active == null) return;
+            foreach (var button in _formatButtons)
+            {
+                int property = button.Name == Names.Bold || button.Name == Names.BarBold ? TextPropertyNumbers.Bold :
+                    button.Name == Names.Italic || button.Name == Names.BarItalic ? TextPropertyNumbers.Italic :
+                    button.Name == Names.Underline || button.Name == Names.BarUnderline ? TextPropertyNumbers.Underline : 0;
+                if (property != 0)
+                    button.IsChecked = SelectionFormatting.IsOn(_active.Field.Editor, _active.Field.StyleResolver, property);
+            }
+        }
 
         void Log(string message)
         {
@@ -1310,20 +1337,29 @@ namespace SIL.TextEditing.Playground
 
         public bool ToggleBold() => Toggle("bold", TextPropertyNumbers.Bold);
         public bool ToggleItalic() => Toggle("italic", TextPropertyNumbers.Italic);
-        public bool ToggleUnderline() => Toggle("underline", TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle);
+        public bool ToggleUnderline() => Toggle("underline", TextPropertyNumbers.Underline);
 
-        bool Toggle(string label, int property, int on = TextPropertyNumbers.ToggleOn)
+        bool Toggle(string label, int property)
         {
-            return FormatSelection(label, runs =>
+            var session = _active;
+            var editor = session.Field.Editor;
+            if (!editor.HasSelection) { Log("format: " + label + " needs a selection"); return false; }
+            var delta = SelectionFormatting.Toggle(editor, session.Field.StyleResolver, property);
+            if (delta == null)
             {
-                bool allOn = runs.All(r => r.Props.TryGetInt(property, out var v) && v == on);
-                Log("format: " + label + (allOn ? " off" : " on"));
-                return r =>
-                {
-                    if (allOn) r.Props.IntProps.Remove(property);
-                    else r.Props.SetInt(property, on, TextPropertyNumbers.VariationEnum);   // FieldWorks stores toggles and enums with ktpvEnum
-                };
-            });
+                Log("format: " + label + " refused or has nothing to change in the selection");
+                UpdateFormatButtons();
+                return false;
+            }
+            Log("format: " + label + (SelectionFormatting.IsOn(editor, session.Field.StyleResolver, property) ? " off" : " on"));
+            delta.Label = label;
+            session.Undo.Done.Add(delta);
+            session.Undo.Undone.Clear();
+            editor.Ordered(out var start, out var end);
+            editor.Apply(delta);
+            editor.SetCaret(start);
+            editor.SetCaret(end, true);
+            return true;
         }
 
         /// <summary>Sets (or, with "(none)", removes) the named character style on the selected runs.</summary>
