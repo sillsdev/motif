@@ -7730,11 +7730,11 @@ Never included unless you tick it in the preview: local details, which may conta
   <!-- fix1-proposal -->
   <data name="MotifApp.ProposalUntitledDraft" xml:space="preserve"><value>Untitled Draft</value></data>
   <data name="MotifApp.ProposalUntitled" xml:space="preserve"><value>Untitled Proposal</value></data>
-  <data name="MotifApp.ProposalApplyNeedsTrialFormat" xml:space="preserve"><value>Apply Is Unavailable: {0}. Choose {1} on This Proposal in the Proposals List, Then Come Back to Apply.</value></data>
-  <data name="MotifApp.ProposalApplyLosesFormat" xml:space="preserve"><value>Applying Would Lose the Approved Analysis of {0}. The Places Are Not Listed Here.</value></data>
-  <data name="MotifApp.ProposalApplyLosesNone" xml:space="preserve"><value>Applying Would Lose No Approved Analysis.</value></data>
-  <data name="MotifApp.ProposalEvidenceUnavailableNextStep" xml:space="preserve"><value>Refresh the Project and Reopen This Proposal to Read Its Evidence Again.</value></data>
-  <data name="MotifApp.ApplyBackupNotice" xml:space="preserve"><value>Motif Does Not Back Up Your Project. Back It Up in FieldWorks Before You Apply.</value></data>
+  <data name="MotifApp.ProposalApplyNeedsTrialFormat" xml:space="preserve"><value>Apply is unavailable: {0}. Choose {1} on this Proposal in the Proposals list, then come back to apply.</value></data>
+  <data name="MotifApp.ProposalApplyLosesFormat" xml:space="preserve"><value>Applying would lose the approved analysis of {0}. The places are not listed here.</value></data>
+  <data name="MotifApp.ProposalApplyLosesNone" xml:space="preserve"><value>Applying would lose no approved analysis.</value></data>
+  <data name="MotifApp.ProposalEvidenceUnavailableNextStep" xml:space="preserve"><value>Refresh the project and reopen this Proposal to read its evidence again.</value></data>
+  <data name="MotifApp.ApplyBackupNotice" xml:space="preserve"><value>Motif does not back up your project. Back it up in FieldWorks before you apply.</value></data>
   <data name="MotifApp.ApplyBackupLink" xml:space="preserve"><value>How to Back Up a Project in FieldWorks</value></data>
   <!-- fix1-layout -->
   <data name="MotifApp.RefusalStoreLockMissing" xml:space="preserve"><value>Motif's file for this project is missing the small companion file that goes beside it (its .use.lock file), so Motif cannot open it. This usually means the .motif.db file was copied or moved without it. Close Motif and put the .use.lock file back beside the .motif.db file, or, while Motif is closed, move the .motif.db file aside (do not delete it, because it may hold Proposals) so this project gets its own. Trying again will not help.</value><comment>Sentence the window shows when the project's Motif store cannot be opened because its .use.lock file is missing. .motif.db and .use.lock are file names; Motif is a product name.</comment></data>

@@ -78,7 +78,7 @@ public sealed class ProposalApplySafetyTests
                 var text = VisibleText(page);
                 Assert.Single(text, line => line.Contains("Evidence Is Unavailable", StringComparison.Ordinal));
                 Assert.False(PrepareButton(page).IsEffectivelyEnabled);
-                Assert.Contains(text, line => line.StartsWith("Apply Is Unavailable:", StringComparison.Ordinal) &&
+                Assert.Contains(text, line => line.StartsWith("Apply is unavailable:", StringComparison.Ordinal) &&
                     line.Contains("Try It", StringComparison.Ordinal));
                 Assert.False(document.CanPrepareApply);
                 Assert.False(document.CanApply);
@@ -135,7 +135,7 @@ public sealed class ProposalApplySafetyTests
             {
                 window.Show();
                 PageScreenshots.Settle(window);
-                Assert.Contains(VisibleText(page), line => line.StartsWith("Applying Would Lose the Approved Analysis of 2 words", StringComparison.Ordinal));
+                Assert.Contains(VisibleText(page), line => line.StartsWith("Applying would lose the approved analysis of 2 words", StringComparison.Ordinal));
             }
             finally { window.Close(); await documents.StopAsync(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(2));

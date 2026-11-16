@@ -104,4 +104,33 @@ public sealed class StoreCauseRefusalTests
             finally { window.Close(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(2));
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ProgressOffersExactlyOneTryAgainAndNoneWhenAStoreCauseOnTheOverviewMakesRetryUseless(bool storeCause)
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.OnOverview((_, _) => Task.FromResult(CommandOutcome<OverviewResponse>.Refused(
+                storeCause ? MissingLock() : new Refusal("overview.not-configured", FailureReason.Refused, "No Overview."))));
+            fake.ProgressRequestCountHandler = (_, _) => Task.FromResult(CommandOutcome<ProgressRequestCount>.Refused(
+                new Refusal("requests.unreadable", FailureReason.Refused, "Requests could not be read.")));
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProgressPageModel(context);
+            var page = new ProgressPage(model);
+            var window = new MotifTestWindow { Content = page, Width = 900, Height = 700 };
+            try
+            {
+                window.Show();
+                await context.OpenProjectAsync("project.fwdata");
+                PageScreenshots.Settle(window);
+                var retries = page.GetVisualDescendants().OfType<Button>()
+                    .Where(button => button.Content as string == MotifAppStrings.TryAgain && button.IsEffectivelyVisible);
+                Assert.Equal(storeCause ? 0 : 1, retries.Count());
+            }
+            finally { window.Close(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromMinutes(2));
+    }
 }

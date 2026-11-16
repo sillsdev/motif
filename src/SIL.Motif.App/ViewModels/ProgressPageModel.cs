@@ -127,6 +127,7 @@ public sealed partial class ProgressPageModel : PageModel
 
     /// <summary>Whether the stored Overview could not be read, so nothing may be claimed about parsing.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOfferNextTryAgain))]
     private bool _overviewUnavailable;
 
     private void RaiseParseStateChanged()
@@ -146,6 +147,9 @@ public sealed partial class ProgressPageModel : PageModel
     /// <summary>False when the store itself cannot be used and asking again would only refuse again.</summary>
     public bool CanOfferTryAgain => _storeProblem is null;
 
+    /// <summary>Whether the Next notice offers Try Again: only when the parse card does not already offer it.</summary>
+    public bool CanOfferNextTryAgain => CanOfferTryAgain && !OverviewUnavailable;
+
     private WindowRefusal? _storeProblem;
 
     private void NoteUnavailable(Refusal? refusal)
@@ -158,6 +162,7 @@ public sealed partial class ProgressPageModel : PageModel
         UnavailableNextText = string.Format(System.Globalization.CultureInfo.CurrentCulture,
             MotifAppStrings.ProgressNextStoreProblemFormat, window.Sentence);
         OnPropertyChanged(nameof(CanOfferTryAgain));
+        OnPropertyChanged(nameof(CanOfferNextTryAgain));
     }
 
     protected override void OnProjectCleared()
@@ -212,6 +217,7 @@ public sealed partial class ProgressPageModel : PageModel
         _storeProblem = null;
         UnavailableNextText = MotifAppStrings.ProgressNextUnavailable;
         OnPropertyChanged(nameof(CanOfferTryAgain));
+        OnPropertyChanged(nameof(CanOfferNextTryAgain));
         IsReading = false;
         foreach (var row in previous) row.OpenCommand.NotifyCanExecuteChanged();
     }
@@ -266,6 +272,13 @@ public sealed partial class ProgressPageModel : PageModel
         }
         Health.Overview = result.Succeeded ? result.Value : null;
         OverviewUnavailable = !result.Succeeded;
+        if (!result.Succeeded && result.Refusal is { } refusal && WindowRefusal.From(refusal) is
+            { IsStoreCauseThatRetryCannotClear: true } storeCause)
+        {
+            _storeProblem = storeCause;
+            OnPropertyChanged(nameof(CanOfferTryAgain));
+            OnPropertyChanged(nameof(CanOfferNextTryAgain));
+        }
         RaiseParseStateChanged();
     }
 

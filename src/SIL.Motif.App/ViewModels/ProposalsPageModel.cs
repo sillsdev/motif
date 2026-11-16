@@ -517,6 +517,7 @@ public enum ProposalsPageState
 public sealed partial class ProposalsPageModel : PageModel
 {
     private int _readGeneration;
+    private string? _seenChangesSignature;
     private bool _rereading;
     private ProposalCard? _rereadCard;
     private bool _includeSetAside;
@@ -570,6 +571,16 @@ public sealed partial class ProposalsPageModel : PageModel
         {
             if (e.PropertyName == nameof(WorkspaceContext.CurrentPage) && Context.CurrentPage == WorkspacePage.Proposals)
                 MarkSelectedRead();
+        };
+        // Staging, unstaging or applying changes the pending Draft, so the list is read again.
+        Context.Changes.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(ChangesViewModel.Snapshot) || Context.ProjectPath is not { } path) return;
+            var signature = Context.Changes.Snapshot.DraftId + "|" + Context.Changes.Snapshot.Revision;
+            if (signature == _seenChangesSignature) return;
+            _seenChangesSignature = signature;
+            if (State is ProposalsPageState.Loading) return;
+            _ = LoadAsync(path, CancellationToken.None);
         };
         Context.TrialRun.PropertyChanged += (_, e) =>
         {

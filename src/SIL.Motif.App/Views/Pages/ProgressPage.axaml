@@ -64,7 +64,7 @@
           <StackPanel Classes="progressNextNotice" IsVisible="{Binding HasUnavailableNext}"
                       Spacing="{DynamicResource Intent.Space.Related}">
             <views:CopyableTextBlock Text="{Binding UnavailableNextText}" TextWrapping="Wrap" />
-            <Button IsVisible="{Binding CanOfferTryAgain}" Command="{Binding TryAgainCommand}" Content="{x:Static app:MotifAppStrings.TryAgain}"
+            <Button IsVisible="{Binding CanOfferNextTryAgain}" Command="{Binding TryAgainCommand}" Content="{x:Static app:MotifAppStrings.TryAgain}"
                     HorizontalAlignment="Left" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNextRetry}" />
           </StackPanel>
         </StackPanel>
