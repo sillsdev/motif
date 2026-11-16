@@ -47,7 +47,6 @@ public static class ProposalTextChecker
         MarkdownDiagnosticIds.LinkStalePath,
         MarkdownDiagnosticIds.LinkRebound,
         MarkdownDiagnosticIds.LinkUrlRebuilt,
-        MarkdownDiagnosticIds.WsUnmarkedVernacular,
         MarkdownDiagnosticIds.Unnormalizable,
         MarkdownDiagnosticIds.PropUnknownNumber,
     };

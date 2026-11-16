@@ -111,8 +111,6 @@ namespace SIL.TextEditing.Markdown
         /// <summary>A noncharacter or lone surrogate is kept, but may be rejected by normalization or other text processors.</summary>
         public const string Unnormalizable = "fwmd.text.unnormalizable";
         public const string VersionUnsupported = "fwmd.version.unsupported";
-        /// <summary>Reported by hosts: unmarked text that looks like it is vernacular (a suggestion).</summary>
-        public const string WsUnmarkedVernacular = "fwmd.ws.unmarked-vernacular";
         /// <summary>The URL of a back-link names one GUID and <c>guid=</c> another.</summary>
         public const string LinkGuidMismatch = "fwmd.link.guid-mismatch";
         /// <summary>A file-relative link with no base to resolve it against (<see cref="MarkdownOptions.LinkBase"/>).</summary>
