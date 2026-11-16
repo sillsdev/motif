@@ -12,7 +12,7 @@ namespace SIL.TextEditing.Markdown.Records
     {
         /// <summary>The canonical text: block style, two-space indentation, <c>\n</c> line ends; the front-matter keys in the order <c>fwmd</c>,
         /// <c>record</c>, <c>schema</c>, <c>root</c>, <c>base</c>, <c>analysis</c>, <c>vernacular</c>, <c>writingSystems</c>, <c>record-data</c>; in each
-        /// object <c>guid</c> first, then the schema's field order; every string double-quoted with only <c>\"</c> and <c>\\</c> escaped; rich fields of
+        /// object <c>guid</c> first, then its reserved <c>class</c> when present, then the schema's field order; every string double-quoted with only <c>\"</c> and <c>\\</c> escaped; rich fields of
         /// paragraphs in <c>|</c> blocks, inline rich values in <c>|-</c> blocks; plain text that cannot be quoted so (a control character) a <c>|-</c>
         /// block of inline FieldWorks Markdown; integers and Booleans
         /// plain; empty values left out; no anchors, aliases, tags, flow collections or comments. The body field's value, if any, is the Markdown body after
@@ -23,7 +23,7 @@ namespace SIL.TextEditing.Markdown.Records
             if (document == null) throw new ArgumentNullException(nameof(document));
             if (schema == null) throw new ArgumentNullException(nameof(schema));
             var kind = schema.Kind(document.Kind) ?? throw new RecordWriteException("The schema has no record kind " + document.Kind + ".");
-            var root = RecordRoot.Resolve(kind, document.Root, out string? error) ?? throw new RecordWriteException(error!);
+            var root = RecordRoot.Resolve(kind, document.Root, out string? error, document.Data?.Class) ?? throw new RecordWriteException(error!);
 
             var sb = new StringBuilder("---\n");
             sb.Append("fwmd: ").Append(MarkdownFrontMatter.CurrentVersion.ToString(CultureInfo.InvariantCulture)).Append('\n');
@@ -73,7 +73,6 @@ namespace SIL.TextEditing.Markdown.Records
                 {
                     if (f.Key != root.Field.Name && !f.Value.IsEmpty) throw new RecordWriteException("The file's root names the field " + root.Field.Name + ", but the data also has " + f.Key + ".");
                 }
-                if (data.Guid != null) throw new RecordWriteException("The file's root names the field " + root.Field.Name + ", so its data has no GUID.");
             }
 
             var frame = new StringBuilder();
@@ -105,6 +104,12 @@ namespace SIL.TextEditing.Markdown.Records
             {
                 if (!type.HasGuid) throw new RecordWriteException("Objects of " + type.Name + " have no GUID (" + Display(path) + ").");
                 sb.Append(' ', indent).Append("guid: ").Append(RecordProfile.Quote(o.Guid.Value.ToString("D"))).Append('\n');
+            }
+            if (o.Class != null)
+            {
+                if (type.Field("class") != null || o.Class != type.Name)
+                    throw new RecordWriteException("The object at " + Display(path) + " cannot have class " + o.Class + ".");
+                Pair(sb, "class", o.Class, indent);
             }
             foreach (var f in o.Fields)
             {
@@ -144,6 +149,7 @@ namespace SIL.TextEditing.Markdown.Records
             }
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence:
                 {
                     if (!(value is RecordList list)) throw Shape(path, "a list");
@@ -159,7 +165,7 @@ namespace SIL.TextEditing.Markdown.Records
                 {
                     if (!(value is RecordObject o)) throw Shape(path, "an object");
                     sb.Append('\n');
-                    WriteFields(sb, o, field.ObjectType!, indent + 2, null, path);
+                    WriteFields(sb, o, OwnedType(field, o, path), indent + 2, null, path);
                     return;
                 }
                 default:
@@ -168,13 +174,21 @@ namespace SIL.TextEditing.Markdown.Records
             }
         }
 
+        static RecordObjectType OwnedType(RecordField field, RecordObject value, string path)
+        {
+            if (field.ObjectType != null) return field.ObjectType;
+            var type = field.ObjectTypes.FirstOrDefault(t => t.Name == value.Class);
+            return type ?? throw new RecordWriteException("The object at " + path + " requires an allowed class: " +
+                string.Join(", ", field.ObjectTypeNames) + ".");
+        }
+
         static void WriteItem(StringBuilder sb, RecordField item, RecordValue value, int indent, string path)
         {
             if (item.Kind == RecordFieldKind.Object)
             {
                 if (!(value is RecordObject o)) throw Shape(path, "an object");
                 var inner = new StringBuilder();
-                WriteFields(inner, o, item.ObjectType!, indent + 2, null, path);
+                WriteFields(inner, o, OwnedType(item, o, path), indent + 2, null, path);
                 if (inner.Length == 0) throw new RecordWriteException("The object at " + path + " has nothing in it, and an empty item cannot be written.");
                 // The first line's indentation becomes the dash: "    guid: ..." is "  - guid: ...".
                 sb.Append(' ', indent).Append("- ").Append(inner.ToString(), indent + 2, inner.Length - indent - 2);

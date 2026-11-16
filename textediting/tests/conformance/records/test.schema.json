@@ -116,6 +116,9 @@
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
         },
+        "class": {
+          "const": "entry"
+        },
         "lexeme-form": {
           "$ref": "#/definitions/allomorph"
         },
@@ -206,6 +209,9 @@
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
         },
+        "class": {
+          "const": "sense"
+        },
         "gloss": {
           "type": "object",
           "additionalProperties": {
@@ -261,6 +267,9 @@
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
         },
+        "class": {
+          "const": "example"
+        },
         "example": {
           "type": "object",
           "additionalProperties": {
@@ -288,6 +297,9 @@
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
         },
+        "class": {
+          "const": "translation"
+        },
         "type": {
           "type": "string",
           "contentMediaType": "text/x-fieldworks-markdown-inline"
@@ -305,6 +317,9 @@
     "computed": {
       "type": "object",
       "properties": {
+        "class": {
+          "const": "computed"
+        },
         "headword": {
           "type": "string",
           "contentMediaType": "text/plain"
@@ -328,6 +343,9 @@
         "guid": {
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "class": {
+          "const": "notebook-record"
         },
         "title": {
           "type": "string",
@@ -372,6 +390,9 @@
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
         },
+        "class": {
+          "const": "list-item"
+        },
         "name": {
           "type": "object",
           "additionalProperties": {
@@ -411,6 +432,9 @@
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
         },
+        "class": {
+          "const": "notebook-record"
+        },
         "title": {
           "type": "string",
           "contentMediaType": "text/x-fieldworks-markdown-inline"
@@ -449,6 +473,9 @@
         "guid": {
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "class": {
+          "const": "list-item"
         },
         "name": {
           "type": "object",

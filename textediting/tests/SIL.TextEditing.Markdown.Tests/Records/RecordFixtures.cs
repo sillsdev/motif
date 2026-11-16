@@ -132,73 +132,22 @@ namespace SIL.TextEditing.Markdown.Tests.Records
 
         // ---------------------------------------------------------------- the schema as data
 
-        /// <summary>Builds a schema from its JSON form: <c>id</c>, <c>types</c> (name, <c>guid</c>, fields) and <c>kinds</c> (name, root, pathSegments, body).</summary>
         public static RecordSchema BuildSchema(Dictionary<string, object?> json)
-        {
-            var builder = new RecordSchemaBuilder(Json.Str(json["id"]));
-            foreach (var t in Json.Arr(json["types"]).Select(Json.Obj))
-            {
-                var type = builder.ObjectType(Json.Str(t["name"]), Json.OptBool(t, "guid", true));
-                foreach (var f in Json.Arr(t["fields"]).Select(Json.Obj)) AddField(type, f);
-            }
-            foreach (var k in Json.Arr(json["kinds"]).Select(Json.Obj))
-                builder.Kind(Json.Str(k["name"]), Json.Str(k["root"]), Json.OptInt(k, "pathSegments", 2), Json.OptStr(k, "body"));
-            return builder.Build();
-        }
+            => RecordSchema.FromJson(WriteJson(json));
 
-        /// <summary>The block kinds a rich field allows, from its <c>blocks</c> list of <c>tables</c>, <c>lists</c> and <c>headings</c> (empty: none); absent: the default.</summary>
-        static BlockFeatures? Blocks(Dictionary<string, object?> f)
+        static string WriteJson(object? value)
         {
-            if (!f.TryGetValue("blocks", out var list) || list == null) return null;
-            var features = BlockFeatures.None;
-            foreach (string name in Json.Arr(list).Select(Json.Str))
+            if (value is Dictionary<string, object?> obj)
+                return "{" + string.Join(",", obj.Select(p => WriteJson(p.Key) + ":" + WriteJson(p.Value))) + "}";
+            if (value is List<object?> list) return "[" + string.Join(",", list.Select(WriteJson)) + "]";
+            if (value is string text)
             {
-                switch (name)
-                {
-                    case "tables": features |= BlockFeatures.Tables; break;
-                    case "lists": features |= BlockFeatures.Lists; break;
-                    case "headings": features |= BlockFeatures.Headings; break;
-                    default: throw new InvalidOperationException("A block feature called " + name);
-                }
+                var result = new System.Text.StringBuilder();
+                new RecordJsonSchema.J.Str(text).Write(result, 0);
+                return result.ToString();
             }
-            return features;
-        }
-
-        static RecordWritingSystem Ws(Dictionary<string, object?> f) => Json.OptStr(f, "ws") == "vernacular" ? RecordWritingSystem.Vernacular : RecordWritingSystem.Analysis;
-
-        static void AddField(RecordObjectTypeBuilder type, Dictionary<string, object?> f)
-        {
-            string name = Json.Str(f["name"]);
-            string kind = Json.Str(f["kind"]);
-            bool multi = Json.OptBool(f, "multi", false);
-            switch (kind)
-            {
-                case "text": if (multi) type.MultiText(name); else type.Text(name, Ws(f)); break;
-                case "rich":
-                    if (multi) type.MultiRich(name, Json.OptBool(f, "paragraphs", false), Blocks(f));
-                    else type.Rich(name, Json.OptBool(f, "paragraphs", false), Ws(f), Blocks(f));
-                    break;
-                case "notation": if (multi) type.MultiNotation(name, Json.Str(f["notation"])); else type.Notation(name, Json.Str(f["notation"]), Ws(f)); break;
-                case "integer": type.Integer(name); break;
-                case "boolean": type.Boolean(name); break;
-                case "guid": type.Guid(name); break;
-                case "reference": type.Reference(name); break;
-                case "object": type.Object(name, Json.Str(f["type"])); break;
-                case "sequence":
-                {
-                    var item = Json.Obj(f["item"]);
-                    switch (Json.Str(item["kind"]))
-                    {
-                        case "object": type.Objects(name, Json.Str(item["type"])); break;
-                        case "reference": type.References(name); break;
-                        case "text": type.Texts(name, Ws(item)); break;
-                        case "notation": type.Notations(name, Json.Str(item["notation"]), Ws(item)); break;
-                        default: throw new InvalidOperationException("A sequence item of kind " + item["kind"]);
-                    }
-                    break;
-                }
-                default: throw new InvalidOperationException("A field of kind " + kind);
-            }
+            if (value is bool b) return b ? "true" : "false";
+            return value == null ? "null" : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)!;
         }
 
         // ---------------------------------------------------------------- documents as data
@@ -235,7 +184,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             for (int i = kind.PathSegments; i < path.Segments.Count; i++)
             {
                 var field = type.Field(path.Segments[i].Name)!;
-                if (field.Kind == RecordFieldKind.Sequence) { type = field.Item!.ObjectType!; i++; }
+                if (field.IsList) { type = field.Item!.ObjectType!; i++; }
                 else type = field.ObjectType!;
             }
             return type;
@@ -246,6 +195,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var o = new RecordObject();
             foreach (var kv in json)
             {
+                if (kv.Key == "class" && type.Field("class") == null) { o.Class = Json.Str(kv.Value); continue; }
                 if (kv.Key == "guid" && type.HasGuid) { o.Guid = Guid.Parse(Json.Str(kv.Value)); continue; }
                 var field = type.Field(kv.Key) ?? throw new InvalidOperationException(type.Name + " has no field " + kv.Key + " (fixture)");
                 o[kv.Key] = Value(kv.Value, field);
@@ -263,13 +213,19 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             }
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence:
                 {
                     var list = new RecordList();
                     foreach (var item in Json.Arr(json)) list.Add(Value(item, field.Item!));
                     return list;
                 }
-                case RecordFieldKind.Object: return Object(Json.Obj(json), field.ObjectType!);
+                case RecordFieldKind.Object:
+                {
+                    var obj = Json.Obj(json);
+                    var type = field.ObjectType ?? field.ObjectTypes.Single(t => t.Name == Json.OptStr(obj, "class"));
+                    return Object(obj, type);
+                }
                 default: return Scalar(json);
             }
         }

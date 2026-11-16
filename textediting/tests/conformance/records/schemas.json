@@ -1,5 +1,6 @@
 {
   "test": {
+    "version": 1,
     "id": "test.schema.json",
     "types": [
       {
@@ -290,6 +291,7 @@
     ]
   },
   "blocks": {
+    "version": 1,
     "id": "blocks.schema.json",
     "types": [
       {
@@ -351,6 +353,61 @@
         "root": "note",
         "pathSegments": 2,
         "body": "description"
+      }
+    ]
+  },
+  "classes": {
+    "version": 2,
+    "id": "classes.schema.json",
+    "types": [
+      {
+        "name": "root",
+        "fields": [
+          {
+            "name": "child",
+            "kind": "object",
+            "types": [
+              "note",
+              "tag"
+            ]
+          },
+          {
+            "name": "children",
+            "kind": "col",
+            "item": {
+              "kind": "object",
+              "types": [
+                "note",
+                "tag"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "note",
+        "fields": [
+          {
+            "name": "text",
+            "kind": "text"
+          }
+        ]
+      },
+      {
+        "name": "tag",
+        "fields": [
+          {
+            "name": "label",
+            "kind": "text"
+          }
+        ]
+      }
+    ],
+    "kinds": [
+      {
+        "name": "records/record",
+        "root": "root",
+        "pathSegments": 2
       }
     ]
   }

@@ -1,0 +1,33 @@
+[
+  {
+    "name": "an object class outside its allowed flat list is refused",
+    "schema": "classes",
+    "file": "---\nfwmd: 1\nrecord: \"records/record\"\nschema: \"classes.schema.json\"\nrecord-data:\n  child:\n    class: \"other\"\n---\n",
+    "findings": [
+      {
+        "id": "fwmd.record.class-not-allowed",
+        "line": 7,
+        "column": 12,
+        "endLine": 7,
+        "endColumn": 19
+      }
+    ]
+  },
+  {
+    "name": "ok: fwmd.record.class-not-allowed: a declared class selects its fields",
+    "schema": "classes",
+    "file": "---\nfwmd: 1\nrecord: \"records/record\"\nschema: \"classes.schema.json\"\nrecord-data:\n  child:\n    class: \"note\"\n    text: \"A note.\"\n---\n",
+    "canonical": null,
+    "document": {
+      "record": "records/record",
+      "schema": "classes.schema.json",
+      "data": {
+        "child": {
+          "class": "note",
+          "text": "A note."
+        }
+      }
+    },
+    "findings": []
+  }
+]

@@ -78,6 +78,9 @@
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
         },
+        "class": {
+          "const": "note"
+        },
         "title": {
           "type": "string",
           "contentMediaType": "text/x-fieldworks-markdown-inline"
@@ -123,6 +126,9 @@
         "guid": {
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "class": {
+          "const": "note"
         },
         "title": {
           "type": "string",

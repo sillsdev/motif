@@ -126,6 +126,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             }
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence:
                 {
                     var list = new RecordList();
@@ -389,7 +390,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             for (int i = kind.PathSegments; i < path.Segments.Count; i++)
             {
                 var field = type.Field(path.Segments[i].Name)!;
-                if (field.Kind == RecordFieldKind.Sequence) { type = field.Item!.ObjectType!; i++; }
+                if (field.IsList) { type = field.Item!.ObjectType!; i++; }
                 else type = field.ObjectType!;
             }
             if (path.Field != null)
@@ -401,9 +402,14 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             return (type, record ? kind.BodyField?.Name : null, null);
         }
 
+        static RecordObjectType ChosenType(RecordField field, RecordObject value)
+            => field.ObjectType ?? field.ObjectTypes.Single(t => t.Name == value.Class);
+
         static void ObjectTree(StringBuilder sb, RecordObject o, RecordObjectType type, int indent, string? skip)
         {
             if (o.Guid != null) sb.Append(' ', indent).Append("guid: quoted ").Append(RecordConformanceTests.JsonString(o.Guid.Value.ToString("D"))).Append('\n');
+            if (o.Class != null) sb.Append(' ', indent).Append("class: quoted ")
+                .Append(RecordConformanceTests.JsonString(o.Class)).Append('\n');
             foreach (var field in type.Fields)
             {
                 if (field.Name == skip) continue;
@@ -428,18 +434,19 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             }
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence:
                     sb.Append("list\n");
                     foreach (var item in ((RecordList)value).Items)
                     {
                         sb.Append(' ', indent + 2).Append("- ");
-                        if (field.Item!.Kind == RecordFieldKind.Object) { sb.Append("map\n"); ObjectTree(sb, (RecordObject)item, field.Item.ObjectType!, indent + 4, null); }
+                        if (field.Item!.Kind == RecordFieldKind.Object) { sb.Append("map\n"); ObjectTree(sb, (RecordObject)item, ChosenType(field.Item, (RecordObject)item), indent + 4, null); }
                         else LeafTree(sb, field.Item, (RecordScalar)item);
                     }
                     return;
                 case RecordFieldKind.Object:
                     sb.Append("map\n");
-                    ObjectTree(sb, (RecordObject)value, field.ObjectType!, indent + 2, null);
+                    ObjectTree(sb, (RecordObject)value, ChosenType(field, (RecordObject)value), indent + 2, null);
                     return;
                 default:
                     LeafTree(sb, field, (RecordScalar)value);
@@ -548,6 +555,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var map = Json.Obj(meta["c"]);
             var keys = new SortedSet<string>(StringComparer.Ordinal);
             if (o.Guid != null) keys.Add("guid");
+            if (o.Class != null) keys.Add("class");
             foreach (var f in o.Fields) if (!f.Value.IsEmpty && f.Key != skip) keys.Add(f.Key);
             Assert.True(keys.SetEquals(map.Keys), what + " at " + path + ": Pandoc's keys " + string.Join(",", map.Keys) + ", ours " + string.Join(",", keys));
             foreach (var field in type.Fields)
@@ -571,6 +579,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             }
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence:
                 {
                     Assert.Equal("MetaList", t);
@@ -580,13 +589,13 @@ namespace SIL.TextEditing.Markdown.Tests.Records
                     for (int i = 0; i < items.Count; i++)
                     {
                         string itemPath = path + "/" + (i + 1);
-                        if (field.Item!.Kind == RecordFieldKind.Object) MetaObject(Json.Obj(items[i]), (RecordObject)list.Items[i], field.Item.ObjectType!, null, options, analysis, vernacular, what, itemPath);
+                        if (field.Item!.Kind == RecordFieldKind.Object) MetaObject(Json.Obj(items[i]), (RecordObject)list.Items[i], ChosenType(field.Item, (RecordObject)list.Items[i]), null, options, analysis, vernacular, what, itemPath);
                         else MetaLeaf(Json.Obj(items[i]), field.Item, (RecordScalar)list.Items[i], options, analysis, vernacular, what, itemPath);
                     }
                     return;
                 }
                 case RecordFieldKind.Object:
-                    MetaObject(meta, (RecordObject)value, field.ObjectType!, null, options, analysis, vernacular, what, path);
+                    MetaObject(meta, (RecordObject)value, ChosenType(field, (RecordObject)value), null, options, analysis, vernacular, what, path);
                     return;
                 default:
                     MetaLeaf(meta, field, (RecordScalar)value, options, field.WritingSystem == RecordWritingSystem.Vernacular ? vernacular : analysis, vernacular, what, path);

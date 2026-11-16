@@ -59,6 +59,8 @@ namespace SIL.TextEditing.Markdown.Records
         public const string SchemaMismatch = "fwmd.record.schema-mismatch";
         /// <summary>Error: a key an object of its type does not have.</summary>
         public const string UnknownField = "fwmd.record.unknown-field";
+        /// <summary>The object's class is absent, malformed, or outside the field's allowed object types.</summary>
+        public const string ClassNotAllowed = "fwmd.record.class-not-allowed";
         /// <summary>Error: a value of the wrong shape for its field: a mapping, list or scalar where the schema has another.</summary>
         public const string WrongShape = "fwmd.record.wrong-shape";
         /// <summary>Error: not a whole number in an integer field.</summary>
@@ -96,7 +98,7 @@ namespace SIL.TextEditing.Markdown.Records
         public static IReadOnlyList<string> All { get; } = new[]
         {
             YamlSyntax, Tab, LineSeparator, DuplicateKey, Anchor, Alias, Tag, MergeKey, Folded, SecondDocument, TooDeep, CommentDropped, Unquoted, ScalarStyle,
-            Flow, Empty, KeyOrder, NotARecord, UnknownKey, UnknownKind, SchemaMismatch, UnknownField, WrongShape, NotAnInteger, NotABoolean, BadGuid,
+            Flow, Empty, KeyOrder, NotARecord, UnknownKey, UnknownKind, SchemaMismatch, UnknownField, ClassNotAllowed, WrongShape, NotAnInteger, NotABoolean, BadGuid,
             DuplicateGuid, NotAReference, PlainFieldMarkup, Unwritable, BadRoot, OutsideRoot, UnexpectedBody, BodyInFrame, BlockNotAllowed, Notation,
         };
     }

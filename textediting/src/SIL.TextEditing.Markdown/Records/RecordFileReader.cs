@@ -493,11 +493,15 @@ namespace SIL.TextEditing.Markdown.Records
             }
             if (document.Root != null || keys.ContainsKey("root"))
             {
-                root = RecordRoot.Resolve(kind, document.Root, out string? error);
+                var classNode = data?.Pairs.FirstOrDefault(p => p.Key.IsScalar && p.Key.Value == "class").Value;
+                root = RecordRoot.Resolve(kind, document.Root, out string? error, out bool classError,
+                    classNode != null && classNode.Kind == YamlFrameKind.Scalar ? classNode.Value : null);
                 if (root == null)
                 {
                     var r = keys["root"];
-                    Error(RecordDiagnosticIds.BadRoot, error!, r.Value.Start, r.Value.End);
+                    var location = classError ? classNode ?? data ?? r.Value : r.Value;
+                    Error(classError ? RecordDiagnosticIds.ClassNotAllowed : RecordDiagnosticIds.BadRoot,
+                        error!, location.Start, location.End);
                     return null;
                 }
             }
@@ -611,7 +615,7 @@ namespace SIL.TextEditing.Markdown.Records
         RecordObject ReadObject(YamlFrameNode node, RecordObjectType type, string path, RecordField? only, RecordField? body)
         {
             var result = new RecordObject { Path = path, Range = new[] { node.Start, node.End } };
-            int order = -2;
+            int order = -3;
             bool reportedOrder = false;
             var seen = new HashSet<string>(StringComparer.Ordinal);
             foreach (var pair in node.Pairs)
@@ -622,9 +626,9 @@ namespace SIL.TextEditing.Markdown.Records
                 if (key == "<<" && pair.Key.Style == ScalarStyle.Plain) continue; // a merge key, already reported
                 if (!node.Flow) CheckKeySpelling(pair.Key, key);
                 int index;
-                if (key == "guid" && type.HasGuid && only == null)
+                if (key == "guid" && type.HasGuid)
                 {
-                    index = -1;
+                    index = -2;
                     if (!IsEmptyNode(pair.Value))
                     {
                         var g = ReadLeaf(pair.Value, GuidField, Join(path, "guid"), Column(pair.Key.Start) + 2, null);
@@ -639,12 +643,20 @@ namespace SIL.TextEditing.Markdown.Records
                     }
                     else ReportEmpty(pair);
                 }
+                else if (key == "class" && type.Field("class") == null)
+                {
+                    index = -1;
+                    if (pair.Value.Kind != YamlFrameKind.Scalar || pair.Value.Value != type.Name)
+                        ClassError(pair.Value, new[] { type }, path);
+                    else result.Class = TopString(pair);
+                }
                 else
                 {
                     var field = type.Field(key);
                     if (field == null)
                     {
                         var names = type.Fields.Select(f => f.Name).ToList();
+                        if (type.Field("class") == null) names.Insert(0, "class");
                         if (type.HasGuid) names.Insert(0, "guid");
                         Report(RecordDiagnosticIds.UnknownField, MarkdownSeverity.Error, "'" + key + "' is not a field of " + type.Name + ".", pair.Key.Start, pair.Key.End,
                             null, null, ReaderContext.NearestNames(key, names));
@@ -679,6 +691,27 @@ namespace SIL.TextEditing.Markdown.Records
             return result;
         }
 
+        RecordObject? ReadOwnedObject(YamlFrameNode node, RecordField field, string path)
+        {
+            var type = field.ObjectType;
+            if (type == null)
+            {
+                var classNode = node.Pairs.FirstOrDefault(p => p.Key.IsScalar && p.Key.Value == "class").Value;
+                type = classNode != null && classNode.Kind == YamlFrameKind.Scalar
+                    ? field.ObjectTypes.FirstOrDefault(t => t.Name == classNode.Value) : null;
+                if (type == null)
+                {
+                    ClassError(classNode ?? node, field.ObjectTypes, path);
+                    return null;
+                }
+            }
+            return ReadObject(node, type, path, null, null);
+        }
+
+        void ClassError(YamlFrameNode node, IEnumerable<RecordObjectType> allowed, string path)
+            => Error(RecordDiagnosticIds.ClassNotAllowed, "The object at " + path + " needs class " +
+                string.Join(" or ", allowed.Select(t => t.Name)) + ".", node.Start, Math.Max(node.Start + 1, node.End));
+
         static int IndexOf(RecordObjectType type, RecordField field)
         {
             for (int i = 0; i < type.Fields.Count; i++) if (type.Fields[i] == field) return i;
@@ -711,6 +744,7 @@ namespace SIL.TextEditing.Markdown.Records
             }
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence:
                 {
                     if (node.Kind != YamlFrameKind.Sequence) { Shape(node, "a list"); return null; }
@@ -727,7 +761,7 @@ namespace SIL.TextEditing.Markdown.Records
                         if (field.Item!.Kind == RecordFieldKind.Object)
                         {
                             if (item.Kind != YamlFrameKind.Mapping) { Shape(item, "an object"); continue; }
-                            value = ReadObject(item, field.Item.ObjectType!, itemPath, null, null);
+                            value = ReadOwnedObject(item, field.Item, itemPath);
                         }
                         // A block item's lines go where its value starts: two columns after the dash.
                         else value = ReadLeaf(item, field.Item, itemPath, Column(item.Start), null);
@@ -737,7 +771,7 @@ namespace SIL.TextEditing.Markdown.Records
                 }
                 case RecordFieldKind.Object:
                     if (node.Kind != YamlFrameKind.Mapping) { Shape(node, "an object"); return null; }
-                    return ReadObject(node, field.ObjectType!, path, null, null);
+                    return ReadOwnedObject(node, field, path);
                 default:
                     return ReadLeaf(node, field, path, blockIndent, null);
             }
