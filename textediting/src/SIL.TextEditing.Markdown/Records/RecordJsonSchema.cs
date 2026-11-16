@@ -137,7 +137,7 @@ namespace SIL.TextEditing.Markdown.Records
         }
 
         /// <summary>A small JSON writer: objects keep the order keys were added.</summary>
-        static class J
+        internal static class J
         {
             public abstract class Node
             {

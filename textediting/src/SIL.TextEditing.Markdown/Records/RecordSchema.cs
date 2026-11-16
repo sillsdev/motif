@@ -174,6 +174,17 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>The media type of one paragraph of inline FieldWorks Markdown (a MultiString or String, and a reference's link).</summary>
         public const string InlineMarkdownMediaType = "text/x-fieldworks-markdown-inline";
 
+        /// <summary>The supported version of the serialized schema format, independent of <see cref="Id"/>.</summary>
+        public const int CurrentVersion = 1;
+
+        /// <summary>Writes this schema as versioned JSON data, preserving field order, defaults and recursive type references.</summary>
+        public string ToJson() => RecordSchemaJson.Write(this);
+
+        /// <summary>Reads versioned schema data. The format has version, id, types and kinds; it is distinct from JSON Schema.</summary>
+        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null.</exception>
+        /// <exception cref="FormatException">The JSON or schema declarations are invalid, or the version is unsupported.</exception>
+        public static RecordSchema FromJson(string json) => RecordSchemaJson.Read(json);
+
         readonly Dictionary<string, RecordKind> _kinds;
         readonly Dictionary<string, RecordObjectType> _types;
 

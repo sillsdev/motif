@@ -23,7 +23,9 @@ internal static class RecordCheck
         builder.ObjectType("sense").MultiText("gloss").MultiRich("definition").Notation("features", "feature-structure").References("semantic-domains");
         builder.ObjectType("record").Rich("title").Rich("description", paragraphs: true).Rich("notes", paragraphs: true, blocks: BlockFeatures.None);
         builder.Kind("lexicon/entry", "entry", 2).Kind("notebook/record", "record", 2, "description");
-        var schema = builder.Build();
+        var original = builder.Build();
+        var schema = RecordSchema.FromJson(original.ToJson());
+        Check(schema.ToJson() == original.ToJson(), "record: schema JSON round-trips");
 
         var entry = new RecordDocument("lexicon/entry") { Root = "/lexicon/palit(2)", Analysis = "en", Vernacular = "ceb" };
         entry.Data.Guid = Guid.Parse("7d2c9a10-5c3e-4b1a-9e1f-0a2b3c4d5e6f");
