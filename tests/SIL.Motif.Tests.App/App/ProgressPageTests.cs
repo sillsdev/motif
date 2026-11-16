@@ -1,3 +1,4 @@
+using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using Avalonia;
 using Avalonia.Automation;
@@ -74,6 +75,82 @@ public sealed class ProgressPageTests
                 }
                 Assert.Empty(page.GetVisualDescendants().OfType<HealthStrip>());
                 Assert.Empty(fake.AssessRequests);
+            }
+            finally
+            {
+                window.Close();
+                await context.StopProjectWorkAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void ProgressSaysNothingIsParsedBeforeAParseAndShowsTheStoredCountsAfter()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            var unparsed = SampleOverview.Populated() with { AssessmentId = null, AssessedUtc = null };
+            fake.OverviewCompletesWith(unparsed);
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProgressPageModel(context);
+            await context.OpenProjectAsync("project.fwdata");
+            var page = new ProgressPage(model);
+            var window = new MotifTestWindow { Width = 1280, Height = 800, Content = page };
+            string Seen() => string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>()
+                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text));
+            Button Visible(string id) => Assert.Single(page.GetVisualDescendants().OfType<Button>(),
+                button => button.IsEffectivelyVisible && AutomationProperties.GetAutomationId(button) == id);
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Assert.Contains("No Texts Parsed Yet", Seen());
+                Assert.Contains("Parse All Words", Seen());
+                Assert.DoesNotContain("Parsed So Far", Seen());
+                Visible(AutomationIds.ProgressChooseTexts).Command!.Execute(null);
+                Assert.Equal(WorkspacePage.Texts, context.CurrentPage);
+
+                var parsed = SampleOverview.Populated();
+                fake.OverviewCompletesWith(parsed);
+                await model.TryAgainCommand.ExecuteAsync(null);
+                PageScreenshots.Settle(window);
+                var seen = Seen();
+                Assert.DoesNotContain("No Texts Parsed Yet", seen);
+                Assert.Contains("Parsed So Far", seen);
+                var coverage = parsed.TextCoverage;
+                Assert.Contains($"{coverage.ParsedOccurrences:N0} of {coverage.TotalOccurrences:N0} places", seen);
+                Assert.Contains($"{coverage.ParsedWords:N0} parsed", seen);
+                Assert.Contains("not your approval", seen);
+                Visible(AutomationIds.ProgressReviewWords).Command!.Execute(null);
+                Assert.Equal(WorkspacePage.Words, context.CurrentPage);
+            }
+            finally
+            {
+                window.Close();
+                await context.StopProjectWorkAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public void ProgressStaysSilentAboutParsingWhenTheStoredOverviewCannotBeRead()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var context = WorkspaceContextTests.NewContext(new FakeCommandClient());
+            var model = new ProgressPageModel(context);
+            await context.OpenProjectAsync("project.fwdata");
+            var window = new MotifTestWindow { Width = 1280, Height = 800, Content = new ProgressPage(model) };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var seen = string.Join("\n", window.GetVisualDescendants().OfType<TextBlock>()
+                    .Where(text => text.IsEffectivelyVisible).Select(text => text.Text));
+                Assert.Contains("Parse results could not be read", seen);
+                Assert.DoesNotContain("No Texts Parsed Yet", seen);
+                Assert.DoesNotContain("Parsed So Far", seen);
             }
             finally
             {

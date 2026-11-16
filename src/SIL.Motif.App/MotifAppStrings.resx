@@ -7705,4 +7705,17 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.GuideExamplesHeading" xml:space="preserve"><value>Examples from Your Texts</value></data>
   <data name="MotifApp.GuideStaleNotice" xml:space="preserve"><value>The project has been saved since this section was read. Your typing is safe.</value></data>
   <data name="MotifApp.GuideDiscussionName" xml:space="preserve"><value>Discussion</value></data>
+  <!-- fix1-progress -->
+  <data name="MotifApp.ProgressNothingParsedHeading" xml:space="preserve"><value>No Texts Parsed Yet</value></data>
+  <data name="MotifApp.ProgressNothingParsedNext" xml:space="preserve"><value>Choose the Texts to parse, then use Parse All Words at the top of the window. Nothing has been parsed for this project yet.</value></data>
+  <data name="MotifApp.ProgressChooseTexts" xml:space="preserve"><value>Choose Texts</value></data>
+  <data name="MotifApp.ProgressParsedHeading" xml:space="preserve"><value>Parsed So Far</value></data>
+  <data name="MotifApp.ProgressParsedPlacesFormat" xml:space="preserve"><value>{0} of {1} places in your chosen Texts have a parse.</value></data>
+  <data name="MotifApp.ProgressParsedWordsFormat" xml:space="preserve"><value>Words: {0} parsed, {1} with no parse, {2} stopped at the parser work limit, {3} not parsed.</value></data>
+  <data name="MotifApp.ProgressNotMeasuredPattern" xml:space="preserve"><value>{0, plural, one {# word in your Selection was not measured, so these figures describe part of it.} other {# words in your Selection were not measured, so these figures describe part of it.}}</value></data>
+  <data name="MotifApp.ProgressLastParsedFormat" xml:space="preserve"><value>Last parsed {0}.</value></data>
+  <data name="MotifApp.ProgressParseIsNotApproval" xml:space="preserve"><value>A parse shows what the parser built. It is not your approval of any analysis.</value></data>
+  <data name="MotifApp.ProgressReviewWords" xml:space="preserve"><value>Review Words</value></data>
+  <data name="MotifApp.ProgressReadTexts" xml:space="preserve"><value>Read Texts</value></data>
+  <data name="MotifApp.ProgressParseUnavailable" xml:space="preserve"><value>Parse results could not be read. Refresh the project or try again.</value></data>
 </root>

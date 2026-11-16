@@ -14,6 +14,36 @@
                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressHeading}" />
       <views:CopyableTextBlock Text="{Binding Context.ProjectName}" IsVisible="{Binding Context.HasProject}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{Binding Health.SelectionSummary}" IsVisible="{Binding Health.HasSelectionSummary}" TextWrapping="Wrap" />
+      <Border Classes="progressNextList" IsVisible="{Binding ShowNothingParsed}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNothingParsed}">
+        <StackPanel Classes="progressNextNotice" Spacing="{DynamicResource Intent.Space.Related}">
+          <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProgressNothingParsedHeading}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProgressNothingParsedNext}" TextWrapping="Wrap" />
+          <Button Command="{Binding OpenTextsCommand}" Content="{x:Static app:MotifAppStrings.ProgressChooseTexts}"
+                  HorizontalAlignment="Left" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressChooseTexts}" />
+        </StackPanel>
+      </Border>
+      <Border Classes="progressNextList" IsVisible="{Binding HasParse}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressParsed}">
+        <StackPanel Classes="progressNextNotice" Spacing="{DynamicResource Intent.Space.Related}">
+          <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProgressParsedHeading}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Text="{Binding ParseSummaryText}" TextWrapping="Wrap" />
+          <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProgressParseIsNotApproval}" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Related}">
+            <Button Command="{Binding OpenWordsCommand}" Content="{x:Static app:MotifAppStrings.ProgressReviewWords}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressReviewWords}" />
+            <Button Command="{Binding OpenTextsCommand}" Content="{x:Static app:MotifAppStrings.ProgressReadTexts}"
+                    AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressReadTexts}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Border Classes="progressNextList" IsVisible="{Binding OverviewUnavailable}"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressUnavailable}">
+        <StackPanel Classes="progressNextNotice" Spacing="{DynamicResource Intent.Space.Related}">
+          <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.ProgressParseUnavailable}" TextWrapping="Wrap" />
+          <Button Command="{Binding TryAgainCommand}" Content="{x:Static app:MotifAppStrings.TryAgain}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
       <Border Classes="progressNextList" IsVisible="{Binding HasNextSection}"
               AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNext}">
         <StackPanel>

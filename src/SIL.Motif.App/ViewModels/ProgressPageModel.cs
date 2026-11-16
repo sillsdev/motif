@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SIL.Motif.Contract.Requests;
@@ -19,6 +20,12 @@ public sealed partial class ProgressPageModel : PageModel
     public ProgressPageModel(WorkspaceContext context) : base(context)
     {
         TryAgainCommand = new AsyncRelayCommand(RefreshCurrentAsync, () => Context.HasProject && !IsReading);
+        OpenTextsCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Texts));
+        OpenWordsCommand = new RelayCommand(() => Context.OpenPage(WorkspacePage.Words));
+        Health.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(HealthStripViewModel.Overview)) RaiseParseStateChanged();
+        };
         context.Selection.PropertyChanged += OnSelectionChanged;
         context.Evidence.PropertyChanged += OnEvidenceChanged;
         context.PropertyChanged += (_, e) =>
@@ -72,6 +79,64 @@ public sealed partial class ProgressPageModel : PageModel
 
     public IAsyncRelayCommand TryAgainCommand { get; }
 
+    /// <summary>Opens Texts, where the Texts to parse are chosen.</summary>
+    public IRelayCommand OpenTextsCommand { get; }
+
+    /// <summary>Opens Words, where parsed words are read.</summary>
+    public IRelayCommand OpenWordsCommand { get; }
+
+    /// <summary>The stored Overview when it describes the current project, else null.</summary>
+    private OverviewResponse? CurrentOverview => !Context.Evidence.IsStale && Health.Overview is { IsStale: false } overview
+        ? overview : null;
+
+    /// <summary>Whether a current stored Overview is known, so "nothing parsed" is a fact and not a guess.</summary>
+    public bool HasParseFacts => CurrentOverview is not null;
+
+    /// <summary>Whether the project has a stored parse of the chosen Texts.</summary>
+    public bool HasParse => CurrentOverview is { AssessmentId: not null };
+
+    /// <summary>Whether the project is known to have no stored parse yet.</summary>
+    public bool ShowNothingParsed => CurrentOverview is { AssessmentId: null };
+
+    /// <summary>The parse facts as sentences, each from a stored count; empty before a parse.</summary>
+    public IReadOnlyList<string> ParseSummaryLines
+    {
+        get
+        {
+            if (CurrentOverview is not { AssessmentId: not null } overview) return [];
+            var culture = CultureInfo.CurrentCulture;
+            var coverage = overview.TextCoverage;
+            List<string> lines = [];
+            if (coverage.TotalOccurrences > 0)
+                lines.Add(string.Format(culture, MotifAppStrings.ProgressParsedPlacesFormat,
+                    coverage.ParsedOccurrences.ToString("N0", culture), coverage.TotalOccurrences.ToString("N0", culture)));
+            lines.Add(string.Format(culture, MotifAppStrings.ProgressParsedWordsFormat,
+                coverage.ParsedWords.ToString("N0", culture), coverage.NoParseWords.ToString("N0", culture),
+                coverage.UnknownWords.ToString("N0", culture), coverage.SkippedWords.ToString("N0", culture)));
+            if (coverage.NotMeasuredWords > 0)
+                lines.Add(PluralText.Format(MotifAppStrings.ProgressNotMeasuredPattern, coverage.NotMeasuredWords));
+            if (overview.AssessedUtc is { } assessed)
+                lines.Add(string.Format(culture, MotifAppStrings.ProgressLastParsedFormat, assessed.ToLocalTime().ToString("g", culture)));
+            return lines;
+        }
+    }
+
+    /// <summary>The parse facts as one paragraph, a sentence per line.</summary>
+    public string ParseSummaryText => string.Join(Environment.NewLine, ParseSummaryLines);
+
+    /// <summary>Whether the stored Overview could not be read, so nothing may be claimed about parsing.</summary>
+    [ObservableProperty]
+    private bool _overviewUnavailable;
+
+    private void RaiseParseStateChanged()
+    {
+        OnPropertyChanged(nameof(HasParseFacts));
+        OnPropertyChanged(nameof(HasParse));
+        OnPropertyChanged(nameof(ShowNothingParsed));
+        OnPropertyChanged(nameof(ParseSummaryLines));
+        OnPropertyChanged(nameof(ParseSummaryText));
+    }
+
     protected override void OnProjectCleared()
     {
         Invalidate();
@@ -120,6 +185,7 @@ public sealed partial class ProgressPageModel : PageModel
         OpenRequests = null;
         NextRows = [];
         HasUnavailableNext = false;
+        OverviewUnavailable = false;
         IsReading = false;
         foreach (var row in previous) row.OpenCommand.NotifyCanExecuteChanged();
     }
@@ -173,6 +239,8 @@ public sealed partial class ProgressPageModel : PageModel
             HasUnavailableNext = true;
         }
         Health.Overview = result.Succeeded ? result.Value : null;
+        OverviewUnavailable = !result.Succeeded;
+        RaiseParseStateChanged();
     }
 
     private async Task ReadStandingsAsync(string project, int generation, CancellationToken cancellationToken)
@@ -219,6 +287,7 @@ public sealed partial class ProgressPageModel : PageModel
 
     private void OnEvidenceChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(ProjectEvidence.IsStale)) RaiseParseStateChanged();
         if (e.PropertyName is nameof(ProjectEvidence.Baseline) or nameof(ProjectEvidence.Set) ||
             e.PropertyName == nameof(ProjectEvidence.IsStale) && Context.Evidence.IsStale) Invalidate();
     }

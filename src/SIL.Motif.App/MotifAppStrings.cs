@@ -4165,5 +4165,19 @@ public static class MotifAppStrings
     public static string GuideExamplesHeading => Text("MotifApp.GuideExamplesHeading");
     public static string GuideStaleNotice => Text("MotifApp.GuideStaleNotice");
     public static string GuideDiscussionName => Text("MotifApp.GuideDiscussionName");
+    #region fix1-progress
+    public static string ProgressNothingParsedHeading => Text("MotifApp.ProgressNothingParsedHeading");
+    public static string ProgressNothingParsedNext => Text("MotifApp.ProgressNothingParsedNext");
+    public static string ProgressChooseTexts => Text("MotifApp.ProgressChooseTexts");
+    public static string ProgressParsedHeading => Text("MotifApp.ProgressParsedHeading");
+    public static string ProgressParsedPlacesFormat => Text("MotifApp.ProgressParsedPlacesFormat");
+    public static string ProgressParsedWordsFormat => Text("MotifApp.ProgressParsedWordsFormat");
+    public static string ProgressNotMeasuredPattern => Text("MotifApp.ProgressNotMeasuredPattern");
+    public static string ProgressLastParsedFormat => Text("MotifApp.ProgressLastParsedFormat");
+    public static string ProgressParseIsNotApproval => Text("MotifApp.ProgressParseIsNotApproval");
+    public static string ProgressReviewWords => Text("MotifApp.ProgressReviewWords");
+    public static string ProgressReadTexts => Text("MotifApp.ProgressReadTexts");
+    public static string ProgressParseUnavailable => Text("MotifApp.ProgressParseUnavailable");
+    #endregion
     #endregion
 }

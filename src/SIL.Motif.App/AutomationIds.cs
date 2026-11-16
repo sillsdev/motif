@@ -383,5 +383,12 @@ public static class AutomationIds
     public const string GuideHeadings = "motif-guide-headings";
     public const string GuideEdit = "motif-guide-edit";
     public const string GuideNotice = "motif-guide-notice";
+    // fix1-progress
+    public const string ProgressNothingParsed = "motif-progress-nothing-parsed";
+    public const string ProgressChooseTexts = "motif-progress-choose-texts";
+    public const string ProgressParsed = "motif-progress-parsed";
+    public const string ProgressReviewWords = "motif-progress-review-words";
+    public const string ProgressReadTexts = "motif-progress-read-texts";
+    public const string ProgressUnavailable = "motif-progress-unavailable";
     #endregion
 }
