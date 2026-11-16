@@ -13,7 +13,7 @@ namespace SIL.Motif.Contract.Query;
 /// <param name="Smaller">Whether the context and its residual tags are fewer objects and references than listing the deviants; null when not judged.</param>
 /// <param name="Expressible"><c>yes</c>, <c>no</c> or <c>not-checked</c>: whether FieldWorks can state the context as a rule condition.</param>
 /// <param name="HeldOut"><c>holds</c>, <c>fails</c>, <c>too-few</c> or <c>not-checked</c>; counts only, never words.</param>
-/// <param name="Status"><c>A</c> (sub-rule), <c>B</c> (predictable, not a rule), <c>not-checked</c>, <c>partial</c>, <c>rejected</c> or <c>too-few-to-tell</c>.</param>
+/// <param name="Status"><c>A</c> (sub-rule), <c>B</c> (predictable, not a rule), <c>not-checked</c>, <c>partial</c>, <c>refuted</c> or <c>too-few-to-tell</c>.</param>
 public sealed record QueryContext(string Column, string Value, long Scope, long Deviants, double? Lower, bool? Covers,
     bool? Reliable, bool? Smaller, string Expressible, string HeldOut, string Status)
 {
@@ -109,7 +109,7 @@ internal sealed class SplitAnalysis
     public const string Version = "split/1 coverage e-h<e/ln e; reliability n-h<n/ln n; size; expressible; held-out; depth 2; scope under 20 is too few to tell";
     public const string SizeVersion = "size/1 objects and tag references, one unit each (the units of the grammar size delta)";
     private const string TooFewToTell = "too-few-to-tell";
-    private const string Rejected = "rejected";
+    private const string Rejected = "refuted";
 
     private readonly SplitInput _input;
     private readonly bool[] _deviant;
