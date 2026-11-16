@@ -51,8 +51,10 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
     public string Availability => !CanShowFacts ? Unavailable() :
         Complete ? string.Empty : MotifAppStrings.ProposalEvidencePartial;
 
-    // Said once: a note below gives the reason and step when there is one, else this adds the generic step.
-    private string Unavailable() => Difference.ShowsNotTriedNote || Difference.ShowsMakeControls ||
+    // Said once; a Difference not made yet is named as such, not called unavailable.
+    private string Unavailable() => Difference.State == ProposalDifferenceState.Absent && Difference.ShowsMakeControls
+        ? MotifAppStrings.ProposalEvidenceNotMadeYet
+        : Difference.ShowsNotTriedNote || Difference.ShowsMakeControls ||
         Difference.ShowsNoTextsNote || Difference.ShownRefusal is not null
         ? MotifAppStrings.ProposalEvidenceUnavailable
         : MotifAppStrings.ProposalEvidenceUnavailable + " " + MotifAppStrings.ProposalEvidenceUnavailableNextStep;

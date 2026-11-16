@@ -4179,6 +4179,9 @@ public static class MotifAppStrings
     public static string ProgressReadTexts => Text("MotifApp.ProgressReadTexts");
     public static string ProgressParseUnavailable => Text("MotifApp.ProgressParseUnavailable");
     #endregion
+    // fix1-round1c
+    public static string ProgressReadingParse => Text("MotifApp.ProgressReadingParse");
+    public static string ProposalEvidenceNotMadeYet => Text("MotifApp.ProposalEvidenceNotMadeYet");
     // fix1-word
     public static string WordsHeadingParserSteps => Text("MotifApp.WordsHeadingParserSteps");
     public static string WordsHeadingProposalParserSteps => Text("MotifApp.WordsHeadingProposalParserSteps");

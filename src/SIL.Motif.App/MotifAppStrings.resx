@@ -7705,6 +7705,9 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.GuideExamplesHeading" xml:space="preserve"><value>Examples from Your Texts</value></data>
   <data name="MotifApp.GuideStaleNotice" xml:space="preserve"><value>The project has been saved since this section was read. Your typing is safe.</value></data>
   <data name="MotifApp.GuideDiscussionName" xml:space="preserve"><value>Discussion</value></data>
+  <!-- fix1-round1c -->
+  <data name="MotifApp.ProgressReadingParse" xml:space="preserve"><value>Reading parse results...</value></data>
+  <data name="MotifApp.ProposalEvidenceNotMadeYet" xml:space="preserve"><value>No Difference Has Been Made for This Proposal Yet. Choose a Text and Make Difference to See Which Words Would Change.</value></data>
   <!-- fix1-progress -->
   <data name="MotifApp.ProgressNothingParsedHeading" xml:space="preserve"><value>No Texts Parsed Yet</value></data>
   <data name="MotifApp.ProgressNothingParsedNext" xml:space="preserve"><value>Choose the Texts to parse, then use Parse All Words at the top of the window. Nothing has been parsed for this project yet.</value></data>

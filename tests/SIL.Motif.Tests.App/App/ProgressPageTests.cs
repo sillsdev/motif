@@ -1,5 +1,6 @@
 using SIL.Motif.App;
 using SIL.Motif.App.Services;
+using SIL.Motif.Commands.SelectionReading;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -127,6 +128,68 @@ public sealed class ProgressPageTests
             }
             finally
             {
+                window.Close();
+                await context.StopProjectWorkAsync();
+            }
+        }, TimeSpan.FromSeconds(30));
+    }
+
+    // fix1-progress: a parse finished here shows its card in place, never blank.
+    [Fact]
+    public void ProgressShowsAReadingStateThenTheParsedCardAfterAParseWithoutLeavingThePage()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var fake = new FakeCommandClient();
+            fake.OverviewCompletesWith(SampleOverview.Populated() with { AssessmentId = null, AssessedUtc = null });
+            var readerGate = new TaskCompletionSource();
+            fake.SelectionReaderHandler = async (_, _) =>
+            {
+                await readerGate.Task;
+                return CommandOutcome<SelectionReader>.Refused(new Refusal("selection-reader.no-baseline",
+                    FailureReason.Refused, "Not available in this test."));
+            };
+            var context = WorkspaceContextTests.NewContext(fake);
+            var model = new ProgressPageModel(context);
+            await context.OpenProjectAsync("project.fwdata");
+            var page = new ProgressPage(model);
+            var window = new MotifTestWindow { Width = 1280, Height = 800, Content = page };
+            string Seen() => string.Join("\n", page.GetVisualDescendants().OfType<TextBlock>()
+                .Where(text => text.IsEffectivelyVisible).Select(text => text.Text));
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                Assert.Contains("No Texts Parsed Yet", Seen());
+
+                // The stored Overview is slow to read after the parse, as on a real project.
+                var overviewGate = new TaskCompletionSource();
+                var parsed = SampleOverview.Populated();
+                fake.OnOverview(async (_, _) =>
+                {
+                    await overviewGate.Task;
+                    return CommandOutcome<OverviewResponse>.Success(parsed);
+                });
+                context.PublishEvidence(new WorkspaceEvidence(WorkspaceContextTests.Assessment(), DateTimeOffset.UtcNow, false));
+                PageScreenshots.Settle(window);
+                var meanwhile = Seen();
+                Assert.Contains(MotifAppStrings.ProgressReadingParse, meanwhile);
+                Assert.DoesNotContain("No Texts Parsed Yet", meanwhile);
+                Assert.DoesNotContain("Parsed So Far", meanwhile);
+
+                // The page is not waiting for the Selection reader, which is still blocked here.
+                overviewGate.SetResult();
+                for (var i = 0; i < 200 && !Seen().Contains("Parsed So Far"); i++)
+                {
+                    await Task.Delay(25);
+                    PageScreenshots.Settle(window);
+                }
+                Assert.Contains("Parsed So Far", Seen());
+                Assert.DoesNotContain(MotifAppStrings.ProgressReadingParse, Seen());
+            }
+            finally
+            {
+                readerGate.TrySetResult();
                 window.Close();
                 await context.StopProjectWorkAsync();
             }

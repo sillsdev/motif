@@ -5,6 +5,7 @@ using Avalonia.VisualTree;
 using SIL.Motif.App;
 using SIL.Motif.App.Services;
 using SIL.Motif.App.ViewModels;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.App.Views;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Jobs;
@@ -39,9 +40,12 @@ public sealed class ProposalApplySafetyTests
 
     private static async Task<(FakeCommandClient Fake, WorkspaceContext Context, OpenProposalDocuments Documents,
         ProposalDocumentViewModel Document)> OpenAsync(bool withTrial, RecordingLauncher? launcher = null,
-        ProposalCard? card = null)
+        ProposalCard? card = null, bool withTexts = false)
     {
         var fake = new FakeCommandClient();
+        if (withTexts)
+            fake.ListTextsCompletesWith(new TextInventoryResponse([new TextChoiceSummary(Guid.NewGuid(), "Genesis 1")],
+                HasBaseline: true));
         var trial = CurrentTrial();
         if (withTrial)
         {
@@ -82,6 +86,27 @@ public sealed class ProposalApplySafetyTests
                     line.Contains("Try It", StringComparison.Ordinal));
                 Assert.False(document.CanPrepareApply);
                 Assert.False(document.CanApply);
+            }
+            finally { window.Close(); await documents.StopAsync(); await context.StopProjectWorkAsync(); }
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    // fix1-round1c: a Proposal with a current Trial but no Difference made yet is not "unavailable".
+    [Fact]
+    public void AProposalWithACurrentTrialAndNoDifferenceYetSaysSoAndNamesTheStep()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var (_, context, documents, document) = await OpenAsync(withTrial: true, withTexts: true);
+            var page = new ProposalDocument { DataContext = document };
+            var window = new MotifTestWindow { Width = 1000, Height = 900, Content = new ScrollViewer { Content = page } };
+            try
+            {
+                window.Show();
+                PageScreenshots.Settle(window);
+                var text = VisibleText(page);
+                Assert.DoesNotContain(text, line => line.Contains("Evidence Is Unavailable", StringComparison.Ordinal));
+                Assert.Single(text, line => line == MotifAppStrings.ProposalEvidenceNotMadeYet);
             }
             finally { window.Close(); await documents.StopAsync(); await context.StopProjectWorkAsync(); }
         }, TimeSpan.FromMinutes(2));

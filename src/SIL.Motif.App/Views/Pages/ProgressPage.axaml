@@ -14,6 +14,11 @@
                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressHeading}" />
       <views:CopyableTextBlock Text="{Binding Context.ProjectName}" IsVisible="{Binding Context.HasProject}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{Binding Health.SelectionSummary}" IsVisible="{Binding Health.HasSelectionSummary}" TextWrapping="Wrap" />
+      <Border Classes="progressNextList" IsVisible="{Binding ShowReadingParse}">
+        <StackPanel Classes="progressNextNotice" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressReadingParse}">
+          <views:CopyableTextBlock Classes="muted" Text="{x:Static app:MotifAppStrings.ProgressReadingParse}" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
       <Border Classes="progressNextList" IsVisible="{Binding ShowNothingParsed}">
         <StackPanel Classes="progressNextNotice" AutomationProperties.AutomationId="{x:Static app:AutomationIds.ProgressNothingParsed}" Spacing="{DynamicResource Intent.Space.Related}">
           <views:CopyableTextBlock Classes="section-title" Text="{x:Static app:MotifAppStrings.ProgressNothingParsedHeading}" TextWrapping="Wrap" />

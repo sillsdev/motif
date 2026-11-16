@@ -392,5 +392,6 @@ public static class AutomationIds
     public const string ProgressReviewWords = "motif-progress-review-words";
     public const string ProgressReadTexts = "motif-progress-read-texts";
     public const string ProgressUnavailable = "motif-progress-unavailable";
+    public const string ProgressReadingParse = "motif-progress-reading-parse";
     #endregion
 }

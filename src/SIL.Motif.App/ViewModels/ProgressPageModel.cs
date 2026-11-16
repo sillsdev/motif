@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Commands.Queries;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
@@ -71,7 +72,11 @@ public sealed partial class ProgressPageModel : PageModel
     [NotifyPropertyChangedFor(nameof(HasNextSection))]
     private bool _isReading;
 
-    partial void OnIsReadingChanged(bool value) => TryAgainCommand.NotifyCanExecuteChanged();
+    partial void OnIsReadingChanged(bool value)
+    {
+        TryAgainCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ShowReadingParse));
+    }
 
     /// <summary>A failed or partial read is distinct from a successful empty list.</summary>
     [ObservableProperty]
@@ -98,6 +103,9 @@ public sealed partial class ProgressPageModel : PageModel
 
     /// <summary>Whether the project is known to have no stored parse yet.</summary>
     public bool ShowNothingParsed => CurrentOverview is { AssessmentId: null };
+
+    /// <summary>Whether the stored parse facts are being read, so the page says so instead of standing blank.</summary>
+    public bool ShowReadingParse => IsReading && !HasParseFacts && !OverviewUnavailable;
 
     /// <summary>The parse facts as sentences, each from a stored count; empty before a parse.</summary>
     public IReadOnlyList<string> ParseSummaryLines
@@ -127,7 +135,7 @@ public sealed partial class ProgressPageModel : PageModel
 
     /// <summary>Whether the stored Overview could not be read, so nothing may be claimed about parsing.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanOfferNextTryAgain))]
+    [NotifyPropertyChangedFor(nameof(CanOfferNextTryAgain), nameof(ShowReadingParse))]
     private bool _overviewUnavailable;
 
     private void RaiseParseStateChanged()
@@ -137,6 +145,7 @@ public sealed partial class ProgressPageModel : PageModel
         OnPropertyChanged(nameof(ShowNothingParsed));
         OnPropertyChanged(nameof(ParseSummaryLines));
         OnPropertyChanged(nameof(ParseSummaryText));
+        OnPropertyChanged(nameof(ShowReadingParse));
     }
 
     /// <summary>The words under Next when a read was refused, naming the store problem when there is one.</summary>
@@ -151,6 +160,8 @@ public sealed partial class ProgressPageModel : PageModel
     public bool CanOfferNextTryAgain => CanOfferTryAgain && !OverviewUnavailable;
 
     private WindowRefusal? _storeProblem;
+    private Task? _earlyRead;
+    private EvidenceSet? _earlySet;
 
     private void NoteUnavailable(Refusal? refusal)
     {
@@ -176,8 +187,14 @@ public sealed partial class ProgressPageModel : PageModel
 
     protected override Task OnBaselineCapturedAsync(CancellationToken cancellationToken) => RefreshHealthAsync(cancellationToken);
 
-    protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken) =>
-        RefreshHealthAsync(cancellationToken);
+    protected override Task OnEvidencePublishedAsync(EvidenceLens lens, CancellationToken cancellationToken)
+    {
+        // The refresh started when the run completed is already reading (or has read) this evidence's Overview.
+        if (_earlyRead is { } early && ReferenceEquals(_earlySet, Context.Evidence.Set) &&
+            (!early.IsCompleted || Health.Overview is not null))
+            return early;
+        return RefreshHealthAsync(cancellationToken);
+    }
 
     protected override Task OnGrammarCheckedAsync(CancellationToken cancellationToken) => RefreshHealthAsync(cancellationToken);
 
@@ -329,5 +346,12 @@ public sealed partial class ProgressPageModel : PageModel
         if (e.PropertyName == nameof(ProjectEvidence.IsStale)) RaiseParseStateChanged();
         if (e.PropertyName is nameof(ProjectEvidence.Baseline) or nameof(ProjectEvidence.Set) ||
             e.PropertyName == nameof(ProjectEvidence.IsStale) && Context.Evidence.IsStale) Invalidate();
+        // A run finished in this window: read its parse facts now, not after every page has reloaded its words.
+        if (e.PropertyName == nameof(ProjectEvidence.Set) && Context.Evidence is { Set: { } set, Assessment: not null, IsStale: false } &&
+            !Context.IsOpeningProject && Context.ProjectPath is not null)
+        {
+            _earlySet = set;
+            _earlyRead = RefreshCurrentAsync(CancellationToken.None);
+        }
     }
 }
