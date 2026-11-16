@@ -4197,5 +4197,8 @@ public static class MotifAppStrings
     public static string ProposalEvidenceUnavailableNextStep => Text("MotifApp.ProposalEvidenceUnavailableNextStep");
     public static string ApplyBackupNotice => Text("MotifApp.ApplyBackupNotice");
     public static string ApplyBackupLink => Text("MotifApp.ApplyBackupLink");
+    // fix1-layout
+    public static string RefusalStoreLockMissing => Text("MotifApp.RefusalStoreLockMissing");
+    public static string ProgressNextStoreProblemFormat => Text("MotifApp.ProgressNextStoreProblemFormat");
     #endregion
 }

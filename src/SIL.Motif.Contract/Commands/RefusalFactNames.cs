@@ -17,6 +17,12 @@ public static class RefusalFactNames
     /// <summary>The project file a refused store is registered to, on a <see cref="RefusalCodes.StoreOtherProject"/> refusal.</summary>
     public const string RegisteredProjectPath = "registeredProjectPath";
 
+    /// <summary>
+    /// Present, with the file's path, on a project-store refusal whose cause is that the <c>.use.lock</c> file
+    /// beside the Motif store is missing, as when the store was copied or moved without it.
+    /// </summary>
+    public const string StoreLockMissing = "storeLockMissing";
+
     /// <summary>Fact key for the parser refusal code on a grammarcheck.not-run refusal.</summary>
     public const string LastParserRefusalCode = "lastParserRefusalCode";
 

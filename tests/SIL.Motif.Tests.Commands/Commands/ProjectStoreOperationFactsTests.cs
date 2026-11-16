@@ -125,6 +125,23 @@ public sealed class ProjectStoreOperationFactsTests : IDisposable
         Assert.Equal(projectPath, refusal.Facts["fwDataPath"]);
     }
 
+    [Fact]
+    public void AStoreWithoutItsUseLockIsRefusedWithTheMissingLockNamed()
+    {
+        var projectPath = CreateProject("no-lock");
+        Assert.True(ProjectStoreCommand.Run(projectPath, "1.0", (_, _) => CommandOutcome<string>.Success("created")).Succeeded);
+        var project = new ProjectLocator(projectPath, Path.GetFileNameWithoutExtension(projectPath));
+        var lockPath = ProjectDatabaseCatalog.DatabasePathFor(project) + ".use.lock";
+        File.Delete(lockPath);
+
+        var outcome = ProjectStoreCommand.ReadExisting(projectPath,
+            CommandOutcome<string>.Success("absent"), (_, _) => CommandOutcome<string>.Success("read"));
+
+        Assert.False(outcome.Succeeded);
+        Assert.Equal("project.operation-io", outcome.Refusal!.Code);
+        Assert.Equal(lockPath, outcome.Refusal.Facts[RefusalFactNames.StoreLockMissing]);
+    }
+
     private string CreateProject(string name)
     {
         var path = Path.Combine(_root, name + ".fwdata");

@@ -15,7 +15,7 @@
     <Border Grid.Row="1" IsVisible="{Binding ShowAssessRefusal}">
       <views:RefusalBlock DataContext="{Binding Assess.ShownRefusal}" />
     </Border>
-    <StackPanel Grid.Row="2" Margin="{DynamicResource Component.TextsPage.PageInset}" Spacing="{DynamicResource Intent.Space.Compact}">
+    <StackPanel Grid.Row="2" IsVisible="{Binding Sources.ShowsPassageHeading}" Margin="{DynamicResource Component.TextsPage.PageInset}" Spacing="{DynamicResource Intent.Space.Compact}">
       <views:CopyableTextBlock Text="{Binding Sources.PassageTitle}" TextWrapping="Wrap" FontSize="{DynamicResource Intent.Type.Section}" />
       <views:CopyableTextBlock Text="{Binding Sources.PassageReference}" TextWrapping="Wrap" />
       <views:CopyableTextBlock Text="{Binding Sources.PassageMessage}" IsVisible="{Binding !Sources.CanReadPassage}" TextWrapping="Wrap" />

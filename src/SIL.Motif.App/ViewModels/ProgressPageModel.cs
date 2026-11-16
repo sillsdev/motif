@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Requests;
 using SIL.Motif.Contract.Responses;
 
@@ -137,6 +138,28 @@ public sealed partial class ProgressPageModel : PageModel
         OnPropertyChanged(nameof(ParseSummaryText));
     }
 
+    /// <summary>The words under Next when a read was refused, naming the store problem when there is one.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOfferTryAgain))]
+    private string _unavailableNextText = MotifAppStrings.ProgressNextUnavailable;
+
+    /// <summary>False when the store itself cannot be used and asking again would only refuse again.</summary>
+    public bool CanOfferTryAgain => _storeProblem is null;
+
+    private WindowRefusal? _storeProblem;
+
+    private void NoteUnavailable(Refusal? refusal)
+    {
+        HasUnavailableNext = true;
+        if (refusal is null) return;
+        var window = WindowRefusal.From(refusal);
+        if (!window.IsStoreCauseThatRetryCannotClear) return;
+        _storeProblem = window;
+        UnavailableNextText = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            MotifAppStrings.ProgressNextStoreProblemFormat, window.Sentence);
+        OnPropertyChanged(nameof(CanOfferTryAgain));
+    }
+
     protected override void OnProjectCleared()
     {
         Invalidate();
@@ -186,6 +209,9 @@ public sealed partial class ProgressPageModel : PageModel
         NextRows = [];
         HasUnavailableNext = false;
         OverviewUnavailable = false;
+        _storeProblem = null;
+        UnavailableNextText = MotifAppStrings.ProgressNextUnavailable;
+        OnPropertyChanged(nameof(CanOfferTryAgain));
         IsReading = false;
         foreach (var row in previous) row.OpenCommand.NotifyCanExecuteChanged();
     }
@@ -250,7 +276,7 @@ public sealed partial class ProgressPageModel : PageModel
         if (!IsCurrent(project, generation) || cancellationToken.IsCancellationRequested || Context.Evidence.IsStale) return;
         if (result.Succeeded && result.Value is { Unreadable.Count: 0 } value)
             WaitingProposals = value.Proposals.Count(card => card.Group == ProposalGroup.WaitingForYou);
-        else HasUnavailableNext = true;
+        else NoteUnavailable(result.Refusal);
     }
 
     private async Task ReadRequestsAsync(string project, int generation, CancellationToken cancellationToken)
@@ -258,7 +284,7 @@ public sealed partial class ProgressPageModel : PageModel
         var result = await Context.Commands.ReadProgressOpenRequestCountAsync(project, cancellationToken).ConfigureAwait(true);
         if (!IsCurrent(project, generation) || cancellationToken.IsCancellationRequested || Context.Evidence.IsStale) return;
         if (result.Succeeded) OpenRequests = result.Value!.OpenCount;
-        else HasUnavailableNext = true;
+        else NoteUnavailable(result.Refusal);
     }
 
     private void RebuildRows()

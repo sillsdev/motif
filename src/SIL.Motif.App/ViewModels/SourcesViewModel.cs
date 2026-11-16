@@ -85,7 +85,12 @@ public sealed partial class SourcesViewModel : ObservableObject
     [ObservableProperty] private string _newFolder = string.Empty;
 
     public bool IsFieldWorks => SelectedSource is null && !_unavailablePassage;
-    [ObservableProperty] private string? _passageReference;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsPassageHeading))]
+    private string? _passageReference;
+
+    /// <summary>False for the plain FieldWorks Texts reader, where the Text picker already names what is read and the space is the reader's.</summary>
+    public bool ShowsPassageHeading => !IsFieldWorks || !string.IsNullOrEmpty(PassageReference);
 
     public bool HasSource => SelectedSource is not null;
     public bool HasDetail => Detail is not null;
@@ -379,7 +384,7 @@ public sealed partial class SourcesViewModel : ObservableObject
     }
     private void NotifyNavigation()
     {
-        foreach (var property in new[] { nameof(IsFieldWorks), nameof(HasSource), nameof(CanReadPassage), nameof(PassageTitle), nameof(PassageMessage) })
+        foreach (var property in new[] { nameof(IsFieldWorks), nameof(ShowsPassageHeading), nameof(HasSource), nameof(CanReadPassage), nameof(PassageTitle), nameof(PassageMessage) })
             OnPropertyChanged(property);
         NotifyCommands();
     }

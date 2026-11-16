@@ -354,6 +354,13 @@ public sealed partial record WindowRefusal
     /// <summary>The heading for a refused Motif store that can be deleted and recreated.</summary>
     public string? Heading => OffersStoreDeletion ? MotifAppStrings.RefusalStoreOtherVersionHeading : null;
 
+    /// <summary>
+    /// Whether this refusal says the project's Motif store itself cannot be used (moved from its project, or its
+    /// <c>.use.lock</c> file is missing), so asking again cannot clear it.
+    /// </summary>
+    public bool IsStoreCauseThatRetryCannotClear =>
+        Code == C.StoreOtherProject || Facts.ContainsKey(RefusalFactNames.StoreLockMissing);
+
     /// <summary>Presents a command's refusal in the window's words.</summary>
     public static WindowRefusal From(Refusal refusal) => From(refusal, GenericSentence);
 
@@ -416,6 +423,7 @@ public sealed partial record WindowRefusal
                 refusal.Facts.GetValueOrDefault("wordsDone") ?? "0", refusal.Facts.GetValueOrDefault("wordsNotDone") ?? "0");
         if (refusal.Code == C.StoreInconsistent) return StoreDamaged;
         if (refusal.Code == C.StoreOtherVersion) return StoreFromOtherVersion;
+        if (refusal.Facts.ContainsKey(RefusalFactNames.StoreLockMissing)) return MotifAppStrings.RefusalStoreLockMissing;
         if (refusal.Facts.ContainsKey(RefusalFactNames.ParserNotFound) && ParserUnusableCodes.Contains(refusal.Code))
             return ParserMissing;
         return Sentences.TryGetValue(refusal.Code, out var sentence) ? sentence() : sentenceWhenUnmapped;

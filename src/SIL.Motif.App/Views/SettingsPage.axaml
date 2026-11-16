@@ -78,12 +78,6 @@
               </Border>
 
             </StackPanel>
-<StackPanel x:Name="SettingsAssistantConnectionsSection" Classes="settingsPage">
- <settings:AssistantConnectionsPanel DataContext="{Binding AssistantConnections}" />
-</StackPanel>
-<StackPanel Classes="settingsPage" IsVisible="{Binding ShowHandoffByCopyingFiles}">
-  <ContentControl x:Name="SettingsHandoffHost" />
-</StackPanel>
 <StackPanel x:Name="SettingsKeyboardShortcutsSection" Classes="settingsPage">
   <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.KeyboardShortcuts}" />
   <views:CopyableTextBlock Classes="settingsCaption" Text="{x:Static app:MotifAppStrings.ShortcutsWorkWithoutTextFocusCaption}" TextWrapping="Wrap" />
@@ -425,6 +419,12 @@
     <views:CopyableTextBlock Classes="settingsFooterText" Text="{x:Static app:MotifAppStrings.WritingSystemRefreshHint}" TextWrapping="Wrap" />
   </StackPanel>
 </Border>
+<StackPanel x:Name="SettingsAssistantConnectionsSection" Classes="settingsPage">
+ <settings:AssistantConnectionsPanel DataContext="{Binding AssistantConnections}" />
+</StackPanel>
+<StackPanel Classes="settingsPage" IsVisible="{Binding ShowHandoffByCopyingFiles}">
+  <ContentControl x:Name="SettingsHandoffHost" />
+</StackPanel>
 <StackPanel x:Name="SettingsHelpAndReportsSection" Classes="settingsPage">
               <views:CopyableTextBlock Classes="settingsGroupHeading" Text="{x:Static app:MotifAppStrings.HelpAndProblemReports}" />
               <Border Classes="settingsRow">

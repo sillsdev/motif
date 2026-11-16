@@ -300,6 +300,8 @@ public static class ProjectStoreCommand
             }),
         IOException { InnerException: Microsoft.Data.Sqlite.SqliteException { SqliteErrorCode: 5 or 6 or 10 } } => new Refusal(
             ioCode, FailureReason.Busy, StorageFailureMessage, OperationFacts(fwDataPath, exception)),
+        FileNotFoundException { FileName: { } lockPath } when lockPath.EndsWith(".use.lock", StringComparison.Ordinal) => new Refusal(
+            ioCode, FailureReason.Refused, StorageFailureMessage, MissingLockFacts(fwDataPath, exception, lockPath)),
         IOException or UnauthorizedAccessException => new Refusal(
             ioCode, FailureReason.Refused, StorageFailureMessage, OperationFacts(fwDataPath, exception)),
         NotSupportedException => new Refusal(
@@ -325,6 +327,13 @@ public static class ProjectStoreCommand
             "Do not delete it: it may hold the only copy of that project's Proposals. While Motif is closed, move it " +
             "aside to give this project its own. The Proposals stay in that file and are not available in this project " +
             "until it is put back beside the project it belongs to. Or copy the project again without its '.motif.db' file.", facts);
+    }
+
+    private static Dictionary<string, string> MissingLockFacts(string fwDataPath, Exception exception, string lockPath)
+    {
+        var facts = OperationFacts(fwDataPath, exception);
+        facts[RefusalFactNames.StoreLockMissing] = lockPath;
+        return facts;
     }
 
     internal static Dictionary<string, string> OperationFacts(string fwDataPath, Exception exception)
