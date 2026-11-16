@@ -3,8 +3,6 @@ WEBVTT
 00:00:01.000 --> 00:00:02.400
 Select all texts and add a word to the Default Selection before saving it.
 
-00:00:03.150 --> 00:00:04.350
-The progress panel shows the current run and lets you cancel it.
+00:00:03.400 --> 00:00:05.000
+After setup, run Parse all words to record measurements for the Selection; Progress then reads them.
 
-00:00:05.100 --> 00:00:06.700
-After setup, run Parse all words to record measurements for the Selection.

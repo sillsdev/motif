@@ -32,10 +32,11 @@ public sealed partial class ProposalsPage : UserControl, IWorkspacePaneProvider
             .Single(control => control.Name == "ProposalsRowsItems");
         list.AddHandler(InputElement.PointerPressedEvent, (_, args) =>
         {
-            if (!args.GetCurrentPoint(list).Properties.IsLeftButtonPressed || args.Source is not Visual source ||
-                source.GetSelfAndVisualAncestors().OfType<CheckBox>().Any() ||
-                source.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault()?.DataContext
-                    is not ProposalCardViewModel card) return;
+            if (!args.GetCurrentPoint(list).Properties.IsLeftButtonPressed || args.Source is not Visual source) return;
+            // The walk stops at the row, so it never climbs through the page to its root.
+            var within = source.GetSelfAndVisualAncestors().TakeWhile(visual => visual is not ListBox).ToList();
+            if (within.OfType<CheckBox>().Any() ||
+                within.OfType<ListBoxItem>().FirstOrDefault()?.DataContext is not ProposalCardViewModel card) return;
             if (!SelectRow(card)) args.Handled = true;
         }, RoutingStrategies.Tunnel);
         DenseTable.Attach(list, row => SelectRow(row), SelectRow);

@@ -237,13 +237,14 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
             var reload = Difference.State is ProposalDifferenceState.None or ProposalDifferenceState.Refused ||
                 identity != previous;
             // A make in progress survives a refresh unless the Trial or intent it was made for changed.
-            if (reload && Difference.Maker.IsActive && previous is not null &&
-                previous.IntentDigest == identity.IntentDigest && previous.TrialJobId == identity.TrialJobId)
-                reload = false;
-            _differenceIdentity = identity;
+            var keptForMake = reload && Difference.Maker.IsActive && previous is not null &&
+                previous.IntentDigest == identity.IntentDigest && previous.TrialJobId == identity.TrialJobId;
+            if (keptForMake) reload = false;
+            // The skipped reload leaves the identity behind, so the refresh after the make finishes still sees the change.
+            if (!keptForMake) _differenceIdentity = identity;
             DifferenceReading = reload
-                ? Difference.LoadAsync(ProjectPath, ProposalId, offer: offer)
-                : Difference.RefreshSavedAsync(offer);
+                ? Difference.LoadAsync(ProjectPath, ProposalId, cancellation.Token, offer)
+                : Difference.RefreshSavedAsync(offer, cancellation.Token);
             PicturesLoading = Pictures.LoadAsync(ProjectPath, ProposalId,
                 detail.DraftName is null && !IsDecided(detail.Status) &&
                 (Card?.Card is not { } card || !IsDecided(card.Status)), cancellation.Token);
@@ -254,7 +255,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            if (Current(generation)) DetailRefusal = WindowRefusal.Failure("window.proposal-document-read",
+            if (Current(generation)) DetailRefusal = WindowRefusal.Failure(WindowRefusal.ProposalDocumentReadCode,
                 MotifAppStrings.ProposalDocumentUnreadable, exception);
         }
         finally

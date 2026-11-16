@@ -13,11 +13,11 @@ const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const guideSections = [
 	['what-is-motif', 'install', 'open-a-project', 'first-run-setup', 'reading-the-overview', 'building-a-grammar'],
-	['the-window', 'overview', 'proposals', 'texts', 'passage', 'words', 'keyboard-shortcuts', 'settings', 'why-this-analysis', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
+	['the-window', 'progress', 'overview', 'proposals', 'compare-proposals', 'ask-claude', 'grammar-guide', 'sources', 'diagnostics', 'texts', 'passage', 'words', 'keyboard-shortcuts', 'settings', 'why-this-analysis', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	['refresh-numbers', 'change-an-analysis', 'replace-a-pending-change', 'apply-to-fieldworks', 'review-a-proposal', 'when-a-change-no-longer-fits', 'switch-projects', 'cancel-a-long-run', 'when-something-goes-wrong'],
 	['baseline', 'assessment', 'pangloss', 'text-coverage', 'default-selection', 'drift', 'pending-changes', 'writing-systems'],
 	['agents/start-here', 'agents/output-and-exit-codes', 'agents/measure-a-grammar', 'agents/work-with-jobs', 'agents/handoff'],
-	['encoding/workflow', 'encoding/ask-the-linguist', 'encoding/suffix-prefix-slots', 'encoding/conditioned-allomorphs', 'encoding/feature-conditioned-slots', 'encoding/nasal-assimilation', 'encoding/no-inflection'],
+	['encoding/workflow', 'encoding/ask-the-linguist', 'encoding/suffix-prefix-slots', 'encoding/conditioned-allomorphs', 'encoding/feature-conditioned-slots', 'encoding/nasal-assimilation', 'encoding/no-inflection', 'encoding/archiphonemes', 'encoding/feature-rules', 'encoding/phonological-rules'],
 	['ai-assistants', 'parsimony-findings', ...JSON.parse(readFileSync(
 		new URL('../../src/SIL.Motif.Help/Content/en/guide/parsimony/parsimony-recipes.json', import.meta.url), 'utf8'))
 		.recipes.map((recipe) => 'parsimony/recipes/' + recipe.measureId.toLowerCase())],

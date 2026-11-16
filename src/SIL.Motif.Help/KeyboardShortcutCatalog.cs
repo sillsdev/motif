@@ -136,7 +136,7 @@ public enum ShortcutScope
 {
     /// <summary>Window-level actions.</summary>
     Window,
-    /// <summary>The Analyze texts reader.</summary>
+    /// <summary>The Texts reader.</summary>
     TextReader,
     /// <summary>The Word list.</summary>
     WordList,

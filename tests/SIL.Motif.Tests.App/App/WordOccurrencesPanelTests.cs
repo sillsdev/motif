@@ -147,6 +147,67 @@ public sealed class WordOccurrencesPanelTests
         }, TimeSpan.FromSeconds(45));
     }
 
+    private sealed class FailingActions : IWordOccurrenceActions
+    {
+        public Task<IReadOnlyList<OccurrenceAnchor>> StageKeepAsync(WordReadingOption reading,
+            IReadOnlyList<OccurrenceChoiceViewModel> places, CancellationToken token) =>
+            Task.FromResult<IReadOnlyList<OccurrenceAnchor>>([]);
+
+        public Task<bool> StageNotAWordAsync(string form, CancellationToken token) =>
+            throw new IOException("The host failed.");
+
+        public Task<string> AskAsync(string form, CancellationToken token) => throw new IOException("The host failed.");
+    }
+
+    private sealed class FailingSource(int count) : IWordOccurrenceSource
+    {
+        private readonly Source _inner = new(count);
+        public bool Fail { get; set; }
+        public int Count => _inner.Count;
+
+        public Task<IReadOnlyList<OccurrenceChoiceViewModel>> ReadPageAsync(int offset, int size, CancellationToken token) =>
+            Fail ? throw new IOException("The host failed.") : _inner.ReadPageAsync(offset, size, token);
+    }
+
+    [Fact]
+    public void AHostFailureInNotAWordOrAskClaudeIsASentenceAndNeverEscapesTheCommand()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var model = new WordOccurrencesViewModel("wa", [new WordReadingOption("a1", "one", true)], new Source(3),
+                new FailingActions());
+            await model.LoadPageAsync(0);
+
+            // ExecuteAsync would surface any exception the command let out; none may.
+            await ((AsyncRelayCommand)model.NotAWordCommand).ExecuteAsync(null);
+            Assert.Equal(MotifAppStrings.OccurrencesNotStaged, model.StatusSentence);
+            Assert.False(model.IsBusy);
+
+            model.StatusSentence = null;
+            await ((AsyncRelayCommand)model.AskClaudeCommand).ExecuteAsync(null);
+            Assert.Equal(MotifAppStrings.OccurrencesAskNotSent, model.StatusSentence);
+            Assert.False(model.IsBusy);
+        }, TimeSpan.FromSeconds(45));
+    }
+
+    [Fact]
+    public void APagingFailureSaysThePlacesCouldNotBeReadNotThatAChangeWasNotStaged()
+    {
+        AvaloniaHeadlessFixture.RunUntilComplete(async () =>
+        {
+            var source = new FailingSource(30);
+            var model = new WordOccurrencesViewModel("wa", [new WordReadingOption("a1", "one", true)], source, new Actions());
+            await model.LoadPageAsync(0);
+            source.Fail = true;
+
+            await ((AsyncRelayCommand)model.NextPageCommand).ExecuteAsync(null);
+
+            Assert.Equal(MotifAppStrings.OccurrencesPageNotRead, model.StatusSentence);
+            Assert.NotEqual(MotifAppStrings.OccurrencesNotStaged, model.StatusSentence);
+            Assert.Equal(0, model.PageOffset);
+        }, TimeSpan.FromSeconds(45));
+    }
+
     [Fact]
     public void ClickingOneTickOffStagesTheOtherAnchorsThroughTheRenderedPanel()
     {

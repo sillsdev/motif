@@ -12,13 +12,16 @@ public sealed partial class TextWordsPanel : UserControl
     /// <summary>Limits the wrapped toolbar to half the page height so the virtualized word rows retain a viewport.</summary>
     public static readonly FuncValueConverter<double, double> ToolbarHeightLimit = new(height => height / 2);
 
-    public TextWordsPanel(TextWordsViewModel words)
+    /// <summary>Creates the list over the shared word rows.</summary>
+    /// <param name="words">The word rows to show.</param>
+    /// <param name="placesInSharedPanel">Whether the page shows a word's places in its own panel, not in the card.</param>
+    public TextWordsPanel(TextWordsViewModel words, bool placesInSharedPanel = false)
     {
         ArgumentNullException.ThrowIfNull(words);
         Words = words;
         DataContext = this;
         AvaloniaXamlLoader.Load(this);
-        PresentationHost = new TextWordPresentationHost(words, this);
+        PresentationHost = new TextWordPresentationHost(words, this, placesInSharedPanel);
         _ = new VisibleControlLifetime(this, () =>
         {
             Words.ShowVisibleRows();

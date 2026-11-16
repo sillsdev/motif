@@ -8,7 +8,13 @@ using ModuleWordRow = SIL.Motif.App.Controls.WordPresentation.WordRow;
 
 namespace SIL.Motif.App.Views;
 
-internal sealed class TextWordPresentationHost(TextWordsViewModel words, TextWordsPanel panel) : IWordPresentationHost
+/// <param name="words">The word rows the card reads.</param>
+/// <param name="panel">The list the card belongs to.</param>
+/// <param name="placesInSharedPanel">
+/// True when the page lists a word's places in its own shared panel, so the card does not list them a second time.
+/// </param>
+internal sealed class TextWordPresentationHost(TextWordsViewModel words, TextWordsPanel panel, bool placesInSharedPanel = false)
+    : IWordPresentationHost
 {
     public async Task<WordCardReadResult> ReadCardAsync(
         WordPresentationKey key,
@@ -32,8 +38,11 @@ internal sealed class TextWordPresentationHost(TextWordsViewModel words, TextWor
             new WordCardAnalysis(listed.Card, listed.CardToken, listed.HasCard ? null : listed.NotParsedText),
         };
         if (row.HasSeveralAnalyses) sections.Add(new WordCardText(string.Empty, row.ProjectSummary));
-        sections.Add(new WordCardHeading("WHERE IT APPEARS"));
-        sections.Add(new WordCardOccurrences(row.Occurrences, row.OccurrenceSource));
+        if (!placesInSharedPanel)
+        {
+            sections.Add(new WordCardHeading(MotifAppStrings.WordCardWhereItAppears));
+            sections.Add(new WordCardOccurrences(row.Occurrences, row.OccurrenceSource));
+        }
         return WordCardReadResult.Read(new WordCardDocument(key, evidenceRevision, sections));
     }
 

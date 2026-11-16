@@ -155,8 +155,6 @@ public static class MotifAppStrings
 
     public static string ShortcutToggleSidePanel => Text("MotifApp.ShortcutToggleSidePanel");
 
-    public static string ShortcutReviewChanges => Text("MotifApp.ShortcutReviewChanges");
-
     public static string ShortcutDiagnosticTree => Text("MotifApp.ShortcutDiagnosticTree");
 
     public static string ShortcutMorpheme => Text("MotifApp.ShortcutMorpheme");
@@ -202,14 +200,6 @@ public static class MotifAppStrings
 
 
     public static string ShortcutOpenDispositionMenu => Text("MotifApp.ShortcutOpenDispositionMenu");
-
-    public static string ShortcutPreviousChange => Text("MotifApp.ShortcutPreviousChange");
-
-    public static string ShortcutNextChange => Text("MotifApp.ShortcutNextChange");
-
-    public static string ShortcutKeepChange => Text("MotifApp.ShortcutKeepChange");
-
-    public static string ShortcutUndoChange => Text("MotifApp.ShortcutUndoChange");
 
     public static string ShortcutPreviousRow => Text("MotifApp.ShortcutPreviousRow");
 
@@ -557,15 +547,7 @@ public static class MotifAppStrings
     public static string Words => Text("MotifApp.Words");
 
 
-    public static string AnalyzeTexts => Text("MotifApp.AnalyzeTexts");
-
-    public static string Lists => Text("MotifApp.Lists");
-
     public static string WhatChanged => Text("MotifApp.WhatChanged");
-
-    public static string ReviewChanges => Text("MotifApp.ReviewChanges");
-
-    public static string NoResultsYetChooseTheWords => Text("MotifApp.NoResultsYetChooseTheWords");
 
     public static string ReadText => Text("MotifApp.ReadText");
 
@@ -4111,5 +4093,10 @@ public static class MotifAppStrings
     public static string WhyThisAnalysisOpenFailed => Text("MotifApp.WhyThisAnalysisOpenFailed");
     public static string WhyThisAnalysisRulesNote => Text("MotifApp.WhyThisAnalysisRulesNote");
     public static string WhyThisAnalysisFoldName => Text("MotifApp.WhyThisAnalysisFoldName");
+    #endregion
+    #region W11b
+    public static string OccurrencesAskNotSent => Text("MotifApp.OccurrencesAskNotSent");
+    public static string OccurrencesPageNotRead => Text("MotifApp.OccurrencesPageNotRead");
+    public static string WordCardWhereItAppears => Text("MotifApp.WordCardWhereItAppears");
     #endregion
 }

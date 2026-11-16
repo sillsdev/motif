@@ -1,6 +1,6 @@
 # Installing Motif
 
-Download the Windows x64 **Setup.exe** asset from the [Motif Releases page](https://github.com/sillsdev/motif/releases), choosing the beta version named in your invitation. Beta downloads are marked as prereleases. Run Setup and follow the installer. It installs Motif for your Windows user and creates a Start menu shortcut. Launch **Motif** from that shortcut, then choose **Select new…** and browse to your FieldWorks `.fwdata` file. Motif reads your project and changes nothing in it until you choose **Apply to FieldWorks project**. Motif is a tech demo. Keep a FieldWorks backup and try it on a copy of your project first.
+Download the Windows x64 **Setup.exe** asset from the [Motif Releases page](https://github.com/sillsdev/motif/releases), choosing the beta version named in your invitation. Beta downloads are marked as prereleases. Run Setup and follow the installer. It installs Motif for your Windows user and creates a Start menu shortcut. Launch **Motif** from that shortcut, then choose **Select new…** and browse to your FieldWorks `.fwdata` file. Motif reads your project and changes nothing in it until you choose **Apply**. Motif is a tech demo. Keep a FieldWorks backup and try it on a copy of your project first.
 
 The official Windows release includes the matching PanGloss parser. You do not need to download PanGloss separately.
 
@@ -12,7 +12,7 @@ Beta Windows builds may be unsigned. An unsigned Setup can show **Windows protec
 
 The same release offers preview downloads for Linux x64 and macOS with Apple silicon. On Linux, make the AppImage executable and run it. On macOS, extract the portable ZIP and open the Motif app. These previews are not notarized macOS distributions or a promise of support for every Linux distribution. If your system blocks the preview, report the message to the person running the trial. An Intel Mac preview is not included.
 
-Save in FieldWorks before **Refresh**; Motif reads the last saved project and can do that while FieldWorks remains open. Close FieldWorks before **Apply to FieldWorks project**. Motif refuses Apply if FieldWorks still owns the project.
+Save in FieldWorks before **Refresh**; Motif reads the last saved project and can do that while FieldWorks remains open. Close FieldWorks before **Apply**. Motif refuses Apply if FieldWorks still owns the project.
 
 Before 1.0, incompatible Motif stores are refused rather than upgraded. A confirmed **Delete Motif's store and reopen** recreates a refused project store and loses changes not applied yet. For damaged project or machine stores, follow [the recovery instructions](guide:when-something-goes-wrong); remove only the identified Motif file, never the FieldWorks project.
 

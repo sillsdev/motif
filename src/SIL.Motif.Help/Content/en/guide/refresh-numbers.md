@@ -5,7 +5,7 @@ Use **Refresh** after saving changes in FieldWorks when you want Motif to read t
 1. Save your work in FieldWorks.
 2. In Motif, choose **Refresh** (the ⟳ beside the project name in the top bar) and let it finish.
 3. If setup opens after the first Baseline, choose what to measure and press **Start First Run**. Otherwise, open the project card (choose the project name in the top bar) and choose **Parse all words**.
-4. Check **Overview**. Refresh updates the project counts and checks the grammar; parsing updates the parse results.
+4. Check **Progress**. Refresh updates the project counts and checks the grammar; parsing updates the parse results.
 
 If you cancel **Parse all words** or the parser refuses it, Refresh's new Baseline remains; parse results do not describe it until a parse completes. Opening Motif again does not refresh a project that already has a Baseline.
 

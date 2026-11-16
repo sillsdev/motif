@@ -305,24 +305,8 @@
     <value>Words</value>
     <comment>Window text.</comment>
   </data>
-  <data name="MotifApp.AnalyzeTexts" xml:space="preserve">
-    <value>Analyze Texts</value>
-    <comment>Window text.</comment>
-  </data>
-  <data name="MotifApp.Lists" xml:space="preserve">
-    <value>Lists</value>
-    <comment>Window text.</comment>
-  </data>
   <data name="MotifApp.WhatChanged" xml:space="preserve">
     <value>What Changed</value>
-    <comment>Window text.</comment>
-  </data>
-  <data name="MotifApp.ReviewChanges" xml:space="preserve">
-    <value>Review Changes</value>
-    <comment>Action to review the word changes not applied yet.</comment>
-  </data>
-  <data name="MotifApp.NoResultsYetChooseTheWords" xml:space="preserve">
-    <value>No results yet. Choose the words to parse on Analyze texts, then parse them.</value>
     <comment>Window text.</comment>
   </data>
   <data name="MotifApp.ReadText" xml:space="preserve">
@@ -338,7 +322,7 @@
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.SearchWordsInAnalyzeTextsAccessibleName" xml:space="preserve">
-    <value>Search words in Analyze texts</value>
+    <value>Search words in the text</value>
     <comment>Accessible name announced by screen readers.</comment>
   </data>
   <data name="MotifApp.SelectWordsForActionsAccessibleName" xml:space="preserve">
@@ -2410,19 +2394,19 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.StatisticsGroupAccessibleName" xml:space="preserve">
     <value>Statistics group</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Timing page: "Statistics group". Not visible on screen.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Diagnostics page: "Statistics group". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.FilterStatisticsRowsAccessibleName" xml:space="preserve">
     <value>Filter statistics rows</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Timing page: "Filter statistics rows". Not visible on screen.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Diagnostics page: "Filter statistics rows". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.StatisticsWordScopeAccessibleName" xml:space="preserve">
     <value>Statistics word scope</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Timing page: "Statistics word scope". Not visible on screen.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Diagnostics page: "Statistics word scope". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.StatisticsRowsAccessibleName" xml:space="preserve">
     <value>Statistics rows</value>
-    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Timing page: "Statistics rows". Not visible on screen.</comment>
+    <comment>Accessible name (read aloud by screen readers) of a control on the detailed statistics table on the Diagnostics page: "Statistics rows". Not visible on screen.</comment>
   </data>
   <data name="MotifApp.Severity" xml:space="preserve">
     <value>Severity</value>
@@ -2874,7 +2858,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingAdviceTimeLimit" xml:space="preserve">
     <value>Stopped at the time safety net · Increase Seconds per word.</value>
-    <comment>Advice on the Timing page when words stopped at the time safety net. Seconds per Word names a control on the page.</comment>
+    <comment>Advice on the Diagnostics page when words stopped at the time safety net. Seconds per Word names a control on the page.</comment>
   </data>
   <data name="MotifApp.TimingPhraseSomeOfAllFormat" xml:space="preserve">
     <value>{0} of the {1} words</value>
@@ -2902,7 +2886,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingShareOfFormat" xml:space="preserve">
     <value>Every share is of the {0} {1} needed to parse.</value>
-    <comment>Explains what every share on the Timing page divides; {0} is the total parser work with their unit and {1} a noun phrase naming the measured words.</comment>
+    <comment>Explains what every share on the Diagnostics page divides; {0} is the total parser work with their unit and {1} a noun phrase naming the measured words.</comment>
   </data>
   <data name="MotifApp.TimingShareOfOneMissingFormat" xml:space="preserve">
     <value>Every share is of the {0} {1} needed to parse; 1 has no parser work recorded.</value>
@@ -4878,19 +4862,19 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.StatisticsColumnKind" xml:space="preserve">
     <value>Kind</value>
-    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Diagnostics page.</comment>
   </data>
   <data name="MotifApp.StatisticsColumnObject" xml:space="preserve">
     <value>Object</value>
-    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Diagnostics page.</comment>
   </data>
   <data name="MotifApp.StatisticsColumnCompletion" xml:space="preserve">
     <value>Completion</value>
-    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Diagnostics page.</comment>
   </data>
   <data name="MotifApp.StatisticsColumnAnalyses" xml:space="preserve">
     <value>Analyses</value>
-    <comment>Heading of a table column on the detailed statistics table on the Timing page.</comment>
+    <comment>Heading of a table column on the detailed statistics table on the Diagnostics page.</comment>
   </data>
   <data name="MotifApp.TryWordRecordedTreeContextHeading" xml:space="preserve">
     <value>Recorded Tree Context</value>
@@ -5123,10 +5107,6 @@ Never included unless you tick it in the preview: local details, which may conta
     <value>Show or Hide the Side Panel</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
-  <data name="MotifApp.ShortcutReviewChanges" xml:space="preserve">
-    <value>Review Changes</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
   <data name="MotifApp.ShortcutDiagnosticTree" xml:space="preserve">
     <value>Diagnostic Tree</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
@@ -5197,22 +5177,6 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.ShortcutOpenDispositionMenu" xml:space="preserve">
     <value>Set Analysis</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
-  <data name="MotifApp.ShortcutPreviousChange" xml:space="preserve">
-    <value>Previous Change</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
-  <data name="MotifApp.ShortcutNextChange" xml:space="preserve">
-    <value>Next Change</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
-  <data name="MotifApp.ShortcutKeepChange" xml:space="preserve">
-    <value>Keep Change</value>
-    <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
-  </data>
-  <data name="MotifApp.ShortcutUndoChange" xml:space="preserve">
-    <value>Undo Change</value>
     <comment>Shortcut command or scope title; referenced by stable AutomationId from Help metadata.</comment>
   </data>
   <data name="MotifApp.ShortcutPreviousRow" xml:space="preserve">
@@ -6925,7 +6889,7 @@ Never included unless you tick it in the preview: local details, which may conta
   </data>
   <data name="MotifApp.TimingNoneToday" xml:space="preserve">
     <value>None today</value>
-    <comment>What the Timing page shows for today's side of a pair when only the open Proposal has a value, such as a kind of work only the Proposal's try recorded.</comment>
+    <comment>What the Diagnostics page shows for today's side of a pair when only the open Proposal has a value, such as a kind of work only the Proposal's try recorded.</comment>
   </data>
   <data name="MotifApp.WarningsGoneWithProposalStatus" xml:space="preserve">
     <value>Today's check has this finding and this Proposal's does not.</value>
@@ -7557,7 +7521,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalActivateForApply" xml:space="preserve"><value>Choose Apply… to Check This Proposal’s Readiness.</value></data>
   <data name="MotifApp.ProposalSelectedNameFormat" xml:space="preserve"><value>{0}, selected</value></data>
   <data name="MotifApp.ProposalReceiptFormat" xml:space="preserve"><value>Receipt: {0}. Recorded: {1}.</value></data>
-  <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve"><value>Checking these changes…</value></data>
+  <data name="MotifApp.ReviewApplyMeasuring" xml:space="preserve"><value>Checking these changes…</value><comment>Progress while the Apply readiness check measures a Proposal.</comment></data>
   <!-- W6 -->
   <data name="MotifApp.ProposalCompareBack" xml:space="preserve"><value>Back to Proposals</value></data>
   <data name="MotifApp.ProposalCompareHeading" xml:space="preserve"><value>Compare Proposals</value></data>
@@ -7596,7 +7560,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.OccurrencesPartlyStagedStatusFormat" xml:space="preserve"><value>{0} of {1} places staged before the keep stopped. The rest are unchanged.</value></data>
   <data name="MotifApp.OccurrencesHomographsUnreadStatus" xml:space="preserve"><value>The analyses of every homograph could not be read, so no stored reading is offered. Close this word and open it again to try once more.</value></data>
   <data name="MotifApp.OccurrencesHomographReadingFormat" xml:space="preserve"><value>Homograph {0}: {1}</value></data>
-  <data name="MotifApp.OccurrencesOtherHomographStatusFormat" xml:space="preserve"><value>{0} places staged. {1} places belong to other homographs than the chosen reading and were left unchanged.</value></data>
+  <data name="MotifApp.OccurrencesOtherHomographStatusFormat" xml:space="preserve"><value>{0} places staged. {1} places use other homographs and were left unchanged.</value></data>
   <data name="MotifApp.OccurrencesNotAWordPartlyStagedFormat" xml:space="preserve"><value>Not a Word was staged for {0} of {1} homographs before it stopped. The rest are unchanged.</value></data>
   <data name="MotifApp.OccurrencesNotAWordStagedFormat" xml:space="preserve"><value>Not a Word staged for {0}. It changes the project when you Apply.</value></data>
   <data name="MotifApp.OccurrencesNotStaged" xml:space="preserve"><value>The change could not be staged. Nothing was changed.</value></data>
@@ -7671,4 +7635,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.WhyThisAnalysisOpenFailed" xml:space="preserve"><value>FieldWorks could not be opened.</value></data>
   <data name="MotifApp.WhyThisAnalysisRulesNote" xml:space="preserve"><value>Shown only with Diagnostics on. Rules are read and edited in FieldWorks.</value></data>
   <data name="MotifApp.WhyThisAnalysisFoldName" xml:space="preserve"><value>Why This Analysis? Fold</value></data>
+  <!-- W11b -->
+  <data name="MotifApp.OccurrencesAskNotSent" xml:space="preserve"><value>The request could not be made. Nothing was changed.</value><comment>Word panel: shown when asking Claude about a word fails before a Request is made.</comment></data>
+  <data name="MotifApp.OccurrencesPageNotRead" xml:space="preserve"><value>These places could not be read. Nothing was changed.</value><comment>Word panel: shown when paging to another page of places fails.</comment></data>
+  <data name="MotifApp.WordCardWhereItAppears" xml:space="preserve"><value>Where It Appears</value><comment>Word card heading above the places a word occurs, shown only where no shared places panel lists them.</comment></data>
 </root>

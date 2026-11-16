@@ -16,7 +16,7 @@ You make grammar and lexicon changes in FieldWorks. Motif shows what the parser 
 
 Our own suggestion, which has no source: Motif measures only the Default Selection, so you can leave one Text out of it and add it later to see how the grammar does on words you did not tune it to.
 
-**In Motif.** Setup asks you to choose texts or add words in **What Should Motif Measure Every Time?**; choose **Configure…** from the project menu to change it later (see [Choosing what to measure](guide:first-run-setup)). In **Analyze texts**, **Word list** or **Lists**, choose **Incorrect spelling** on a word, or press **S** in Analyze texts; the change stays pending until you review and apply it (see [Texts](guide:texts) and [Keyboard shortcuts](guide:keyboard-shortcuts)).
+**In Motif.** Setup asks you to choose texts or add words in **What Should Motif Measure Every Time?**; choose **Configure…** from the project menu to change it later (see [Choosing what to measure](guide:first-run-setup)). In **Texts** or **Words**, choose **Set analysis** on a word and mark its spelling Incorrect; the change stays pending until you review and apply it in **Proposals** (see [Texts](guide:texts) and [Keyboard shortcuts](guide:keyboard-shortcuts)).
 
 ## Sounds
 
@@ -32,7 +32,7 @@ Our own suggestion, which has no source: Motif measures only the Default Selecti
 
 **Why.** Black §1.2 lists what a parser must know: the forms and glosses of prefixes, infixes, roots and suffixes, which affixes go with which roots, their relative order, and when a shape is legitimate. For a word made of one morpheme, §2 says to add a lexical entry and set the morpheme type of its allomorph to a root or stem type; §4.2 lists the morpheme types the parser keys on. On classification, §2.1.1 says an unclassified affix "is relatively unconstrained as to where it can appear", so the parser may return incorrect parses, and "the best solution, of course, is to classify the affix as being either inflectional or derivational". §2.1.5 gives criteria for deciding (Bickford's table) and adds that they "are not hard and fast rules". Label an affix unclassified when you do not know yet, and change it when you do.
 
-**In Motif.** Parse your Selection and open the Overview. [Text Coverage](term:text-coverage) says how many of your chosen words parse. Read it as one measure among several: it is not a score for the grammar (see [Reading the Overview](guide:reading-the-overview)).
+**In Motif.** Parse your Selection and open **Progress**. [Text Coverage](term:text-coverage) says how many of your chosen words parse. Read it as one measure among several: it is not a score for the grammar (see [Reading project health](guide:reading-the-overview)).
 
 ## Where affixes go
 

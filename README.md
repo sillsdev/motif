@@ -31,7 +31,7 @@ Motif reads your saved FieldWorks project and writes changes only when you expli
 
 ## The window
 
-**Progress** shows available next actions and stored project facts. **Texts** opens the reader. Choosing a word there lists every place it occurs, so you can keep one reading at the places you tick; Enter, Shift+Enter and Tab are its reader keys, and nothing reaches FieldWorks until you Apply. **Words** lists words in the current Selection, **Grammar Guide** reads the project's saved records, and **Proposals** lists changes and their discussions. Turn on **Diagnostics** to inspect recorded warnings and rule work. **Settings** contains display choices and assistant connections. Opening a project reads stored results; it does not start a parse.
+**Progress** shows available next actions and stored project facts. **Texts** opens the reader. Choosing a word there lists every place it occurs, so you can keep one reading at the places you tick; Enter, Shift+Enter and Tab are its reader keys, and nothing reaches FieldWorks until you Apply. **Words** lists every word in the whole Context, **Grammar Guide** reads the project's saved records, and **Proposals** lists changes and their discussions. Turn on **Diagnostics** to inspect recorded warnings and rule work. **Settings** contains display choices and assistant connections. Opening a project reads stored results; it does not start a parse.
 
 ## Who it is for
 

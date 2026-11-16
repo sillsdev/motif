@@ -22,6 +22,7 @@ public sealed class ProposalCompareViewModel : ObservableObject, IDisposable
     private IReadOnlyList<ProposalComparisonRow> _rows = [];
     private bool _remeasuring;
     private bool _disposed;
+    private CancellationTokenSource? _remeasure;
 
     /// <summary>Compares the two documents a person checked.</summary>
     /// <param name="context">The workspace the documents belong to.</param>
@@ -41,7 +42,11 @@ public sealed class ProposalCompareViewModel : ObservableObject, IDisposable
         _documents = [.. pair];
         First = new ProposalComparisonSide(pair[0], MotifAppStrings.ProposalCompareFirstHeading);
         Second = new ProposalComparisonSide(pair[1], MotifAppStrings.ProposalCompareSecondHeading);
-        BackCommand = new RelayCommand(_back);
+        BackCommand = new RelayCommand(() =>
+        {
+            CancelRemeasure();
+            _back();
+        });
         RemeasureCommand = new AsyncRelayCommand(RemeasureAsync, () => !_disposed && !IsRemeasuring && CanRemeasure);
         foreach (var document in _documents)
         {
@@ -119,21 +124,24 @@ public sealed class ProposalCompareViewModel : ObservableObject, IDisposable
 
     private async Task RemeasureAsync()
     {
+        using var cancellation = _remeasure = new CancellationTokenSource();
+        var token = cancellation.Token;
         IsRemeasuring = true;
         try
         {
             foreach (var document in _documents.Where(NeedsRemeasure))
             {
-                if (_disposed) return;
+                if (_disposed || token.IsCancellationRequested) return;
                 if (_tryAgain is not null && document.Card is { CanTry: true } card && document.IsOutdated)
                     await _tryAgain(card).ConfigureAwait(true);
-                await document.RefreshAsync().ConfigureAwait(true);
+                if (token.IsCancellationRequested) return;
+                await document.RefreshAsync(token).ConfigureAwait(true);
             }
             var text = CommonTextId();
             var made = false;
             foreach (var document in _documents)
             {
-                if (_disposed) return;
+                if (_disposed || token.IsCancellationRequested) return;
                 var difference = document.Difference;
                 if (text is null || (difference.IsShown && difference.Summary?.TextId == text) || !difference.OffersMake)
                     continue;
@@ -145,13 +153,24 @@ public sealed class ProposalCompareViewModel : ObservableObject, IDisposable
             }
             if (made)
                 foreach (var document in _documents)
-                    if (!_disposed) await document.RefreshAsync().ConfigureAwait(true);
+                    if (!_disposed && !token.IsCancellationRequested) await document.RefreshAsync(token).ConfigureAwait(true);
         }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         finally
         {
+            _remeasure = null;
             IsRemeasuring = false;
             Recompute();
         }
+    }
+
+    // Leaving the comparison stops the measuring it started, including a make a document's Difference is running.
+    private void CancelRemeasure()
+    {
+        if (_remeasure is null) return;
+        _remeasure.Cancel();
+        foreach (var document in _documents)
+            if (document.Difference.Maker.CancelCommand.CanExecute(null)) document.Difference.Maker.CancelCommand.Execute(null);
     }
 
     // A side that reads, is current and has evidence is left alone; only the one that does not is measured again.
@@ -237,6 +256,7 @@ public sealed class ProposalCompareViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        CancelRemeasure();
         foreach (var (source, handler) in _watches) source.PropertyChanged -= handler;
         _watches.Clear();
     }

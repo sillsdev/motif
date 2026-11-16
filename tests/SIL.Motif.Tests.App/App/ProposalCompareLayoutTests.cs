@@ -163,6 +163,8 @@ public sealed class ProposalCompareLayoutTests
                 cards["two"].IsCheckedForComparison = true;
                 cards["three"].IsCheckedForComparison = true;
                 Assert.False(cards["three"].IsCheckedForComparison);
+                Assert.DoesNotContain(page.Documents.Items, document => document.ProposalId == "three");
+                Assert.Equal(MotifAppStrings.ProposalComparisonLimit, page.ComparisonNotice);
                 await Task.WhenAll(page.Documents.Items.Select(document => document.EnsureLoadedAsync()));
                 page.Documents.Items.Single(document => document.ProposalId == "one").AddCommentCommand.Execute(null);
                 var editor = Assert.Single(page.Documents.Items.Single(document => document.ProposalId == "one").Comments);

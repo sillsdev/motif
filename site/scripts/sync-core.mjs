@@ -16,7 +16,7 @@ const guideSections = [
 	},
 	{
 		title: 'Pages of the window',
-		pages: ['the-window', 'overview', 'proposals', 'texts', 'passage', 'words', 'keyboard-shortcuts', 'settings', 'why-this-analysis', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
+		pages: ['the-window', 'progress', 'overview', 'proposals', 'compare-proposals', 'ask-claude', 'grammar-guide', 'sources', 'diagnostics', 'texts', 'passage', 'words', 'keyboard-shortcuts', 'settings', 'why-this-analysis', 'timing', 'warnings', 'review-changes', 'ai-handoff'],
 	},
 	{
 		title: 'Everyday tasks',
@@ -36,7 +36,7 @@ const guideSections = [
 	},
 	{
 		title: 'Encoding guides',
-		pages: ['encoding/workflow', 'encoding/ask-the-linguist', 'encoding/suffix-prefix-slots', 'encoding/conditioned-allomorphs', 'encoding/feature-conditioned-slots', 'encoding/nasal-assimilation', 'encoding/no-inflection'],
+		pages: ['encoding/workflow', 'encoding/ask-the-linguist', 'encoding/suffix-prefix-slots', 'encoding/conditioned-allomorphs', 'encoding/feature-conditioned-slots', 'encoding/nasal-assimilation', 'encoding/no-inflection', 'encoding/archiphonemes', 'encoding/feature-rules', 'encoding/phonological-rules'],
 	},
 ];
 const guideCodes = guideSections.flatMap((section) => section.pages);

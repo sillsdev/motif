@@ -116,8 +116,9 @@ public sealed class WordRowOpenLayoutSystemTests(ITestOutputHelper output)
                         block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.InFieldWorksNow);
                     Assert.DoesNotContain(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
                         block => block.IsEffectivelyVisible && block.Text == MotifAppStrings.WorkByRule);
-                    Assert.Contains(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
-                        block => block.IsEffectivelyVisible && block.Text == "WHERE IT APPEARS");
+                    // The Words page lists a word's places in its shared panel, so its card does not list them twice.
+                    Assert.DoesNotContain(card.GetVisualDescendants().OfType<CopyableTextBlock>(),
+                        block => block.Text == MotifAppStrings.WordCardWhereItAppears);
                 }
                 Assert.DoesNotContain(layoutLog.Messages,
                     message => message.Contains("Layout cycle detected", StringComparison.Ordinal));

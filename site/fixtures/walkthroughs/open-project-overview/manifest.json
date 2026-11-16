@@ -2,14 +2,14 @@
   "id": "open-project-overview",
   "locale": "en",
   "title": "Open a project",
-  "description": "Open a language project and see its Overview.",
+  "description": "Open a language project and visit Progress and Texts.",
   "width": 1280,
   "height": 720,
   "fps": 30,
   "steps": [
     {
       "id": "texts",
-      "caption": "The Texts page shows the saved word comparison.",
+      "caption": "Texts shows the current Selection\u0027s reader.",
       "startMs": 750,
       "endMs": 1950,
       "screenshot": "steps/01-texts.png",
@@ -21,22 +21,22 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 8,
-          "y": 155,
-          "width": 187,
-          "height": 37,
+          "x": 0,
+          "y": 96,
+          "width": 175,
+          "height": 40,
           "label": "1",
-          "caption": "Texts and their measured results"
+          "caption": "Open Texts"
         }
       ]
     },
     {
-      "id": "overview",
-      "caption": "The Overview shows the latest stored measurements.",
+      "id": "progress",
+      "caption": "Progress shows available next actions and stored project facts.",
       "startMs": 2200,
       "endMs": 3800,
-      "screenshot": "steps/02-overview.png",
-      "annotated": "steps/02-overview-annotated.png",
+      "screenshot": "steps/02-progress.png",
+      "annotated": "steps/02-progress-annotated.png",
       "width": 1280,
       "height": 720,
       "annotatedWidth": 1280,
@@ -44,12 +44,12 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 237,
-          "y": 222,
-          "width": 200,
-          "height": 26,
+          "x": 192,
+          "y": 100,
+          "width": 1072,
+          "height": 36,
           "label": "1",
-          "caption": "Words in the Selection"
+          "caption": "Project progress"
         }
       ]
     }

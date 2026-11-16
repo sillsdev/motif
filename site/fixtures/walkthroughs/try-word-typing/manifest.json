@@ -1,17 +1,17 @@
 {
   "id": "try-word-typing",
   "locale": "en",
-  "title": "Try a word",
-  "description": "Type a word to see the trace returned by PanGloss for the current Baseline.",
+  "title": "Diagnostics",
+  "description": "Open Diagnostics, where a project\u0027s recorded grammar evidence is read.",
   "width": 1280,
   "height": 720,
   "fps": 30,
   "steps": [
     {
       "id": "trace",
-      "caption": "Try a word to show the recorded result from the current grammar.",
-      "startMs": 1000,
-      "endMs": 2500,
+      "caption": "Diagnostics shows the recorded warnings and speed by rule for the current grammar.",
+      "startMs": 750,
+      "endMs": 2250,
       "screenshot": "steps/01-trace.png",
       "annotated": "steps/01-trace-annotated.png",
       "width": 1280,
@@ -21,12 +21,12 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 220,
-          "y": 166,
-          "width": 69,
-          "height": 36,
+          "x": 192,
+          "y": 148,
+          "width": 1072,
+          "height": 528,
           "label": "1",
-          "caption": "Word sent to PanGloss and its trace result"
+          "caption": "Diagnostics tabs"
         }
       ]
     }

@@ -49,6 +49,14 @@ public sealed class OpenProposalDocuments : ObservableObject
         if (_items.Contains(document) && document.ProjectPath == _context.ProjectPath) Selected = document;
     }
 
+    /// <summary>The open document for a Proposal of the current project, or null when none is open.</summary>
+    public ProposalDocumentViewModel? Find(string proposalId) =>
+        _items.FirstOrDefault(item => item.ProjectPath == _context.ProjectPath && item.ProposalId == proposalId);
+
+    /// <summary>Whether checking or unchecking this Proposal would be accepted, without opening anything.</summary>
+    public bool CanCheck(string proposalId, bool value) =>
+        !value || Find(proposalId)?.IsCheckedForComparison == true || ComparisonPair.Count < 2;
+
     public bool Check(ProposalDocumentViewModel document, bool value)
     {
         if (!_items.Contains(document) || document.ProjectPath != _context.ProjectPath) return false;

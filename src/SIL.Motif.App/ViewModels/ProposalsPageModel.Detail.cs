@@ -72,6 +72,17 @@ public sealed partial class ProposalsPageModel
 
     private bool CheckComparison(ProposalCardViewModel card, bool value)
     {
+        // A refused check opens nothing, so a third check cannot leave a document open behind the notice.
+        if (!Documents.CanCheck(card.ProposalId, value))
+        {
+            ComparisonNotice = MotifAppStrings.ProposalComparisonLimit;
+            return false;
+        }
+        if (!value && Documents.Find(card.ProposalId) is null)
+        {
+            ComparisonNotice = string.Empty;
+            return true;
+        }
         var document = Documents.Open(card.ProposalId, select: false);
         document.Card = card;
         var accepted = Documents.Check(document, value);

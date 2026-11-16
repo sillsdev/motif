@@ -60,6 +60,9 @@ internal sealed class ProposalDifferenceFixture
     /// <summary>How many more saved Differences the bounded list leaves out.</summary>
     public int SavedNotListed { get; set; }
 
+    /// <summary>Whether the bounded saved list ends before the Difference that is shown.</summary>
+    public bool SavedLeavesOutShown { get; set; }
+
     /// <summary>How many saved Differences the read could not open and so left out of the list.</summary>
     public int SavedUnreadable { get; set; }
 
@@ -136,8 +139,9 @@ internal sealed class ProposalDifferenceFixture
         }
         return CommandOutcome<ProposalDifferenceResponse>.Success(new ProposalDifferenceResponse(
             summary, page, matching.Count, next, WordDetailKept, places, page.Count > 0 ? Unreadable : null,
-            SavedOthers.Prepend(new ProposalDifferenceSaved("difference/one", TextId, TextTitle, Reference,
-                "2026-10-31T00:00:00Z", WordDetailKept)).ToList(), SavedOthers.Count + 1 + SavedNotListed + SavedUnreadable + SavedDamaged.Count,
+            SavedLeavesOutShown ? SavedOthers.ToList() : SavedOthers.Prepend(new ProposalDifferenceSaved("difference/one",
+                TextId, TextTitle, Reference, "2026-10-31T00:00:00Z", WordDetailKept)).ToList(),
+            SavedOthers.Count + 1 + SavedNotListed + SavedUnreadable + SavedDamaged.Count,
                 SavedUnreadable + SavedDamaged.Count, SavedDamaged.Count == 0 ? null : SavedDamaged,
                 WordDetailKept ? _words.Count : 0));
     }

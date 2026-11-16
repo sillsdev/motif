@@ -2,7 +2,7 @@
 
 The window has five main pages: **Progress**, **Texts**, **Words**, **Grammar Guide**, and **Proposals**. Choose a page in the rail on the left. **Settings** stays at the bottom of the rail.
 
-**Progress** shows available project facts and next actions. **Texts** opens the reader and the current Selection. **Words** lists the words in that Selection. **Grammar Guide** reads the project's saved Grammar Design Records. **Proposals** shows saved Proposals and their standing, rationale, and Comments.
+**Progress** shows available project facts and next actions. **Texts** opens the reader and the current Selection. **Words** lists the words in the whole Context. **Grammar Guide** reads the project's saved Grammar Design Records. **Proposals** shows saved Proposals and their standing, rationale, and Comments.
 
 Each page owns its controls and any side panel it needs. In a narrow window a side panel can fold away; use its labelled reveal to open it again. The window adapts as you resize it or change zoom.
 

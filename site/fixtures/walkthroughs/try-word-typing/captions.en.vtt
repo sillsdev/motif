@@ -1,4 +1,5 @@
 WEBVTT
 
-00:00:01.000 --> 00:00:02.500
-Try a word to show the recorded result from the current grammar.
+00:00:00.750 --> 00:00:02.250
+Diagnostics shows the recorded warnings and speed by rule for the current grammar.
+

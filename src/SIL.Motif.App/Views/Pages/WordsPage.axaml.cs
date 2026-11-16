@@ -9,7 +9,6 @@ namespace SIL.Motif.App.Views;
 /// <summary>The whole Context's words, grouped by written shape, with the shared places panel for the open word.</summary>
 public sealed partial class WordsPage : UserControl
 {
-    private const double StackedPaneShare = 0.5;
     private bool? _sideBySide;
 
     /// <summary>Creates the page over the workspace's shared page model.</summary>
@@ -21,7 +20,7 @@ public sealed partial class WordsPage : UserControl
         ArgumentNullException.ThrowIfNull(model);
         DataContext = model;
         AvaloniaXamlLoader.Load(this);
-        this.FindControl<ContentControl>("WordsHost")!.Content = new TextWordsPanel(model.Words);
+        this.FindControl<ContentControl>("WordsHost")!.Content = new TextWordsPanel(model.Words, placesInSharedPanel: true);
         model.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(WordsPageModel.OccurrencePanel)) ShowWordPanel(model.OccurrencePanel);
@@ -54,7 +53,7 @@ public sealed partial class WordsPage : UserControl
         }
         else if (body.Bounds.Height > 0)
         {
-            var share = body.Bounds.Height * StackedPaneShare;
+            var share = body.Bounds.Height * PaneLayout.StackedPaneShare;
             var minimum = this.TryFindResource("Component.WordOccurrences.PaneMinHeight", ActualThemeVariant, out var min) &&
                 min is double tall ? tall : share;
             pane.MinHeight = Math.Min(minimum, share);

@@ -1,88 +1,19 @@
 {
   "id": "review-apply-refresh-parse",
   "locale": "en",
-  "title": "Review, apply and refresh",
-  "description": "Measure and apply a pending change, capture a new Baseline, then Parse all words and review the updated Text Coverage.",
+  "title": "Refresh the project",
+  "description": "Capture a new Baseline with Refresh, then read the stored results on Progress.",
   "width": 1280,
   "height": 720,
   "fps": 30,
   "steps": [
     {
-      "id": "measured",
-      "caption": "Review the measured change before applying it.",
-      "startMs": 1000,
-      "endMs": 2400,
-      "screenshot": "steps/01-measured.png",
-      "annotated": "steps/01-measured-annotated.png",
-      "width": 1280,
-      "height": 720,
-      "annotatedWidth": 1280,
-      "annotatedHeight": 720,
-      "calloutLayout": "target-overlay",
-      "callouts": [
-        {
-          "x": 997,
-          "y": 305,
-          "width": 213,
-          "height": 32,
-          "label": "1",
-          "caption": "Apply is available after measuring the change"
-        }
-      ]
-    },
-    {
-      "id": "applied",
-      "caption": "Apply records a Receipt and clears this pending change.",
-      "startMs": 2650,
-      "endMs": 4050,
-      "screenshot": "steps/02-applied.png",
-      "annotated": "steps/02-applied-annotated.png",
-      "width": 1280,
-      "height": 720,
-      "annotatedWidth": 1280,
-      "annotatedHeight": 720,
-      "calloutLayout": "target-overlay",
-      "callouts": [
-        {
-          "x": 961,
-          "y": 415,
-          "width": 286,
-          "height": 46,
-          "label": "1",
-          "caption": "Receipt for the applied change"
-        }
-      ]
-    },
-    {
-      "id": "refreshed",
-      "caption": "Refresh captures a new Baseline; Parse all words separately updates the numbers.",
-      "startMs": 4300,
-      "endMs": 5800,
-      "screenshot": "steps/03-refreshed.png",
-      "annotated": "steps/03-refreshed-annotated.png",
-      "width": 1280,
-      "height": 720,
-      "annotatedWidth": 1280,
-      "annotatedHeight": 720,
-      "calloutLayout": "target-overlay",
-      "callouts": [
-        {
-          "x": 367,
-          "y": 16,
-          "width": 701,
-          "height": 21,
-          "label": "1",
-          "caption": "Refresh captured a Baseline; Parse all words is a separate action"
-        }
-      ]
-    },
-    {
       "id": "parsed",
-      "caption": "The latest Assessment is published, with updated results in the Overview.",
-      "startMs": 6300,
-      "endMs": 7800,
-      "screenshot": "steps/04-parsed.png",
-      "annotated": "steps/04-parsed-annotated.png",
+      "caption": "Progress reads the latest stored Assessment.",
+      "startMs": 1000,
+      "endMs": 2500,
+      "screenshot": "steps/01-parsed.png",
+      "annotated": "steps/01-parsed-annotated.png",
       "width": 1280,
       "height": 720,
       "annotatedWidth": 1280,
@@ -90,43 +21,12 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 237,
-          "y": 465,
-          "width": 482,
+          "x": 192,
+          "y": 100,
+          "width": 1072,
           "height": 36,
           "label": "1",
-          "caption": "Speed of the current Assessment"
-        },
-        {
-          "x": 765,
-          "y": 465,
-          "width": 482,
-          "height": 36,
-          "label": "2",
-          "caption": "Text Coverage after Parse all words"
-        }
-      ]
-    },
-    {
-      "id": "timing",
-      "caption": "Timing shows the recorded parse measurements for the Selection.",
-      "startMs": 8050,
-      "endMs": 9450,
-      "screenshot": "steps/05-timing.png",
-      "annotated": "steps/05-timing-annotated.png",
-      "width": 1280,
-      "height": 720,
-      "annotatedWidth": 1280,
-      "annotatedHeight": 720,
-      "calloutLayout": "target-overlay",
-      "callouts": [
-        {
-          "x": 8,
-          "y": 233,
-          "width": 187,
-          "height": 37,
-          "label": "1",
-          "caption": "Timing for the saved parse"
+          "caption": "Progress from the stored Assessment"
         }
       ]
     }

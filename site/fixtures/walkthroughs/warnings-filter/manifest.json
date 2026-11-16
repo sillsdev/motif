@@ -2,14 +2,14 @@
   "id": "warnings-filter",
   "locale": "en",
   "title": "Read grammar findings",
-  "description": "Review the findings PanGloss recorded for a project\u0027s current Baseline.",
+  "description": "Open Diagnostics to read the findings PanGloss recorded for a project\u0027s current Baseline.",
   "width": 1280,
   "height": 720,
   "fps": 30,
   "steps": [
     {
       "id": "findings",
-      "caption": "Warnings shows grammar findings saved for the current Baseline.",
+      "caption": "The Warnings tab on Diagnostics shows findings saved for the current Baseline.",
       "startMs": 750,
       "endMs": 2150,
       "screenshot": "steps/01-findings.png",
@@ -21,10 +21,10 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 8,
-          "y": 272,
-          "width": 187,
-          "height": 37,
+          "x": 0,
+          "y": 256,
+          "width": 175,
+          "height": 40,
           "label": "1",
           "caption": "Warnings for this Baseline"
         }

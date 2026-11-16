@@ -50,8 +50,6 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         ArrangeWordPane();
     }
 
-    private const double StackedPaneShare = 0.5;
-
     /// <summary>Puts the word panel beside the reader when there is room and under it when there is not.</summary>
     private void ArrangeWordPane()
     {
@@ -68,7 +66,7 @@ public sealed partial class TextsPage : UserControl, IWorkspacePaneProvider
         else if (body.Bounds.Height > 0)
         {
             // Under the reader the panel takes at most its share of the body, so a short zoomed window keeps words.
-            var share = body.Bounds.Height * StackedPaneShare;
+            var share = body.Bounds.Height * PaneLayout.StackedPaneShare;
             var minimum = this.TryFindResource("Component.WordOccurrences.PaneMinHeight", ActualThemeVariant, out var min) &&
                 min is double tall ? tall : share;
             pane.MinHeight = Math.Min(minimum, share);

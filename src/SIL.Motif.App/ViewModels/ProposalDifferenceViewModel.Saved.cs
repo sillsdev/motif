@@ -90,27 +90,37 @@ public sealed partial class ProposalDifferenceViewModel
     /// Difference made elsewhere appears. Absent loads the new one; a shown Difference that is gone is read again.
     /// </summary>
     /// <param name="offer">Whether a Difference can be made for the Proposal at all.</param>
-    public async Task RefreshSavedAsync(DifferenceOffer offer)
+    /// <param name="cancellationToken">Cancels the read.</param>
+    public async Task RefreshSavedAsync(DifferenceOffer offer, CancellationToken cancellationToken = default)
     {
         if (_stopped || _projectPath is not { } project || _proposalId is not { } proposal) return;
         SetOffer(offer);
         if (Maker.IsActive) return;
         if (State == ProposalDifferenceState.Absent)
         {
-            await LoadAsync(project, proposal, offer: offer).ConfigureAwait(true);
+            await LoadAsync(project, proposal, cancellationToken, offer).ConfigureAwait(true);
             return;
         }
         if (State != ProposalDifferenceState.Shown || _differenceId is not { } shown) return;
         var generation = _generation;
         var read = await ReadAsync(new ProposalDifferenceShowRequest(project, proposal, shown, Limit: 1),
-            Restart(ref _loadCancellation)).ConfigureAwait(true);
+            Restart(ref _loadCancellation, cancellationToken)).ConfigureAwait(true);
         if (generation != _generation || read is null || !read.Succeeded || read.Value!.Saved is not { } saved) return;
         var response = read.Value;
         var choices = Choices(saved);
+        var listed = saved.Count;
         if (choices.All(choice => choice.DifferenceId != shown))
         {
-            await LoadAsync(project, proposal, offer: offer).ConfigureAwait(true);
-            return;
+            // The list is bounded and may end before the shown Difference; the read that answered for it proves it exists.
+            if (response.Summary.DifferenceId != shown)
+            {
+                await LoadAsync(project, proposal, cancellationToken, offer).ConfigureAwait(true);
+                return;
+            }
+            var summary = response.Summary;
+            choices = Choices([.. saved, new ProposalDifferenceSaved(shown, summary.TextId, summary.TextTitle, summary.Reference,
+                summary.CreatedUtc, response.WordDetailKept)]);
+            listed++;
         }
         _settingSaved = true;
         try
@@ -118,7 +128,7 @@ public sealed partial class ProposalDifferenceViewModel
             SavedChoices = choices;
             SavedUnreadable = response.SavedUnreadable;
             SavedDamaged = response.SavedDamaged ?? [];
-            SavedNotListed = Math.Max(0, response.SavedTotal - saved.Count - response.SavedUnreadable);
+            SavedNotListed = Math.Max(0, response.SavedTotal - listed - response.SavedUnreadable);
             SelectedSaved = choices.First(choice => choice.DifferenceId == shown);
         }
         finally

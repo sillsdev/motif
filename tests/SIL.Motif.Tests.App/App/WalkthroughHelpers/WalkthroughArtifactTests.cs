@@ -400,7 +400,7 @@ public sealed class WalkthroughArtifactTests(AvaloniaHeadlessFixture avalonia)
 
         Assert.Equal("Disapproved", disapproved);
         Assert.Contains("Staged", help.Description, StringComparison.Ordinal);
-        Assert.Contains("Apply to FieldWorks project", staged, StringComparison.Ordinal);
+        Assert.Contains("waits for Apply", staged, StringComparison.Ordinal);
         foreach (var step in help.CalloutCaptions.Values)
             Assert.Equal(step.Count, step.Values.Distinct(StringComparer.Ordinal).Count());
         foreach (var stepId in new[] { "no-stored-new-reading", "no-parse" })

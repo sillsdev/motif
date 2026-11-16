@@ -508,6 +508,26 @@ public sealed class ProposalDifferenceMakeTests
     }
 
     [Fact]
+    public async Task ACappedSavedListThatEndsBeforeTheShownDifferenceKeepsItWithoutReadingEverythingAgain()
+    {
+        var harness = new Harness(alreadyMade: true);
+        await harness.Model.LoadAsync(Project, "proposal/one");
+        harness.Fixture.SavedLeavesOutShown = true;
+        harness.Fixture.SavedOthers.Add(new ProposalDifferenceSaved("difference/two", ExodusId.ToString("D"),
+            "Exodus 1", ProposalDifferenceReferences.SourceValidated, "2026-10-30T00:00:00Z", true));
+        harness.Fixture.SavedNotListed = 2;
+        var reads = harness.Fixture.Requests.Count;
+
+        await harness.Model.RefreshSavedAsync(DifferenceOffer.Available);
+
+        Assert.Equal(reads + 1, harness.Fixture.Requests.Count);
+        Assert.Equal("difference/one", harness.Model.SelectedSaved!.DifferenceId);
+        Assert.Contains(harness.Model.SavedChoices, choice => choice.DifferenceId == "difference/two");
+        Assert.Contains(harness.Model.SavedChoices, choice => choice.DifferenceId == "difference/one");
+        Assert.Equal(2, harness.Model.SavedNotListed);
+    }
+
+    [Fact]
     public async Task TheSavedListTellsDifferencesOfTheSameTextApartByWhenTheyWereMade()
     {
         var harness = new Harness(alreadyMade: true);

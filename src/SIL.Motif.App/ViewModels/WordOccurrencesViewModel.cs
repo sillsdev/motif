@@ -155,7 +155,7 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
         try { await LoadPageAsync(offset).ConfigureAwait(true); }
         catch (OperationCanceledException) { }
         catch (InvalidOperationException refusal) { StatusSentence = refusal.Message; }
-        catch (Exception) { StatusSentence = MotifAppStrings.OccurrencesNotStaged; }
+        catch (Exception) { StatusSentence = MotifAppStrings.OccurrencesPageNotRead; }
     }
 
     public async Task LoadPageAsync(int offset, CancellationToken cancellationToken = default)
@@ -294,6 +294,11 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
                 ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OccurrencesNotAWordStagedFormat, Form)
                 : MotifAppStrings.OccurrencesNotStaged;
         }
+        // A host failure is a sentence, never an exception out of the command (it would reach the UI thread).
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            StatusSentence = MotifAppStrings.OccurrencesNotStaged;
+        }
         finally { IsBusy = false; }
     }
 
@@ -301,6 +306,10 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
     {
         IsBusy = true;
         try { StatusSentence = await _actions.AskAsync(Form, CancellationToken.None).ConfigureAwait(true); }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            StatusSentence = MotifAppStrings.OccurrencesAskNotSent;
+        }
         finally { IsBusy = false; }
     }
 }

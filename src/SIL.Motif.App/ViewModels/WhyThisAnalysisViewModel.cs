@@ -214,7 +214,7 @@ public sealed partial class WhyThisAnalysisViewModel : ObservableObject, IDispos
         try
         {
             // The earlier request was cancelled; its command must finish unwinding before this one can start.
-            if (previous is not null) await previous.ConfigureAwait(true);
+            if (previous is not null) await AwaitPreviousAsync(previous).ConfigureAwait(true);
             if (_disposed || generation != _generation) return;
             _trace.Reset();
             _trace.SetProjectPath(path);
@@ -225,6 +225,20 @@ public sealed partial class WhyThisAnalysisViewModel : ObservableObject, IDispos
         if (_disposed || generation != _generation || !IsExpanded || !_context.Diagnostics ||
             !string.Equals(path, _context.ProjectPath, StringComparison.Ordinal)) return;
         Receive(requested);
+    }
+
+    // A failed earlier run must not fault this one: its own request is already superseded.
+    private static async Task AwaitPreviousAsync(Task previous)
+    {
+        try
+        {
+            await previous.ConfigureAwait(true);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            System.Diagnostics.Trace.TraceError("Motif's earlier trace request failed: {0}", exception);
+        }
     }
 
     private void Receive(BaselineToken? requested)

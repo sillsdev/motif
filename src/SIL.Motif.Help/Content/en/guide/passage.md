@@ -6,7 +6,7 @@
 
 Choose a word to open the word panel beside the reader, or under it in a narrow window. It lists the places the word occurs, twenty at a time, with a check box for each and a count of how many are ticked. Places that already hold an approved analysis cannot be ticked. Choose **Check Gaps** to tick the shown places that still need one.
 
-Pick the analysis to keep, then choose **Approve**. The button names the number of places. Motif stages one pending change for each ticked place, and a place shows as staged only after its change has been written. Nothing reaches FieldWorks until you choose **Apply** in [Review Changes](guide:review-changes). A reading that Motif only guessed is staged the same way, so it stays your decision.
+Pick the analysis to keep, then choose **Approve**. The button names the number of places. Motif stages one pending change for each ticked place, and a place shows as staged only after its change has been written. Nothing reaches FieldWorks until you choose **Apply** in [Proposals](guide:proposals). A reading that Motif only guessed is staged the same way, so it stays your decision.
 
 The panel also holds **Ask Claude**, which asks about the word, and **Not a Word**, which marks the spelling as not a word for the whole project, not only at the ticked places.
 

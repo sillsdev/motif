@@ -1,11 +1,11 @@
 {
   "id": "explained-word-card",
   "title": "Read the word marks",
-  "description": "A, U and D mean Approved, Unknown and Disapproved. Only differing Analyze texts results show an outcome cue and PanGloss line: ≠ with a solid underline for a new or different reading, ∅ with a dashed underline for no parse, and ◖ with a dotted underline for a stopped search. Staged means a choice is waiting for Apply to FieldWorks project.",
+  "description": "A, U and D mean Approved, Unknown and Disapproved. Only differing Texts results show an outcome cue and PanGloss line: ≠ with a solid underline for a new or different reading, ∅ with a dashed underline for no parse, and ◖ with a dotted underline for a stopped search. Staged means a choice is waiting for Apply.",
   "steps": {
     "approved-agrees": "A marks the approved FieldWorks reading. PanGloss built the same reading, so no decision is needed; matching results have no outcome mark or PanGloss line. A, U and D mean Approved, Unknown and Disapproved.",
     "unknown-agrees": "U means the reading is stored but not yet approved. PanGloss built the same reading, so there is no outcome mark or PanGloss line. Approve changes U to A.",
-    "unknown-staged": "The Staged note records a choice waiting for Apply to FieldWorks project. Undo removes it.",
+    "unknown-staged": "The Staged note records a choice waiting for Apply. Undo removes it.",
     "no-stored-new-reading": "The dashed mark means FieldWorks has no reading stored. A solid ≠ and underline mark the new reading PanGloss found.",
     "disapproved-conflict": "D marks the stored reading as Disapproved. PanGloss still builds it, so the reading conflicts with that opinion.",
     "no-parse": "There is no reading stored in FieldWorks, and PanGloss found no complete reading.",
@@ -27,7 +27,7 @@
     },
     "unknown-staged": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-word": "The word as it appears in the text.",
-      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged": "This Staged note waits for Apply to FieldWorks project and offers Undo."
+      "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-65766c6572-staged": "This Staged note waits for Apply and offers Undo."
     },
     "no-stored-new-reading": {
       "motif-word-bc4183b60be45dceb3769d68cb9fcf88-0-6164616d6c6172c4b16e6461-word": "The word as it appears in the text.",

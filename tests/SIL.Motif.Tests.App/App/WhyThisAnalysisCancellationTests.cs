@@ -88,7 +88,9 @@ public sealed class WhyThisAnalysisCancellationTests
                 fold.Dispose();
                 Assert.True(tokens[0].IsCancellationRequested);
                 gate.TrySetResult(CommandOutcome<WordTraceResponse>.Success(WhyThisAnalysisTests.Trace()));
-                await Task.Yield();
+                await Wait.UntilAsync(() => rig.Fake.TryWordSessionsFake.ListenerCount == 0,
+                    "The cancelled request did not release its session.", TimeSpan.FromSeconds(10),
+                    between: () => Dispatcher.UIThread.RunJobs());
                 Assert.Empty(fold.TraceRows);
                 Assert.Equal(0, rig.Fake.TryWordSessionsFake.ListenerCount);
             }

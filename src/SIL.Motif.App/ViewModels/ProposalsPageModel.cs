@@ -1184,7 +1184,7 @@ public sealed partial class ProposalsPageModel : PageModel
         }
         catch (InvalidOperationException exception)
         {
-            ShownRefusal = WindowRefusal.Failure("window.open-proposal-failed",
+            ShownRefusal = WindowRefusal.Failure(WindowRefusal.OpenProposalFailedCode,
                 "The Proposal could not be opened. Try again.", exception);
         }
     }

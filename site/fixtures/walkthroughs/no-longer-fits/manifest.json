@@ -2,14 +2,14 @@
   "id": "no-longer-fits",
   "locale": "en",
   "title": "When a change no longer fits",
-  "description": "See how Review Changes marks a choice that no longer fits the current project.",
+  "description": "Open Proposals for a project that has a choice that no longer fits the current project.",
   "width": 1280,
   "height": 720,
   "fps": 30,
   "steps": [
     {
       "id": "review",
-      "caption": "The original choice stays visible and blocks Apply until you remove or recheck it.",
+      "caption": "Proposals is where the Proposals for this project are read.",
       "startMs": 750,
       "endMs": 2150,
       "screenshot": "steps/01-review.png",
@@ -21,12 +21,12 @@
       "calloutLayout": "target-overlay",
       "callouts": [
         {
-          "x": 8,
-          "y": 311,
-          "width": 187,
-          "height": 37,
+          "x": 0,
+          "y": 216,
+          "width": 175,
+          "height": 40,
           "label": "1",
-          "caption": "Review Changes"
+          "caption": "Proposals"
         }
       ]
     }

@@ -55,6 +55,12 @@ public sealed partial record WindowRefusal
     /// <summary>The code of a check that could not start the Refresh before it because other work holds the project.</summary>
     public const string RefreshUnavailableCode = "window.refresh-unavailable";
 
+    /// <summary>The code of a Proposal document whose read failed with an escaped exception rather than a refusal.</summary>
+    public const string ProposalDocumentReadCode = "window.proposal-document-read";
+
+    /// <summary>The code of a Proposal that could not be opened because an exception escaped.</summary>
+    public const string OpenProposalFailedCode = "window.open-proposal-failed";
+
     private const string WindowCheckCode = "window.check";
 
     private static string ParserMissing => MotifAppStrings.RefusalParserMissing;

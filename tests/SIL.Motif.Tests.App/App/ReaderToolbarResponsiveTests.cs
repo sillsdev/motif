@@ -180,7 +180,7 @@ public sealed class ReaderToolbarResponsiveTests
                     window.Height = height;
                     PageScreenshots.Settle(window);
 
-                    HeadlessClick.Click(window, search, "Search words in Analyze texts");
+                    HeadlessClick.Click(window, search, "Search words in the text");
                     Assert.True(search.IsFocused, $"Search did not receive focus at 640x{height}/{zoom}%/{themeName}.");
                     window.KeyTextInput("mw");
                     PageScreenshots.Settle(window);

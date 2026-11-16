@@ -177,12 +177,7 @@ internal static class ReleasePathwayReplay
                 switch (step.Kind)
                 {
                     case WalkthroughStepKind.Click:
-                        if (OperatingSystem.IsWindows() && script.Id == "review-apply-refresh-parse" &&
-                            step.Id == "apply-change")
-                            ClickAfterWindowsLockRefusal(window, composition.Workspace, projectPath,
-                                step.AutomationId!);
-                        else
-                            Click(window, step.AutomationId!);
+                        Click(window, step.AutomationId!);
                         break;
                     case WalkthroughStepKind.Type:
                         Type(window, step.AutomationId!, step.Text!);
@@ -242,34 +237,6 @@ internal static class ReleasePathwayReplay
         inputRoot.MouseUp(point, MouseButton.Left);
         window.UpdateLayout();
         Pump();
-    }
-
-    private static void ClickAfterWindowsLockRefusal(
-        Window window, WorkspaceShellViewModel workspace, string projectPath, string automationId)
-    {
-        var apply = workspace.Context.ProposalApply;
-        // A runner can withdraw a finished check for a moment after the capture, so Apply is awaited again.
-        WaitUntil(() => FindOptional(window, automationId) is { IsEffectivelyEnabled: true }, TimeSpan.FromSeconds(60),
-            "Apply was not available before the lock test");
-        using (new FileStream(projectPath + ".lock", FileMode.OpenOrCreate,
-                   FileAccess.ReadWrite, FileShare.None))
-        {
-            Click(window, automationId);
-            WaitUntil(() => apply.ApplyRefusal is not null || apply.Receipt is not null,
-                TimeSpan.FromSeconds(30), "Apply did not answer while FieldWorks held the project");
-            if (apply.ApplyRefusal?.Code != "project.in-use")
-                throw new InvalidOperationException("Apply did not report that the locked project is in use.");
-        }
-
-        // A refused Apply drops the check's results, so a person checks again before applying.
-        WaitUntil(() => FindOptional(window, "motif-measure-changes") is { IsEffectivelyEnabled: true } ||
-                        FindOptional(window, automationId) is { IsEffectivelyEnabled: true },
-            TimeSpan.FromSeconds(30), "Neither Check nor Apply became available after the lock was released");
-        if (FindOptional(window, automationId) is not { IsEffectivelyEnabled: true })
-            Click(window, "motif-measure-changes");
-        WaitUntil(() => FindOptional(window, automationId) is { IsEffectivelyEnabled: true }, TimeSpan.FromMinutes(2),
-            "Apply did not become available after the project lock was released");
-        Click(window, automationId);
     }
 
     private static void Type(Window window, string automationId, string text)

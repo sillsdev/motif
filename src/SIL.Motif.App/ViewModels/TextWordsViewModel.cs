@@ -143,7 +143,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
     internal int? OccurrenceCountOf(string form)
     {
         if (_selectionReads.Summary is not { } summary) return null;
-        var normalized = Normalize(form);
+        var normalized = ContextWordShape.Normalize(form);
         if (summary.Texts.Count == 0) return _selectionReads.ListCountOf(normalized);
         return summary.OccurrencesByForm.TryGetValue(normalized, out var count) ? count : null;
     }
@@ -154,7 +154,7 @@ public sealed partial class TextWordsViewModel : ObservableObject
 
     internal Guid? WordformIdOf(string form)
     {
-        var normalized = Normalize(form);
+        var normalized = ContextWordShape.Normalize(form);
         var ids = (_selectionReads.Summary?.Words ?? []).Where(word => word.Key.Form == normalized)
             .SelectMany(word => word.Actions.CandidateWordformIds).Distinct().Take(2).ToArray();
         return ids.Length == 1 ? ids[0] : null;
@@ -274,8 +274,6 @@ public sealed partial class TextWordsViewModel : ObservableObject
     public int SeveralFilterCount => _shapes.Count(shape => shape.Row.ChosenAnalysisCount > 1);
 
     private int CountStanding(string standing) => _shapes.Count(shape => shape.Row.ProjectStanding == standing);
-
-    private static string Normalize(string form) => form.Trim().Normalize(System.Text.NormalizationForm.FormD);
 
     private void OnReaderPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

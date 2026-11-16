@@ -131,4 +131,53 @@ public sealed class ProposalCompareFreshnessTests
         Assert.Equal(ProposalComparisonState.Outdated, compare.State);
         Assert.Empty(compare.Rows);
     }
+
+    [Fact]
+    public async Task LeavingTheComparisonStopsAMeasureAgainThatIsStillReading()
+    {
+        await using var arranged = await ArrangeAsync();
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancelled = false;
+        arranged.Scenario.BeforeRead = async (id, token) =>
+        {
+            if (id != "two") return;
+            held.TrySetResult();
+            try { await Task.Delay(Timeout.Infinite, token); }
+            catch (OperationCanceledException) { cancelled = true; throw; }
+        };
+        using var compare = arranged.Compare();
+        arranged.Second.InvalidateEvidence();
+
+        var remeasuring = compare.RemeasureCommand.ExecuteAsync(null);
+        await held.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.True(compare.IsRemeasuring);
+        compare.BackCommand.Execute(null);
+        await remeasuring.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(cancelled);
+        Assert.False(compare.IsRemeasuring);
+        Assert.Equal(1, arranged.Backs);
+    }
+
+    [Fact]
+    public async Task DisposingTheComparisonStopsAMeasureAgainThatIsStillReading()
+    {
+        await using var arranged = await ArrangeAsync();
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        arranged.Scenario.BeforeRead = async (id, token) =>
+        {
+            if (id != "two") return;
+            held.TrySetResult();
+            await Task.Delay(Timeout.Infinite, token);
+        };
+        var compare = arranged.Compare();
+        arranged.Second.InvalidateEvidence();
+
+        var remeasuring = compare.RemeasureCommand.ExecuteAsync(null);
+        await held.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        compare.Dispose();
+        await remeasuring.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.False(compare.IsRemeasuring);
+    }
 }

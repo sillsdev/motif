@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using Avalonia.Markup.Xaml.Styling;
 using SIL.Motif.App.ViewModels;
 
 namespace SIL.Motif.App.Views;
@@ -27,16 +26,6 @@ public sealed class ProposalCompareHost
         ArgumentNullException.ThrowIfNull(page);
         _ = new ProposalCompareHost(page);
         return page;
-    }
-
-    /// <summary>Lets the page's Compare button wrap at a narrow width; the page is returned for chaining.</summary>
-    public static ProposalsPage Style(ProposalsPage view)
-    {
-        view.Styles.Add(new StyleInclude(new Uri("avares://SIL.Motif.App/"))
-        {
-            Source = new Uri("/Tokens/Components/ProposalCompareScoped.axaml", UriKind.Relative),
-        });
-        return view;
     }
 
     private void OnRequested(IReadOnlyList<ProposalDocumentViewModel> pair)

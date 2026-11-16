@@ -107,9 +107,9 @@ Motif invokes PanGloss through a child process. The Host contains the process ad
 
 ## Word display in the window
 
-A word looks and behaves the same wherever the window shows it, because every list, the Analyze texts strip and the word card are drawn by one module. Changing what FieldWorks holds for a word goes through the same two buttons in every place.
+A word looks and behaves the same wherever the window shows it, because every list, the Texts reader strip and the word card are drawn by one module. Changing what FieldWorks holds for a word goes through the same two buttons in every place.
 
-`Controls/WordPresentation` holds the module ([ADR 0053](adr/0053-word-presentation-owns-layout-and-text-metrics.md)): `WordRow` for list rows, `WordStripToken` for the Analyze texts strip, `WordCard` for the opened card and `MorphemePanel` for interlinear morphology. A list hosts its rows in a `WordListSlot`, whose `WordListPolicy` resolves one set of column widths for the heading and every row from token-defined bounds. A recycled row builds its cells once per word revision, not again for layout-only changes; a morpheme panel builds its parts once per measure.
+`Controls/WordPresentation` holds the module ([ADR 0053](adr/0053-word-presentation-owns-layout-and-text-metrics.md)): `WordRow` for list rows, `WordStripToken` for the Texts reader strip, `WordCard` for the opened card and `MorphemePanel` for interlinear morphology. A list hosts its rows in a `WordListSlot`, whose `WordListPolicy` resolves one set of column widths for the heading and every row from token-defined bounds. A recycled row builds its cells once per word revision, not again for layout-only changes; a morpheme panel builds its parts once per measure.
 
 `Views/WordDispositionButtons` puts two buttons on the strip and the card. The opinion mark opens tiles for each stored analysis, and the add count lists PanGloss analyses FieldWorks does not hold. `ViewModels/WordDisposition` derives both from the word's `AnalysisMarkingState`. A tile stages its choice through the word's `StageMarkingChoiceForTokenCommand`, so staging and undo use the same change owner.
 

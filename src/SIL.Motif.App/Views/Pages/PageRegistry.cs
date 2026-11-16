@@ -54,7 +54,7 @@ public static class PageRegistry
             context => new GrammarGuidePageModel(context), model => new GrammarGuidePage(model)),
         PageEntry.Of(WorkspacePage.Proposals, MotifAppStrings.BoardProposals,
             Of(Rect(3.5, 9.5, 13, 11), Rect(7.5, 3.5, 13, 11)),
-            context => ProposalCompareHost.Attach(new ProposalsPageModel(context)), model => ProposalCompareHost.Style(new ProposalsPage(model))),
+            context => ProposalCompareHost.Attach(new ProposalsPageModel(context)), model => new ProposalsPage(model)),
         PageEntry.Of(WorkspacePage.Diagnostics, MotifAppStrings.BoardDiagnostics,
             "M12 4l9 16H3z M12 10v4M12 17v.5",
             context => new DiagnosticsPageModel(context), model => new DiagnosticsPage(model)) with { IsDiagnostic = true },
