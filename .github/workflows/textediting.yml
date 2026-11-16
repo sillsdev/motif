@@ -101,3 +101,9 @@ jobs:
       # Run the published exe: it exercises libpalaso (SLDR init and JSON parsing), which trimming can break silently.
       - name: Run the published app
         run: bin/AotCheck/Release/net10.0/win-x64/publish/AotCheck.exe
+
+      - name: Publish fwmd with NativeAOT
+        run: dotnet publish tools/fwmd/fwmd.csproj -c Release -r win-x64
+
+      - name: Check the published fwmd help
+        run: bin/fwmd/Release/net10.0/win-x64/publish/fwmd.exe --help
