@@ -137,6 +137,116 @@ public sealed class FieldWorksTextsSourceIndexTests(PristineProjectFixture prist
         Assert.True(SourceIndexRefresh.Reconcile(_database));
     }
 
+    [Fact]
+    public void UnchangedTextsAreCopiedAndEveryBuildEqualsAFullRebuild()
+    {
+        using var cache = pristine.NewScratch();
+        var first = SeededProject.SeedText(cache, pristine.Seed);
+        var second = SeededProject.SeedText(cache, pristine.Seed);
+        var both = new[] { first.TextId.ToString("D"), second.TextId.ToString("D") }.Order().ToArray();
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.Equal(new string[0], BuildCounting(cache));
+        var baseline = Dump(_database!);
+        Assert.Equal(both, baseline.Passages.Select(p => p.PassageId).Order());
+
+        Assert.Equal(both, BuildCounting(cache).Order());
+        Assert.Equal(baseline, Dump(_database!));
+
+        var vern = cache.DefaultVernWs;
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+        {
+            var added = cache.ServiceLocator.GetInstance<IWfiWordformFactory>()
+                .Create(TsStringUtils.MakeString("motifaddedword", vern));
+            cache.ServiceLocator.GetInstance<ISegmentRepository>().GetObject(second.SecondSegmentId).AnalysesRS.Add(added);
+        });
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.Equal([first.TextId.ToString("D")], BuildCounting(cache));
+        var afterAdd = Dump(_database!);
+        Assert.Equal(baseline.Passages.Single(p => p.PassageId == first.TextId.ToString("D")),
+            afterAdd.Passages.Single(p => p.PassageId == first.TextId.ToString("D")));
+        Assert.Equal(baseline.Passages.Single(p => p.PassageId == second.TextId.ToString("D")).TotalPlaces + 1,
+            afterAdd.Passages.Single(p => p.PassageId == second.TextId.ToString("D")).TotalPlaces);
+        Assert.Equal(afterAdd, FullRebuildDump(cache));
+
+        NonUndoableUnitOfWorkHelper.Do(cache.ActionHandlerAccessor, () =>
+            cache.ServiceLocator.GetInstance<IWfiWordformRepository>().GetObject(first.AnalysedWordformId)
+                .Form.set_String(vern, "motifchangedword"));
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        Assert.Equal([second.TextId.ToString("D")], BuildCounting(cache));
+        var afterEdit = Dump(_database!);
+        Assert.Contains(afterEdit.Places, row => row.Place.Surface == "motifchangedword");
+        Assert.Equal(afterEdit, FullRebuildDump(cache));
+    }
+
+    [Fact]
+    public void EachTextIsStagedBeforeTheNextIsReadAndTheWholeProjectionIsNeverBuilt()
+    {
+        using var cache = pristine.NewScratch();
+        var first = SeededProject.SeedText(cache, pristine.Seed);
+        var second = SeededProject.SeedText(cache, pristine.Seed);
+        new FwDataProjectLoader().Save(cache);
+        Open(cache);
+        var events = new List<string>();
+        FieldWorksTextsIndex.TextRead.Value = id => events.Add("read " + id);
+        FieldWorksTextsIndex.TextStaged.Value = id => events.Add("staged " + id);
+        TextWordsProjectionBuilder.BeforeOccurrenceRead.Value = () => events.Add("projection");
+        try { Assert.True(Build(cache)); }
+        finally
+        {
+            FieldWorksTextsIndex.TextStaged.Value = null;
+            TextWordsProjectionBuilder.BeforeOccurrenceRead.Value = null;
+        }
+        var order = new[] { first.TextId.ToString("D"), second.TextId.ToString("D") }.Order().ToArray();
+        Assert.Equal([$"read {order[0]}", $"staged {order[0]}", $"read {order[1]}", $"staged {order[1]}"], events);
+    }
+
+    private List<string> BuildCounting(LcmCache cache)
+    {
+        var reused = new List<string>();
+        FieldWorksTextsIndex.TextReused.Value = reused.Add;
+        try { Assert.True(Build(cache)); }
+        finally { FieldWorksTextsIndex.TextReused.Value = null; }
+        return reused;
+    }
+
+    private IndexDump FullRebuildDump(LcmCache cache)
+    {
+        using var fresh = MotifDatabase.OpenOwned(Path.Combine(_root, "full-" + Guid.NewGuid().ToString("N") + ".motif.db"),
+            _database!.Project, MotifSchema.CurrentSchema, new Version(1, 0));
+        Assert.True(FieldWorksTextsIndex.Build(fresh, cache, "qaa-x-test",
+            ProgressSourceIdentity.Capture(_database.Project.FullFwDataPath)!));
+        return Dump(fresh);
+    }
+
+    private sealed record IndexDump(string Digest, IReadOnlyList<SourcePassage> Passages, IReadOnlyList<SourceIndexedPlace> Places)
+    {
+        public bool Equals(IndexDump? other) => other is not null && Digest == other.Digest
+            && Passages.SequenceEqual(other.Passages) && Places.SequenceEqual(other.Places);
+        public override int GetHashCode() => Digest.GetHashCode();
+    }
+
+    private static IndexDump Dump(MotifDatabase database)
+    {
+        var repository = new SourceIndexRepository(database);
+        var passages = repository.ReadPassages(FieldWorksTextsIndex.SourceId).OrderBy(p => p.PassageId, StringComparer.Ordinal).ToArray();
+        var places = new List<SourceIndexedPlace>();
+        foreach (var passage in passages)
+        {
+            var after = 0;
+            while (true)
+            {
+                var page = repository.ReadPage(FieldWorksTextsIndex.SourceId, passage.PassageId, after, 200);
+                if (page.Count == 0) break;
+                places.AddRange(page);
+                after = page[^1].Place.Ordinal;
+            }
+        }
+        return new(repository.ReadState(FieldWorksTextsIndex.SourceId)!.SourceDigest, passages, places);
+    }
+
     private LcmCache Saved(out SeededText seeded)
     {
         var cache = pristine.NewScratch();
@@ -166,6 +276,8 @@ public sealed class FieldWorksTextsSourceIndexTests(PristineProjectFixture prist
     public void Dispose()
     {
         FieldWorksTextsIndex.TextRead.Value = null;
+        FieldWorksTextsIndex.TextReused.Value = null;
+        FieldWorksTextsIndex.TextStaged.Value = null;
         _environment?.Dispose();
         _database?.Dispose();
         try { Directory.Delete(_root, recursive: true); }

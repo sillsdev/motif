@@ -151,7 +151,7 @@ public static class TextWordsProjectionBuilder
         };
     }
 
-    private static (string? Spelling, string? WritingSystem, string? Exclusion) CoverageIdentity(
+    internal static (string? Spelling, string? WritingSystem, string? Exclusion) CoverageIdentity(
         LcmCache cache, IWfiWordform wordform)
     {
         var sawVernacular = false;
@@ -249,7 +249,7 @@ public static class TextWordsProjectionBuilder
         IWfiAnalysis analysis) => approved.Contains(analysis) ? "approved"
         : disapproved.Contains(analysis) ? "disapproved" : "unknown";
 
-    private static IEnumerable<WritingSystemText> TxtForms<TAccessor>(LcmCache cache, TAccessor accessor)
+    internal static IEnumerable<WritingSystemText> TxtForms<TAccessor>(LcmCache cache, TAccessor accessor)
         where TAccessor : IMultiAccessorBase, ITsMultiString
     {
         foreach (var ws in accessor.AvailableWritingSystemIds.OrderBy(writingSystem => writingSystem))

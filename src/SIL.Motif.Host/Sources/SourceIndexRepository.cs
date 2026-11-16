@@ -82,6 +82,19 @@ public sealed class SourceIndexRepository(MotifDatabase database)
         return reader.Read() ? new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3), reader.GetInt32(4)) : null;
     }
 
+    /// <summary>Reads every Passage row of a Source, without its places.</summary>
+    public IReadOnlyList<SourcePassage> ReadPassages(string sourceId)
+    {
+        using var connection = database.OpenConnection();
+        using var command = Command(connection, null,
+            "SELECT PassageId,Locator,ContentHash,TotalPlaces,EligiblePlaces FROM SourcePassages WHERE SourceId=$source;", sourceId);
+        using var reader = command.ExecuteReader();
+        var rows = new List<SourcePassage>();
+        while (reader.Read())
+            rows.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetInt32(3), reader.GetInt32(4)));
+        return rows;
+    }
+
     /// <summary>Reads at most the requested number of places after an ordinal.</summary>
     public IReadOnlyList<SourceIndexedPlace> ReadPage(string sourceId, string passageId, int afterOrdinal, int limit)
     {
