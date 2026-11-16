@@ -71,7 +71,7 @@ public sealed class QueryHypothesisCommandTests
             Assert.Equal("query.not-measured", FormsQueryCommand.Run(new(path, "1.0", Record(Change("union"), "control"))).Refusal!.Code);
             Assert.Equal("query.not-measured", FormsQueryCommand.Run(new(path, "1.0", Record(Change(), "reliability"))).Refusal!.Code);
             Assert.Equal("query.mixed-units", FormsQueryCommand.Run(new(path, "1.0",
-                Record(Change("union"), "tolerance") with { Unit = "stem", Exceptions = [new("evidence", "is", "base")] })).Refusal!.Code);
+                Record(Change("union") with { Discovery = ["union"], HeldOut = ["held"] }, "control") with { Unit = "msa" })).Refusal!.Code);
             var control = FormsQueryCommand.Run(new(path, "1.0", Record(Change("union") with { Discovery = ["union"], HeldOut = ["held"] }, "control")));
             Assert.True(control.Succeeded, control.Refusal?.Message);
             Assert.Equal(1, control.Value!.Result.Scores![0].Counts["rule_hits"]);
