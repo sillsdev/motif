@@ -54,6 +54,14 @@ namespace SIL.TextEditing.Markdown.Records
                 var pending = new Stack<(RecordObjectType Type, int Index)>();
                 var visited = new HashSet<(RecordObjectType Type, int Index)>();
                 var candidates = new HashSet<RecordObjectType>();
+                int furthestFailure = -1;
+                string? pathError = null;
+                void FailedAt(int index, string message)
+                {
+                    if (index <= furthestFailure) return;
+                    furthestFailure = index;
+                    pathError = message;
+                }
                 pending.Push((kind.Root, kind.PathSegments));
                 while (pending.Count > 0)
                 {
@@ -62,22 +70,31 @@ namespace SIL.TextEditing.Markdown.Records
                     if (state.Index == path.Segments.Count) { candidates.Add(state.Type); continue; }
                     var segment = path.Segments[state.Index];
                     var field = segment.Homograph == null && segment.GuidSuffix == null ? state.Type.Field(segment.Name) : null;
-                    if (field == null) continue;
+                    if (field == null || (field.Kind != RecordFieldKind.Object && (!field.IsList || field.Item!.Kind != RecordFieldKind.Object)))
+                    {
+                        FailedAt(state.Index, "In '" + root + "', " + segment + " is not an owned object of " + state.Type.Name + ".");
+                        continue;
+                    }
                     int next = state.Index + 1;
                     if (field.IsList)
                     {
-                        if (next >= path.Segments.Count || !IsIndex(path.Segments[next])) continue;
+                        if (next >= path.Segments.Count || !IsIndex(path.Segments[next]))
+                        {
+                            string listKind = field.Kind == RecordFieldKind.Collection ? "collection" : "sequence";
+                            FailedAt(state.Index, "In '" + root + "', " + segment.Name + " is a " + listKind + ", so a 1-based index follows it.");
+                            continue;
+                        }
                         next++;
                         field = field.Item!;
                     }
-                    if (field.Kind != RecordFieldKind.Object) continue;
-                    foreach (var target in field.ObjectTypes) pending.Push((target, next));
+                    for (int target = field.ObjectTypes.Count - 1; target >= 0; target--)
+                        pending.Push((field.ObjectTypes[target], next));
                 }
                 var type = candidates.Count == 1 ? candidates.Single() : candidates.FirstOrDefault(t => t.Name == objectClass);
                 if (type == null)
                 {
                     classError = candidates.Count > 0;
-                    error = candidates.Count == 0 ? "In '" + root + "', the owned-object path does not walk the schema; a list requires a 1-based index."
+                    error = candidates.Count == 0 ? pathError
                         : "The partial root '" + root + "' requires an allowed class in record-data: " + string.Join(", ", candidates.Select(t => t.Name)) + ".";
                     return null;
                 }
