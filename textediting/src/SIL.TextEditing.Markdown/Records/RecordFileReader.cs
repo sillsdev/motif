@@ -20,6 +20,14 @@ namespace SIL.TextEditing.Markdown.Records
             if (schema == null) throw new ArgumentNullException(nameof(schema));
             return new RecordReading(text, schema, options ?? new RecordReadOptions()).Run();
         }
+
+        /// <summary>Checks the YAML frame and front-matter values without typing record fields or reading rich values.
+        /// The returned document holds metadata only; it must not be written as a complete record.</summary>
+        public static RecordReadResult ReadFrame(string text, RecordReadOptions? options = null)
+        {
+            if (text == null) throw new ArgumentNullException(nameof(text));
+            return new RecordReading(text, null, options ?? new RecordReadOptions()).Run();
+        }
     }
 
     internal sealed class RecordReading
@@ -28,7 +36,7 @@ namespace SIL.TextEditing.Markdown.Records
 
         readonly string _source;      // as given
         readonly string _text;        // a byte order mark is a space, so every offset is the source's
-        readonly RecordSchema _schema;
+        readonly RecordSchema? _schema;
         readonly RecordReadOptions _options;
         readonly ReaderContext _context;
         readonly List<int> _lineStarts;
@@ -36,7 +44,7 @@ namespace SIL.TextEditing.Markdown.Records
         string _analysis, _vernacular;
         List<YamlFrameNode> _blocks = new List<YamlFrameNode>();
 
-        public RecordReading(string source, RecordSchema schema, RecordReadOptions options)
+        public RecordReading(string source, RecordSchema? schema, RecordReadOptions options)
         {
             _source = source;
             _text = source.Length > 0 && source[0] == Chars.ByteOrderMark ? " " + source.Substring(1) : source;
@@ -130,6 +138,7 @@ namespace SIL.TextEditing.Markdown.Records
             }
             CheckYaml(parse.Root, false);
             var document = ReadFrontMatter(parse.Root, start, out var root, out var data, out var kind);
+            if (_schema == null) return Result(document);
             if (document == null || root == null || kind == null)
             {
                 CheckBody(end, null, null, null);
@@ -430,8 +439,8 @@ namespace SIL.TextEditing.Markdown.Records
             }
             string? kindName = TopString(record);
             if (kindName == null) return null;
-            kind = _schema.Kind(kindName);
-            if (kind == null)
+            kind = _schema?.Kind(kindName);
+            if (_schema != null && kind == null)
             {
                 Report(RecordDiagnosticIds.UnknownKind, MarkdownSeverity.Error, "The schema has no record kind '" + kindName + "'.", record.Value.Start, record.Value.End,
                     null, _schema.Kinds.Select(k => k.Name).ToList(), NearestNamesFinder.Find(kindName, _schema.Kinds.Select(k => k.Name)));
@@ -464,7 +473,7 @@ namespace SIL.TextEditing.Markdown.Records
                 {
                     case "schema":
                         document.Schema = TopString(pair);
-                        if (document.Schema != null && document.Schema != _schema.Id)
+                        if (document.Schema != null && _schema != null && document.Schema != _schema.Id)
                             Error(RecordDiagnosticIds.SchemaMismatch, "The file names the schema '" + document.Schema + "'; this reader has '" + _schema.Id + "'.", pair.Value.Start, pair.Value.End, RecordProfile.Quote(_schema.Id));
                         break;
                     case "root":
@@ -491,6 +500,7 @@ namespace SIL.TextEditing.Markdown.Records
                         break;
                 }
             }
+            if (kind == null) return document;
             if (document.Root != null || keys.ContainsKey("root"))
             {
                 var classNode = data?.Pairs.FirstOrDefault(p => p.Key.IsScalar && p.Key.Value == "class").Value;
