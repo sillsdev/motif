@@ -21,7 +21,7 @@
     </DataTemplate>
   </UserControl.Resources>
   <StackPanel Spacing="{DynamicResource Intent.Space.Related}">
-    <views:CopyableTextBlock Text="{Binding Scope}" TextWrapping="Wrap" />
+    <views:CopyableTextBlock Text="{Binding Scope}" IsVisible="{Binding HasScope}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Text="{Binding Availability}" TextWrapping="Wrap" />
     <views:CopyableTextBlock Text="{Binding NotesText}" IsVisible="{Binding HasNotes}" TextWrapping="Wrap" />
     <WrapPanel Classes="proposalEvidenceColumns">

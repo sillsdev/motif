@@ -184,7 +184,8 @@ public sealed class ProposalCardViewModel : ObservableObject
 
     public string ProposalId => Card.ProposalId;
 
-    public string Label => Card.Label;
+    /// <summary>The title shown for this Proposal; an unnamed one reads as Untitled, never as its raw id.</summary>
+    public string Label => ProposalTitle.For(Card.Label, Card.ProposalId, Card.IsDraft || Card.IsPendingDraft);
 
     /// <summary>Whether this Proposal has not been viewed on the Proposals page.</summary>
     public bool IsUnread

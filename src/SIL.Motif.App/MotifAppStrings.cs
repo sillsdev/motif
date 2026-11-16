@@ -4188,5 +4188,14 @@ public static class MotifAppStrings
     public static string WarningsListSeparator => Text("MotifApp.WarningsListSeparator");
     public static string DiagnosticsFindingsSummaryFormat => Text("MotifApp.DiagnosticsFindingsSummaryFormat");
     public static string WhyThisAnalysisRuleFormat => Text("MotifApp.WhyThisAnalysisRuleFormat");
+    // fix1-proposal
+    public static string ProposalUntitledDraft => Text("MotifApp.ProposalUntitledDraft");
+    public static string ProposalUntitled => Text("MotifApp.ProposalUntitled");
+    public static string ProposalApplyNeedsTrialFormat => Text("MotifApp.ProposalApplyNeedsTrialFormat");
+    public static string ProposalApplyLosesFormat => Text("MotifApp.ProposalApplyLosesFormat");
+    public static string ProposalApplyLosesNone => Text("MotifApp.ProposalApplyLosesNone");
+    public static string ProposalEvidenceUnavailableNextStep => Text("MotifApp.ProposalEvidenceUnavailableNextStep");
+    public static string ApplyBackupNotice => Text("MotifApp.ApplyBackupNotice");
+    public static string ApplyBackupLink => Text("MotifApp.ApplyBackupLink");
     #endregion
 }

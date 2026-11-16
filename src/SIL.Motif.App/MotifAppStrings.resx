@@ -7727,4 +7727,13 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.WarningsListSeparator" xml:space="preserve"><value>,</value></data>
   <data name="MotifApp.DiagnosticsFindingsSummaryFormat" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="MotifApp.WhyThisAnalysisRuleFormat" xml:space="preserve"><value>Rule {0}</value></data>
+  <!-- fix1-proposal -->
+  <data name="MotifApp.ProposalUntitledDraft" xml:space="preserve"><value>Untitled Draft</value></data>
+  <data name="MotifApp.ProposalUntitled" xml:space="preserve"><value>Untitled Proposal</value></data>
+  <data name="MotifApp.ProposalApplyNeedsTrialFormat" xml:space="preserve"><value>Apply Is Unavailable: {0}. Choose {1} on This Proposal in the Proposals List, Then Come Back to Apply.</value></data>
+  <data name="MotifApp.ProposalApplyLosesFormat" xml:space="preserve"><value>Applying Would Lose the Approved Analysis of {0}. The Places Are Not Listed Here.</value></data>
+  <data name="MotifApp.ProposalApplyLosesNone" xml:space="preserve"><value>Applying Would Lose No Approved Analysis.</value></data>
+  <data name="MotifApp.ProposalEvidenceUnavailableNextStep" xml:space="preserve"><value>Refresh the Project and Reopen This Proposal to Read Its Evidence Again.</value></data>
+  <data name="MotifApp.ApplyBackupNotice" xml:space="preserve"><value>Motif Does Not Back Up Your Project. Back It Up in FieldWorks Before You Apply.</value></data>
+  <data name="MotifApp.ApplyBackupLink" xml:space="preserve"><value>How to Back Up a Project in FieldWorks</value></data>
 </root>

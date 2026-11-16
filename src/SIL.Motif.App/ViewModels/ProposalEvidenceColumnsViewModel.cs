@@ -44,11 +44,18 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
             CompleteSpelling(word.Facts.Before) && CompleteSpelling(word.Facts.After));
     public string Scope => Difference.Summary is { } summary
         ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalEvidenceScope, summary.TextTitle)
-        : MotifAppStrings.ProposalEvidenceUnavailable;
+        : string.Empty;
+    public bool HasScope => Scope.Length > 0;
     public string NotesText => string.Join(Environment.NewLine, Difference.Notes);
     public bool HasNotes => Difference.HasNotes;
-    public string Availability => !CanShowFacts ? MotifAppStrings.ProposalEvidenceUnavailable :
+    public string Availability => !CanShowFacts ? Unavailable() :
         Complete ? string.Empty : MotifAppStrings.ProposalEvidencePartial;
+
+    // Said once: a note below gives the reason and step when there is one, else this adds the generic step.
+    private string Unavailable() => Difference.ShowsNotTriedNote || Difference.ShowsMakeControls ||
+        Difference.ShowsNoTextsNote || Difference.ShownRefusal is not null
+        ? MotifAppStrings.ProposalEvidenceUnavailable
+        : MotifAppStrings.ProposalEvidenceUnavailable + " " + MotifAppStrings.ProposalEvidenceUnavailableNextStep;
     public string FillInCount => Count(WillFillIn.Count);
     public string ChangeCount => Count(WillChange.Count);
     public bool ShowsZeroFillIn => HasFillIn && Complete && WillFillIn.Count == 0;
@@ -112,7 +119,7 @@ public sealed class ProposalEvidenceColumnsViewModel : ObservableObject
             .Select(word => Row(word, SpellingChanged(word.Facts) ? MotifAppStrings.ProposalSpellingChanged :
                 MotifAppStrings.ProposalReadingChanged)).ToArray();
         foreach (var property in new[] { nameof(WillFillIn), nameof(WillChange), nameof(HasFillIn), nameof(HasChange),
-                     nameof(CanShowFacts), nameof(Complete), nameof(Scope), nameof(Availability), nameof(NotesText), nameof(HasNotes), nameof(FillInCount),
+                     nameof(CanShowFacts), nameof(Complete), nameof(Scope), nameof(HasScope), nameof(Availability), nameof(NotesText), nameof(HasNotes), nameof(FillInCount),
                      nameof(ChangeCount), nameof(ShowsZeroFillIn), nameof(ShowsZeroChange) }) OnPropertyChanged(property);
     }
 

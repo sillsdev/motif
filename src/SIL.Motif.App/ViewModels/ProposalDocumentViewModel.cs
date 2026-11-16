@@ -65,7 +65,9 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public IAsyncRelayCommand MeasurePendingCommand { get; }
     public PendingChangesMeasurement PendingMeasurement => _context.PendingMeasurement;
     public bool DiagnosticsVisible => _context.Diagnostics;
-    public string Label => Detail?.Label ?? Card?.Label ?? ProposalId;
+    public string Label => ProposalTitle.For(Detail?.Label is { } named && !ProposalTitle.IsUnnamed(named, ProposalId)
+        ? named : Card?.Card.Label, ProposalId, IsPending || Detail?.DraftName is not null || Card?.Card.IsDraft == true,
+        OperationDescriptions.FirstOrDefault());
     public string StatusText => Card is { } card && IsDecided(card.Card.Status) ? card.StatusWord :
         Detail is not { } detail ? Card?.StatusWord ?? string.Empty :
         detail.DraftName is not null && !IsDecided(detail.Status) ? MotifAppStrings.ProposalDraft : detail.Status switch
@@ -121,13 +123,54 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     public RationaleEditorModel? UnsavedEditor =>
         RationaleEditor is { HasUnsavedChanges: true } rationale ? rationale :
         Comments.FirstOrDefault(editor => editor.HasUnsavedChanges);
-    public bool CanPrepareApply => !_stopped && CanAddComment && !IsLoading && !_context.ProposalApply.IsApplying;
+    public bool CanPrepareApply => !_stopped && CanAddComment && !IsLoading && !_context.ProposalApply.IsApplying &&
+        PrepareBlockReason is null;
+    /// <summary>
+    /// Why Apply cannot even be started for this Proposal, or null when it can: the window's Selection has no current
+    /// Trial or no ready evidence for it. A pending Draft is measured by Check These Changes instead.
+    /// </summary>
+    public string? PrepareBlockReason
+    {
+        get
+        {
+            if (_stopped || IsPending || IsLoading || !CanAddComment) return null;
+            if (IsOutdated) return MotifAppStrings.ProposalDocumentOutdated;
+            var standing = Card?.Standing ?? (_review?.Trial is { Freshness: TrialFreshness.Current }
+                ? TrialStanding.Current : TrialStanding.NotTried);
+            if (standing.Kind != TrialStandingKind.Current)
+            {
+                var words = TrialStandingWords.For(standing);
+                return string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalApplyNeedsTrialFormat,
+                    words.Sentence.TrimEnd('.', ' '), words.Action);
+            }
+            if (_review?.Readiness is not { } readiness) return MotifAppStrings.ApplyReadinessUnavailable;
+            return readiness.IsReady ? null : string.Join(" ", readiness.Reasons.Select(reason =>
+                readiness.DroppedGrammar is { } dropped && reason == readiness.DroppedGrammarReason
+                    ? DroppedGrammarWords.Blocker(dropped) : reason));
+        }
+    }
+
+    /// <summary>What Applying would lose of the approved analyses, as far as the window can say, or empty.</summary>
+    public string ApplyLossNotice => IsPending || Card?.Card.Trial is not { LostApprovedKnown: true } trial ||
+        trial.Freshness != TrialFreshness.Current ? string.Empty
+        : trial.LostApproved == 0 ? MotifAppStrings.ProposalApplyLosesNone
+        : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.ProposalApplyLosesFormat,
+            PluralText.Format(MotifAppStrings.ApplyLostCountPattern, trial.LostApproved));
+
+    /// <summary>Opens FieldWorks' own help on backing up a project, shown beside the Apply confirmation.</summary>
+    public IAsyncRelayCommand OpenBackupHelpCommand => _openBackupHelp ??= new AsyncRelayCommand(async () =>
+    {
+        if (_context.UriLauncher is { } launcher)
+            await launcher.LaunchAsync(new Uri(Services.AppLinks.FieldWorksBackupHelp)).ConfigureAwait(true);
+    });
+    private IAsyncRelayCommand? _openBackupHelp;
     public bool CanApply => !_stopped && !IsLoading && !IsOutdated && CanAddComment &&
         _context.ProjectPath == ProjectPath &&
         (IsPending ? _context.Changes.TargetProposalId is null : _context.Changes.TargetProposalId == ProposalId &&
             _context.Lens?.ProposalId == ProposalId) && _context.ProposalApply.CanApply(_review, null,
             _context.RefreshProjectCommand, null);
-    public string ApplyBlockReason => !IsPending && _context.Changes.TargetProposalId != ProposalId
+    public string ApplyBlockReason => PrepareBlockReason is { } cannotStart ? cannotStart :
+        !IsPending && _context.Changes.TargetProposalId != ProposalId
         ? MotifAppStrings.ProposalActivateForApply : IsOutdated ? MotifAppStrings.ProposalDocumentOutdated :
         string.Join(" ", _context.ProposalApply.Blockers(_review, null, _context.RefreshProjectCommand, null)
             .Select(blocker => blocker.Sentence));
@@ -150,6 +193,7 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
         AddCommentCommand.NotifyCanExecuteChanged();
         RaiseApply();
     }
+    partial void OnOperationDescriptionsChanged(IReadOnlyList<string> value) => OnPropertyChanged(nameof(Label));
     partial void OnIsLoadingChanged(bool value) => RaiseApply();
     partial void OnIsOutdatedChanged(bool value) => RaiseApply();
     partial void OnReceiptChanged(ApplyProjection? value)
@@ -361,6 +405,8 @@ public sealed partial class ProposalDocumentViewModel : ObservableObject
     private void RaiseApply()
     {
         OnPropertyChanged(nameof(CanPrepareApply));
+        OnPropertyChanged(nameof(PrepareBlockReason));
+        OnPropertyChanged(nameof(ApplyLossNotice));
         PrepareApplyCommand.NotifyCanExecuteChanged();
         MeasurePendingCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanApply));

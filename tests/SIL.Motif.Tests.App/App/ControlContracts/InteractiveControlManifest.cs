@@ -220,7 +220,8 @@ internal static class InteractiveControlManifest
         new("src/SIL.Motif.App/Views/Proposals/ProposalEvidenceColumns.axaml", "StackPanel", 7),
         new("src/SIL.Motif.App/Views/Proposals/ProposalEvidenceColumns.axaml", "UserControl", 1),
         new("src/SIL.Motif.App/Views/Proposals/ProposalApplyPanel.axaml", "Button", 5),
-        new("src/SIL.Motif.App/Views/Proposals/ProposalApplyPanel.axaml", "views:CopyableTextBlock", 4),
+        new("src/SIL.Motif.App/Views/Proposals/ProposalApplyPanel.axaml", "views:CopyableTextBlock", 6),
+        new("src/SIL.Motif.App/Views/Proposals/ProposalApplyPanel.axaml", "HyperlinkButton", 1),
         new("src/SIL.Motif.App/Views/Proposals/ProposalApplyPanel.axaml", "StackPanel", 3),
         new("src/SIL.Motif.App/Views/Proposals/ProposalApplyPanel.axaml", "UserControl", 1),
     ];
