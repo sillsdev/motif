@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <RootNamespace>SIL.TextEditing.WritingSystems</RootNamespace>
+    <Description>Checks FieldWorks Markdown writing systems against a caller-supplied project inventory.</Description>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SIL.WritingSystems" />
+    <ProjectReference Include="..\SIL.TextEditing.Markdown\SIL.TextEditing.Markdown.csproj" />
+  </ItemGroup>
+</Project>

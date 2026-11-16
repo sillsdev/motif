@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Not in the solution. CI runs: dotnet publish tests/AotCheck -r win-x64
-       Warnings are errors, so any trim or AOT warning in the three libraries fails the publish. All three are rooted whole,
+       Warnings are errors, so any trim or AOT warning in the libraries fails the publish. All are rooted whole,
        so the analyzer sees all their code, not only what Program uses. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -28,6 +28,8 @@
     <ProjectReference Include="..\..\src\SIL.TextEditing\SIL.TextEditing.csproj" />
     <ProjectReference Include="..\..\src\SIL.TextEditing.Avalonia\SIL.TextEditing.Avalonia.csproj" />
     <ProjectReference Include="..\..\src\SIL.TextEditing.Markdown\SIL.TextEditing.Markdown.csproj" />
+    <ProjectReference Include="..\..\src\SIL.TextEditing.WritingSystems\SIL.TextEditing.WritingSystems.csproj" />
+    <TrimmerRootAssembly Include="SIL.TextEditing.WritingSystems" />
     <TrimmerRootAssembly Include="SIL.TextEditing" />
     <TrimmerRootAssembly Include="SIL.TextEditing.Avalonia" />
     <TrimmerRootAssembly Include="SIL.TextEditing.Markdown" />
