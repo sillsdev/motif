@@ -19,7 +19,7 @@ internal static class ParsimonyTools
 
     internal static IReadOnlyList<AgentTool> All { get; } =
     [
-        new("motif_query", "Reads and groups forms, stems, uses or objects from available Trial evidence, or runs a saved query.", AgentClass.Read,
+        new("motif_query", "Reads and groups forms, stems, uses or objects from available Trial evidence, scores a hypothesised change on stems, or runs a saved query.", AgentClass.Read,
             Schema.Object(
                 ("saved", Schema.String("A measure id whose saved query replaces from, where and group.", SavedQueries.Ids.ToArray()), false),
                 ("from", Schema.String("Query source; required unless saved is given.", QuerySources.All.ToArray()), false),
@@ -34,7 +34,23 @@ internal static class ParsimonyTools
                 ("examples", Schema.Integer("Maximum examples per group.", 0, 1000), false),
                 ("ids", Schema.Boolean("Include canonical ids."), false),
                 ("rawLetters", Schema.Boolean("Use characters instead of graphemes."), false),
-                ("trialId", Schema.String("Trial id; only the latest Trial has query rows."), false)),
+                ("trialId", Schema.String("Trial id; only the latest Trial has query rows."), false),
+                ("change", Schema.Object(
+                    ("dropped", Schema.String("Letters the stem edge has today."), true),
+                    ("gained", Schema.String("Letters the hypothesis puts there; may be empty."), true),
+                    ("at", Schema.String("Stem edge.", "final", "initial"), true),
+                    ("affixes", Schema.StringArray("Affixes the change fires before (final) or after (initial), without hyphens."), true),
+                    ("wordSets", Schema.StringArray("Ids of attested sampled-tokens word sets that evidence looks forms up in."), true),
+                    ("discovery", Schema.StringArray("Word sets the hypothesis was mined from."), false),
+                    ("heldOut", Schema.StringArray("Held-out word sets; control returns counts only."), false),
+                    ("controls", Schema.Integer("Control letters tried.", 1, 9), false),
+                    ("controlLetters", Schema.StringArray("Control letters to use instead of the chosen ones."), false)), false),
+                ("score", Schema.StringArray("Scorers run over the whole universe: tolerance, reliability, control; needs change and no group."), false),
+                ("exceptions", Schema.Array("ANDed selectors marking a universe row an exception for tolerance.", Schema.Object(
+                    ("col", Schema.String("Column name."), true),
+                    ("op", Schema.String("Selector operator.", "is", "in", "not", "~", "has", "<", ">"), true),
+                    ("value", Schema.String("Selector value."), true))), false),
+                ("unit", Schema.String("Unit the scorers claim.", "msa", "stem"), false)),
             true, true, false, true,
             (c, a, ct) =>
             {

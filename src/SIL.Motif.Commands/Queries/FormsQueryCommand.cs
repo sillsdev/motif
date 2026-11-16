@@ -37,6 +37,8 @@ public static class FormsQueryCommand
                 return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryNoTrialRows, FailureReason.NotFound,
                     "Query rows are built by the Parsimony evidence job; run a Trial and wait for evidence."));
             }
+            var formEntries = request.Query.Change is null ? null
+                : (IReadOnlyCollection<(string Form, string Entry)>?)QuerySnapshotStore.ReadFormEntries(connection, transaction);
             CommandOutcome<FormsQueryResponse> Evaluate(QuerySnapshotStore.Stored snapshot)
             {
                 try
@@ -48,6 +50,7 @@ public static class FormsQueryCommand
                     if (NotMeasuredRefusal(query, coverage) is { } notMeasured)
                         return CommandOutcome<FormsQueryResponse>.Refused(notMeasured);
                     QueryResult result;
+                    IReadOnlyList<string> hypothesisNotes = [];
                     if (query.From == QuerySources.Forms)
                     {
                         if ((query.Where?.Any(condition => condition?.Col == "tokens") == true ||
@@ -56,6 +59,15 @@ public static class FormsQueryCommand
                             return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryInvalid,
                                 FailureReason.InvalidArgument, "Token frequency is not available in this evidence."));
                         result = FormQuery.Run(query, snapshot.Snapshot.Forms, snapshot.Snapshot.Graphemes);
+                    }
+                    else if (query.Change is not null)
+                    {
+                        if (query.From != QuerySources.Stems)
+                            return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryInvalid,
+                                FailureReason.InvalidArgument, "A hypothesised change applies to the stems source."));
+                        var inputs = QueryHypothesisInputsReader.Read(query, project, database, formEntries);
+                        result = FormQuery.RunHypothesis(query, snapshot.Snapshot.Stems ?? [], snapshot.Snapshot.Graphemes, inputs);
+                        hypothesisNotes = result.Notes ?? [];
                     }
                     else
                     {
@@ -77,11 +89,21 @@ public static class FormsQueryCommand
                         (File.Exists(project.FullFwDataPath) &&
                          File.GetLastWriteTimeUtc(project.FullFwDataPath).Ticks > snapshot.SourceWriteTicks);
                     return CommandOutcome<FormsQueryResponse>.Success(new(snapshot.TrialId, snapshot.GrammarHash,
-                        snapshot.BundleId, stale, snapshot.Snapshot.UnresolvedVariants, result) { NotMeasured = NotMeasuredNotes(query.From, coverage) });
+                        snapshot.BundleId, stale, snapshot.Snapshot.UnresolvedVariants, result) { NotMeasured = [.. NotMeasuredNotes(query.From, coverage), .. hypothesisNotes] });
                 }
                 catch (QueryTooManyGroupsException error)
                 {
                     return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryTooManyGroups,
+                        FailureReason.InvalidArgument, error.Message));
+                }
+                catch (QueryMixedUnitsException error)
+                {
+                    return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryMixedUnits,
+                        FailureReason.InvalidArgument, error.Message));
+                }
+                catch (QueryNotMeasuredException error)
+                {
+                    return CommandOutcome<FormsQueryResponse>.Refused(new Refusal(RefusalCodes.QueryNotMeasured,
                         FailureReason.InvalidArgument, error.Message));
                 }
                 catch (ArgumentException error)

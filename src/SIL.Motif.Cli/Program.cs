@@ -1930,7 +1930,8 @@ try
             if (!(saved || positionals.Count == 1 && QuerySources.All.Contains(positionals[0])) ||
                 !flags.TryGetValue("project", out var queryProject)) return Usage(queryUsage, asJson);
             var allowed = saved ? new[] { "project", "examples", "json", "trial" }
-                : ["project", "where", "group", "min-count", "examples", "ids", "raw-letters", "json", "trial", "fold", "distinct"];
+                : ["project", "where", "group", "min-count", "examples", "ids", "raw-letters", "json", "trial", "fold", "distinct",
+                    "change", "at", "affixes", "wordset", "discovery", "heldout", "score", "exception", "unit", "controls", "control-letters", "test-result"];
             if (flags.Keys.Any(key => !allowed.Contains(key))) return Usage(queryUsage, asJson);
             if (!int.TryParse(flags.GetValueOrDefault("min-count", "1"), out var minCount) || minCount < 1 ||
                 !int.TryParse(flags.GetValueOrDefault("examples", "5"), out var examples) || examples is < 0 or > 1000)
@@ -1952,15 +1953,47 @@ try
                         try { selectors.Add(QueryConditionParser.Parse(rest[i])); }
                         catch (ArgumentException) { return Usage(queryUsage, asJson); }
                     }
+                var exceptions = new List<QueryCondition>();
+                for (var i = 0; i < rest.Length; i++)
+                    if (rest[i] == "--exception")
+                    {
+                        if (++i >= rest.Length || rest[i].StartsWith("--", StringComparison.Ordinal))
+                            return Usage(queryUsage, asJson);
+                        try { exceptions.Add(QueryConditionParser.Parse(rest[i])); }
+                        catch (ArgumentException) { return Usage(queryUsage, asJson); }
+                    }
+                string[] List(string name) => flags.TryGetValue(name, out var list)
+                    ? list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : [];
+                QueryHypothesis? hypothesis = null;
+                if (flags.TryGetValue("change", out var changeText))
+                {
+                    var arrow = changeText.IndexOf('>');
+                    if (arrow < 1 || !int.TryParse(flags.GetValueOrDefault("controls", "5"), out var controls)) return Usage(queryUsage, asJson);
+                    hypothesis = new QueryHypothesis(changeText[..arrow], changeText[(arrow + 1)..], flags.GetValueOrDefault("at", "final"),
+                        List("affixes"), List("wordset"), List("discovery"), List("heldout"), controls,
+                        flags.ContainsKey("control-letters") ? List("control-letters") : null);
+                }
+                else if (new[] { "at", "affixes", "wordset", "discovery", "heldout", "controls", "control-letters" }.Any(flags.ContainsKey))
+                    return Usage(queryUsage, asJson);
                 var groupList = flags.TryGetValue("group", out var groupColumns)
                     ? groupColumns.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : [];
                 record = new QueryRecord(positionals[0], selectors, groupList, minCount, examples, flags.ContainsKey("ids"),
                     flags.ContainsKey("raw-letters"), flags.GetValueOrDefault("trial"), flags.GetValueOrDefault("fold"),
-                    flags.GetValueOrDefault("distinct"));
+                    flags.GetValueOrDefault("distinct"), hypothesis, flags.ContainsKey("score") ? List("score") : null,
+                    exceptions.Count == 0 ? null : exceptions, flags.GetValueOrDefault("unit"));
             }
             var groups = record.Group;
             var queryOutcome = FormsQueryCommand.Run(new FormsQueryRequest(queryProject, CliProductVersion(), record));
-            if (asJson || !queryOutcome.Succeeded) result = RenderCommand(queryOutcome);
+            if (flags.ContainsKey("test-result") && (record.Score?.Contains("control") != true || record.Ids || record.Group.Count > 0))
+                return Usage(queryUsage, asJson);
+            if (flags.ContainsKey("test-result") && queryOutcome.Succeeded)
+            {
+                var control = queryOutcome.Value!.Result.Scores!.First(score => score.Scorer == "control");
+                var testResult = new HypothesisTestResult(control.Verdict!, (int)control.Counts["predicted"], (int)control.Counts["rule_hits"],
+                    control.Controls!.ToDictionary(pair => pair.Key, pair => (int)pair.Value), (int)control.Counts["margin"]);
+                result = new CommandResult(0, JsonSerializer.Serialize(testResult, HypothesisFileOptions) + Environment.NewLine);
+            }
+            else if (asJson || !queryOutcome.Succeeded) result = RenderCommand(queryOutcome);
             else
             {
                 alreadyRendered = true;
@@ -1970,7 +2003,17 @@ try
                 if (!record.Ids) lines.Add($"Trial {response.TrialId} | grammar {response.GrammarHash}");
                 if (response.IsStale && !record.Ids) lines.Add("This evidence is stale: a newer Trial or project save exists.");
                 foreach (var note in response.NotMeasured) (record.Ids ? (Action<string>)Console.Error.WriteLine : lines.Add)(note);
+                foreach (var score in response.Result.Scores ?? [])
+                {
+                    lines.Add($"{score.Scorer} ({score.Unit})\t{score.Version}");
+                    lines.Add("  " + string.Join(", ", score.Counts.Select(pair => $"{pair.Key}={pair.Value}").Concat(
+                        score.Numbers.Select(pair => $"{pair.Key}={(pair.Value is { } number ? number.ToString("0.####", CultureInfo.InvariantCulture) : "undefined")}"))) +
+                        (score.Verdict is null ? "" : $", verdict={score.Verdict}"));
+                    if (score.Controls is { } controlHits) lines.Add("  controls: " + string.Join(", ", controlHits.Select(pair => $"{pair.Key}={pair.Value}")));
+                    foreach (var note in score.Notes) lines.Add("  " + note);
+                }
                 var columns = QuerySources.StoredColumns(record.From == "forms" ? "stems" : record.From);
+                if (record.Change is not null) columns = [.. columns, "predicted", "evidence", "collides"];
                 string Item(QueryItem item) => item.Id + "\t" + string.Join("\t", columns.Select(c => string.Join(",", item.Values[c])));
                 if (record.Ids)
                     lines.AddRange(response.Result.Ids);
