@@ -27,6 +27,8 @@ namespace SIL.TextEditing.Markdown.Records
         Sequence,
         /// <summary>One owned object of type <see cref="RecordField.ObjectType"/>.</summary>
         Object,
+        /// <summary>An unordered collection of items. Membership order is not semantic.</summary>
+        Collection,
     }
 
     /// <summary>Which of the file's two default writing systems unmarked text in a single-writing-system text field means.</summary>
@@ -48,7 +50,13 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>The key in the YAML (<c>citation-form</c>). Empty for the item of a sequence.</summary>
         public string Name { get; }
 
-        public RecordFieldKind Kind { get; }
+        public RecordFieldKind Kind { get; internal set; }
+
+        /// <summary>True for an output value computed by the host. Edit comparison is a separate host operation.</summary>
+        public bool Computed { get; internal set; }
+
+        /// <summary>True for an ordered sequence or an unordered collection.</summary>
+        public bool IsList => Kind == RecordFieldKind.Sequence || Kind == RecordFieldKind.Collection;
 
         /// <summary>True when the field holds one value per writing system, as a mapping from writing-system id to value (<c>gloss: {en: "buy"}</c>).
         /// Only <see cref="RecordFieldKind.Text"/>, <see cref="RecordFieldKind.Rich"/> and <see cref="RecordFieldKind.Notation"/> fields can be.</summary>
@@ -99,7 +107,7 @@ namespace SIL.TextEditing.Markdown.Records
         }
 
         /// <summary>True for a kind whose value is a single scalar (everything but sequences, objects and per-writing-system fields).</summary>
-        internal bool IsLeaf => !MultiWritingSystem && Kind != RecordFieldKind.Sequence && Kind != RecordFieldKind.Object;
+        internal bool IsLeaf => !MultiWritingSystem && !IsList && Kind != RecordFieldKind.Object;
 
         /// <summary>True when a string value of this field is written double-quoted (text, notations, references and GUIDs).</summary>
         internal bool IsQuotedText => Kind == RecordFieldKind.Text || Kind == RecordFieldKind.Notation || Kind == RecordFieldKind.Reference || Kind == RecordFieldKind.Guid;
@@ -175,7 +183,7 @@ namespace SIL.TextEditing.Markdown.Records
         public const string InlineMarkdownMediaType = "text/x-fieldworks-markdown-inline";
 
         /// <summary>The supported version of the serialized schema format, independent of <see cref="Id"/>.</summary>
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
         /// <summary>Writes this schema as versioned JSON data, preserving field order, defaults and recursive type references.</summary>
         public string ToJson() => RecordSchemaJson.Write(this);
@@ -220,7 +228,7 @@ namespace SIL.TextEditing.Markdown.Records
                 if (type == null) return null;
                 field = type.Field(name);
                 if (field == null) return null;
-                var target = field.Kind == RecordFieldKind.Sequence ? field.Item : field;
+                var target = field.IsList ? field.Item : field;
                 type = target != null && target.Kind == RecordFieldKind.Object ? target.ObjectType : null;
             }
             return field;
@@ -391,6 +399,27 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>A sequence of texts in the named notation.</summary>
         public RecordObjectTypeBuilder Notations(string name, string notation, RecordWritingSystem ws = RecordWritingSystem.Analysis)
             => Add(Sequence(name, new RecordField(string.Empty, RecordFieldKind.Notation) { Notation = NotationName(notation), WritingSystem = ws }));
+
+        /// <summary>Marks a previously declared sequence as an unordered collection; its items keep the same shape.</summary>
+        /// <exception cref="ArgumentException">The field is absent or is not a list.</exception>
+        public RecordObjectTypeBuilder AsCollection(string name)
+        {
+            var field = DeclaredField(name);
+            if (!field.IsList) throw new ArgumentException("The field " + name + " is not a list.", nameof(name));
+            field.Kind = RecordFieldKind.Collection;
+            return this;
+        }
+
+        /// <summary>Marks a previously declared field as computed by the host. This flag does not prohibit reading or writing it.</summary>
+        /// <exception cref="ArgumentException">The field is absent.</exception>
+        public RecordObjectTypeBuilder Computed(string name, bool computed = true)
+        {
+            DeclaredField(name).Computed = computed;
+            return this;
+        }
+
+        RecordField DeclaredField(string name) => _fields.FirstOrDefault(f => f.Name == name)
+            ?? throw new ArgumentException("The field " + name + " is not declared.", nameof(name));
 
         static RecordField Sequence(string name, RecordField item) => new RecordField(name, RecordFieldKind.Sequence) { Item = item };
 

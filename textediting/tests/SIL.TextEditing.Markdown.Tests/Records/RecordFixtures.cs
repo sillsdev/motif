@@ -184,7 +184,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             for (int i = kind.PathSegments; i < path.Segments.Count; i++)
             {
                 var field = type.Field(path.Segments[i].Name)!;
-                if (field.Kind == RecordFieldKind.Sequence) { type = field.Item!.ObjectType!; i++; }
+                if (field.IsList) { type = field.Item!.ObjectType!; i++; }
                 else type = field.ObjectType!;
             }
             return type;
@@ -212,6 +212,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             }
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence:
                 {
                     var list = new RecordList();

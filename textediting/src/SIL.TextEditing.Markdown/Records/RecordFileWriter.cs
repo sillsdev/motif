@@ -143,6 +143,7 @@ namespace SIL.TextEditing.Markdown.Records
             }
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence:
                 {
                     if (!(value is RecordList list)) throw Shape(path, "a list");

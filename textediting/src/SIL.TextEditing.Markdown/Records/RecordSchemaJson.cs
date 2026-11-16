@@ -40,7 +40,9 @@ namespace SIL.TextEditing.Markdown.Records
         {
             var value = new J.Obj();
             if (field.Name.Length != 0) value.Add("name", field.Name);
-            value.Add("kind", field.Kind.ToString().ToLowerInvariant());
+            value.Add("kind", field.Kind == RecordFieldKind.Sequence ? "seq" :
+                field.Kind == RecordFieldKind.Collection ? "col" : field.Kind.ToString().ToLowerInvariant());
+            if (field.Computed) value.Add("computed", Bool(true));
             if (field.MultiWritingSystem) value.Add("multi", Bool(true));
             if (field.Kind == RecordFieldKind.Text || field.Kind == RecordFieldKind.Rich || field.Kind == RecordFieldKind.Notation)
                 if (!field.MultiWritingSystem)
@@ -70,10 +72,10 @@ namespace SIL.TextEditing.Markdown.Records
             {
                 var json = Json.Obj(Json.Parse(text));
                 int version = Json.OptInt(json, "version", 0);
-                if (version != RecordSchema.CurrentVersion)
+                if (version < 1 || version > RecordSchema.CurrentVersion)
                     throw new FormatException("Unsupported record schema version " + version +
                         "; supported version is " + RecordSchema.CurrentVersion + ".");
-                return Build(json);
+                return Build(json, version);
             }
             catch (Exception error) when (error is ArgumentException || error is InvalidOperationException ||
                 error is KeyNotFoundException || error is InvalidCastException || error is OverflowException)
@@ -82,7 +84,7 @@ namespace SIL.TextEditing.Markdown.Records
             }
         }
 
-        static RecordSchema Build(Dictionary<string, object?> json)
+        static RecordSchema Build(Dictionary<string, object?> json, int version)
         {
             Keys(json, "version", "id", "types", "kinds");
             var builder = new RecordSchemaBuilder(Json.Str(json["id"]));
@@ -90,7 +92,7 @@ namespace SIL.TextEditing.Markdown.Records
             {
                 Keys(t, "name", "guid", "fields");
                 var type = builder.ObjectType(Json.Str(t["name"]), Json.OptBool(t, "guid", true));
-                foreach (var f in Json.Arr(t["fields"]).Select(Json.Obj)) AddField(type, f);
+                foreach (var f in Json.Arr(t["fields"]).Select(Json.Obj)) AddField(type, f, version);
             }
             foreach (var k in Json.Arr(json["kinds"]).Select(Json.Obj))
             {
@@ -107,10 +109,14 @@ namespace SIL.TextEditing.Markdown.Records
                     throw new FormatException("Unknown schema property: " + key);
         }
 
-        static void FieldKeys(Dictionary<string, object?> field, string kind, bool item)
+        static void FieldKeys(Dictionary<string, object?> field, string kind, bool item, int version)
         {
             var allowed = new List<string> { "kind" };
-            if (!item) allowed.Add("name");
+            if (!item)
+            {
+                allowed.Add("name");
+                if (version >= 2) allowed.Add("computed");
+            }
             if (kind == "text" || kind == "rich" || kind == "notation")
             {
                 if (!item) allowed.Add("multi");
@@ -119,7 +125,7 @@ namespace SIL.TextEditing.Markdown.Records
             if (kind == "rich") { allowed.Add("paragraphs"); allowed.Add("blocks"); }
             if (kind == "notation") allowed.Add("notation");
             if (kind == "object") allowed.Add("type");
-            if (kind == "sequence") allowed.Add("item");
+            if (kind == "sequence" || (version >= 2 && (kind == "seq" || kind == "col"))) allowed.Add("item");
             Keys(field, allowed.ToArray());
         }
 
@@ -150,11 +156,13 @@ namespace SIL.TextEditing.Markdown.Records
             }
         }
 
-        static void AddField(RecordObjectTypeBuilder type, Dictionary<string, object?> f)
+        static void AddField(RecordObjectTypeBuilder type, Dictionary<string, object?> f, int version)
         {
             string name = Json.Str(f["name"]);
             string kind = Json.Str(f["kind"]);
-            FieldKeys(f, kind, false);
+            FieldKeys(f, kind, false, version);
+            if (version == 1 && (kind == "seq" || kind == "col"))
+                throw new FormatException("seq and col require record schema version 2.");
             bool multi = Json.OptBool(f, "multi", false);
             if (multi && kind != "text" && kind != "rich" && kind != "notation")
                 throw new FormatException("Only text, rich and notation fields can be per writing system.");
@@ -171,10 +179,12 @@ namespace SIL.TextEditing.Markdown.Records
                 case "guid": type.Guid(name); break;
                 case "reference": type.Reference(name); break;
                 case "object": type.Object(name, Json.Str(f["type"])); break;
+                case "seq":
+                case "col":
                 case "sequence":
                 {
                     var item = Json.Obj(f["item"]);
-                    FieldKeys(item, Json.Str(item["kind"]), true);
+                    FieldKeys(item, Json.Str(item["kind"]), true, version);
                     switch (Json.Str(item["kind"]))
                     {
                         case "object": type.Objects(name, Json.Str(item["type"])); break;
@@ -187,6 +197,8 @@ namespace SIL.TextEditing.Markdown.Records
                 }
                 default: throw new InvalidOperationException("A field of kind " + kind);
             }
+            if (kind == "col") type.AsCollection(name);
+            if (Json.OptBool(f, "computed", false)) type.Computed(name);
         }
 
     }

@@ -47,7 +47,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
 
         [Theory]
         [InlineData(0)]
-        [InlineData(2)]
+        [InlineData(3)]
         [InlineData(2147483647)]
         public void UnsupportedVersionsAreRefusedClearly(int version)
         {
@@ -132,6 +132,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         {
             Assert.Equal(a.Name, b.Name);
             Assert.Equal(a.Kind, b.Kind);
+            Assert.Equal(a.Computed, b.Computed);
             Assert.Equal(a.MultiWritingSystem, b.MultiWritingSystem);
             Assert.Equal(a.Paragraphs, b.Paragraphs);
             Assert.Equal(a.BlockFeatures, b.BlockFeatures);

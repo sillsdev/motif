@@ -102,6 +102,7 @@ namespace SIL.TextEditing.Markdown.Records
                 return new J.Obj().Add("type", "object").Add("additionalProperties", Leaf(field));
             switch (field.Kind)
             {
+                case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence: return new J.Obj().Add("type", "array").Add("items", Field(field.Item!));
                 case RecordFieldKind.Object: return Ref(field.ObjectType!.Name);
                 default: return Leaf(field);

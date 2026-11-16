@@ -56,7 +56,7 @@ namespace SIL.TextEditing.Markdown.Records
                         type = field.ObjectType!;
                         i++;
                     }
-                    else if (field != null && field.Kind == RecordFieldKind.Sequence && field.Item!.Kind == RecordFieldKind.Object)
+                    else if (field != null && field.IsList && field.Item!.Kind == RecordFieldKind.Object)
                     {
                         if (i + 1 >= path.Segments.Count || !IsIndex(path.Segments[i + 1]))
                         {
