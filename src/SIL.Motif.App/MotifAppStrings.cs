@@ -4184,5 +4184,9 @@ public static class MotifAppStrings
     public static string WordsHeadingProposalParserSteps => Text("MotifApp.WordsHeadingProposalParserSteps");
     public static string OccurrencesReadingCountPattern => Text("MotifApp.OccurrencesReadingCountPattern");
     public static string OccurrencesSingleReadingNote => Text("MotifApp.OccurrencesSingleReadingNote");
+    // fix1-diag
+    public static string WarningsListSeparator => Text("MotifApp.WarningsListSeparator");
+    public static string DiagnosticsFindingsSummaryFormat => Text("MotifApp.DiagnosticsFindingsSummaryFormat");
+    public static string WhyThisAnalysisRuleFormat => Text("MotifApp.WhyThisAnalysisRuleFormat");
     #endregion
 }

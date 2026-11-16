@@ -222,6 +222,14 @@ public sealed partial class WhyThisAnalysisViewModel : ObservableObject, IDispos
             await _trace.TryCommand.ExecuteAsync(null).ConfigureAwait(true);
         }
         catch (OperationCanceledException) { }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // Observed here so the faulted task is never left unobserved for the next run or StopAsync.
+            System.Diagnostics.Trace.TraceError("Motif's trace request for '{0}' failed: {1}", Form, exception);
+            if (!_disposed && generation == _generation && IsExpanded)
+                Settle(WhyThisAnalysisState.Unavailable, MotifAppStrings.WhyThisAnalysisNotRecorded);
+            return;
+        }
         if (_disposed || generation != _generation || !IsExpanded || !_context.Diagnostics ||
             !string.Equals(path, _context.ProjectPath, StringComparison.Ordinal)) return;
         Receive(requested);
@@ -293,10 +301,14 @@ public sealed partial class WhyThisAnalysisViewModel : ObservableObject, IDispos
             analysis.Morphs.Select(morph => new WhyNameRow(
                 morph.Form, morph.Category, morph.Link)).ToArray())).ToArray();
         var refs = (result.Reading.Refs ?? []).ToDictionary(reference => reference.Id, StringComparer.Ordinal);
-        Rules = result.Reading.RulesOnBestPath.Select(rule => new WhyNameRow(rule.Rule, rule.Outcome,
-            rule.RefId is { } id && refs.TryGetValue(id, out var reference) && reference.FieldWorks is { Link: { } link } &&
-            Uri.TryCreate(link, UriKind.Absolute, out var uri) &&
-            string.Equals(uri.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? uri : null)).ToArray();
+        Rules = result.Reading.RulesOnBestPath.Select(rule =>
+        {
+            TraceRef? reference = null;
+            if (rule.RefId is { } id) refs.TryGetValue(id, out reference);
+            return new WhyNameRow(RuleName(rule, reference), rule.Outcome,
+                reference?.FieldWorks is { Link: { } link } && Uri.TryCreate(link, UriKind.Absolute, out var uri) &&
+                string.Equals(uri.Scheme, "silfw", StringComparison.OrdinalIgnoreCase) ? uri : null);
+        }).ToArray();
         var failed = _trace.Candidates.Where(candidate => candidate.IsFailure).ToArray();
         FailedRows = failed.Take(FailedRowLimit).Select(candidate => new WhyFailedRow(candidate.Text, candidate.StopHeadline)).ToArray();
         MoreFailedText = failed.Length > FailedRowLimit
@@ -316,10 +328,30 @@ public sealed partial class WhyThisAnalysisViewModel : ObservableObject, IDispos
             : _trace.Candidates.Count == 0 && !_trace.HasStopGroups
                 ? MotifAppStrings.WhyThisAnalysisAttemptsNotRecorded
                 : string.Empty;
-        TraceRows = _trace.ExpertEvents.Select(step => new WhyTraceRow(step.KindText, step.Source ?? string.Empty,
+        TraceRows = _trace.ExpertEvents.Select(step => new WhyTraceRow(step.KindText, TraceName(step),
             step.RecordedOutcomeText, step.RecordedStep.StepId, step.FieldWorksLink)).ToArray();
         NotifyRows();
     }
+
+    // The project's own rule name when captured; a raw parser id is only a fallback, labelled as a rule.
+    internal static string RuleName(TraceRuleReading rule, TraceRef? reference)
+    {
+        if (reference?.CapturedFieldWorksLabel is { Length: > 0 } captured) return captured;
+        var recorded = !string.IsNullOrWhiteSpace(reference?.Label) ? reference!.Label : rule.Rule;
+        return RawRuleId.IsMatch(recorded)
+            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.WhyThisAnalysisRuleFormat, recorded) : recorded;
+    }
+
+    private static string TraceName(TraceStepViewModel step)
+    {
+        if (step.Reference?.CapturedFieldWorksLabel is { Length: > 0 } captured) return captured;
+        return step.Source is { Length: > 0 } source && RawRuleId.IsMatch(source)
+            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.WhyThisAnalysisRuleFormat, source)
+            : step.Source ?? string.Empty;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex RawRuleId = new(
+        @"^[A-Za-z_]+#\d+$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     private void ClearRows()
     {

@@ -7,9 +7,11 @@
   <UserControl.Styles>
     <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/DiagnosticsScoped.axaml" />
   </UserControl.Styles>
-  <Grid RowDefinitions="Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
+  <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Related}">
     <views:CopyableTextBlock Text="{Binding Warnings.StatusText}" TextWrapping="Wrap" />
-    <Grid x:Name="WarningBody" Grid.Row="1" RowDefinitions="*,*"
+    <views:CopyableTextBlock Grid.Row="1" Text="{Binding Warnings.SummaryText}" TextWrapping="Wrap"
+                             IsVisible="{Binding Warnings.SummaryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+    <Grid x:Name="WarningBody" Grid.Row="2" RowDefinitions="*,*"
           ColumnSpacing="{DynamicResource Intent.Space.Group}" RowSpacing="{DynamicResource Intent.Space.Related}">
       <ContentControl x:Name="RowsHost" />
       <ContentControl x:Name="WarningEvidence" Grid.Row="1"

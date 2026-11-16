@@ -35,8 +35,22 @@ public sealed partial class WarningsDiagnosticsViewModel : ObservableObject
     /// <summary>The recorded findings formatted with the existing warning projection.</summary>
     public IReadOnlyList<GrammarWarningRowViewModel> Rows { get; private set; } = [];
 
+    /// <summary>
+    /// The number of findings the rows below add up to, by level. It is the same count the health strip gives,
+    /// since both read the one stored check; the strip's word for it is "grammar warnings".
+    /// </summary>
+    public string SummaryText { get; private set; } = string.Empty;
+
     partial void OnFindingsChanged(IReadOnlyList<GrammarWarning> value)
     {
+        SummaryText = value.Count == 0 ? string.Empty : string.Format(System.Globalization.CultureInfo.CurrentCulture,
+            MotifAppStrings.DiagnosticsFindingsSummaryFormat,
+            PluralText.Format(MotifAppStrings.WarningsFindingsPattern, value.Count),
+            string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.WarningsBreakdownFormat,
+                PluralText.Format(MotifAppStrings.WarningsErrorsPattern, value.Count(f => f.Severity == GrammarDiagnosticLevel.Error)),
+                PluralText.Format(MotifAppStrings.WarningsWarningsPattern, value.Count(f => f.Severity == GrammarDiagnosticLevel.Warning)),
+                PluralText.Format(MotifAppStrings.WarningsInformationPattern, value.Count(f => f.Severity == GrammarDiagnosticLevel.Information))));
+        OnPropertyChanged(nameof(SummaryText));
         Rows = value.Select((finding, index) => (finding, index))
             .GroupBy(item => string.IsNullOrWhiteSpace(item.finding.Code)
                 ? (Code: (string?)null, Index: item.index) : (Code: item.finding.Code, Index: -1))
@@ -62,10 +76,29 @@ public sealed partial class WarningsDiagnosticsViewModel : ObservableObject
         if (_context.Evidence.IsStale) return;
         StatusText = MotifAppStrings.DiagnosticsReading;
         var baseline = _context.Baseline?.Token;
-        var result = await _context.Commands.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(projectPath), cancellationToken)
-            .ConfigureAwait(true);
+        SIL.Motif.Contract.Commands.CommandOutcome<SIL.Motif.Commands.Queries.StoredGrammarCheckResponse> result;
+        try
+        {
+            result = await _context.Commands.ReadStoredGrammarCheckAsync(new GrammarCheckRequest(projectPath), cancellationToken)
+                .ConfigureAwait(true);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // Never leave "Reading" on screen: a cancelled or failed read says what it is.
+            if (generation == _generation)
+                StatusText = exception is OperationCanceledException ? MotifAppStrings.DiagnosticsUnavailable
+                    : MotifAppStrings.DiagnosticsUnreadable;
+            if (exception is OperationCanceledException) throw;
+            System.Diagnostics.Trace.TraceError("Motif could not read the recorded grammar check: {0}", exception);
+            return;
+        }
         if (generation != _generation || cancellationToken.IsCancellationRequested || _context.ProjectPath != projectPath ||
-            _context.Evidence.IsStale || _context.Baseline?.Token != baseline) return;
+            _context.Evidence.IsStale || _context.Baseline?.Token != baseline)
+        {
+            if (generation == _generation && StatusText == MotifAppStrings.DiagnosticsReading)
+                StatusText = MotifAppStrings.DiagnosticsMismatched;
+            return;
+        }
         StatusText = result.Succeeded ? MotifAppStrings.DiagnosticsUnavailable : MotifAppStrings.DiagnosticsUnreadable;
         if (result.Succeeded && result.Value is { } stored)
         {

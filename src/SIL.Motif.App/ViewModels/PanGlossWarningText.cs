@@ -34,9 +34,25 @@ internal static class WarningDisplayProjection
 
     private static string CapturedName(GrammarWarningPart part)
     {
+        // A phoneme is often written as punctuation, so its name is quoted to stay readable as a name.
+        if (IsPhoneme(part) && part.Title is { Length: > 0 } phoneme && !Guid.TryParse(phoneme, out _))
+            return part.Subtitle is { Length: > 0 } set ? $"'{phoneme}' ({set})" : $"'{phoneme}'";
         if (!string.IsNullOrWhiteSpace(part.Text) && !Guid.TryParse(part.Text, out _)) return part.Text;
         if (string.IsNullOrWhiteSpace(part.Title) || Guid.TryParse(part.Title, out _)) return part.Text;
         return part.Subtitle is { Length: > 0 } subtitle ? $"{part.Title} ({subtitle})" : part.Title;
+    }
+
+    private static bool IsPhoneme(GrammarWarningPart part) =>
+        string.Equals(part.FieldWorksKind, "PhPhoneme", StringComparison.Ordinal);
+
+    // PanGloss writes phoneme names bare into its sentence, where a punctuation name reads as nothing.
+    private static string QuotePhonemeList(string value, IReadOnlyList<string> names)
+    {
+        if (value.Length == 0 || names.Count == 0) return value;
+        var bare = string.Join(", ", names);
+        var index = value.IndexOf(bare, StringComparison.Ordinal);
+        return index < 0 || index > 0 && value[index - 1] == '\'' ? value
+            : value.Remove(index, bare.Length).Insert(index, string.Join(", ", names.Select(name => $"'{name}'")));
     }
 
     /// <summary>Returns a display copy using only the finding's captured subject names and identity aliases.</summary>
@@ -51,9 +67,11 @@ internal static class WarningDisplayProjection
             if (part.SubjectGuid is { Length: > 0 } subjectGuid) names.TryAdd(subjectGuid, name);
         }
 
-        string Display(string value, bool unnamed = true) => RawIdentifier.Replace(value,
+        var phonemes = warning.Subject.Concat(warning.Problem).Where(IsPhoneme)
+            .Select(part => part.Title).OfType<string>().Where(title => title.Length > 0).ToArray();
+        string Display(string value, bool unnamed = true) => QuotePhonemeList(RawIdentifier.Replace(value,
             match => names.TryGetValue(match.Value, out var name) ? name :
-                unnamed ? MotifAppStrings.WarningsUnnamedItem : match.Value);
+                unnamed ? MotifAppStrings.WarningsUnnamedItem : match.Value), phonemes);
         GrammarWarningPart Part(GrammarWarningPart part) => part with
         {
             Text = Display(CapturedName(part), part.Role is GrammarWarningPartRole.Text or GrammarWarningPartRole.Value),

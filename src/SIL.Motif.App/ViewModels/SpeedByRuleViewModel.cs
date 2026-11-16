@@ -138,12 +138,32 @@ public sealed partial class SpeedByRuleViewModel : ObservableObject
         UnavailableText = MotifAppStrings.DiagnosticsReading;
         var baseline = _context.Baseline?.Token;
         var overrides = _context.Evidence.TimingOverrideAssessmentIds.ToArray();
-        var result = await _context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId, By: "rule",
-            OverrideAssessmentIds: overrides),
-            cancellationToken).ConfigureAwait(true);
+        SIL.Motif.Contract.Commands.CommandOutcome<TimingResponse> result;
+        try
+        {
+            result = await _context.Commands.TimingAsync(new TimingRequest(projectPath, assessmentId, By: "rule",
+                OverrideAssessmentIds: overrides),
+                cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            // Never leave "Reading" on screen: a cancelled or failed read says what it is.
+            if (generation == _generation)
+                UnavailableText = exception is OperationCanceledException ? MotifAppStrings.DiagnosticsNoWork
+                    : MotifAppStrings.DiagnosticsUnreadable;
+            if (exception is OperationCanceledException) throw;
+            System.Diagnostics.Trace.TraceError("Motif could not read the recorded rule timing: {0}", exception);
+            return;
+        }
         if (generation != _generation || cancellationToken.IsCancellationRequested || _context.ProjectPath != projectPath ||
             assessmentId != _context.Evidence.ParseTimeAssessmentId || baseline != _context.Baseline?.Token ||
-            !overrides.SequenceEqual(_context.Evidence.TimingOverrideAssessmentIds)) return;
+            !overrides.SequenceEqual(_context.Evidence.TimingOverrideAssessmentIds))
+        {
+            // A newer read or Clear owns the text; when none does, say the recorded timing no longer matches.
+            if (generation == _generation && UnavailableText == MotifAppStrings.DiagnosticsReading)
+                UnavailableText = MotifAppStrings.DiagnosticsMismatched;
+            return;
+        }
         UnavailableText = !result.Succeeded ? MotifAppStrings.DiagnosticsUnreadable
             : result.Value is { IsStale: true } or { CurrentProjectIsStale: true } ? MotifAppStrings.DiagnosticsOutOfDate
             : result.Value is { } recorded && (recorded.AssessmentId != assessmentId || recorded.By != "rule")

@@ -7723,4 +7723,8 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.WordsHeadingProposalParserSteps" xml:space="preserve"><value>Proposal Parser Steps</value><comment>Words list column heading in the Proposal view: the parser steps the Proposal's trial spent on a word.</comment></data>
   <data name="MotifApp.OccurrencesReadingCountPattern" xml:space="preserve"><value>{0, plural, one {# reading} other {# readings}}</value><comment>Word panel: how many readings the word has, beside the Analysis chooser.</comment></data>
   <data name="MotifApp.OccurrencesSingleReadingNote" xml:space="preserve"><value>This word has one reading, so it is already chosen.</value></data>
+  <!-- fix1-diag -->
+  <data name="MotifApp.WarningsListSeparator" xml:space="preserve"><value>,</value></data>
+  <data name="MotifApp.DiagnosticsFindingsSummaryFormat" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="MotifApp.WhyThisAnalysisRuleFormat" xml:space="preserve"><value>Rule {0}</value></data>
 </root>

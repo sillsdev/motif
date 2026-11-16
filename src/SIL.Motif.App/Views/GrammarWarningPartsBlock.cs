@@ -35,7 +35,22 @@ public sealed class GrammarWarningPartsBlock : WrapPanel
 
     private void Rebuild()
     {
-        ProgressivePanel.Populate(this, Parts ?? [], (part, _) => ControlFor(part));
+        var parts = Parts ?? [];
+        ProgressivePanel.Populate(this, parts, (part, index) =>
+        {
+            var control = ControlFor(part);
+            // Named objects that follow one another are a list, so each but the last carries its comma.
+            return part.Role == GrammarWarningPartRole.Object && index + 1 < parts.Count &&
+                parts[index + 1].Role == GrammarWarningPartRole.Object ? WithSeparator(control) : control;
+        });
+    }
+
+    private static Control WithSeparator(Control control)
+    {
+        var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+        row.Children.Add(control);
+        row.Children.Add(new TextBlock { Text = MotifAppStrings.WarningsListSeparator, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom });
+        return row;
     }
 
     private static Control ControlFor(GrammarWarningPart part)

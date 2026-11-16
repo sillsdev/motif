@@ -769,9 +769,20 @@ public sealed partial class TraceWordViewModel : ObservableObject
             if (generation == _generation && IsLoading) ParseProgress.Report(value);
         });
         using var grammarWatch = WatchGrammarLoad(TryWordSessions, path);
-        var outcome = await ParseProgress.TrackAsync(() =>
-            _commandClient.TraceWordAsync(new WordTraceRequest(path, word, proposalId), running.Token, progress))
-            .ConfigureAwait(true);
+        CommandOutcome<WordTraceResponse> outcome;
+        try
+        {
+            outcome = await ParseProgress.TrackAsync(() =>
+                _commandClient.TraceWordAsync(new WordTraceRequest(path, word, proposalId), running.Token, progress))
+                .ConfigureAwait(true);
+        }
+        catch
+        {
+            // A request that throws must not leave its disposed token for Reset or a loading flag behind.
+            if (ReferenceEquals(_running, running)) _running = null;
+            if (generation == _generation) IsLoading = false;
+            throw;
+        }
         if (ReferenceEquals(_running, running)) _running = null;
         if (generation != _generation) return;
 
