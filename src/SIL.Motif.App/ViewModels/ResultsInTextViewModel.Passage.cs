@@ -138,7 +138,7 @@ public sealed partial class ResultsInTextViewModel
             cancellationToken).ConfigureAwait(true);
         if (written.Count > 0 && OccurrencePanel is { } open) _ = ReloadOccurrencePanelAsync(open);
         var message = written.Count == places.Count
-            ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OccurrencesStagedStatusFormat, written.Count)
+            ? PluralText.Format(MotifAppStrings.OccurrencesStagedStatusPattern, written.Count)
             : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OccurrencesPartlyStagedStatusFormat, written.Count, places.Count);
         return new PassageKeepResult(written.Count > 0, message, written);
     }

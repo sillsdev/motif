@@ -57,7 +57,9 @@
    </Border>
    <StackPanel IsVisible="{Binding HasReadings}" Spacing="{DynamicResource Intent.Space.Compact}">
     <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesAnalysis}" FontWeight="{DynamicResource Intent.Weight.Section}" />
-    <ComboBox x:Name="OccurrenceReadings" ItemsSource="{Binding Readings}" SelectedItem="{Binding ChosenReading, Mode=TwoWay}"
+    <TextBlock Text="{Binding ReadingSummary}" TextWrapping="Wrap" Foreground="{DynamicResource Intent.TextMuted}"
+      AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesReadingSummary}" />
+    <ComboBox x:Name="OccurrenceReadings" IsVisible="{Binding HasReadingChoice}" ItemsSource="{Binding Readings}" SelectedItem="{Binding ChosenReading, Mode=TwoWay}"
       HorizontalAlignment="Stretch" PlaceholderText="{x:Static app:MotifAppStrings.OccurrencesChoose}"
       AutomationProperties.Name="{x:Static app:MotifAppStrings.OccurrencesAnalysis}"
       AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesReading}">
@@ -73,7 +75,7 @@
    <TextBlock Text="{x:Static app:MotifAppStrings.OccurrencesNoReadingsNote}" IsVisible="{Binding HasNoReadings}" TextWrapping="Wrap"
      Foreground="{DynamicResource Intent.TextMuted}" />
    <WrapPanel Classes="occurrenceActions">
-    <Button Classes="occurrenceAction" Command="{Binding ApproveCommand}"
+    <Button Classes="occurrenceAction" Command="{Binding ApproveCommand}" ContentTemplate="{x:Null}"
       AutomationProperties.Name="{Binding ApproveLabel}"
       AutomationProperties.AutomationId="{x:Static app:AutomationIds.WordOccurrencesApprove}">
       <TextBlock Text="{Binding ApproveLabel}" TextWrapping="Wrap" />

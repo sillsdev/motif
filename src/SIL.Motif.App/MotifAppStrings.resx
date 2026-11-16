@@ -6940,7 +6940,7 @@ Never included unless you tick it in the preview: local details, which may conta
     <comment>Part of a word row's one-line summary while a Proposal is open; {0} is what today's PanGloss built.</comment>
   </data>
   <data name="MotifApp.WordRowTimeWithProposalFormat" xml:space="preserve">
-    <value>Time with this Proposal: {0}</value>
+    <value>Parser steps with this Proposal: {0}</value>
     <comment>Spoken name of a word's time in the Proposal's view, where it is the Proposal's work and not today's; {0} is the parser work.</comment>
   </data>
   <data name="MotifApp.DifferenceWithProposalFormat" xml:space="preserve">
@@ -7556,7 +7556,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProposalCompareDifferentResult" xml:space="preserve"><value>{0}, With a Different Result</value></data>
   <!-- W3 -->
   <data name="MotifApp.OccurrencesNotAWordScopeFormat" xml:space="preserve"><value>Not a Word marks the spelling {0} as incorrect for the whole project, not only at the checked places.</value></data>
-  <data name="MotifApp.OccurrencesStagedStatusFormat" xml:space="preserve"><value>{0} places staged. They are approved when you Apply.</value></data>
+  <data name="MotifApp.OccurrencesStagedStatusPattern" xml:space="preserve"><value>{0, plural, one {# place staged. It is approved when you Apply.} other {# places staged. They are approved when you Apply.}}</value></data>
   <data name="MotifApp.OccurrencesPartlyStagedStatusFormat" xml:space="preserve"><value>{0} of {1} places staged before the keep stopped. The rest are unchanged.</value></data>
   <data name="MotifApp.OccurrencesHomographsUnreadStatus" xml:space="preserve"><value>The analyses of every homograph could not be read, so no stored reading is offered. Close this word and open it again to try once more.</value></data>
   <data name="MotifApp.OccurrencesHomographReadingFormat" xml:space="preserve"><value>Homograph {0}: {1}</value></data>
@@ -7565,7 +7565,7 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.OccurrencesNotAWordStagedFormat" xml:space="preserve"><value>Not a Word staged for {0}. It changes the project when you Apply.</value></data>
   <data name="MotifApp.OccurrencesNotStaged" xml:space="preserve"><value>The change could not be staged. Nothing was changed.</value></data>
   <data name="MotifApp.OccurrencesChoose" xml:space="preserve"><value>Choose a Reading to Keep</value></data>
-  <data name="MotifApp.OccurrencesSelectedFormat" xml:space="preserve"><value>{0} Places Checked</value></data>
+  <data name="MotifApp.OccurrencesSelectedPattern" xml:space="preserve"><value>{0, plural, one {# Place Checked} other {# Places Checked}}</value></data>
   <data name="MotifApp.OccurrencesCheckGaps" xml:space="preserve"><value>Check Places Without an Approved Analysis</value></data>
   <data name="MotifApp.OccurrencesNoReadingsReason" xml:space="preserve"><value>No analysis exists for this word yet, so there is nothing to keep.</value></data>
   <data name="MotifApp.OccurrencesUnsupportedKeepReason" xml:space="preserve"><value>This place cannot be kept from the window yet: the project does not store an approval for it.</value></data>
@@ -7579,14 +7579,14 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.OccurrencesStateNoAnalysis" xml:space="preserve"><value>No Analysis Yet</value></data>
   <data name="MotifApp.OccurrencesStateGuessed" xml:space="preserve"><value>Guessed</value></data>
   <data name="MotifApp.OccurrencesStateStored" xml:space="preserve"><value>Stored Analysis</value></data>
-  <data name="MotifApp.OccurrencesPlacesFormat" xml:space="preserve"><value>{0} Places in Your Texts</value></data>
+  <data name="MotifApp.OccurrencesPlacesPattern" xml:space="preserve"><value>{0, plural, one {# Place in Your Texts} other {# Places in Your Texts}}</value></data>
   <data name="MotifApp.OccurrencesPlacesHint" xml:space="preserve"><value>Every place is listed. Untick any that mean something else.</value></data>
   <data name="MotifApp.OccurrencesPlaceFormat" xml:space="preserve"><value>{0}, Line {1}</value></data>
   <data name="MotifApp.OccurrencesPlaceStaged" xml:space="preserve"><value>Staged</value></data>
   <data name="MotifApp.OccurrencesPlaceApproved" xml:space="preserve"><value>Approved</value></data>
   <data name="MotifApp.OccurrencesIncludePlace" xml:space="preserve"><value>Include This Place</value></data>
   <data name="MotifApp.OccurrencesAnalysis" xml:space="preserve"><value>Analysis</value></data>
-  <data name="MotifApp.OccurrencesApproveFormat" xml:space="preserve"><value>Approve {0} Places</value></data>
+  <data name="MotifApp.OccurrencesApprovePattern" xml:space="preserve"><value>{0, plural, one {Approve # Place} other {Approve # Places}}</value></data>
   <data name="MotifApp.OccurrencesApproveOne" xml:space="preserve"><value>Approve 1 Place</value></data>
   <data name="MotifApp.OccurrencesAskClaude" xml:space="preserve"><value>Ask Claude</value></data>
   <data name="MotifApp.OccurrencesNotAWord" xml:space="preserve"><value>Not a Word</value></data>
@@ -7718,4 +7718,9 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.ProgressReviewWords" xml:space="preserve"><value>Review Words</value></data>
   <data name="MotifApp.ProgressReadTexts" xml:space="preserve"><value>Read Texts</value></data>
   <data name="MotifApp.ProgressParseUnavailable" xml:space="preserve"><value>Parse results could not be read. Refresh the project or try again.</value></data>
+  <!-- fix1-word -->
+  <data name="MotifApp.WordsHeadingParserSteps" xml:space="preserve"><value>Parser Steps</value><comment>Words list column heading: the parser work spent on a word, counted in steps of the parser, not in seconds.</comment></data>
+  <data name="MotifApp.WordsHeadingProposalParserSteps" xml:space="preserve"><value>Proposal Parser Steps</value><comment>Words list column heading in the Proposal view: the parser steps the Proposal's trial spent on a word.</comment></data>
+  <data name="MotifApp.OccurrencesReadingCountPattern" xml:space="preserve"><value>{0, plural, one {# reading} other {# readings}}</value><comment>Word panel: how many readings the word has, beside the Analysis chooser.</comment></data>
+  <data name="MotifApp.OccurrencesSingleReadingNote" xml:space="preserve"><value>This word has one reading, so it is already chosen.</value></data>
 </root>

@@ -339,6 +339,8 @@ public static class AutomationIds
     public const string WordOccurrencesPrevious = "motif-word-occurrences-previous";
     public const string WordOccurrencesNext = "motif-word-occurrences-next";
     public const string WordOccurrencesReading = "motif-word-occurrences-reading";
+    // fix1-word
+    public const string WordOccurrencesReadingSummary = "motif-word-occurrences-reading-summary";
     public const string WordOccurrencesApprove = "motif-word-occurrences-approve";
     public const string WordOccurrencesAsk = "motif-word-occurrences-ask";
     public const string WordOccurrencesNotAWord = "motif-word-occurrences-not-a-word";

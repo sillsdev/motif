@@ -20,8 +20,7 @@ public sealed class PassageKeepKeysTests
     private static string? Status(Window window) =>
         window.FindInWindowOrWorkspace<TextBlock>("KeyboardShortcutStatusLine")?.Text;
 
-    private static string Staged(int count) => string.Format(CultureInfo.CurrentCulture,
-        MotifAppStrings.OccurrencesStagedStatusFormat, count);
+    private static string Staged(int count) => PluralText.Format(MotifAppStrings.OccurrencesStagedStatusPattern, count);
 
     private static async Task<(WorkspaceShellViewModel Workspace, MainWindow Window, ResultsInTextViewModel InText,
         FakeCommandClient Fake)> OpenAsync()

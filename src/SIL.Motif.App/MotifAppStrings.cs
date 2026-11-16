@@ -4013,7 +4013,7 @@ public static class MotifAppStrings
 
     #region W3
     public static string OccurrencesNotAWordScopeFormat => Text("MotifApp.OccurrencesNotAWordScopeFormat");
-    public static string OccurrencesStagedStatusFormat => Text("MotifApp.OccurrencesStagedStatusFormat");
+    public static string OccurrencesStagedStatusPattern => Text("MotifApp.OccurrencesStagedStatusPattern");
     public static string OccurrencesPartlyStagedStatusFormat => Text("MotifApp.OccurrencesPartlyStagedStatusFormat");
     public static string OccurrencesHomographsUnreadStatus => Text("MotifApp.OccurrencesHomographsUnreadStatus");
     public static string OccurrencesHomographReadingFormat => Text("MotifApp.OccurrencesHomographReadingFormat");
@@ -4022,7 +4022,7 @@ public static class MotifAppStrings
     public static string OccurrencesNotAWordStagedFormat => Text("MotifApp.OccurrencesNotAWordStagedFormat");
     public static string OccurrencesNotStaged => Text("MotifApp.OccurrencesNotStaged");
     public static string OccurrencesChoose => Text("MotifApp.OccurrencesChoose");
-    public static string OccurrencesSelectedFormat => Text("MotifApp.OccurrencesSelectedFormat");
+    public static string OccurrencesSelectedPattern => Text("MotifApp.OccurrencesSelectedPattern");
     public static string OccurrencesCheckGaps => Text("MotifApp.OccurrencesCheckGaps");
     public static string OccurrencesNoReadingsReason => Text("MotifApp.OccurrencesNoReadingsReason");
     public static string OccurrencesUnsupportedKeepReason => Text("MotifApp.OccurrencesUnsupportedKeepReason");
@@ -4036,14 +4036,14 @@ public static class MotifAppStrings
     public static string OccurrencesStateNoAnalysis => Text("MotifApp.OccurrencesStateNoAnalysis");
     public static string OccurrencesStateGuessed => Text("MotifApp.OccurrencesStateGuessed");
     public static string OccurrencesStateStored => Text("MotifApp.OccurrencesStateStored");
-    public static string OccurrencesPlacesFormat => Text("MotifApp.OccurrencesPlacesFormat");
+    public static string OccurrencesPlacesPattern => Text("MotifApp.OccurrencesPlacesPattern");
     public static string OccurrencesPlacesHint => Text("MotifApp.OccurrencesPlacesHint");
     public static string OccurrencesPlaceFormat => Text("MotifApp.OccurrencesPlaceFormat");
     public static string OccurrencesPlaceStaged => Text("MotifApp.OccurrencesPlaceStaged");
     public static string OccurrencesPlaceApproved => Text("MotifApp.OccurrencesPlaceApproved");
     public static string OccurrencesIncludePlace => Text("MotifApp.OccurrencesIncludePlace");
     public static string OccurrencesAnalysis => Text("MotifApp.OccurrencesAnalysis");
-    public static string OccurrencesApproveFormat => Text("MotifApp.OccurrencesApproveFormat");
+    public static string OccurrencesApprovePattern => Text("MotifApp.OccurrencesApprovePattern");
     public static string OccurrencesApproveOne => Text("MotifApp.OccurrencesApproveOne");
     public static string OccurrencesAskClaude => Text("MotifApp.OccurrencesAskClaude");
     public static string OccurrencesNotAWord => Text("MotifApp.OccurrencesNotAWord");
@@ -4179,5 +4179,10 @@ public static class MotifAppStrings
     public static string ProgressReadTexts => Text("MotifApp.ProgressReadTexts");
     public static string ProgressParseUnavailable => Text("MotifApp.ProgressParseUnavailable");
     #endregion
+    // fix1-word
+    public static string WordsHeadingParserSteps => Text("MotifApp.WordsHeadingParserSteps");
+    public static string WordsHeadingProposalParserSteps => Text("MotifApp.WordsHeadingProposalParserSteps");
+    public static string OccurrencesReadingCountPattern => Text("MotifApp.OccurrencesReadingCountPattern");
+    public static string OccurrencesSingleReadingNote => Text("MotifApp.OccurrencesSingleReadingNote");
     #endregion
 }

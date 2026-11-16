@@ -90,15 +90,13 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
         MotifAppStrings.OccurrencesStateStored;
 
     /// <summary>The count of every place in the Context, as a sentence.</summary>
-    public string PlacesText => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OccurrencesPlacesFormat, TotalCount);
+    public string PlacesText => PluralText.Format(MotifAppStrings.OccurrencesPlacesPattern, TotalCount);
 
     /// <summary>The label of the primary button, which names how many places it will keep.</summary>
-    public string ApproveLabel => SelectedCount == 1
-        ? MotifAppStrings.OccurrencesApproveOne
-        : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OccurrencesApproveFormat, SelectedCount);
+    public string ApproveLabel => PluralText.Format(MotifAppStrings.OccurrencesApprovePattern, SelectedCount);
 
     /// <summary>The count of places checked, as a sentence.</summary>
-    public string SelectedText => string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OccurrencesSelectedFormat, SelectedCount);
+    public string SelectedText => PluralText.Format(MotifAppStrings.OccurrencesSelectedPattern, SelectedCount);
 
     /// <summary>Which places the shown page covers, so a long list can be paged.</summary>
     public string RangeText => TotalCount == 0 ? string.Empty : string.Format(CultureInfo.CurrentCulture,
@@ -107,6 +105,17 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
     public bool HasPreviousPage => PageOffset > 0;
     public bool HasNextPage => PageOffset + PageSize < TotalCount;
     public bool HasPages => TotalCount > PageSize;
+    /// <summary>
+    /// The word's readings in one line: the chooser below is the one place to pick, and it is shown only when
+    /// there is more than one to pick from; a single reading is named here and already chosen.
+    /// </summary>
+    public string ReadingSummary => Readings.Count switch
+    {
+        0 => string.Empty,
+        1 => Readings[0].Label,
+        _ => PluralText.Format(MotifAppStrings.OccurrencesReadingCountPattern, Readings.Count),
+    };
+
     public bool HasReadingChoice => Readings.Count > 1;
     public bool HasStatus => !string.IsNullOrEmpty(StatusSentence);
     public bool HasNoReadings => !HasReadings;
@@ -253,7 +262,7 @@ public sealed partial class WordOccurrencesViewModel : ObservableObject
                 }
             }
             StatusSentence = written.Count == places.Count
-                ? string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OccurrencesStagedStatusFormat, written.Count)
+                ? PluralText.Format(MotifAppStrings.OccurrencesStagedStatusPattern, written.Count)
                 : string.Format(CultureInfo.CurrentCulture, MotifAppStrings.OccurrencesPartlyStagedStatusFormat, written.Count, places.Count);
         }
         catch (Exception)

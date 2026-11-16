@@ -16,7 +16,7 @@ internal static class WordListHeadings
         WordListColumn.Meaning => meaningHeader,
         WordListColumn.Places => "Places",
         WordListColumn.Warnings => "Warnings",
-        WordListColumn.Time => schema == WordListSchemas.WithProposalOnly ? "Proposal Time" : "Time",
+        WordListColumn.Time => schema == WordListSchemas.WithProposalOnly ? MotifAppStrings.WordsHeadingProposalParserSteps : MotifAppStrings.WordsHeadingParserSteps,
         WordListColumn.Read => "Read",
         WordListColumn.Next => "Next",
         _ => string.Empty,

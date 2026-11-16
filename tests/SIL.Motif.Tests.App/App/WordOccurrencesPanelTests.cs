@@ -249,7 +249,8 @@ public sealed class WordOccurrencesPanelTests
                 .Where(c => c.Focusable && c.IsEffectivelyVisible && c.IsEnabled && c is Button or CheckBox or ComboBox)
                 .ToList();
             Assert.Contains(focusable, c => AutomationProperties_Id(c) == AutomationIds.WordOccurrencesApprove);
-            Assert.Contains(focusable, c => AutomationProperties_Id(c) == AutomationIds.WordOccurrencesReading);
+            // One reading is named in the summary and already chosen; the chooser appears only with several.
+            Assert.DoesNotContain(focusable, c => AutomationProperties_Id(c) == AutomationIds.WordOccurrencesReading);
             var first = PlaceBoxes(panel).First();
             first.Focus();
             window.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, " ");
