@@ -264,14 +264,21 @@ public static class HypothesisCommands
             CommandOutcome<HypothesisNeighboursResponse>.Success(new(query, [], false, false)),
             (database, _) =>
         {
-            var ledger = new HypothesisRepository(database);
-            var found = ledger.Neighbours(change, environment, hostClass, slot);
-            var items = found.Select(h => Brief(ledger, h)).ToList();
-            return CommandOutcome<HypothesisNeighboursResponse>.Success(new HypothesisNeighboursResponse(query, items,
-                found.Any(h => h.Status == HypothesisStatuses.Passed),
-                found.Any(h => h.Status == HypothesisStatuses.Failed ||
-                    ledger.Tests(h.HypothesisId).Any(t => t.Verdict == HypothesisVerdicts.Fail))));
+            return CommandOutcome<HypothesisNeighboursResponse>.Success(
+                NeighboursOf(new HypothesisRepository(database), query, change, environment, hostClass, slot));
         });
+    }
+
+    /// <summary>What the ledger already says about one shape, read through a ledger the caller opened.</summary>
+    internal static HypothesisNeighboursResponse NeighboursOf(HypothesisRepository ledger, string query, string change,
+        string environment, string hostClass, string slot)
+    {
+        var found = ledger.Neighbours(change, environment, hostClass, slot);
+        var items = found.Select(h => Brief(ledger, h)).ToList();
+        return new HypothesisNeighboursResponse(query, items,
+            found.Any(h => h.Status == HypothesisStatuses.Passed),
+            found.Any(h => h.Status == HypothesisStatuses.Failed ||
+                ledger.Tests(h.HypothesisId).Any(t => t.Verdict == HypothesisVerdicts.Fail)));
     }
 
     /// <summary>One hypothesis by id, or a page of them in id order.</summary>

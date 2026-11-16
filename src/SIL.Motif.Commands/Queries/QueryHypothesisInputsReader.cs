@@ -19,7 +19,8 @@ internal static class QueryHypothesisInputsReader
             throw new ArgumentException("A held-out word set cannot also be the evidence word set: held-out words are read by control alone, as counts.");
         var configuration = new ProjectConfigurationReader().Read(project);
         var path = ProjectConfigurationReader.PathFor(project);
-        IReadOnlyCollection<string> Words(IEnumerable<string> ids)
+        var weights = new Dictionary<string, long>(StringComparer.Ordinal);
+        IReadOnlyCollection<string> Words(IEnumerable<string> ids, Dictionary<string, long>? weigh = null)
         {
             var words = new HashSet<string>(StringComparer.Ordinal);
             foreach (var id in ids.Distinct(StringComparer.Ordinal))
@@ -29,12 +30,16 @@ internal static class QueryHypothesisInputsReader
                 if (set.Role != "sampled-tokens" || set.Manifest is null)
                     throw new ArgumentException($"Word set '{id}' has role {set.Role}; only sampled-tokens sets are attested evidence, " +
                         "and a paradigm cell or reference set is generated.");
-                foreach (var member in ReviewWordSetManifestReader.Read(set.ResolveManifestPath(path)!, set.Role).Members) words.Add(member.Word);
+                foreach (var member in ReviewWordSetManifestReader.Read(set.ResolveManifestPath(path)!, set.Role).Members)
+                {
+                    words.Add(member.Word);
+                    if (weigh is not null && member.Token is { } token) weigh[member.Word] = weigh.GetValueOrDefault(member.Word) + token.Weight;
+                }
             }
             return words;
         }
-        return new QueryHypothesisInputs(Words(change.WordSets), Words(discovery), Words(heldOut), formEntries ?? [],
-            () => ReadParse(database, project));
+        return new QueryHypothesisInputs(Words(change.WordSets, weights), Words(discovery), Words(heldOut), formEntries ?? [],
+            () => ReadParse(database, project), weights.Count == 0 ? null : weights);
     }
 
     private static QueryParseEvidence? ReadParse(MotifDatabase database, ProjectLocator project)

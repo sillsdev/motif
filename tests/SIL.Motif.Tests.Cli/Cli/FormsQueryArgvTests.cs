@@ -74,4 +74,58 @@ public sealed class FormsQueryArgvTests
         Assert.DoesNotContain("cli.unexpected", result.Output + result.Error, StringComparison.Ordinal);
         Assert.DoesNotContain("Unknown option", result.Output + result.Error, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task EvidenceAndAnalysisFlagsReachTheReleasedExecutableAndNeedAGrouping()
+    {
+        var members = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(members, "a1\na2\n");
+            foreach (var args in new[]
+                {
+                    new[] { "query", "evidence", "stems", "--project", "unused.fwdata", "--members", members },
+                    new[] { "query", "evidence", "forms", "--project", "unused.fwdata" },
+                    new[] { "query", "stems", "--project", "unused.fwdata", "--score", "size", "--context", "final:2=ud", "--exception", "features=KEEP" },
+                })
+            {
+                var result = await CliProcess.RunAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")), null, false, args);
+                Assert.NotEqual(0, result.ExitCode);
+                Assert.DoesNotContain("cli.unexpected", result.Output + result.Error, StringComparison.Ordinal);
+                Assert.DoesNotContain("Unknown option", result.Output + result.Error, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        finally { File.Delete(members); }
+    }
+
+    [Fact]
+    public async Task EvidenceOverAStoredSnapshotPrintsOneScreenAndNamesTheLedgerNeighbours()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "motif-query-evidence", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var path = Path.Combine(root, "project.fwdata");
+        try
+        {
+            File.WriteAllText(path, "marker");
+            var forms = Enumerable.Range(0, 6).Select(i => new QueryForm("v" + i, $"sar{i}ng", $"sad{i}ng", "alternate", "e" + i, "stem", "", [], ["Verb"], 10 - i))
+                .Append(new QueryForm("x", "other", "other", "lexeme", "ex", "stem", "", [], ["Verb"], 1)).ToList();
+            var snapshot = new QueryFactsReader.Snapshot(forms, ["ng"], 0);
+            var outcome = ProjectStoreCommand.Run(path, "1.0", (database, _) =>
+            {
+                using var connection = database.OpenConnection();
+                using var transaction = connection.BeginTransaction();
+                QuerySnapshotStore.Replace(connection, transaction,
+                    new QuerySnapshotStore.Stored("trial", "grammar", "bundle", "ws", snapshot, File.GetLastWriteTimeUtc(path).Ticks));
+                transaction.Commit();
+                return CommandOutcome<string>.Success("ok");
+            });
+            Assert.True(outcome.Succeeded, outcome.Refusal?.Message);
+            var result = await CliProcess.RunAsync(Path.Combine(root, "worker"), null, false,
+                "query", "evidence", "forms", "--project", path, "--where", "kind=alternate");
+            Assert.True(result.ExitCode == 0, result.FailureDetails);
+            Assert.Contains("Same shape", result.Output, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("rule attempt", result.Output, StringComparison.OrdinalIgnoreCase);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
 }

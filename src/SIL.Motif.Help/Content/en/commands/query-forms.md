@@ -38,6 +38,18 @@ motif query objects --project "project.fwdata" --where class=environment --where
 motif query stems --project "project.fwdata" --change d>r --at final --affixes an,un,on,i,a --wordset union --score reliability,tolerance
 ```
 
+## Splitting a pattern and weighing its size
+
+`--score split` asks whether a grouping of rows is a rule. The deviants are the rows `--exception` selects, the ids in a `--members` file, or, under `--change` with a `--wordset`, the rows whose unchanged form alone is attested. In one pass it tallies about 30 context values (edges, shape, category, features, environments, the change itself) and keeps a context only if it covers the deviants, predicts them reliably, is smaller than listing them, can be stated in shapes FieldWorks itself can create, and holds on the held-out set. Outcome A is a sub-rule, B is predictable but not expressible as a rule, and C is a lexical list. A context that covers fewer than 20 rows is reported only as too few to tell. A second context is looked for once, among the rows the first leaves. Anything it could not decide reads `not-checked`; held-out words are never shown, only counts, and only from 20 words. `--score size` weighs the encodings in objects plus tag references, for the context a `--context <selector>` names, or against the opposite polarity when none is given.
+
+## One screen of evidence
+
+`motif query evidence stems|forms --where <selector>` (or `--members <file>`) prints the shared contexts, the counter-examples, the tolerance, reliability and control, the size, the same-shape count with ledger neighbours, the top examples and the words whose evidence is undecided as questions for a speaker. Scorers that need a change or word sets and did not get them are listed as not measured. Five or more rows of one shape mean a rule attempt is required.
+
+```powershell
+motif query evidence stems --project "project.fwdata" --where "final:2=ad" --change d>r --at final --affixes an,un --wordset union
+```
+
 ## Saved queries
 
 `motif query saved <measure-id>` runs the query that detects the same items as the Measure: `P-msa-no-category`, `P-statement-unused`, `P-env-duplicate`, `P-feature-few-carriers` and `P-lexeme-near-duplicate`. The Measure remains the command that records findings; the saved query lists the items and nothing else.

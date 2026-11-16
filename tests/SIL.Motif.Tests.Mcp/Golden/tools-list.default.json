@@ -10295,7 +10295,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Scorers run over the whole universe: tolerance, reliability, control; needs change and no group."
+          "description": "Scorers run over the whole universe: tolerance, reliability, control (need change), split, size (stems or forms); no group."
         },
         "exceptions": {
           "type": "array",
@@ -10340,6 +10340,53 @@
             "msa",
             "stem"
           ]
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Row ids that are the deviants of split and size, or the grouping of evidence."
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "col": {
+                "type": "string",
+                "description": "Column name."
+              },
+              "op": {
+                "type": "string",
+                "description": "Selector operator.",
+                "enum": [
+                  "is",
+                  "in",
+                  "not",
+                  "~",
+                  "has",
+                  "\u003C",
+                  "\u003E"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "description": "Selector value."
+              }
+            },
+            "required": [
+              "col",
+              "op",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "ANDed selectors naming the context size weighs."
+        },
+        "evidence": {
+          "type": "boolean",
+          "description": "Return the one-screen evidence composite for the grouping that where or members names, over stems or forms."
         },
         "project": {
           "type": "string",

@@ -5,6 +5,7 @@ using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Host.Config;
 using SIL.Motif.Host.Parsimony;
 using SIL.Motif.Host.Store;
+using SIL.Motif.Worker.Store;
 
 namespace SIL.Motif.Commands.Queries;
 
@@ -79,6 +80,12 @@ public static class FormsQueryCommand
                             _ => throw new ArgumentException($"Unknown query source '{query.From}'."),
                         };
                         result = FormQuery.RunRows(query, rows ?? [], snapshot.Snapshot.Graphemes);
+                    }
+                    if (result.Evidence?.SameShape is { } shape)
+                    {
+                        var ledger = HypothesisCommands.NeighboursOf(new HypothesisRepository(database), $"change={shape.Change}",
+                            shape.Change, "", "", "");
+                        result = result with { Evidence = result.Evidence with { SameShape = shape with { Ledger = ledger } } };
                     }
                     using var latest = connection.CreateCommand();
                     latest.Transaction = transaction;

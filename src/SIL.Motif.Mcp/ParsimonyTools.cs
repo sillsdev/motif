@@ -45,12 +45,18 @@ internal static class ParsimonyTools
                     ("heldOut", Schema.StringArray("Held-out word sets; control returns counts only."), false),
                     ("controls", Schema.Integer("Control letters tried.", 1, 9), false),
                     ("controlLetters", Schema.StringArray("Control letters to use instead of the chosen ones."), false)), false),
-                ("score", Schema.StringArray("Scorers run over the whole universe: tolerance, reliability, control; needs change and no group."), false),
+                ("score", Schema.StringArray("Scorers run over the whole universe: tolerance, reliability, control (need change), split, size (stems or forms); no group."), false),
                 ("exceptions", Schema.Array("ANDed selectors marking a universe row an exception for tolerance.", Schema.Object(
                     ("col", Schema.String("Column name."), true),
                     ("op", Schema.String("Selector operator.", "is", "in", "not", "~", "has", "<", ">"), true),
                     ("value", Schema.String("Selector value."), true))), false),
-                ("unit", Schema.String("Unit the scorers claim.", "msa", "stem"), false)),
+                ("unit", Schema.String("Unit the scorers claim.", "msa", "stem"), false),
+                ("members", Schema.StringArray("Row ids that are the deviants of split and size, or the grouping of evidence."), false),
+                ("context", Schema.Array("ANDed selectors naming the context size weighs.", Schema.Object(
+                    ("col", Schema.String("Column name."), true),
+                    ("op", Schema.String("Selector operator.", "is", "in", "not", "~", "has", "<", ">"), true),
+                    ("value", Schema.String("Selector value."), true))), false),
+                ("evidence", Schema.Boolean("Return the one-screen evidence composite for the grouping that where or members names, over stems or forms."), false)),
             true, true, false, true,
             (c, a, ct) =>
             {

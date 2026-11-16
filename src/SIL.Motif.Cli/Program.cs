@@ -1927,11 +1927,14 @@ try
         {
             var queryUsage = UsageLineFor("query forms");
             var saved = positionals.Count == 2 && positionals[0] == "saved";
-            if (!(saved || positionals.Count == 1 && QuerySources.All.Contains(positionals[0])) ||
+            var evidenceQuery = positionals.Count == 2 && positionals[0] == "evidence" && positionals[1] is "stems" or "forms";
+            var querySource = evidenceQuery ? positionals[1] : positionals[0];
+            if (!(saved || evidenceQuery || positionals.Count == 1 && QuerySources.All.Contains(positionals[0])) ||
                 !flags.TryGetValue("project", out var queryProject)) return Usage(queryUsage, asJson);
             var allowed = saved ? new[] { "project", "examples", "json", "trial" }
                 : ["project", "where", "group", "min-count", "examples", "ids", "raw-letters", "json", "trial", "fold", "distinct",
-                    "change", "at", "affixes", "wordset", "discovery", "heldout", "score", "exception", "unit", "controls", "control-letters", "test-result"];
+                    "change", "at", "affixes", "wordset", "discovery", "heldout", "score", "exception", "unit", "controls", "control-letters", "test-result",
+                    "members", "context"];
             if (flags.Keys.Any(key => !allowed.Contains(key))) return Usage(queryUsage, asJson);
             if (!int.TryParse(flags.GetValueOrDefault("min-count", "1"), out var minCount) || minCount < 1 ||
                 !int.TryParse(flags.GetValueOrDefault("examples", "5"), out var examples) || examples is < 0 or > 1000)
@@ -1962,6 +1965,21 @@ try
                         try { exceptions.Add(QueryConditionParser.Parse(rest[i])); }
                         catch (ArgumentException) { return Usage(queryUsage, asJson); }
                     }
+                var contexts = new List<QueryCondition>();
+                for (var i = 0; i < rest.Length; i++)
+                    if (rest[i] == "--context")
+                    {
+                        if (++i >= rest.Length || rest[i].StartsWith("--", StringComparison.Ordinal))
+                            return Usage(queryUsage, asJson);
+                        try { contexts.Add(QueryConditionParser.Parse(rest[i])); }
+                        catch (ArgumentException) { return Usage(queryUsage, asJson); }
+                    }
+                string[]? memberIds = null;
+                if (flags.TryGetValue("members", out var membersFile))
+                {
+                    if (!File.Exists(membersFile)) return Usage(queryUsage, asJson);
+                    memberIds = [.. File.ReadLines(membersFile).Select(line => line.Trim()).Where(line => line.Length > 0)];
+                }
                 string[] List(string name) => flags.TryGetValue(name, out var list)
                     ? list.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : [];
                 QueryHypothesis? hypothesis = null;
@@ -1977,10 +1995,11 @@ try
                     return Usage(queryUsage, asJson);
                 var groupList = flags.TryGetValue("group", out var groupColumns)
                     ? groupColumns.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) : [];
-                record = new QueryRecord(positionals[0], selectors, groupList, minCount, examples, flags.ContainsKey("ids"),
+                record = new QueryRecord(querySource, selectors, groupList, minCount, examples, flags.ContainsKey("ids"),
                     flags.ContainsKey("raw-letters"), flags.GetValueOrDefault("trial"), flags.GetValueOrDefault("fold"),
                     flags.GetValueOrDefault("distinct"), hypothesis, flags.ContainsKey("score") ? List("score") : null,
-                    exceptions.Count == 0 ? null : exceptions, flags.GetValueOrDefault("unit"));
+                    exceptions.Count == 0 ? null : exceptions, flags.GetValueOrDefault("unit"), memberIds,
+                    contexts.Count == 0 ? null : contexts, evidenceQuery);
             }
             var groups = record.Group;
             var queryOutcome = FormsQueryCommand.Run(new FormsQueryRequest(queryProject, CliProductVersion(), record));
@@ -2003,19 +2022,13 @@ try
                 if (!record.Ids) lines.Add($"Trial {response.TrialId} | grammar {response.GrammarHash}");
                 if (response.IsStale && !record.Ids) lines.Add("This evidence is stale: a newer Trial or project save exists.");
                 foreach (var note in response.NotMeasured) (record.Ids ? (Action<string>)Console.Error.WriteLine : lines.Add)(note);
-                foreach (var score in response.Result.Scores ?? [])
-                {
-                    lines.Add($"{score.Scorer} ({score.Unit})\t{score.Version}");
-                    lines.Add("  " + string.Join(", ", score.Counts.Select(pair => $"{pair.Key}={pair.Value}").Concat(
-                        score.Numbers.Select(pair => $"{pair.Key}={(pair.Value is { } number ? number.ToString("0.####", CultureInfo.InvariantCulture) : "undefined")}"))) +
-                        (score.Verdict is null ? "" : $", verdict={score.Verdict}"));
-                    if (score.Controls is { } controlHits) lines.Add("  controls: " + string.Join(", ", controlHits.Select(pair => $"{pair.Key}={pair.Value}")));
-                    foreach (var note in score.Notes) lines.Add("  " + note);
-                }
+                lines.AddRange(QueryEvidenceText.Scores(response.Result.Scores ?? []));
+                if (response.Result.Evidence is { } evidenceScreen) lines.AddRange(QueryEvidenceText.Evidence(evidenceScreen));
                 var columns = QuerySources.StoredColumns(record.From == "forms" ? "stems" : record.From);
                 if (record.Change is not null) columns = [.. columns, "predicted", "evidence", "collides"];
                 string Item(QueryItem item) => item.Id + "\t" + string.Join("\t", columns.Select(c => string.Join(",", item.Values[c])));
-                if (record.Ids)
+                if (record.Evidence) { }
+                else if (record.Ids)
                     lines.AddRange(response.Result.Ids);
                 else if (groups.Count == 0 && record.From != "forms")
                     lines.AddRange((response.Result.Items ?? []).Select(Item));
