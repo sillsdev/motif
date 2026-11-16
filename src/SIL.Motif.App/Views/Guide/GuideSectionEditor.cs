@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -47,6 +48,7 @@ public sealed partial class GuideSectionEditor : UserControl
     private readonly TextBlock _target;
     private readonly ContentControl _fieldHost;
     private readonly WrapPanel _toolbar;
+    private readonly List<(ToggleButton Button, int Property)> _formatToggles = [];
     private Task _staging = Task.CompletedTask;
     private bool _applying;
     private bool _isEditing = true;
@@ -266,16 +268,17 @@ public sealed partial class GuideSectionEditor : UserControl
 
     private void BuildToolbar()
     {
-        Button Toggle(string text, string name, FontWeight weight, FontStyle style, TextDecorationCollection? decorations, Func<bool> action)
+        ToggleButton Toggle(string text, string name, FontWeight weight, FontStyle style, TextDecorationCollection? decorations, int property, Func<bool> action)
         {
-            var button = new Button
+            var button = new ToggleButton
             {
                 Content = new TextBlock { Text = text, FontWeight = weight, FontStyle = style, TextDecorations = decorations },
                 Focusable = false,
                 Classes = { "guideTool" },
             };
             Avalonia.Automation.AutomationProperties.SetName(button, name);
-            button.Click += (_, _) => action();
+            button.Click += (_, _) => { action(); UpdateFormatButtons(); };
+            _formatToggles.Add((button, property));
             return button;
         }
 
@@ -287,9 +290,9 @@ public sealed partial class GuideSectionEditor : UserControl
         _toolbar.Children.Add(_sourceToggle);
         _toolbar.Children.Add(_paragraphStyles);
         _toolbar.Children.Add(_characterStyles);
-        _toolbar.Children.Add(Toggle("B", MotifAppStrings.GuideBold, FontWeight.Bold, FontStyle.Normal, null, ToggleBold));
-        _toolbar.Children.Add(Toggle("I", MotifAppStrings.GuideItalic, FontWeight.Normal, FontStyle.Italic, null, ToggleItalic));
-        _toolbar.Children.Add(Toggle("U", MotifAppStrings.GuideUnderline, FontWeight.Normal, FontStyle.Normal, TextDecorations.Underline, ToggleUnderline));
+        _toolbar.Children.Add(Toggle("B", MotifAppStrings.GuideBold, FontWeight.Bold, FontStyle.Normal, null, TextPropertyNumbers.Bold, ToggleBold));
+        _toolbar.Children.Add(Toggle("I", MotifAppStrings.GuideItalic, FontWeight.Normal, FontStyle.Italic, null, TextPropertyNumbers.Italic, ToggleItalic));
+        _toolbar.Children.Add(Toggle("U", MotifAppStrings.GuideUnderline, FontWeight.Normal, FontStyle.Normal, TextDecorations.Underline, TextPropertyNumbers.Underline, ToggleUnderline));
         _toolbar.Children.Add(_writingSystems);
         _toolbar.Children.Add(_links);
         var insertPathLink = new Button { Content = MotifAppStrings.GuideInsertLink, Focusable = false };
@@ -331,6 +334,13 @@ public sealed partial class GuideSectionEditor : UserControl
         var markdown = Field?.IsSourceMode == true;
         foreach (var control in _toolbar.Children) control.IsEnabled = control == _sourceToggle || !markdown;
         _toolbar.IsVisible = _isEditing && _markdownDocument is null;
+        UpdateFormatButtons();
+    }
+
+    private void UpdateFormatButtons()
+    {
+        foreach (var (button, property) in _formatToggles)
+            button.IsChecked = Field is not null && Session?.IsFormatOn(property) == true;
     }
 
     private void ShowChoices(GdrDiscussion discussion)
@@ -785,6 +795,8 @@ public sealed partial class GuideSectionEditor : UserControl
         };
         field.SourceForm = new DiscussionSourceForm(discussion, _projectName);
         field.ContextMenuRequested += OnContextMenuRequested;
+        field.Editor.CaretMoved += () => { if (Field == field) UpdateFormatButtons(); };
+        field.Editor.DocumentChanged += (_, _, _) => { if (Field == field) UpdateFormatButtons(); };
         field.SourceModeChanged += (_, change) =>
         {
             _status.Text = _announced = change.Announcement;

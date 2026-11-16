@@ -1,6 +1,8 @@
 using SIL.Motif.App;
 using SIL.Motif.App.Views.Guide;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Interactivity;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
@@ -85,6 +87,59 @@ public sealed partial class GuideEditorTests
             Assert.Equal((TextPropertyNumbers.VariationEnum, 1), words.Props.Ints[TextPropertyNumbers.Italic]);
             Assert.Equal((TextPropertyNumbers.VariationEnum, TextPropertyNumbers.UnderlineSingle), words.Props.Ints[TextPropertyNumbers.Underline]);
             Assert.False(StagedFirst(store).Runs[1].Props?.Ints.ContainsKey(TextPropertyNumbers.Bold) ?? false);
+        });
+    }
+
+    [Theory]
+    [InlineData(TextPropertyNumbers.Bold, "Strong", "B", TextPropertyNumbers.ToggleOn)]
+    [InlineData(TextPropertyNumbers.Italic, "Emphasis", "I", TextPropertyNumbers.ToggleOn)]
+    [InlineData(TextPropertyNumbers.Underline, "Underlined", "U", TextPropertyNumbers.UnderlineDouble)]
+    public void StyleOnlyFormattingTogglesOffAndBackWithoutRedundantRunProperties(int property, string style, string label, int on)
+    {
+        _avalonia.Invoke(() =>
+        {
+            var store = new FakeStore();
+            var window = Staging(store, record =>
+            {
+                var shown = Canned(record);
+                var properties = new GdrTextProperties(
+                    new Dictionary<int, GdrIntProperty> { [property] = new(TextPropertyNumbers.VariationEnum, on) },
+                    new Dictionary<int, string>());
+                return shown with
+                {
+                    Styles = [.. shown.Styles.Where(item => item.Name != style), new GdrStyle(style, GdrStyleKind.Character,
+                        new Dictionary<string, GdrTextProperties> { ["en"] = properties })],
+                };
+            });
+            using var closer = window.CloseOnExit();
+            Select(window, 0, 0, "Words".Length);
+            Assert.True(window.ApplyCharacterStyle(style));
+            var button = window.GetLogicalDescendants().OfType<Button>()
+                .Single(item => item.Content is TextBlock text && text.Text == label);
+            var initiallyChecked = (button as ToggleButton)?.IsChecked;
+            int before = window.Session!.UndoSteps;
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var run = window.Field!.Editor.Document.Paragraphs[0].Runs[0];
+            Assert.Equal(new IntPropValue(TextPropertyNumbers.VariationEnum, TextPropertyNumbers.ToggleOff), run.Props.IntProps[property]);
+            Assert.True(initiallyChecked);
+            Assert.False(Assert.IsType<ToggleButton>(button).IsChecked);
+            Assert.Equal(before + 1, window.Session.UndoSteps);
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            run = window.Field.Editor.Document.Paragraphs[0].Runs[0];
+            Assert.False(run.Props.IntProps.ContainsKey(property));
+            Assert.Equal(style, run.Props.StrProps[TextPropertyNumbers.NamedStyle]);
+            Assert.True(((ToggleButton)button).IsChecked);
+            Assert.Equal(before + 2, window.Session.UndoSteps);
+            Assert.True(window.Session.Undo());
+            Select(window, 0, 0, "Words".Length);
+            Assert.False(((ToggleButton)button).IsChecked);
+            Assert.True(window.Session.Redo());
+            Select(window, 0, 0, "Words".Length);
+            Assert.True(((ToggleButton)button).IsChecked);
+            Leave(window);
+            var stored = StagedFirst(store).Runs[0];
+            Assert.Equal(style, stored.CharacterStyle);
+            Assert.False(stored.Props!.Ints.ContainsKey(property));
         });
     }
 

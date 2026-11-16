@@ -137,13 +137,16 @@ public sealed class GdrDiscussionSession
     }
 
     /// <summary>Turns bold on for the selected text, or off when all of it is bold; returns whether anything changed.</summary>
-    public bool ToggleBold() => Toggle(TextPropertyNumbers.Bold, TextPropertyNumbers.ToggleOn);
+    public bool ToggleBold() => Toggle(TextPropertyNumbers.Bold);
 
     /// <summary>Turns italic on for the selected text, or off when all of it is italic; returns whether anything changed.</summary>
-    public bool ToggleItalic() => Toggle(TextPropertyNumbers.Italic, TextPropertyNumbers.ToggleOn);
+    public bool ToggleItalic() => Toggle(TextPropertyNumbers.Italic);
 
     /// <summary>Underlines the selected text, or removes the underline when all of it is underlined; returns whether anything changed.</summary>
-    public bool ToggleUnderline() => Toggle(TextPropertyNumbers.Underline, TextPropertyNumbers.UnderlineSingle);
+    public bool ToggleUnderline() => Toggle(TextPropertyNumbers.Underline);
+
+    /// <summary>Whether every formattable selected run resolves on for bold, italic or underline.</summary>
+    public bool IsFormatOn(int property) => SelectionFormatting.IsOn(_field.Editor, _field.StyleResolver, property, IsFormattingTarget);
 
     /// <summary>Gives the selected text the character style <paramref name="style"/>, or none when it is null; returns whether anything changed.</summary>
     public bool ApplyCharacterStyle(string? style) => FormatSelection(_ => run =>
@@ -200,15 +203,17 @@ public sealed class GdrDiscussionSession
         return true;
     }
 
-    private bool Toggle(int property, int on) => FormatSelection(runs =>
+    private bool Toggle(int property)
     {
-        var allOn = runs.All(run => run.Props.TryGetInt(property, out var value) && value == on);
-        return run =>
-        {
-            if (allOn) run.Props.IntProps.Remove(property);
-            else run.Props.SetInt(property, on, TextPropertyNumbers.VariationEnum);
-        };
-    });
+        if (_field.IsReadOnly) return false;
+        var editor = _field.Editor;
+        var delta = SelectionFormatting.Toggle(editor, _field.StyleResolver, property, IsFormattingTarget);
+        if (delta is null) return false;
+        editor.Ordered(out var start, out var end);
+        return Push(delta, start, end);
+    }
+
+    private static bool IsFormattingTarget(Run run) => !IsEmbedded(run) && !GdrDiscussion.IsMarker(run);
 
     // An embedded object, such as a picture, keeps its own properties; a link's text formats like any other text.
     private static bool IsEmbedded(Run run) => run.IsObject && run.Text == "￼";
