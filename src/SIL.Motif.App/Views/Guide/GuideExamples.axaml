@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Guide.GuideExamples"
+             x:DataType="vm:GrammarGuideExamplesViewModel"
+             IsVisible="{Binding IsVisible}"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideExamples}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/GrammarGuideScoped.axaml" />
+  </UserControl.Styles>
+  <StackPanel Classes="guideBlock">
+    <views:CopyableTextBlock Classes="guideBlockTitle" Text="{x:Static app:MotifAppStrings.GuideExamplesHeading}" />
+    <ListBox x:Name="GuideExamplesList" Classes="guideList" ItemsSource="{Binding Examples}"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideExamplesHeading}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:GuideExample">
+          <Border Classes="guideNameRow">
+            <StackPanel>
+              <views:CopyableTextBlock Text="{Binding Shape}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Classes="guideMeta" Text="{Binding Reading}" TextWrapping="Wrap" />
+              <views:CopyableTextBlock Classes="guideMeta" Text="{Binding Place}" TextWrapping="Wrap" />
+            </StackPanel>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </StackPanel>
+</UserControl>

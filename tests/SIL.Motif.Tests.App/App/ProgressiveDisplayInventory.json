@@ -484,10 +484,32 @@
   {
     "view": "Pages/GrammarGuidePage",
     "name": "GrammarGuideRecords",
-    "source": "Records",
+    "source": "Parts",
+    "mode": "tree",
+    "control": "TreeView"
+  },
+  {
+    "view": "Pages/GrammarGuidePage",
+    "name": "GrammarGuideHeadings",
+    "source": "Headings",
     "mode": "rows",
     "control": "ListBox"
   },
+  {
+    "view": "Guide/GuideGrammarNames",
+    "name": "GuideGrammarNamesList",
+    "source": "GrammarNames",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+  {
+    "view": "Guide/GuideExamples",
+    "name": "GuideExamplesList",
+    "source": "Examples",
+    "mode": "rows",
+    "control": "ListBox"
+  },
+
   {
     "view": "Texts/SourcesPanel",
     "name": "SourcesPanelTextsItems",

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
+using SIL.Motif.App.Preview;
 using SIL.Motif.App.Services;
 using SIL.Motif.Commands;
 using SIL.Motif.Contract.Responses;
@@ -7,9 +8,9 @@ using SIL.Motif.Runner.Operations;
 using SIL.TextEditing;
 using SIL.TextEditing.Avalonia;
 
-namespace SIL.Motif.App.Preview;
+namespace SIL.Motif.App.Views.Guide;
 
-public sealed partial class GdrPreviewWindow
+public sealed partial class GuideSectionEditor
 {
     private GdrMarkdownDocument? _markdownDocument;
     private GdrShowResponse? _markdownStart;
@@ -45,7 +46,7 @@ public sealed partial class GdrPreviewWindow
             await _staging;
             if (_shownId != id) return false;
             if (_refused.TryGetValue(id, out var refusal)) { _status.Text = refusal; return false; }
-            if (_locked.Contains(id) || _show(id) is not { } shown) return false;
+            if (_locked.Contains(id) || await _show(id) is not { } shown) return false;
             _markdownPending.Clear();
             async Task<RichStringAlternative[]> Read(string field, IReadOnlyList<RichStringAlternative> alternatives)
             {
@@ -71,29 +72,29 @@ public sealed partial class GdrPreviewWindow
                 _markdownDocument = new GdrMarkdownDocument(withPending, _projectName, opened.Field.Editor.Document.Paragraphs);
             }
             catch (InvalidOperationException ex) { _status.Text = ex.Message; return false; }
-            _markdownBox = new TextBox { AcceptsReturn = true, Text = _markdownDocument.Text, TextWrapping = Avalonia.Media.TextWrapping.NoWrap };
-            var bar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            _markdownBox = new TextBox { AcceptsReturn = true, Text = _markdownDocument.Text, TextWrapping = Avalonia.Media.TextWrapping.NoWrap, Classes = { "guideMarkdown" } };
+            var bar = new StackPanel { Orientation = Orientation.Horizontal, Classes = { "guideBar" } };
             Button Button(string title, Action action)
             {
                 var button = new Button { Content = title };
                 button.Click += (_, _) => action();
                 return button;
             }
-            bar.Children.Add(Button("Save", async () => await SaveMarkdownAsync()));
-            bar.Children.Add(Button("Back to fields", () => BackToFields()));
-            bar.Children.Add(Button("Throw away my Markdown changes", DiscardMarkdown));
-            bar.Children.Add(Button("Reload", async () => await ReloadMarkdownAsync()));
-            bar.Children.Add(Button("Copy Markdown", async () =>
+            bar.Children.Add(Button(MotifAppStrings.GuideMarkdownSave, async () => await SaveMarkdownAsync()));
+            bar.Children.Add(Button(MotifAppStrings.GuideMarkdownBack, () => BackToFields()));
+            bar.Children.Add(Button(MotifAppStrings.GuideMarkdownThrowAway, DiscardMarkdown));
+            bar.Children.Add(Button(MotifAppStrings.GuideMarkdownReload, async () => await ReloadMarkdownAsync()));
+            bar.Children.Add(Button(MotifAppStrings.GuideMarkdownCopy, async () =>
             {
-                await new AvaloniaClipboard(this).SetTextAsync(MarkdownText);
+                if (TopLevel.GetTopLevel(this) is { } top) await new AvaloniaClipboard(top).SetTextAsync(MarkdownText);
             }));
             var panel = new DockPanel();
             DockPanel.SetDock(bar, Dock.Top);
             panel.Children.Add(bar);
             panel.Children.Add(_markdownBox);
-            _toolbar.IsVisible = false;
-            _scroll.Content = panel;
-            _status.Text = "Editing as Markdown";
+            _fieldHost.Content = panel;
+            ShowToolbar();
+            _status.Text = MotifAppStrings.GuideEditingAsMarkdown;
             return true;
         }
         finally { _markdownOpening = false; }
@@ -118,7 +119,7 @@ public sealed partial class GdrPreviewWindow
                 var field = new RichTextField(discussion.Document);
                 var session = new GdrDiscussionSession(field, id);
                 var form = new DiscussionSourceForm(discussion, _projectName);
-                field.Editor.ReplaceParagraphs(change.Paragraphs, form.AreEquivalent, form.Fingerprint, "Edit as Markdown");
+                field.Editor.ReplaceParagraphs(change.Paragraphs, form.AreEquivalent, form.Fingerprint, MotifAppStrings.GuideEditAsMarkdown);
                 session.EndSession();
                 paragraphs = session.Pending is { } pending ? GdrDiscussionPayload.From(pending, discussion, _markdownPendingParagraphs?.Expected)
                     : EmptyParagraphs(start);
@@ -145,13 +146,13 @@ public sealed partial class GdrPreviewWindow
             _markdownSaving = false;
             if (_markdownBox is not null) _markdownBox.IsReadOnly = false;
         }
-        if (result.Refusal is { } error) { _status.Text = error + " Reload or copy your Markdown."; return false; }
+        if (result.Refusal is { } error) { _status.Text = error + MotifAppStrings.GuideMarkdownReloadOrCopy; return false; }
         _markdownUndo = new GdrMarkdownEdits(id, undo, undoParagraphs);
         _staged.Add(id);
         DiscardMarkdown();
         _opened.Remove(id);
-        Show(id);
-        _status.Text = $"{result.Count} changes not applied yet. Undo: Edit as Markdown. {string.Join(" ", read.Warnings)}";
+        await ShowAsync(id);
+        _status.Text = string.Format(System.Globalization.CultureInfo.CurrentCulture, MotifAppStrings.GuideMarkdownSavedFormat, result.Count, string.Join(" ", read.Warnings));
         return true;
     }
 
@@ -167,8 +168,8 @@ public sealed partial class GdrPreviewWindow
         if (result.Refusal is { } error) { _status.Text = error; return false; }
         _markdownUndo = null;
         _opened.Remove(undo.Target);
-        if (_shownId == undo.Target) Show(undo.Target);
-        _status.Text = "Undid Edit as Markdown.";
+        if (_shownId == undo.Target) await ShowAsync(undo.Target);
+        _status.Text = MotifAppStrings.GuideMarkdownUndone;
         return true;
     }
 
@@ -176,8 +177,8 @@ public sealed partial class GdrPreviewWindow
     public bool BackToFields()
     {
         if (_markdownDocument is null) return true;
-        if (_markdownSaving || _markdownOpening) { _status.Text = "Wait for the Markdown operation to finish."; return false; }
-        if (MarkdownDirty) { _status.Text = "Save or throw away your Markdown changes before leaving."; return false; }
+        if (_markdownSaving || _markdownOpening) { _status.Text = MotifAppStrings.GuideMarkdownWait; return false; }
+        if (MarkdownDirty) { _status.Text = MotifAppStrings.GuideMarkdownSaveFirstLeaving; return false; }
         DiscardMarkdown();
         return true;
     }
@@ -189,8 +190,8 @@ public sealed partial class GdrPreviewWindow
         _markdownDocument = null;
         _markdownBox = null;
         _markdownStart = null;
-        _toolbar.IsVisible = true;
-        if (_shownId is { } id && _opened.TryGetValue(id, out var opened)) _scroll.Content = opened.Field;
+        if (_shownId is { } id && _opened.TryGetValue(id, out var opened)) _fieldHost.Content = opened.Field;
+        ShowToolbar();
     }
 
     /// <summary>Refreshes the project and opens the record again, discarding the current Markdown.</summary>
@@ -209,7 +210,7 @@ public sealed partial class GdrPreviewWindow
         if (error is not null) { _status.Text = error; return false; }
         DiscardMarkdown();
         _opened.Remove(id);
-        Show(id);
+        await ShowAsync(id);
         await Loading;
         return await OpenMarkdownAsync();
     }

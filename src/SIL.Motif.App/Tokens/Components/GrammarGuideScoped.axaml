@@ -1,0 +1,127 @@
+<!-- Grammar Guide styles that only its own views use. Those views include this file, so no other control tries these selectors. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SIL.Motif.App.Views">
+  <!-- Below this width the outline sits above the section instead of beside it. -->
+  <Style Selector="Grid.guidePage">
+    <Setter Property="(views:GrammarGuidePage.PanelBreakpoint)" Value="{StaticResource Primitive.Size.760}" />
+  </Style>
+  <Style Selector="Border.guideOutline.beside">
+    <Setter Property="Width" Value="{DynamicResource Primitive.Size.280}" />
+  </Style>
+  <Style Selector="Border.guideOutline.stacked">
+    <Setter Property="MaxHeight" Value="{DynamicResource Primitive.Size.240}" />
+  </Style>
+  <Style Selector="ComboBox.guideChoice">
+    <Setter Property="MinWidth" Value="{DynamicResource Primitive.Size.140}" />
+    <Setter Property="Margin" Value="{DynamicResource Primitive.Inset.0_0_6_0}" />
+  </Style>
+  <Style Selector=":is(Button).guideTool">
+    <Setter Property="Margin" Value="{DynamicResource Primitive.Inset.0_0_6_0}" />
+  </Style>
+  <Style Selector="TextBox.guidePath">
+    <Setter Property="MinWidth" Value="{DynamicResource Primitive.Size.280}" />
+  </Style>
+  <Style Selector=":is(TextBlock).guideHint">
+    <Setter Property="Margin" Value="{DynamicResource Primitive.Inset.6_0_0_0}" />
+  </Style>
+  <Style Selector="StackPanel.guidePathRow">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+    <Setter Property="Margin" Value="{DynamicResource Primitive.Inset.0_4_0_4}" />
+  </Style>
+  <Style Selector="StackPanel.guideBar">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
+  <Style Selector="TextBox.guideMarkdown">
+    <Setter Property="MinHeight" Value="{DynamicResource Primitive.Size.240}" />
+  </Style>
+  <Style Selector="StackPanel.guideDialogBody">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Panel}" />
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
+  </Style>
+  <Style Selector="StackPanel.guideDialogButtons">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+  <Style Selector=":is(TextBlock).guideDialogText">
+    <Setter Property="MaxWidth" Value="{DynamicResource Primitive.Size.420}" />
+  </Style>
+  <Style Selector="ListBox.guideList">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+    <Setter Property="MaxHeight" Value="{DynamicResource Primitive.Size.240}" />
+  </Style>
+  <Style Selector="ListBox.guideList ListBoxItem">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.None}" />
+  </Style>
+  <Style Selector="Border.guideEditor">
+    <Setter Property="MinHeight" Value="{DynamicResource Primitive.Size.320}" />
+  </Style>
+  <Style Selector=":is(TextBlock).guideHeadingItem.sub">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Row}" />
+  </Style>
+  <Style Selector="Border.guideOutline">
+    <Setter Property="Background" Value="{DynamicResource Intent.Surface.Subtle}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.Box}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Row}" />
+  </Style>
+  <Style Selector="TreeView.guideSections">
+    <Setter Property="Background" Value="{DynamicResource Intent.Clear}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.None}" />
+  </Style>
+  <Style Selector="TreeView.guideSections TreeViewItem">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Navigation}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector="TreeView.guideSections TreeViewItem /template/ ToggleButton:empty">
+    <Setter Property="IsEnabled" Value="False" />
+  </Style>
+  <Style Selector=":is(TextBlock).guideHeading">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Title}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Text}" />
+  </Style>
+  <Style Selector=":is(TextBlock).guideBlockTitle">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Section}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Intent.Weight.Section}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Accent}" />
+  </Style>
+  <Style Selector=":is(TextBlock).guideMeta">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+  </Style>
+  <Style Selector=":is(TextBlock).guideMissing">
+    <Setter Property="Foreground" Value="{DynamicResource Intent.Danger.Text}" />
+  </Style>
+  <Style Selector="StackPanel.guideBlock">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Related}" />
+  </Style>
+  <Style Selector="Border.guideNameRow">
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Row}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Intent.Border}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Intent.Stroke.DividerBottom}" />
+  </Style>
+  <Style Selector="Border.guideNotice">
+    <Setter Property="Background" Value="{DynamicResource Intent.Severity.Warning.Fill}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Notice}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+  </Style>
+  <Style Selector="WrapPanel.guideToolbar">
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Row}" />
+  </Style>
+  <Style Selector="Border.guideStrip">
+    <Setter Property="Background" Value="{DynamicResource Intent.Severity.Warning.Fill}" />
+    <Setter Property="Padding" Value="{DynamicResource Intent.Inset.Notice}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Intent.Radius.Control}" />
+  </Style>
+  <Style Selector="StackPanel.guideActions">
+    <Setter Property="Spacing" Value="{DynamicResource Intent.Space.Group}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Row}" />
+  </Style>
+  <Style Selector=":is(TextBlock).guideTarget">
+    <Setter Property="FontSize" Value="{DynamicResource Intent.Type.Caption}" />
+    <Setter Property="Foreground" Value="{DynamicResource Intent.TextMuted}" />
+    <Setter Property="Margin" Value="{DynamicResource Intent.Inset.Row}" />
+  </Style>
+</Styles>

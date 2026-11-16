@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             x:Class="SIL.Motif.App.Views.Guide.GuideSectionEditor"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideSectionEditor}"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideEditorName}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/GrammarGuideScoped.axaml" />
+  </UserControl.Styles>
+  <DockPanel LastChildFill="True">
+    <WrapPanel x:Name="Toolbar" DockPanel.Dock="Top" Classes="guideToolbar" IsVisible="False"
+               AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideEditorToolbar}" />
+    <Border x:Name="StaleStrip" DockPanel.Dock="Top" Classes="guideStrip" IsVisible="False"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideEditorStale}">
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Intent.Space.Group}">
+        <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.GuideStaleMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        <Button x:Name="CompareButton" Content="{x:Static app:MotifAppStrings.GuideCompare}" />
+      </StackPanel>
+    </Border>
+    <Border x:Name="UnappliedStrip" DockPanel.Dock="Top" Classes="guideStrip" IsVisible="False">
+      <views:CopyableTextBlock Text="{x:Static app:MotifAppStrings.GuideUnappliedMessage}" TextWrapping="Wrap" />
+    </Border>
+    <StackPanel x:Name="Actions" DockPanel.Dock="Bottom" Classes="guideActions" Orientation="Horizontal">
+      <Button x:Name="ApplyButton" Content="{x:Static app:MotifAppStrings.GuideApply}" IsVisible="False"
+              AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideEditorApply}" />
+      <Button x:Name="UndoMarkdownButton" Content="{x:Static app:MotifAppStrings.GuideUndoMarkdown}" IsVisible="False" />
+      <views:CopyableTextBlock x:Name="Status" TextWrapping="Wrap" VerticalAlignment="Center"
+                 AutomationProperties.LiveSetting="Polite"
+                 AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideEditorStatus}" />
+    </StackPanel>
+    <views:CopyableTextBlock x:Name="Target" DockPanel.Dock="Bottom" TextWrapping="Wrap" Classes="guideTarget" />
+    <ContentControl x:Name="FieldHost" />
+  </DockPanel>
+</UserControl>

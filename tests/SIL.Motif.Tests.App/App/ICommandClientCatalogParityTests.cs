@@ -89,6 +89,9 @@ public sealed class ICommandClientCatalogParityTests
     {
         nameof(ICommandClient.ListGrammarGuideAsync),
         nameof(ICommandClient.ShowGrammarGuideAsync),
+        // W11a: a path lookup reads the Baseline; the edit store stages in the Draft.
+        nameof(ICommandClient.LinkGrammarGuidePathAsync),
+        nameof(ICommandClient.OpenGrammarGuideEditStore),
         nameof(ICommandClient.ListKnownProjectsAsync),
         nameof(ICommandClient.GetCurrentBaselineAsync),
         nameof(ICommandClient.ListRationaleRevisionsAsync),

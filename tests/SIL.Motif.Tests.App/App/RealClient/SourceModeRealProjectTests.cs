@@ -1,3 +1,4 @@
+using SIL.Motif.App.Views.Guide;
 using Avalonia.Headless;
 using SIL.LCModel;
 using SIL.LCModel.Core.KernelInterfaces;
@@ -38,7 +39,7 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
         {
             await using var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(root));
             var store = new GdrEditStore(path, root, runner);
-            var window = new GdrPreviewWindow([shown.Record], id => Show(path, id), store,
+            var window = new GuideEditorWindow([shown.Record], id => Show(path, id), store,
                 () => Task.FromResult(true), projectName: Path.GetFileNameWithoutExtension(path));
             using var closer = window.CloseOnExit();
             window.Show();
@@ -78,7 +79,7 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
             var store = new GdrEditStore(path, root, runner);
             var staged = await store.StageMarkdownAsync(new GdrMarkdownEdits(shown.Record.Id, [initial], null));
             Assert.Null(staged.Refusal);
-            var window = new GdrPreviewWindow([shown.Record], id => Show(path, id), store,
+            var window = new GuideEditorWindow([shown.Record], id => Show(path, id), store,
                 () => Task.FromResult(true), projectName: Path.GetFileNameWithoutExtension(path));
             using var closer = window.CloseOnExit();
             window.Show();
@@ -119,7 +120,7 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
         AvaloniaHeadlessFixture.RunUntilComplete(async () =>
         {
             await using var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(root));
-            var window = new GdrPreviewWindow([record.Record], shown => GdrQuery.Show(new GdrShowRequest(path, shown)).Value,
+            var window = new GuideEditorWindow([record.Record], shown => GdrQuery.Show(new GdrShowRequest(path, shown)).Value,
                 new GdrEditStore(path, root, runner), () => Task.FromResult(true), projectName: Path.GetFileNameWithoutExtension(path));
             using var closer = window.CloseOnExit();
             window.Show();
@@ -178,7 +179,7 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
         {
             await using var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(root));
             var compared = new List<CompareWindow>();
-            var window = new GdrPreviewWindow([record.Record], shown => GdrQuery.Show(new GdrShowRequest(path, shown)).Value,
+            var window = new GuideEditorWindow([record.Record], shown => GdrQuery.Show(new GdrShowRequest(path, shown)).Value,
                 new GdrEditStore(path, root, runner), () => Task.FromResult(true), projectName: Path.GetFileNameWithoutExtension(path),
                 compare: compare =>
                 {
@@ -215,9 +216,9 @@ public sealed class SourceModeRealProjectTests(PristineProjectFixture pristine)
             Assert.False(window.ToggleSourceMode());
             Assert.True(field.IsSourceMode);
             Assert.False(await window.CompareAsync());
-            Assert.Equal(GdrPreviewWindow.MarkdownFixFirstMessage, window.StatusText);
+            Assert.Equal(GuideSectionEditor.MarkdownFixFirstMessage, window.StatusText);
             Assert.False(await window.ApplyAsync());
-            Assert.Equal(GdrPreviewWindow.MarkdownFixFirstMessage, window.StatusText);
+            Assert.Equal(GuideSectionEditor.MarkdownFixFirstMessage, window.StatusText);
             Assert.Empty(compared);
             Assert.True(field.IsSourceMode);
 

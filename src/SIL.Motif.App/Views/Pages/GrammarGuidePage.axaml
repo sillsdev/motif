@@ -3,25 +3,71 @@
              xmlns:app="clr-namespace:SIL.Motif.App"
              xmlns:views="clr-namespace:SIL.Motif.App.Views"
              xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
-             xmlns:responses="clr-namespace:SIL.Motif.Contract.Responses;assembly=SIL.Motif.Contract"
              x:Class="SIL.Motif.App.Views.GrammarGuidePage"
              x:DataType="vm:GrammarGuidePageModel">
-  <Grid Margin="{DynamicResource Intent.Inset.Page}" RowDefinitions="Auto,*" ColumnDefinitions="*,2*" RowSpacing="{DynamicResource Intent.Space.Group}">
-    <views:CopyableTextBlock Grid.ColumnSpan="2" Classes="displayTitle" Text="{x:Static app:MotifAppStrings.GrammarGuide}" />
-    <ListBox Grid.Row="1" x:Name="GrammarGuideRecords" ItemsSource="{Binding Records}" SelectedItem="{Binding SelectedRecord}"
-             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GrammarGuideSections}"
-             AutomationProperties.Name="{x:Static app:MotifAppStrings.GrammarGuide}">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="responses:GdrSummary">
-          <views:CopyableTextBlock Text="{Binding Title}" TextWrapping="Wrap" />
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-    <ScrollViewer Grid.Row="1" Grid.Column="1">
-      <StackPanel>
-        <views:CopyableTextBlock Classes="section-title" Text="{Binding SelectedRecord.Title}" TextWrapping="Wrap" />
-        <ContentControl x:Name="DiscussionHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GrammarGuideDiscussion}" />
-      </StackPanel>
-    </ScrollViewer>
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/GrammarGuideScoped.axaml" />
+  </UserControl.Styles>
+  <Grid Margin="{DynamicResource Intent.Inset.Page}" RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Intent.Space.Group}">
+    <views:CopyableTextBlock Classes="displayTitle" Text="{x:Static app:MotifAppStrings.GrammarGuide}" />
+    <Border Grid.Row="1" Classes="guideNotice" IsVisible="{Binding HasNotice}"
+            AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideNotice}">
+      <views:CopyableTextBlock Text="{Binding Notice}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+    </Border>
+    <views:CopyableTextBlock Grid.Row="2" Classes="muted" Text="{Binding EmptyText}" TextWrapping="Wrap" IsVisible="{Binding HasEmptyText}" />
+    <Grid Grid.Row="2" x:Name="GuideBody" Classes="guidePage" RowDefinitions="Auto,*" ColumnDefinitions="Auto,*"
+          RowSpacing="{DynamicResource Intent.Space.Group}" ColumnSpacing="{DynamicResource Intent.Space.Section}"
+          IsVisible="{Binding !HasEmptyText}">
+      <Border x:Name="Outline" Classes="guideOutline" Grid.RowSpan="2">
+        <TreeView x:Name="GrammarGuideRecords" Classes="guideSections" ItemsSource="{Binding Parts}"
+                  SelectedItem="{Binding SelectedSection, Mode=TwoWay}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  AutomationProperties.AutomationId="{x:Static app:AutomationIds.GrammarGuideSections}"
+                  AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideSectionsName}">
+          <TreeView.Styles>
+            <Style Selector="TreeViewItem" x:DataType="vm:GrammarGuideSection">
+              <Setter Property="AutomationProperties.Name" Value="{Binding Record.Title}" />
+            </Style>
+          </TreeView.Styles>
+          <TreeView.ItemTemplate>
+            <TreeDataTemplate x:DataType="vm:GrammarGuideSection" ItemsSource="{Binding Children}">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Intent.Space.Related}">
+                <views:CopyableTextBlock Classes="guideMeta" Text="{Binding Record.Abbreviation}" VerticalAlignment="Top" />
+                <views:CopyableTextBlock Grid.Column="1" Text="{Binding Record.Title}" TextWrapping="Wrap" />
+              </Grid>
+            </TreeDataTemplate>
+          </TreeView.ItemTemplate>
+        </TreeView>
+      </Border>
+      <ScrollViewer x:Name="Reading" Grid.Column="1" Grid.RowSpan="2" IsVisible="{Binding HasSelection}">
+        <StackPanel Spacing="{DynamicResource Intent.Space.Section}">
+          <Grid ColumnDefinitions="*,Auto">
+            <views:CopyableTextBlock Classes="guideHeading" Text="{Binding SelectedTitle}" TextWrapping="Wrap" />
+            <ToggleButton x:Name="EditToggle" Grid.Column="1" VerticalAlignment="Top"
+                          AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideEdit}" />
+          </Grid>
+          <views:CopyableTextBlock Classes="guideMeta" Text="{x:Static app:MotifAppStrings.GuideStaleNotice}" TextWrapping="Wrap"
+                     IsVisible="{Binding IsShownStale}" />
+          <StackPanel Classes="guideBlock" IsVisible="{Binding HasHeadings}"
+                      AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideHeadings}">
+            <views:CopyableTextBlock Classes="guideBlockTitle" Text="{x:Static app:MotifAppStrings.GuideOnThisPage}" />
+            <ListBox x:Name="GrammarGuideHeadings" Classes="guideList" ItemsSource="{Binding Headings}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideOnThisPage}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:GuideHeading">
+                  <views:CopyableTextBlock Classes="guideHeadingItem" Classes.sub="{Binding IsSubheading}" Text="{Binding Text}" TextWrapping="Wrap" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+          <Border Classes="guideEditor">
+            <ContentControl x:Name="DiscussionHost" AutomationProperties.AutomationId="{x:Static app:AutomationIds.GrammarGuideDiscussion}"
+                            AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideDiscussionName}" />
+          </Border>
+          <ContentControl x:Name="ExamplesHost" />
+          <ContentControl x:Name="NamesHost" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
   </Grid>
 </UserControl>

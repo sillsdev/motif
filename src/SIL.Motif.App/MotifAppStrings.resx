@@ -7639,4 +7639,70 @@ Never included unless you tick it in the preview: local details, which may conta
   <data name="MotifApp.OccurrencesAskNotSent" xml:space="preserve"><value>The request could not be made. Nothing was changed.</value><comment>Word panel: shown when asking Claude about a word fails before a Request is made.</comment></data>
   <data name="MotifApp.OccurrencesPageNotRead" xml:space="preserve"><value>These places could not be read. Nothing was changed.</value><comment>Word panel: shown when paging to another page of places fails.</comment></data>
   <data name="MotifApp.WordCardWhereItAppears" xml:space="preserve"><value>Where It Appears</value><comment>Word card heading above the places a word occurs, shown only where no shared places panel lists them.</comment></data>
+  <!-- W11a Grammar Guide -->
+  <data name="MotifApp.GuideEdit" xml:space="preserve"><value>Edit</value></data>
+  <data name="MotifApp.GuideDone" xml:space="preserve"><value>Done</value></data>
+  <data name="MotifApp.GuideApply" xml:space="preserve"><value>Apply Pending Changes</value></data>
+  <data name="MotifApp.GuideUndoMarkdown" xml:space="preserve"><value>Undo Edit as Markdown</value></data>
+  <data name="MotifApp.GuideOpenMarkdown" xml:space="preserve"><value>Open as Markdown…</value></data>
+  <data name="MotifApp.GuideMarkdownToggle" xml:space="preserve"><value>Markdown</value></data>
+  <data name="MotifApp.GuideMarkdownToggleName" xml:space="preserve"><value>Markdown</value></data>
+  <data name="MotifApp.GuideEditAsMarkdown" xml:space="preserve"><value>Edit as Markdown</value></data>
+  <data name="MotifApp.GuideParagraphStyle" xml:space="preserve"><value>Paragraph Style</value></data>
+  <data name="MotifApp.GuideCharacterStyle" xml:space="preserve"><value>Character Style</value></data>
+  <data name="MotifApp.GuideWritingSystem" xml:space="preserve"><value>Writing System</value></data>
+  <data name="MotifApp.GuideLinkToSection" xml:space="preserve"><value>Link to a Section</value></data>
+  <data name="MotifApp.GuideLinkPathPlaceholder" xml:space="preserve"><value>Link to a project path, such as /lexicon/entry</value></data>
+  <data name="MotifApp.GuideInsertLink" xml:space="preserve"><value>Insert Link</value></data>
+  <data name="MotifApp.GuideBold" xml:space="preserve"><value>Bold</value></data>
+  <data name="MotifApp.GuideItalic" xml:space="preserve"><value>Italic</value></data>
+  <data name="MotifApp.GuideUnderline" xml:space="preserve"><value>Underline</value></data>
+  <data name="MotifApp.GuideNoCharacterStyle" xml:space="preserve"><value>(No Character Style)</value></data>
+  <data name="MotifApp.GuideEditorName" xml:space="preserve"><value>Section Editor</value></data>
+  <data name="MotifApp.GuideCompare" xml:space="preserve"><value>Compare…</value></data>
+  <data name="MotifApp.GuideStaleMessage" xml:space="preserve"><value>This Discussion was also changed in FieldWorks. Your typing is safe.</value></data>
+  <data name="MotifApp.GuideUnappliedMessage" xml:space="preserve"><value>This Discussion shows your edit that is not applied yet.</value></data>
+  <data name="MotifApp.GuideCouldNotStage" xml:space="preserve"><value>There is nothing to compare yet: your edit could not be added to the pending changes. </value></data>
+  <data name="MotifApp.GuideNothingToCompare" xml:space="preserve"><value>There is nothing to compare: your pending changes no longer hold an edit of this Discussion.</value></data>
+  <data name="MotifApp.GuideNothingAppliedCouldNotStage" xml:space="preserve"><value>Nothing was applied: an edit could not be added to the pending changes. </value></data>
+  <data name="MotifApp.GuideApplied" xml:space="preserve"><value>Applied.</value></data>
+  <data name="MotifApp.GuideNothingApplied" xml:space="preserve"><value>Nothing was applied.</value></data>
+  <data name="MotifApp.GuideStaysReadOnlyFormat" xml:space="preserve"><value>This Discussion stays read-only: its pending edit could not be read. Select it again to retry. {0}</value></data>
+  <data name="MotifApp.GuideStartAgainTitle" xml:space="preserve"><value>Start Again from the FieldWorks Text</value></data>
+  <data name="MotifApp.GuideGoBack" xml:space="preserve"><value>Go Back</value></data>
+  <data name="MotifApp.GuideDiscardMyEdit" xml:space="preserve"><value>Discard My Edit</value></data>
+  <data name="MotifApp.GuideStartAgainBody" xml:space="preserve"><value>Your edit of this Discussion will be thrown away and the Discussion shown as it is now in FieldWorks.</value></data>
+  <data name="MotifApp.GuideEditMatchesFieldWorks" xml:space="preserve"><value>Your edit now matches FieldWorks; nothing is left to apply.</value></data>
+  <data name="MotifApp.GuideEditFits" xml:space="preserve"><value>Your edit now fits. Apply when ready.</value></data>
+  <data name="MotifApp.GuideShowTarget" xml:space="preserve"><value>Show Target</value></data>
+  <data name="MotifApp.GuideLinkResolvedFormat" xml:space="preserve"><value>Resolved: {0} {1}</value></data>
+  <data name="MotifApp.GuideLinkStaleSuffix" xml:space="preserve"><value> (the project has been saved since this Baseline)</value></data>
+  <data name="MotifApp.GuideLinkBrokenFormat" xml:space="preserve"><value>Broken: {0}</value></data>
+  <data name="MotifApp.GuideMarkdownSave" xml:space="preserve"><value>Save</value></data>
+  <data name="MotifApp.GuideMarkdownBack" xml:space="preserve"><value>Back to Fields</value></data>
+  <data name="MotifApp.GuideMarkdownThrowAway" xml:space="preserve"><value>Throw Away My Markdown Changes</value></data>
+  <data name="MotifApp.GuideMarkdownReload" xml:space="preserve"><value>Reload</value></data>
+  <data name="MotifApp.GuideMarkdownCopy" xml:space="preserve"><value>Copy Markdown</value></data>
+  <data name="MotifApp.GuideEditingAsMarkdown" xml:space="preserve"><value>Editing as Markdown</value></data>
+  <data name="MotifApp.GuideMarkdownWait" xml:space="preserve"><value>Wait for the Markdown operation to finish.</value></data>
+  <data name="MotifApp.GuideMarkdownSaveFirstLeaving" xml:space="preserve"><value>Save or throw away your Markdown changes before leaving.</value></data>
+  <data name="MotifApp.GuideMarkdownSaveFirstClosing" xml:space="preserve"><value>Save or throw away your Markdown changes before closing.</value></data>
+  <data name="MotifApp.GuideMarkdownSavedFormat" xml:space="preserve"><value>{0} changes not applied yet. Undo: Edit as Markdown. {1}</value></data>
+  <data name="MotifApp.GuideMarkdownUndone" xml:space="preserve"><value>Undid Edit as Markdown.</value></data>
+  <data name="MotifApp.GuideMarkdownReloadOrCopy" xml:space="preserve"><value> Reload or copy your Markdown.</value></data>
+  <data name="MotifApp.GuideNoProject" xml:space="preserve"><value>Open a project to read its Grammar Guide.</value></data>
+  <data name="MotifApp.GuideNoRecords" xml:space="preserve"><value>This project has no Grammar Design Records yet. Add them in FieldWorks.</value></data>
+  <data name="MotifApp.GuideNoBaseline" xml:space="preserve"><value>The Grammar Guide appears after Motif has read the project once.</value></data>
+  <data name="MotifApp.GuideReadFailedFormat" xml:space="preserve"><value>The Grammar Guide could not be read. {0}</value></data>
+  <data name="MotifApp.GuideOpenFailed" xml:space="preserve"><value>FieldWorks could not be opened.</value></data>
+  <data name="MotifApp.GuideInTheGrammar" xml:space="preserve"><value>In the Grammar</value></data>
+  <data name="MotifApp.GuideLinkMissing" xml:space="preserve"><value>Missing: this object is no longer in the project.</value></data>
+  <data name="MotifApp.GuideLinkOutside" xml:space="preserve"><value>Outside This Project</value></data>
+  <data name="MotifApp.GuideOpenInFieldWorks" xml:space="preserve"><value>Open in FieldWorks</value></data>
+  <data name="MotifApp.GuideOpenNameFormat" xml:space="preserve"><value>Open {0} in FieldWorks</value></data>
+  <data name="MotifApp.GuideOnThisPage" xml:space="preserve"><value>On This Page</value></data>
+  <data name="MotifApp.GuideSectionsName" xml:space="preserve"><value>Grammar Guide Sections</value></data>
+  <data name="MotifApp.GuideExamplesHeading" xml:space="preserve"><value>Examples from Your Texts</value></data>
+  <data name="MotifApp.GuideStaleNotice" xml:space="preserve"><value>The project has been saved since this section was read. Your typing is safe.</value></data>
+  <data name="MotifApp.GuideDiscussionName" xml:space="preserve"><value>Discussion</value></data>
 </root>

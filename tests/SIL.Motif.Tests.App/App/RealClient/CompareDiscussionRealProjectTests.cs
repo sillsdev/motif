@@ -1,3 +1,4 @@
+using SIL.Motif.App.Views.Guide;
 using Avalonia.Headless;
 using Avalonia.Threading;
 using SIL.LCModel;
@@ -39,7 +40,7 @@ public sealed class CompareDiscussionRealProjectTests(PristineProjectFixture pri
             await using var runner = new InProcessRunnerLauncher(IsolatedRunner.Options(root));
             var store = new GdrEditStore(path, root, runner);
             var compared = new List<CompareWindow>();
-            var window = new GdrPreviewWindow([record.Record], shown => GdrQuery.Show(new GdrShowRequest(path, shown)).Value, store,
+            var window = new GuideEditorWindow([record.Record], shown => GdrQuery.Show(new GdrShowRequest(path, shown)).Value, store,
                 () => Task.FromResult(true), compare: compare =>
                 {
                     compared.Add(compare);

@@ -98,7 +98,6 @@ public sealed partial class App : Application
         });
         Session = session;
         TextEditorPreviewWindow.ShowIfRequested(desktop.Args ?? []);
-        GdrPreviewWindow.ShowIfRequested(desktop.Args ?? []);
         SenseDefinitionPreviewWindow.ShowIfRequested(desktop.Args ?? []);
         return session;
     }

@@ -1,3 +1,5 @@
+using SIL.Motif.App;
+using SIL.Motif.App.Views.Guide;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
 using Avalonia.Controls;
@@ -14,11 +16,11 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 [Collection(AvaloniaHeadlessCollection.Name)]
-public sealed partial class GdrPreviewWindowTests
+public sealed partial class GuideEditorTests
 {
     private readonly AvaloniaHeadlessFixture _avalonia;
 
-    public GdrPreviewWindowTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
+    public GuideEditorTests(AvaloniaHeadlessFixture avalonia) => _avalonia = avalonia;
 
     private static GdrTextProperties Props(int? italic = null, string? style = null) => new(
         italic is { } value ? new Dictionary<int, GdrIntProperty> { [TextPropertyNumbers.Italic] = new(0, value) } : new Dictionary<int, GdrIntProperty>(),
@@ -58,7 +60,7 @@ public sealed partial class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second));
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second));
             using var closer = window.CloseOnExit();
             window.Show();
             Assert.Null(window.Field);
@@ -84,9 +86,9 @@ public sealed partial class GdrPreviewWindowTests
         });
     }
 
-    private static GdrPreviewWindow Opened(out IDisposable closer)
+    private static GuideEditorWindow Opened(out IDisposable closer)
     {
-        var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second));
+        var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second));
         closer = window.CloseOnExit();
         window.Show();
         window.Show(First.Id);
@@ -94,10 +96,10 @@ public sealed partial class GdrPreviewWindowTests
         return window;
     }
 
-    private static void Leave(GdrPreviewWindow window) =>
+    private static void Leave(GuideEditorWindow window) =>
         Assert.True(window.GetLogicalDescendants().OfType<ListBox>().Single().ContainerFromIndex(1)!.Focus());
 
-    private static void Press(GdrPreviewWindow window, Key key, RawInputModifiers modifiers = RawInputModifiers.None) =>
+    private static void Press(GuideEditorWindow window, Key key, RawInputModifiers modifiers = RawInputModifiers.None) =>
         window.KeyPress(key, modifiers, PhysicalKey.None, null);
 
     [Fact]
@@ -281,7 +283,7 @@ public sealed partial class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second));
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second));
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -289,23 +291,6 @@ public sealed partial class GdrPreviewWindowTests
 
             Assert.StartsWith("GDR-2  Spelling variants", window.HeadingText, StringComparison.Ordinal);
         });
-    }
-
-    [Theory]
-    [InlineData("1", true, true)]
-    [InlineData("1", false, false)]
-    [InlineData(null, true, false)]
-    [InlineData("0", true, false)]
-    public void PreviewIsRequestedOnlyByTheDeveloperFlagAndItsArgument(string? flag, bool argument, bool expected)
-    {
-        var args = argument ? new[] { GdrPreviewWindow.StartupArgument } : [];
-        Assert.Equal(expected, GdrPreviewWindow.IsRequested(flag, args));
-    }
-
-    [Fact]
-    public void PreviewWindowIsNotOpenedWithoutTheGate()
-    {
-        _avalonia.Invoke(() => Assert.Null(GdrPreviewWindow.ShowIfRequested([])));
     }
 
     private sealed class FakeStore(GdrApplyRefusal? applyRefusal = null) : IGdrEditStore
@@ -386,7 +371,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore();
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -414,7 +399,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore();
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -438,7 +423,7 @@ public sealed partial class GdrPreviewWindowTests
         {
             var store = new FakeStore();
             var applied = false;
-            var window = new GdrPreviewWindow([First, Second],
+            var window = new GuideEditorWindow([First, Second],
                 id => applied ? Split(First) : Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
@@ -473,7 +458,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore(new GdrApplyRefusal("The project is busy."));
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -497,7 +482,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore(new GdrApplyRefusal("The Source changed.", First.Id, ws, "LexSense.Source"));
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -527,7 +512,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -556,7 +541,7 @@ public sealed partial class GdrPreviewWindowTests
             var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
             var confirm = false;
             var refused = false;
-            var window = new GdrPreviewWindow([First, Second],
+            var window = new GuideEditorWindow([First, Second],
                 id => refused && id == First.Id ? ChangedInFieldWorks(First) : Canned(id == First.Id ? First : Second), store,
                 () => Task.FromResult(confirm));
             using var closer = window.CloseOnExit();
@@ -597,13 +582,13 @@ public sealed partial class GdrPreviewWindowTests
         };
     }
 
-    private (GdrPreviewWindow Window, FakeStore Store, List<CompareWindow> Compared) RefusedForDrift(
+    private (GuideEditorWindow Window, FakeStore Store, List<CompareWindow> Compared) RefusedForDrift(
         Func<CompareWindow, CompareOutcome?> leave, Func<Task<bool>>? confirm = null)
     {
         var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field)) { RemembersStaged = true };
         var refused = false;
         var compared = new List<CompareWindow>();
-        var window = new GdrPreviewWindow([First, Second],
+        var window = new GuideEditorWindow([First, Second],
             id => refused && id == First.Id ? AddedAtTheEndInFieldWorks(First) : Canned(id == First.Id ? First : Second), store,
             confirm ?? (() => Task.FromResult(true)),
             compare: shown =>
@@ -631,7 +616,7 @@ public sealed partial class GdrPreviewWindowTests
             store.Pending[First.Id] = new TextParagraphsPayload(GdrDiscussionPayload.Field, ["para-1", "para-2"],
                 [new TextParagraphChange(0, "para-1", "Normal", [new TextRun("aWords end at ", "en"), new TextRun("spaces", "en", "Emphasis")])], [],
                 new Dictionary<string, TextParagraphExpected> { ["para-1"] = began });
-            var window = new GdrPreviewWindow([First, Second], id => id == First.Id ? AddedAtTheEndInFieldWorks(First) : Canned(Second), store,
+            var window = new GuideEditorWindow([First, Second], id => id == First.Id ? AddedAtTheEndInFieldWorks(First) : Canned(Second), store,
                 () => Task.FromResult(true), compare: shown =>
                 {
                     Assert.Contains("from FieldWorks", shown.SummaryText, StringComparison.Ordinal);
@@ -669,7 +654,7 @@ public sealed partial class GdrPreviewWindowTests
             Assert.False(Completed(window.CompareAsync()));
 
             Assert.Empty(compared);
-            Assert.Equal(GdrPreviewWindow.CouldNotStageMessage + "The pending changes are busy.", window.StatusText);
+            Assert.Equal(GuideSectionEditor.CouldNotStageMessage + "The pending changes are busy.", window.StatusText);
         });
     }
 
@@ -685,7 +670,7 @@ public sealed partial class GdrPreviewWindowTests
             Assert.False(Completed(window.CompareAsync()));
 
             Assert.Empty(compared);
-            Assert.Equal(GdrPreviewWindow.NothingToCompareMessage, window.StatusText);
+            Assert.Equal(GuideSectionEditor.NothingToCompareMessage, window.StatusText);
         });
     }
 
@@ -699,7 +684,7 @@ public sealed partial class GdrPreviewWindowTests
             var linked = unkeyed with { Discussion = [unkeyed.Discussion[0] with { Key = "para-1" }] };
             var later = linked with { Discussion = [linked.Discussion[0] with { Runs = [.. linked.Discussion[0].Runs, new GdrRun(" always", "en", null, Props())] }] };
             var refused = false;
-            var window = new GdrPreviewWindow([First], _ => refused ? later : linked, store, () => Task.FromResult(true), compare: shown =>
+            var window = new GuideEditorWindow([First], _ => refused ? later : linked, store, () => Task.FromResult(true), compare: shown =>
             {
                 Assert.True(shown.Finish());
                 return Task.FromResult(shown.Outcome);
@@ -831,7 +816,7 @@ public sealed partial class GdrPreviewWindowTests
         ],
     };
 
-    private static ContextInfo At(GdrPreviewWindow window, int offset) =>
+    private static ContextInfo At(GuideEditorWindow window, int offset) =>
         window.Field!.Editor.DescribeContext(new TextPosition(0, offset), false);
 
     [Fact]
@@ -839,7 +824,7 @@ public sealed partial class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var window = new GdrPreviewWindow([First], _ => WithLinks());
+            var window = new GuideEditorWindow([First], _ => WithLinks());
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -859,7 +844,7 @@ public sealed partial class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var window = new GdrPreviewWindow([First], _ => WithLinks());
+            var window = new GuideEditorWindow([First], _ => WithLinks());
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -880,7 +865,7 @@ public sealed partial class GdrPreviewWindowTests
     {
         _avalonia.Invoke(() =>
         {
-            var window = new GdrPreviewWindow([First], _ => WithLinks());
+            var window = new GuideEditorWindow([First], _ => WithLinks());
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -902,7 +887,7 @@ public sealed partial class GdrPreviewWindowTests
             var store = new FakeStore();
             var linked = WithLinks();
             var keyed = linked with { Discussion = [linked.Discussion[0] with { Key = "para-1", RightToLeft = true }] };
-            var window = new GdrPreviewWindow([First, Second], _ => keyed, store);
+            var window = new GuideEditorWindow([First, Second], _ => keyed, store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -934,7 +919,7 @@ public sealed partial class GdrPreviewWindowTests
         {
             var store = new FakeStore(new GdrApplyRefusal("stale", First.Id, StaleField: GdrDiscussionPayload.Field));
             var refused = false;
-            var window = new GdrPreviewWindow([First, Second],
+            var window = new GuideEditorWindow([First, Second],
                 id => refused && id == First.Id ? ChangedInFieldWorks(First) : Canned(id == First.Id ? First : Second), store,
                 () => Task.FromResult(true));
             using var closer = window.CloseOnExit();
@@ -961,7 +946,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore { ApplyGate = new TaskCompletionSource() };
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -992,7 +977,7 @@ public sealed partial class GdrPreviewWindowTests
                 new TextParagraphChange(0, "para-1", "Normal", [new TextRun("Words end", "en")]),
                 new TextParagraphChange(1, null, "Normal", [new TextRun("New", "en")]),
             ], [], new Dictionary<string, TextParagraphExpected> { ["para-1"] = began });
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -1020,7 +1005,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore { StageRefusal = "The pending changes are busy." };
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -1052,7 +1037,7 @@ public sealed partial class GdrPreviewWindowTests
                 {
                     ["para-1"] = new("Words end at spaces", "Normal", TextRunsDigest.Of(Canned(First).Discussion[0])),
                 });
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -1083,7 +1068,7 @@ public sealed partial class GdrPreviewWindowTests
                 {
                     ["para-1"] = new("Words end", "Normal", TextRunsDigest.Of(Split(First).Discussion[0])),
                 });
-            var window = new GdrPreviewWindow([First, Second], _ => Split(First), store, () => Task.FromResult(true));
+            var window = new GuideEditorWindow([First, Second], _ => Split(First), store, () => Task.FromResult(true));
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -1114,7 +1099,7 @@ public sealed partial class GdrPreviewWindowTests
                 {
                     ["para-1"] = new("Words end at spaces", "Normal", TextRunsDigest.Of(Canned(First).Discussion[0])),
                 });
-            var window = new GdrPreviewWindow([First, Second], _ => ChangedInFieldWorks(First), store);
+            var window = new GuideEditorWindow([First, Second], _ => ChangedInFieldWorks(First), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -1131,7 +1116,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore();
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -1163,7 +1148,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore { ApplyGate = new TaskCompletionSource() };
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -1188,7 +1173,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore { PendingRefusal = "The project store is busy." };
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);
@@ -1205,7 +1190,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var store = new FakeStore { PendingRefusal = "The project store is busy." };
-            var window = new GdrPreviewWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
+            var window = new GuideEditorWindow([First, Second], id => Canned(id == First.Id ? First : Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(First.Id);

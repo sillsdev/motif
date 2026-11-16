@@ -1,3 +1,5 @@
+using SIL.Motif.App;
+using SIL.Motif.App.Views.Guide;
 using SIL.Motif.App.Preview;
 using SIL.Motif.Contract.Ids;
 using SIL.Motif.Contract.Responses;
@@ -12,7 +14,7 @@ using Xunit;
 
 namespace SIL.Motif.Tests.App;
 
-public sealed partial class GdrPreviewWindowTests
+public sealed partial class GuideEditorTests
 {
     [Fact]
     public void WholeRecordMarkdownRoundTripsWithoutChanges()
@@ -83,7 +85,7 @@ public sealed partial class GdrPreviewWindowTests
         _avalonia.Invoke(() =>
         {
             var shown = MarkdownRecord();
-            var window = new GdrPreviewWindow([shown.Record], _ => shown, new MarkdownStore());
+            var window = new GuideEditorWindow([shown.Record], _ => shown, new MarkdownStore());
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(shown.Record.Id);
@@ -91,7 +93,7 @@ public sealed partial class GdrPreviewWindowTests
             Assert.True(Completed(window.OpenMarkdownAsync()));
             window.MarkdownText += "unsaved";
             var copy = Assert.Single(window.GetLogicalDescendants().OfType<Button>(),
-                button => Equals(button.Content, "Copy Markdown"));
+                button => Equals(button.Content, MotifAppStrings.GuideMarkdownCopy));
             copy.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var clipboard = Assert.IsAssignableFrom<IClipboard>(window.Clipboard);
             Assert.Equal(window.MarkdownText, Completed(clipboard.TryGetTextAsync()));
@@ -105,7 +107,7 @@ public sealed partial class GdrPreviewWindowTests
         {
             var shown = MarkdownRecord();
             var store = new MarkdownStore();
-            var window = new GdrPreviewWindow([shown.Record], _ => shown, store);
+            var window = new GuideEditorWindow([shown.Record], _ => shown, store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(shown.Record.Id);
@@ -135,7 +137,7 @@ public sealed partial class GdrPreviewWindowTests
         {
             var shown = MarkdownRecord();
             var store = new MarkdownStore();
-            var window = new GdrPreviewWindow([shown.Record, Second], id => id == shown.Record.Id ? shown : Canned(Second), store);
+            var window = new GuideEditorWindow([shown.Record, Second], id => id == shown.Record.Id ? shown : Canned(Second), store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(shown.Record.Id);
@@ -150,11 +152,11 @@ public sealed partial class GdrPreviewWindowTests
             Assert.True(window.IsMarkdownOpen);
             Assert.Equal(kept, window.MarkdownText);
             Assert.Contains(window.GetLogicalDescendants().OfType<TextBox>(), box => box.Text == kept);
-            Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button => Equals(button.Content, "Save"));
+            Assert.Contains(window.GetLogicalDescendants().OfType<Button>(), button => Equals(button.Content, MotifAppStrings.GuideMarkdownSave));
             list.SelectedIndex = 1;
             Assert.Contains(window.GetLogicalDescendants().OfType<TextBox>(), box => box.Text == kept);
             var discard = Assert.Single(window.GetLogicalDescendants().OfType<Button>(),
-                button => Equals(button.Content, "Throw away my Markdown changes"));
+                button => Equals(button.Content, MotifAppStrings.GuideMarkdownThrowAway));
             window.Close();
             Assert.True(window.IsVisible);
             discard.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -170,7 +172,7 @@ public sealed partial class GdrPreviewWindowTests
         {
             var shown = MarkdownRecord();
             var store = new MarkdownStore();
-            var window = new GdrPreviewWindow([shown.Record], _ => shown, store);
+            var window = new GuideEditorWindow([shown.Record], _ => shown, store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(shown.Record.Id);
@@ -196,7 +198,7 @@ public sealed partial class GdrPreviewWindowTests
         {
             var shown = MarkdownRecord();
             var store = new MarkdownStore();
-            var window = new GdrPreviewWindow([shown.Record], _ => shown, store);
+            var window = new GuideEditorWindow([shown.Record], _ => shown, store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(shown.Record.Id);
@@ -217,7 +219,7 @@ public sealed partial class GdrPreviewWindowTests
         {
             var shown = MarkdownRecord();
             var store = new MarkdownStore();
-            var window = new GdrPreviewWindow([shown.Record], _ => shown, store);
+            var window = new GuideEditorWindow([shown.Record], _ => shown, store);
             using var closer = window.CloseOnExit();
             window.Show();
             window.Show(shown.Record.Id);

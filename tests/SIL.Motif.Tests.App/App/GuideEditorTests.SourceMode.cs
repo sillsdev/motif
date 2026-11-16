@@ -1,3 +1,5 @@
+using SIL.Motif.App;
+using SIL.Motif.App.Views.Guide;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
@@ -14,7 +16,7 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 // A Discussion shown and edited as FieldWorks Markdown (SIL.TextEditing ADR 0035).
-public sealed partial class GdrPreviewWindowTests
+public sealed partial class GuideEditorTests
 {
     private static GdrShowResponse WithLinks(GdrSummary record) => Canned(record) with
     {
@@ -36,7 +38,7 @@ public sealed partial class GdrPreviewWindowTests
 
     private static string CanonicalIdOf(string guid) => SIL.Motif.Contract.Ids.CanonicalId.FromGuid(new Guid(guid)).Value;
 
-    private static string Markdown(GdrPreviewWindow window) => window.Field!.SourceView!.Editor.Document.PlainText();
+    private static string Markdown(GuideEditorWindow window) => window.Field!.SourceView!.Editor.Document.PlainText();
 
     private static void Settle(Func<bool> done)
     {
@@ -55,7 +57,7 @@ public sealed partial class GdrPreviewWindowTests
             var field = window.Field!;
             var before = field.Editor.Document.Paragraphs.ToArray();
 
-            var toggle = window.GetLogicalDescendants().OfType<Button>().Single(button => Equals(button.Content, "Markdown"));
+            var toggle = window.GetLogicalDescendants().OfType<Button>().Single(button => Equals(button.Content, MotifAppStrings.GuideMarkdownToggle));
             toggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
             Assert.True(field.IsSourceMode);
             Assert.Equal("Editing as Markdown", window.StatusText);
@@ -72,14 +74,14 @@ public sealed partial class GdrPreviewWindowTests
             Assert.DoesNotContain(field.SourceView!.LanguageDiagnostics, finding => finding.Severity == DiagnosticSeverity.Error);
 
             // In Markdown the formatting is typed: only the toggle back stays on the bar.
-            Assert.False(List(window, "Paragraph style").IsEnabled);
-            Assert.False(List(window, "Character style").IsEnabled);
+            Assert.False(List(window, MotifAppStrings.GuideParagraphStyle).IsEnabled);
+            Assert.False(List(window, MotifAppStrings.GuideCharacterStyle).IsEnabled);
             Assert.True(toggle.IsEnabled);
 
             toggle.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
             Assert.False(field.IsSourceMode);
             Assert.Equal("Back to rich text", window.StatusText);
-            Assert.True(List(window, "Paragraph style").IsEnabled);
+            Assert.True(List(window, MotifAppStrings.GuideParagraphStyle).IsEnabled);
             Assert.Equal(before, field.Editor.Document.Paragraphs);
             Assert.Null(window.Session!.Pending);
             Assert.Empty(store.Staged);
@@ -170,7 +172,7 @@ public sealed partial class GdrPreviewWindowTests
             var refused = window.ApplyAsync();
             Assert.True(refused.IsCompleted);
             Assert.False(refused.Result);
-            Assert.Equal(GdrPreviewWindow.MarkdownFixFirstMessage, window.StatusText);
+            Assert.Equal(GuideSectionEditor.MarkdownFixFirstMessage, window.StatusText);
             Assert.True(field.IsSourceMode);
             Assert.Equal(0, store.Applies);
 
@@ -241,14 +243,14 @@ public sealed partial class GdrPreviewWindowTests
             var window = Staging(store);
             using var closer = window.CloseOnExit();
             var field = window.Field!;
-            var shown = window.Records[0].Id;
+            var shown = window.Editor.Records[0].Id;
             Assert.True(window.ToggleSourceMode());
             field.SourceView!.Editor.SetCaret(new TextPosition(0, 0));
             window.KeyTextInput("[t](/lexicon/nothing-here) ");
 
             window.Show(Linked.Id);
             Assert.Same(field, window.Field);
-            Assert.Equal(GdrPreviewWindow.MarkdownFixFirstMessage, window.StatusText);
+            Assert.Equal(GuideSectionEditor.MarkdownFixFirstMessage, window.StatusText);
             window.Close();
             Assert.True(window.IsVisible);
             Assert.True(field.IsSourceMode);
@@ -309,14 +311,14 @@ public sealed partial class GdrPreviewWindowTests
     }
 
     [Fact]
-    public void OnlyThePreviewWindowsGiveAFieldASourceForm()
+    public void OnlyTheGuideEditorAndTheSenseWindowGiveAFieldASourceForm()
     {
-        // Ctrl+Shift+M works in a field with a source form, so outside the preview gate no field has one.
+        // Ctrl+Shift+M works in a field with a source form, so only the Guide editor and the Sense window give one.
         var app = Path.Combine(SIL.Motif.Generator.RepoPaths.FindRepoRoot(), "src", "SIL.Motif.App");
         var assigns = new System.Text.RegularExpressions.Regex(@"\bSourceForm\s*=(?!=)");
         var setting = Directory.GetFiles(app, "*.cs", SearchOption.AllDirectories)
             .Where(file => assigns.IsMatch(File.ReadAllText(file)))
             .Select(file => Path.GetRelativePath(app, file).Replace('\\', '/')).Order(StringComparer.Ordinal).ToArray();
-        Assert.Equal(["Preview/GdrPreviewWindow.cs", "Preview/SenseDefinitionPreviewWindow.cs"], setting);
+        Assert.Equal(["Preview/SenseDefinitionPreviewWindow.cs", "Views/Guide/GuideSectionEditor.cs"], setting);
     }
 }

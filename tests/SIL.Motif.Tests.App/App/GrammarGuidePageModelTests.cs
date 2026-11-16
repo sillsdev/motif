@@ -50,7 +50,7 @@ public sealed class GrammarGuidePageModelTests
     }
 
     [Fact]
-    public async Task RecapturingBaselineHidesOldGuideWhileItsReplacementLoads()
+    public async Task RecapturingBaselineKeepsTheOpenSectionWhileItsReplacementLoads()
     {
         var fake = new FakeCommandClient();
         var record = new GdrSummary("gdr/1", "1", "Nouns", "");
@@ -66,12 +66,15 @@ public sealed class GrammarGuidePageModelTests
         fake.GrammarGuideListHandler = (_, _) => pending.Task;
         var loading = page.BaselineCapturedAsync(CancellationToken.None);
 
-        Assert.Null(page.SelectedRecord);
-        Assert.Null(page.ShownRecord);
-        Assert.Empty(page.Records);
+        Assert.Equal(record.Id, page.SelectedRecord?.Id);
+        Assert.NotNull(page.ShownRecord);
+        var reloaded = 0;
+        page.RecordsReloaded += (_, _) => reloaded++;
         pending.SetResult(CommandOutcome<GdrListResponse>.Success(new(true, [record])));
         await loading;
         Assert.Single(page.Records);
+        Assert.Equal(1, reloaded);
+        Assert.Equal(record.Id, page.SelectedRecord?.Id);
         await context.StopProjectWorkAsync();
     }
 

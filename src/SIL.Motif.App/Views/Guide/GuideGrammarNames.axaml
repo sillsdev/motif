@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:SIL.Motif.App"
+             xmlns:views="clr-namespace:SIL.Motif.App.Views"
+             xmlns:vm="clr-namespace:SIL.Motif.App.ViewModels"
+             x:Class="SIL.Motif.App.Views.Guide.GuideGrammarNames"
+             x:DataType="vm:GrammarGuidePageModel"
+             IsVisible="{Binding HasGrammarNames}"
+             AutomationProperties.AutomationId="{x:Static app:AutomationIds.GuideGrammarNames}"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideInTheGrammar}">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://SIL.Motif.App/Tokens/Components/GrammarGuideScoped.axaml" />
+  </UserControl.Styles>
+  <StackPanel Classes="guideBlock">
+    <views:CopyableTextBlock Classes="guideBlockTitle" Text="{x:Static app:MotifAppStrings.GuideInTheGrammar}" />
+    <ListBox x:Name="GuideGrammarNamesList" Classes="guideList" ItemsSource="{Binding GrammarNames}"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+             AutomationProperties.Name="{x:Static app:MotifAppStrings.GuideInTheGrammar}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:GuideGrammarName">
+          <Border Classes="guideNameRow">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel>
+                <views:CopyableTextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                <views:CopyableTextBlock Classes="guideMeta" Text="{Binding StateText}" TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="1" Classes="guideOpen" Content="{x:Static app:MotifAppStrings.GuideOpenInFieldWorks}"
+                      IsVisible="{Binding CanOpen}" Tag="{Binding FieldWorksLink}" VerticalAlignment="Center"
+                      AutomationProperties.Name="{Binding OpenName}" />
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </StackPanel>
+</UserControl>

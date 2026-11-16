@@ -533,6 +533,14 @@ public sealed partial class ComponentStyleTests
             TextElement.ForegroundProperty, "Intent.Warning.Text");
         yield return new("PassageScoped", "a staged word", host => Add(host, Box("wordStrip", "passageStaged")),
             TextElement.ForegroundProperty, "Intent.Change.Text");
+        yield return new("GrammarGuideScoped", "the section's heading", host => Add(host,
+                new CopyableTextBlock { Text = "Nouns", Classes = { "guideHeading" } }),
+            TextBlock.ForegroundProperty, "Intent.Text");
+        yield return new("GrammarGuideScoped", "a missing link", host => Add(host,
+                new CopyableTextBlock { Text = "Missing", Classes = { "guideMissing" } }),
+            TextBlock.ForegroundProperty, "Intent.Danger.Text");
+        yield return new("GrammarGuideScoped", "the editor's minimum height", host => Add(host, Box("guideEditor")),
+            Layoutable.MinHeightProperty, "Primitive.Size.320");
         // The Words page's places pane.
         yield return new("WordsScoped", "the places pane", host => Add(host, Box("wordsWordPane")),
             Layoutable.MinHeightProperty, "Component.WordOccurrences.PaneMinHeight");

@@ -372,4 +372,16 @@ public static class AutomationIds
     public const string WhyThisAnalysisFullTraceToggle = "motif-why-this-analysis-full-trace-toggle";
     public const string WhyThisAnalysisCopy = "motif-why-this-analysis-copy";
     #endregion
+    #region w11a
+    public const string GuideSectionEditor = "motif-guide-section-editor";
+    public const string GuideEditorToolbar = "motif-guide-editor-toolbar";
+    public const string GuideEditorStale = "motif-guide-editor-stale";
+    public const string GuideEditorApply = "motif-guide-editor-apply";
+    public const string GuideEditorStatus = "motif-guide-editor-status";
+    public const string GuideExamples = "motif-guide-examples";
+    public const string GuideGrammarNames = "motif-guide-grammar-names";
+    public const string GuideHeadings = "motif-guide-headings";
+    public const string GuideEdit = "motif-guide-edit";
+    public const string GuideNotice = "motif-guide-notice";
+    #endregion
 }

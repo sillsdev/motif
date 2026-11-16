@@ -60,7 +60,7 @@ public sealed class ProgressiveDisplayTests
         "DiagnosticPanel", "HandoffPanel",
         "Assistant/ClaudePanel", "Settings/AssistantConnectionsPanel",
         "MotifWorkspaceView",
-        "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage",
+        "Pages/DiagnosticsPage", "Pages/GrammarGuidePage", "Pages/ProposalsPage", "Guide/GuideExamples", "Guide/GuideGrammarNames",
         "Proposals/ProposalComparePanel", "Proposals/ProposalCompareSide", "Proposals/ProposalDocument", "Proposals/ProposalEvidenceColumns",
         "ProposalParsimonyDetails", "ProposalPicturesPanel", "RationaleEditor", "RefusalBlock", "ResultsInTextPanel", "ReviewWordRow",
         "RetirementProposalReviewPanel", "Texts/SourcesPanel", "SettingsPage", "SettingsNavigation", "SetupDialog", "StatisticsPanel", "TextWordsPanel",
@@ -260,7 +260,7 @@ public sealed class ProgressiveDisplayTests
             .Where(path => File.ReadAllText(path).Contains("Children.Add(", StringComparison.Ordinal) ||
                 File.ReadAllText(path).Contains("ProgressivePanel.Populate(this", StringComparison.Ordinal))
             .Select(path => Path.GetFileName(path).Split('.')[0]).Distinct().Order().ToArray();
-        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "MainWindow", "MarkChip", "MorphemePanel", "MotifWorkspaceView", "NamedMark", "OutcomeBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken", "WorkspaceLayoutHost" },
+        Assert.Equal(new[] { "FilterChip", "GrammarWarningPartsBlock", "GuideSectionEditor", "MainWindow", "MarkChip", "MorphemePanel", "MotifWorkspaceView", "NamedMark", "OutcomeBar", "ProgressivePanel", "WordCard", "WordRow", "WordRowHeader", "WordStripToken", "WorkspaceLayoutHost" },
             codeBuilt);
     }
 
@@ -1026,6 +1026,8 @@ public sealed class ProgressiveDisplayTests
             "SettingsNavigation" => BuildSettingsPage(workspace).Navigation,
             "Pages/DiagnosticsPage" => new DiagnosticsPage(workspace.PageModel<DiagnosticsPageModel>()),
             "Pages/GrammarGuidePage" => new GrammarGuidePage(workspace.PageModel<GrammarGuidePageModel>()),
+            "Guide/GuideGrammarNames" => new SIL.Motif.App.Views.Guide.GuideGrammarNames(workspace.PageModel<GrammarGuidePageModel>()),
+            "Guide/GuideExamples" => new SIL.Motif.App.Views.Guide.GuideExamples(),
             "Pages/ProposalsPage" => WorkspaceLayoutHost.ForPage(
                 new ProposalsPage(workspace.PageModel<ProposalsPageModel>())),
             "ReviewWordRow" => new PresentationWordRow

@@ -1,3 +1,5 @@
+using SIL.Motif.App;
+using SIL.Motif.App.Views.Guide;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -13,18 +15,18 @@ using Xunit;
 namespace SIL.Motif.Tests.App;
 
 // Each formatting action the toolbar offers reaches the Draft as text/setParagraphs.
-public sealed partial class GdrPreviewWindowTests
+public sealed partial class GuideEditorTests
 {
     private static readonly GdrSummary Linked = new(CanonicalId.FromGuid(new Guid("6a3c0f4e-2b1d-4c8e-9f70-1d2e3f405162")).Value,
         "GDR-9", "title-9", "abstract-9");
 
     private const string ProjectName = "project-1";
 
-    private static GdrPreviewWindow Staging(FakeStore store, Func<GdrSummary, GdrShowResponse>? show = null,
+    private static GuideEditorWindow Staging(FakeStore store, Func<GdrSummary, GdrShowResponse>? show = null,
         GdrSummary[]? records = null)
     {
         records ??= [First, Second, Linked];
-        var window = new GdrPreviewWindow(records, id => (show ?? Canned)(records.Single(record => record.Id == id)), store,
+        var window = new GuideEditorWindow(records, id => (show ?? Canned)(records.Single(record => record.Id == id)), store,
             projectName: ProjectName);
         window.Show();
         window.Show(First.Id);
@@ -32,14 +34,14 @@ public sealed partial class GdrPreviewWindowTests
         return window;
     }
 
-    private static void Select(GdrPreviewWindow window, int paragraph, int start, int end)
+    private static void Select(GuideEditorWindow window, int paragraph, int start, int end)
     {
         var editor = window.Field!.Editor;
         editor.SetCaret(new TextPosition(paragraph, start));
         editor.SetCaret(new TextPosition(paragraph, end), extend: true);
     }
 
-    private static ComboBox List(GdrPreviewWindow window, string label) =>
+    private static ComboBox List(GuideEditorWindow window, string label) =>
         window.GetLogicalDescendants().OfType<ComboBox>().Single(box => Equals(box.PlaceholderText, label));
 
     private static TextParagraphChange StagedFirst(FakeStore store) =>
@@ -54,7 +56,7 @@ public sealed partial class GdrPreviewWindowTests
             using var closer = window.CloseOnExit();
 
             Assert.Equal(["Normal", "Quote"], window.ParagraphStyleChoices);
-            Assert.Equal([GdrPreviewWindow.NoCharacterStyle, "Emphasis", "Strong"], window.CharacterStyleChoices);
+            Assert.Equal([GuideSectionEditor.NoCharacterStyle, "Emphasis", "Strong"], window.CharacterStyleChoices);
             Assert.Equal(["ar", "en"], window.WritingSystemChoices);
             Assert.Equal(["GDR-2  Spelling variants", "GDR-9  title-9"], window.LinkChoices);
             Assert.All(window.GetLogicalDescendants().OfType<ComboBox>(), box => Assert.False(box.Focusable));
@@ -119,12 +121,12 @@ public sealed partial class GdrPreviewWindowTests
             var store = new FakeStore();
             var window = Staging(store);
             using var closer = window.CloseOnExit();
-            var styles = List(window, "Character style");
+            var styles = List(window, MotifAppStrings.GuideCharacterStyle);
 
             Select(window, 0, 0, "Words".Length);
             styles.SelectedItem = "Strong";
             Select(window, 0, "Words end at ".Length, "Words end at spaces".Length);
-            styles.SelectedItem = GdrPreviewWindow.NoCharacterStyle;
+            styles.SelectedItem = GuideSectionEditor.NoCharacterStyle;
             Leave(window);
 
             Assert.Equal(-1, styles.SelectedIndex);
@@ -143,7 +145,7 @@ public sealed partial class GdrPreviewWindowTests
             using var closer = window.CloseOnExit();
             window.Field!.Editor.SetCaret(new TextPosition(0, 3));
 
-            List(window, "Paragraph style").SelectedItem = "Quote";
+            List(window, MotifAppStrings.GuideParagraphStyle).SelectedItem = "Quote";
             Leave(window);
 
             var changed = StagedFirst(store);
@@ -161,7 +163,7 @@ public sealed partial class GdrPreviewWindowTests
             var store = new FakeStore();
             var window = Staging(store);
             using var closer = window.CloseOnExit();
-            var systems = List(window, "Writing system");
+            var systems = List(window, MotifAppStrings.GuideWritingSystem);
 
             Select(window, 0, 0, "Words".Length);
             systems.SelectedItem = "ar";
@@ -188,7 +190,7 @@ public sealed partial class GdrPreviewWindowTests
             using var closer = window.CloseOnExit();
             window.Field!.Editor.SetCaret(new TextPosition(0, "Words end at ".Length));
 
-            List(window, "Link to a record").SelectedItem = "GDR-9  title-9";
+            List(window, MotifAppStrings.GuideLinkToSection).SelectedItem = "GDR-9  title-9";
             Leave(window);
 
             var link = StagedFirst(store).Runs.Single(run => run.ObjData is not null);
@@ -437,7 +439,7 @@ public sealed partial class GdrPreviewWindowTests
         {
             var store = new FakeStore();
             var records = new[] { First, Second, Linked };
-            var window = new GdrPreviewWindow(records, id => WithHyperlinkStyle(records.Single(record => record.Id == id)), store,
+            var window = new GuideEditorWindow(records, id => WithHyperlinkStyle(records.Single(record => record.Id == id)), store,
                 projectName: ProjectName, linkToPath: FindEntry);
             window.Show();
             window.Show(First.Id);
@@ -472,7 +474,7 @@ public sealed partial class GdrPreviewWindowTests
                 "2026-09-01T00:00:00Z", "sha256:" + new string('b', 64));
             SIL.Motif.Contract.Baselines.BaselineToken? asked = null;
             var records = new[] { First, Second, Linked };
-            var window = new GdrPreviewWindow(records,
+            var window = new GuideEditorWindow(records,
                 id => WithHyperlinkStyle(records.Single(record => record.Id == id)) with { Baseline = token }, new FakeStore(),
                 projectName: ProjectName, linkToPath: (path, baseline) =>
                 {
@@ -537,7 +539,7 @@ public sealed partial class GdrPreviewWindowTests
             using var closer = window.CloseOnExit();
             window.Field!.Editor.SetCaret(new TextPosition(0, 0));
 
-            List(window, "Link to a record").SelectedIndex = 1;
+            List(window, MotifAppStrings.GuideLinkToSection).SelectedIndex = 1;
             Leave(window);
 
             Assert.Equal(GdrReader.LinkData(ProjectName, twin.Id), StagedFirst(store).Runs.Single(run => run.ObjData is not null).ObjData);
