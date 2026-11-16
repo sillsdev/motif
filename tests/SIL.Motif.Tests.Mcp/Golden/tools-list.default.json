@@ -10220,6 +10220,127 @@
           "type": "string",
           "description": "Trial id; only the latest Trial has query rows."
         },
+        "change": {
+          "type": "object",
+          "properties": {
+            "dropped": {
+              "type": "string",
+              "description": "Letters the stem edge has today."
+            },
+            "gained": {
+              "type": "string",
+              "description": "Letters the hypothesis puts there; may be empty."
+            },
+            "at": {
+              "type": "string",
+              "description": "Stem edge.",
+              "enum": [
+                "final",
+                "initial"
+              ]
+            },
+            "affixes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Affixes the change fires before (final) or after (initial), without hyphens."
+            },
+            "wordSets": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Ids of attested sampled-tokens word sets that evidence looks forms up in."
+            },
+            "discovery": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Word sets the hypothesis was mined from."
+            },
+            "heldOut": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Held-out word sets; control returns counts only."
+            },
+            "controls": {
+              "type": "integer",
+              "description": "Control letters tried.",
+              "minimum": 1,
+              "maximum": 9
+            },
+            "controlLetters": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Control letters to use instead of the chosen ones."
+            }
+          },
+          "required": [
+            "dropped",
+            "gained",
+            "at",
+            "affixes",
+            "wordSets"
+          ],
+          "additionalProperties": false
+        },
+        "score": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Scorers run over the whole universe: tolerance, reliability, control; needs change and no group."
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "col": {
+                "type": "string",
+                "description": "Column name."
+              },
+              "op": {
+                "type": "string",
+                "description": "Selector operator.",
+                "enum": [
+                  "is",
+                  "in",
+                  "not",
+                  "~",
+                  "has",
+                  "\u003C",
+                  "\u003E"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "description": "Selector value."
+              }
+            },
+            "required": [
+              "col",
+              "op",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "description": "ANDed selectors marking a universe row an exception for tolerance."
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit the scorers claim.",
+          "enum": [
+            "msa",
+            "stem"
+          ]
+        },
         "project": {
           "type": "string",
           "description": "Known project name or recorded .fwdata path."

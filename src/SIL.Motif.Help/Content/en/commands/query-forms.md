@@ -28,6 +28,16 @@ motif query stems --project "project.fwdata" --where 'final:2~[aiu]d' --group sh
 motif query objects --project "project.fwdata" --where class=environment --where applied=0
 ```
 
+## Testing a hypothesised change
+
+`motif query stems --change X>Y` tests a hypothesised change without changing the project. `--at initial|final|medial` and `--affixes a,b` say where X is dropped and which affixes can follow, and `--wordset <id>` names the project's `[[review-word-set]]` of role `sampled-tokens` that serves as the attested evidence. It adds the columns `predicted` (the form with X replaced by Y), `evidence` (`rule`, `base`, `both` or `none`: which of the predicted and the original form the word set attests) and `collides` (`entry`: another entry already has the predicted form; `parses`: the current parser run analyses it; `none`; or `not-measured` when there is no parser evidence).
+
+`--score` takes `tolerance` (the exceptions e must stay below N/ln N), `reliability` (the lower confidence limit (h+0.5)/(n+1) with z = 0.674; its version is printed; it is a sort key, not a verdict) and `control`. `control` follows the rule-hypothesis control test: with `--discovery <id>` and `--heldout <id>` it counts held-out hits against control letters (`--controls`, `--control-letters`) and returns counts only. A held-out set cannot also be the `--wordset`. Scorers count one unit; a scorer that would mix stems and MSAs is refused with `query.mixed-units` (`--unit msa|stem`, `--exception` selectors). `--test-result` prints the control result as the JSON that `motif hypothesis test --file` accepts. Anything Motif did not measure is listed under `NotMeasured`, never shown as 0.
+
+```powershell
+motif query stems --project "project.fwdata" --change d>r --at final --affixes an,un,on,i,a --wordset union --score reliability,tolerance
+```
+
 ## Saved queries
 
 `motif query saved <measure-id>` runs the query that detects the same items as the Measure: `P-msa-no-category`, `P-statement-unused`, `P-env-duplicate`, `P-feature-few-carriers` and `P-lexeme-near-duplicate`. The Measure remains the command that records findings; the saved query lists the items and nothing else.
