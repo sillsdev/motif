@@ -245,6 +245,8 @@ public static class RefusalCodes
     public const string QueryTooManyGroups = "query.too-many-groups";
     /// <summary>The query asks about a value the Trial facts did not measure.</summary>
     public const string QueryNotMeasured = "query.not-measured";
+    /// <summary>A scorer was asked to count in a unit its hits or exceptions are not in.</summary>
+    public const string QueryMixedUnits = "query.mixed-units";
     public const string QueryNoTrialRows = "query.no-trial-rows";
 
     public const string ProjectBackupUnreadable = "project.backup-unreadable";

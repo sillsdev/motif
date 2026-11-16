@@ -6,9 +6,16 @@ namespace SIL.Motif.Contract.Query;
 /// <c>o~u</c>, <c>e~i</c>, <c>c~k</c> or a raw <c>from&gt;to</c>); the default is <c>nfc,case</c>. <c>Distinct</c> names a
 /// column of which a group must hold at least two different values to be reported.
 /// </remarks>
+/// <remarks>
+/// <c>Change</c> states a hypothesised boundary change and adds the <c>predicted</c>, <c>evidence</c> and <c>collides</c>
+/// columns to the stems source. <c>Score</c> names the scorers (<c>tolerance</c>, <c>reliability</c>, <c>control</c>) run over
+/// the whole selected universe, <c>Exceptions</c> are the selectors that mark a universe row an exception for
+/// <c>tolerance</c>, and <c>Unit</c> (<c>msa</c> or <c>stem</c>) is the unit the scorers claim.
+/// </remarks>
 public sealed record QueryRecord(string From, IReadOnlyList<QueryCondition> Where, IReadOnlyList<string> Group,
     int MinCount = 1, int Examples = 5, bool Ids = false, bool RawLetters = false, string? TrialId = null,
-    string? Fold = null, string? Distinct = null);
+    string? Fold = null, string? Distinct = null, QueryHypothesis? Change = null, IReadOnlyList<string>? Score = null,
+    IReadOnlyList<QueryCondition>? Exceptions = null, string? Unit = null);
 
 /// <summary>One selector; selectors in a query are combined with AND.</summary>
 public sealed record QueryCondition(string Col, string Op, string Value);
@@ -40,6 +47,12 @@ public sealed record QueryGroup(IReadOnlyList<string> Key, int Count, long? Toke
 /// <summary>The rows or groups returned by a query.</summary>
 public sealed record QueryResult(IReadOnlyList<QueryForm> Rows, IReadOnlyList<QueryGroup> Groups, IReadOnlyList<string> Ids)
 {
+    /// <summary>One entry per requested scorer; null when the query named none.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<QueryScore>? Scores { get; init; }
+    /// <summary>What a hypothesised-change query could not measure, worded for the reader; null when it measured everything.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? Notes { get; init; }
     /// <summary>Matching rows of the stems, uses and objects sources; null for the forms source.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<QueryItem>? Items { get; init; }

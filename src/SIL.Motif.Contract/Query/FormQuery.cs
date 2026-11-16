@@ -7,7 +7,7 @@ namespace SIL.Motif.Contract.Query;
 public sealed class QueryTooManyGroupsException(string columns) : ArgumentException($"Too many groups for columns: {columns}.");
 
 /// <summary>Evaluates a query over a caller-owned immutable snapshot of one Trial's sources.</summary>
-public static class FormQuery
+public static partial class FormQuery
 {
     /// <summary>The maximum accepted regular expression length.</summary>
     public const int MaximumRegexLength = 256;
@@ -29,6 +29,7 @@ public static class FormQuery
         ArgumentNullException.ThrowIfNull(rows);
         ArgumentNullException.ThrowIfNull(graphemes);
         if (query.From != QuerySources.Forms) throw new ArgumentException("Invalid forms query.");
+        RejectHypothesisFields(query, "the forms source");
         var fold = QueryFold.Compile(query.Fold);
         var segmentIndex = Index(query.RawLetters ? [] : graphemes);
         var outcome = QueryEngine.Execute(query, rows.Select(row => (IQueryRowView)new FormValues(row, segmentIndex, fold)), FormSpec);
@@ -48,6 +49,7 @@ public static class FormQuery
         ArgumentNullException.ThrowIfNull(graphemes);
         var source = query.From;
         if (source is not (QuerySources.Stems or QuerySources.Uses or QuerySources.Objects)) throw new ArgumentException("Invalid query source.");
+        RejectHypothesisFields(query, "this query");
         var fold = QueryFold.Compile(query.Fold);
         var segmentIndex = Index(query.RawLetters ? [] : graphemes);
         var stored = QuerySources.StoredColumns(source);

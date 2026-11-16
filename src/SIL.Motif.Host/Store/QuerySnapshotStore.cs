@@ -187,6 +187,32 @@ public static class QuerySnapshotStore
     // Positional rows carry no field names.
     private static long CompactBytes(string json) => (long)Encoding.UTF8.GetByteCount(json) + 96;
 
+    /// <summary>Reads the form and entry of every stored form without decoding the other fields.</summary>
+    public static List<(string Form, string Entry)> ReadFormEntries(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT RowJson FROM query_forms ORDER BY Ordinal";
+        var result = new List<(string, string)>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var json = new Utf8JsonReader(Encoding.UTF8.GetBytes(reader.GetString(0)));
+            string form = "", entry = "";
+            json.Read();
+            while (json.Read() && json.TokenType == JsonTokenType.PropertyName)
+            {
+                var name = json.GetString();
+                json.Read();
+                if (name == "Form") form = json.GetString() ?? "";
+                else if (name == "Entry") entry = json.GetString() ?? "";
+                else json.Skip();
+            }
+            result.Add((form, entry));
+        }
+        return result;
+    }
+
     /// <summary>Returns the current Trial and bundle identities without decoding their rows.</summary>
     public static (string TrialId, string BundleId)? ReadIdentity(SqliteConnection connection, SqliteTransaction transaction)
     {

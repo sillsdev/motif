@@ -24,7 +24,8 @@ internal sealed record QueryOutcome(List<IQueryRowView> Selected, List<string> I
 /// <summary>The one pass shared by every source: where, group, minimum count, distinct and examples.</summary>
 internal static class QueryEngine
 {
-    public static QueryOutcome Execute(QueryRecord query, IEnumerable<IQueryRowView> rows, QuerySpec spec)
+    public static QueryOutcome Execute(QueryRecord query, IEnumerable<IQueryRowView> rows, QuerySpec spec,
+        Action<IQueryRowView>? observe = null)
     {
         if (query.Where is null || query.Group is null || query.MinCount < 1 || query.Examples < 0 ||
             query.Examples > 1000 || query.Group.Count > 8) throw new ArgumentException("Invalid query.");
@@ -39,6 +40,7 @@ internal static class QueryEngine
         foreach (var row in rows)
         {
             if (conditions.Any(c => !c(row))) continue;
+            observe?.Invoke(row);
             if (query.Group.Count == 0)
             {
                 if (query.Ids) ids.Add(row.Id); else selected.Add(row);
@@ -84,7 +86,7 @@ internal static class QueryEngine
         return new QueryOutcome(selected, [.. ids.Distinct(StringComparer.Ordinal)], result);
     }
 
-    private static Func<IQueryRowView, bool> Compile(QueryCondition condition, QuerySpec spec)
+    internal static Func<IQueryRowView, bool> Compile(QueryCondition condition, QuerySpec spec)
     {
         if (condition is null || condition.Col is null || condition.Op is null || condition.Value is null ||
             !spec.IsColumn(condition.Col)) throw new ArgumentException("Unknown query column.");
