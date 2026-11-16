@@ -13,6 +13,7 @@
   <ItemGroup>
     <!-- The tests compare the writer's escaping search with a reference implementation that uses the internal generator. -->
     <InternalsVisibleTo Include="SIL.TextEditing.Markdown.Tests" />
+    <InternalsVisibleTo Include="SIL.TextEditing.WritingSystems" />
     <PackageReference Include="Markdig.Signed" />
     <PackageReference Include="YamlDotNet" />
     <ProjectReference Include="..\SIL.TextEditing\SIL.TextEditing.csproj" />
