@@ -30,10 +30,8 @@ namespace SIL.TextEditing.Markdown.Tests.Conformance
         [Fact]
         public void EveryPublicFindingIdIsGuardedOrNamedAsHostOnly()
         {
-            // fwmd.ws.unmarked-vernacular is a constant for hosts to report; the reader never emits it, so no fixture can expect it.
-            var hostOnly = new[] { MarkdownDiagnosticIds.WsUnmarkedVernacular };
             var unguarded = typeof(MarkdownDiagnosticIds).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
-                .Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!).Where(v => !CheckedIds.Contains(v) && !hostOnly.Contains(v)).ToList();
+                .Where(f => f.IsLiteral).Select(f => (string)f.GetRawConstantValue()!).Where(v => !CheckedIds.Contains(v)).ToList();
             Assert.True(unguarded.Count == 0, "Add a positive and a negative fixture case, and the id to CheckedIds: " + string.Join(", ", unguarded));
         }
 
