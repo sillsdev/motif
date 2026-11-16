@@ -50,7 +50,7 @@ internal static class ParsimonyTools
                     ("col", Schema.String("Column name."), true),
                     ("op", Schema.String("Selector operator.", "is", "in", "not", "~", "has", "<", ">"), true),
                     ("value", Schema.String("Selector value."), true))), false),
-                ("unit", Schema.String("Unit the scorers claim.", "msa", "stem"), false),
+                ("unit", Schema.String("Unit counted by stem scorers; split, size and evidence default to distinct stem forms.", "msa", "stem"), false),
                 ("members", Schema.StringArray("Row ids that are the deviants of split and size, or the grouping of evidence."), false),
                 ("context", Schema.Array("ANDed selectors naming the context size weighs.", Schema.Object(
                     ("col", Schema.String("Column name."), true),

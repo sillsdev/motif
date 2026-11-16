@@ -1720,7 +1720,7 @@
         },
         "unit": {
           "type": "string",
-          "description": "Unit the scorers claim.",
+          "description": "Unit counted by stem scorers; split, size and evidence default to distinct stem forms.",
           "enum": [
             "msa",
             "stem"

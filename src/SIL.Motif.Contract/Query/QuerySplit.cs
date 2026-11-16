@@ -66,10 +66,10 @@ public sealed record QuerySameShape(string Key, long Count, bool RuleAttemptRequ
 
 /// <summary>The one-screen answer to "what would make me think this grouping is a rule".</summary>
 /// <param name="Source"><c>stems</c> or <c>forms</c>.</param>
-/// <param name="Members">The rows of the grouping.</param>
-/// <param name="Universe">The rows of the whole source the grouping is compared with.</param>
+/// <param name="Members">The declared units of the grouping.</param>
+/// <param name="Universe">The declared units of the whole source the grouping is compared with.</param>
 /// <param name="Shared">The contexts at least half the members share, best first, with their counter-examples.</param>
-/// <param name="TooFew">How many other contexts matched fewer than twenty rows and are not judged.</param>
+/// <param name="TooFew">How many other contexts matched fewer than twenty units and are not judged.</param>
 /// <param name="Scores">The scorers that could be measured: split, tolerance, reliability, control and size.</param>
 /// <param name="Examples">The members to quote, most frequent first.</param>
 /// <param name="Questions">Members the evidence cannot decide, as questions for a speaker.</param>
@@ -96,7 +96,10 @@ internal sealed record SplitOutcome(long N, long E, string? Verdict, IReadOnlyLi
 internal sealed record SplitInput(IReadOnlyList<IQueryRowView> Rows, Func<IQueryRowView, bool> Deviant,
     IReadOnlyList<string> Columns, Func<string, string, string> Expressible, Func<IQueryRowView, int>? HeldOut,
     Func<IQueryRowView, string>? StemKey, string? HeldOutWhy, Func<IQueryRowView, long?>? Frequency,
-    Func<IQueryRowView, string> Label);
+    Func<IQueryRowView, string> Label)
+{
+    public Func<IQueryRowView, string> UnitKey { get; init; } = row => row.Id;
+}
 
 /// <summary>
 /// One pass tallies every context value over a universe and its deviants; a context is judged by the criteria of the
@@ -106,8 +109,8 @@ internal sealed record SplitInput(IReadOnlyList<IQueryRowView> Rows, Func<IQuery
 internal sealed class SplitAnalysis
 {
     public const int MinimumScope = 20;
-    public const string Version = "split/1 coverage e-h<e/ln e; reliability n-h<n/ln n; size; expressible; held-out; depth 2; scope under 20 is too few to tell";
-    public const string SizeVersion = "size/1 objects and tag references, one unit each (the units of the grammar size delta)";
+    public const string Version = "split/2 declared units; unknown contexts excluded; coverage e-h<e/ln e; reliability n-h<n/ln n; size; expressible; held-out; depth 2; scope under 20 is too few to tell";
+    public const string SizeVersion = "size/2 declared reference units; objects and tag references, one unit each (the units of the grammar size delta)";
     private const string TooFewToTell = "too-few-to-tell";
     private const string Rejected = "refuted";
 
@@ -119,6 +122,7 @@ internal sealed class SplitAnalysis
     private readonly Dictionary<string, int> _ids = new(StringComparer.Ordinal);
     private readonly Dictionary<int, string> _expressible = [];
     private readonly bool _heldOutOn;
+    private readonly Dictionary<string, HashSet<string>> _missing = new(StringComparer.Ordinal);
 
     public SplitAnalysis(SplitInput input)
     {
@@ -128,11 +132,12 @@ internal sealed class SplitAnalysis
         _keys = new int[rows.Count][];
         _held = new sbyte[rows.Count];
         _heldOutOn = input.HeldOut is not null && input.StemKey is not null;
+        var deviantUnits = rows.Where(input.Deviant).Select(input.UnitKey).ToHashSet(StringComparer.Ordinal);
         var scratch = new List<int>(32);
         for (var i = 0; i < rows.Count; i++)
         {
             var row = rows[i];
-            if (input.Deviant(row)) { _deviant[i] = true; E++; }
+            _deviant[i] = deviantUnits.Contains(input.UnitKey(row));
             scratch.Clear();
             foreach (var column in input.Columns)
             {
@@ -142,12 +147,19 @@ internal sealed class SplitAnalysis
                     if (column is "features" or "environments") Add(scratch, column, "none");
                     continue;
                 }
-                foreach (var value in values) Add(scratch, column, value);
+                foreach (var value in values)
+                    if (value == "not-measured")
+                    {
+                        if (!_missing.TryGetValue(column, out var units)) _missing[column] = units = [];
+                        units.Add(input.UnitKey(row));
+                    }
+                    else Add(scratch, column, value);
             }
             _keys[i] = [.. scratch];
             if (_heldOutOn) _held[i] = (sbyte)input.HeldOut!(row);
         }
-        N = rows.Count;
+        N = rows.Select(input.UnitKey).Distinct().LongCount();
+        E = deviantUnits.Count;
     }
 
     public long N { get; }
@@ -171,6 +183,8 @@ internal sealed class SplitAnalysis
     {
         var size = _names.Count;
         var tally = new Tally(new long[size], new long[size], new long[size], new long[size]);
+        var scopes = new HashSet<(int, string)>();
+        var deviants = new HashSet<(int, string)>();
         var seen = _heldOutOn ? new HashSet<(int, string)>() : null;
         for (var i = 0; i < _keys.Length; i++)
         {
@@ -178,8 +192,8 @@ internal sealed class SplitAnalysis
             var stem = _held[i] != 0 ? _input.StemKey!(_input.Rows[i]) : null;
             foreach (var key in _keys[i])
             {
-                tally.Scope[key]++;
-                if (_deviant[i]) tally.Deviants[key]++;
+                if (scopes.Add((key, _input.UnitKey(_input.Rows[i])))) tally.Scope[key]++;
+                if (_deviant[i] && deviants.Add((key, _input.UnitKey(_input.Rows[i])))) tally.Deviants[key]++;
                 if (stem is null || !seen!.Add((key, stem))) continue;
                 if (_held[i] == 1) tally.HeldRule[key]++; else tally.HeldDeviants[key]++;
             }
@@ -240,14 +254,14 @@ internal sealed class SplitAnalysis
     /// <param name="deviantsAreEvidence">Whether the deviants are rows whose unchanged form alone is attested, which is what held-out can recount.</param>
     public SplitOutcome Run(int limit, bool deviantsAreEvidence)
     {
-        var notes = new List<string>();
-        if (E < 2)
+        var notes = _missing.Select(m => $"Not measured: {m.Key} is missing for {m.Value.Count} units; excluded from context judging.").ToList();
+        if (E == 0)
         {
-            notes.Add(E == 0 ? "There are no deviants, so there is nothing to split."
-                : "One deviant is a lexical entry, not a pattern: coverage needs at least two.");
+            notes.Add("There are no deviants, so there is nothing to split.");
             return new SplitOutcome(N, E, null, [], [], 0, notes);
         }
-        var coverageLimit = Limit(E)!.Value;
+        if (E == 1) notes.Add("One deviant is a lexical entry, not a pattern: coverage needs at least two.");
+        var coverageLimit = Limit(E) ?? 0;
         var listing = ListSize(E);
         var first = Count(_ => true);
         var judged = new List<QueryContext>();
@@ -284,10 +298,10 @@ internal sealed class SplitAnalysis
         if (verdict == "C" && judged.Any(c => c.Covers == true && c.Reliable == true))
             notes.Add("A context covers and predicts the deviants but encoding it is not smaller than listing them.");
         if (tooFew > 0)
-            notes.Add($"{tooFew} contexts matched fewer than {MinimumScope} rows: too few to tell, not judged.");
+            notes.Add($"{tooFew} contexts matched fewer than {MinimumScope} units: too few to tell, not judged.");
         if (judged.Any(c => c.Status == "not-checked"))
             notes.Add("not-checked: covers, reliable and smaller, but whether FieldWorks can state it, or whether held-out confirms it, was not measured.");
-        return new SplitOutcome(N, E, verdict, contexts, ranked, tooFew, notes);
+        return new SplitOutcome(N, E, E < 2 ? null : verdict, contexts, ranked, tooFew, notes);
     }
 
     private static double? Reliability(long hits, long scope) => FormQuery.ReliabilityOf(hits, scope).Lower;
@@ -312,7 +326,9 @@ internal sealed class SplitAnalysis
             .ThenBy(c => c.Value, StringComparer.Ordinal).FirstOrDefault();
         if (carve is null) return found;
         var carveKey = _ids[carve.Column + "\0" + carve.Value];
-        var outside = Count(i => !_keys[i].Contains(carveKey));
+        var carvedUnits = Enumerable.Range(0, _keys.Length).Where(i => _keys[i].Contains(carveKey))
+            .Select(i => _input.UnitKey(_input.Rows[i])).ToHashSet(StringComparer.Ordinal);
+        var outside = Count(i => !carvedUnits.Contains(_input.UnitKey(_input.Rows[i])));
         var remaining = N - carve.Scope;
         var label = carve.Label;
         for (var key = 0; key < _names.Count; key++)
@@ -354,12 +370,12 @@ internal sealed class SplitAnalysis
     }
 
     /// <summary>The objects and references of listing the deviants against one context and its residual tags, or against tagging the other polarity.</summary>
-    public static QueryScore SizeScore(long n, long e, QueryContext? context, long contextScope, long contextDeviants, string beforeNote)
+    public static QueryScore SizeScore(long n, long e, QueryContext? context, long contextScope, long contextDeviants, string beforeNote, bool hasContext = false, string unit = "row")
     {
         var before = ListSize(e);
         (long Objects, long References) after;
         string note;
-        if (context is not null || contextScope > 0)
+        if (hasContext || context is not null || contextScope > 0)
         {
             after = ContextSize(1, e - contextDeviants, contextScope - contextDeviants);
             note = "after: one context, then a tag for each deviant outside it and for each non-deviant inside it.";
@@ -371,7 +387,7 @@ internal sealed class SplitAnalysis
         }
         var beforeTotal = before.Objects + before.References;
         var afterTotal = after.Objects + after.References;
-        return new QueryScore("size", SizeVersion, "row",
+        return new QueryScore("size", SizeVersion, unit,
             new Dictionary<string, long>
             {
                 ["before_objects"] = before.Objects, ["before_references"] = before.References, ["before_total"] = beforeTotal,
@@ -379,6 +395,6 @@ internal sealed class SplitAnalysis
                 ["saved"] = beforeTotal - afterTotal,
             },
             new Dictionary<string, double?>(), afterTotal < beforeTotal ? "smaller" : afterTotal > beforeTotal ? "larger" : "equal",
-            [beforeNote, note]);
+            [beforeNote, note, $"References count {unit} units; objects count grammar objects."]);
     }
 }

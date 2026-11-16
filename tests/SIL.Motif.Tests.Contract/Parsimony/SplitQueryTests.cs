@@ -35,6 +35,56 @@ public sealed class SplitQueryTests
     }
 
     [Fact]
+    public void MissingParserRowsNeverBecomeAPredictableContext()
+    {
+        var stems = Enumerable.Range(0, 130).Select(i => Stem("m" + i, $"s{i:000}ad", i >= 100 ? ["KEEP"] : [])).ToList();
+        foreach (var mode in new[] { "absent", "partial", "stale" })
+        {
+            QueryParseEvidence? parse = mode == "absent" ? null : new QueryParseEvidence(
+                Enumerable.Range(0, 100).ToDictionary(i => $"s{i:000}aran", _ => false), mode == "stale");
+            var result = FormQuery.RunHypothesis(Split(DToR(false), "KEEP"), stems, Letters, Inputs(parse: () => parse));
+            Assert.DoesNotContain(result.Scores!.Single().Contexts!, c => c.Value == "not-measured");
+            Assert.NotEqual("B", result.Scores!.Single().Verdict);
+            Assert.Contains(result.Scores!.Single().Notes, n => n.Contains("collides") && n.Contains(mode == "absent" ? "130" : "30"));
+        }
+    }
+
+    [Fact]
+    public void MultipleMsasOfOneStemDoNotMeetTheTwentyWordMinimum()
+    {
+        var stems = UdKeepers(0).Take(100).Concat(Enumerable.Range(0, 25).Select(i => Stem("u" + i, "kud", ["KEEP"]))).ToList();
+        var query = Split(extra: "KEEP");
+        var result = FormQuery.RunRows(query, stems, Letters);
+        Assert.Equal("too-few-to-tell", Context(result, "final:2", "ud").Status);
+        Assert.Equal(1, Context(result, "final:2", "ud").Scope);
+        var size = FormQuery.RunRows(query with { Score = ["size"] }, stems, Letters).Scores!.Single();
+        Assert.Equal(1, size.Counts["before_references"]);
+        Assert.Equal("stem", size.Unit);
+        var explicitStem = FormQuery.RunRows(query with { Unit = "stem" }, stems, Letters);
+        Assert.Equal(1, Context(explicitStem, "final:2", "ud").Scope);
+        var msaSize = FormQuery.RunRows(query with { Unit = "msa", Score = ["size"] }, stems, Letters).Scores!.Single();
+        Assert.Equal(25, msaSize.Counts["before_references"]);
+        Assert.Equal("msa", msaSize.Unit);
+        var evidence = FormQuery.RunHypothesis(new QueryRecord(QuerySources.Stems, [new("form", "is", "kud")], [],
+            Change: DToR(false), Evidence: true), stems, Letters, Inputs()).Evidence!;
+        Assert.Equal((1, 101), (evidence.Members, evidence.Universe));
+        Assert.Equal(1, evidence.SameShape!.Count);
+        var msa = FormQuery.RunHypothesis(query with { Change = DToR(false), Unit = "msa" }, stems, Letters, Inputs());
+        Assert.Equal(25, Context(msa, "final:2", "ud").Scope);
+    }
+
+    [Fact]
+    public void EmptyExplicitSizeContextStillUsesTheContextFormula()
+    {
+        var stems = Enumerable.Range(0, 125).Select(i => Stem("m" + i, $"s{i:000}ad", i < 100 ? ["KEEP"] : [])).ToList();
+        var result = FormQuery.RunRows(new QueryRecord(QuerySources.Stems, [], [], Score: ["size"],
+            Exceptions: [new("features", "has", "KEEP")], Context: [new("form", "is", "missing")]), stems, Letters);
+        var size = result.Scores!.Single();
+        Assert.Equal(102, size.Counts["after_total"]);
+        Assert.Equal("larger", size.Verdict);
+    }
+
+    [Fact]
     public void AContextThatCoversAndPredictsTheDeviantsIsASubRuleOnlyWhenFieldWorksCanStateItAndHeldOutHolds()
     {
         var stems = UdKeepers();

@@ -23,7 +23,11 @@ internal sealed record AnalysisSetup(string Source, IReadOnlyList<string> Column
     string? DefaultDeviantWhy, Func<IQueryRowView, int>? HeldOut, Func<IQueryRowView, string>? StemKey, string? HeldOutWhy,
     Func<IQueryRowView, long?>? Frequency, Func<IQueryRowView, string> Label, Func<IQueryRowView, string?>? Question,
     string? QuestionWhy, Func<IReadOnlyList<IQueryRowView>, QuerySameShape?>? SameShape,
-    Func<string, QueryScore>? PhaseThree);
+    Func<string, QueryScore>? PhaseThree)
+{
+    public Func<IQueryRowView, string> UnitKey { get; init; } = row => row.Id;
+    public string Unit { get; init; } = "form";
+}
 
 /// <summary>Runs the split, size and evidence parts of a query over rows a source has already selected.</summary>
 internal static class QueryAnalysis
@@ -75,7 +79,7 @@ internal static class QueryAnalysis
         var index = FormQuery.Index(raw ? [] : graphemes);
         return (column, value) =>
         {
-            if (column is "category" or "features" or "environments") return value == "none" ? "not-checked" : "yes";
+            if (column is "category" or "features") return value == "none" ? "not-checked" : "yes";
             if (QuerySources.IsEdge(column, out _, out _) || column is "change.left" or "change.right")
                 return value.Length > 0 && known.Count > 0 && TextColumns.Tokenize(value, index).All(known.Contains) ? "yes" : "not-checked";
             return column is "collides" or "msa-count" or "alternates" ? "no" : "not-checked";
@@ -103,17 +107,17 @@ internal static class QueryAnalysis
     }
 
     private static SplitInput InputFor(AnalysisSetup setup, IReadOnlyList<IQueryRowView> rows, Func<IQueryRowView, bool> deviant) =>
-        new(rows, deviant, setup.Columns, setup.Expressible, setup.HeldOut, setup.StemKey, setup.HeldOutWhy, setup.Frequency, setup.Label);
+        new(rows, deviant, setup.Columns, setup.Expressible, setup.HeldOut, setup.StemKey, setup.HeldOutWhy, setup.Frequency, setup.Label) { UnitKey = setup.UnitKey };
 
     private static QueryScore SplitScore(SplitOutcome outcome, string unit, IReadOnlyList<string> extraNotes)
     {
-        var notes = new List<string>(outcome.Notes) { "Counts are rows (one per " + unit + "); a context is judged against the universe the query selected." };
+        var notes = new List<string>(outcome.Notes) { "Counts use " + unit + " units; a context is judged against the universe the query selected." };
         notes.AddRange(extraNotes);
         var limit = outcome.E >= 2 ? outcome.E / Math.Log(outcome.E) : (double?)null;
         var threshold = outcome.N >= 2 ? outcome.N / Math.Log(outcome.N) : (double?)null;
         if (threshold is { } t && outcome.E >= t)
             notes.Add("The rule itself does not survive tolerance here (e is not below N/ln N); contexts are reported for information.");
-        return new QueryScore("split", SplitAnalysis.Version, "row",
+        return new QueryScore("split", SplitAnalysis.Version, unit,
             new Dictionary<string, long>
                 { ["universe"] = outcome.N, ["deviants"] = outcome.E, ["judged"] = outcome.Judged.Count, ["too_few"] = outcome.TooFew },
             new Dictionary<string, double?> { ["coverage_limit"] = limit, ["tolerance_threshold"] = threshold }, outcome.Verdict, notes)
@@ -128,7 +132,7 @@ internal static class QueryAnalysis
         // A column the deviants were chosen by would explain them by definition.
         if (query.Exceptions is { Count: > 0 } chosen)
             setup = setup with { Columns = [.. setup.Columns.Where(c => chosen.All(e => e.Col != c))] };
-        var unit = setup.Source == QuerySources.Stems ? "MSA" : "form";
+        var unit = setup.Unit;
         foreach (var name in query.Score!.Where(IsAnalysisScorer))
         {
             if (name == "split")
@@ -137,15 +141,21 @@ internal static class QueryAnalysis
                 scores.Add(SplitScore(outcome, unit, []));
                 continue;
             }
-            long n = universe.Count, e = universe.Count(deviant);
+            var deviantUnits = universe.Where(deviant).Select(setup.UnitKey).ToHashSet(StringComparer.Ordinal);
+            long n = universe.Select(setup.UnitKey).Distinct().LongCount(), e = deviantUnits.Count;
             if (query.Context is { Count: > 0 } selectors)
             {
+                var missing = universe.Where(r => selectors.Any(c => r.Get(c.Col).Contains("not-measured")))
+                    .Select(setup.UnitKey).Distinct().LongCount();
+                if (missing > 0)
+                    throw new QueryNotMeasuredException($"Size context is not measured for {missing} {unit} units.");
                 var tests = selectors.Select(setup.Compile).ToArray();
-                long scope = 0, deviants = 0;
-                foreach (var row in universe.Where(r => tests.All(t => t(r)))) { scope++; if (deviant(row)) deviants++; }
-                scores.Add(SplitAnalysis.SizeScore(n, e, null, scope, deviants, "before: each deviant listed or tagged one by one."));
+                var contextRows = universe.Where(r => tests.All(t => t(r))).ToList();
+                long scope = contextRows.Select(setup.UnitKey).Distinct().LongCount();
+                long deviants = contextRows.Select(setup.UnitKey).Where(deviantUnits.Contains).Distinct().LongCount();
+                scores.Add(SplitAnalysis.SizeScore(n, e, null, scope, deviants, "before: each deviant listed or tagged one by one.", hasContext: true, unit: unit));
             }
-            else scores.Add(SplitAnalysis.SizeScore(n, e, null, 0, 0, "before: each deviant listed or tagged one by one."));
+            else scores.Add(SplitAnalysis.SizeScore(n, e, null, 0, 0, "before: each deviant listed or tagged one by one.", unit: unit));
         }
         return scores;
     }
@@ -158,10 +168,10 @@ internal static class QueryAnalysis
         var memberSet = new HashSet<IQueryRowView>(members);
         var analysis = new SplitAnalysis(InputFor(setup, universe, memberSet.Contains));
         var outcome = analysis.Run(int.MaxValue, deviantsAreEvidence: false);
-        var notMeasured = new List<string>();
+        var notMeasured = new List<string>(outcome.Notes.Where(n => n.StartsWith("Not measured", StringComparison.Ordinal)));
         var shared = outcome.Judged.Where(c => c.Deviants * 2 >= outcome.E).Take(5)
             .Select(c => c with { CounterExamples = analysis.CounterExamples(c, 3) }).ToList();
-        var unit = setup.Source == QuerySources.Stems ? "MSA" : "form";
+        var unit = setup.Unit;
         var scores = new List<QueryScore> { SplitScore(outcome, unit, []) with { Contexts = null } };
         if (shared.Count == 0 && outcome.E >= 2) notMeasured.Add("No single context is shared by half of the members.");
         if (setup.PhaseThree is { } phaseThree)
@@ -174,8 +184,8 @@ internal static class QueryAnalysis
         else notMeasured.Add("tolerance, reliability and control: not measured without --change on the stems source.");
         var best = outcome.Judged.FirstOrDefault(c => c.Depth == 1 && c.Status is "A" or "B" or "not-checked" or "partial");
         scores.Add(best is null
-            ? SplitAnalysis.SizeScore(outcome.N, outcome.E, null, 0, 0, "before: each member listed or tagged one by one.")
-            : SplitAnalysis.SizeScore(outcome.N, outcome.E, best, best.Scope, best.Deviants, "before: each member listed or tagged one by one."));
+            ? SplitAnalysis.SizeScore(outcome.N, outcome.E, null, 0, 0, "before: each member listed or tagged one by one.", unit: setup.Unit)
+            : SplitAnalysis.SizeScore(outcome.N, outcome.E, best, best.Scope, best.Deviants, "before: each member listed or tagged one by one.", unit: setup.Unit));
         var count = Math.Max(0, query.Examples);
         long? Frequency(IQueryRowView row) => setup.Frequency?.Invoke(row);
         if (setup.Frequency is null) notMeasured.Add("Token frequency is not measured here, so examples and questions are in alphabetical order.");
@@ -190,7 +200,7 @@ internal static class QueryAnalysis
         QuerySameShape? shape = null;
         if (setup.SameShape is { } sameShape) shape = sameShape(members);
         else notMeasured.Add("Same-shape count: not measured for this source.");
-        return new QueryEvidence(setup.Source, members.Count, universe.Count, shared, outcome.TooFew, scores, examples, questions,
+        return new QueryEvidence(setup.Source, outcome.E, outcome.N, shared, outcome.TooFew, scores, examples, questions,
             shape, notMeasured);
     }
 

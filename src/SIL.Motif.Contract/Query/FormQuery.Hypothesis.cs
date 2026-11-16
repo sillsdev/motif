@@ -26,7 +26,8 @@ public static partial class FormQuery
     private static void RejectHypothesisFields(QueryRecord query, string where)
     {
         var analysis = QueryAnalysis.Wants(query);
-        if (query.Change is not null || query.Score?.Any(s => !QueryAnalysis.IsAnalysisScorer(s)) == true || query.Unit is not null ||
+        if (query.Change is not null || query.Score?.Any(s => !QueryAnalysis.IsAnalysisScorer(s)) == true ||
+            query.Unit is not null && !(analysis && query.From == QuerySources.Stems && query.Unit is "stem" or "msa") ||
             query.Exceptions is { Count: > 0 } && !analysis)
             throw new ArgumentException($"A hypothesised change, its scorers, exceptions and a unit apply to the stems source only, not {where}.");
         QueryAnalysis.Validate(query);
@@ -97,6 +98,7 @@ public static partial class FormQuery
         QueryAnalysis.Select(query, views, spec, picked);
         var matched = picked.Cast<HypothesisRow>().ToList();
         var scoring = query with { Unit = query.Unit ?? "stem" };
+        string UnitKey(IQueryRowView row) => scoring.Unit == "msa" ? row.Id : ((HypothesisRow)row).Folded;
         var heldOutReady = context.HeldOut.Count > 0 && context.Discovery.Count > 0;
         var setup = new AnalysisSetup(QuerySources.Stems, [.. QueryAnalysis.StemColumns, "collides"],
             QueryAnalysis.ExpressibleFor(graphemes, query.RawLetters), c => QueryEngine.Compile(c, spec),
@@ -107,9 +109,9 @@ public static partial class FormQuery
             context.HasFrequency ? v => ((HypothesisRow)v).Frequency : null, v => v.SortKey,
             context.EvidenceMeasured ? v => ((HypothesisRow)v).UndecidedQuestion() : null,
             "needs an evidence word set (--wordset) to know which rows are undecided.",
-            members => new QuerySameShape($"{context.Change.Dropped}>{context.Change.Gained}@{context.Change.At}", members.Count,
-                members.Count >= SameShapeGroups.RuleAttemptThreshold, $"{context.Change.Dropped}>{context.Change.Gained}"),
-            name => context.Score(name, scoring, matched, spec));
+            members => new QuerySameShape($"{context.Change.Dropped}>{context.Change.Gained}@{context.Change.At}", members.Select(UnitKey).Distinct().LongCount(),
+                members.Select(UnitKey).Distinct().LongCount() >= SameShapeGroups.RuleAttemptThreshold, $"{context.Change.Dropped}>{context.Change.Gained}"),
+            name => context.Score(name, scoring, matched, spec)) { Unit = scoring.Unit!, UnitKey = UnitKey };
         var notes = new List<string>();
         QueryResult Finish(QueryResult result)
         {

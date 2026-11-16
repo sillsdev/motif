@@ -91,7 +91,8 @@ public static partial class FormQuery
         QueryAnalysis.Select(query, views, spec, matched);
         var setup = new AnalysisSetup(QuerySources.Stems, QueryAnalysis.StemColumns, QueryAnalysis.ExpressibleFor(graphemes, query.RawLetters),
             c => QueryEngine.Compile(c, spec), null, null, null, null, "no hypothesised change, so no held-out evidence.",
-            null, v => v.SortKey, null, "needs --change and --wordset on the stems source.", null, null);
+            null, v => v.SortKey, null, "needs --change and --wordset on the stems source.", null, null)
+        { Unit = query.Unit ?? "stem", UnitKey = v => query.Unit == "msa" ? v.Id : fold(v.Get("form")[0]) };
         if (query.Evidence)
             return new QueryResult([], [], []) { Evidence = QueryAnalysis.Evidence(query, views, matched, setup) };
         var scores = QueryAnalysis.Scores(query, matched, setup);
