@@ -19,6 +19,14 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         static RecordSchema Schema => RecordFixtures.Schema("test");
 
         [Fact]
+        public void PublishedJsonSchemaUsesTheFrontMatterVersion()
+        {
+            var json = Json.Obj(Json.Parse(RecordFixtures.Schema("test").ToJsonSchema()));
+            var properties = Json.Obj(json["properties"]);
+            Assert.Equal((long)MarkdownFrontMatter.CurrentVersion, Json.Obj(properties["fwmd"])["const"]);
+        }
+
+        [Fact]
         public void TheTestSchemaPublishesTheExpectedDocument()
         {
             string actual = Schema.ToJsonSchema();
