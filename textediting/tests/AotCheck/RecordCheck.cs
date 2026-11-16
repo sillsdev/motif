@@ -21,7 +21,12 @@ internal static class RecordCheck
         var builder = new RecordSchemaBuilder("aot.schema.json");
         builder.ObjectType("entry").MultiText("citation-form").Objects("senses", "sense").Integer("homograph-number").Boolean("do-not-use-for-parsing");
         builder.ObjectType("sense").MultiText("gloss").MultiRich("definition").Notation("features", "feature-structure").References("semantic-domains");
-        builder.ObjectType("record").Rich("title").Rich("description", paragraphs: true).Rich("notes", paragraphs: true, blocks: BlockFeatures.None);
+        builder.ObjectType("record").Rich("title").Rich("description", paragraphs: true)
+            .Rich("notes", paragraphs: true, blocks: BlockFeatures.None)
+            .Object("detail", "note", "tag").Objects("details", "note", "tag").AsCollection("details")
+            .Text("computed").Computed("computed");
+        builder.ObjectType("note").Text("text");
+        builder.ObjectType("tag", false).Text("label");
         builder.Kind("lexicon/entry", "entry", 2).Kind("notebook/record", "record", 2, "description");
         var original = builder.Build();
         var schema = RecordSchema.FromJson(original.ToJson());
@@ -49,7 +54,11 @@ internal static class RecordCheck
         Check(trap.Document?.Find("homograph-number") is RecordScalar n && n.AsInteger() == 12, "record: 012 is twelve");
         Check(trap.Diagnostics.Any(x => x.Id == RecordDiagnosticIds.CommentDropped), "record: the comment is reported");
 
+        Check(schema.ObjectType("record")!.Field("details")!.Kind == RecordFieldKind.Collection &&
+            schema.ObjectType("record")!.Field("computed")!.Computed, "record: collection and computed metadata survive JSON");
         var notebook = new RecordDocument("notebook/record");
+        notebook.Data.Set("detail", new RecordObject { Class = "tag" }.Set("label", new RecordScalar("A label")));
+        notebook.Data.Set("details", new RecordList().Add(new RecordObject { Class = "note" }.Set("text", new RecordScalar("A note"))));
         notebook.Data.Set("title", new RecordScalar("Kaon")).Set("description", RecordScalar.Rich(new[] { Para("A [b]") }, new MarkdownOptions()));
         string withBody = RecordFileWriter.Write(notebook, schema);
         Check(withBody.Contains("---\n\nA "), "record: the description is the body: " + withBody);

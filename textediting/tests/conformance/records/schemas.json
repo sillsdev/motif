@@ -355,5 +355,60 @@
         "body": "description"
       }
     ]
+  },
+  "classes": {
+    "version": 2,
+    "id": "classes.schema.json",
+    "types": [
+      {
+        "name": "root",
+        "fields": [
+          {
+            "name": "child",
+            "kind": "object",
+            "types": [
+              "note",
+              "tag"
+            ]
+          },
+          {
+            "name": "children",
+            "kind": "col",
+            "item": {
+              "kind": "object",
+              "types": [
+                "note",
+                "tag"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "note",
+        "fields": [
+          {
+            "name": "text",
+            "kind": "text"
+          }
+        ]
+      },
+      {
+        "name": "tag",
+        "fields": [
+          {
+            "name": "label",
+            "kind": "text"
+          }
+        ]
+      }
+    ],
+    "kinds": [
+      {
+        "name": "records/record",
+        "root": "root",
+        "pathSegments": 2
+      }
+    ]
   }
 }

@@ -127,9 +127,12 @@ namespace SIL.TextEditing.Markdown.Records
     {
         public Guid? Guid { get; set; }
 
+        /// <summary>The reserved object type name. Required for a field allowing several types; optional for one type.</summary>
+        public string? Class { get; set; }
+
         public List<KeyValuePair<string, RecordValue>> Fields { get; } = new List<KeyValuePair<string, RecordValue>>();
 
-        public override bool IsEmpty => Guid == null && Fields.All(f => f.Value.IsEmpty);
+        public override bool IsEmpty => Guid == null && Class == null && Fields.All(f => f.Value.IsEmpty);
 
         /// <summary>The value of a field, or null. Setting null removes the field.</summary>
         public RecordValue? this[string field]
@@ -280,7 +283,7 @@ namespace SIL.TextEditing.Markdown.Records
                 }
                 case RecordObject o:
                 {
-                    if (!(b is RecordObject other) || o.Guid != other.Guid) return false;
+                    if (!(b is RecordObject other) || o.Guid != other.Guid || o.Class != other.Class) return false;
                     var x = o.Fields.Where(f => !f.Value.IsEmpty).ToList();
                     var y = other.Fields.Where(f => !f.Value.IsEmpty).ToList();
                     return x.Count == y.Count && x.All(f => AreEquivalent(f.Value, other[f.Key]));

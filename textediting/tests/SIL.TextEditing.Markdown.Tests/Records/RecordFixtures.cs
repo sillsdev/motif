@@ -195,6 +195,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var o = new RecordObject();
             foreach (var kv in json)
             {
+                if (kv.Key == "class" && type.Field("class") == null) { o.Class = Json.Str(kv.Value); continue; }
                 if (kv.Key == "guid" && type.HasGuid) { o.Guid = Guid.Parse(Json.Str(kv.Value)); continue; }
                 var field = type.Field(kv.Key) ?? throw new InvalidOperationException(type.Name + " has no field " + kv.Key + " (fixture)");
                 o[kv.Key] = Value(kv.Value, field);
@@ -219,7 +220,12 @@ namespace SIL.TextEditing.Markdown.Tests.Records
                     foreach (var item in Json.Arr(json)) list.Add(Value(item, field.Item!));
                     return list;
                 }
-                case RecordFieldKind.Object: return Object(Json.Obj(json), field.ObjectType!);
+                case RecordFieldKind.Object:
+                {
+                    var obj = Json.Obj(json);
+                    var type = field.ObjectType ?? field.ObjectTypes.Single(t => t.Name == Json.OptStr(obj, "class"));
+                    return Object(obj, type);
+                }
                 default: return Scalar(json);
             }
         }

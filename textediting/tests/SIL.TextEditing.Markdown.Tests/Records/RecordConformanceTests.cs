@@ -202,7 +202,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
                     foreach (var i in l.Items) { sb.Append(' ', indent + 2).Append("- "); Value(sb, i, indent + 4); }
                     break;
                 case RecordObject o:
-                    sb.Append(o.Guid == null ? "{" : "{guid " + o.Guid).Append("}\n");
+                    sb.Append(o.Guid == null ? "{" : "{guid " + o.Guid).Append(o.Class == null ? "" : " class " + o.Class).Append("}\n");
                     foreach (var f in o.Fields) { sb.Append(' ', indent + 2).Append(f.Key).Append(": "); Value(sb, f.Value, indent + 2); }
                     break;
             }

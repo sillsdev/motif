@@ -79,13 +79,23 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>For <see cref="RecordFieldKind.Notation"/>: the notation's name (<c>environment</c>).</summary>
         public string? Notation { get; internal set; }
 
-        /// <summary>For <see cref="RecordFieldKind.Object"/>, and a sequence of objects: the object type's name.</summary>
-        public string? ObjectTypeName { get; internal set; }
+        /// <summary>For a monomorphic object field or list item: the type name. Null for several alternatives or a non-object field.</summary>
+        public string? ObjectTypeName
+        {
+            get => ObjectTypeNames.Count == 1 ? ObjectTypeNames[0] : null;
+            internal set => ObjectTypeNames = value == null ? Array.Empty<string>() : Array.AsReadOnly(new[] { value });
+        }
 
-        /// <summary>For <see cref="RecordFieldKind.Object"/>: the object type, once the schema is built.</summary>
-        public RecordObjectType? ObjectType { get; internal set; }
+        /// <summary>The allowed object type names, in declaration order. No inheritance or implicit subclasses are used.</summary>
+        public IReadOnlyList<string> ObjectTypeNames { get; internal set; } = Array.Empty<string>();
 
-        /// <summary>For <see cref="RecordFieldKind.Sequence"/>: what each item is.</summary>
+        /// <summary>The resolved type of a monomorphic object field or list item. Null for several alternatives or a non-object field.</summary>
+        public RecordObjectType? ObjectType => ObjectTypes.Count == 1 ? ObjectTypes[0] : null;
+
+        /// <summary>The resolved allowed object types. More than one requires an object's reserved class key.</summary>
+        public IReadOnlyList<RecordObjectType> ObjectTypes { get; internal set; } = Array.Empty<RecordObjectType>();
+
+        /// <summary>For a sequence or collection: what each item is.</summary>
         public RecordField? Item { get; internal set; }
 
         /// <summary>The media type of a text value: <c>text/plain</c> for plain text, <c>text/x-fieldworks-markdown</c> for rich fields of paragraphs,
@@ -307,10 +317,17 @@ namespace SIL.TextEditing.Markdown.Records
 
         static void Resolve(RecordField field, RecordObjectType owner, Dictionary<string, RecordObjectType> types)
         {
-            if (field.ObjectTypeName == null) return;
-            if (!types.TryGetValue(field.ObjectTypeName, out var target))
-                throw new InvalidOperationException("The field " + owner.Name + "." + (field.Name.Length == 0 ? "item" : field.Name) + " names the object type " + field.ObjectTypeName + ", which is not declared.");
-            field.ObjectType = target;
+            if (field.ObjectTypeNames.Count == 0) return;
+            var allowed = new List<RecordObjectType>();
+            foreach (string name in field.ObjectTypeNames)
+            {
+                if (!types.TryGetValue(name, out var target))
+                    throw new InvalidOperationException("The field " + owner.Name + "." + field.Name + " names an undeclared type: " + name);
+                if (field.ObjectTypeNames.Count > 1 && target.Field("class") != null)
+                    throw new InvalidOperationException("Polymorphic object types reserve class as metadata: " + name);
+                allowed.Add(target);
+            }
+            field.ObjectTypes = allowed.AsReadOnly();
         }
     }
 
@@ -327,6 +344,7 @@ namespace SIL.TextEditing.Markdown.Records
 
         internal string Name { get; }
         internal bool HasGuid { get; }
+        internal bool AllowLegacyClass { get; set; }
 
         internal RecordObjectType Build() => new RecordObjectType(Name, HasGuid, _fields.ToList());
 
@@ -336,6 +354,8 @@ namespace SIL.TextEditing.Markdown.Records
             // A field path joins names with / and puts a writing system after a dot; a fragment starts with #.
             foreach (char c in field.Name)
                 if (c == '.' || c == '/' || c == '#' || c < ' ' || char.IsWhiteSpace(c)) throw new ArgumentException("A field name has no '.', '/', '#', space or control character: " + field.Name);
+            if (field.Name == "class" && !AllowLegacyClass)
+                throw new ArgumentException("class is reserved object metadata; it is not declared as a field.");
             if (field.Name == "guid" && HasGuid) throw new ArgumentException("guid is the identity key of " + Name + "; it is not declared as a field.");
             if (_fields.Any(f => f.Name == field.Name)) throw new ArgumentException("The field " + Name + "." + field.Name + " is declared twice.");
             _fields.Add(field);
@@ -381,13 +401,30 @@ namespace SIL.TextEditing.Markdown.Records
         public RecordObjectTypeBuilder Guid(string name) => Add(new RecordField(name, RecordFieldKind.Guid));
         public RecordObjectTypeBuilder Reference(string name) => Add(new RecordField(name, RecordFieldKind.Reference));
 
-        /// <summary>One owned object of the named type.</summary>
+        /// <summary>One owned object of one of the named types; several alternatives require a reserved class key.</summary>
         public RecordObjectTypeBuilder Object(string name, string objectType)
-            => Add(new RecordField(name, RecordFieldKind.Object) { ObjectTypeName = objectType });
+            => Add(ObjectField(name, new[] { objectType }));
 
-        /// <summary>A sequence of owned objects of the named type.</summary>
+        /// <summary>One owned object selected by class from a flat list of allowed types.</summary>
+        public RecordObjectTypeBuilder Object(string name, params string[] objectTypes)
+            => Add(ObjectField(name, objectTypes));
+
+        /// <summary>A sequence of owned objects of the named types; each item of a polymorphic field requires class.</summary>
         public RecordObjectTypeBuilder Objects(string name, string objectType)
-            => Add(Sequence(name, new RecordField(string.Empty, RecordFieldKind.Object) { ObjectTypeName = objectType }));
+            => Add(Sequence(name, ObjectField(string.Empty, new[] { objectType })));
+
+        /// <summary>An ordered sequence of objects selected by class from a flat list of allowed types.</summary>
+        public RecordObjectTypeBuilder Objects(string name, params string[] objectTypes)
+            => Add(Sequence(name, ObjectField(string.Empty, objectTypes)));
+
+        static RecordField ObjectField(string name, string[] objectTypes)
+        {
+            if (objectTypes == null || objectTypes.Length == 0 || objectTypes.Any(string.IsNullOrEmpty) ||
+                objectTypes.Distinct(StringComparer.Ordinal).Count() != objectTypes.Length)
+                throw new ArgumentException("An object field names one or more distinct object types.", nameof(objectTypes));
+            return new RecordField(name, RecordFieldKind.Object)
+                { ObjectTypeNames = Array.AsReadOnly((string[])objectTypes.Clone()) };
+        }
 
         /// <summary>A sequence of references.</summary>
         public RecordObjectTypeBuilder References(string name) => Add(Sequence(name, new RecordField(string.Empty, RecordFieldKind.Reference)));

@@ -88,6 +88,7 @@ namespace SIL.TextEditing.Markdown.Records
         {
             var props = new J.Obj();
             if (type.HasGuid) props.Add("guid", new J.Obj().Add("type", "string").Add("pattern", GuidPattern));
+            if (type.Field("class") == null) props.Add("class", new J.Obj().Add("const", type.Name));
             foreach (var field in type.Fields)
             {
                 if (field == skip) continue;
@@ -104,9 +105,21 @@ namespace SIL.TextEditing.Markdown.Records
             {
                 case RecordFieldKind.Collection:
                 case RecordFieldKind.Sequence: return new J.Obj().Add("type", "array").Add("items", Field(field.Item!));
-                case RecordFieldKind.Object: return Ref(field.ObjectType!.Name);
+                case RecordFieldKind.Object: return ObjectField(field);
                 default: return Leaf(field);
             }
+        }
+
+        static J.Obj ObjectField(RecordField field)
+        {
+            if (field.ObjectType != null) return Ref(field.ObjectType.Name);
+            var alternatives = new J.Arr();
+            foreach (var type in field.ObjectTypes)
+                alternatives.Items.Add(new J.Obj().Add("allOf", new J.Arr(new J.Node[]
+                {
+                    Ref(type.Name), new J.Obj().Add("required", new J.Arr(new J.Node[] { new J.Str("class") }))
+                })));
+            return new J.Obj().Add("anyOf", alternatives);
         }
 
         static J.Obj Leaf(RecordField field)
@@ -116,7 +129,7 @@ namespace SIL.TextEditing.Markdown.Records
                 case RecordFieldKind.Integer: return new J.Obj().Add("type", "integer");
                 case RecordFieldKind.Boolean: return new J.Obj().Add("type", "boolean");
                 case RecordFieldKind.Guid: return new J.Obj().Add("type", "string").Add("pattern", GuidPattern);
-                case RecordFieldKind.Object: return Ref(field.ObjectType!.Name);
+                case RecordFieldKind.Object: return ObjectField(field);
                 default:
                 {
                     var text = new J.Obj().Add("type", "string").Add("contentMediaType", field.ContentMediaType!);

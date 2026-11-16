@@ -122,7 +122,7 @@ All cases are in `records/02-traps.json`. A fix that "removes" something replace
 | `fwmd.yaml.scalar-style` | information | A value in a style that is not canonical: single quotes, other escapes, a quoted number or Boolean, a leading zero, an uppercase GUID, a needlessly quoted key, a rich value in the wrong kind of block. Cases: "a single-quoted value is read; it is written double-quoted", "012 in an integer field is twelve, written 12". | The canonical spelling. |
 | `fwmd.yaml.flow` | information | A flow collection (`{...}`, `[...]`, JSON). It is read; the writer writes block style. Case: "flow collections and JSON are read, with information". | None needed. |
 | `fwmd.yaml.empty` | information | An empty value (`key:`, `~`, `""`, `[]`, `{}`). It means the field is empty, which a canonical file says by leaving the key out. Case: "~ is an empty value, which is left out". | Remove the line, when the key has a line of its own. |
-| `fwmd.yaml.key-order` | information | Keys out of the schema's order (`guid` not first, fields out of order). Case: "keys out of the schema's order are read, with information". | None needed. |
+| `fwmd.yaml.key-order` | information | Keys out of the schema's order (`guid` first, reserved `class` next when present, then fields in order). Case: "keys out of the schema's order are read, with information". | None needed. |
 
 ## Record files: the record
 
@@ -135,6 +135,7 @@ All cases are in `records/03-schema.json` unless another file is named.
 | `fwmd.record.unknown-kind` | error | A `record:` kind the schema does not have. Case: "a record kind the schema does not have". | Use a kind of the schema. |
 | `fwmd.record.schema-mismatch` | error | `schema:` names another schema than the reader's. Case: "a schema other than the reader's". | The reader's schema id (the fix). |
 | `fwmd.record.unknown-field` | error | A key an object of its type does not have. `Nearest` names close fields. Case: "an unknown field, with the nearest name". | Use the field's name. |
+| `fwmd.record.class-not-allowed` | error | An object has no required `class`, a non-scalar class, or a class outside the field's flat list of allowed types. Cases: "an object class outside its allowed flat list is refused", "ok: fwmd.record.class-not-allowed: a declared class selects its fields". | Supply an allowed object type name; fields are checked against that type. |
 | `fwmd.record.wrong-shape` | error | A mapping, list or scalar where the schema has another shape. Case: "a value of the wrong shape: a list where alternatives are expected, a string where an object is". | Write the shape the field takes. |
 | `fwmd.record.not-an-integer` | error | Not a whole number in an integer field. Case: "not a whole number in an integer field". | A whole number. |
 | `fwmd.record.not-a-boolean` | error | Not `true` or `false` in a Boolean field. For `yes`, `no`, `on`, `off` and other YAML 1.1 words the fix is the Boolean they mean. File `02-traps.json`, case "yes in a Boolean field is an error whose fix is true". | `true` or `false`. |

@@ -10,6 +10,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         [Theory]
         [InlineData("test")]
         [InlineData("blocks")]
+        [InlineData("classes")]
         public void EveryFixtureSchemaRoundTripsWithoutLosingItsModel(string name)
         {
             var schema = RecordFixtures.Schema(name);
@@ -139,6 +140,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             Assert.Equal(a.Blocks, b.Blocks);
             Assert.Equal(a.WritingSystem, b.WritingSystem);
             Assert.Equal(a.Notation, b.Notation);
+            Assert.Equal(a.ObjectTypeNames, b.ObjectTypeNames);
             Assert.Equal(a.ObjectTypeName, b.ObjectTypeName);
             Assert.Equal(a.ObjectType?.Name, b.ObjectType?.Name);
             if (a.Item == null) Assert.Null(b.Item);

@@ -1,5 +1,7 @@
 using System;
 using System.Globalization;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SIL.TextEditing.Markdown.Records
 {
@@ -25,8 +27,12 @@ namespace SIL.TextEditing.Markdown.Records
         public RecordField? Body;
 
         /// <summary>Resolves <paramref name="root"/>; null (with <paramref name="error"/>) when it does not name anything the schema has.</summary>
-        public static RecordRoot? Resolve(RecordKind kind, string? root, out string? error)
+        public static RecordRoot? Resolve(RecordKind kind, string? root, out string? error, string? objectClass = null)
+            => Resolve(kind, root, out error, out _, objectClass);
+
+        public static RecordRoot? Resolve(RecordKind kind, string? root, out string? error, out bool classError, string? objectClass)
         {
+            classError = false;
             error = null;
             var result = new RecordRoot { Type = kind.Root, IsRecord = true };
             if (root != null)
@@ -45,34 +51,37 @@ namespace SIL.TextEditing.Markdown.Records
                     error = "A " + kind.Name + " record's path starts with /" + folder + ".";
                     return null;
                 }
-                var type = kind.Root;
-                int i = kind.PathSegments;
-                while (i < path.Segments.Count)
+                var pending = new Stack<(RecordObjectType Type, int Index)>();
+                var visited = new HashSet<(RecordObjectType Type, int Index)>();
+                var candidates = new HashSet<RecordObjectType>();
+                pending.Push((kind.Root, kind.PathSegments));
+                while (pending.Count > 0)
                 {
-                    var segment = path.Segments[i];
-                    var field = segment.Homograph == null && segment.GuidSuffix == null ? type.Field(segment.Name) : null;
-                    if (field != null && field.Kind == RecordFieldKind.Object)
+                    var state = pending.Pop();
+                    if (!visited.Add(state)) continue;
+                    if (state.Index == path.Segments.Count) { candidates.Add(state.Type); continue; }
+                    var segment = path.Segments[state.Index];
+                    var field = segment.Homograph == null && segment.GuidSuffix == null ? state.Type.Field(segment.Name) : null;
+                    if (field == null) continue;
+                    int next = state.Index + 1;
+                    if (field.IsList)
                     {
-                        type = field.ObjectType!;
-                        i++;
+                        if (next >= path.Segments.Count || !IsIndex(path.Segments[next])) continue;
+                        next++;
+                        field = field.Item!;
                     }
-                    else if (field != null && field.IsList && field.Item!.Kind == RecordFieldKind.Object)
-                    {
-                        if (i + 1 >= path.Segments.Count || !IsIndex(path.Segments[i + 1]))
-                        {
-                            error = "In '" + root + "', " + segment.Name + " is a sequence, so a 1-based index follows it.";
-                            return null;
-                        }
-                        type = field.Item.ObjectType!;
-                        i += 2;
-                    }
-                    else
-                    {
-                        error = "In '" + root + "', " + segment + " is not an owned object of " + type.Name + ".";
-                        return null;
-                    }
-                    result.IsRecord = false;
+                    if (field.Kind != RecordFieldKind.Object) continue;
+                    foreach (var target in field.ObjectTypes) pending.Push((target, next));
                 }
+                var type = candidates.Count == 1 ? candidates.Single() : candidates.FirstOrDefault(t => t.Name == objectClass);
+                if (type == null)
+                {
+                    classError = candidates.Count > 0;
+                    error = candidates.Count == 0 ? "In '" + root + "', the owned-object path does not walk the schema; a list requires a 1-based index."
+                        : "The partial root '" + root + "' requires an allowed class in record-data: " + string.Join(", ", candidates.Select(t => t.Name)) + ".";
+                    return null;
+                }
+                result.IsRecord = path.Segments.Count == kind.PathSegments;
                 result.Type = type;
                 if (path.Field != null)
                 {

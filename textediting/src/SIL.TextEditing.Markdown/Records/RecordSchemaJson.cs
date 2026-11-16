@@ -60,7 +60,9 @@ namespace SIL.TextEditing.Markdown.Records
                 }
             }
             if (field.Notation != null) value.Add("notation", field.Notation);
-            if (field.ObjectTypeName != null) value.Add("type", field.ObjectTypeName);
+            if (field.ObjectTypeNames.Count == 1) value.Add("type", field.ObjectTypeNames[0]);
+            else if (field.ObjectTypeNames.Count > 1)
+                value.Add("types", new J.Arr(field.ObjectTypeNames.Select(n => (J.Node)new J.Str(n))));
             if (field.Item != null) value.Add("item", Field(field.Item));
             return value;
         }
@@ -74,7 +76,7 @@ namespace SIL.TextEditing.Markdown.Records
                 int version = Json.OptInt(json, "version", 0);
                 if (version < 1 || version > RecordSchema.CurrentVersion)
                     throw new FormatException("Unsupported record schema version " + version +
-                        "; supported version is " + RecordSchema.CurrentVersion + ".");
+                        "; supported versions are 1 through " + RecordSchema.CurrentVersion + ".");
                 return Build(json, version);
             }
             catch (Exception error) when (error is ArgumentException || error is InvalidOperationException ||
@@ -92,7 +94,9 @@ namespace SIL.TextEditing.Markdown.Records
             {
                 Keys(t, "name", "guid", "fields");
                 var type = builder.ObjectType(Json.Str(t["name"]), Json.OptBool(t, "guid", true));
-                foreach (var f in Json.Arr(t["fields"]).Select(Json.Obj)) AddField(type, f, version);
+                var fields = Json.Arr(t["fields"]).Select(Json.Obj).ToList();
+                type.AllowLegacyClass = fields.Any(f => Json.Str(f["name"]) == "class");
+                foreach (var f in fields) AddField(type, f, version);
             }
             foreach (var k in Json.Arr(json["kinds"]).Select(Json.Obj))
             {
@@ -124,7 +128,11 @@ namespace SIL.TextEditing.Markdown.Records
             }
             if (kind == "rich") { allowed.Add("paragraphs"); allowed.Add("blocks"); }
             if (kind == "notation") allowed.Add("notation");
-            if (kind == "object") allowed.Add("type");
+            if (kind == "object")
+            {
+                allowed.Add("type");
+                if (version >= 2) allowed.Add("types");
+            }
             if (kind == "sequence" || (version >= 2 && (kind == "seq" || kind == "col"))) allowed.Add("item");
             Keys(field, allowed.ToArray());
         }
@@ -156,6 +164,13 @@ namespace SIL.TextEditing.Markdown.Records
             }
         }
 
+        static string[] ObjectTypes(Dictionary<string, object?> field)
+        {
+            if (!field.TryGetValue("types", out var types)) return new[] { Json.Str(field["type"]) };
+            if (field.ContainsKey("type")) throw new FormatException("An object field uses type or types, not both.");
+            return Json.Arr(types).Select(Json.Str).ToArray();
+        }
+
         static void AddField(RecordObjectTypeBuilder type, Dictionary<string, object?> f, int version)
         {
             string name = Json.Str(f["name"]);
@@ -178,7 +193,7 @@ namespace SIL.TextEditing.Markdown.Records
                 case "boolean": type.Boolean(name); break;
                 case "guid": type.Guid(name); break;
                 case "reference": type.Reference(name); break;
-                case "object": type.Object(name, Json.Str(f["type"])); break;
+                case "object": type.Object(name, ObjectTypes(f)); break;
                 case "seq":
                 case "col":
                 case "sequence":
@@ -187,7 +202,7 @@ namespace SIL.TextEditing.Markdown.Records
                     FieldKeys(item, Json.Str(item["kind"]), true, version);
                     switch (Json.Str(item["kind"]))
                     {
-                        case "object": type.Objects(name, Json.Str(item["type"])); break;
+                        case "object": type.Objects(name, ObjectTypes(item)); break;
                         case "reference": type.References(name); break;
                         case "text": type.Texts(name, Ws(item)); break;
                         case "notation": type.Notations(name, Json.Str(item["notation"]), Ws(item)); break;
