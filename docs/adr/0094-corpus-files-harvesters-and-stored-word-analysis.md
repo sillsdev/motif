@@ -8,6 +8,11 @@ project assets. PanGloss analyzes their words; Motif stores and queries the resu
 with annotations, and records how it was used. Neither source intake nor machine analysis approves a
 spelling, an analysis or a Proposal.
 
+**Amended 2026-11-16 (owner):** a person can Approve an Occurrence in every Corpus, as FieldWorks does in a Text: the
+Approve chooses the analysis that Occurrence has, and Paratext Sources come first
+([ADR 0110](0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md), amendment 2026-11-16). Intake and
+machine analysis still approve nothing; only a person's Approve, saved by Apply, does.
+
 ## Context
 
 The existing corpus implementation stores whole Documents in the paired SQLite database. Earlier

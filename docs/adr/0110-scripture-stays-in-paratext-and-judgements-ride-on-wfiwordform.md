@@ -86,3 +86,40 @@ Draft ADR 0108 ("Approval is per occurrence...", proposed, PR #149) sets how sta
 - **Per-book JSON chunks** on the Source. Merge conflicts grow with the chunk. Per-chapter items are small and match "one chapter per person", so conflicts are rare. A word's judgements are gathered by the local index, not by storage.
 - **Our own USFM parser.** Duplicates Machine's USFM, range and versification code.
 - **A raw `\c`-slice hash.** Any byte edit nearby, even a line ending, changes it.
+
+## Amendment, 2026-11-16 (owner): Approve at an Occurrence
+
+**In plain terms:** a Source is a kind of Corpus. A person Approves a word in a verse the way FieldWorks does: they choose the
+analysis it has. There is no "not this analysis here" action. The saved shape is simpler: one list item per chapter, with one
+custom field that lists, for each analysis, the places it is approved.
+
+This replaces decision 5 and its 2026-11-12 amendment where they differ, and the terms in decision 3 where they differ.
+Decision 6 (a word-wide Disapproved Opinion) stands and is the only way to say an analysis is wrong.
+
+1. **A Source is a kind of Corpus.** Its chapters are its Documents, and it is worked with like any other Corpus
+   ([ADR 0094](0094-corpus-files-harvesters-and-stored-word-analysis.md)). Features are written over Corpus Documents where
+   that is cheap; Paratext Sources come first.
+2. **Approve follows FieldWorks.** To Approve an Occurrence is to choose the analysis it has, which also approves that
+   analysis. An Occurrence nobody has approved shows a **guess**. The only actions at an Occurrence are Approve and Clear.
+   There is no per-Occurrence Disapprove, so the saved shape has no second group for "not this analysis here".
+3. **Opinion.** Approving when the analysis's Opinion is Unknown also stages Opinion Approved. A Disapproved Opinion is left
+   alone, and the conflict is shown.
+4. **One approved analysis.** An Occurrence holds at most one. The newest Approve replaces the old one, and Clear returns the
+   Occurrence to a guess. Everything is staged in a Draft and saved only by Apply. MCP never applies.
+5. **Guess-only Add + Approve.** When FieldWorks holds no analysis (a PanGloss guess only), Approve stages "Add analysis from
+   PanGloss" plus the approval in one Draft. Apply writes both, or neither.
+6. **Stale.** An approval carries over only when the verse text, the word number and the analysis are all unchanged.
+   Otherwise it is stale: shown, not counted as approved, and never re-approved automatically.
+7. **Bulk Approve.** It covers the same Wordform whose guess is the same analysis, across Documents within one Corpus. It
+   skips Occurrences already approved to another analysis, and stale ones. It shows the count before Apply, such as
+   "approve 37 Occurrences in 12 chapters".
+8. **Storage.** One CmPossibility item per Document (for a Source, a chapter) as a sub-item of its Source's item in Motif's
+   Sources list. One custom field on CmPossibility, added through LibLCM `IFwMetaDataCacheManaged.AddCustomField` (a path
+   [ADR 0112](0112-motif-writes-only-what-fieldworks-can-create.md) allows), maps an analysis GUID to the Occurrence
+   locations it is approved at, such as `MAT 5:3#2`. The WfiWordform field is not used.
+
+**Still open (owner):**
+
+- Send/Receive behaviour when two people work in one chapter, and how a lost approval is detected.
+- The first custom-field creation handshake. Until it is settled, Apply creates the field if it is absent.
+- List visibility: FLEx shows every unowned custom list; the field itself is not shown. Whether to hide the list is undecided.
