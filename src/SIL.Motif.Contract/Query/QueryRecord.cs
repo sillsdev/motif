@@ -12,10 +12,17 @@ namespace SIL.Motif.Contract.Query;
 /// the whole selected universe, <c>Exceptions</c> are the selectors that mark a universe row an exception for
 /// <c>tolerance</c>, and <c>Unit</c> (<c>msa</c> or <c>stem</c>) is the unit the scorers claim.
 /// </remarks>
+/// <remarks>
+/// <c>split</c> and <c>size</c> read the stems and forms sources, with or without a change. Their deviants are the rows the
+/// <c>Exceptions</c> selectors match, or the <c>Members</c> ids, or, under a change with an evidence word set, the rows whose
+/// unchanged form alone is attested. <c>Context</c> selectors name the context <c>size</c> weighs. <c>Evidence</c> asks for the
+/// one-screen composite over the grouping <c>Where</c> or <c>Members</c> names, compared with the whole source.
+/// </remarks>
 public sealed record QueryRecord(string From, IReadOnlyList<QueryCondition> Where, IReadOnlyList<string> Group,
     int MinCount = 1, int Examples = 5, bool Ids = false, bool RawLetters = false, string? TrialId = null,
     string? Fold = null, string? Distinct = null, QueryHypothesis? Change = null, IReadOnlyList<string>? Score = null,
-    IReadOnlyList<QueryCondition>? Exceptions = null, string? Unit = null);
+    IReadOnlyList<QueryCondition>? Exceptions = null, string? Unit = null, IReadOnlyList<string>? Members = null,
+    IReadOnlyList<QueryCondition>? Context = null, bool Evidence = false);
 
 /// <summary>One selector; selectors in a query are combined with AND.</summary>
 public sealed record QueryCondition(string Col, string Op, string Value);
@@ -53,6 +60,9 @@ public sealed record QueryResult(IReadOnlyList<QueryForm> Rows, IReadOnlyList<Qu
     /// <summary>What a hypothesised-change query could not measure, worded for the reader; null when it measured everything.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<string>? Notes { get; init; }
+    /// <summary>The one-screen composite of an evidence query; null for any other query.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public QueryEvidence? Evidence { get; init; }
     /// <summary>Matching rows of the stems, uses and objects sources; null for the forms source.</summary>
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<QueryItem>? Items { get; init; }

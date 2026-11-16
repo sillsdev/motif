@@ -1,11 +1,15 @@
 using System.Globalization;
+using SIL.Motif.Contract.Parsimony.RuleAttempts;
 
 namespace SIL.Motif.Contract.Query;
 
 public static partial class FormQuery
 {
     /// <summary>The scorer names a hypothesised-change query accepts.</summary>
-    public static IReadOnlyList<string> Scorers { get; } = ["tolerance", "reliability", "control"];
+    public static IReadOnlyList<string> Scorers { get; } = ["tolerance", "reliability", "control", "split", "size"];
+
+    /// <summary>The scorers that read the evidence of a hypothesised change.</summary>
+    internal static readonly IReadOnlyList<string> PhaseThreeScorers = ["tolerance", "reliability", "control"];
 
     /// <summary>The formula version printed with <c>reliability</c>; its exact convention is unresolved, so it is a sort key.</summary>
     public const string ReliabilityVersion = "reliability/1 p=(h+0.5)/(n+1) lower=p-0.674*sqrt(p*(1-p)/n); sort key, not a verdict";
@@ -21,8 +25,17 @@ public static partial class FormQuery
 
     private static void RejectHypothesisFields(QueryRecord query, string where)
     {
-        if (query.Change is not null || query.Score is { Count: > 0 } || query.Exceptions is { Count: > 0 } || query.Unit is not null)
-            throw new ArgumentException($"A hypothesised change, scorers, exceptions and a unit apply to the stems source only, not {where}.");
+        var analysis = QueryAnalysis.Wants(query);
+        if (query.Change is not null || query.Score?.Any(s => !QueryAnalysis.IsAnalysisScorer(s)) == true || query.Unit is not null ||
+            query.Exceptions is { Count: > 0 } && !analysis)
+            throw new ArgumentException($"A hypothesised change, its scorers, exceptions and a unit apply to the stems source only, not {where}.");
+        QueryAnalysis.Validate(query);
+    }
+
+    internal static (double Ratio, double Adjusted, double Lower) ReliabilityOf(long hits, long scope)
+    {
+        var p = (hits + 0.5) / (scope + 1);
+        return ((double)hits / scope, p, p - 0.674 * Math.Sqrt(p * (1 - p) / scope));
     }
 
     /// <summary>
@@ -41,15 +54,17 @@ public static partial class FormQuery
             throw new ArgumentException("A hypothesised change applies to the stems source.");
         var scores = query.Score ?? [];
         if (scores.Any(s => !Scorers.Contains(s)) || scores.Distinct(StringComparer.Ordinal).Count() != scores.Count)
-            throw new ArgumentException("Unknown or repeated scorer; use tolerance, reliability or control.");
+            throw new ArgumentException("Unknown or repeated scorer; use tolerance, reliability, control, split or size.");
         if (scores.Count > 0 && query.Group.Count > 0)
             throw new ArgumentException("Scorers run over the whole selected universe; remove --group.");
-        if (query.Exceptions is { Count: > 0 } && !scores.Contains("tolerance"))
+        var analysis = QueryAnalysis.Wants(query);
+        if (query.Exceptions is { Count: > 0 } && !scores.Contains("tolerance") && !analysis)
             throw new ArgumentException("Exceptions are what tolerance counts; add --score tolerance.");
         if (query.Unit is not (null or "msa" or "stem")) throw new ArgumentException("The unit is msa or stem.");
+        QueryAnalysis.Validate(query);
         var fold = QueryFold.Compile(query.Fold);
         var context = new HypothesisContext(change, fold, inputs);
-        if (!context.EvidenceMeasured && query.Where.Any(c => c.Col == "evidence"))
+        if (!context.EvidenceMeasured && query.Where.Concat(query.Exceptions ?? []).Concat(query.Context ?? []).Any(c => c.Col == "evidence"))
             throw new QueryNotMeasuredException("The evidence column is not measured without an evidence word set (--wordset), so a selector on it cannot run.");
         var segmentIndex = Index(query.RawLetters ? [] : graphemes);
         var stored = QuerySources.StoredColumns(QuerySources.Stems);
@@ -58,6 +73,7 @@ public static partial class FormQuery
             c => QuerySources.IsNumeric(QuerySources.Stems, c));
         var views = rows.Select(row => new HypothesisRow(new StoredValues(QuerySources.Stems, stored, row, segmentIndex, fold), context))
             .Where(view => view.Applicable);
+        if (analysis) return AnalyseHypothesis(query, views.Cast<IQueryRowView>().ToList(), spec, context, scores, graphemes);
         var matched = new List<HypothesisRow>();
         var outcome = QueryEngine.Execute(query, views, spec, view => matched.Add((HypothesisRow)view));
         var results = scores.Count == 0 ? null : scores.Select(name => context.Score(name, query, matched, spec)).ToList();
@@ -72,6 +88,42 @@ public static partial class FormQuery
             Scores = results,
             Notes = context.Notes(),
         };
+    }
+
+    private static QueryResult AnalyseHypothesis(QueryRecord query, List<IQueryRowView> views, QuerySpec spec, HypothesisContext context,
+        IReadOnlyList<string> scores, IReadOnlyList<string> graphemes)
+    {
+        var picked = new List<IQueryRowView>();
+        QueryAnalysis.Select(query, views, spec, picked);
+        var matched = picked.Cast<HypothesisRow>().ToList();
+        var scoring = query with { Unit = query.Unit ?? "stem" };
+        var heldOutReady = context.HeldOut.Count > 0 && context.Discovery.Count > 0;
+        var setup = new AnalysisSetup(QuerySources.Stems, [.. QueryAnalysis.StemColumns, "collides"],
+            QueryAnalysis.ExpressibleFor(graphemes, query.RawLetters), c => QueryEngine.Compile(c, spec),
+            context.EvidenceMeasured ? v => ((HypothesisRow)v).Evidence == "base" : null,
+            context.EvidenceMeasured ? null : "The deviants default to rows whose unchanged form alone is attested, which needs an evidence word set (--wordset); give one, --exception or --members.",
+            heldOutReady ? v => context.HeldOutOf((HypothesisRow)v) : null, v => ((HypothesisRow)v).Folded,
+            heldOutReady ? null : "needs --discovery and --heldout word sets.",
+            context.HasFrequency ? v => ((HypothesisRow)v).Frequency : null, v => v.SortKey,
+            context.EvidenceMeasured ? v => ((HypothesisRow)v).UndecidedQuestion() : null,
+            "needs an evidence word set (--wordset) to know which rows are undecided.",
+            members => new QuerySameShape($"{context.Change.Dropped}>{context.Change.Gained}@{context.Change.At}", members.Count,
+                members.Count >= SameShapeGroups.RuleAttemptThreshold, $"{context.Change.Dropped}>{context.Change.Gained}"),
+            name => context.Score(name, scoring, matched, spec));
+        var notes = new List<string>();
+        QueryResult Finish(QueryResult result)
+        {
+            var parse = context.Notes();
+            if (parse is not null) notes.AddRange(parse);
+            return result with { Notes = notes.Count == 0 ? null : notes };
+        }
+        if (query.Evidence)
+            return Finish(new QueryResult([], [], []) { Evidence = QueryAnalysis.Evidence(query, views, matched.Cast<IQueryRowView>().ToList(), setup) });
+        var results = new List<QueryScore>();
+        foreach (var name in scores.Where(s => !QueryAnalysis.IsAnalysisScorer(s))) results.Add(context.Score(name, query, matched, spec));
+        results.AddRange(QueryAnalysis.Scores(query, matched, setup));
+        return Finish(new QueryResult([], [], []) { Scores = results, Items = [.. matched
+            .OrderBy(v => v.SortKey, StringComparer.Ordinal).ThenBy(v => v.Id, StringComparer.Ordinal).Take(query.Examples).Select(v => v.Project())] });
     }
 
     private sealed class HypothesisContext
@@ -107,6 +159,22 @@ public static partial class FormQuery
                 else if (owner.First != entry) Owners[key] = (owner.First, true);
             }
             _parse = inputs.Parse;
+            if (inputs.Frequency is { Count: > 0 } weights)
+            {
+                Weights = new Dictionary<string, long>(StringComparer.Ordinal);
+                foreach (var (word, weight) in weights) Weights[fold(word)] = Weights.GetValueOrDefault(fold(word)) + weight;
+            }
+        }
+
+        public Dictionary<string, long>? Weights { get; }
+        public bool HasFrequency => Weights is not null;
+
+        // A held-out hit is attested there and absent from discovery, as control counts it.
+        public int HeldOutOf(HypothesisRow row)
+        {
+            bool Hit(string form) => HeldOut.Contains(form) && !Discovery.Contains(form);
+            if (row.PredictedForms.Any(Hit)) return 1;
+            return row.UnchangedForms.Any(Hit) ? 2 : 0;
         }
 
         public Func<string, string> Fold { get; }
@@ -221,9 +289,10 @@ public static partial class FormQuery
             var notes = new List<string> { $"Counts are {unit}s; a row with no evidence is outside the scope, not a miss." };
             if (scope > 0)
             {
-                ratio = (double)hits / scope;
-                p = (hits + 0.5) / (scope + 1);
-                lower = p - 0.674 * Math.Sqrt(p.Value * (1 - p.Value) / scope);
+                (var r, var adjusted, var limit) = ReliabilityOf(hits, scope);
+                ratio = r;
+                p = adjusted;
+                lower = limit;
             }
             else notes.Add("No row has evidence, so the limit is undefined.");
             return new QueryScore("reliability", ReliabilityVersion, unit,
@@ -351,9 +420,17 @@ public static partial class FormQuery
         public string SortKey => _inner.SortKey;
         public long? Tokens => null;
         private string[] Predicted => _predicted ??= _context.Form(Folded, _context.Gained, unchanged: false);
+        public string[] PredictedForms => Predicted;
+        public string[] UnchangedForms => _unchanged ??= _context.Form(Folded, "", unchanged: true);
+
+        public long? Frequency => _context.Weights is { } weights
+            ? Predicted.Concat(UnchangedForms).Distinct(StringComparer.Ordinal).Sum(form => weights.GetValueOrDefault(form)) : null;
+
+        public string? UndecidedQuestion() => Evidence == "none"
+            ? $"Is \"{Predicted[0]}\" a word? (the stem now reads \"{Folded}\")" : null;
 
         public string Evidence => _evidence ??= !_context.EvidenceMeasured ? "not-measured" : (
-            Predicted.Any(_context.Evidence.Contains), (_unchanged ??= _context.Form(Folded, "", unchanged: true)).Any(_context.Evidence.Contains))
+            Predicted.Any(_context.Evidence.Contains), UnchangedForms.Any(_context.Evidence.Contains))
             switch { (true, true) => "both", (true, false) => "rule", (false, true) => "base", _ => "none" };
 
         private string[] Collides => _collides ??= _context.CollidesOf(Folded, _inner.Get("entry") is { Count: > 0 } e ? e[0] : "", Predicted);

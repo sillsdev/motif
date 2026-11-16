@@ -34,6 +34,10 @@ public sealed record QueryScore(string Scorer, string Version, string Unit, IRea
     /// <summary>Control hits by letter, for <c>control</c>.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyDictionary<string, long>? Controls { get; init; }
+
+    /// <summary>The judged contexts of <c>split</c>, best first.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<QueryContext>? Contexts { get; init; }
 }
 
 /// <summary>A scorer was asked to count in a unit its hits or exceptions are not in.</summary>
@@ -51,9 +55,10 @@ public sealed class QueryNotMeasuredException(string message) : ArgumentExceptio
 /// <param name="HeldOut">The words of the held-out sets.</param>
 /// <param name="Forms">Every lexeme, alternate and variant form with its entry, for the entry-collision check.</param>
 /// <param name="Parse">Reads which words parse today; null when the project has no current parser evidence.</param>
+/// <param name="Frequency">The sampled-token weight of each evidence word; null when the word sets carry none. Held-out words never appear here.</param>
 public sealed record QueryHypothesisInputs(IReadOnlyCollection<string> Evidence, IReadOnlyCollection<string> Discovery,
     IReadOnlyCollection<string> HeldOut, IReadOnlyCollection<(string Form, string Entry)> Forms,
-    Func<QueryParseEvidence?>? Parse);
+    Func<QueryParseEvidence?>? Parse, IReadOnlyDictionary<string, long>? Frequency = null);
 
 /// <summary>What parses today, as measured by the current parser run.</summary>
 /// <param name="Parses">Each measured word and whether it has an analysis; a word absent from it was not measured.</param>

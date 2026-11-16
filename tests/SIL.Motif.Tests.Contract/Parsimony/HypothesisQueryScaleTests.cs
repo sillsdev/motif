@@ -41,6 +41,39 @@ public sealed class HypothesisQueryScaleTests(ITestOutputHelper output)
         Assert.True(clock.ElapsedMilliseconds <= 300, $"{clock.ElapsedMilliseconds} ms");
     }
 
+    [SlowScaleFact]
+    public void EvidenceAndSplitOverThirtyFourThousandStemsStayWithinTheirTargets()
+    {
+        var stems = new List<QueryRow>();
+        var words = new List<string>();
+        var random = new Random(11);
+        const string letters = "abdgiklmnoprstuw";
+        for (var i = 0; i < 34000; i++)
+        {
+            var form = new string(Enumerable.Range(0, 4).Select(_ => letters[random.Next(letters.Length)]).ToArray()) + i.ToString("x") + (i % 3 == 0 ? "ad" : "ek");
+            stems.Add(Stem("m" + i, form, i % 3 == 0 && i % 50 == 0 ? "KEEP" : "", 1));
+            if (i % 2 == 0 && words.Count < 60000) words.Add(form[..^1] + "ran");
+        }
+        var change = new QueryHypothesis("d", "r", "final", ["an", "un", "on", "i", "a"], ["u"], ["disc"], ["held"]);
+        var inputs = new QueryHypothesisInputs(words, words.Take(1000).ToList(), words.Skip(1000).Take(20000).ToList(), [], null);
+        var evidence = new QueryRecord(QuerySources.Stems, [new("final:2", "is", "ad")], [], Change: change, Evidence: true);
+        var split = new QueryRecord(QuerySources.Stems, [], [], Change: change, Score: ["split"],
+            Exceptions: [new("features", "has", "KEEP")]);
+        FormQuery.RunHypothesis(evidence, stems, [], inputs);
+        FormQuery.RunHypothesis(split, stems, [], inputs);
+        var clock = Stopwatch.StartNew();
+        var composite = FormQuery.RunHypothesis(evidence, stems, [], inputs);
+        var evidenceMs = clock.ElapsedMilliseconds;
+        clock.Restart();
+        var splitResult = FormQuery.RunHypothesis(split, stems, [], inputs);
+        var splitMs = clock.ElapsedMilliseconds;
+        output.WriteLine($"evidence {evidenceMs} ms, split {splitMs} ms over {stems.Count} stems");
+        Assert.NotNull(composite.Evidence);
+        Assert.NotNull(splitResult.Scores);
+        Assert.True(evidenceMs <= 600, $"evidence {evidenceMs} ms");
+        Assert.True(splitMs <= 1000, $"split {splitMs} ms");
+    }
+
     // Runs only with exported CEB files in MOTIF_QUERY_REPRO_DIR.
     [Fact]
     public void TheD2RFiguresOnTheExportedCebLexiconMatchTheReferenceScripts()

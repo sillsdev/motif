@@ -32,6 +32,7 @@ public static partial class FormQuery
         RejectHypothesisFields(query, "the forms source");
         var fold = QueryFold.Compile(query.Fold);
         var segmentIndex = Index(query.RawLetters ? [] : graphemes);
+        if (QueryAnalysis.Wants(query)) return AnalyseForms(query, rows, graphemes, segmentIndex, fold);
         var outcome = QueryEngine.Execute(query, rows.Select(row => (IQueryRowView)new FormValues(row, segmentIndex, fold)), FormSpec);
         return new QueryResult([.. outcome.Selected.Select(v => ((FormValues)v).Project())],
             [.. outcome.Groups.Select(g => new QueryGroup(g.Key, g.Count, g.Tokens,
@@ -55,13 +56,50 @@ public static partial class FormQuery
         var stored = QuerySources.StoredColumns(source);
         var spec = new QuerySpec(c => QuerySources.IsColumn(source, c), c => QuerySources.IsStoredSet(source, c),
             c => QuerySources.IsNumeric(source, c));
+        if (QueryAnalysis.Wants(query)) return AnalyseStems(query, rows, graphemes, segmentIndex, fold, stored, spec);
         var outcome = QueryEngine.Execute(query, rows.Select(row => (IQueryRowView)new StoredValues(source, stored, row, segmentIndex, fold)), spec);
         QueryItem Item(IQueryRowView view) => ((StoredValues)view).Project();
         return new QueryResult([], [.. outcome.Groups.Select(g => new QueryGroup(g.Key, g.Count, g.Tokens, [])
             { Samples = [.. g.Examples.Select(Item)] })], outcome.Ids) { Items = [.. outcome.Selected.Select(Item)] };
     }
 
-    private static IReadOnlyDictionary<char, string[]> Index(IReadOnlyList<string> graphemes) => graphemes
+    private static QueryResult AnalyseForms(QueryRecord query, IReadOnlyList<QueryForm> rows, IReadOnlyList<string> graphemes,
+        IReadOnlyDictionary<char, string[]> segmentIndex, Func<string, string> fold)
+    {
+        var views = rows.Select(row => (IQueryRowView)new FormValues(row, segmentIndex, fold)).ToList();
+        var spec = FormSpec;
+        var matched = new List<IQueryRowView>();
+        QueryAnalysis.Select(query, views, spec, matched);
+        var setup = new AnalysisSetup(QuerySources.Forms, QueryAnalysis.FormColumns, QueryAnalysis.ExpressibleFor(graphemes, query.RawLetters),
+            c => QueryEngine.Compile(c, spec), null, null, null, null, "forms carry no held-out evidence.",
+            v => v.Tokens, v => ((FormValues)v).Row.Form, null, "forms carry no word evidence, so no row is undecided.",
+            QueryAnalysis.FormShape, null);
+        if (query.Evidence)
+            return new QueryResult([], [], []) { Evidence = QueryAnalysis.Evidence(query, views, matched, setup) };
+        var scores = QueryAnalysis.Scores(query, matched, setup);
+        return new QueryResult([.. matched.OrderBy(v => v.SortKey, StringComparer.Ordinal).ThenBy(v => v.Id, StringComparer.Ordinal)
+            .Take(query.Examples).Select(v => ((FormValues)v).Project())], [], []) { Scores = scores };
+    }
+
+    private static QueryResult AnalyseStems(QueryRecord query, IReadOnlyList<QueryRow> rows, IReadOnlyList<string> graphemes,
+        IReadOnlyDictionary<char, string[]> segmentIndex, Func<string, string> fold, IReadOnlyList<string> stored, QuerySpec spec)
+    {
+        if (query.From != QuerySources.Stems)
+            throw new ArgumentException("Split, size and evidence read the stems or forms source.");
+        var views = rows.Select(row => (IQueryRowView)new StoredValues(QuerySources.Stems, stored, row, segmentIndex, fold)).ToList();
+        var matched = new List<IQueryRowView>();
+        QueryAnalysis.Select(query, views, spec, matched);
+        var setup = new AnalysisSetup(QuerySources.Stems, QueryAnalysis.StemColumns, QueryAnalysis.ExpressibleFor(graphemes, query.RawLetters),
+            c => QueryEngine.Compile(c, spec), null, null, null, null, "no hypothesised change, so no held-out evidence.",
+            null, v => v.SortKey, null, "needs --change and --wordset on the stems source.", null, null);
+        if (query.Evidence)
+            return new QueryResult([], [], []) { Evidence = QueryAnalysis.Evidence(query, views, matched, setup) };
+        var scores = QueryAnalysis.Scores(query, matched, setup);
+        return new QueryResult([], [], []) { Items = [.. matched.OrderBy(v => v.SortKey, StringComparer.Ordinal)
+            .ThenBy(v => v.Id, StringComparer.Ordinal).Take(query.Examples).Select(v => ((StoredValues)v).Project())], Scores = scores };
+    }
+
+    internal static IReadOnlyDictionary<char, string[]> Index(IReadOnlyList<string> graphemes) => graphemes
         .Where(g => !string.IsNullOrEmpty(g)).Distinct(StringComparer.Ordinal)
         .OrderByDescending(g => g.Length).ThenBy(g => g, StringComparer.Ordinal)
         .GroupBy(g => g[0]).ToDictionary(g => g.Key, g => g.ToArray());
