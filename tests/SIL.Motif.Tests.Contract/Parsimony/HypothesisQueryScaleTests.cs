@@ -63,6 +63,9 @@ public sealed class HypothesisQueryScaleTests(ITestOutputHelper output)
         var control = scored.Scores!.Single(s => s.Scorer == "control");
         var tagged = FormQuery.RunHypothesis(new QueryRecord(QuerySources.Stems, universe, [], Change: change, Examples: 0,
             Score: ["tolerance"], Exceptions: [new("features", "has", "D>R")]), stems, [], inputs).Scores![0];
+        var stemTolerance = FormQuery.RunHypothesis(new QueryRecord(QuerySources.Stems, universe, [], Change: change, Examples: 0,
+            Score: ["tolerance"], Unit: "stem"), stems, [], inputs).Scores![0];
+        output.WriteLine($"stem tolerance N={stemTolerance.Counts["N"]} e={stemTolerance.Counts["e"]} threshold {stemTolerance.Numbers["threshold"]:0.0} {stemTolerance.Verdict}");
         int Ids(params QueryCondition[] more) => FormQuery.RunHypothesis(new QueryRecord(QuerySources.Stems, [.. universe, .. more], [],
             Change: change, Examples: 0, Ids: true), stems, [], inputs).Ids.Count;
         var collidesAll = Ids(new QueryCondition("collides", "is", "entry"));
@@ -79,6 +82,8 @@ public sealed class HypothesisQueryScaleTests(ITestOutputHelper output)
         Assert.Equal(new Dictionary<string, long> { ["l"] = 2, ["n"] = 4, ["g"] = 3, ["m"] = 0, ["p"] = 3 }, control.Controls);
         Assert.Equal(1111, tolerance.Counts["N"]);
         Assert.Equal(318, tagged.Counts["e"]);
+        Assert.Equal(657, stemTolerance.Counts["N"]);
+        Assert.Equal("productive", stemTolerance.Verdict);
         Assert.Equal(146, collidesAll);
         Assert.Equal(82, collidesTagged);
     }

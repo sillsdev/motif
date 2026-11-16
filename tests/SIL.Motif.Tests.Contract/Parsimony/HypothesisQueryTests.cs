@@ -52,6 +52,10 @@ public sealed class HypothesisQueryTests
         Assert.Equal(5, tolerance.Counts["e"]);
         Assert.Equal(100.4, tolerance.Numbers["threshold"]!.Value, 1);
         Assert.Equal("productive", tolerance.Verdict);
+        var stemTolerance = FormQuery.RunHypothesis(Query(DToR(), "tolerance") with { Unit = "stem" }, stems, [], Inputs(union)).Scores![0];
+        Assert.Equal((650, 5), (stemTolerance.Counts["N"], stemTolerance.Counts["e"]));
+        Assert.Equal(100.4, stemTolerance.Numbers["threshold"]!.Value, 1);
+        Assert.Equal("productive", stemTolerance.Verdict);
         Assert.Equal(3, result.Items!.Count);
         var groups = FormQuery.RunHypothesis(Query(DToR()) with { Group = ["evidence"] }, stems, [], Inputs(union)).Groups
             .ToDictionary(g => g.Key[0], g => g.Count);
@@ -59,16 +63,18 @@ public sealed class HypothesisQueryTests
     }
 
     [Fact]
-    public void ToleranceCountsKeepTagsAsMsasAndRefusesToMixThemWithStems()
+    public void ToleranceCountsKeepTagsInTheUnitAndControlRefusesMsas()
     {
         var (stems, union) = Cebish();
         var keep = new[] { new QueryCondition("features", "has", "KEEPD") };
         var tolerance = FormQuery.RunHypothesis(Query(DToR(), "tolerance") with { Exceptions = keep }, stems, [], Inputs(union)).Scores![0];
         Assert.Equal(35, tolerance.Counts["e"]);
         Assert.Equal("msa", tolerance.Unit);
-        var mixed = Assert.Throws<QueryMixedUnitsException>(() => FormQuery.RunHypothesis(
-            Query(DToR(), "tolerance") with { Exceptions = keep, Unit = "stem" }, stems, [], Inputs(union)));
-        Assert.Contains("mix units", mixed.Message);
+        var byStem = FormQuery.RunHypothesis(Query(DToR(), "tolerance") with { Exceptions = keep, Unit = "stem" }, stems, [], Inputs(union)).Scores![0];
+        Assert.Equal("stem", byStem.Unit);
+        Assert.Equal(650, byStem.Counts["N"]);
+        Assert.Equal(35, byStem.Counts["e"]);
+        Assert.Equal(100.4, byStem.Numbers["threshold"]!.Value, 1);
         Assert.Throws<QueryMixedUnitsException>(() => FormQuery.RunHypothesis(
             Query(DToR(), "control") with { Unit = "msa" }, stems, [], Inputs(union, ["x"], ["y"])));
     }
@@ -91,10 +97,13 @@ public sealed class HypothesisQueryTests
             { ["kuurun"] = true, ["kuuran"] = false, ["kooran"] = false, ["koorun"] = false }, Stale: true);
         var some = FormQuery.RunHypothesis(query, stems, [], With(() => parsed));
         Assert.Equal(["parses"], Collides(some, "b"));
-        Assert.Equal(["none"], Collides(some, "d"));
+        Assert.Equal(["not-measured"], Collides(some, "d"));
         Assert.Equal(["not-measured"], Collides(some, "c"));
+        var current = FormQuery.RunHypothesis(query, stems, [], With(() => parsed with { Stale = false }));
+        Assert.Equal(["none"], Collides(current, "d"));
         Assert.Contains(some.Notes!, n => n.Contains("stale"));
         Assert.Contains(some.Notes!, n => n.Contains("1 of 4 rows"));
+        Assert.Contains(some.Notes!, n => n.Contains("not-measured, not none"));
     }
 
     [Fact]
@@ -120,6 +129,8 @@ public sealed class HypothesisQueryTests
         Assert.Throws<ArgumentException>(() => FormQuery.RunHypothesis(Query(DToR(), "bogus"), stems, [], Inputs(union)));
         Assert.Throws<ArgumentException>(() => FormQuery.RunRows(Query(DToR(), "reliability"), stems, []));
         Assert.Throws<ArgumentException>(() => FormQuery.RunHypothesis(Query(new("", "r", "final", ["an"], [])), stems, [], Inputs()));
+        Assert.Throws<QueryNotMeasuredException>(() => FormQuery.RunHypothesis(new QueryRecord(QuerySources.Stems,
+            [new("evidence", "=", "rule")], [], Change: DToR(evidence: false)), stems, [], Inputs()));
         var unevidenced = FormQuery.RunHypothesis(new QueryRecord(QuerySources.Stems, [], [], Examples: 1, Change: DToR(evidence: false)), stems, [], Inputs());
         Assert.Equal(["not-measured"], unevidenced.Items![0].Values["evidence"]);
     }

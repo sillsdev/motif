@@ -49,6 +49,8 @@ public static partial class FormQuery
         if (query.Unit is not (null or "msa" or "stem")) throw new ArgumentException("The unit is msa or stem.");
         var fold = QueryFold.Compile(query.Fold);
         var context = new HypothesisContext(change, fold, inputs);
+        if (!context.EvidenceMeasured && query.Where.Any(c => c.Col == "evidence"))
+            throw new QueryNotMeasuredException("The evidence column is not measured without an evidence word set (--wordset), so a selector on it cannot run.");
         var segmentIndex = Index(query.RawLetters ? [] : graphemes);
         var stored = QuerySources.StoredColumns(QuerySources.Stems);
         var spec = new QuerySpec(c => HypothesisContext.IsHypothesisColumn(c) || QuerySources.IsColumn(QuerySources.Stems, c),
@@ -163,9 +165,9 @@ public static partial class FormQuery
                 if (parses) hit.Add("parses");
             }
             if (hit.Count > 0) return [.. hit];
-            if (parse is null || unknown)
+            if (parse is null || unknown || parse.Stale)
             {
-                _collidesUnmeasured++;
+                if (parse is null || unknown) _collidesUnmeasured++;
                 return ["not-measured"];
             }
             return ["none"];
@@ -185,7 +187,7 @@ public static partial class FormQuery
                 else
                 {
                     if (parse.Stale)
-                        notes.Add("Not measured in full: the parser evidence is stale (the project was saved after the run), so a form that parses today may read none.");
+                        notes.Add("Not measured in full: the parser evidence is stale (the project was saved after the run), so a row with no parse in the old run reads not-measured, not none.");
                     if (_collidesUnmeasured > 0)
                         notes.Add($"Not measured: {_collidesUnmeasured} of {_collidesRows} rows evaluated for collides have a predicted form the parser run did not measure; " +
                             "they read not-measured, not none.");
@@ -236,13 +238,17 @@ public static partial class FormQuery
             var rows = InUnit(matched, unit).ToList();
             if (query.Exceptions is { Count: > 0 } exceptions)
             {
-                if (unit == "stem")
-                    throw new QueryMixedUnitsException("Exceptions selected by columns are counted per MSA, and --unit stem counts N per stem; " +
-                        "a stem count against an MSA count would mix units. Use --unit msa, or leave out --exception to count the stems " +
-                        "whose evidence contradicts the change.");
                 var tests = exceptions.Select(c => QueryEngine.Compile(c, spec)).ToArray();
-                e = rows.Count(r => tests.All(t => t(r)));
-                notes.Add("Exceptions are the universe rows the --exception selectors match, counted in MSAs.");
+                if (unit == "stem")
+                {
+                    e = matched.Where(r => tests.All(t => t(r))).Select(r => r.Folded).Distinct(StringComparer.Ordinal).Count();
+                    notes.Add("Exceptions are the distinct stems with a row the --exception selectors match.");
+                }
+                else
+                {
+                    e = rows.Count(r => tests.All(t => t(r)));
+                    notes.Add("Exceptions are the universe rows the --exception selectors match, counted in MSAs.");
+                }
             }
             else
             {

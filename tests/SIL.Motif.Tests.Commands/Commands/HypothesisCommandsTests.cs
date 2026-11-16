@@ -61,6 +61,34 @@ public sealed class HypothesisCommandsTests(ITestOutputHelper output) : IDisposa
         Project, "1.0", id, GdrId: "gdr-8", GdrSection: "Examples")).Succeeded);
 
     [Fact]
+    public void AControlQueryResultFileIsAcceptedByHypothesisTestOnlyOnceTheTrialLossesAreRecorded()
+    {
+        var stems = Enumerable.Range(0, 25).Select(i =>
+            new SIL.Motif.Contract.Query.QueryRow("m" + i, [[$"s{i:000}ad"], ["e" + i], ["V"], [], ["go"], ["1"], ["0"]])).ToList();
+        var held = stems.Select(row => row.Values[0][0][..^1] + "ran").ToList();
+        var change = new SIL.Motif.Contract.Query.QueryHypothesis("d", "r", "final", ["an"], ["w"], ["disc"], ["held"], 2, ["l", "n"]);
+        var scored = SIL.Motif.Contract.Query.FormQuery.RunHypothesis(new SIL.Motif.Contract.Query.QueryRecord(
+            SIL.Motif.Contract.Query.QuerySources.Stems, [], [], Change: change, Score: ["control"], Unit: "stem"), stems, [],
+            new SIL.Motif.Contract.Query.QueryHypothesisInputs([], ["x"], held, [], null)).Scores![0];
+        var emitted = new HypothesisTestResult(scored.Verdict!, (int)scored.Counts["predicted"], (int)scored.Counts["rule_hits"],
+            scored.Controls!.ToDictionary(pair => pair.Key, pair => (int)pair.Value), (int)scored.Counts["margin"]);
+        var options = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower,
+            PropertyNameCaseInsensitive = true,
+        };
+        var json = System.Text.Json.JsonSerializer.Serialize(emitted, options);
+        Assert.Contains("\"rule_hits\":25", json);
+        var read = System.Text.Json.JsonSerializer.Deserialize<HypothesisTestResult>(json, options)!;
+        Assert.Equal("PASS", read.Verdict);
+        var id = Add(Draft()).HypothesisId;
+        var refused = HypothesisCommands.RecordTest(new RecordHypothesisTestRequest(Project, "1.0", id, read));
+        Assert.False(refused.Succeeded);
+        Assert.Contains("trial_attested_losses", refused.Refusal!.Message);
+        Assert.True(HypothesisCommands.RecordTest(new RecordHypothesisTestRequest(Project, "1.0", id, read with { TrialAttestedLosses = 0 })).Succeeded);
+    }
+
+    [Fact]
     public void AHypothesisGetsAPermanentIdAndTheNeighboursAlreadyOnItsShape()
     {
         var first = Add(Draft());
