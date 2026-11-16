@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Data.Sqlite;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Host.Parsimony;
+using SIL.Motif.Tests.QueryScale;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
@@ -103,9 +104,37 @@ public sealed class AlloRepeatedFormTests(PristineProjectFixture pristine, ITest
     }
 
     [Fact]
+    public async Task AlloRepeatedFormAtCebScaleFindsEveryRepeatedFormOnce()
+    {
+        var findings = await _harness.RunAsync(AddCebScaleFacts, (session, bundle) =>
+        {
+            var result = MeasureRunner.Execute(Measure, session, bundle);
+            Assert.Equal(ParsimonyMeasureStatus.Computed, result.Run.Status);
+            return result.Findings.Count;
+        });
+
+        Assert.Equal(200, findings);
+    }
+
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public async Task AlloRepeatedFormRunsInUnderASecondAtCebScale()
     {
-        var elapsed = await _harness.RunAsync(path => EditFacts(path, Sections, connection =>
+        var elapsed = await _harness.RunAsync(AddCebScaleFacts, (session, bundle) =>
+        {
+            var timer = Stopwatch.StartNew();
+            var result = MeasureRunner.Execute(Measure, session, bundle);
+            timer.Stop();
+            Assert.Equal(ParsimonyMeasureStatus.Computed, result.Run.Status);
+            output.WriteLine($"{Measure}: {result.Findings.Count} findings in {timer.ElapsedMilliseconds} ms");
+            Assert.Equal(200, result.Findings.Count);
+            return timer.ElapsedMilliseconds;
+        });
+
+        Assert.True(elapsed < 1000, $"{Measure} took {elapsed} ms.");
+    }
+
+    private static void AddCebScaleFacts(string path) => EditFacts(path, Sections, connection =>
         {
             Environments(connection);
             for (var environment = 0; environment < 200; environment++)
@@ -127,19 +156,7 @@ public sealed class AlloRepeatedFormTests(PristineProjectFixture pristine, ITest
                 var guid = Id(100000 + extra);
                 Allomorph(connection, Id(5000000 + extra), guid, 5 + extra, "suffix", "g" + extra);
             }
-        }), (session, bundle) =>
-        {
-            var timer = Stopwatch.StartNew();
-            var result = MeasureRunner.Execute(Measure, session, bundle);
-            timer.Stop();
-            Assert.Equal(ParsimonyMeasureStatus.Computed, result.Run.Status);
-            output.WriteLine($"{Measure}: {result.Findings.Count} findings in {timer.ElapsedMilliseconds} ms");
-            Assert.Equal(200, result.Findings.Count);
-            return timer.ElapsedMilliseconds;
-        });
-
-        Assert.True(elapsed < 1000, $"{Measure} took {elapsed} ms.");
-    }
+    });
 
     // ---- decisions over plain inputs
 

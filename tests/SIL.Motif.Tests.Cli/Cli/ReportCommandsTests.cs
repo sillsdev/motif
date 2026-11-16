@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using SIL.Motif.Host.Assess;
 using System;
 using System.Globalization;
@@ -8,6 +9,8 @@ using SIL.Motif.Commands;
 using SIL.Motif.Commands.Requests;
 using SIL.Motif.Contract.Commands;
 using SIL.Motif.Contract.Ids;
+using SIL.Motif.Contract.Projects;
+using SIL.Motif.Host.Store;
 using SIL.Motif.Contract.Responses;
 using SIL.Motif.Host.Corpus;
 using SIL.Motif.Host.Parser;
@@ -119,6 +122,39 @@ public sealed class ReportCommandsTests : IDisposable
         Assert.NotNull(stored);
         Assert.Equal("coverage", stored!.Kind);
         Assert.Contains("50.0%", stored.RenderedText, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("older")]
+    [InlineData("newer")]
+    public void ReportingOnAnAssessmentLeavesAMissingOlderOrNewerStoreUnchanged(string state)
+    {
+        var storePath = ProjectDatabaseCatalog.DatabasePathFor(
+            new ProjectLocator(_project, Path.GetFileNameWithoutExtension(_project)));
+        if (state != "missing")
+        {
+            Assert.True(ProjectStoreCommand.Run(_project, ProductVersion,
+                (_, _) => CommandOutcome<string>.Success("created")).Succeeded);
+            using var connection = new SqliteConnection($"Data Source={storePath};Pooling=False");
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA user_version = {MotifSchema.CurrentSchema + (state == "older" ? -1 : 1)};";
+            command.ExecuteNonQuery();
+        }
+        string[] StoreFiles() => Directory.GetFiles(_root).Where(path =>
+            !path.EndsWith("-wal", StringComparison.Ordinal) && !path.EndsWith("-shm", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal).ToArray();
+        var before = StoreFiles().ToDictionary(path => path, File.ReadAllBytes);
+
+        var result = ReportCommands.Produce(new ProduceReportRequest(
+            _project, ProductVersion, CanonicalId.Mint("assessment/").Value, "coverage", null, null));
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(state == "missing" ? "report.assessment-not-found" : "store.other-version", result.Refusal!.Code);
+        Assert.Equal(before.Keys.Order(StringComparer.Ordinal), StoreFiles());
+        foreach (var file in before) Assert.Equal(file.Value, File.ReadAllBytes(file.Key));
+        Assert.Equal(state != "missing", File.Exists(storePath));
     }
 
     private string RecordAssessment(string kind, params (string Word, bool Analysed)[] words)

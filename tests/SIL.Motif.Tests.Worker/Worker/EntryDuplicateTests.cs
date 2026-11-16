@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SIL.Motif.Contract.Parsimony;
 using SIL.Motif.Host.Parsimony;
+using SIL.Motif.Tests.QueryScale;
 using SIL.Motif.Tests.TestFixtures;
 using Xunit;
 using Xunit.Abstractions;
@@ -98,21 +99,23 @@ public sealed class EntryDuplicateTests(PristineProjectFixture pristine, ITestOu
     }
 
     [Fact]
+    public async Task EntryDuplicateAtCebScaleReadsAndDecidesOverEveryEntryOnce()
+    {
+        using var session = await OpenCebScaleAsync();
+
+        var result = MeasureRunner.Execute("P-entry-duplicate", session, session.BundleId);
+
+        Assert.Equal(ParsimonyMeasureStatus.Computed, result.Run.Status);
+        Assert.Equal(25000, result.Run.EligibleItems);
+        Assert.Equal(0, result.Run.FindingItems);
+        Assert.Equal(result.Run.FindingItems, result.Findings.Count);
+    }
+
+    [SlowScaleFact]
+    [Trait("Category", "SlowScale")]
     public async Task EntryDuplicateAtCebScaleRunsInUnderASecond()
     {
-        using var session = await _harness.OpenAsync(seed =>
-        {
-            for (var i = 0; i < 25000; i++)
-            {
-                var entry = "e" + i;
-                var homograph = i % 500 == 1 ? i - 1 : i;
-                seed.Entry(entry, i % 3 == 0 ? "suffix" : "stem", "f" + homograph);
-                if (i % 7 == 0) seed.Alternate(entry, "alt" + i);
-                seed.Msa("m" + i, entry, i % 3 == 0 ? "inflectional" : "stem", ["c" + (i % 40)]);
-                seed.Sense("s" + i, entry, i % 500 == 1 ? "g" + homograph : "g" + i);
-                seed.Sense("t" + i, entry, "h" + i);
-            }
-        });
+        using var session = await OpenCebScaleAsync();
 
         var timer = Stopwatch.StartNew();
         var result = MeasureRunner.Execute("P-entry-duplicate", session, session.BundleId);
@@ -130,4 +133,18 @@ public sealed class EntryDuplicateTests(PristineProjectFixture pristine, ITestOu
         output.WriteLine($"P-entry-duplicate split: read {readTimer.ElapsedMilliseconds} ms, decide and build findings {decideTimer.ElapsedMilliseconds} ms");
         Assert.True(timer.ElapsedMilliseconds < 1000, $"took {timer.ElapsedMilliseconds} ms");
     }
+
+    private Task<ParsimonyQuerySession> OpenCebScaleAsync() => _harness.OpenAsync(seed =>
+    {
+        for (var i = 0; i < 25000; i++)
+        {
+            var entry = "e" + i;
+            var homograph = i % 500 == 1 ? i - 1 : i;
+            seed.Entry(entry, i % 3 == 0 ? "suffix" : "stem", "f" + homograph);
+            if (i % 7 == 0) seed.Alternate(entry, "alt" + i);
+            seed.Msa("m" + i, entry, i % 3 == 0 ? "inflectional" : "stem", ["c" + (i % 40)]);
+            seed.Sense("s" + i, entry, i % 500 == 1 ? "g" + homograph : "g" + i);
+            seed.Sense("t" + i, entry, "h" + i);
+        }
+    });
 }
