@@ -226,12 +226,13 @@ _Avoid_: Deploy, Release, Publish, Production, Send
 ## Scripture in the Paratext flow
 
 **Source** (of scripture):
-A whole Paratext project, or a folder of corpus files, with one versification. Motif reads its text and never copies it
+A Corpus with one versification: a whole Paratext project, or a folder of corpus files. Its chapters are its
+Documents, and it is worked with like any other Corpus. Motif reads its text and never copies it
 into the FieldWorks project ([ADR 0110](docs/adr/0110-scripture-stays-in-paratext-and-judgements-ride-on-wfiwordform.md)).
 _Avoid_: import, corpus copy, home
 
 **Passage**:
-One chapter of a Source; for a corpus, one document.
+One chapter of a Source, which is that Source's Document; for any other Corpus, one Document.
 
 **Context** (in context):
 The chapters of a Source the work is about now, written as a range such as `GEN-ROM; 1CO 13-15`.
@@ -332,6 +333,12 @@ Shown with FieldWorks' colours (cyan, red, brown) and always with a letter and g
 alone. It is changed one analysis at a time, in its text. A staged change of Opinion is read "now → after
 Apply", never as an Opinion of its own.
 _Avoid_: rejected, grade, verdict, no opinion, status
+
+**Approve** (an Occurrence):
+FieldWorks' interlinear action, kept for its meaning: choose the analysis one Occurrence has, which also
+approves that analysis. It works the same in a Text and in a Corpus. An Occurrence nobody has approved shows
+a **guess**. Approving never overrides a Disapproved Opinion; it shows the conflict instead.
+_Avoid_: place judgement, confirm, accept, reject (at an Occurrence)
 
 **Set (an analysis)**:
 The action that chooses what FieldWorks will hold for one analysis: **Approved**, **Unknown**,
@@ -873,8 +880,9 @@ _Avoid_: token, Occurrence (for the form)
 **Occurrence**:
 One instance of a Wordform at a particular span in source material, retaining its original surface and location.
 Repeated instances remain distinct. A Corpus Occurrence is bound to a Document version and segmentation;
-a FieldWorks Text occurrence uses its saved FieldWorks context. Sharing a Wordform assigns no approved reading.
-_Avoid_: token, Wordform (for the instance), analysis
+a FieldWorks Text occurrence uses its saved FieldWorks context. In a Source, it is located by book, chapter,
+verse and word number, such as `MAT 5:3#2`. Sharing a Wordform assigns no approved reading.
+_Avoid_: token, Wordform (for the instance), analysis, word place, Source place
 
 **Word-forming character**:
 A character that belongs inside a word under a writing system's segmentation rules, including Unicode defaults,
