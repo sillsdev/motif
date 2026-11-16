@@ -73,7 +73,6 @@ namespace SIL.TextEditing.Markdown.Records
                 {
                     if (f.Key != root.Field.Name && !f.Value.IsEmpty) throw new RecordWriteException("The file's root names the field " + root.Field.Name + ", but the data also has " + f.Key + ".");
                 }
-                if (data.Guid != null) throw new RecordWriteException("The file's root names the field " + root.Field.Name + ", so its data has no GUID.");
             }
 
             var frame = new StringBuilder();

@@ -622,7 +622,7 @@ namespace SIL.TextEditing.Markdown.Records
                 if (key == "<<" && pair.Key.Style == ScalarStyle.Plain) continue; // a merge key, already reported
                 if (!node.Flow) CheckKeySpelling(pair.Key, key);
                 int index;
-                if (key == "guid" && type.HasGuid && only == null)
+                if (key == "guid" && type.HasGuid)
                 {
                     index = -1;
                     if (!IsEmptyNode(pair.Value))
