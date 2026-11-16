@@ -30,13 +30,13 @@ namespace SIL.TextEditing.Markdown.Records
         }
 
         /// <summary>Returns the selected service's diagnostics unchanged, or an empty list for an unregistered notation.</summary>
-        /// <exception cref="ArgumentException">The service returns a pending task instead of answering synchronously.</exception>
+        /// <exception cref="InvalidOperationException">The service returns a pending task instead of answering synchronously.</exception>
         public IReadOnlyList<LanguageDiagnostic> Check(string notation, string text, string path)
         {
             if (!_services.TryGetValue(notation, out var service)) return Array.Empty<LanguageDiagnostic>();
             var analysis = service.AnalyzeAsync(text, CancellationToken.None);
             if (!analysis.IsCompleted)
-                throw new ArgumentException("The language service for " + notation + " must answer synchronously.", nameof(notation));
+                throw new InvalidOperationException("The language service for " + notation + " must answer synchronously.");
             return analysis.GetAwaiter().GetResult().Diagnostics;
         }
     }

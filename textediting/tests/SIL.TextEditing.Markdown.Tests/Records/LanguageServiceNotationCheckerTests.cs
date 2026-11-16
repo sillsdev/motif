@@ -46,7 +46,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
         public void PendingAnalysisIsRefusedWithoutWaiting()
         {
             var service = new Deferred();
-            var error = Assert.Throws<ArgumentException>(() => Checker(service).Check("environment", "text", "field"));
+            var error = Assert.Throws<InvalidOperationException>(() => Checker(service).Check("environment", "text", "field"));
             Assert.Contains("synchronously", error.Message);
             Assert.False(service.Pending.Task.IsCompleted);
             service.Pending.SetResult(LanguageAnalysis.Empty);
@@ -59,7 +59,7 @@ namespace SIL.TextEditing.Markdown.Tests.Records
             var checker = Checker(service);
             Assert.Empty(checker.Check("environment", "first", "field"));
             service.Immediate = false;
-            Assert.Throws<ArgumentException>(() => checker.Check("environment", "second", "field"));
+            Assert.Throws<InvalidOperationException>(() => checker.Check("environment", "second", "field"));
             service.Pending.SetResult(LanguageAnalysis.Empty);
         }
 
