@@ -12,10 +12,11 @@ namespace SIL.TextEditing.Markdown.Records
     {
         public static string Write(RecordSchema schema)
         {
+            int version = schema.ObjectTypes.Any(t => t.Field("class") != null) ? 1 : RecordSchema.CurrentVersion;
             var types = new J.Arr();
             foreach (var type in schema.ObjectTypes)
             {
-                var fields = new J.Arr(type.Fields.Select(f => (J.Node)Field(f)));
+                var fields = new J.Arr(type.Fields.Select(f => (J.Node)Field(f, version)));
                 types.Items.Add(new J.Obj().Add("name", type.Name)
                     .Add("guid", Bool(type.HasGuid)).Add("fields", fields));
             }
@@ -28,7 +29,7 @@ namespace SIL.TextEditing.Markdown.Records
                 kinds.Items.Add(value);
             }
             var result = new StringBuilder();
-            new J.Obj().Add("version", Number(RecordSchema.CurrentVersion)).Add("id", schema.Id)
+            new J.Obj().Add("version", Number(version)).Add("id", schema.Id)
                 .Add("types", types).Add("kinds", kinds).Write(result, 0);
             return result.Append('\n').ToString();
         }
@@ -36,11 +37,13 @@ namespace SIL.TextEditing.Markdown.Records
         static J.Raw Bool(bool value) => new J.Raw(value ? "true" : "false");
         static J.Raw Number(int value) => new J.Raw(value.ToString(CultureInfo.InvariantCulture));
 
-        static J.Obj Field(RecordField field)
+        static J.Obj Field(RecordField field, int version)
         {
+            if (version == 1 && (field.Computed || field.Kind == RecordFieldKind.Collection || field.ObjectTypeNames.Count > 1))
+                throw new InvalidOperationException("A schema with a legacy class field cannot use version-2 field features.");
             var value = new J.Obj();
             if (field.Name.Length != 0) value.Add("name", field.Name);
-            value.Add("kind", field.Kind == RecordFieldKind.Sequence ? "seq" :
+            value.Add("kind", field.Kind == RecordFieldKind.Sequence ? (version == 1 ? "sequence" : "seq") :
                 field.Kind == RecordFieldKind.Collection ? "col" : field.Kind.ToString().ToLowerInvariant());
             if (field.Computed) value.Add("computed", Bool(true));
             if (field.MultiWritingSystem) value.Add("multi", Bool(true));
@@ -63,7 +66,7 @@ namespace SIL.TextEditing.Markdown.Records
             if (field.ObjectTypeNames.Count == 1) value.Add("type", field.ObjectTypeNames[0]);
             else if (field.ObjectTypeNames.Count > 1)
                 value.Add("types", new J.Arr(field.ObjectTypeNames.Select(n => (J.Node)new J.Str(n))));
-            if (field.Item != null) value.Add("item", Field(field.Item));
+            if (field.Item != null) value.Add("item", Field(field.Item, version));
             return value;
         }
 
@@ -95,7 +98,7 @@ namespace SIL.TextEditing.Markdown.Records
                 Keys(t, "name", "guid", "fields");
                 var type = builder.ObjectType(Json.Str(t["name"]), Json.OptBool(t, "guid", true));
                 var fields = Json.Arr(t["fields"]).Select(Json.Obj).ToList();
-                type.AllowLegacyClass = fields.Any(f => Json.Str(f["name"]) == "class");
+                type.AllowLegacyClass = version == 1 && fields.Any(f => Json.Str(f["name"]) == "class");
                 foreach (var f in fields) AddField(type, f, version);
             }
             foreach (var k in Json.Arr(json["kinds"]).Select(Json.Obj))

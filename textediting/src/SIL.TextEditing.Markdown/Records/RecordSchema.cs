@@ -195,7 +195,9 @@ namespace SIL.TextEditing.Markdown.Records
         /// <summary>The supported version of the serialized schema format, independent of <see cref="Id"/>.</summary>
         public const int CurrentVersion = 2;
 
-        /// <summary>Writes this schema as versioned JSON data, preserving field order, defaults and recursive type references.</summary>
+        /// <summary>Writes this schema as versioned JSON data, preserving field order, defaults and recursive type references.
+        /// Uses the current version, or version 1 for a legacy schema with an explicitly declared ordinary class field.</summary>
+        /// <exception cref="InvalidOperationException">A legacy class field is combined with field features that require version 2.</exception>
         public string ToJson() => RecordSchemaJson.Write(this);
 
         /// <summary>Reads versioned schema data. The format has version, id, types and kinds; it is distinct from JSON Schema.</summary>
