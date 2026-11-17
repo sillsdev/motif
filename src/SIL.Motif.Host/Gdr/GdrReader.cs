@@ -314,8 +314,8 @@ public static class GdrReader
     }
 
     private static GdrTextProperties Properties(PropertyBag bag) => new(
-        bag.IntProps.ToDictionary(pair => pair.Key, pair => new GdrIntProperty(pair.Value.Variation, pair.Value.Value)),
-        bag.StrProps.ToDictionary(pair => pair.Key, pair => pair.Value));
+        bag.IntProps.ToDictionary(pair => pair.Key, pair => new GdrIntProperty(pair.Value.Variation, pair.Value.Value)).AsReadOnly(),
+        bag.StrProps.ToDictionary(pair => pair.Key, pair => pair.Value).AsReadOnly());
 }
 
 /// <summary>One record as the sync check reads it: its identity and its Discussion's paragraphs as stored.</summary>

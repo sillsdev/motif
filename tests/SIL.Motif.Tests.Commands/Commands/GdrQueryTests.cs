@@ -295,6 +295,28 @@ public sealed class GdrQueryTests(PristineProjectFixture pristine) : IDisposable
     }
 
     [Fact]
+    public void ACallerCannotPoisonCachedStyleProperties()
+    {
+        var catalogs = new GdrStyleCatalogCache();
+        var path = ProjectWithGdrs(captureBaseline: true);
+        var first = GdrQuery.Show(new GdrShowRequest(path, "GDR-1"), catalogs).Value!;
+        var properties = first.Styles.Single(style => style.Name == "Emphasis").ByWritingSystem[first.DefaultAnalysis];
+        var integers = Assert.IsAssignableFrom<IDictionary<int, GdrIntProperty>>(properties.Ints);
+        var strings = Assert.IsAssignableFrom<IDictionary<int, string>>(properties.Strings);
+        var original = integers[TextPropertyNumbers.Italic];
+        var originalStrings = strings.ToDictionary(pair => pair.Key, pair => pair.Value);
+
+        Assert.Throws<NotSupportedException>(() => integers[TextPropertyNumbers.Italic] = new GdrIntProperty(0, 0));
+        Assert.Throws<NotSupportedException>(() => strings[TextPropertyNumbers.FontFamily] = "Caller font");
+
+        var second = GdrQuery.Show(new GdrShowRequest(path, "GDR-2"), catalogs).Value!;
+        var cached = second.Styles.Single(style => style.Name == "Emphasis").ByWritingSystem[second.DefaultAnalysis];
+        Assert.Same(first.Styles, second.Styles);
+        Assert.Equal(original, cached.Ints[TextPropertyNumbers.Italic]);
+        Assert.Equal(originalStrings.OrderBy(pair => pair.Key), cached.Strings.OrderBy(pair => pair.Key));
+    }
+
+    [Fact]
     public void RepeatedRecordClicksResolveStylesOncePerBaseline()
     {
         var catalogs = new GdrStyleCatalogCache();
