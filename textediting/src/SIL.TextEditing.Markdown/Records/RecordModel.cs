@@ -245,7 +245,11 @@ namespace SIL.TextEditing.Markdown.Records
 
         /// <summary>True when two documents say the same: the same front matter and the same values, comparing objects field by field whatever their order,
         /// and leaving out empty values (which a file never holds). Ranges, paths and parsed paragraphs are not compared.</summary>
-        public static bool AreEquivalent(RecordDocument a, RecordDocument b)
+        public static bool AreEquivalent(RecordDocument a, RecordDocument b) => AreEquivalent(a, b, null);
+
+        /// <summary>As <see cref="AreEquivalent(RecordDocument, RecordDocument)"/>, reading the objects against <paramref name="schema"/>: an object whose
+        /// <see cref="RecordObject.Class"/> is the only type its field allows says the same as one with no class. Everywhere else the class is compared.</summary>
+        public static bool AreEquivalent(RecordDocument a, RecordDocument b, RecordSchema? schema)
         {
             if (a == null) throw new ArgumentNullException(nameof(a));
             if (b == null) throw new ArgumentNullException(nameof(b));
@@ -257,13 +261,44 @@ namespace SIL.TextEditing.Markdown.Records
                 var y = b.WritingSystems[i];
                 if (x.Key != y.Key || x.Value.Language != y.Value.Language || x.Value.Direction != y.Value.Direction || x.Value.Font != y.Value.Font) return false;
             }
-            return AreEquivalent(a.Data, b.Data);
+            RecordObjectType? rootType = null;
+            var kind = schema?.Kind(a.Kind);
+            if (kind != null) rootType = RecordRoot.Resolve(kind, a.Root, out _, a.Data?.Class)?.Type;
+            return AreEquivalent(a.Data, b.Data, schema == null ? null : new Typing(null, rootType));
         }
 
         /// <summary>True when two values say the same (see <see cref="AreEquivalent(RecordDocument, RecordDocument)"/>).</summary>
-        public static bool AreEquivalent(RecordValue? a, RecordValue? b)
+        public static bool AreEquivalent(RecordValue? a, RecordValue? b) => AreEquivalent(a, b, null);
+
+        /// <summary>What the schema says about the object a value should be: the types its field allows (null when unknown or several are possible
+        /// at the root) and, once known, its type.</summary>
+        sealed class Typing
         {
-            bool emptyA = a == null || a.IsEmpty, emptyB = b == null || b.IsEmpty;
+            public Typing(IReadOnlyList<RecordObjectType>? allowed, RecordObjectType? type) { Allowed = allowed; Type = type; }
+            public IReadOnlyList<RecordObjectType>? Allowed { get; }
+            public RecordObjectType? Type { get; }
+
+            /// <summary>The class that matters: none when it names the only type the field allows.</summary>
+            public string? Effective(RecordObject o) => Allowed != null && Allowed.Count == 1 && o.Class == Allowed[0].Name ? null : o.Class;
+
+            public RecordObjectType? TypeOf(RecordObject o)
+                => Type ?? (Allowed == null ? null : Allowed.Count == 1 ? Allowed[0] : Allowed.FirstOrDefault(t => t.Name == o.Class));
+
+            public static Typing For(RecordField? field)
+            {
+                if (field != null && field.IsList) field = field.Item;
+                return new Typing(field != null && field.Kind == RecordFieldKind.Object ? field.ObjectTypes : null, null);
+            }
+        }
+
+        static bool IsEmpty(RecordValue value, Typing? typing)
+            => value is RecordObject o && typing != null
+                ? o.Guid == null && typing.Effective(o) == null && o.Fields.All(f => f.Value.IsEmpty)
+                : value.IsEmpty;
+
+        static bool AreEquivalent(RecordValue? a, RecordValue? b, Typing? typing)
+        {
+            bool emptyA = a == null || IsEmpty(a, typing), emptyB = b == null || IsEmpty(b, typing);
             if (emptyA || emptyB) return emptyA && emptyB;
             switch (a)
             {
@@ -278,22 +313,25 @@ namespace SIL.TextEditing.Markdown.Records
                 case RecordList list:
                 {
                     if (!(b is RecordList other) || list.Items.Count != other.Items.Count) return false;
-                    for (int i = 0; i < list.Items.Count; i++) if (!AreEquivalentItem(list.Items[i], other.Items[i])) return false;
+                    for (int i = 0; i < list.Items.Count; i++) if (!AreEquivalentItem(list.Items[i], other.Items[i], typing)) return false;
                     return true;
                 }
                 case RecordObject o:
                 {
-                    if (!(b is RecordObject other) || o.Guid != other.Guid || o.Class != other.Class) return false;
+                    if (!(b is RecordObject other) || o.Guid != other.Guid) return false;
+                    if ((typing == null ? o.Class : typing.Effective(o)) != (typing == null ? other.Class : typing.Effective(other))) return false;
+                    var type = typing?.TypeOf(o);
                     var x = o.Fields.Where(f => !f.Value.IsEmpty).ToList();
                     var y = other.Fields.Where(f => !f.Value.IsEmpty).ToList();
-                    return x.Count == y.Count && x.All(f => AreEquivalent(f.Value, other[f.Key]));
+                    return x.Count == y.Count && x.All(f => AreEquivalent(f.Value, other[f.Key],
+                        typing == null ? null : f.Value is RecordObject || f.Value is RecordList ? Typing.For(type?.Field(f.Key)) : null));
                 }
             }
             return false;
         }
 
         // An item of a list is kept even when it is empty in itself (a new object with no fields cannot be written, but it is not "nothing").
-        static bool AreEquivalentItem(RecordValue a, RecordValue b)
-            => a is RecordObject x && b is RecordObject y && x.IsEmpty && y.IsEmpty ? true : AreEquivalent(a, b);
+        static bool AreEquivalentItem(RecordValue a, RecordValue b, Typing? typing)
+            => a is RecordObject x && b is RecordObject y && IsEmpty(x, typing) && IsEmpty(y, typing) ? true : AreEquivalent(a, b, typing);
     }
 }
