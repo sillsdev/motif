@@ -190,16 +190,16 @@ public sealed class CatalogAggregationTests
     public void StoredWholeRunTotalsGiveWorkByObjectAndKindWithoutAnyWordDetail()
     {
         AssessedWord[] words = [new("a", "analysed", [], 5) { ParserWork = 10 }, new("b", "analysed", [], 5) { ParserWork = 20 },
-            new("never", "skipped", [], null) { ParserWork = 500 }];
+            new("never", "skipped", [], null) { ParserWork = 5 }];
         var evidence = new AssessmentTimingEvidence(
         [
             Totals("morph_rule", "rule-r", "analysis", 14), Totals("morph_rule", "rule-r", "synthesis", 6),
-            Totals("lex_entry", "entry-e", "analysis", 7), Totals("unattributed", "unattributed", "unattributed", 3),
+            Totals("lex_entry", "entry-e", "analysis", 7), Totals("unattributed", "unattributed", "unattributed", 8),
         ], 0, false, 4);
 
         var byObject = TimingAggregation.ParserWorkFromTotals(words, evidence);
 
-        Assert.Equal(30, byObject.Sum(row => row.ParserWork));
+        Assert.Equal(35, byObject.Sum(row => row.ParserWork));
         Assert.Equal(20, Assert.Single(byObject, row => row.Key == "rule-r").ParserWork);
         Assert.Equal(["morph_rule", "lex_entry", "unattributed"], byObject.Select(row => row.Kind));
         Assert.True(byObject[^1].IsUnattributed);

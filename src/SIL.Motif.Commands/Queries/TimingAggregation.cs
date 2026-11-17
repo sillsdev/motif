@@ -140,7 +140,7 @@ public static class TimingAggregation
     /// <summary>
     /// Parser work by parser object from the stored whole-run totals, for a run whose per-word detail was not all
     /// kept. It returns nothing unless every counted word has a work total, every stored object total has work,
-    /// the run has its unattributed remainder, and the objects add up to the words' total, so a run stored before
+    /// the run has its unattributed remainder, and the objects add up to the work of every word with a total (skipped words included, as PanGloss counts them), so a run stored before
     /// work was kept by object reads as absent and never as zero.
     /// </summary>
     public static IReadOnlyList<TimingWorkAggregate> ParserWorkFromTotals(
@@ -162,7 +162,8 @@ public static class TimingAggregation
         if (rows.Any(row => row.ParserWork is null || ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope) is null))
             return ([], ParserWorkAbsence.ObjectWithoutWorkOrIdentity);
         if (!rows.Any(row => row.Kind == "unattributed")) return ([], ParserWorkAbsence.NoUnattributedRow);
-        if (rows.Sum(row => row.ParserWork!.Value) != counted.Sum(word => word.ParserWork!.Value))
+        // PanGloss counts skipped words' work in the totals, so the exact sum covers every word with a total.
+        if (rows.Sum(row => row.ParserWork!.Value) != words.Sum(word => word.ParserWork ?? 0))
             return ([], ParserWorkAbsence.SumsDoNotMatch);
         return (rows.GroupBy(row => ObjectIdentity.Create(row.Kind, row.Key, row.IdentityQuality, scope))
             .Select(group =>

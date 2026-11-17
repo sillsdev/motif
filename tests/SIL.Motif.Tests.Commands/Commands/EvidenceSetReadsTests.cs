@@ -635,6 +635,42 @@ public sealed class EvidenceSetReadsTests : IDisposable
     }
 
     [Fact]
+    public void ATruncatedRunKeepsWorkByObjectWhenASkippedWordCarriesWork()
+    {
+        using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
+        fixture.SetDefaultSelection([], ["cat", "dog"]);
+        var words = new[]
+        {
+            new AssessedWord("cat", "analysed", []) { ElapsedMs = 10, ParserWork = 70 },
+            new AssessedWord("dog", "analysed", []) { ElapsedMs = 20, ParserWork = 30 },
+            new AssessedWord("1904", "skipped", []) { ParserWork = 4 },
+        };
+        var detail = new AssessmentObjectTiming("morph_rule", "rule", "authored", "analysis", "Rule", "dog", 2, null, 2_000_000)
+            { ParserWork = 30 };
+        PanGlossObjectTimingAggregate Total(string kind, string key, string quality, long work) =>
+            new(kind, key, quality, kind == "unattributed" ? "unattributed" : "analysis", "Rule", 2, 5, 3, 5_000_000, 3_000_000)
+                { WordsTouchedAcrossDirections = 2, WordsTouchedForKind = 2, ParserWork = work };
+        new AssessmentRepository(fixture.Database).Record(
+            new NewAssessmentRecord("skipped-work", null, null, "pangloss", AssessmentKinds.ParseTime, "{}", "scope",
+                new AssessmentSubject.Words(Selection.Create("Default", ["cat", "dog"]), "whitespace", "1"),
+                JsonSerializer.Serialize(fixture.Token, MotifJson.CreateOptions()), "outcome", "semantic", "grammar", "model",
+                "pipeline", 0,
+                new AssessmentRecordMaterial.Words(words, null, null, [detail])
+                {
+                    TimingEvidence = new AssessmentTimingEvidence(
+                        [Total("morph_rule", "rule", "authored", 80), Total("unattributed", "unattributed", "synthetic", 24)],
+                        1, false, 2) { AttributedNs = 5_000_000, UnattributedNs = 25_000_000, OverrunNs = 0 },
+                }));
+
+        var timing = TimingCommand.Timing(new TimingRequest(fixture.Project.FullFwDataPath, AssessmentId: "skipped-work",
+            ExplicitWords: ["cat", "dog", "1904"]));
+
+        Assert.True(timing.Succeeded, timing.Refusal?.Message);
+        Assert.Null(timing.Value!.ParserWorkByObjectAbsentReason);
+        Assert.Equal(104, timing.Value.ParserWorkAggregates.Sum(row => row.ParserWork));
+    }
+
+    [Fact]
     public void OverviewAndTimingAgreeOnWorkSharesOfAGrammarLocalObject()
     {
         using var fixture = new TrialsTests.ProjectFixture(_root, includeSecondWord: true);
